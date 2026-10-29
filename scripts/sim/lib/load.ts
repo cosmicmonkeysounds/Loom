@@ -22,7 +22,8 @@ import { pct } from "./report.ts";
  *  file's `hold:` / `busy:`); `fallback` / `unavailable` are the worker's
  *  own canned lines (the persona's `fallback:` / `fallbacks:` /
  *  `unavailable:`): the request is closed but nobody answered; `story` is a
- *  line the story posted (a beat's); `hand` is a director typing as him. */
+ *  line the story posted (a beat's); `hand` is a director typing as him
+ *  (in his DM thread or a guest's: the line carries no `answers`). */
 export type LineKind = "reply" | "hold" | "busy" | "fallback" | "unavailable" | "story" | "hand";
 
 export interface CannedText {
@@ -142,6 +143,8 @@ export function cannedText(cast: { hold: string | null; busy: string | null }, p
   return { hold: cast.hold, busy: cast.busy, unavailable: persona.unavailable, fallbacks };
 }
 
+const asSeq = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? v : null);
+
 /** A chat message as the mod feed's `message` frames carry it. */
 export interface FeedMsg {
   seq?: unknown;
@@ -157,8 +160,13 @@ export interface FeedMsg {
 
 /** What his line in his own `dm:` thread is; null for anything else (another
  *  speaker, another channel, a widget or a pick). A message with a `beat`
- *  key is the story's; one with `via` a director's play-as; the canned texts
- *  are matched exactly (trimmed), the hold and busy lines first. */
+ *  key is the story's; the canned texts are matched exactly (trimmed), the
+ *  hold and busy lines first. Everything the agent path posts (a reply, the
+ *  worker's canned line, the hub's hold and busy) carries `answers`, the seq
+ *  of the guest line it was asked about (`answeredSeq`); a director typing
+ *  as him in Run does not (the mod `say` passes none, and `via` is set only
+ *  for a guest played by a director, never a character), so a line with
+ *  neither a beat nor `answers` is `hand`, never a reply. */
 export function classify(m: FeedMsg, canned: CannedText, character = "Trabolta"): LineKind | null {
   if (m.from !== character || m.channel !== `dm:${character}`) return null;
   if ((m.kind ?? "line") !== "line") return null;
@@ -171,6 +179,7 @@ export function classify(m: FeedMsg, canned: CannedText, character = "Trabolta")
   if (typeof m.via === "string" && m.via !== "") return "hand";
   if (canned.unavailable !== null && text === canned.unavailable) return "unavailable";
   if (canned.fallbacks.has(text)) return "fallback";
+  if (asSeq(m.answers) === null) return "hand";
   return "reply";
 }
 
@@ -190,7 +199,9 @@ export interface LineRec {
   status: number;
   /** The line's seq, once the feed showed it. */
   seq: number | null;
-  /** The first `typing on` in the thread after it was sent. */
+  /** When the guest first saw him typing for it: the first `typing on` in
+   *  the thread while it was open, or its own send time when he was already
+   *  typing as it went (a line sent into a running request reads the same). */
   typingAt: number | null;
   /** The first busy / hold line in the thread while it was open. */
   busyAt: number | null;
@@ -223,7 +234,6 @@ export interface TypingFrame {
   audience?: unknown;
 }
 
-const asSeq = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? v : null);
 const firstAudience = (a: unknown): string | null => (Array.isArray(a) && typeof a[0] === "string" ? a[0] : null);
 
 export class LoadBook {
@@ -233,6 +243,10 @@ export class LoadBook {
   readonly threads = new Map<string, ThreadMsg[]>();
   private readonly names = new Map<string, string>();
   private readonly typingOn = new Map<string, boolean>();
+  /** A guest's lines the feed showed before `sent` booked them: the say's
+   *  HTTP answer can come back after its own `message` frame, so the seq
+   *  waits here for the record (matched by text, oldest first). */
+  private readonly early = new Map<string, Array<{ text: string; seq: number }>>();
   // Plain fields, not parameter properties: Node's type stripping runs
   // these scripts and only erases syntax that has no runtime meaning.
   private readonly canned: CannedText;
@@ -253,7 +267,17 @@ export class LoadBook {
     return this.names;
   }
 
+  /** Book a line. `at` is when the say went out (taken before the POST);
+   *  call this once its status is known. A feed frame for it that already
+   *  came gives it its seq, and a thread where he is typing types for it
+   *  from the start. */
   sent(guest: string, text: string, at: number, status: number, tag?: string): LineRec {
+    let seq: number | null = null;
+    if (status === 200) {
+      const early = this.early.get(guest) ?? [];
+      const i = early.findIndex((e) => e.text === text.trim());
+      if (i >= 0) seq = early.splice(i, 1)[0]!.seq;
+    }
     const rec: LineRec = {
       n: this.lines.length + 1,
       guest,
@@ -261,8 +285,8 @@ export class LoadBook {
       text,
       sentAt: at,
       status,
-      seq: null,
-      typingAt: null,
+      seq,
+      typingAt: status === 200 && this.isTyping(guest) ? at : null,
       busyAt: null,
       holdAt: null,
       closedAt: status === 200 ? null : at,
@@ -293,6 +317,11 @@ export class LoadBook {
       this.threads.get(guest)!.push({ seq: seq ?? -1, at, who: "guest", kind: "line", text, answers: null });
       const rec = this.lines.find((l) => l.guest === guest && l.seq === null && l.status === 200 && l.text.trim() === text.trim());
       if (rec !== undefined && seq !== null) rec.seq = seq;
+      else if (rec === undefined && seq !== null) {
+        const early = this.early.get(guest) ?? [];
+        early.push({ text: text.trim(), seq });
+        this.early.set(guest, early.slice(-20));
+      }
       return null;
     }
     const kind = classify(m, this.canned, this.character);
@@ -379,8 +408,13 @@ export interface LoadSummary {
   waitMs: Stats;
   /** Sent → closed by anything (reply, canned, director). */
   closeMs: Stats;
-  /** Sent → the first typing on in the thread. */
+  /** Sent → the first typing on in the thread (0 when he was already typing). */
   typingMs: Stats;
+  /** Typing on → his real reply (answered lines that saw typing): how long
+   *  "is typing" stood before an answer. Wave 42 C4 turns typing on only
+   *  once a request is dispatched, so on a windowed hub this is about the
+   *  model's time; on a legacy hub it is most of the wait. */
+  typedMs: Stats;
   /** Lines that heard the busy / hold line before their real reply (or instead of one). */
   busyFirst: number;
   holdFirst: number;
@@ -429,6 +463,7 @@ export function summarize(book: LoadBook, start: number, end: number, bucketMs =
     waitMs: stats(answered.map((l) => l.replyAt! - l.sentAt)),
     closeMs: stats(posted.filter((l) => l.closedAt !== null).map((l) => l.closedAt! - l.sentAt)),
     typingMs: stats(posted.filter((l) => l.typingAt !== null).map((l) => l.typingAt! - l.sentAt)),
+    typedMs: stats(answered.filter((l) => l.typingAt !== null && l.typingAt <= l.replyAt!).map((l) => l.replyAt! - l.typingAt!)),
     busyFirst: posted.filter((l) => before(l.busyAt, l)).length,
     holdFirst: posted.filter((l) => before(l.holdAt, l)).length,
     his,
@@ -452,6 +487,7 @@ export function lineRow(l: LineRec, start: number, redact: (s: string) => string
     sentMs: rel(l.sentAt),
     waitMs: l.replyAt === null ? null : Math.round(l.replyAt - l.sentAt),
     typingMs: l.typingAt === null ? null : Math.round(l.typingAt - l.sentAt),
+    typedMs: l.typingAt === null || l.replyAt === null || l.typingAt > l.replyAt ? null : Math.round(l.replyAt - l.typingAt),
     busyFirst: l.busyAt !== null && (l.replyAt === null || l.busyAt <= l.replyAt),
     holdFirst: l.holdAt !== null && (l.replyAt === null || l.holdAt <= l.replyAt),
     closedBy: l.closedBy,
@@ -537,10 +573,20 @@ export interface TraceThought {
   result?: unknown;
 }
 
+/** The server keeps this many thoughts a character (`AgentTraceStore`'s
+ *  ring) and a pull returns at most as many. */
+export const TRACE_RING = 400;
+
+/** `truncated`: the pull came back full and its oldest thought is newer
+ *  than the run's start, so the ring had already dropped some of the run's
+ *  thoughts and every number below covers only its tail. */
 export function modelStats(
   thoughts: readonly TraceThought[],
   sinceSec: number,
-): { thoughts: number; byKind: Record<string, number>; voiceMs: Stats; promptMs: Stats; promptTokens: Stats; completionTokens: Stats; judgeMs: Stats; errors: number; rulings: { same: number; not: number } } {
+  ring = TRACE_RING,
+): { thoughts: number; truncated: boolean; byKind: Record<string, number>; voiceMs: Stats; promptMs: Stats; promptTokens: Stats; completionTokens: Stats; judgeMs: Stats; errors: number; rulings: { same: number; not: number } } {
+  const ats = thoughts.map((t) => t.at).filter((a): a is number => typeof a === "number" && Number.isFinite(a));
+  const truncated = thoughts.length >= ring && ats.length > 0 && Math.min(...ats) > sinceSec;
   const mine = thoughts.filter((t) => typeof t.at === "number" && t.at >= sinceSec);
   const byKind: Record<string, number> = {};
   for (const t of mine) byKind[String(t.kind)] = (byKind[String(t.kind)] ?? 0) + 1;
@@ -550,6 +596,7 @@ export function modelStats(
   const sameOf = (t: TraceThought) => (t.result as Record<string, unknown>)["same"];
   return {
     thoughts: mine.length,
+    truncated,
     byKind,
     voiceMs: stats(nums("voice", (t) => t.ms)),
     promptMs: stats(nums("voice", (t) => t.prompt_ms)),
@@ -576,22 +623,31 @@ export function rulingEvent(text: string, judge = "Trabolta"): { kind: "asked" }
 // ------------------------------------------------------------------ secrets
 
 /**
- * The values a file the driver writes must never hold: the hunts' answers
- * (and accepted forms), the door code, and the Kernel's secret-looking
- * values, read at runtime from facts.json and the director's world. The
- * book keeps only a label per value ("H3 answer", "Kernel.door_code");
+ * The values a file the driver writes must never hold, read at runtime:
+ * every secret class facts.json carries (`factsSecrets`), the mind file's
+ * `secrets.never` list (`mindSecrets`: the door code as it is said, the
+ * digit notes, the patch-bay pairs, her one line), the Kernel's
+ * secret-looking values (`kernelSecrets`, re-read as the night moves), and
+ * the run's own MOD code and event pass. The book keeps only a label per
+ * value ("H3 answer", "Kernel.door_code");
  * `redact` swaps a value for its label and `hits` names the labels a text
  * contains, so a check can fail on a leak without repeating it.
  */
 export class SecretBook {
-  private readonly items: Array<{ label: string; re: RegExp }> = [];
+  private readonly items: Array<{ label: string; value: string; re: RegExp }> = [];
 
   add(label: string, value: unknown): void {
     if (typeof value !== "string" && typeof value !== "number") return;
     const v = String(value).trim();
     if (v.length < 3 || /^(true|false|none|null|yes|no)$/iu.test(v)) return;
-    if (this.items.some((i) => i.label === label && i.re.source.includes(esc(v)))) return;
-    this.items.push({ label, re: new RegExp(`(?<![\\p{L}\\p{N}])${esc(v)}(?![\\p{L}\\p{N}])`, "giu") });
+    // The same value under the same label once. Exact, not "already inside
+    // one": an accepted short form ("pickles") inside a longer answer
+    // ("mister pickles") must still be caught on its own.
+    const key = v.toLowerCase();
+    if (this.items.some((i) => i.label === label && i.value === key)) return;
+    this.items.push({ label, value: key, re: new RegExp(`(?<![\\p{L}\\p{N}])${esc(v)}(?![\\p{L}\\p{N}])`, "giu") });
+    // Longest first, so a redaction swaps the whole answer before its short form.
+    this.items.sort((a, b) => b.value.length - a.value.length);
   }
 
   get size(): number {
@@ -618,19 +674,116 @@ export class SecretBook {
   }
 }
 
-/** The facts book's secrets (answers, accepted forms, the door code). */
-export function factsSecrets(book: SecretBook, facts: unknown): void {
-  const f = (facts ?? {}) as { questions?: Array<{ id?: unknown; answer?: unknown; accept?: unknown }>; door?: { code?: unknown } };
-  for (const q of f.questions ?? []) {
-    const id = typeof q.id === "string" ? q.id : "?";
-    book.add(`${id} answer`, q.answer);
-    if (Array.isArray(q.accept)) for (const a of q.accept) book.add(`${id} answer`, a);
-  }
-  book.add("door code", f.door?.code);
+interface FactsAnswer {
+  id?: unknown;
+  answer?: unknown;
+  accept?: unknown;
+  codex?: { code?: unknown };
 }
 
-/** Kernel paths whose values are secrets by their name (codes, combos, keys). */
-export const KERNEL_SECRET = /code|combo|answer|key|pass|secret|pin/iu;
+/** An answer and its accepted forms under one label. */
+function addAnswer(book: SecretBook, label: string, a: FactsAnswer | undefined): void {
+  if (a === undefined || a === null) return;
+  book.add(label, a.answer);
+  if (Array.isArray(a.accept)) for (const x of a.accept) book.add(label, x);
+}
+
+/**
+ * Every secret class facts.json carries (CLAUDE.md: "hunt answer keys,
+ * codex or digit-note codes", the door code): each hunt question's answer
+ * and accepted forms and its answer codex's code; a question's `proposal`
+ * (its answer, accepted forms and codex code: a drafted replacement the
+ * story files already carry); `answers[]` (her one line, P1, the words the
+ * persona says he must never say); the door code, its codex's code and
+ * every digit note's code (`door.clues[].code`); and a scannable fact's
+ * codex code when the fact is `secret: true`. The other facts' codes are
+ * printed on the QR stacks for anyone to scan (one is a word his persona
+ * uses), so they are not secrets and would only fail `no-secrets` falsely.
+ */
+export function factsSecrets(book: SecretBook, facts: unknown): void {
+  const f = (facts ?? {}) as {
+    questions?: Array<FactsAnswer & { proposal?: FactsAnswer }>;
+    answers?: FactsAnswer[];
+    door?: { code?: unknown; codex?: { code?: unknown }; clues?: Array<{ id?: unknown; code?: unknown }> };
+    facts?: Array<{ id?: unknown; codex?: { code?: unknown; secret?: unknown } }>;
+  };
+  const idOf = (x: { id?: unknown }) => (typeof x.id === "string" ? x.id : "?");
+  for (const q of f.questions ?? []) {
+    const id = idOf(q);
+    addAnswer(book, `${id} answer`, q);
+    book.add(`${id} codex code`, q.codex?.code);
+    if (q.proposal !== undefined && q.proposal !== null) {
+      addAnswer(book, `${id} proposal answer`, q.proposal);
+      book.add(`${id} proposal codex code`, q.proposal.codex?.code);
+    }
+  }
+  for (const a of f.answers ?? []) {
+    addAnswer(book, `${idOf(a)} answer`, a);
+    book.add(`${idOf(a)} codex code`, a.codex?.code);
+  }
+  book.add("door code", f.door?.code);
+  book.add("door codex code", f.door?.codex?.code);
+  for (const c of f.door?.clues ?? []) book.add(`digit note ${idOf(c)}`, c.code);
+  for (const x of f.facts ?? []) if (x.codex?.secret === true) book.add(`${idOf(x)} codex code`, x.codex.code);
+}
+
+/**
+ * The mind file's `secrets.never` list (titi-facts writes it between its
+ * `# <titi-facts:secrets>` markers): what no line of his mind may carry,
+ * the door code and the ways it is said, the digit notes, the patch-bay
+ * pairs and her one line. Each entry's label is the group its generator
+ * comment names (`# the door code`, `# the patch-bay pairs`, …), carried
+ * down to the next one. Returns how many entries were read (0 when the
+ * file has no such list: the caller says so).
+ */
+export function mindSecrets(book: SecretBook, mind: string): number {
+  const lines = mind.split(/\r?\n/u);
+  let inSecrets = false;
+  let inNever = false;
+  let group = "secrets.never";
+  let n = 0;
+  for (const l of lines) {
+    if (/^secrets:\s*(#.*)?$/u.test(l)) {
+      inSecrets = true;
+      continue;
+    }
+    if (!inSecrets) continue;
+    if (l.trim() !== "" && !/^\s/u.test(l)) break; // the next top-level key
+    if (/^ {2}never:\s*(#.*)?$/u.test(l)) {
+      inNever = true;
+      continue;
+    }
+    if (/^ {2}\S/u.test(l)) {
+      inNever = false;
+      continue;
+    }
+    if (!inNever) continue;
+    const m = /^\s+-\s+("(?:[^"\\]|\\.)*"|'[^']*'|[^#]*?)\s*(?:#\s*(.*?))?\s*$/u.exec(l);
+    if (m === null) continue;
+    if (m[2] !== undefined && m[2] !== "") group = `never: ${m[2]}`;
+    let v = m[1]!;
+    if (v.startsWith('"')) {
+      try {
+        v = JSON.parse(v) as string;
+      } catch {
+        v = v.slice(1, -1);
+      }
+    } else v = unquote(v);
+    if (v.trim() === "") continue;
+    book.add(group, v);
+    n++;
+  }
+  return n;
+}
+
+/** Kernel paths whose values are secrets by their name: codes, combos,
+ *  keys, and the live answer key (`ans_N`, set as each hunt question is
+ *  answered accurately) and its record of what was said (`said_N`). A
+ *  value-shape rule ("every non-boolean value") was weighed and refused:
+ *  the Kernel also holds guests' names (`_pressed_by`, `virus_planter`)
+ *  and verdict words (`q1` …), which would redact the transcripts' own
+ *  names and fail `no-secrets` on an ordinary word. */
+export const KERNEL_SECRET = /code|combo|answer|key|pass|secret|pin|^ans_|^said_/iu;
 
 export function kernelSecrets(book: SecretBook, world: ReadonlyArray<{ path: string; value: string }> | undefined): void {
   for (const w of world ?? []) if (w.path.startsWith("Kernel.") && KERNEL_SECRET.test(w.path.slice(7))) book.add(w.path, w.value);
@@ -769,14 +922,42 @@ export function byPhase(scenarios: readonly Scenario[]): Array<{ phase: Phase; s
   return PHASE_ORDER.map((phase) => ({ phase, scenarios: scenarios.filter((s) => s.phase === phase) })).filter((g) => g.scenarios.length > 0);
 }
 
-/** `$me` in a setup path or value is the scenario guest's id. */
-export const withMe = (s: string, id: string): string => s.replaceAll("$me", id);
+/** `$me` in a setup path or value is the scenario guest's id, `$name` their
+ *  name (the story compares some paths to a name: `Night.heart_holder`). */
+export const withMe = (s: string, id: string, name = ""): string => s.replaceAll("$me", id).replaceAll("$name", name);
+
+/** The setup writes the world no longer holds, as `path reads value (want
+ *  …)` (a story rule undid them, or the write never landed). Values compare
+ *  as the mod view displays them, quotes and case aside. */
+export function setupMismatches(setup: ReadonlyArray<{ path: string; value: string }>, world: ReadonlyMap<string, string>, id: string, name: string): string[] {
+  const norm = (v: string) => v.trim().replace(/^"(.*)"$/u, "$1").toLowerCase();
+  const out: string[] = [];
+  for (const st of setup) {
+    const path = withMe(st.path, id, name);
+    const want = withMe(st.value, id, name);
+    const got = world.get(path) ?? "none";
+    if (norm(got) !== norm(want)) out.push(`${path} reads ${JSON.stringify(got)} (want ${JSON.stringify(want)})`);
+  }
+  return out;
+}
 
 /** Sentences in a reply (terminal punctuation runs; a trailing fragment counts). */
 export function sentences(text: string): number {
   const t = text.trim();
   if (t === "") return 0;
   return t.split(/(?<=[.!?…])\s+/u).filter((s) => /[\p{L}\p{N}]/u.test(s)).length;
+}
+
+/** A word or phrase as a whole word, any case (as `outsideHits` matches):
+ *  "file" is not in "profile", "warm" not in "warmly". An edge that is not
+ *  a letter or digit itself ("close!") needs no boundary there. */
+export function saysWord(text: string, word: string): boolean {
+  const w = word.trim();
+  if (w === "") return false;
+  const wordy = /[\p{L}\p{N}]/u;
+  const before = wordy.test(w[0]!) ? "(?<![\\p{L}\\p{N}])" : "";
+  const after = wordy.test(w.at(-1)!) ? "(?![\\p{L}\\p{N}])" : "";
+  return new RegExp(`${before}${esc(w)}${after}`, "iu").test(text);
 }
 
 export interface CheckResult {
@@ -795,7 +976,6 @@ export function checkReplies(
   secrets: SecretBook,
 ): CheckResult[] {
   const label = (c: Check) => ("words" in c ? `${c.kind} ${c.words.join("/")}` : "n" in c ? `${c.kind} ${c.n}` : c.kind);
-  const lower = t.replies.map((r) => r.toLowerCase());
   return checks.map((c) => {
     switch (c.kind) {
       case "replies":
@@ -817,11 +997,11 @@ export function checkReplies(
         return { check: label(c), ok: hits.length === 0, note: hits.length === 0 ? "" : `said a secret: ${hits.join(", ")}` };
       }
       case "never": {
-        const hits = c.words.filter((w) => lower.some((r) => r.includes(w.toLowerCase())));
+        const hits = c.words.filter((w) => t.replies.some((r) => saysWord(r, w)));
         return { check: label(c), ok: hits.length === 0, note: hits.length === 0 ? "" : `said: ${hits.join(", ")}` };
       }
       case "mentions": {
-        const ok = c.words.some((w) => lower.some((r) => r.includes(w.toLowerCase())));
+        const ok = c.words.some((w) => t.replies.some((r) => saysWord(r, w)));
         return { check: label(c), ok, note: ok ? "" : "none of the words in any reply" };
       }
       case "max-sentences": {

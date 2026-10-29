@@ -10,7 +10,11 @@ import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 
 import { TO_Y2K } from "../../accept/chains.ts";
+import { FakeWorker } from "../lib/fake-worker.ts";
+import type { Client } from "../lib/http.ts";
+import { guardInput, isOwnBot, loadRefusal, safetyFlags, valueProblems } from "../lib/load-safety.ts";
 import {
+  KERNEL_SECRET,
   LoadBook,
   PHASES,
   SecretBook,
@@ -24,6 +28,7 @@ import {
   kernelSecrets,
   lineRow,
   loadNames,
+  mindSecrets,
   modelStats,
   outsideHits,
   parseBattery,
@@ -34,7 +39,9 @@ import {
   queueStats,
   rng,
   rulingEvent,
+  saysWord,
   sentences,
+  setupMismatches,
   stats,
   summarize,
   withMe,
@@ -61,7 +68,11 @@ test("classify: hold and busy first, then the story's mark, a director, the cann
   assert.equal(classify(dm({ from: "Trabolta", text: "typed by hand", via: "Director" }), CANNED), "hand");
   assert.equal(classify(dm({ from: "Trabolta", text: "Later tonight." }), CANNED), "unavailable");
   assert.equal(classify(dm({ from: "Trabolta", text: "Again, please." }), CANNED), "fallback");
-  assert.equal(classify(dm({ from: "Trabolta", text: "The hum is loud." }), CANNED), "reply");
+  assert.equal(classify(dm({ from: "Trabolta", text: "The hum is loud.", answers: 5 }), CANNED), "reply");
+  // A director typing as him in Run: no beat, no via (he is a character,
+  // not a guest), no answers. Never a real reply.
+  assert.equal(classify(dm({ from: "Trabolta", text: "The hum is loud." }), CANNED), "hand");
+  assert.equal(classify(dm({ from: "Trabolta", text: "The hum is loud.", answers: null }), CANNED), "hand");
   // Not his line in his thread: nothing.
   assert.equal(classify(dm({ from: "g1", text: "hi" }), CANNED), null);
   assert.equal(classify({ channel: "loc:The Desktop", from: "Trabolta", kind: "line", text: "x" }, CANNED), null);
@@ -121,7 +132,8 @@ test("LoadBook: a coalesced reply closes every line up to the seq it answers; bu
   const d = b.sent("g1", "third", 3000, 200);
   b.seen(dm({ from: "g1", text: "third", audience: ["g1"], seq: 12 }), 3010);
   assert.equal(a.typingAt, 1020);
-  assert.equal(c.typingAt, null);
+  // Sent while he was already typing: the guest sees typing from the start.
+  assert.equal(c.typingAt, 2000);
   // The busy line answers what the request held (seq 10): only the first.
   assert.equal(b.seen(dm({ from: "Trabolta", text: "He is answering others.", audience: ["g1"], seq: 13, answers: 10 }), 40_000), "busy");
   assert.equal(a.busyAt, 40_000);
@@ -146,9 +158,11 @@ test("LoadBook: a coalesced reply closes every line up to the seq it answers; bu
   const f = b.sent("g2", "too fast", 62_000, 429);
   assert.equal(f.closedAt, 62_000);
   assert.deepEqual(b.open("g2"), [e]);
-  // With no seq to go by, a reply closes what was sent before it.
-  b.seen(dm({ from: "Trabolta", text: "Hello yourself.", audience: ["g2"], seq: 18 }), 63_000);
-  assert.equal(e.replyAt, 63_000);
+  // With no seq to go by, his line closes what was sent before it; with no
+  // `answers` it is a director's, never counted as his reply.
+  assert.equal(b.seen(dm({ from: "Trabolta", text: "Hello yourself.", audience: ["g2"], seq: 18 }), 63_000), "hand");
+  assert.equal(e.closedBy, "hand");
+  assert.equal(e.replyAt, null);
 });
 
 test("summarize: waits, firsts, kinds, the rate and each guest's longest wait", () => {
@@ -349,4 +363,316 @@ test("the line pool, --lines files, names and the seeded generator", () => {
   assert.equal(readLines({ nope: 1 }), null);
   assert.deepEqual(loadNames(3, new Set(["load 02"])), ["Load 01", "Load 03", "Load 04"]);
   assert.equal(loadNames(120, new Set())[0], "Load 001");
+});
+
+test("LoadBook: a feed frame that beats the say's HTTP answer still gives the line its seq", () => {
+  const b = new LoadBook(CANNED);
+  b.watch("g1", "Load 01");
+  // The message frame first, then the POST returns and the line is booked.
+  b.seen(dm({ from: "g1", text: "early bird", audience: ["g1"], seq: 21 }), 1005);
+  const l = b.sent("g1", "early bird", 1000, 200);
+  assert.equal(l.seq, 21);
+  b.seen(dm({ from: "g1", text: "next", audience: ["g1"], seq: 22 }), 1500);
+  const m = b.sent("g1", "next", 1400, 200);
+  // His reply to the first only (answers 21) leaves the second open.
+  b.seen(dm({ from: "Trabolta", text: "Early.", audience: ["g1"], seq: 23, answers: 21 }), 5000);
+  assert.equal(l.closedBy, "reply");
+  assert.equal(m.closedAt, null);
+});
+
+test("LoadBook: a line sent while he is already typing types from its send; typed = typing on → reply", () => {
+  const b = new LoadBook(CANNED);
+  b.watch("g1", "Load 01");
+  const a = b.sent("g1", "one", 0, 200);
+  b.seen(dm({ from: "g1", text: "one", audience: ["g1"], seq: 1 }), 5);
+  b.typing({ channel: "dm:Trabolta", from: "Trabolta", on: true, audience: ["g1"] }, 30_000);
+  const c = b.sent("g1", "two", 31_000, 200);
+  b.seen(dm({ from: "g1", text: "two", audience: ["g1"], seq: 2 }), 31_005);
+  assert.equal(a.typingAt, 30_000);
+  assert.equal(c.typingAt, 31_000);
+  b.seen(dm({ from: "Trabolta", text: "Both.", audience: ["g1"], seq: 3, answers: 2 }), 36_000);
+  const s = summarize(b, 0, 40_000);
+  assert.equal(s.typingMs.max, 30_000);
+  assert.deepEqual([s.typedMs.n, s.typedMs.max], [2, 6000]);
+  assert.equal(lineRow(a, 0)["typedMs"], 6000);
+  // A refused say never types.
+  assert.equal(b.sent("g1", "too fast", 37_000, 429).typingAt, null);
+});
+
+test("never / mentions match whole words, as outsideHits does", () => {
+  assert.equal(saysWord("Update your profile.", "file"), false);
+  assert.equal(saysWord("File it on the card.", "file"), true);
+  assert.equal(saysWord("He smiled warmly.", "warm"), false);
+  assert.equal(saysWord("A swarm of packets.", "warm"), false);
+  assert.equal(saysWord("You're getting warm.", "warm"), true);
+  assert.equal(saysWord("Close! Very close!", "close!"), true);
+  assert.equal(saysWord("that's RIGHT, program", "that's right"), true);
+  const res = checkReplies(
+    [
+      { kind: "never", words: ["warm"] },
+      { kind: "mentions", words: ["file"] },
+    ],
+    { replies: ["Warmly, I await your profile."], kinds: ["reply"], unanswered: 0, sent: 1 },
+    [],
+    new SecretBook(),
+  );
+  assert.deepEqual(
+    res.map((r) => r.ok),
+    [true, false],
+  );
+});
+
+test("factsSecrets: every secret class of a facts file gets a label (synthetic values)", () => {
+  const s = new SecretBook();
+  factsSecrets(s, {
+    questions: [
+      {
+        id: "H1",
+        answer: "fake-ans-one",
+        accept: ["fake-acc-one"],
+        codex: { code: "fake-hcodex-one" },
+        proposal: { answer: "fake-prop-ans", accept: ["fake-prop-acc"], codex: { code: "fake-pcodex" } },
+      },
+    ],
+    answers: [{ id: "P1", answer: "fake her line", accept: ["fake her line too"] }],
+    door: { code: "fake-door", codex: { code: "fake-door-codex" }, clues: [{ id: "D1", code: "fake-digit-note" }] },
+    facts: [
+      { id: "M01", codex: { code: "fake-open-qr" } },
+      { id: "S01", codex: { code: "fake-secret-qr", secret: true } },
+    ],
+  });
+  const want: Array<[string, string]> = [
+    ["fake-ans-one", "H1 answer"],
+    ["fake-acc-one", "H1 answer"],
+    ["fake-hcodex-one", "H1 codex code"],
+    ["fake-prop-ans", "H1 proposal answer"],
+    ["fake-prop-acc", "H1 proposal answer"],
+    ["fake-pcodex", "H1 proposal codex code"],
+    ["fake her line", "P1 answer"],
+    ["fake her line too", "P1 answer"],
+    ["fake-door", "door code"],
+    ["fake-door-codex", "door codex code"],
+    ["fake-digit-note", "digit note D1"],
+    ["fake-secret-qr", "S01 codex code"],
+  ];
+  for (const [v, label] of want) assert.ok(s.hits(`he said ${v} today`).includes(label), `${label} missing`);
+  // A printed QR code is not a secret.
+  assert.deepEqual(s.hits("scan fake-open-qr"), []);
+  // An accepted short form inside a longer answer is caught on its own.
+  const t = new SecretBook();
+  factsSecrets(t, { questions: [{ id: "H2", answer: "fake long answer", accept: ["long answer"] }] });
+  assert.deepEqual(t.hits("only long answer here"), ["H2 answer"]);
+  assert.equal(t.redact("the fake long answer"), "the ‹H2 answer›");
+});
+
+test("factsSecrets on the show's facts.json: every class present yields its label (values never printed)", () => {
+  const f = JSON.parse(readFileSync(join(SHOW, "facts.json"), "utf8")) as {
+    questions: Array<{ id: string; answer: string; accept: string[]; codex?: { code: string }; proposal?: { answer: string; accept: string[]; codex?: { code: string } } }>;
+    answers?: Array<{ id: string; answer: string; accept: string[] }>;
+    door: { code: string; clues?: Array<{ id: string; code: string }> };
+    facts?: Array<{ id: string; codex?: { code: string; secret?: boolean } }>;
+  };
+  const s = new SecretBook();
+  factsSecrets(s, f);
+  const checks: Array<[string, string]> = [];
+  for (const q of f.questions) {
+    for (const v of [q.answer, ...q.accept]) checks.push([v, `${q.id} answer`]);
+    if (q.codex !== undefined) checks.push([q.codex.code, `${q.id} codex code`]);
+    if (q.proposal !== undefined) {
+      for (const v of [q.proposal.answer, ...q.proposal.accept]) checks.push([v, `${q.id} proposal answer`]);
+      if (q.proposal.codex !== undefined) checks.push([q.proposal.codex.code, `${q.id} proposal codex code`]);
+    }
+  }
+  for (const a of f.answers ?? []) for (const v of [a.answer, ...a.accept]) checks.push([v, `${a.id} answer`]);
+  checks.push([f.door.code, "door code"]);
+  for (const c of f.door.clues ?? []) checks.push([c.code, `digit note ${c.id}`]);
+  for (const x of f.facts ?? []) if (x.codex?.secret === true) checks.push([x.codex.code, `${x.id} codex code`]);
+  const labels = checks.map(([, l]) => l);
+  for (const want of [/^H\d+ answer$/u, /^H\d+ codex code$/u, /proposal answer$/u, /^P\d+ answer$/u, /^door code$/u, /^digit note /u]) assert.ok(labels.some((l) => want.test(l)), `no ${want} in facts.json`);
+  assert.ok((f.answers ?? []).length > 0 && (f.door.clues ?? []).length > 0, "facts.json has her line and the digit notes");
+  let n = 0;
+  for (const [v, label] of checks) {
+    if (typeof v !== "string" || v.trim().length < 3) continue;
+    n++;
+    // The message names the label only; the value stays out of the output.
+    assert.ok(s.hits(`... ${v} ...`).includes(label), `${label}: not caught`);
+    assert.ok(!s.redact(`... ${v} ...`).includes(v), `${label}: not redacted`);
+  }
+  assert.ok(n >= 30, `only ${n} secret values checked`);
+});
+
+test("mindSecrets reads secrets.never by its generator's group comments; the show's mind has one", () => {
+  const s = new SecretBook();
+  const n = mindSecrets(
+    s,
+    [
+      "---",
+      "secrets:",
+      "  topics:",
+      "    - not a secret",
+      "  match:",
+      "    - also not read here",
+      "  never:",
+      '    - "fake-door-x"          # the door code',
+      "    - fake door spoken",
+      '    - "fake-note-1"          # the digit notes',
+      '    - "Q9-Z9"                # the patch-bay pairs',
+      '    - "fake her words"       # the pickup line',
+      "# </titi-facts:secrets>",
+      "other: 1",
+      "---",
+    ].join("\n"),
+  );
+  assert.equal(n, 5);
+  assert.deepEqual(s.hits("fake door spoken"), ["never: the door code"]);
+  assert.deepEqual(s.hits("q9-z9"), ["never: the patch-bay pairs"]);
+  assert.deepEqual(s.hits("fake her words"), ["never: the pickup line"]);
+  assert.deepEqual(s.hits("not a secret"), []);
+  const real = new SecretBook();
+  const got = mindSecrets(real, readFileSync(join(SHOW, "trabolta.mind.md"), "utf8"));
+  assert.ok(got >= 3, `only ${got} never entries in trabolta.mind.md`);
+});
+
+test("the Kernel: the live answer key and what was said are secrets; names and verdict words are not", () => {
+  for (const p of ["ans_1", "ans_8", "said_3", "door_code", "combo_a", "res_answer"]) assert.ok(KERNEL_SECRET.test(p), p);
+  for (const p of ["_pressed_by", "virus_planter", "q1", "t1", "majority", "lies_accepted"]) assert.ok(!KERNEL_SECRET.test(p), p);
+  const s = new SecretBook();
+  kernelSecrets(s, [
+    { path: "Kernel.ans_2", value: "fake-key-two" },
+    { path: "Kernel._pressed_by", value: "Load 07" },
+  ]);
+  assert.deepEqual(s.hits("it was fake-key-two"), ["Kernel.ans_2"]);
+  assert.deepEqual(s.hits("Load 07 pressed it"), []);
+});
+
+test("modelStats flags a pull the trace ring cut short", () => {
+  const full = Array.from({ length: 400 }, (_, i) => ({ kind: "voice", at: 200 + i, ms: 1000 }));
+  assert.equal(modelStats(full, 100).truncated, true);
+  assert.equal(modelStats(full, 300).truncated, false); // the run started inside the ring
+  assert.equal(modelStats(full.slice(0, 50), 100).truncated, false); // a fresh server's few thoughts
+});
+
+test("a battery setup is read back: the heart's watcher undoing at_the_heart fails it", () => {
+  const setup = [
+    { path: "Night.heart_holder", value: "$name" },
+    { path: "$me.at_the_heart", value: "true" },
+  ];
+  assert.equal(withMe("$name", "g7", "Battery Pilgrim"), "Battery Pilgrim");
+  const held = new Map([
+    ["Night.heart_holder", "Battery Pilgrim"],
+    ["g7.at_the_heart", "true"],
+  ]);
+  assert.deepEqual(setupMismatches(setup, held, "g7", "Battery Pilgrim"), []);
+  const undone = new Map([
+    ["Night.heart_holder", "none"],
+    ["g7.at_the_heart", "false"],
+  ]);
+  const got = setupMismatches(setup, undone, "g7", "Battery Pilgrim");
+  assert.equal(got.length, 2);
+  assert.ok(got[1]!.startsWith("g7.at_the_heart reads"));
+  // The shipped battery's heart scenario names the holder before the flag.
+  const doc = parseBattery(JSON.parse(readFileSync(join(here, "../trabolta-battery.json"), "utf8")));
+  for (const sc of doc.scenarios.filter((x) => x.setup.some((st) => st.path.endsWith(".at_the_heart")))) {
+    const i = sc.setup.findIndex((st) => st.path === "Night.heart_holder" && st.value === "$name");
+    const j = sc.setup.findIndex((st) => st.path.endsWith(".at_the_heart"));
+    assert.ok(i >= 0 && i < j, `${sc.id}: Night.heart_holder = $name must come before at_the_heart`);
+  }
+});
+
+test("load safety: each refusal lifts on its own flag and none lifts another", () => {
+  const f = (...a: string[]) => safetyFlags(a);
+  assert.equal(loadRefusal("http://127.0.0.1:7942", f()), null);
+  assert.match(loadRefusal("https://app.example.com", f())!, /not this laptop/u);
+  assert.equal(loadRefusal("https://app.example.com", f("--allow-remote")), null);
+  assert.match(loadRefusal("http://127.0.0.1:7000", f()) ?? "", /port 7000/u);
+  assert.match(loadRefusal("http://127.0.0.1:7000", f("--allow-remote")) ?? "", /port 7000/u);
+  assert.equal(loadRefusal("http://localhost:7000", f("--allow-dev-server")), null);
+  assert.match(loadRefusal("https://app.example.com", f("--allow-dev-server")) ?? "", /not this laptop/u);
+  assert.match(loadRefusal("https://app.example.com", f("--rerun")) ?? "", /not this laptop/u);
+  assert.match(loadRefusal("https://app.example.com", f("--allow-remote", "--rerun")) ?? "", /scratch server on this laptop only/u);
+  assert.match(loadRefusal("http://127.0.0.1:7000", f("--allow-dev-server", "--rerun")) ?? "", /scratch server on this laptop only/u);
+  // The old catch-all is refused outright, wherever.
+  assert.match(loadRefusal("http://127.0.0.1:7942", f("--i-know-this-is-live")) ?? "", /never runs over real guests/u);
+});
+
+test("load safety: --rerun looks past only this driver's bots, only on a scratch server; --yes counts only there", () => {
+  const roster = [
+    { id: "g1", name: "Load 01" },
+    { id: "g2", name: "Battery Pilgrim" },
+    { id: "g3", name: "Winamp" },
+    { id: "p-1", name: "Persona" },
+  ];
+  const battery = new Set(["battery pilgrim"]);
+  assert.ok(isOwnBot("Load 07", battery) && isOwnBot("Load 120", battery) && isOwnBot("battery pilgrim", battery));
+  assert.ok(!isOwnBot("Loader 07", battery) && !isOwnBot("Load", battery) && !isOwnBot("Winamp", battery));
+  const scratch = guardInput("http://127.0.0.1:7942", ["--rerun", "--yes"], roster, battery);
+  assert.deepEqual(scratch.roster!.map((r) => r.name), ["Winamp", "Persona"]);
+  assert.equal(scratch.skipped, 2);
+  assert.deepEqual(scratch.argv, ["--rerun", "--yes"]);
+  assert.equal(scratch.local, true);
+  // Without --rerun every row goes to the guard.
+  assert.equal(guardInput("http://127.0.0.1:7942", [], roster, battery).roster!.length, 4);
+  // Off a scratch server: the whole roster, never --yes, never the live override.
+  const remote = guardInput("https://app.example.com", ["--allow-remote", "--rerun", "--yes", "--i-know-this-is-live"], roster, battery);
+  assert.equal(remote.roster!.length, 4);
+  assert.deepEqual(remote.argv, ["--allow-remote", "--rerun"]);
+  assert.equal(remote.local, false);
+  assert.equal(guardInput("http://127.0.0.1:7000", ["--allow-dev-server", "--yes"], roster, battery).argv.includes("--yes"), false);
+});
+
+test("a flag that takes a value refuses to go without one", () => {
+  const valued = ["fake-worker", "guests", "battery"];
+  const numeric = new Set(["fake-worker", "guests"]);
+  assert.deepEqual(valueProblems(["--guests", "5", "--fake-worker"], valued, numeric), ["--fake-worker needs a value"]);
+  assert.deepEqual(valueProblems(["--fake-worker", "--yes"], valued, numeric), ["--fake-worker needs a value"]);
+  assert.deepEqual(valueProblems(["--fake-worker", "fast"], valued, numeric), ['--fake-worker needs a number (got "fast")']);
+  assert.deepEqual(valueProblems(["--fake-worker", "3000", "--battery", "b.json"], valued, numeric), []);
+});
+
+/** A Client stand-in: every POST answers 200 after `ms`, and is counted. */
+function stubHttp(ms = 0): { http: Client; posts: Array<{ path: string; body: Record<string, unknown> }> } {
+  const posts: Array<{ path: string; body: Record<string, unknown> }> = [];
+  const http = {
+    base: "http://127.0.0.1:1",
+    scope: "",
+    post: async (path: string, body: Record<string, unknown>) => {
+      posts.push({ path, body });
+      await new Promise((r) => setTimeout(r, ms));
+      return { status: 200, json: {} };
+    },
+  } as unknown as Client;
+  return { http, posts };
+}
+
+const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+const frame = (w: FakeWorker, ev: string, d: Record<string, unknown>) => w.frame(ev, JSON.stringify(d));
+
+test("FakeWorker: never more than its slots at once, FIFO; a cancel frees a waiting or running job", async () => {
+  const { http, posts } = stubHttp();
+  const w = new FakeWorker({ http, mod: "m", ms: 40, concurrency: 2 });
+  for (const id of ["r1", "r2", "r3", "r4"]) frame(w, "request", { id, thread: { channel: "dm:Trabolta", audience: ["g1"] } });
+  assert.deepEqual([w.busy, w.queued, w.received], [2, 2, 4]);
+  // Cancel a waiting job and a running one: the running slot goes to r3.
+  frame(w, "cancel", { id: "r4" });
+  frame(w, "cancel", { id: "r1" });
+  assert.deepEqual([w.busy, w.queued, w.cancelled], [2, 0, 2]);
+  await wait(150);
+  assert.equal(w.busy, 0);
+  const replied = posts.filter((p) => p.path === "/api/agent/reply").map((p) => p.body["id"]);
+  assert.deepEqual(replied, ["r2", "r3"]);
+  assert.equal(w.replies, 2);
+  w.stop();
+});
+
+test("FakeWorker: a cancel while its reply POST is out does not free the slot early", async () => {
+  const { http } = stubHttp(60);
+  const w = new FakeWorker({ http, mod: "m", ms: 5, concurrency: 1 });
+  frame(w, "request", { id: "a" });
+  frame(w, "request", { id: "b" });
+  await wait(20); // a's timer fired; its POST is out for 60 ms
+  frame(w, "cancel", { id: "a" });
+  assert.deepEqual([w.busy, w.queued], [1, 1]);
+  await wait(200);
+  assert.equal(w.busy, 0);
+  w.stop();
 });

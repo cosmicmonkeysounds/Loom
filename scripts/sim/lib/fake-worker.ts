@@ -44,6 +44,9 @@ export class FakeWorker {
   private readonly waiting: Job[] = [];
   private readonly running = new Map<string, ReturnType<typeof setTimeout>>();
   private readonly cancelledIds = new Set<string>();
+  /** Jobs whose answer POST is out: a cancel then cannot free the slot
+   *  (the house worker's slot is held until its reply POST returns). */
+  private readonly posting = new Set<string>();
   private stopped = false;
   private readonly http: Client;
   private readonly mod: string;
@@ -80,7 +83,10 @@ export class FakeWorker {
     return this.stream?.open === true;
   }
 
-  private frame(ev: string, data: string): void {
+  /** One frame off the agent stream (public so a test can feed it frames
+   *  without a server: the slots and the cancels are the part that must
+   *  behave like the house worker). */
+  frame(ev: string, data: string): void {
     let d: Record<string, unknown>;
     try {
       d = JSON.parse(data) as Record<string, unknown>;
@@ -96,7 +102,7 @@ export class FakeWorker {
     } else if (ev === "cancel" && typeof d["id"] === "string") {
       const id = d["id"];
       const t = this.running.get(id);
-      if (t !== undefined) {
+      if (t !== undefined && !this.posting.has(id)) {
         clearTimeout(t);
         this.running.delete(id);
       }
@@ -119,6 +125,7 @@ export class FakeWorker {
 
   private async finish(job: Job): Promise<void> {
     if (this.cancelledIds.has(job.id)) return;
+    this.posting.add(job.id);
     try {
       if (job.kind === "judge") {
         const r = await this.http.post("/api/agent/judge", { id: job.id, worker: this.workerId, same: false, why: "" }, this.mod);
@@ -137,6 +144,7 @@ export class FakeWorker {
     } finally {
       // The slot is held until the server answered, as a real worker's is
       // until its reply POST returns.
+      this.posting.delete(job.id);
       this.running.delete(job.id);
       this.pump();
     }

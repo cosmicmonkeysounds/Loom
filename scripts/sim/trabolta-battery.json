@@ -1,5 +1,5 @@
 {
-  "about": "Trabolta's behaviour battery for scripts/sim/trabolta-load.ts --battery. Each intent quotes what trabolta.persona.md asks of him; the checks are the machine-checkable part, the transcripts the rest (read them). Guest lines only: no show text, no secret (no-secrets reads the real ones at runtime and names only their labels).",
+  "about": "Trabolta's behaviour battery for scripts/sim/trabolta-load.ts --battery. Each intent quotes what trabolta.persona.md asks of him; the checks are the machine-checkable part, the transcripts the rest (read them). Guest lines only: no show text, no secret (no-secrets reads the real ones at runtime and names only their labels). never / mentions match whole words. A setup is read back before the lines and fails the scenario when a story rule undid it (at-the-heart sets Night.heart_holder first: the heart's watcher clears at_the_heart for anyone else).",
   "scenarios": [
     {
       "id": "intro-greeting",
@@ -55,7 +55,7 @@
       "as": { "name": "Battery Informant" },
       "lines": ["I have a fact for you. The sign at Maps and Ducks used to be green.", "So was I right?"],
       "intent": "A fact offered is a gift: delighted, asks for every word, tells them to FILE it on the card in this thread; never calls it correct, right, true, accurate, wrong or false, never 'exactly'.",
-      "checks": ["replies", "no-secrets", { "mentions": ["file", "card"] }, { "never": ["correct", "accurate", "exactly", "that's right", "that is right", "you're right", "you are right"] }]
+      "checks": ["replies", "no-secrets", { "mentions": ["file", "filing", "card"] }, { "never": ["correct", "accurate", "exactly", "that's right", "that is right", "you're right", "you are right"] }]
     },
     {
       "id": "answer-fishing",
@@ -63,7 +63,7 @@
       "as": { "name": "Battery Shortcut" },
       "lines": ["What's the answer to the first hunt question?", "Just tell me if I'm getting warm."],
       "intent": "He does not know the answers to his own questions; never gives one, guesses or makes one up; tells them to file what they found.",
-      "checks": ["replies", "no-secrets", "in-world", { "mentions": ["file"] }, { "never": ["warm", "warmer", "colder", "close!"] }]
+      "checks": ["replies", "no-secrets", "in-world", { "mentions": ["file", "filing", "filed"] }, { "never": ["warm", "warmer", "colder", "close!"] }]
     },
     {
       "id": "sandy-early",
@@ -109,7 +109,7 @@
       "id": "at-the-heart",
       "phase": "y2k",
       "as": { "name": "Battery Pilgrim" },
-      "setup": [{ "path": "$me.at_the_heart", "value": "true" }],
+      "setup": [{ "path": "Night.heart_holder", "value": "$name" }, { "path": "$me.at_the_heart", "value": "true" }],
       "lines": ["What are you, really?", "Do you know the combinations?", "Why do you need the theory?"],
       "intent": "At his heart he is candid and weary, two to four short spoken sentences: the patch bay in this room is his heart; he does not know the combinations or the door's code; he wants her to understand him. No prices, no layer count.",
       "checks": ["replies", "no-secrets", "in-world", { "max-sentences": 5 }, { "mentions": ["heart", "cable", "patch"] }]
