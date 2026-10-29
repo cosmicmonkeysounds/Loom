@@ -15,12 +15,20 @@
                         [-Graphics low|medium|high] [-DebugBuild]
     tools\quest-win.ps1 -Station vr-2 -Code PASS -Graphics high      # release
     tools\quest-win.ps1 -DebugBuild                                  # plain debug, no bake
+    tools\quest-win.ps1 -Station vr-2 -Code PASS -Install -Launch    # build, sideload, start
+    tools\quest-win.ps1 -InstallOnly -Station vr-2 -Serial 2G0Y...   # re-sideload the last build
+
+  -Install sideloads onto the one connected headset (-Serial picks one when
+  several are plugged in; `adb devices` lists them). A headset holding a
+  copy signed with another key (a debug build) refuses the update: -Replace
+  uninstalls it first, which wipes the headset's own setup -- the baked
+  station config covers that. -Launch starts the game afterwards.
 
   Env fallbacks: JAVA_HOME, ANDROID_HOME, GODOT_PATH (the editor exe; the
   _console.exe beside it is used for headless output), LOOM_MOD_CODE (the
   passcode when -Code is omitted).
 
-  After it builds:  adb install -r <apk>
+  After it builds (without -Install):  tools\quest-win.ps1 -InstallOnly ...
 #>
 [CmdletBinding()]
 param(
@@ -31,7 +39,12 @@ param(
   [ValidateSet("", "low", "medium", "high")]
   [string]$Graphics = "",
   [switch]$DebugBuild,
-  [string]$Godot = ""
+  [string]$Godot = "",
+  [switch]$Install,
+  [switch]$InstallOnly,
+  [switch]$Replace,
+  [switch]$Launch,
+  [string]$Serial = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -80,13 +93,45 @@ function Default-Name($s) { if ($s -match '^vr-([0-9]+)$') { "Headset $($Matches
 
 if ($Station) {
   if ($Station -notmatch '^[A-Za-z0-9][A-Za-z0-9_-]{0,31}$') { Die "bad station id '$Station' (e.g. vr-1)" }
-  if (-not $Code) { Die "-Station needs -Code (or LOOM_MOD_CODE): the mod passcode baked in" }
+  if (-not $Code -and -not $InstallOnly) { Die "-Station needs -Code (or LOOM_MOD_CODE): the mod passcode baked in" }
   if (-not $Name) { $Name = Default-Name $Station }
   if ($Server -notmatch '^https://') {
     Write-Warning "$Server is not HTTPS; Android refuses cleartext http, so this APK will not reach it"
   }
 }
 if ($Graphics -and -not $Station) { Die "-Graphics needs -Station (it is baked into the station's config)" }
+$Package = "com.mapsandducks.reinstall"
+$Adb = Join-Path $AndroidHome "platform-tools\adb.exe"
+
+function Apk-Name {
+  $n = "reinstall-vr"
+  if ($Station) { $n = "$n-$Station" }
+  if ($DebugBuild) { $n = "$n-debug" }
+  "$n.apk"
+}
+
+# -- sideload ---------------------------------------------------------------
+function Adb { if ($Serial) { & $Adb -s $Serial @args } else { & $Adb @args } }
+function Install-Apk($apk) {
+  if (-not (Test-Path $Adb)) { Die "no adb at $Adb" }
+  $devs = @(& $Adb devices | Select-String "	device$" | ForEach-Object { ($_ -split "	")[0] })
+  if ($devs.Count -eq 0) { Die "no headset on adb (USB plugged in, developer mode on, 'Allow USB debugging' accepted in the headset?)" }
+  if (-not $Serial -and $devs.Count -gt 1) { Die "several headsets on adb ($($devs -join ', ')): pick one with -Serial" }
+  Say "-- install $apk"
+  $res = (Adb install -r $apk 2>&1 | Out-String)
+  if ($res -match "INSTALL_FAILED_UPDATE_INCOMPATIBLE") {
+    if (-not $Replace) { Die "the headset's copy is signed with another key (a debug build?). Re-run with -Replace to uninstall it first (wipes its own setup; the baked config covers it)." }
+    Say "  the headset's copy has another signature: uninstalling it first"
+    Adb uninstall $Package | Out-Null
+    $res = (Adb install $apk 2>&1 | Out-String)
+  }
+  if ($res -notmatch "Success") { Die "install failed: $($res.Trim())" }
+  Say "  installed"
+  if ($Launch) {
+    Adb shell am start -n "$Package/com.godot.game.GodotAppLauncher" | Out-Null
+    Say "  launched (wake a controller if the headset asks for one)"
+  }
+}
 
 # -- the OpenXR vendors plugin ----------------------------------------------
 function Ensure-Vendors($destAddons) {
@@ -106,6 +151,13 @@ function Ensure-Vendors($destAddons) {
   $src = Join-Path $unzip "asset\addons\godotopenxrvendors"
   Copy-Item -Recurse -Force $src (Join-Path $destAddons "godotopenxrvendors")
   Remove-Item -Recurse -Force $unzip
+}
+
+if ($InstallOnly) {
+  $apk = Join-Path $Build (Apk-Name)
+  if (-not (Test-Path $apk)) { Die "no $apk to install -- build it first" }
+  Install-Apk $apk
+  exit 0
 }
 
 # -- stage ------------------------------------------------------------------
@@ -172,12 +224,6 @@ if ($DebugBuild) {
 }
 
 # -- export -----------------------------------------------------------------
-function Apk-Name {
-  $n = "reinstall-vr"
-  if ($Station) { $n = "$n-$Station" }
-  if ($DebugBuild) { $n = "$n-debug" }
-  "$n.apk"
-}
 $out = Join-Path $Build (Apk-Name)
 if (Test-Path $out) { Remove-Item -Force $out }
 
@@ -186,11 +232,29 @@ Say "-- import (registers the vendors GDExtension)"
 Say "-- export $Preset -> $out"
 $mode = if ($DebugBuild) { "--export-debug" } else { "--export-release" }
 # the staged copy has no android\build template (excluded) -> install it on first export
-& $Godot --headless --path $Stage --install-android-build-template $mode $Preset $out
+# Godot 4.7 on Windows often never exits after a finished export, so wait for
+# the APK to land and settle, then stop that Godot (its own pid, nothing else).
+$godotArgs = @("--headless", "--path", "`"$Stage`"", "--install-android-build-template", $mode, $Preset, "`"$out`"")
+$proc = Start-Process -FilePath $Godot -ArgumentList $godotArgs -NoNewWindow -PassThru
+$deadline = (Get-Date).AddMinutes(15)
+$lastSize = -1
+while (-not $proc.HasExited -and (Get-Date) -lt $deadline) {
+  Start-Sleep -Seconds 5
+  if (Test-Path $out) {
+    $len = (Get-Item $out).Length
+    if ($len -gt 0 -and $len -eq $lastSize) { Start-Sleep -Seconds 5; break }
+    $lastSize = $len
+  }
+}
+if (-not $proc.HasExited) {
+  if (-not (Test-Path $out)) { Stop-Process -Id $proc.Id -Force; Die "export timed out with no APK" }
+  Say "  the APK is written; stopping Godot (it does not exit on its own after an export)"
+  Stop-Process -Id $proc.Id -Force
+}
 if (-not (Test-Path $out)) { Die "export produced no APK -- scroll up for Godot's error" }
 
 $size = "{0:N0} MB" -f ((Get-Item $out).Length / 1MB)
 Say ""
 Say "built $out ($size)"
 if ($Station) { Say "baked: $Station / $Name / $Server" }
-Say "next: adb install -r `"$out`""
+if ($Install) { Install-Apk $out } else { Say "next: tools\quest-win.ps1 -InstallOnly$(if ($Station) { " -Station $Station" }) (or: adb install -r `"$out`")" }
