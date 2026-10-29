@@ -16,6 +16,9 @@
     fallbacks: {formal: ["One moment."]}  # the new voice's dead-air lines, by stage
                                        #   (a list = any stage): one this guest
                                        #   has not heard yet, else `fallback`
+    distress: "Step out now: …"        # (wave 42c) the fixed answer to a guest in
+                                       #   real distress (no model; else a built-in
+                                       #   line, `voice.DISTRESS_LINE`)
     temperature: 0.9                   # optional per-character model overrides:
     max_tokens: 800                    #   model / temperature / max_tokens /
     reasoning_effort: low              #   reasoning_effort
@@ -108,6 +111,7 @@ _KNOWN = {
     "when",
     "unavailable",
     "fallback",
+    "distress",
     "model",
     "endpoint",
     "temperature",
@@ -232,6 +236,9 @@ class Persona:
     #: (wave 20, D29) Names and words from outside his world (`outside:`):
     #: a hit in his output is treated like a `secrets.never` hit.
     outside: tuple[str, ...] = ()
+    #: (wave 42c) The fixed line for a guest in real distress (`distress:`);
+    #: empty = the voice's built-in `DISTRESS_LINE`.
+    distress: str = ""
 
 
 POLICY_FAVOURS = ("none", "earned", "loose")
@@ -419,7 +426,11 @@ def parse_persona(text: str, source: str = "<persona>") -> Persona:
     fallbacks = _fallbacks(meta.get("fallbacks"), stages, secrets, source)
     catchphrases = _catchphrases(meta.get("catchphrases"), source)
     situations = _situations(meta.get("situations"), source, secrets)
+    distress = " ".join(str(meta.get("distress") or "").split())
+    if distress and secrets.leaks(distress):
+        raise ConfigError(f"{source}: distress: carries a secrets.never word")
     in_world: list[tuple[str, str]] = [("the system prompt", body), ("fallback:", str(meta.get("fallback") or "")), ("unavailable:", str(meta.get("unavailable") or ""))]
+    in_world.append(("distress:", distress))
     in_world += [(f"fallbacks: {stage or '(any)'}", line) for stage, lines in fallbacks.items() for line in lines]
     in_world += [("catchphrases:", line) for line in catchphrases]
     in_world += [(f"the {sit.heading} situation's fallbacks", line) for sit in situations for line in sit.fallbacks]
@@ -461,6 +472,7 @@ def parse_persona(text: str, source: str = "<persona>") -> Persona:
         fallbacks=fallbacks,
         unsaid=_unsaid(meta.get("unsaid"), source),
         outside=outside,
+        distress=distress,
         phase_cards=dict(table.cards),
         stage_cards=dict(table.stage_cards),
         warnings=table.warnings + _outside_warnings(outside, in_world, source),
