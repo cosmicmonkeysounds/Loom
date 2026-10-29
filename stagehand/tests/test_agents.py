@@ -300,9 +300,12 @@ def worker(tmp_path, complete_fn, **section):
     return agents
 
 
-def test_stream_url_names_the_characters(tmp_path):
+def test_stream_url_names_the_characters_and_the_capacity(tmp_path):
     agents = worker(tmp_path, None, name="laptop")
-    assert agents.stream_url(agents.mod) == "http://srv/e/evt/api/agent/stream?characters=Trabolta&name=laptop"
+    assert agents.stream_url(agents.mod) == "http://srv/e/evt/api/agent/stream?characters=Trabolta&name=laptop&capacity=1"
+    # (wave 42) capacity = concurrency, capped where the server stops reading it as a capacity.
+    assert worker(tmp_path, None, name="laptop", concurrency=3).stream_url(agents.mod).endswith("&capacity=3")
+    assert worker(tmp_path, None, name="laptop", concurrency=40).stream_url(agents.mod).endswith("&capacity=16")
 
 
 def test_worker_answers_a_request_and_replies_with_its_worker_id(tmp_path):

@@ -88,6 +88,53 @@ for its line to empty ("voice first"), exactly as before wave 42. Ollama
 must run with `OLLAMA_NUM_PARALLEL` ≥ `concurrency`, or the extra slots
 just wait inside Ollama.
 
+### Concurrency and capacity (wave 42)
+
+`agents.concurrency` is how many model calls the worker runs at once
+(its generation **slots**, `slots.py`; the default, 1, is right for one
+laptop GPU) and the `capacity` it announces (the window above).
+
+Inside the worker a slot is spent only on the model:
+
+- **The trace post never holds a slot.** A voice call records its
+  thought with the slot in hand; the POST to `/api/agent/trace` then
+  runs in the background, one at a time and in order. The request leaves
+  the books first (no longer counted in flight, so a director's Rewrite
+  is not held back) and then waits for its own posts (at most 15 s). A
+  thought may therefore reach the server a moment after the reply and the
+  memo that came from it; nothing on the server links the two, so a
+  director only sees it arrive late in Run → Mind. Past 64
+  waiting posts a thought is not sent live: the next `hello` replays what
+  the server lacks (the jsonl keeps everything).
+- **The retry is decided when the slot is taken**, not when the line
+  arrives: a line that waited behind another but finds nobody queued for
+  a slot when its turn comes may retry; one taken while another line, a
+  ruling or a letter is queued may not (a waiting quiet summary or re-run
+  does not count). With a windowed stream the burst waits on the server,
+  where the worker's slots cannot see it: a request frame's `queued` (the
+  lines waiting on the server, when a server sends it) above 0, or, when
+  the `hello` echoed a `capacity`, a frame that arrives within 2 s of an
+  answer going out (the server refilling the slot that answer freed),
+  also means no retry.
+- **Quiet summaries take a free slot.** One may start when a slot is
+  free, nothing is queued for one, and no request, ruling or letter has
+  arrived and no answer has gone out for 10 s (under load a freed slot is
+  refilled within a round trip, and a summary started in that gap would
+  only be cancelled), so with `concurrency: 2` it can run beside a long
+  line in flight. It stays in the back lane, and a line, a
+  ruling or a director's call that would have to queue for a slot cancels
+  it (it runs again later).
+
+**`concurrency` > 1 needs Ollama to serve that many at once**:
+`OLLAMA_NUM_PARALLEL` ≥ `concurrency`, or the calls simply queue inside
+Ollama (the Ollama app on macOS: `launchctl setenv OLLAMA_NUM_PARALLEL
+2`, then quit and reopen Ollama; `scripts/house-macbook/trabolta.md`).
+Each parallel slot holds its own context, so memory grows with it.
+`stagehand check` prints the capacity and, past 1, this note; on macOS it
+also reads `launchctl getenv OLLAMA_NUM_PARALLEL` and warns when it is
+unset or below `concurrency` (it cannot see an `ollama serve` started from
+a shell, nor whether a running Ollama was reopened since).
+
 ### Stage requests: answering aloud (wave 32)
 
 During a talk scene (the story's `Night.talk`) a host relays what Clippy
@@ -145,7 +192,7 @@ What runs when:
 |---|---|---|
 | a guest line | the voice call (`agents/voice.py`, the **lean** layout) | 1 (+ a rare retry; + a one-token warm call, `warm_head`) |
 | `Night.phase` changes | the phase watch (a facts fetch every `phase_poll_s`, no model) applies the mind file's card: stage, favours, drives, live powers, `tell` list, brief — one revision `by: story` | 0 |
-| a conversation goes quiet (≥ 3 turns, then 120 s idle) | the **quiet summary**: one call on the voice model condenses that person's memos into a few lines (thought kind `summary`, trigger `quiet`). Never while a request or a ruling waits, never asleep or after a finale | 1 |
+| a conversation goes quiet (≥ 3 turns, then 120 s idle) | the **quiet summary**: one call on the voice model condenses that person's memos into a few lines (thought kind `summary`, trigger `quiet`). Only on a free slot with nothing queued for one, and cancelled when a line or a ruling must queue (wave 42); never asleep or after a finale | 1 |
 | a director presses **Rewrite brief** | one voice-model call rewrites the brief from the phase card, the whispers and a digest built in code (thought kind `brief`); it holds as `by: director` until the next phase | 1 |
 | a filing that is not an exact match | the judge (below; wave 18b: every non-exact filing, queued one at a time behind the voice) | 1 |
 | an empty house, asleep, after the ending, paused, a timer tick | nothing | 0 |
@@ -203,8 +250,9 @@ voice thought's `note` names each one that fired, never the word):
 4. **repeats** — a line that shares half its 4-word runs with what *this
    guest* heard from him (his last 3 lines to them, his replies in the
    thread, the story's lines there) gets **one** retry, quoting what they
-   said and his stage. In a burst (another line already waiting) there is
-   no retry; sentences they heard word for word are cut instead, and a
+   said and his stage. In a burst (another line, a ruling or a letter
+   queued for a slot when this one took it, or the server refilling a
+   freed slot from its queue, wave 42) there is no retry; sentences they heard word for word are cut instead, and a
    retry that still repeats goes out with those cut. Lines said to other
    guests are a prompt warning only.
 5. **the memo scrub** (above).
@@ -673,7 +721,7 @@ director ruled first) or a restart aborts it; a 410 is logged quietly;
 like a request, it still runs while the mind is paused. A reason carrying
 a `secrets.never` word is sent empty.
 
-Wire: `GET /api/agent/stream?characters=A,B&name=laptop` (SSE: `hello`,
+Wire: `GET /api/agent/stream?characters=A,B&name=laptop&capacity=1` (SSE: `hello`,
 `request`, `judge`, `cancel`, `control`), `POST /api/agent/reply {id,
 worker, say, adjust, acts}`, `POST /api/agent/judge {id, worker, same,
 why}`, `GET /api/agent/facts`, `POST /api/agent/mind`, `POST

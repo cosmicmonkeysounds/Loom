@@ -81,7 +81,7 @@ stagehand/
 ```bash
 cd stagehand
 uv sync                                            # once; makes .venv
-uv run pytest                                      # 2301 passed + 4 skipped, ~75 s, no hardware, no network
+uv run pytest                                      # 2323 passed + 4 skipped, ~85 s, no hardware, no network
 uv run pytest tests/test_trapped_house.py -q       # after any story or rig change
 uv run stagehand modules
 uv run stagehand check --config trapped.desktop.yaml --only show,lights,audio
@@ -242,9 +242,9 @@ module docstrings that explain the why).
   `voice.classic_stage_block`. The persona's `before the whole Desktop`
   block and one block per `Night.talk` hold (`speaker.stage == true`);
   `orchestrator.situation_chars` counts the stage-only blocks apart.
-  **Priority lane:** `slots.py` `Slots` keeps one generation slot but
-  serves waiters by lane: `module.lane_of` puts a stage request in
-  `FIRST`, a guest at his heart (`them.at_the_heart`) in `HEART`, every
+  **Priority lane:** `slots.py` `Slots` keeps `concurrency` generation
+  slots and serves waiters by lane: `module.lane_of` puts a stage
+  request in `FIRST`, a guest at his heart (`them.at_the_heart`) in `HEART`, every
   other DM and ruling in `NORMAL`, and the quiet summaries and a
   director's re-run in `BACKGROUND`. A generation already running is
   never interrupted, so the longest a stage line waits is one generation.
@@ -254,6 +254,28 @@ module docstrings that explain the why).
   reply: on a 410 (the scene closed) the worker skips the memo,
   `after_turn` and `remember_said`, so an unsaid line is never "already
   said". Tests: `tests/test_talk_back.py`.
+- **Capacity** (wave 42, `docs/agents.md` "Concurrency and capacity").
+  The stream URL carries `capacity=<concurrency>` (≤ 16,
+  `Agents.capacity`); the server then hands the worker at most that many
+  lines and queues the rest. A slot is the model's only: a thought
+  recorded with a slot in hand (`Slots.holding()`) is posted in the
+  background (`_post_in_background`, one lock, in order, `TRACE_BACKLOG`
+  64). `_handle` drops its in-flight counts and its `tasks` entry first,
+  then waits for its own last post (`_last_post`, `_trace_settled`,
+  ≤ 15 s). Trace POSTs carry a send number (`_trace_sends`) so an older
+  one answered late is not read as the server's trace restarting
+  (`Wire.trace_posted(sent=)`). `retry_allowed` is set inside the slot:
+  nobody queued for a slot (`Slots.waiting(BACKGROUND)`) and the line not
+  `_pressed` (the frame's `queued` > 0, else, when the `hello` echoed a
+  `capacity` (`_windowed`), it arrived within `BURST_GAP_S` 2 s of an
+  answer going out: the server refilling the slot from its queue, which
+  the worker's slots never see). A quiet
+  summary starts on a free slot after `SUMMARY_LULL_S` (10 s) with no
+  frame or answer (`_quiet_due`) and is cancelled by `Slots.on_wait`
+  (`_slot_contended`) when a line, a ruling, a letter or a director's
+  call must queue. `stagehand check` reads launchctl's
+  `OLLAMA_NUM_PARALLEL` on macOS (`launchd_ollama_parallel`). Tests:
+  `tests/test_worker_capacity.py`.
 - Docstrings cite "the wave 12 contract §Cn.m": that lane contract was
   never committed. `docs/agents.md` and the tests describe the behaviour.
 

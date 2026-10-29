@@ -1,6 +1,8 @@
 """The agents worker: hold the server's agent stream, answer its requests.
 
-    GET /api/agent/stream?characters=Trabolta&name=laptop   (SSE)
+    GET /api/agent/stream?characters=Trabolta&name=laptop&capacity=1   (SSE)
+      (wave 42: `capacity` = `concurrency`, at most 16 — the server hands
+       this worker at most that many open lines and queues the rest itself)
       hello   {worker, eventId, characters, agents, unknown}
       request {id, character, thread, speaker, text, history, self, them, world, powers}
       cancel  {id}          — timed out / superseded: drop the work
@@ -38,7 +40,7 @@ line (`voice.answer_lean`, plus at most one retry) and keeps the mind in
 code (`story_mind.py`): the mind file's phase card for `Night.phase` sets
 the stage, favours, drives, live powers and brief; the voice writes a short
 memo on each person in the same call; a quiet conversation may be condensed
-into a summary (one voice call, never while a request waits); a director's
+into a summary (one voice call on a free slot; a line that must queue cancels it); a director's
 **Rewrite brief** is one voice call. The orchestrator is never started.
 `mind_mode: classic` (the default) is the worker described above, as it was.
 
@@ -93,7 +95,46 @@ QUIET_S = 120.0
 QUIET_TICK_S = 5.0
 #: The voice entry point's signature (`voice.answer_lean`).
 VoiceFn = Callable[..., Awaitable[Reply]]
+#: (wave 42) The most the stream's `capacity=` may say (the server reads
+#: anything outside 1..16 as an older worker and dispatches as before).
+CAPACITY_MAX = 16
+#: (wave 42) Trace POSTs started with a generation slot in hand that may
+#: wait at once. Past it a thought is not posted live: the next `hello`
+#: replays what the server lacks (the jsonl keeps it either way).
+TRACE_BACKLOG = 64
+#: (wave 42) How long a finished request waits, off the slot and off the
+#: books (no longer counted in flight), for its own background trace POSTs
+#: before its task ends.
+TRACE_SETTLE_S = 15.0
+#: (wave 42) A request frame that arrives this soon after the worker sent an
+#: answer is the server refilling the slot that answer freed from its own
+#: queue. With a windowed stream the burst waits on the server, not in this
+#: worker's slots, so this is how the worker knows lines are queued behind
+#: the one it is on (a request frame's `queued`, when a server sends it, says so outright).
+BURST_GAP_S = 2.0
+#: (wave 42) A quiet summary starts only after this long with no request,
+#: ruling or letter arriving and no answer sent: under load the slot a reply
+#: frees is refilled within a round trip, and a summary started in that gap
+#: would only be cancelled by the next line.
+SUMMARY_LULL_S = 10.0
 EFFORTS = ("none", "low", "medium", "high")
+
+
+def launchd_ollama_parallel() -> str | None:
+    """(wave 42) `launchctl getenv OLLAMA_NUM_PARALLEL` on macOS, what the
+    Ollama app reads when it opens ("" when unset), so `stagehand check`
+    can say when `concurrency` outruns it. None off macOS, or when launchctl
+    cannot be asked. It cannot see an `ollama serve` started from a shell."""
+    import subprocess
+    import sys
+
+    if sys.platform != "darwin":
+        return None
+    try:
+        done = subprocess.run(["launchctl", "getenv", "OLLAMA_NUM_PARALLEL"], capture_output=True, text=True, timeout=2)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return done.stdout.strip()
 
 
 def build_agents(section: Any, base_dir: str) -> "Agents":
@@ -280,6 +321,30 @@ class Agents:
         self.mod: ModClient | None = None
         #: The generation slots (wave 32: a stage request waits in the front lane, `slots.py`).
         self._slots = Slots(cfg.concurrency)
+        #: (wave 42) A line or a ruling that has to queue for a slot cancels a quiet summary.
+        self._slots.on_wait = self._slot_contended
+        #: (wave 42) Trace POSTs running in the background (started with a
+        #: slot in hand) and the lock that sends them one at a time, in order.
+        self._trace_posts: set[asyncio.Task[None]] = set()
+        self._trace_lock: asyncio.Lock | None = None
+        self._trace_lock_loop: asyncio.AbstractEventLoop | None = None
+        #: (wave 42) Per request task, the last background trace POST it
+        #: started (the gate sends in order: settling on it settles its own).
+        self._last_post: dict[asyncio.Task[Any], asyncio.Task[None]] = {}
+        #: (wave 42) Trace POSTs sent / the newest send whose answer was read:
+        #: an older post answered late never reads as the server's trace restarting.
+        self._trace_sends = 0
+        #: (wave 42) Monotonic clock: when the worker last sent an answer (a
+        #: reply, a ruling, a letter) and when a request, ruling or letter
+        #: frame last arrived (`BURST_GAP_S`, `SUMMARY_LULL_S`).
+        self._answered_at: float | None = None
+        self._frame_at: float | None = None
+        #: (wave 42) Requests that arrived while lines queue behind them (the
+        #: server's `queued`, or a slot refilled at once): they get no retry.
+        self._pressed: set[str] = set()
+        #: (wave 42) The last `hello` echoed a `capacity`: the server holds
+        #: this worker to a window and keeps the burst in its own queue.
+        self._windowed = False
         self.facts: FactsClient | None = None
         #: The voice models, per character — a copy the control panel may retune.
         self.models: dict[str, LlmConfig] = dict(cfg.models)
@@ -331,7 +396,26 @@ class Agents:
 
     def describe(self) -> list[str]:
         o = self.cfg.orchestrator
-        lines = [f"agents   : {self.cfg.name} · concurrency {self.cfg.concurrency}{' · DRY RUN' if self.cfg.dry_run else ''}"]
+        lines = [
+            f"agents   : {self.cfg.name} · concurrency {self.cfg.concurrency} · capacity {self.capacity} "
+            f"(the server hands this worker at most {self.capacity} line(s) at once){' · DRY RUN' if self.cfg.dry_run else ''}"
+        ]
+        if self.cfg.concurrency > 1:
+            n = self.cfg.concurrency
+            lines.append(
+                f"  note     : concurrency {n} needs Ollama running with OLLAMA_NUM_PARALLEL >= {n}, or the calls queue inside Ollama "
+                f"(macOS app: launchctl setenv OLLAMA_NUM_PARALLEL {n}, then quit and reopen Ollama)"
+            )
+            seen = launchd_ollama_parallel()
+            if seen == "":
+                lines.append(
+                    "  warn     : launchctl has no OLLAMA_NUM_PARALLEL: the Ollama app runs its own default "
+                    "(fine only if you start `ollama serve` yourself with it set)"
+                )
+            elif seen is not None and (not seen.isdigit() or int(seen) < n):
+                lines.append(f"  warn     : launchctl's OLLAMA_NUM_PARALLEL is {seen!r}, below concurrency {n}: the lines queue inside Ollama")
+            elif seen is not None:
+                lines.append(f"  ok       : launchctl's OLLAMA_NUM_PARALLEL is {seen} (a running Ollama reads it only when reopened)")
         for name, persona in self.cfg.personas.items():
             m = self.cfg.models[name]
             gate = f" · when {persona.when.source}" if persona.when is not None else ""
@@ -397,10 +481,18 @@ class Agents:
                 )
         return out
 
+    @property
+    def capacity(self) -> int:
+        """(wave 42) How many open lines the server may hand this worker at
+        once: its `concurrency`, capped at `CAPACITY_MAX`. The server keeps
+        the rest in its own queue, so each waiting guest's line is built
+        fresh when a slot frees and nobody sees "typing" for minutes."""
+        return max(1, min(self.cfg.concurrency, CAPACITY_MAX))
+
     def stream_url(self, mod: ModClient) -> str:
         from urllib.parse import urlencode
 
-        query = urlencode({"characters": ",".join(self.cfg.personas), "name": self.cfg.name})
+        query = urlencode({"characters": ",".join(self.cfg.personas), "name": self.cfg.name, "capacity": self.capacity})
         return f"{mod.base_url}{mod.path('/api/agent/stream')}?{query}"
 
     async def run(self, ctx: Context) -> None:
@@ -424,6 +516,8 @@ class Agents:
             )
         finally:
             self.abandon_all()
+            for task in list(self._trace_posts):
+                task.cancel()  # shutting down: the jsonl has them, the next hello replays them
             if self._orchestrator_task is not None:
                 self._orchestrator_task.cancel()
                 self._orchestrator_task = None
@@ -528,9 +622,73 @@ class Agents:
             wire_of(self).flush_now(thought)  # a director is watching: no window
         if self.cfg.dry_run or self.mod is None:
             return
+        # The server copy is taken now: it refers only to a holder the
+        # server has already taken (a later answer must not change that).
+        doc = self.trace.server_copy(thought)
+        if self._slots.holding():
+            # (wave 42) A voice call records its thought with the generation
+            # slot still in hand: a slow VPS round trip here would stretch
+            # every line behind it. Post it in the background, in order.
+            self._post_in_background(thought, doc)
+            return
+        await self._post_thought(thought, doc)
+
+    def _post_in_background(self, thought: Thought, doc: dict[str, Any]) -> None:
+        from .wire import wire_of
+
+        if len(self._trace_posts) >= TRACE_BACKLOG:
+            # The server is too slow to keep up: skip the live copy, never
+            # refer to it, and let the next hello replay what it lacks.
+            log.warning("trace backlog full (%d posts waiting): %s's thought %s goes with the next replay", TRACE_BACKLOG, thought.character, thought.id)
+            self.trace.forget_prefix(thought)
+            wire_of(self).lost(self)
+            return
+
+        async def post() -> None:
+            async with self._trace_gate():  # one at a time, in record order (the server's seq)
+                try:
+                    await self._post_thought(thought, doc)
+                except Exception:  # noqa: BLE001 — a background post must never surface anywhere
+                    log.exception("could not send %s's thought %s", thought.character, thought.id)
+
+        task = asyncio.ensure_future(post())
+        self._trace_posts.add(task)
+        task.add_done_callback(self._trace_posts.discard)
+        owner = asyncio.current_task()
+        if owner is not None:
+            self._last_post[owner] = task
+
+    def _trace_gate(self) -> asyncio.Lock:
+        """The background posts' lock, made for the running loop (a lock
+        that ever waited is bound to its loop; a worker restarted on a new
+        loop, or a test's next `asyncio.run`, gets a fresh one)."""
+        loop = asyncio.get_running_loop()
+        if self._trace_lock is None or self._trace_lock_loop is not loop:
+            self._trace_lock, self._trace_lock_loop = asyncio.Lock(), loop
+        return self._trace_lock
+
+    async def _trace_settled(self) -> None:
+        """(wave 42) Wait, with no slot held, for the calling task's own
+        background trace POSTs (bounded: a dead VPS never holds a request's
+        task). The gate sends in record order, so its last post going out
+        means all of its earlier ones did; a later request's are not waited on."""
+        owner = asyncio.current_task()
+        last = self._last_post.pop(owner, None) if owner is not None else None
+        if last is not None and not last.done():
+            await asyncio.wait([last], timeout=TRACE_SETTLE_S)
+
+    async def _post_thought(self, thought: Thought, doc: dict[str, Any]) -> None:
+        from .wire import wire_of
+
+        assert self.mod is not None
         wire = wire_of(self)
+        # (wave 42) Background posts and inline ones (a ruling's, a letter's,
+        # a director's) may overlap and be answered out of order: the send's
+        # number lets the wire skip a late answer's seq.
+        self._trace_sends += 1
+        sent = self._trace_sends
         try:
-            answer = await self.mod.post("/api/agent/trace", {"worker": self.worker or self.cfg.name, "thoughts": [self.trace.server_copy(thought)]})
+            answer = await self.mod.post("/api/agent/trace", {"worker": self.worker or self.cfg.name, "thoughts": [doc]})
         except Exception as err:  # noqa: BLE001 — a refusal, a refused connection, a timeout: all alike
             # The server may hold none of our full copies (it is down, or came
             # back empty): every next thought goes whole, the next hello replays all.
@@ -546,7 +704,7 @@ class Agents:
             self.trace.forget_prefix(thought)
         else:
             self.trace.delivered(thought.id)
-        wire.trace_posted(self, answer)
+        wire.trace_posted(self, answer, sent=sent)
 
     async def _push_history(self) -> None:
         """On (re)connect: hand the server the mind and the recent trace, so
@@ -795,6 +953,8 @@ class Agents:
         if event == "hello":
             hello = json.loads(data)
             self.worker = hello.get("worker")
+            cap = hello.get("capacity")
+            self._windowed = isinstance(cap, int) and not isinstance(cap, bool) and cap > 0
             log.info("agents online as %r for %s", self.cfg.name, ", ".join(hello.get("characters", [])))
             for name in hello.get("unknown", []):
                 log.warning("%s is not marked `mind: external` in the running story — nobody will ask for it", name)
@@ -812,6 +972,9 @@ class Agents:
             rid = str(req.get("id"))
             if rid in self.tasks:
                 return
+            if self._backlogged(req):
+                self._pressed.add(rid)
+            self._frame_at = time.monotonic()
             self._preempt()  # a guest is waiting: a summary or a director's call runs later
             self.tasks[rid] = asyncio.ensure_future(self._handle(req))
         elif event == "judge":
@@ -821,6 +984,7 @@ class Agents:
             jid = str(frame.get("id"))
             if jid in self.judging:
                 return
+            self._frame_at = time.monotonic()
             self._preempt()  # a ruling has a 55 s deadline: nothing else holds the voice slot
             self.judging[jid] = asyncio.ensure_future(self._judge(frame))
         elif event == "letter":
@@ -830,6 +994,7 @@ class Agents:
             lid = str(frame.get("id"))
             if lid in self.lettering:
                 return
+            self._frame_at = time.monotonic()
             # After the night: a guest's request (if any) still goes first
             # through the slots; the server sends one letter at a time.
             self.lettering[lid] = asyncio.ensure_future(self._letter(frame))
@@ -855,6 +1020,7 @@ class Agents:
         rid = str(req.get("id"))
         character = str(req.get("character"))
         counted = False
+        settle = False
         try:
             persona = self.cfg.personas.get(character)
             speaker = req.get("speaker") or {}
@@ -872,6 +1038,7 @@ class Agents:
             mind = self.minds.get(character)
             if self.cfg.new_mind and mind is not None:
                 await self._answer_new(rid, persona, mind, req)
+                settle = True
                 return
             facts = await self._facts() if persona.lookup or persona.powers != () else None
             async with self._slots.lane(lane_of(req)):
@@ -893,6 +1060,7 @@ class Agents:
                 self._save_mind(character)
                 if self.cfg.orchestrator.enabled and mind.people[str(speaker.get("id") or "")].turns % persona.reflect_after == 0:
                     self.orchestrator.reflect(character, thread_key(req), req, reply)
+            settle = True
         except asyncio.CancelledError:
             log.info("request %s cancelled", rid)
             raise
@@ -904,6 +1072,16 @@ class Agents:
                 self._inflight = max(0, self._inflight - 1)
             if self.tasks.get(rid) is asyncio.current_task():
                 del self.tasks[rid]
+            self._pressed.discard(rid)
+            if not settle:
+                owner = asyncio.current_task()
+                if owner is not None:
+                    self._last_post.pop(owner, None)
+            else:
+                # (wave 42) Answered, and off the books (not in flight, not
+                # holding back a director's call): its own thoughts may still
+                # be on their way to the server; the task lingers for them.
+                await self._trace_settled()
 
     async def _send(self, rid: str, reply: Reply) -> bool:
         """POST the reply. False when the server had already settled the
@@ -915,6 +1093,7 @@ class Agents:
             body["acts"] = list(reply.acts)
         if self.worker:
             body["worker"] = self.worker
+        self._answered_at = time.monotonic()  # before the POST: the refill may beat its answer back
         try:
             result = await self.mod.post("/api/agent/reply", body)
             if result.get("applied"):
@@ -942,15 +1121,43 @@ class Agents:
         return self._voice_fn
 
     def _preempt(self) -> None:
-        """Give the voice slot to a guest line or a ruling: a running quiet
-        summary and a director's Rewrite / re-run are cancelled and run
-        again once the worker is idle (classic's orchestrator is preempted
-        the same way)."""
-        if self._summary_task is not None and not self._summary_task.done():
-            self._summary_task.cancel()
+        """Give the voice slot to a guest line or a ruling: a director's
+        Rewrite / re-run is cancelled and runs again once the worker is
+        idle (classic's orchestrator is preempted the same way). A running
+        quiet summary is cancelled only when no slot is free (wave 42: with
+        `concurrency` > 1 it may finish beside the line); one that holds a
+        slot a line later queues for is cancelled then (`_slot_contended`)."""
+        if self._slots.locked():
+            self._cancel_summary()
         for task in list(self._director_calls):
             if not task.done():
                 task.cancel()
+
+    def _backlogged(self, req: dict[str, Any]) -> bool:
+        """(wave 42) Do lines queue behind this request? A windowed stream
+        keeps the burst in the server's queue, so the worker's own slots
+        look idle all through the doors. The frame's `queued` (lines waiting
+        on the server for this worker's characters) says it when a server
+        sends it; else, on a windowed stream (the `hello` echoed a
+        `capacity`), a frame that arrives within `BURST_GAP_S` of an
+        answer going out is the server refilling the slot it freed. (A
+        guest who happens to speak a moment after another's reply also
+        reads as a burst: that costs one retry, never a line.)"""
+        queued = req.get("queued")
+        if isinstance(queued, int) and not isinstance(queued, bool):
+            return queued > 0
+        if not self._windowed:
+            return False  # a legacy stream: the burst queues in this worker's slots, where the retry rule sees it
+        return self._answered_at is not None and time.monotonic() - self._answered_at < BURST_GAP_S
+
+    def _cancel_summary(self) -> None:
+        if self._summary_task is not None and not self._summary_task.done():
+            self._summary_task.cancel()
+
+    def _slot_contended(self, lane: int) -> None:
+        """(wave 42) A line, a ruling or a director's call has to queue for
+        a slot: a quiet summary never makes it wait (it runs again later)."""
+        self._cancel_summary()
 
     def _busy(self) -> bool:
         return bool(self.tasks or self.judging or self._inflight)
@@ -1062,9 +1269,17 @@ class Agents:
             said=story_mind.said_for(mind, req, thread),
             since=since,
             whispers=tuple(mind.director),
-            options=VoiceOptions(memo=v.memo, repeat_guard=v.repeat_guard, layout=v.layout, retry_allowed=len(self.tasks) <= 1, warm_head=v.warm_head),
+            options=VoiceOptions(memo=v.memo, repeat_guard=v.repeat_guard, layout=v.layout, warm_head=v.warm_head),
         )
         async with self._slots.lane(lane_of(req)):
+            # (wave 42) The retry is decided with the slot in hand: a line that
+            # waited behind another but finds nobody behind it now may retry;
+            # one taken while lines or rulings queue for a slot may not.
+            # (A quiet summary or a director's re-run waiting never counts.)
+            # A windowed stream keeps the burst on the server, so a line the
+            # server refilled a slot with (or told us has lines behind it,
+            # `_backlogged`) gets no retry either.
+            ctx = replace(ctx, options=replace(ctx.options, retry_allowed=self._slots.waiting(BACKGROUND) == 0 and rid not in self._pressed))
             voice_mind = mind if quiet_ok or v.layout != "classic" else story_mind.without_summaries(mind)
             reply = await self._voice()(persona, self.models[character], req, ctx, self.complete_fn, trace=self.trace, facts_fn=self._facts, mind=voice_mind)
         log.info(
@@ -1220,8 +1435,15 @@ class Agents:
         """The next conversation to condense, or None (the wave 12 contract §C5.2).
         `phase`: the night's phase when known (the facts), else each
         character's own (`_quiet_phase`)."""
-        if self.tasks or self._inflight or self.judging:
-            return None  # never while a request is in flight or queued
+        if self._slots.locked():
+            # (wave 42) Only on a free slot (nothing queues for one while one
+            # is free): with `concurrency` > 1 a summary may run beside a line
+            # in flight, and a line that later has to queue cancels it
+            # (`_slot_contended`).
+            return None
+        traffic = max((t for t in (self._frame_at, self._answered_at) if t is not None), default=None)
+        if traffic is not None and now - traffic < SUMMARY_LULL_S:
+            return None  # (wave 42) a windowed burst refills a freed slot at once: wait for a lull
         if not self.cfg.voice.memo:
             return None  # memo: off — the memos are not condensed again either
         for (character, pid), q in self._quiet.items():
@@ -1426,6 +1648,7 @@ class Agents:
             body["subject"] = letter.subject
         if self.worker:
             body["worker"] = self.worker
+        self._answered_at = time.monotonic()
         try:
             await self.mod.post("/api/agent/letter", body)
         except ModApiError as err:
@@ -1443,6 +1666,7 @@ class Agents:
         body: dict[str, Any] = {"id": jid, "same": ruling.same, "why": ruling.why}
         if self.worker:
             body["worker"] = self.worker
+        self._answered_at = time.monotonic()
         try:
             await self.mod.post("/api/agent/judge", body)
         except ModApiError as err:
