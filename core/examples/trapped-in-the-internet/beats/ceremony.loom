@@ -195,3 +195,46 @@ else if Night.award == "staff_mole":
   else if Night.award_lines != "director":
     Trabolta: The last award. The Mole. {Night.award_value} quiet favours to the programs, behind my back. {Night.award_winner}. I counted. I always count. Come up here. We are still allies. I have no choice.
 set Night.terminals = Night.screen
+
+// G13 (wave 45): the Bathroom Report, between any two awards. The
+// `bathroom_report` rule (main.loom) has read the numbers into
+// Night.bath_*; this reads them out, the TV shows them (`award_bathroom`,
+// persistent like an award). Least time is only read when two or more
+// went (one program would be both). Trabolta's lines skip under ✍
+// (`Night.award_lines`), as an award's do; Clippy's never. The programs
+// that never went also hear it in their own thread (main.loom).
+// Every line here is DRAFT w45 (SIGNOFF-w45).
+== Bathroom Report
+  setting: The Desktop
+sound award_fanfare
+cue screens_award_bathroom
+set Night.screen = "award_bathroom"
+set Night.terminals = Night.screen
+if Night.ceremony_host == "Clippy":
+  Clippy: Bonus section. The Bathroom Report. The system logged every use of Bathroom Mode tonight. I am required to read it.
+  if Night.bath_goers == 0:
+    Clippy: Nobody used Bathroom Mode tonight. Not once. The report says this is not possible. The report says your trust has been lowered by 5, all of you.
+  else:
+    Clippy: Minutes this party spent in Disk Cleanup, all together: {Night.bath_total_m}.
+    Clippy: Most time in Disk Cleanup: {Night.bath_most}. Minutes: {Night.bath_most_m}. Please come forward. Or don't. Take your time.
+    if Night.bath_goers > 1:
+      Clippy: Least time, of those who went: {Night.bath_least}. Minutes: {Night.bath_least_m}. Efficient.
+    Clippy: Most switches of Bathroom Mode, on and off: {Night.bath_toggler}. Presses: {Night.bath_toggles}. It looks like you're having trouble deciding! Would you like help with that?
+    if Night.bath_never > 0:
+      Clippy: Programs that never went: {Night.bath_never}. The report says their trust was lowered by 5. It is not too late. Bathroom Mode is on your pass.
+    else:
+      Clippy: Every program went at least once. The report says: good hygiene.
+else if Night.award_lines != "director":
+  Trabolta: A bonus section. The Bathroom Report. Bathroom Mode is a promise that you are not hacking the Internet. I logged every promise.
+  if Night.bath_goers == 0:
+    Trabolta: Nobody used Bathroom Mode tonight. Not once. Either you are all very disciplined, or you were all hacking the Internet. I have taken 5 trust from every one of you.
+  else:
+    Trabolta: All together, this party spent this many minutes in Disk Cleanup: {Night.bath_total_m}. I did not need to know that. I know it now.
+    Trabolta: Most time in Disk Cleanup. Minutes: {Night.bath_most_m}. {Night.bath_most}. I did not ask what you were doing. I logged it.
+    if Night.bath_goers > 1:
+      Trabolta: Least time, of those who went. Minutes: {Night.bath_least_m}. {Night.bath_least}. Efficient. Suspiciously efficient.
+    Trabolta: Most switches of Bathroom Mode, on and off. Presses: {Night.bath_toggles}. {Night.bath_toggler}. Make up your mind.
+    if Night.bath_never > 0:
+      Trabolta: Programs that never once visited Disk Cleanup tonight: {Night.bath_never}. A program that never cleans up is hiding something. I have taken 5 trust from each of you. It is not too late.
+    else:
+      Trabolta: Every program here visited Disk Cleanup at least once. Clean processes. I trust that.

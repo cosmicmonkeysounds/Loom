@@ -181,23 +181,25 @@ describe("Trapped in the Internet — wave 26: the locked phone (R1, C1, C2)", (
 });
 
 describe("Trapped in the Internet — wave 26: the game's moments and the trust formula (R4, R6, R7, C9)", () => {
-  it("every `trust = ` recompute in the story uses the new formula (six sites)", () => {
+  // Wave 45: `- no_bath * 5` (never went to the bathroom by G1), and two
+  // more sites: the G1 watcher and a first trip after it.
+  it("every `trust = ` recompute in the story uses the new formula (eight sites)", () => {
     const files = ["main.loom", "cast/trabolta.loom", "cast/kit.loom", "cast/hosts.loom", "cast/antivirus.loom", "objectives.loom"];
     const sites: string[] = [];
     for (const f of files) for (const m of read(f).matchAll(/^\s*set (\w+)\.trust = (.+)$/gmu)) sites.push(`${f}: ${m[0]!.trim()}`);
-    expect(sites).toHaveLength(6);
+    expect(sites).toHaveLength(8);
     for (const line of sites) {
       const x = /set (\w+)\.trust = (.+)$/u.exec(line)!;
       const w = x[1]!;
-      expect(x[2], line).toBe(`${w}.truths_accepted * 10 - ${w}.internet_visits * 5 - ${w}.escapes * 5 + ${w}.assessment`);
+      expect(x[2], line).toBe(`${w}.truths_accepted * 10 - ${w}.internet_visits * 5 - ${w}.escapes * 5 + ${w}.assessment - ${w}.no_bath * 5`);
     }
-    expect(read("main.loom")).toContain("//   trust = truths_accepted * 10 - internet_visits * 5 - escapes * 5 + assessment");
+    expect(read("main.loom")).toContain("//   trust = truths_accepted * 10 - internet_visits * 5 - escapes * 5 + assessment - no_bath * 5");
   });
 
   it("DESIGN.md's paste-exactly formula and its ROLE Program slots match C9", () => {
     const design = read("DESIGN.md");
     const pasted = [...design.matchAll(/^set program\.trust = (.+)$/gmu)].map((m) => m[1]);
-    expect(pasted).toEqual(["program.truths_accepted * 10 - program.internet_visits * 5 - program.escapes * 5 + program.assessment"]);
+    expect(pasted).toEqual(["program.truths_accepted * 10 - program.internet_visits * 5 - program.escapes * 5 + program.assessment - program.no_bath * 5"]);
     const slots = /### 2\.7 ROLE Program[\s\S]*?```\n([\s\S]*?)```/u.exec(design)![1]!;
     expect(slots).toMatch(/^escapes: 0 to 50 = 0 /mu);
     expect(slots).toMatch(/^sim_heart: bool = false /mu);

@@ -221,10 +221,13 @@ LOCATION The Server Room
 // program.location.
 //
 // THE TRUST FORMULA (pasted wherever a component changes):
-//   trust = truths_accepted * 10 - internet_visits * 5 - escapes * 5 + assessment
+//   trust = truths_accepted * 10 - internet_visits * 5 - escapes * 5 + assessment - no_bath * 5
 // Wave 26 (R4): `escapes` counts walks out of the simulation's mud room
 // into the void (the reinstallation games, `simulation escape attempt`):
 // −5 each, before his reveal too (the user's decision).
+// Wave 45: `no_bath` is 1 for a program that never once went to the
+// bathroom (Bathroom Mode) by the ceremony (G1): −5, the user's ask. Their
+// first trip after it takes it back.
 // Trabolta counts what he ACCEPTED, accurate and confident alike: he
 // cannot tell a confident lie from a truth until the end. Lies are only
 // ever counted on the Kernel.
@@ -270,6 +273,17 @@ ROLE Program
   anti_ai: bool = false
   afk: bool = false
   afk_since: 0 to 100000 = 0
+  // Wave 45: the Bathroom Report (G13). Trips taken, story seconds in
+  // Bathroom Mode over the closed trips, switches of Bathroom Mode on and off,
+  // and `bath_open` (1 while a trip is open: a number, so an expression
+  // can add the open trip's seconds as `(Time.elapsed - afk_since) *
+  // bath_open`). `no_bath` is 1 from G1 for a program that never went:
+  // −5 in THE TRUST FORMULA, back to 0 on their first trip.
+  bath_trips: 0 to 1000 = 0
+  bath_s: 0 to 100000 = 0
+  bath_presses: 0 to 1000 = 0
+  bath_open: 0 to 1 = 0
+  no_bath: 0 to 1 = 0
   from_jeeves: 0 to 99 = 0
   jeeves_told: 0 to 99 = 0
   signed: bool = false
@@ -597,16 +611,34 @@ ROLE Program
   // ── Bathroom Mode (guest buttons) ──
   // The Antivirus and the Recycling Bin hear the same event in their own
   // booths (cast traits).
+  // Wave 45: the Bathroom Report (G13) counts the trips and every real
+  // switch, on and off (a repeat press while already away is neither).
   when go to the bathroom for program:
+    if program.afk != true:
+      set program.bath_presses += 1
+      set program.bath_trips += 1
+      set program.bath_open = 1
+    else:
+      // The timeout restarts from this press: bank the time so far.
+      set program.bath_s += Time.elapsed - program.afk_since
     set program.afk = true
     set program.afk_since = Time.elapsed
     reply Bathroom Mode engaged. You are not hacking the Internet. Everyone knows.
+    // Wave 45: a first trip after G1 takes the −5 back. DRAFT w45
+    if program.no_bath == 1:
+      set program.no_bath = 0
+      set program.trust = program.truths_accepted * 10 - program.internet_visits * 5 - program.escapes * 5 + program.assessment - program.no_bath * 5
+      if Night.ceremony_host == "Trabolta":
+        Trabolta: Disk Cleanup, at last, {program.name}. Your trust is restored.
 
   // Back after the summons closed: excused at the close, so not late.
   when back from the bathroom for program:
     if program.afk != true:
       reply You are not in Bathroom Mode.
     else:
+      set program.bath_presses += 1
+      set program.bath_s += Time.elapsed - program.afk_since
+      set program.bath_open = 0
       set program.afk = false
       if Night.summons_closed == true and Night.phase == "summons":
         set program.summons_ok = true
@@ -620,9 +652,23 @@ ROLE Program
   // The booths that heard "in Bathroom Mode" hear it end
   // (`bathroom_timed_out`: the Recycling Bin + every Antivirus).
   when self.afk == true and Night.summons_open != true and Night.phase != "summons" and Time.elapsed >= self.afk_since + 900:
+    set self.bath_s += Time.elapsed - self.afk_since
+    set self.bath_open = 0
     set self.afk = false
     reply 🚻 Bathroom Mode timed out. Press it again if you are still away.
     fire bathroom_timed_out for self
+
+  // Wave 45: at the ceremony (G1), a program that never once went to the
+  // bathroom tonight loses 5 trust (THE TRUST FORMULA's `no_bath`), before
+  // the trust awards. Quietly: the Bathroom Report (G13) tells them.
+  when Night.ceremony == true and self.cleared and self.bath_trips == 0 and self.no_bath == 0:
+    set self.no_bath = 1
+    set self.trust = self.truths_accepted * 10 - self.internet_visits * 5 - self.escapes * 5 + self.assessment - self.no_bath * 5
+
+  // The report's own word to each of them, in their thread (Trabolta
+  // hosting only: switched off or gone, he says nothing). DRAFT w45
+  when Night.bath_reported > 0 and self.no_bath == 1 and Night.ceremony_host == "Trabolta":
+    Trabolta: {self.name}. You did not visit Disk Cleanup once tonight. A program that never cleans up is hiding something. Trust −5. It is not too late: Bathroom Mode is on your pass.
 
   // ── The Internet ──
   // Any capture: count the visit, recompute trust, put the Installation
@@ -642,7 +688,7 @@ ROLE Program
       // w26 (R1: the phone locks; only the pass and Bathroom Mode, no OK)
       reply "!!🌐 Sent to the Internet. Go out back through the tunnel to the Internet, scan your pass at the reinstallation station and find Gerald, the golden duck." with go: pass as "🎟 Show my pass", go: go to the bathroom, ack: none
       set self.internet_visits += 1
-      set self.trust = self.truths_accepted * 10 - self.internet_visits * 5 - self.escapes * 5 + self.assessment
+      set self.trust = self.truths_accepted * 10 - self.internet_visits * 5 - self.escapes * 5 + self.assessment - self.no_bath * 5
       cue tablet_wizard
       if Night.trabolta_introduced == true:
         cue tv_mirror
@@ -1030,7 +1076,7 @@ ROLE Program
         set Night.r3_accepted += 1
       set program.score += 100
       set Trabolta.truth += 4
-      set program.trust = program.truths_accepted * 10 - program.internet_visits * 5 - program.escapes * 5 + program.assessment
+      set program.trust = program.truths_accepted * 10 - program.internet_visits * 5 - program.escapes * 5 + program.assessment - program.no_bath * 5
       set program.may_answer = false
       if Night.round == 1 and program.judge_q == 1:
         set program.judged_q1 = true
@@ -1111,7 +1157,7 @@ ROLE Program
         set Night.r3_accepted += 1
       set program.score += 100
       set Trabolta.truth += 4
-      set program.trust = program.truths_accepted * 10 - program.internet_visits * 5 - program.escapes * 5 + program.assessment
+      set program.trust = program.truths_accepted * 10 - program.internet_visits * 5 - program.escapes * 5 + program.assessment - program.no_bath * 5
       set program.may_answer = false
       // K-26 recap credits this to the last program write above it: keep one directly before.
       set Kernel.lies_accepted += 1
@@ -1946,7 +1992,7 @@ ROLE Program
     set Night.facts_accepted += 1
     set program.score += 50
     set Trabolta.truth += 2
-    set program.trust = program.truths_accepted * 10 - program.internet_visits * 5 - program.escapes * 5 + program.assessment
+    set program.trust = program.truths_accepted * 10 - program.internet_visits * 5 - program.escapes * 5 + program.assessment - program.no_bath * 5
     broadcast "📝 {program.name}'s filing for {q} is accepted." to channel(hosts)
     Trabolta: Your fact for {label} is accepted, {program.name}. Trabolta thanks you. +50 Truthcoin.
 
@@ -3646,6 +3692,16 @@ INTERACTION roll_the_credits
   description: After G11 (which rolls them once): the credits again on the TV, every wall terminal and every phone. Edit the names in the project's credits.json; a change shows on the next roll.
   while: Night.resurrected == true
 
+// Wave 45, appended last so no cue number moves; it rejoins the awards
+// ceremony (G) as an aside: press it between any two awards. DRAFT w45
+INTERACTION bathroom_report
+  label: G13 · 🚻 The Bathroom Report (between awards)
+  who: admin
+  act: G · The awards ceremony
+  sequence: false
+  description: Any time after G1, between two awards (before the trust awards G2 / G3 reads best). The host reads the party's Bathroom Mode numbers off the story and the TV shows them: the time everyone spent in Disk Cleanup all together, who spent the most and the least (of those who went), who switched Bathroom Mode on and off the most, and how many never went. Those never went lost 5 trust at G1 and are told here; a first trip now gives it back. Press again to read it again with the newest numbers.
+  while: Night.ceremony == true and Night.resurrected != true
+
 // Performer buttons (on every guest card). Every hook guards its phase
 // and ignores a wrong-phase press — except `send to the internet` and
 // `mark as reinstalled`, which work on any program at any time.
@@ -4678,7 +4734,7 @@ when the golden duck for program:
 // them back to the tent and owns the scare. The sixth trust site.
 when simulation escape attempt for program:
   set program.escapes += 1
-  set program.trust = program.truths_accepted * 10 - program.internet_visits * 5 - program.escapes * 5 + program.assessment
+  set program.trust = program.truths_accepted * 10 - program.internet_visits * 5 - program.escapes * 5 + program.assessment - program.no_bath * 5
   // w26 (R4: the hosts hear of it)
   broadcast "🚪 {program.name} tried to walk out of the simulation (trust −5)." to channel(hosts)
   -> Escape Attempt
@@ -6392,6 +6448,47 @@ when roll_the_credits:
   else:
     broadcast "🎬 The credits roll at G11, once the show is over. Nothing happens." to channel(hosts)
 
+// G13 (wave 45): the Bathroom Report. Every number is read here, off the
+// programs at the party (cleared, not gone, not a Run persona), an open
+// trip counted up to now (`bath_open`). Minutes round to the nearest, and
+// anyone who went reads at least 1. Ties name everyone tied (`names`).
+// The beat (beats/ceremony.loom) reads the Night.bath_* vars; the TV
+// slide (`award_bathroom`) reads them through the screen state.
+when bathroom_report:
+  if Night.ceremony != true:
+    broadcast "🚻 Start the ceremony (G1) first: no Bathroom Report." to channel(hosts)
+  else if Night.resurrected == true:
+    broadcast "🚻 The show is over (G11): no Bathroom Report." to channel(hosts)
+  else:
+    set Night.bath_programs = count([p for p in Persons where p.cleared == true and p.gone != true and p.persona != true])
+    set Night.bath_goers = count([p for p in Persons where p.cleared == true and p.gone != true and p.persona != true and p.bath_trips > 0])
+    set Night.bath_never = Night.bath_programs - Night.bath_goers
+    set Night.bath_trips = sum([p.bath_trips for p in Persons where p.cleared == true and p.gone != true and p.persona != true])
+    set Night.bath_total_s = sum([p.bath_s + (Time.elapsed - p.afk_since) * p.bath_open for p in Persons where p.cleared == true and p.gone != true and p.persona != true])
+    set Night.bath_total_m = (Night.bath_total_s + 30 - (Night.bath_total_s + 30) % 60) / 60
+    if Night.bath_goers > 0:
+      set Night.bath_total_m = max([1, Night.bath_total_m])
+      set Night.bath_most_s = max([p.bath_s + (Time.elapsed - p.afk_since) * p.bath_open for p in Persons where p.cleared == true and p.gone != true and p.persona != true and p.bath_trips > 0])
+      set Night.bath_most = names([p for p in Persons where p.cleared == true and p.gone != true and p.persona != true and p.bath_trips > 0 and p.bath_s + (Time.elapsed - p.afk_since) * p.bath_open == Night.bath_most_s])
+      set Night.bath_most_m = max([1, (Night.bath_most_s + 30 - (Night.bath_most_s + 30) % 60) / 60])
+      // No `min`: the least is minus the max of the negatives.
+      set Night.bath_least_s = 0 - max([0 - (p.bath_s + (Time.elapsed - p.afk_since) * p.bath_open) for p in Persons where p.cleared == true and p.gone != true and p.persona != true and p.bath_trips > 0])
+      set Night.bath_least = names([p for p in Persons where p.cleared == true and p.gone != true and p.persona != true and p.bath_trips > 0 and p.bath_s + (Time.elapsed - p.afk_since) * p.bath_open == Night.bath_least_s])
+      set Night.bath_least_m = max([1, (Night.bath_least_s + 30 - (Night.bath_least_s + 30) % 60) / 60])
+      set Night.bath_toggles = max([p.bath_presses for p in Persons where p.cleared == true and p.gone != true and p.persona != true])
+      set Night.bath_toggler = names([p for p in Persons where p.cleared == true and p.gone != true and p.persona != true and p.bath_presses == Night.bath_toggles])
+    else:
+      set Night.bath_most = "none"
+      set Night.bath_most_s = 0
+      set Night.bath_most_m = 0
+      set Night.bath_least = "none"
+      set Night.bath_least_s = 0
+      set Night.bath_least_m = 0
+      set Night.bath_toggles = 0
+      set Night.bath_toggler = "none"
+    set Night.bath_reported += 1
+    -> Bathroom Report
+
 // ── The players' game (wave 21) ──────────────────────────
 // Clippy and the four Antivirus (TRAIT Player, cast/kit.loom).
 
@@ -6682,6 +6779,22 @@ set Night.award_winner = "none"
 set Night.award_value = "none"
 set Night.awards_given = 0
 set Night.award_lines = "template"
+// Wave 45: the Bathroom Report (G13), filled when it is read.
+set Night.bath_reported = 0
+set Night.bath_programs = 0
+set Night.bath_goers = 0
+set Night.bath_never = 0
+set Night.bath_trips = 0
+set Night.bath_total_s = 0
+set Night.bath_total_m = 0
+set Night.bath_most = "none"
+set Night.bath_most_s = 0
+set Night.bath_most_m = 0
+set Night.bath_least = "none"
+set Night.bath_least_s = 0
+set Night.bath_least_m = 0
+set Night.bath_toggler = "none"
+set Night.bath_toggles = 0
 // Wave 21: the players' game.
 set Night.judge_now = 1
 set Night.defector = "none"
