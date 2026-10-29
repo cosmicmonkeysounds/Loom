@@ -260,9 +260,15 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   the rest wait in the hub (`worker === null`) by `rank`, FIFO within a
   rank, and `AgentHub.pump()` hands them out on every settle, cancel,
   timeout, detach, attach and stall clear (the runtime also pumps after
-  `/api/agent/letter` and the letters' tick). A queued body is rebuilt at
-  dispatch (a line meanwhile only stamps `lineAt`, which the queue's max
-  age reads); typing turns on at dispatch; each request in a slot times
+  `/api/agent/letter` and the letters' tick, and `agentReply` settles with
+  `{ defer: true }` and pumps only after the reply's say, adjustments and
+  acts are committed, so the next body sees them). A queued body is
+  rebuilt at dispatch (a line meanwhile only stamps `lineAt`, which the
+  queue's max age reads, and marks it `stale`); what shows a stale body
+  first rebuilds it (`refresh`: the hold and busy lines' reply-to, and
+  Run's waiting rows via `pendingFresh` — never `pending`, which every
+  guest line reads). The runtime's `rank` reads `<speaker>.at_the_heart`
+  live, not from the body. Typing turns on at dispatch; each request in a slot times
   out from its own dispatch; a stall is nothing back (`lastBack`: an
   answer, or one of its requests settled by hand) for `stallAfterMs`
   since max(last answer, oldest dispatch); the busy line goes to a
@@ -271,8 +277,10 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   `judgeAgeMs` (15 s, `pump` asks the aged ruling first); a letter needs
   a free slot and no voice waiting. `AgentQueue` gains `inFlight` /
   `capacity` only while a windowed worker voices the character
-  (`queueBadge`: "3 answering · 12 waiting"). Memory only, like the rest
-  of the hub. Tests: `test/agents-window.test.ts`.
+  (`queueBadge`: "3 answering · 12 waiting"). One fleet is one mode: a
+  legacy and a windowed worker voicing the same character at once work,
+  but the split between them is arbitrary (the legacy one takes the
+  overflow). Memory only, like the rest of the hub. Tests: `test/agents-window.test.ts`.
 - **Hub files have one owner at a time.** `event-runtime.ts`,
   `views.ts`, `chat.ts` and `sim.ts` are touched by almost every
   feature; when several agents work in parallel, give each of these to

@@ -59,7 +59,11 @@ reply, a cancel, a timeout, a worker leaving or coming back, a stall
 clearing. Two workers share one queue and each takes work as it frees a
 slot, so a slower one simply takes less. A queued request's body is built
 when it goes out, so it carries every line the guest sent while it
-waited and the world as it is then. Consequences a guest sees:
+waited and the world as it is then (after the reply that freed the slot
+has landed: his new mood included). A guest who reaches his heart while
+waiting moves up to the heart's rank at once. Run up every Trabolta
+worker on the same stagehand: an older worker beside a windowed one
+still works, but it soaks up whatever overflows. Consequences a guest sees:
 
 - "Trabolta is typing…" shows only once a slot has the request — a
   guest still in the queue sees nothing, not minutes of typing.
