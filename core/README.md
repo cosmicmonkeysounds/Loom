@@ -211,7 +211,7 @@ into channel-routed messages — the single source of truth the
   should reach it, re-told when the place moves (at most once per 5 s per
   thread), `answering` once a slot has it, `idle` when it is over. A
   (re)opened stream gets its threads' current `agentWait` right after
-  `history`. Never for the public talk thread or a legacy worker.
+  `history` (only non-idle ones: a client clears its waits on `history`). Never for the public talk thread or a legacy worker.
 - **Moderation:** `POST /api/mod/message { seq, hidden }` hides/shows a
   message — guests in its audience see it vanish/return (a
   `messageModerated` event), admins keep it flagged. `GET /api/history?role=

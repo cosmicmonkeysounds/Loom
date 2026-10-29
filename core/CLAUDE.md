@@ -305,7 +305,8 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   replayed on a reconnect; `agentWait` is: a (re)opened `/events` stream
   gets its threads' current waits right after `history`
   (`replayAgentWaits`, `AgentHub.waitList`), so `answering` stands in for
-  the typing it missed. Memory only. Tests: `test/agents-wait.test.ts`.
+  the typing it missed; only non-idle ones are sent, so a client clears
+  its waits on `history` (an idle it slept through is never re-told). Memory only. Tests: `test/agents-wait.test.ts`.
 - **Hub files have one owner at a time.** `event-runtime.ts`,
   `views.ts`, `chat.ts` and `sim.ts` are touched by almost every
   feature; when several agents work in parallel, give each of these to

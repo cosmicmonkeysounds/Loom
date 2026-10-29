@@ -104,7 +104,8 @@ every 5 s per thread. Play and the terminals draw it as an in-fiction
 status strip above the composer. Never for a stage request, and never
 with only a legacy worker (it holds the whole line, so the server cannot
 know a place in it). A phone that reconnects gets its threads' current
-waits right after `history`.
+(non-idle) waits right after `history`, so a client clears its waits on
+`history`.
 A worker that sends no `capacity` (an older stagehand) is **legacy**:
 every request goes to it at once, it answers them one at a time, only
 the head of its line runs the reply and stall clocks, and rulings wait
