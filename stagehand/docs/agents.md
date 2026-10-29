@@ -679,6 +679,33 @@ why}`, `GET /api/agent/facts`, `POST /api/agent/mind`, `POST
 /api/agent/trace`. All use the mod capability. Server side:
 `core/server/agents.ts`.
 
+## The letters: writing to every program after the night (wave 41)
+
+When a director presses ✍ in Run → Letters, the server sends the worker
+voicing the writer (the story's `judge:` character) one `letter` frame
+per inbox on file, one at a time and never while a guest's request is
+open (`docs/loom-w41-contract.md` C6):
+
+    letter {id, character, key, to: {kind, name, part?}, facts, at}
+
+`facts` is the person's night file (`core/server/letter-facts.ts`): their
+stats, their places in plain words (`highlights`, none in a house under
+four), awards, what they came for (their own words when they wrote one
+in), what they left behind, their side and `night.ending_note`. Fields
+that say nothing (null, false, 0) are left out; never the address.
+
+`agents/letter.py` makes one call on the voice model (with
+`max_tokens` raised to 3000 for a whole letter; ~18 s a letter on the
+MacBook at `low`) with the persona's
+system prompt, the `outside:` block and `LETTER_BRIEF` (DRAFT w41), and
+answers `POST /api/agent/letter {id, worker, subject, text}` (410: the
+frame is gone). A staff member's part is called staff, never the outside
+word for it. A draft that names a secret or an `outside:` word is written
+again once with a note, then dropped (the server asks again after 180 s,
+three tries, then marks the row failed). It touches no mind and no
+thread; each try is a `letter` thought in the trace. A director reads
+every draft and presses Send; the worker never sends mail.
+
 ## The replay harness: measuring a mind (K-04)
 
 `uv run python -m stagehand.replay` (`src/stagehand/replay/`) feeds the

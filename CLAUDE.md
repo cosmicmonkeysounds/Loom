@@ -180,14 +180,34 @@ designed (wave 30): **🔌 Setup** (is the sound router, the lights module
 and Trabolta's mind connected, and what to do), **🎛 Desk** (the cue list,
 GO, the checks) and **🎨 Cue designer** (lighting looks with a live preview
 and templates, sound auditions, desk cues, and the `cue` / `sound` line
-the story fires each with). A host's phone has the same Setup and checks in
+the story fires each with) and, since wave 40, **🎚 Mixer** (the live
+house balance per source, room and speaker, and the soundtrack's
+transport: skip, scene, stop, follow the story; also in a host's Desk
+window; `docs/loom-w40-contract.md`). A host's phone has the same Setup and checks in
 its **Desk** window. Help: `docs/help/authoring/49-house-setup.md`,
 `50-cue-designer.md`, `47-house-desk.md`.
 
+**Trabolta's letters** (wave 41, not shipped; `docs/loom-w41-contract.md`,
+show text `DRAFT w41` on `SIGNOFF-w41.md`): the upload ends with an
+optional inbox card (performers get one in their booth), the problem form
+takes a write-in (*Something else*), and after the ending a director runs
+Run → **Letters**: ✍ the MacBook's Trabolta writes one letter per inbox
+from that person's night, a director reads / edits, then ✉ Send (Resend as
+the webmaster address). Addresses never enter the journal. Send before
+End (SHOWNIGHT §8). Help: `docs/help/authoring/52-letters.md`.
+
 ### Release status
 
-The VPS runs **`w39`** (master `31377ada`, shipped 2026-10-28; rollback
-`w37b`): wave 39 (the house lights meet the reinstallation games: a program
+The VPS runs **`w40`** (master `87927a52`, shipped 2026-10-29; rollback
+`w39`): wave 40 (the house mixer: Run → House → 🎚 Mixer and a host's
+Desk window balance music, featured tracks, sound effects, announcements
+and Trabolta's TV everywhere, per room and per speaker, with live meters,
+and the soundtrack's transport: skip, scene, stop, follow the story;
+`docs/loom-w40-contract.md`). No `sync-show` was needed (no story or
+project-file change). For it: the Desktop's router must run master
+(`git pull`, then `start-stagehand.ps1 -Restart audio`), or the mix and
+the music buttons are kept but not heard. Before it, `w39` (master
+`31377ada`, shipped 2026-10-28; rollback `w37b`): wave 39 (the house lights meet the reinstallation games: a program
 standing under a `rooms` bulb in the web or VR game breathes the real bulb,
 never a safety fixture; both games are lit by the real fixtures, or by the
 server's estimate of the last look; web quality tiers low/medium/high/auto

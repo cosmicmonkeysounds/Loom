@@ -1,7 +1,9 @@
 """The house speaker router (the `audio` module) — the router machine plays the house.
 
-    event server  GET /api/mod/audio  (long-poll: audio.json + tests, stops, desk plays)
+    event server  GET /api/mod/audio  (long-poll: audio.json + tests, stops, desk plays,
+                                       the house mix, music commands, mixWatch)
                   POST /api/mod/audio/report  (acks for plays + tests, the health)
+                  POST /api/mod/audio/meters  (live meters while a mixer panel watches)
                   GET /api/spatial/house  (rooms → LOCATIONs)
                   mod feed  sim directive sfx / announce, lifecycle
          │
@@ -45,8 +47,8 @@ not the voices', so an edit on the map is heard at once on a long bed.
 The soundtrack (wave 38, C3; `soundtrack.py`): with `soundtrack:` set the
 router owns a `Director` that plays the scene's beds on the `music` bus.
 The scene comes from, first that applies: a live `cue music_<scene>` on the
-feed; MQTT `show/audio/music` (`{"scene"}`, `{"next": true}`, `{"stop":
-true}`); the **catch-up** — `night.music` from `GET /api/screen/state`, read
+feed; MQTT `show/audio/music` (`{"scene"}`, `{"next": true, "playlist"?}`,
+`{"stop": true}`) or the mixer's music commands (wave 40, below); the **catch-up** — `night.music` from `GET /api/screen/state`, read
 as the lights job reads `night.lights`, on start, on every feed reconnect
 and 2 s after a story restart (a live cue that lands while it is read wins;
 null or unknown is `off`). A story `sound X` the soundtrack lists under
@@ -72,7 +74,24 @@ step ends; the health goes there every `health_s` too, with every file in
 `sounds_dir` and its length. An older server (no plays, a 404 on the
 report) is logged once and otherwise ignored: routing never depends on it.
 
-Survives the uplink: the last audio.json and house.json are kept in
+The house mixer (wave 40, docs/loom-w40-contract.md C3): every answer
+carries the event's live mix (`mix {seq, levels}`); when its seq moves the
+router lays it out per strip and input per output (`mix.mix_gains`) and the
+mixer ramps to it, on top of the speakers' install trims. The mix is cached
+beside audio.json (`mix.json`), so a router started offline keeps the last
+balance. The long poll passes `mix=<seq>`, `music=<seq>` and `watch=0|1`
+(each list's first answer primes its cursor). `music` entries are the
+mixer's transport, one-shot and dropped after 10 s by the server's `now`,
+acted on in press order with the stops and plays: `next` (one playlist's
+bed or all), `scene` and `stop` (by hand: held against the story's
+catch-ups until the next live music cue), `story` (let go of the hand: the
+catch-up now). While `mixWatch` is true (or the last meters answer said
+`watch: true`) the router posts its live meters every 0.25 s to
+`/api/mod/audio/meters` (the outputs, the inputs, the sources, each strip's
+peak per output, and the soundtrack's status); `watch: false` stops it, a
+404 (an older server) stops it for good.
+
+Survives the uplink: the last audio.json, house.json and mix are kept in
 `cache_dir`, so a restart with the internet down still routes; sounds are
 local files; MQTT (`show/announce`, `show/chime`, `show/audio/test`,
 `show/audio/stop`, `show/audio/play`) works on the LAN alone.
@@ -105,6 +124,7 @@ from ..show.config import MqttConfig
 from ..show.directives import parse_directive, unquote
 from .config import AudioConfig, parse_audio_section
 from .engine import Engine, device_name, enable_host_api, layout_problem, probe, with_host_api
+from .mix import MixGains, mix_gains, mix_levels_of
 from .mixer import Mixer, SidechainSource, lin_to_db
 from .mp3len import length_problem as mp3_length_problem
 from .routing import (
@@ -155,6 +175,17 @@ PLAY_MEMORY_MS = 120_000
 REPORT_PATH = "/api/mod/audio/report"
 #: The desk's gain range (dB), `DESK_GAIN_MIN` / `DESK_GAIN_MAX`.
 GAIN_MIN_DB, GAIN_MAX_DB = -60.0, 12.0
+#: (wave 40) The live meters' route, and how often they go while a panel
+#: watches (`MIX_METERS_EVERY_MS`).
+METERS_PATH = "/api/mod/audio/meters"
+METERS_EVERY_S = 0.25
+#: The soundtrack's status in the meters is read at most this often (it
+#: lists every playlist's folder).
+MUSIC_STATUS_EVERY_S = 1.0
+#: A music command older than this (by the server's clock) is dropped.
+MUSIC_STALE_S = 10.0
+#: The mix in force, kept beside audio.json in `cache_dir`.
+MIX_CACHE = "mix.json"
 
 
 def play_gain(value: Any) -> float:
@@ -222,14 +253,29 @@ def sound_args(args: str) -> tuple[str, str | None]:
 
 
 def _camel_music(music: Any) -> dict[str, Any] | None:
-    """The health's `music` in the report's names (`pos_s` → `posS`)."""
+    """The health's `music` in the report's names (`pos_s` → `posS`,
+    `dur_s` → `durS`; wave 40's `scenes`, `hand`, `playlists` when present)."""
     if not isinstance(music, dict):
         return None
-    return {
-        "scene": music.get("scene"),
-        "beds": [{"playlist": b["playlist"], "speakers": list(b["speakers"]), "track": b["track"], "posS": b["pos_s"]} for b in music.get("beds") or []],
-        "missing": list(music.get("missing") or []),
-    }
+    beds = []
+    for b in music.get("beds") or []:
+        row = {"playlist": b["playlist"], "speakers": list(b["speakers"]), "track": b["track"], "posS": b["pos_s"]}
+        if b.get("dur_s") is not None:
+            row["durS"] = b["dur_s"]
+        beds.append(row)
+    out: dict[str, Any] = {"scene": music.get("scene"), "beds": beds, "missing": list(music.get("missing") or [])}
+    if isinstance(music.get("scenes"), list):
+        out["scenes"] = list(music["scenes"])
+    if isinstance(music.get("hand"), bool):
+        out["hand"] = music["hand"]
+    if isinstance(music.get("playlists"), list):
+        out["playlists"] = [{"name": p["name"], "tracks": p["tracks"], "loop": p["loop"]} for p in music["playlists"]]
+    return out
+
+
+def mix_wire(levels: dict[str, tuple[float, bool]]) -> dict[str, dict[str, Any]]:
+    """Parsed levels → the wire's `{key: {db, mute}}` (the cache, the stats)."""
+    return {k: {"db": db, "mute": mute} for k, (db, mute) in levels.items()}
 
 
 class MixerOutput:
@@ -378,6 +424,24 @@ class AudioRouter:
         #: leaves it be. The next live cue, or a story restart, clears it.
         self._music_hand = False
         self._music_catch_up: asyncio.Future | None = None
+        #: The house mix (wave 40): its levels (key → (db, mute)) and the
+        #: server's seq (None: none seen yet, an older server).
+        self.mix_levels: dict[str, tuple[float, bool]] = {}
+        self.mix_seq: int | None = None
+        #: The music commands (wave 40), cursored like the plays.
+        self.music_seq = 0
+        self._music_primed = False
+        self._music_seen: set[tuple[float, int]] = set()
+        self.music_done = 0
+        #: A mixer panel watches: the GET's `mixWatch`, and the last meters
+        #: answer's `watch`. Either sends the meters (`_meters_loop`).
+        self.mix_watch = False
+        self._meters_watch = False
+        #: The server has no meters route (404): never posted again.
+        self._meters_gone = False
+        self._meters_warned = 0.0
+        self.meters_sent = 0
+        self._music_status: tuple[float, dict[str, Any] | None] | None = None
 
     # -- describe / check ----------------------------------------------------
 
@@ -392,6 +456,7 @@ class AudioRouter:
             f"matrix   : {'on' if cfg.passthrough else 'off'}" + (f", {len(doc.routes)} route(s)" if doc else ""),
             f"config   : the server's audio.json (long-poll {cfg.poll_wait:.0f}s)" + (f"; local {cfg.config_file}" if cfg.config_file else "") + f"; cache {cfg.cache_dir}",
             f"desk     : plays the house desk's sound / say steps; acks + health (every {cfg.health_s:g}s) to {REPORT_PATH}",
+            f"mixer    : the server's live mix (cached in {MIX_CACHE}); music commands; meters every {METERS_EVERY_S:g}s to {METERS_PATH} while a panel watches",
             f"mqtt     : {f'{cfg.mqtt.host}:{cfg.mqtt.port} ← {cfg.test_topic}, {cfg.stop_topic}, {cfg.play_topic}' + (f', {cfg.music_topic}' if cfg.soundtrack is not None else '') + (f', {cfg.announce_topic}, {cfg.chime_topic}' if cfg.announce else '') if cfg.mqtt else '— (tests, stops + announcements from the server only)'}",
             f"levels   : master {cfg.master_db:+.0f} dB, limit {cfg.limit_db:+.0f} dBFS",
             "priority : "
@@ -632,10 +697,12 @@ class AudioRouter:
             log.warning("audio cache write failed: %s", err)
 
     def load_local(self) -> bool:
-        """At boot: the cached server answer, else `config_file`."""
+        """At boot: the cached server answer, else `config_file` (and the
+        cached mix: a router started offline keeps the last balance)."""
         house = self._read_json(self._cache_path("house.json")) or self._read_json(self.cfg.house_file)
         if isinstance(house, dict):
             self.house = house
+        self.apply_mix(self._read_json(self._cache_path(MIX_CACHE)), persist=False)
         for raw, source in ((self._read_json(self._cache_path("audio.json")), "cache"), (self._read_json(self.cfg.config_file), "file")):
             if isinstance(raw, dict) and self.apply(raw if "audio" in raw else {"audio": raw}, source=source, persist=False):
                 return True
@@ -672,6 +739,39 @@ class AudioRouter:
             self._wire(self.mixer, doc)
         return True
 
+    # -- the house mix (wave 40) ---------------------------------------------------
+
+    def apply_mix(self, raw: Any, *, persist: bool = True) -> bool:
+        """An answer's `mix {seq, levels}` (or the cached one). → True when
+        it moved (its seq differs from the one in force): the levels are
+        read as `mixLevelsOf` reads them, cached, and the mixer ramps to
+        them. A mix with no seq (an older server's answer) is ignored."""
+        if not isinstance(raw, dict):
+            return False
+        seq = raw.get("seq")
+        if isinstance(seq, bool) or not isinstance(seq, int):
+            return False
+        if seq == self.mix_seq:
+            return False
+        self.mix_levels = mix_levels_of(raw.get("levels"))
+        self.mix_seq = seq
+        moved = self.mix_summary()
+        log.info("🎚 house mix %d: %s", seq, ", ".join(moved) if moved else "every level at unity")
+        if persist:
+            self._write_json(MIX_CACHE, {"seq": seq, "levels": mix_wire(self.mix_levels)})
+        mixer = self.mixer
+        if mixer is not None and self.doc is not None:
+            mixer.set_mix(self.mix_gains(self.doc, mixer))
+        return True
+
+    def mix_gains(self, doc: AudioDoc, mixer: Mixer) -> MixGains | None:
+        """The mix in force on `doc`'s speakers, for `Mixer.set_mix` (None: unity)."""
+        return mix_gains(self.mix_levels, doc, mixer.n_out) if self.mix_levels else None
+
+    def mix_summary(self) -> list[str]:
+        """The levels not at unity, one short phrase each (`master −3 dB`)."""
+        return [f"{key} " + ("muted" if mute else f"{db:+g} dB") for key, (db, mute) in sorted(self.mix_levels.items())]
+
     @staticmethod
     def _routes(doc: AudioDoc) -> dict[tuple[int, int], float]:
         out: dict[tuple[int, int], float] = {}
@@ -693,6 +793,8 @@ class AudioRouter:
                 log.warning("audio.json: %s", note)
         mixer.set_sources([SidechainSource(s.name, s.inputs, s.reach) for s in specs])
         mixer.set_announce_reach(resolve_targets(doc, self.house, list(doc.announce_to)).outputs)
+        # The mix follows the speakers and the inputs too.
+        mixer.set_mix(self.mix_gains(doc, mixer))
         if self.music is not None:
             # The beds follow the speakers: a moved speaker moves its bed.
             self.music.attach(mixer, doc, self.house)
@@ -834,6 +936,8 @@ class AudioRouter:
             tag=name,
             duck=self.ducks(name),
             layout=speaker_layout(self.doc, res.speakers),
+            # The mix's strip: the chime is an announcement's, every other sound sfx.
+            strip="announce" if fold(name) == fold(CHIME_SOUND) else "sfx",
         )
         self.played += 1
         log.info(
@@ -858,6 +962,7 @@ class AudioRouter:
             duck=self.ducks(name),
             takeover=takeover,
             layout=speaker_layout(self.doc, res.speakers),
+            strip="tracks",
         )
         self.played += 1
         log.info("sound %s → %s (%s: %s) out %s — a track%s", name, ",".join(res.speakers), why, ",".join(targets), ",".join(map(str, res.outputs)), " (takes the music over)" if takeover else "")
@@ -1169,18 +1274,94 @@ class AudioRouter:
         return self.music.set_scene(scene, why)
 
     def on_music(self, doc: Any) -> str | None:
-        """`show/audio/music`: `{"scene": name}`, `{"next": true}`, `{"stop": true}`."""
+        """`show/audio/music`: `{"scene": name}`, `{"next": true, "playlist"?:
+        name}`, `{"stop": true}`."""
         if self.music is None or not isinstance(doc, dict):
             return None
         by = str(doc.get("by") or "mqtt")
         if doc.get("stop") is True:
             return "stop" if self.music_scene(OFF, f"{by}: stop", hand=True) else None
         if doc.get("next") is True:
-            log.info("🎵 soundtrack: %s skips to the next track (%d bed(s))", by, self.music.next())
+            playlist = doc.get("playlist") if isinstance(doc.get("playlist"), str) and doc["playlist"].strip() else None
+            self.music_next(playlist.strip() if playlist else None, by)
             return "next"
         scene = doc.get("scene")
         if isinstance(scene, str) and scene.strip():
             return "scene" if self.music_scene(scene.strip(), by, hand=True) else None
+        return None
+
+    def music_next(self, playlist: str | None, by: str) -> int:
+        """Skip to the next track on `playlist`'s bed (None: every bed)."""
+        assert self.music is not None
+        moved = self.music.next(playlist)
+        log.info("🎵 soundtrack: %s skips to the next track%s (%d bed(s))", by, f" in {playlist}" if playlist else "", moved)
+        return moved
+
+    def music_status(self) -> dict[str, Any] | None:
+        """The soundtrack's status (`Director.status`) + `hand`: the scene
+        was picked by hand and the story's catch-ups are held."""
+        if self.music is None:
+            return None
+        st = self.music.status()
+        st["hand"] = self._music_hand
+        return st
+
+    # -- the mixer's music commands (wave 40) ----------------------------------------
+
+    def new_music(self, entries: Any, now: Any = None) -> list[dict]:
+        """The music commands in a poll answer not yet acted on, oldest
+        first — as `new_plays`: the first answer primes, a command is known
+        by (at, seq), one older than `MUSIC_STALE_S` by `now` is dropped."""
+        rows = [e for e in entries if isinstance(e, dict) and isinstance(e.get("seq"), int) and not isinstance(e.get("seq"), bool)] if isinstance(entries, list) else []
+        self.music_seq = max((e["seq"] for e in rows), default=0)
+
+        def key(e: dict) -> tuple[float, int]:
+            at = e.get("at")
+            return (float(at) if isinstance(at, (int, float)) and not isinstance(at, bool) else 0.0, e["seq"])
+
+        fresh = sorted((e for e in rows if key(e) not in self._music_seen), key=key)
+        self._music_seen |= {key(e) for e in rows}
+        if self._music_seen:
+            newest = max(at for at, _ in self._music_seen)
+            self._music_seen = {k for k in self._music_seen if k[0] >= newest - PLAY_MEMORY_MS}
+        if not self._music_primed:
+            self._music_primed = True
+            return []
+        if isinstance(now, (int, float)) and not isinstance(now, bool):
+            stale = [e for e in fresh if now - key(e)[0] > MUSIC_STALE_S * 1000]
+            for e in stale:
+                log.info("music command %s (%s) is %.0fs old — dropped", e["seq"], e.get("action"), (now - key(e)[0]) / 1000)
+            fresh = [e for e in fresh if e not in stale]
+        return fresh
+
+    def serve_music(self, e: dict) -> str | None:
+        """One music command from the mixer panel (C0): `next` (`playlist`
+        or every bed), `scene` and `stop` by hand (held against the story's
+        catch-ups until the next live music cue), `story` (let go of the
+        hand: the story's scene, now). → what was done, or None."""
+        by = str(e.get("by") or "the mixer")
+        action = e.get("action")
+        self.music_done += 1
+        if self.music is None:
+            log.warning("music command %s (%s) from %s: this router has no soundtrack — ignored", e.get("seq"), action, by)
+            return None
+        if action == "next":
+            playlist = e.get("playlist") if isinstance(e.get("playlist"), str) and e["playlist"] else None
+            self.music_next(playlist, by)
+            return "next"
+        if action == "scene":
+            scene = e.get("scene")
+            if isinstance(scene, str) and scene and self.music_scene(scene, f"{by}: by hand", hand=True):
+                return "scene"
+            return None
+        if action == "stop":
+            return "stop" if self.music_scene(OFF, f"{by}: stop", hand=True) else None
+        if action == "story":
+            log.info("🎵 soundtrack: %s hands the music back to the story", by)
+            self._music_hand = False
+            self.schedule_music_catch_up("story")
+            return "story"
+        log.warning("music command %s: unknown action %r — ignored", e.get("seq"), action)
         return None
 
     def schedule_music_catch_up(self, why: str, delay: float = 0.0) -> None:
@@ -1415,6 +1596,12 @@ class AudioRouter:
             params: dict[str, Any] = {"router": 1, "name": socket.gethostname().split(".")[0][:64]}
             if self.version is not None and self.source not in ("cache", "file"):
                 params.update({"after": self.version, "tests": self.test_seq, "stops": self.stop_seq, "plays": self.play_seq, "wait": int(self.cfg.poll_wait)})
+                # Wave 40: the mix's seq (once one is known), the music
+                # commands' cursor and whether this router thinks a panel
+                # watches (the server answers when that moves).
+                if self.mix_seq is not None:
+                    params["mix"] = self.mix_seq
+                params.update({"music": self.music_seq, "watch": int(self.mix_watch)})
             asked = time.monotonic()
             try:
                 answer = await mod.get("/api/mod/audio", params, timeout=self.cfg.poll_wait + 15)
@@ -1433,14 +1620,22 @@ class AudioRouter:
                 missing_route = False
                 changed = str(answer.get("version")) != self.version or self.source in ("cache", "file", "none")
                 self.apply(answer)
+                mix_moved = self.apply_mix(answer.get("mix"))
+                if isinstance(answer.get("mixWatch"), bool):
+                    self.mix_watch = answer["mixWatch"]
+                watch_moved = "watch" in params and int(self.mix_watch) != params["watch"]
                 stops = self.new_stops(answer.get("stops"), answer.get("now"))
                 plays = self.new_plays(answer.get("plays"), answer.get("now"))
-                # One answer may hold both: they act in the order they were pressed.
-                for kind, t in sorted([*(("stop", t) for t in stops), *(("play", t) for t in plays)], key=lambda e: float(e[1].get("at") or 0)):
+                music = self.new_music(answer.get("music"), answer.get("now"))
+                # One answer may hold all three: they act in the order they were pressed.
+                pressed = [*(("stop", t) for t in stops), *(("play", t) for t in plays), *(("music", t) for t in music)]
+                for kind, t in sorted(pressed, key=lambda e: float(e[1].get("at") or 0)):
                     if kind == "stop":
                         self.stop_all(t.get("announce") is True, str(t.get("by") or ""))
-                    else:
+                    elif kind == "play":
                         self.serve_play(t)
+                    else:
+                        self.serve_music(t)
                 tests = self.new_tests(answer.get("tests"))
                 for t in tests:
                     seq = t.get("seq")
@@ -1448,7 +1643,7 @@ class AudioRouter:
                 if changed:
                     asyncio.ensure_future(self._refresh_house(mod))
                     asyncio.ensure_future(self._preload())
-                elif params and not tests and not stops and not plays and time.monotonic() - asked < 1.0:
+                elif params and not tests and not pressed and not mix_moved and not watch_moved and time.monotonic() - asked < 1.0:
                     # A server that answers a long-poll at once (an older
                     # release ignoring `wait`) must not be hammered.
                     await asyncio.sleep(5.0)
@@ -1555,8 +1750,11 @@ class AudioRouter:
             "inputs": {str(ch): db for ch, db in meters.inputs.items()} if meters is not None else {},
             "sources": dict(meters.sources) if meters is not None else {},
             "underruns": meters.underruns if meters is not None else 0,
-            # Wave 38 (C3): the scene, each bed (playlist, speakers, track, pos_s), the empty playlists.
-            "music": self.music.status() if self.music is not None else None,
+            # Wave 38 (C3): the scene, each bed (playlist, speakers, track,
+            # pos_s, dur_s), the empty playlists; wave 40: scenes, playlists, hand.
+            "music": self.music_status(),
+            # Wave 40: the house mix in force (`stagehand music status` prints it).
+            "mix": {"seq": self.mix_seq, "levels": mix_wire(self.mix_levels)},
         }
 
     def sound_lengths(self) -> dict[str, int]:
@@ -1612,6 +1810,84 @@ class AudioRouter:
                 except OSError:
                     sounds = {}
                 await self.report({"health": self.report_health(h, sounds)})
+
+    # -- the live meters (wave 40) ---------------------------------------------------
+
+    def meters_wanted(self) -> bool:
+        """A mixer panel watches (the GET's `mixWatch` or the last meters
+        answer's `watch`), the server takes meters, and a stream is open."""
+        return not self._meters_gone and self._mod is not None and self.mixer is not None and (self.mix_watch or self._meters_watch)
+
+    def meters_body(self) -> dict[str, Any]:
+        """`POST /api/mod/audio/meters`: every output's peak (after the
+        limiter), the inputs' peaks, each source's activity, each strip's
+        peak per output (before the limiter) — dBFS since the last packet,
+        channels 1-based strings — and the soundtrack's status."""
+        mixer = self.mixer
+        assert mixer is not None
+        live = mixer.take_live()
+        db = lambda p: round(lin_to_db(float(p)), 1)  # noqa: E731
+        body: dict[str, Any] = {
+            "outputs": {str(i + 1): db(p) for i, p in enumerate(live.outputs)},
+            "inputs": {str(ch): v for ch, v in live.inputs.items()},
+            "sources": dict(live.sources),
+            "buses": {name: {str(i + 1): db(p) for i, p in enumerate(row)} for name, row in live.strips.items()},
+        }
+        music = self._music_now()
+        if music is not None:
+            body["music"] = music
+        return body
+
+    def _music_now(self) -> dict[str, Any] | None:
+        """The camelCased music status, read at most every `MUSIC_STATUS_EVERY_S`."""
+        if self.music is None:
+            return None
+        now = time.monotonic()
+        if self._music_status is None or now - self._music_status[0] >= MUSIC_STATUS_EVERY_S:
+            self._music_status = (now, _camel_music(self.music_status()))
+        return self._music_status[1]
+
+    async def send_meters(self) -> bool:
+        """One meters packet. → True when the server took it. Its `watch:
+        false` stops the meters (until the GET says a panel watches again);
+        a 404 (an older server) stops them for good."""
+        mod = self._mod
+        if mod is None or self.mixer is None:
+            return False
+        body = self.meters_body()
+        try:
+            answer = await mod.post(METERS_PATH, body)
+        except ModApiError as err:
+            if err.status == 404:
+                self._meters_gone = True
+                log.info("the server has no %s (an older release) — no live meters for the mixer panel", METERS_PATH)
+                return False
+            self._meters_failed(err)
+            return False
+        except (httpx.HTTPError, OSError, ValueError) as err:
+            self._meters_failed(err)
+            return False
+        self.meters_sent += 1
+        watch = answer.get("watch") if isinstance(answer, dict) else None
+        if watch is False:
+            if self._meters_watch or self.mix_watch:
+                log.info("🎚 no mixer panel watches now — the live meters stop")
+            self._meters_watch = self.mix_watch = False
+        elif watch is True:
+            self._meters_watch = True
+        return True
+
+    def _meters_failed(self, err: Exception) -> None:
+        now = time.monotonic()
+        if now - self._meters_warned > 60:
+            self._meters_warned = now
+            log.warning("live meters post failed (%s) — the mixer panel's meters may freeze", err or type(err).__name__)
+
+    async def _meters_loop(self) -> None:
+        while True:
+            await asyncio.sleep(METERS_EVERY_S)
+            if self.meters_wanted():
+                await self.send_meters()
 
     async def _mqtt_loop(self) -> None:
         assert self.mqtt is not None
@@ -1696,6 +1972,7 @@ class AudioRouter:
             asyncio.ensure_future(self._watchdog()),
             asyncio.ensure_future(self._health_loop()),
             asyncio.ensure_future(self._announce_worker()),
+            asyncio.ensure_future(self._meters_loop()),
         ]
         if self.cfg.announce and self.lock_fd is None:
             tasks.append(asyncio.ensure_future(self._voice_lock_loop()))

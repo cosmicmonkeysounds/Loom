@@ -74,7 +74,9 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   a public talk request and the last canned Clippy steer (`talkDirection`,
   wave 32: a restart never re-asks it; the host taps again), the house
   lights' presence pulses, the module's `shown` report and the server's
-  lights estimate (wave 39), and
+  lights estimate (wave 39), the house mixer's music commands, the
+  router's meters packet and a panel's watch lease (wave 40: the mix
+  itself is in the state dir), and
   most hub timers live in memory and are lost on a process restart.
   Document a new one the same way.
 - **Server changes are additive.** Old clients (terminals on old
@@ -214,6 +216,38 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   desk's `DeskAudioHealth` carries the same. Tests:
   `test/trapped-w38-music.test.ts` (the cue / mirror pairs, the scenes,
   the endings, the out-of-order starts).
+- **The house mixer** (wave 40,
+  [`docs/loom-w40-contract.md`](../docs/loom-w40-contract.md) C2; the
+  shared model `src/house-mixer.ts`, `@loom/core/house-mixer`). `AudioHub`
+  keeps the mix (`mix()`, `setMix(changes, {resetAll})`) in the event's
+  state dir (`audio-mix.json` via `Store.loadAudioMix` / `saveAudioMix`,
+  its seq too): it survives a server, router and story restart and is
+  never journaled. The music commands (`music(cmd, by)`), the router's
+  meters packet and the panel's watch lease (`watchMixer()`,
+  `mixWatched()`) are memory only. `GET /api/mod/audio` gains `mix`,
+  `music`, `mixWatch` and the `mix=` / `music=` / `watch=` cursors; `GET
+  /api/mod/audio/mixer` (`MixerView`, no `by`), `POST
+  /api/mod/audio/mix` and `/music` are on the host allowlist, `POST
+  /api/mod/audio/meters` (the router's) is not. Tests:
+  `test/w40-mixer-server.test.ts`.
+- **Trabolta's letters** (wave 41,
+  [`docs/loom-w41-contract.md`](../docs/loom-w41-contract.md)). The
+  `email` card's address is taken out at `/api/guest/widget` (and
+  `/api/prime/widget`) by `widgetArgsOf`: the story hears `email answered`
+  with `given` / `skipped`, the address goes to `LettersBook`
+  (`server/letters.ts`, `letters.json` in the state dir, never journaled;
+  a story restart drops the guests', Go live the booths'). A performer's
+  inbox: `POST /api/prime/letter`, `PrimeView.letter`. Run:
+  `GET /api/mod/letters`, `POST /api/mod/letters/{write,draft,send,forget}`
+  (`routes/letters.ts`, directors only, never on the host allowlist).
+  `letter` frames go to the `judge:` character's idle worker
+  (`AgentHub.letterWorkers`, voice first, one each), re-queued after
+  180 s, three tries; `POST /api/agent/letter` stores the draft. The night
+  file is `letter-facts.ts` (pure, over the recap; the show's featured
+  identities and endings live there). Send: Resend as `Jean Trabolta
+  <LOOM_WEBMASTER_FROM>` (`letters-mail.ts`), 600 ms apart, once each. The
+  frames in flight are memory only. Tests: `test/w41-letters.test.ts`,
+  `test/trapped-w41-upload.test.ts`.
 - **Hub files have one owner at a time.** `event-runtime.ts`,
   `views.ts`, `chat.ts` and `sim.ts` are touched by almost every
   feature; when several agents work in parallel, give each of these to
@@ -304,8 +338,8 @@ regenerates `generated/questions.loom`, `codex/9-facts.loom`,
 `generated/print-stacks.md` and the marked blocks in `trabolta.mind.md`
 and `DESIGN.md`. Never hand-edit the generated files.
 
-The VPS (`app.mapsandducks.com`) runs release `w37b` (master through
-waves 32–38; rollback `w37`; the root `CLAUDE.md` has the release status). Release and sync
+The VPS (`app.mapsandducks.com`) runs release `w40` (master through
+wave 40; rollback `w39`; the root `CLAUDE.md` has the release status). Release and sync
 procedure: `scripts/ops/` and
 [`docs/loom-docker-deploy.md`](../docs/loom-docker-deploy.md).
 Show-night diagnostics from any machine: `pnpm showctl`

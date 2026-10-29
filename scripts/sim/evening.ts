@@ -526,15 +526,19 @@ async function arrive(c: Ctx, name: string, eventPass: string, claim: string | n
     const w = await widgetFor(b.token, "captcha");
     if (w !== undefined) c.must(`${name} captcha`, await answerWidget(b.token, w.seq, { passed }));
   }
-  // The Upload menu (the problem), then the Deposit (2 options).
+  // The Upload menu (the problem; wave 41: every fifth bot writes one in),
+  // then the Deposit (2 options), then the optional inbox (always skipped:
+  // a bot never leaves an address).
   for (let i = 0; i < 3; i++) {
     const m = menusOf(await view(b.token))[0];
     if (m === undefined) break;
-    const idx = m.options.length === 2 ? deposit : Math.min(bots.length % 4, m.options.length - 1);
+    const idx = m.options.length === 2 ? deposit : Math.min(bots.length % 5, m.options.length - 1);
     c.must(`${name} menu ${m.beat}`, await http.post("/api/guest/choose", { choice: m.id, index: idx, text: m.options[idx] }, b.token));
     const a = await widgetFor(b.token, "answer");
-    if (a !== undefined) c.must(`${name} deposit`, await answerWidget(b.token, a.seq, { text: "my old screensaver password hint" }));
+    if (a !== undefined) c.must(`${name} ${m.options.length === 2 ? "deposit" : "write-in"}`, await answerWidget(b.token, a.seq, { text: m.options.length === 2 ? "my old screensaver password hint" : "my inbox" }));
   }
+  const inbox = await widgetFor(b.token, "email");
+  if (inbox !== undefined) c.must(`${name} inbox`, await answerWidget(b.token, inbox.seq, { skipped: true }));
   c.must(`${name} Norton scan`, await http.post("/api/scan", { target: b.id, as: "Norton Anti-Virus" }, mod));
   const t = await widgetFor(b.token, "tutorial");
   if (t !== undefined) c.must(`${name} tutorial`, await answerWidget(b.token, t.seq, bots.length % 5 === 4 ? { skipped: true, step: 1, steps: 5 } : { completed: true, steps: 5 }));

@@ -3,7 +3,7 @@ title: The Desk: setup and tests
 section: Performers
 order: 20
 role: performer
-keywords: desk window, setup, connect, connected, all connected, what to do, try it, try a look, try a sound, say on the speakers, say it, announcement, play anyway, sound router, router offline, router never connected, no interface, audio interface, layout moved, adat, announcements blocked, dropouts, missing sound, no file, placeholder, no speakers, lights module, lights offline, zigbee2mqtt, pair a bulb, wled, mind, outside mind, no mind connected, holding line, ollama, how the desk works, go, playing, cue list, walking the house, stop all, panic, lately
+keywords: desk window, setup, connect, connected, all connected, what to do, try it, try a look, try a sound, say on the speakers, say it, announcement, play anyway, sound router, router offline, router never connected, no interface, audio interface, layout moved, adat, announcements blocked, dropouts, missing sound, no file, placeholder, no speakers, lights module, lights offline, zigbee2mqtt, pair a bulb, wled, mind, outside mind, no mind connected, holding line, ollama, how the desk works, go, playing, cue list, walking the house, stop all, panic, lately, mixer, mix, levels, balance, fader, volume, louder, quieter, mute, meter, plays at, reset the mix, now playing, soundtrack, music, skip track, skip all, scene, by hand, follow the story, stop music, no router listening
 ---
 
 The **Desk** is the house's own control: the speakers, the lights and the
@@ -22,6 +22,7 @@ Top to bottom:
   next act. Use it whenever something is wrong.
 - **▸ How the Desk works**: five lines, folded. Tap to read them.
 - **Setup** (below).
+- **▸ 🎚 Mixer** (below), folded: the house's sound levels and the music.
 - **STANDBY** and the big **GO**, then **Playing**, then the **Cues**.
 - **Try it** (below), then the **Checks**, then **Lately**: the last few
   things the house did, with what the house Mac said (*played*,
@@ -86,6 +87,38 @@ sent while nothing was there to play it. Once the doors are open, every
 one of these asks first (*The show is live — guests will hear this.
 Test anyway?* → **Play anyway**): guests hear the sound and see the
 light.
+
+## 🎚 Mixer
+
+Tap **▸ 🎚 Mixer** to open it; it stays live only while it is open. It
+moves the live balance of the house sound and steers the music. It never
+changes the house map's speaker settings, and a speaker test always plays
+at full level, so a muted room can still be walked.
+
+- **No router listening: the mix is kept and applies when it connects**:
+  your levels are saved and reach the speakers once the sound router is
+  back.
+- **NOW PLAYING**: the **Scene** picker (picking one plays it by hand),
+  then each playlist that is playing, its track and how far in, with
+  **⏭** to skip to its next track. **⏭ Skip all** skips every one;
+  **■ Stop music** asks once, then stops it. A scene picked by hand (or a
+  stop) says *By hand — the story's music cues are held*: the story's own
+  music changes wait until you tap **↺ Follow the story**, which plays
+  the story's scene again at once. A playlist with no tracks shows as a
+  warning. *No soundtrack reported yet* means the router hasn't said
+  what it plays.
+- **Everywhere** and one chip per room pick where the levels apply. Each
+  row is a slider from −∞ (silent) to +10 dB, its level, a mute (🔈 /
+  🔇) and a thin meter of what is playing. **Master** (or **Room**) moves
+  everything there; then each source: Music, Featured tracks, Sound
+  effects, Announcements and the TV's voice; in a room, each speaker
+  (the sub has its own). *plays at −9.0 dB* means the levels above it
+  move it too; *silent* means a mute above it. A row marked *meter only*
+  is mixed on the audio interface itself, not here.
+- **Reset** puts every level of that chip back to 0 dB, unmuted.
+
+Moves show at once and reach the speakers within a moment. The mix
+outlives a restart; Reset is the way back.
 
 ## STANDBY, GO, Playing and the cues
 

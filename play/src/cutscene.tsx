@@ -27,8 +27,11 @@ function storyToYou(m: ChatMessage): boolean {
 
 /** Cards that belong to the app, never the stage: a 📝 fact or a 💬 answer
  *  card needs the rooms (a late arrival cleared mid-hunt is dealt one in the
- *  same moment the story moves them on). They wait in their rooms' trays. */
+ *  same moment the story moves them on). They wait in their rooms' trays.
+ *  Wave 41: a card the story deals `with stage: true` (the upload form's
+ *  write-in, which the upload waits on) is the stage's after all. */
 const APP_CARDS: ReadonlySet<string> = new Set(["fact", "answer"]);
+const appCard = (m: ChatMessage): boolean => m.widget !== undefined && APP_CARDS.has(m.widget.kind) && m.widget.params["stage"] !== "true";
 
 /**
  * What the stage shows, from what was said to the guest (`personalStream`,
@@ -40,7 +43,7 @@ const APP_CARDS: ReadonlySet<string> = new Set(["fact", "answer"]);
  * Continue, in its room.
  */
 export function stageMessages(personal: readonly ChatMessage[], freeze: number | null): ChatMessage[] {
-  return personal.filter((m) => !roomChatter(m) && !(m.widget !== undefined && APP_CARDS.has(m.widget.kind)) && (freeze === null || m.seq <= freeze || storyToYou(m)));
+  return personal.filter((m) => !roomChatter(m) && !appCard(m) && (freeze === null || m.seq <= freeze || storyToYou(m)));
 }
 
 /** The seq the stage froze at: the newest one on it when the story moved the guest on (null while on rails). */

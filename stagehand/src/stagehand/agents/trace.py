@@ -63,7 +63,7 @@ MAX_OUTPUT = 16_000
 #: Thoughts kept in memory per character.
 RING = 200
 
-KINDS = ("voice", "lookup", "judge", "reflect", "survey", "rerun", "brief", "summary", "reset", "control", "error")
+KINDS = ("voice", "lookup", "judge", "letter", "reflect", "survey", "rerun", "brief", "summary", "reset", "control", "error")
 
 #: A system `messages[0]` at least this long is stored once (§C6.6).
 PREFIX_MIN = 1_000

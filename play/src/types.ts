@@ -469,6 +469,16 @@ export interface PrimeView {
   /** Wave 21 (C4): the booth twin of `GuestView.mission` — the first live
    *  objective and where its `go:` points (a LOCATION title, else null). */
   mission?: PrimeMission;
+  /** Wave 41 (C3): the address on file for this booth's character and the
+   *  sender (C6) Trabolta's letter comes from (null: the server has no mail
+   *  set up). Absent from an older server, and for a booth with no character. */
+  letter?: PrimeLetter;
+}
+
+/** `PrimeView.letter` (wave 41, C3). */
+export interface PrimeLetter {
+  email: string | null;
+  from: string | null;
 }
 
 /** One `stat:` line on a booth (wave 21, C3). */

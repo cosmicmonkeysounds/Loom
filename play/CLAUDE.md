@@ -328,7 +328,16 @@ bar shows is pure in `host/show-model.ts` (`hostWindowShown`,
   checks walked one row at a time (Test / colours, ✓ Heard it / ✗
   Nothing, next). Once `live`, every test and Try it asks first
   (`ConfirmButton`, `liveAsk`). It never edits a cue. The hosts' help
-  article is `docs/help/play/20-house-desk.md`.
+  article is `docs/help/play/20-house-desk.md`. Wave 40 adds a folded
+  **🎚 Mixer** under Setup (`host/mixer.tsx`, pure `host/mixer-model.ts`
+  over core's `house-mixer.ts`, `docs/loom-w40-contract.md` C5): it polls
+  `GET /api/mod/audio/mixer` every second only while open and visible,
+  draws Now playing (scene picker, *Follow the story*, each bed with ⏭,
+  Skip all, Stop music with one confirm) and one scope at a time (chips:
+  Everywhere + each room) as sliders with mute and a meter; posts
+  `audio/mix` (optimistic per key until a view's `mix.seq` reaches the
+  answer's, ≤ 10 / s per key, the last value always sent) and
+  `audio/music`. All three routes are on the host allowlist.
 
 Every write is on the server's host allowlist (`core/server/routes/host.ts`;
 any other mod route answers 403 *not from a booth*), typed in `host/api.ts`
@@ -369,7 +378,7 @@ src/
   sides/                 sides, crews, factions (lazy)
   ui/                    primitives, Win95 windows, objective card, progress
   css/                   base, themes, w95 + one file per lane; styles.css imports them
-  widgets.tsx · widgets-fact.tsx   show-card registry (captcha, image, poll, tutorial, pass, fact, answer)
+  widgets.tsx · widgets-fact.tsx   show-card registry (captcha, image, poll, tutorial, pass, fact, answer, email: wave 41's optional inbox, `emailResult`)
   wallet.tsx · wallet-sheets*.tsx  the Wallet room and its sheets
   director.tsx           director phone (lazy)
   help.tsx · help-lazy.tsx         guests' Help window over docs/help/play (lazy)

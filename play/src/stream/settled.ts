@@ -88,6 +88,9 @@ function answeredText(card: WidgetCard, a: WidgetResult): string {
     }
     case "answer":
       return "sent";
+    case "email":
+      // Never the address (wave 41, C2): the phone keeps it only until sent.
+      return a["skipped"] === true ? "no thanks" : a["given"] === true || typeof a["email"] === "string" ? "on file" : "answered";
     default:
       return "answered";
   }

@@ -2,7 +2,7 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
 
-import { agentChecks, agentsBeforeDoorsCheck, audioCheck, beforeDoors, soundtrackChecks, healthCheck, joinBaseCheck, judgeCheck, lightsCheck, metricsCheck, peopleChecks, runCheck, screenChecks, stationsCheck, terminalChecks, terminalVerdict } from "../lib/checks.ts";
+import { agentChecks, agentsBeforeDoorsCheck, audioCheck, beforeDoors, mixerChecks, soundtrackChecks, healthCheck, joinBaseCheck, judgeCheck, lightsCheck, metricsCheck, peopleChecks, runCheck, screenChecks, stationsCheck, terminalChecks, terminalVerdict } from "../lib/checks.ts";
 
 const level = (name: string, rows: { name: string; level: string }[]) => rows.find((r) => r.name === name)?.level;
 
@@ -188,4 +188,25 @@ test("wave 38: the screen state's Night.music", () => {
   assert.equal(scr("act_1")!.detail, "act_1");
   assert.match(scr(null)!.detail, /^none/u);
   assert.equal(scr(undefined), undefined); // an older server
+});
+
+test("wave 40: the house mixer's levels off unity, only when the audio view carries the mix", () => {
+  const base = { router: { online: true, name: "desktop" }, source: "project", problems: [], warnings: [] };
+  // An older server (no mix): no row, and audioCheck is unchanged.
+  assert.deepEqual(mixerChecks(base), []);
+  assert.equal(audioCheck(base).length, 1);
+  const at = (levels: Record<string, unknown>) => mixerChecks({ ...base, mix: { seq: 3, levels } })[0]!;
+  assert.equal(at({}).detail, "every level at unity");
+  assert.equal(at({}).level, "info");
+  const some = at({ "spk:sub": { db: 4, mute: false }, "room:hall": { db: 0, mute: true }, "src:music": { db: -6, mute: false }, "room:desktop/src:sfx": { db: -3.5, mute: false }, "bogus:key": { db: 1, mute: false } });
+  assert.equal(some.level, "info");
+  assert.equal(some.detail, "4 levels moved; music -6 dB everywhere; room hall muted; sfx -3.5 dB in desktop; speaker sub +4 dB");
+  assert.equal(audioCheck({ ...base, mix: { seq: 1, levels: { master: { db: -2, mute: false } } } }).find((r) => r.name === "Mixer")!.detail, "1 level moved; master -2 dB");
+  // Silent everywhere (the TV muted at its own level, the master at the floor): amber.
+  const tv = at({ "src:in:trabolta": { db: 0, mute: true } });
+  assert.equal(tv.level, "warn");
+  assert.match(tv.detail, /^1 level moved; in:trabolta muted everywhere \(silent everywhere/u);
+  assert.equal(at({ master: { db: -60, mute: false } }).level, "warn");
+  const many = at(Object.fromEntries(Array.from({ length: 6 }, (_, i) => [`spk:s${i}`, { db: -1, mute: false }])));
+  assert.match(many.detail, /^6 levels moved; .*; \+2 more$/u);
 });

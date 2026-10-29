@@ -16,7 +16,7 @@ does not apply here.
 | Section | Package | What it is | Show machine |
 |---|---|---|---|
 | `show:` | `show/` | the mod feed's `sim` directives → MQTT / OSC (`cuemap.py`); MQTT topics → `/api/mod/signal` / `beat` / `set` (`sensormap.py`); the lights catch-up | John's Desktop (Windows) |
-| `agents:` | `agents/` | the agent worker: holds `GET /api/agent/stream`, answers requests, judges filings, records thoughts, takes `control` frames | John's MacBook |
+| `agents:` | `agents/` | the agent worker: holds `GET /api/agent/stream`, answers requests, judges filings, writes the after-show letters (`letter.py`, wave 41), records thoughts, takes `control` frames | John's MacBook |
 | `audio:` | `audio/` | the speaker router: `audio.json` on one `sounddevice` stream (duplex: the TV's input routed, every input metered), numpy mixer with priority ducking (the inputs' sidechains, announcements, takeover tracks) and per-output trims, the soundtrack (music beds per scene, `soundtrack.py`), streamed long files, announcements, tests, stops, the house desk's plays, the report, placeholders, the synthesized SFX library (`audio/sfx/`) | John's Desktop (since 2026-10-27); the MacBook is the fallback (output-only) |
 | `lights:` | `lights/` | `lights.json` looks (every bulb by name, the WLED strip, every `lights_*` / `heart_*` look; no Zigbee groups, scenes or WLED presets) → Zigbee2MQTT / WLED, safety clamp, identify / test / pair, device list, catch-up (the heart look and `night.lights`), presence pulses for the reinstallation games and the `shown` report (wave 39) | the Desktop |
 | `alexa:` | `alexa/` | the standalone announcement player. **Retired for the show** (wave 18b); the code and its `Announcer` stay (the router reuses the announcer and the voice lock) | none |
@@ -65,7 +65,8 @@ stagehand/
     audio/                         module, config, engine (the stream), mixer, routing, sounds, placeholders;
                                    stream (a file decoded + resampled by a worker into a ring buffer),
                                    soundtrack (playlists, scenes, beds, the `Director`), mp3len (VBR MP3s
-                                   with no length header, for `check`)
+                                   with no length header, for `check`), mix (wave 40: the house
+                                   mix's levels → the mixer's gain table, effectiveDb's mirror)
     audio/sfx/                     the SFX library: dsp (synthesis toolkit), spec + registry (`SFX`), render,
                                    cli, inspect (PNGs), one module per category (sirens, dings, telephony,
                                    digital, retro, party, story, ambient)
@@ -80,14 +81,14 @@ stagehand/
 ```bash
 cd stagehand
 uv sync                                            # once; makes .venv
-uv run pytest                                      # 2271 passed + 4 skipped, ~85 s, no hardware, no network
+uv run pytest                                      # 2318 passed + 4 skipped, ~85 s, no hardware, no network
 uv run pytest tests/test_trapped_house.py -q       # after any story or rig change
 uv run stagehand modules
 uv run stagehand check --config trapped.desktop.yaml --only show,lights,audio
 uv run stagehand check --config trapped.macbook.yaml --only audio   # the router fallback
 uv run stagehand sounds library [--list] [--only a,b] [--out DIR] [--story] --config trapped.desktop.yaml
                                                    # render the SFX library; --story also fills sounds_dir
-uv run stagehand music scene <name> | next | stop | status --config trapped.desktop.yaml
+uv run stagehand music scene <name> | next [--playlist X] | stop | status --config trapped.desktop.yaml
 uv run --with matplotlib python -m stagehand.audio.sfx.inspect --only a,b --out DIR   # look at sounds
 uv run stagehand check --config laptop.yaml        # prints mind mode, switches, context sizes
 uv run stagehand ask --config laptop.yaml [--reflect] "text"   # a persona with no server
@@ -138,7 +139,27 @@ module docstrings that explain the why).
   added the last four, camelCase like `peakDb`; no `music` without a
   soundtrack). A 404 (an older server) is logged once and ignored. The
   soundtrack's catch-up reads `GET /api/screen/state` → `night.music`.
-  Tests: `tests/test_audio_desk.py`, `tests/test_audio_router.py`.
+  **The house mixer** (wave 40, `../docs/loom-w40-contract.md` C3): the
+  GET answer also carries `mix {seq, levels}`, `music` (the mixer's
+  commands `{seq, at, by, action: next | scene | stop | story, playlist?,
+  scene?}`) and `mixWatch`; the poll passes `mix=<seq>` (once one is
+  known), `music=<seq>` (primed by the first answer, like `plays=`) and
+  `watch=0|1` (what the router believes; the server answers when it
+  differs). A mix whose seq moved is applied (`mix.mix_gains` →
+  `Mixer.set_mix`, ramped over `TRIM_S`) and cached as `cache_dir/mix.json`;
+  music commands older than 10 s by `now` are dropped, the rest act in
+  press order with the stops and plays (`next` → `Director.next(playlist)`,
+  `scene` / `stop` → `music_scene(…, hand=True)`, `story` → the hand let
+  go and the catch-up now). While `mixWatch` (or the last meters answer's
+  `watch`) is true it posts `POST /api/mod/audio/meters {outputs, inputs,
+  sources, buses, music}` every 0.25 s (dBFS, 1-based channel strings;
+  `buses` = each strip → output → its peak before the limiter; `music` =
+  the health's, camelCased, at most once a second); `watch: false` stops
+  it, a 404 stops it for good. The health's `music` gains `scenes`,
+  `hand`, `playlists [{name, tracks, loop}]` and each bed's `durS`; the
+  MQTT stats gain `mix` (for `stagehand music status`), the report does
+  not. Tests: `tests/test_audio_desk.py`, `tests/test_audio_router.py`,
+  `tests/test_audio_mix.py`, `tests/test_audio_mixer_wire.py`.
 - **The server room** is not stagehand's: the Grand Central M4 on Steph's
   laptop reads the door and the patch bay, and the terminal page posts
   `door_sensor_*` and `patch_changed {combo}` (wave 22,
@@ -159,7 +180,9 @@ module docstrings that explain the why).
   / `presenceFixtures` / `mergeLightState` (`lights-presence.json`). Their fixtures are copied byte
   for byte from `house/test/fixtures/` into `tests/fixtures/house-audio/`
   and `house-lights/`, and a test fails until you re-copy after a house
-  change.
+  change. `audio/mix.py` mirrors `core/src/house-mixer.ts` `effectiveDb`
+  (wave 40): `tests/fixtures/house-mixer.json` is a byte-for-byte copy of
+  `core/test/fixtures/house-mixer.json`.
 - **One pronunciation table, three copies** (wave 26, V3).
   `src/stagehand/pronounce.json` is byte for byte
   `terminal/src/speech/pronounce.json` (and `reinstall/vr/config/`),
@@ -291,10 +314,22 @@ module docstrings that explain the why).
   an older YAML silently keeps the two-model mind.
 - **`check` exit codes matter to scripts**: `preflight.ps1`,
   `start-stagehand.ps1` and `scripts/accept/*.sh` read them.
+- **The house mix is not the install trim** (wave 40). audio.json's
+  speaker `gain` stays the trim (`set_trim`); the mix (`set_mix`) rides on
+  top, per strip (`music`, `tracks` = a `soundtrack.yaml` `tracks:` entry,
+  `sfx`, `announce` incl. the chime; `test` is never mixed) and per input
+  (× its routes). A role muted at `master` or `src:in:<role>` ducks
+  nothing; a room or speaker mute leaves the ducking alone. A takeover track or an
+  announcement takes over / ducks the beds only on the outputs where the
+  mix lets it be heard (a muted song never leaves a room silent). The mixer's
+  `take_live` meters have their own accumulators: `take_meters` (the
+  health line) is untouched, and the per-strip sums run only while
+  `take_live` is called.
 - **The soundtrack's scene has three owners** (wave 38). A live `cue
   music_<scene>` wins; a hand `stagehand music stop | scene` (MQTT) holds
   against feed catch-ups until the next live music cue or a story
-  restart; else the catch-up (`night.music`). Stop house sounds forgets
+  restart (so does the mixer's scene / stop, wave 40; its *Follow the
+  story* lets go); else the catch-up (`night.music`). Stop house sounds forgets
   the scene: the beds stay silent until the next music cue or catch-up.
   An empty or dead playlist retries every 10 s (`RETRY_S`).
 - **Three ranks of sound file.** `sounds._best` ranks a file someone put

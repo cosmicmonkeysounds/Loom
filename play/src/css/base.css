@@ -418,7 +418,7 @@ body {
 .fact-answer { box-sizing: border-box; width: 100%; margin: 8px 0 4px; padding: 8px; font: 16px/1.35 var(--ui-font); resize: vertical; /* 16px: iOS never zooms */
   border: none; background: var(--white); color: var(--ink); box-shadow: var(--sunken); border-radius: var(--radius); }
 /* the dotted Win95 focus ring, never the browser's own */
-.fact-answer:focus, .answer-text:focus { outline: 1px dotted var(--ink); outline-offset: 2px; }
+.fact-answer:focus, .answer-text:focus, .email-text:focus { outline: 1px dotted var(--ink); outline-offset: 2px; }
 .fact-confidence { display: grid; grid-template-columns: 1fr auto; align-items: end; gap: 0 10px; font: 700 13px var(--ui-font); color: var(--ink); }
 /* the readout rides the label's line; the trackbar takes the row under them */
 .fact-confidence > span { grid-column: 1; grid-row: 1; }
@@ -459,8 +459,9 @@ body {
   25% { transform: translateX(-4px); }
   75% { transform: translateX(4px); }
 }
-.answer-text { box-sizing: border-box; width: 100%; margin: 8px 0 4px; padding: 8px; font: 16px/1.35 var(--ui-font); resize: vertical;
+.answer-text, .email-text { box-sizing: border-box; width: 100%; margin: 8px 0 4px; padding: 8px; font: 16px/1.35 var(--ui-font); resize: vertical;
   border: none; background: var(--white); color: var(--ink); box-shadow: var(--sunken); border-radius: var(--radius); }
+.email-text { min-height: var(--tap); resize: none; }
 
 /* ── composer (hybrid typed chat) ──────────────────────────────────────────
    A roomy sunken text box that grows with what you type (JS caps the height),

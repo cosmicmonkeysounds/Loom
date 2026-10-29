@@ -65,7 +65,7 @@ export class Night {
     out.push(...this.signal("captcha answered", id, { passed: true }));
     out.push(...this.signal("captcha answered", id, { passed: false }));
     const p = this.sim.pendingChoiceFor(id);
-    if (p && p.length === 4) out.push(...this.take(this.sim.choose(id, 0)));
+    if (p && p.length === 5) out.push(...this.take(this.sim.choose(id, 0)));
     out.push(...this.take(this.sim.choose(id, 0)));
     if (scanner !== null) out.push(...this.scan(scanner, id));
     return out;
