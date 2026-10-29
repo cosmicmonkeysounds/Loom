@@ -105,7 +105,7 @@ function upload(sim: Sim, id: string, name: string, problem = 0): SimEvent[] {
   out.push(...sim.signal("captcha answered", id, { passed: true }));
   out.push(...sim.signal("captcha answered", id, { passed: false }));
   const p = sim.pendingChoiceFor(id);
-  if (p && p.length === 4) out.push(...sim.choose(id, problem));
+  if (p && p.length === 5) out.push(...sim.choose(id, problem));
   out.push(...sim.choose(id, 0));
   out.push(...sim.scan("Norton Anti-Virus", id));
   return out;
