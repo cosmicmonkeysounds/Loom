@@ -327,7 +327,7 @@ module docstrings that explain the why).
   ≈ 25 s for a reload. gpt-oss sometimes answers with `tool_calls` instead
   of JSON content; `llm.tool_calls_as_json` folds them back. Its reasoning
   tokens count against `max_tokens` (keep ≥ 1000). Set `num_ctx`
-  (voice 32768, orchestrator 20480 are the defaults the loader applies):
+  (voice 32768, orchestrator 24576 are the defaults the loader applies):
   Ollama's own default can silently truncate. `stagehand check` estimates
   the late-night prompt and warns.
 - **The replay harness and a live worker share Ollama.** Real-model runs

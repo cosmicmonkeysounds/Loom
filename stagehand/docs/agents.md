@@ -802,7 +802,7 @@ OpenAI-compatible shim ignores it and burns hundreds of hidden tokens
 per call — and `keep_alive` pins both models resident (Ollama's default
 5 minutes evicts the voice during a quiet spell, and the next guest
 waits ~25 s for a reload). An `api: ollama` orchestrator loads with
-`num_ctx: 20480` unless its `llm:` says otherwise (`num_ctx: …`, or
+`num_ctx: 24576` unless its `llm:` says otherwise (`num_ctx: …`, or
 `extra: {options: {num_ctx: …}}`, which wins; `0` = the server's
 default): the reflect prompt is ≈ 10k tokens at the doors and ≈ 16k
 late in the night, and Ollama's default 4096 cuts its middle without a
