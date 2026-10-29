@@ -223,7 +223,18 @@ rolls them again. Help: `docs/help/authoring/53-credits-and-video.md`.
 
 ### Release status
 
-The VPS runs **`w40`** (master `87927a52`, shipped 2026-10-29; rollback
+The VPS runs **`w44`** (master `cef5d7f2`, shipped 2026-10-29; rollback
+`w40`): waves 41 (Trabolta's letters), 42 (Trabolta under load and as
+intended: the windowed hub, the queue strip, bait mode; `docs/loom-w42-contract.md`),
+43 (the King's board on a phone) and 44 (video consent, Help Me, the
+credits). The preview was synced (`--keep-maps --keep-audio --keep-lights
+--keep-desk`; `credits.json` added) and reloaded. The MacBook runs
+`concurrency: 4` with `OLLAMA_NUM_PARALLEL=4` and `OLLAMA_KEEP_ALIVE=-1`
+(`scripts/house-macbook/trabolta-reset.sh`: the server holds the worker at
+capacity 4; after a reboot run it again, or once with `--persist`). Still
+owed: reload every phone, terminal and the TV (the queue strip, the
+credits, the chess board); the Desktop was not touched. Before it, `w40`
+(master `87927a52`, shipped 2026-10-29; rollback
 `w39`): wave 40 (the house mixer: Run → House → 🎚 Mixer and a host's
 Desk window balance music, featured tracks, sound effects, announcements
 and Trabolta's TV everywhere, per room and per speaker, with live meters,
