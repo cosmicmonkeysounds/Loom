@@ -74,12 +74,18 @@
 //! runtime's `agentWait` SSE frame): `queued` with their 1-based `position`
 //! in the rank-ordered queue and an `etaS` (position × the character's
 //! mean service time, an exponential moving average of dispatch → reply,
-//! 6 s before the first, ÷ the windowed slots), `answering` once a slot
-//! has it, `idle` when it settles, is answered by hand, given up, dropped
-//! or the window goes. A position change is told at most once per
-//! `waitThrottleMs` (5 s) per thread (the sweep sends a held-back one); a
-//! state change at once. Never for a public talk thread, never with only a
-//! legacy worker (it holds the whole line). Memory only.
+//! 6 s before the first, ÷ the slots of the windowed workers not stalled,
+//! less their rulings and letters out, at least 1), `answering` once a
+//! slot has it, `idle` when it settles, is answered by hand, given up,
+//! dropped (or goes stale) or the window goes. While a stall holds the
+//! line (only stalled workers voice the character) its queued threads and
+//! the stalled worker's own go idle — the hold line is all they show —
+//! and are told again once it answers. A position change is told at most
+//! once per `waitThrottleMs` (5 s) per thread (the sweep sends a held-back
+//! one); a state change at once. Never for a public talk thread, never
+//! with only a legacy worker (it holds the whole line); a legacy worker
+//! beside a windowed one takes the overflow at once, so its line reads
+//! `answering`. Memory only.
 //!
 //! Within one stall a thread hears the hold line once, however many
 //! requests the guest's lines open meanwhile (a given-up request's thread
@@ -1318,31 +1324,50 @@ export class AgentHub {
     return this.serviceS.get(character) ?? AGENT_SERVICE_DEFAULT_S;
   }
 
+  /** The slots taking `character`'s line now (wave 42b): each windowed
+   *  worker voicing it that is not stalled, less the slots its rulings and
+   *  letters out take (its voice requests in flight are the line's own). */
+  private liveSlotsFor(character: string): number {
+    let n = 0;
+    for (const w of this.workers.values()) {
+      if (!this.windowed(w) || !w.characters.has(character) || this.stalls.has(w.id)) continue;
+      n += Math.max(0, w.capacity - (this.slotLoad(w.id) - this.loadOf(w.id)));
+    }
+    return n;
+  }
+
   /** The waits every DM thread should show now (thread key →): queued
    *  ones by their place in the rank order, the ones a slot has as
    *  `answering`. Only for characters a windowed worker voices; a public
-   *  talk request takes its place in the order but is never told. */
+   *  talk request takes its place in the order but is never told. A stale
+   *  request (`stale`: the next pump drops it) holds no place. While only
+   *  stalled workers voice the character nobody is taking its line, and a
+   *  stalled worker's slots are not answering: those threads show nothing
+   *  but the hold line (idle) until it answers again. A legacy worker
+   *  beside a windowed one takes the overflow at once, so its line reads
+   *  `answering` (as its typing does). */
   private waitsNow(): Map<string, { thread: AgentThread; wait: AgentLineWait }> {
     const out = new Map<string, { thread: AgentThread; wait: AgentLineWait }>();
     const queued = new Map<string, OpenRequest[]>();
     for (const r of this.open.values()) {
       if (!this.windowedFor(r.req.character)) continue;
       if (r.worker !== null) {
-        if (r.req.thread.public !== true) out.set(r.key, { thread: r.req.thread, wait: { state: "answering" } });
+        if (r.req.thread.public !== true && !this.stalls.has(r.worker)) out.set(r.key, { thread: r.req.thread, wait: { state: "answering" } });
         continue;
       }
+      if (this.o.stale?.(r.req) === true) continue;
       let list = queued.get(r.req.character);
       if (list === undefined) queued.set(r.req.character, (list = []));
       list.push(r);
     }
     for (const [character, list] of queued) {
-      let slots = 0;
-      for (const w of this.workers.values()) if (this.windowed(w) && w.characters.has(character)) slots += w.capacity;
+      if (!this.canAnswer(character)) continue; // stalled only: the hold line's
+      const slots = Math.max(1, this.liveSlotsFor(character));
       const mean = this.serviceMeanS(character);
       this.inRankOrder(list).forEach((r, i) => {
         if (r.req.thread.public === true) return;
         const position = i + 1;
-        out.set(r.key, { thread: r.req.thread, wait: { state: "queued", position, etaS: Math.ceil((position * mean) / Math.max(1, slots)) } });
+        out.set(r.key, { thread: r.req.thread, wait: { state: "queued", position, etaS: Math.ceil((position * mean) / slots) } });
       });
     }
     return out;
