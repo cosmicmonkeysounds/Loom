@@ -8,7 +8,11 @@
 ##   left stick idle (the show's headsets have only the right controller),
 ##   its forward / back walks too, each axis locked out unless the push is
 ##   a real diagonal ([method Locomotion.axis_lock]).
-## - **Room scale**: each physics tick the head's horizontal offset from the
+## - **Every rendered frame** (`_process`, not the physics tick): the view
+##   moves by exactly the frame's time, so walking and turning never step
+##   unevenly when the display and the physics tick drift apart (90 ticks
+##   on a 72 Hz display judders at 18 Hz — the eyes feel it in minutes).
+## - **Room scale**: each frame the head's horizontal offset from the
 ##   body is folded into the body with its own slide (so a real step climbs a
 ##   stair and slides along a wall like a stick step) and taken back out of
 ##   the origin. Whatever the walls refused is pushed back too (past a few
@@ -53,7 +57,7 @@ const WALL_BUMP_EVERY := 0.6
 
 ## Whether the rig runs on a headset (set by `main.gd` before play).
 var xr_active := false
-## The sticks after the dead zone, refreshed every physics tick (the lobby
+## The sticks after the dead zone, refreshed every frame (the lobby
 ## picker reads them). Tests write them directly with [member read_input] off.
 var left_stick := Vector2.ZERO
 var right_stick := Vector2.ZERO
@@ -171,7 +175,7 @@ func face(yaw: float) -> void:
 # --- the loop ----------------------------------------------------------------
 
 
-func _physics_process(delta: float) -> void:
+func _process(delta: float) -> void:
 	if read_input:
 		_read_sticks()
 	if xr_active:
@@ -209,7 +213,7 @@ func _wall_bump(delta: float, wanted: float) -> void:
 func _read_sticks() -> void:
 	if xr_active:
 		left_stick = Locomotion.dead_zone(left_hand.get_vector2("primary"))
-		right_stick = Locomotion.axis_lock(Locomotion.dead_zone(right_hand.get_vector2("primary")))
+		right_stick = Locomotion.axis_lock(Locomotion.dead_zone(right_hand.get_vector2("primary")), right_stick)
 		# One controller: with the left stick idle (or no left controller),
 		# the right stick's forward / back walks while its sideways turns.
 		if left_stick == Vector2.ZERO:

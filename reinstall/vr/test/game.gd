@@ -1201,6 +1201,8 @@ func _test_locomotion() -> void:
 	_check(Locomotion.axis_lock(Vector2(-0.8, 0.2)) == Vector2(-0.8, 0), "loco: … a crooked turn doesn't creep")
 	_check(Locomotion.axis_lock(Vector2(0.6, 0.7)) == Vector2(0.6, 0.7), "loco: … a real diagonal walks and turns")
 	_check(Locomotion.axis_lock(Vector2.ZERO) == Vector2.ZERO, "loco: … centred stays centred")
+	_check(Locomotion.axis_lock(Vector2(0.4, 0.9), Vector2(0.5, 0.9)) == Vector2(0.4, 0.9) and Locomotion.axis_lock(Vector2(0.4, 0.9), Vector2(0, 0.9)) == Vector2(0, 0.9), "loco: … a turn already in holds past the lock's edge (no on / off flicker)")
+	_check(Locomotion.axis_lock(Vector2(0.2, 0.9), Vector2(0.5, 0.9)) == Vector2(0, 0.9), "loco: … and lets go below AXIS_RELEASE")
 
 	var t := Locomotion.rotate_about(Transform3D(Basis.IDENTITY, Vector3(2, 0, 0)), Vector3(1, 3, 0), 90.0)
 	_check(_v3(t.origin, Vector3(1, 0, -1)), "loco: rotate_about turns about the pivot")
@@ -1260,7 +1262,7 @@ func _test_autopilot_physics() -> void:
 	var game: Game = main.get("game")
 	game.autopilot_exit = false
 	var player := game.player
-	player.set_physics_process(false)
+	player.set_process(false)
 	_check(game.autopilot != null and not player.read_input, "autopilot: --autopilot drives the sticks")
 	_check(bool(link.config["intro"]) and not game.intro_wanted(), "autopilot: never plays the intro, whatever the config says")
 	var dt := 1.0 / 90.0
@@ -1277,7 +1279,7 @@ func _test_autopilot_physics() -> void:
 		var steps := 0
 		while link.found_calls == calls and steps < 90 * 60:
 			game._process(dt)
-			player._physics_process(dt)
+			player._process(dt)
 			steps += 1
 		if link.found_calls == calls:
 			missed.append("%s stuck at %s (waypoint %d/%d)" % [spot["id"], game.builder.to_house(player.feet()), game.autopilot.index, game.autopilot.path.size()])
@@ -1297,7 +1299,7 @@ func _test_autopilot_physics() -> void:
 	var steps := 0
 	while link.get("king_hits") == hits_before and steps < 90 * 60:
 		game._process(dt)
-		player._physics_process(dt)
+		player._process(dt)
 		steps += 1
 	var at := game.builder.to_house(player.feet())
 	var kp: Dictionary = HouseKing.king_prop(house)
@@ -1309,7 +1311,7 @@ func _test_autopilot_physics() -> void:
 	steps = 0
 	while link.found_calls == found_before and steps < 90 * 60:
 		game._process(dt)
-		player._physics_process(dt)
+		player._process(dt)
 		steps += 1
 	_check(link.found_calls == found_before + 1, "autopilot: … and it finds the duck after the hit")
 	link.session_over.emit("test")
@@ -1336,7 +1338,7 @@ func _test_room_scale() -> void:
 	var game: Game = main.get("game")
 	var player := game.player
 	var b := game.builder
-	player.set_physics_process(false)
+	player.set_process(false)
 	player.read_input = false
 	player.set_xr(true)
 	link.assignment_received.emit(_assignment(house, "s-rs", true))
@@ -1351,7 +1353,7 @@ func _test_room_scale() -> void:
 		player.teleport(b.to_world(spawn), b.yaw_to_world(float(house["spawn"]["yaw"])))
 		for i in 360:
 			player.camera.global_position += dir * (4.0 / 360.0)
-			player._physics_process(dt)
+			player._process(dt)
 		var feet := b.to_house(player.feet())
 		var room: Variant = HouseLocate.locate(house, feet)["room"]
 		if str(room) != spawn_room or player.head_gap() > VrPlayer.MAX_HEAD_GAP + 0.01:
@@ -1362,7 +1364,7 @@ func _test_room_scale() -> void:
 	player.teleport(b.to_world([-2.4, -2.7, 10.8]), b.yaw_to_world(0.0))
 	for i in 180:
 		player.camera.global_position += Vector3(0, 0, -2.0 / 180.0)
-		player._physics_process(dt)
+		player._process(dt)
 	var up := b.to_house(player.feet())
 	_check(up[2] < 9.0 and up[1] > -2.3 and player.head_gap() <= VrPlayer.MAX_HEAD_GAP + 0.01, "room scale: a real step up the stairs climbs them (feet %s, head %.2f m off)" % [up, player.head_gap()])
 	var eye: float = b.to_house(player.camera.global_position)[1] - up[1]
@@ -1892,7 +1894,7 @@ func _test_game_king(game: Game, link: LinkBase, house: Dictionary) -> void:
 	player.teleport(b.to_world(east), west_yaw)
 	player.left_stick = Vector2(0, 1)
 	for i in 110:
-		player._physics_process(1.0 / 90.0)
+		player._process(1.0 / 90.0)
 	var room: Variant = HouseLocate.locate(house, b.to_house(player.feet()))["room"]
 	_check(str(room) == "server-room", "game king: fallen, the body walks through his door (in %s at %s)" % [room, b.to_house(player.feet())])
 	player.left_stick = Vector2.ZERO
@@ -1922,7 +1924,7 @@ func _test_game_king(game: Game, link: LinkBase, house: Dictionary) -> void:
 	player.teleport(b.to_world(in_server), b.yaw_to_world(-90.0))
 	player.left_stick = Vector2(0, 1)
 	for i in 220:
-		player._physics_process(1.0 / 90.0)
+		player._process(1.0 / 90.0)
 		game._process(1.0 / 90.0)
 	player.left_stick = Vector2.ZERO
 	var out: Array = b.to_house(player.feet())
@@ -1939,7 +1941,7 @@ func _test_game_king(game: Game, link: LinkBase, house: Dictionary) -> void:
 	player.teleport(b.to_world(east), west_yaw)
 	player.left_stick = Vector2(0, 1)
 	for i in 110:
-		player._physics_process(1.0 / 90.0)
+		player._process(1.0 / 90.0)
 	room = HouseLocate.locate(house, b.to_house(player.feet()))["room"]
 	_check(str(room) == "basement-hall", "game king: standing, he blocks the body (in %s at %s)" % [room, b.to_house(player.feet())])
 	player.left_stick = Vector2.ZERO
@@ -2000,7 +2002,7 @@ func _test_main_and_game() -> void:
 	_check(game.state() == GameFlow.State.LOBBY, "game: starts in the lobby")
 
 	var player := game.player
-	player.set_physics_process(false)
+	player.set_process(false)
 	player.read_input = false
 	_check(player.global_position.distance_to(Lobby.SPOT) < 0.01, "game: the player waits in the lobby")
 	game._process(0.016)
@@ -2269,18 +2271,18 @@ func _test_main_and_game() -> void:
 	# Turning is smooth only (wave 33b) and closes the vignette fast.
 	link.assignment_received.emit(_assignment(house, "s-4g", true))
 	player.right_stick = Vector2.ZERO
-	player._physics_process(1.0 / 72.0)
+	player._process(1.0 / 72.0)
 	var yaw0 := player.head_yaw()
 	player.right_stick = Vector2(1, 0)
-	player._physics_process(1.0 / 72.0)
+	player._process(1.0 / 72.0)
 	var step1 := HouseFrames.wrap_yaw(player.head_yaw() - yaw0)
 	_check(step1 < 0.0 and step1 > -2.0, "player: a full push turns a little each frame, never a jump (%.2f°)" % step1)
 	for i in 17:
-		player._physics_process(1.0 / 72.0)
+		player._process(1.0 / 72.0)
 	_check(_near(HouseFrames.wrap_yaw(player.head_yaw() - yaw0), -Locomotion.TURN_RATE * 0.25, 0.5) and player.vignette_strength() >= 0.8, "player: a quarter second of turning: %.0f°, the vignette closed (%.2f)" % [Locomotion.TURN_RATE * 0.25, player.vignette_strength()])
 	player.right_stick = Vector2.ZERO
 	for i in 72:
-		player._physics_process(1.0 / 72.0)
+		player._process(1.0 / 72.0)
 	_check(player.vignette_strength() < 0.05, "player: … and it opens again within a second (%.2f)" % player.vignette_strength())
 
 	link.session_over.emit("test")
@@ -2506,7 +2508,7 @@ func _test_lobby_picker() -> void:
 	var game: Game = main.get("game")
 	var lobby := game.lobby
 	var player := game.player
-	player.set_physics_process(false)
+	player.set_process(false)
 	player.read_input = false
 	var asked: Array = []
 	game.ghosts.avatars.requester = func(url: String, done: Callable) -> void: asked.append([url, done])
@@ -2677,7 +2679,7 @@ func _test_setup_panel() -> void:
 	await process_frame
 	var game: Game = main.get("game")
 	var lobby := game.lobby
-	game.player.set_physics_process(false)
+	game.player.set_process(false)
 	game.player.read_input = false
 	game._process(0.016)
 	var panel := lobby.setup_panel()
@@ -2759,7 +2761,7 @@ func _test_lobby_mic() -> void:
 	var game: Game = main.get("game")
 	var lobby := game.lobby
 	var v := game.voice
-	game.player.set_physics_process(false)
+	game.player.set_process(false)
 	game.player.read_input = false
 	v.client_factory = func() -> Object: return FakeHttp.new()
 	var mic := [PackedVector2Array()]
@@ -3597,7 +3599,7 @@ func _test_voice_game() -> void:
 	v.client_factory = func() -> Object: return FakeHttp.new()
 	v.frame_source = func() -> PackedVector2Array: return _mic_tone(800, 0.001)  # a quiet room, under the gate
 	var player := game.player
-	player.set_physics_process(false)
+	player.set_process(false)
 	player.read_input = false
 
 	# Offline (no voice URLs): playing starts no voice.
@@ -3827,7 +3829,7 @@ func _test_sfx_game() -> void:
 	await process_frame
 	var game: Game = main.get("game")
 	var player := game.player
-	player.set_physics_process(false)
+	player.set_process(false)
 	player.read_input = false
 	link.config["trail_delay"] = 0.0
 	var sfx := game.sfx
@@ -3934,7 +3936,7 @@ func _test_path_reveal() -> void:
 	await process_frame
 	var game: Game = main.get("game")
 	var player := game.player
-	player.set_physics_process(false)
+	player.set_process(false)
 	player.read_input = false
 	var sub: Label3D = game.hud.get("_sub")
 	var hint: Label3D = game.hud.get("_hint")
@@ -4008,7 +4010,7 @@ func _game_on_show() -> Array:
 	main.add_child(link)
 	await process_frame
 	var game: Game = main.get("game")
-	game.player.set_physics_process(false)
+	game.player.set_process(false)
 	game.player.read_input = false
 	game.speech.set_process(false)
 	game.speech.voices = func() -> Array: return []
@@ -4312,19 +4314,19 @@ func _test_wall_bump() -> void:
 	solid.call(Vector3(20, 0.2, 20), Vector3(0, -0.1, 0))
 	solid.call(Vector3(4, 2, 0.2), Vector3(0, 1, -3))  # 3 m north
 	var player: VrPlayer = Game.PLAYER_SCENE.instantiate()
-	player.set_physics_process(false)
+	player.set_process(false)
 	player.read_input = false
 	world.add_child(player)
 	await physics_frame
 	player.teleport(Vector3(0, 0, 0), 180.0)  # facing south: open floor
 	player.left_stick = Vector2(0, 1)
 	for i in 72:
-		player._physics_process(1.0 / 72.0)
+		player._process(1.0 / 72.0)
 	_check(player.wall_bumps == 0 and player.feet().z > 1.0, "player: walking in the open never buzzes (%d, walked to z %.2f)" % [player.wall_bumps, player.feet().z])
 	player.teleport(Vector3(0, 0, -1.5), 0.0)  # facing north, the wall 1.4 m ahead
 	var pulses0 := player.pulses
 	for i in 144:
-		player._physics_process(1.0 / 72.0)
+		player._process(1.0 / 72.0)
 	_check(player.feet().z > -2.9 and player.wall_bumps >= 2 and player.wall_bumps <= 3 and player.pulses > pulses0, "player: into a wall: a buzz, at most every %.1f s (%d in 2 s, stopped at z %.2f)" % [VrPlayer.WALL_BUMP_EVERY, player.wall_bumps, player.feet().z])
 	world.queue_free()
 	await process_frame
@@ -4478,7 +4480,7 @@ func _test_intro_game() -> void:
 	await process_frame
 	var game: Game = main.get("game")
 	var player := game.player
-	player.set_physics_process(false)
+	player.set_process(false)
 	player.read_input = false
 	game.speech.set_process(false)
 	game.speech.voices = func() -> Array: return []
@@ -4678,7 +4680,7 @@ func _test_house_lights() -> void:
 		_check(env.glow_enabled == (t == "high"), "graphics: %s %s glow" % [t, "has" if t == "high" else "has no"])
 		_check(not env.ssao_enabled and not env.ssr_enabled and not env.ssil_enabled and not env.volumetric_fog_enabled and not env.sdfgi_enabled, "graphics: %s has no SSAO / SSR / SSIL / volumetric fog / SDFGI" % t)
 		_check(_near(env.ambient_light_energy, HouseLights.DAY_AMBIENT), "graphics: %s starts at today's ambient" % t)
-	_check(HouseLook.msaa("high") == Viewport.MSAA_2X and HouseLook.msaa("medium") == Viewport.MSAA_DISABLED and HouseLook.msaa("low") == Viewport.MSAA_DISABLED, "graphics: MSAA on high only")
+	_check(HouseLook.msaa("high") == Viewport.MSAA_4X and HouseLook.msaa("medium") == Viewport.MSAA_2X and HouseLook.msaa("low") == Viewport.MSAA_DISABLED, "graphics: MSAA 4× on high, 2× on medium, off on low")
 	HouseLook.set_tier("low")
 	var low_mat := HouseLook.wall() as StandardMaterial3D
 	HouseLook.set_tier("medium")
@@ -4848,12 +4850,12 @@ func _test_house_lamps_game() -> void:
 	await process_frame
 	var game: Game = main.get("game")
 	var player := game.player
-	player.set_physics_process(false)
+	player.set_process(false)
 	player.read_input = false
 	game.clock = func() -> float: return _now
 	var env: Environment = (main.get_node("WorldEnvironment") as WorldEnvironment).environment
 	_check(env.glow_enabled and env.tonemap_mode == Environment.TONE_MAPPER_ACES and game.world_env == env, "lamps game: high glows and tone-maps; the game has the environment")
-	_check(main.get_viewport().msaa_3d == Viewport.MSAA_2X, "lamps game: high turns MSAA on")
+	_check(main.get_viewport().msaa_3d == Viewport.MSAA_4X, "lamps game: high turns MSAA 4× on")
 	_check(game.lamps != null and game.lamps.pool.size() == 5 and game.lamps.bulb_ids().size() == 5, "lamps game: a frame already in is drawn; high pools 5")
 	game._process(0.016)
 	_check(not game.lamps.in_house and _near(env.ambient_light_energy, HouseLights.DAY_AMBIENT, 1e-3), "lamps game: the lobby keeps today's ambient")

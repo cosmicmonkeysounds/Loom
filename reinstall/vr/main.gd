@@ -7,6 +7,9 @@ extends Node3D
 var link: LinkBase = null
 var xr_interface: OpenXRInterface = null
 
+## The display rate to ask a headset for (Hz).
+const REFRESH_RATE := 90.0
+
 @onready var game: Game = $Game
 
 
@@ -39,15 +42,32 @@ func _start_xr() -> bool:
 	get_viewport().use_xr = true
 	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
 	if xr_interface != null:
-		# Quest 3 runs 72 / 90 / 120 Hz; physics is 90 Hz, so ask for 90.
-		var rates := xr_interface.get_available_display_refresh_rates()
-		if rates.has(90.0):
-			xr_interface.display_refresh_rate = 90.0
+		# Quest 3 runs 72 / 90 / 120 Hz (72 unless asked). The rates are only
+		# known once the session has begun, so ask for 90 then.
+		xr_interface.session_begun.connect(_ask_refresh_rate)
+		xr_interface.display_refresh_rate_changed.connect(_match_physics)
+		if not xr_interface.get_available_display_refresh_rates().is_empty():
+			_ask_refresh_rate()
 		xr_interface.user_presence_changed.connect(game.presence_changed)
 		xr_interface.session_focussed.connect(func() -> void: game.focus_changed(true))
 		xr_interface.session_visible.connect(func() -> void: game.focus_changed(false))
 		xr_interface.session_stopping.connect(game.headset_gone)
 	return true
+
+
+## The display at [constant REFRESH_RATE] when the headset offers it.
+func _ask_refresh_rate() -> void:
+	if xr_interface.get_available_display_refresh_rates().has(REFRESH_RATE):
+		xr_interface.display_refresh_rate = REFRESH_RATE
+	_match_physics(xr_interface.display_refresh_rate)
+
+
+## One physics tick per displayed frame, whatever rate the runtime settled
+## on (the player moves per frame anyway; this keeps the collision world in
+## step with it and spends no ticks the display never shows).
+func _match_physics(rate: float) -> void:
+	if rate >= 60.0:
+		Engine.physics_ticks_per_second = roundi(rate)
 
 
 ## A Quest pauses the app when the headset sleeps: no frame runs until it

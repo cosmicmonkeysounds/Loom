@@ -109,6 +109,6 @@ func _run() -> void:
 	# The comfort vignette at full strength.
 	game.player.vignette.visible = true
 	(game.player.vignette.material_override as ShaderMaterial).set_shader_parameter("strength", 1.0)
-	game.player.set_physics_process(false)
+	game.player.set_process(false)
 	await _shot("vignette")
 	quit(0)

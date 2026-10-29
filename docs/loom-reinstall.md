@@ -1780,7 +1780,12 @@ Provision: `/terminal/?code=…&name=Kitchen&character=Trabolta&spot=start-bar&v
   setting). With the left stick idle (the show's headsets have only the
   right controller) the right stick's forward / back walks too, its weaker
   axis dropped unless the push is a real diagonal (`Locomotion.axis_lock`,
-  0.5). A comfort vignette closes while moving or turning (turning to
+  0.5; once in, an axis holds down to 0.3, so a push near the edge never
+  flickers turning on and off). The rig moves every rendered frame
+  (`_process`), not on the physics tick, and `main.gd` asks for 90 Hz once
+  the OpenXR session has begun and sets the physics tick to the display's
+  rate (a 90 Hz tick on the Quest's default 72 Hz judders). Foveation is
+  level 1 (low), dynamic. A comfort vignette closes while moving or turning (turning to
   0.85); walking into a wall gives a light haptic buzz (at most every
   0.6 s); room-scale head offset folded into the body. The buttons are the King's
   hit (trigger, or A / X; on a Mac, Space or F) and the voice link's mute
@@ -1929,8 +1934,8 @@ picks the picture (`HouseLook.environment(tier)`, `HouseLook.msaa`,
 | | real lights | shading | tone map | glow | MSAA |
 |---|---|---|---|---|---|
 | low | 2 | per vertex | ACES (white 2.0) | off | off |
-| medium | 4 | per pixel (Lambert, no specular) | ACES | off | off |
-| high | 5 | per pixel | ACES | on (screen, threshold 0.7) | 2× |
+| medium | 4 | per pixel (Lambert, no specular) | ACES | off | 2× |
+| high | 5 | per pixel | ACES | on (screen, threshold 0.7) | 4× |
 
 No tier has SSAO, SSR, SSIL, SDFGI or volumetric fog. Comfort is unchanged.
 Unproven on hardware: whether Quest 3 holds 90 Hz on `medium` (per-pixel

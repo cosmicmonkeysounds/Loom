@@ -39,7 +39,7 @@ textures/vram_compression/import_etc2_astc=true
 
 openxr/enabled=true
 openxr/reference_space=2
-openxr/foveation_level=3
+openxr/foveation_level=1
 openxr/foveation_dynamic=true
 openxr/startup_alert=false
 openxr/extensions/user_presence=true
