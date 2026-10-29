@@ -82,7 +82,7 @@ stagehand/
 ```bash
 cd stagehand
 uv sync                                            # once; makes .venv
-uv run pytest                                      # 2497 passed + 4 skipped, ~80 s, no hardware, no network
+uv run pytest                                      # 2499 passed + 4 skipped, ~80 s, no hardware, no network
 uv run pytest tests/test_trapped_house.py -q       # after any story or rig change
 uv run stagehand modules
 uv run stagehand check --config trapped.desktop.yaml --only show,lights,audio

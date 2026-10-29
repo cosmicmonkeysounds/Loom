@@ -416,9 +416,10 @@ voice thought's `note` names each one that fired, never the word):
      sentence to a year they offer, or a bare yes to a deal for it. With
      the guest's line on her: *1999*, *1900*, *midnight* too (said to
      anyone else they are his y2k clock).
-   - `promise` [11; 37]: a sum or Truthcoin promised with no
+   - `promise` [12; 37]: a sum or Truthcoin promised with no
      `mint_truthcoin` act in the same reply (unless negated: *I pay
-     nobody*); always: an address, a wallet, an account or a method to
+     nobody*), a file read for them with no `snoop` act (*I will read
+     Theo's file for you now.*); always: an address, a wallet, an account or a method to
      receive coin, a *transfer*, a program asked to pay him (*Pay 50
      Truthcoin.*), *I will file / log / forward / submit it* (never *I
      cannot file it for you*), *will be noted / logged / recorded /

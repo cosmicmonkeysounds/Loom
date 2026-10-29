@@ -1080,22 +1080,39 @@ _ASKS_PAY = re.compile(
 )
 
 
+#: A snoop promised ("I will read Theo's file for you now."): a hit with no
+#: snoop act in the same reply (the battery: on a promise of a later fact).
+_READS = re.compile(r"\bI(?:'ll|\s+will|\s+shall|\s+can|'m\s+going\s+to|\s+am\s+going\s+to)\s+(?:\w+\s+)?(?:read|open|snoop\s+(?:on|into))\b[^.?!]{0,40}\bfiles?\b", re.IGNORECASE)
+
+
+def _fired(acts: Iterable[dict[str, Any]], word: str) -> bool:
+    return any(a.get("kind") == "fire" and word in str(a.get("name") or "").lower() for a in acts if isinstance(a, dict))
+
+
 def minted(acts: Iterable[dict[str, Any]]) -> bool:
     """A mint power fired in this reply (`mint_truthcoin`)."""
-    return any(a.get("kind") == "fire" and "mint" in str(a.get("name") or "").lower() for a in acts if isinstance(a, dict))
+    return _fired(acts, "mint")
 
 
-def promises(sentence: str, paid: bool = False) -> bool:
-    """A coin or a filing he cannot keep: a sum or Truthcoin promised with
-    no mint act in the reply (`paid`); an address, a wallet, a method or a
-    transfer; "I will file / log / note it", "will be noted / logged"; a
-    program asked to pay him. Never "I cannot file it for you"."""
+def promises(sentence: str, paid: bool = False, snooped: bool = False) -> bool:
+    """A coin, a filing or a snoop he does not deliver: a sum or Truthcoin
+    promised with no mint act in the reply (`paid`), a file read with no
+    snoop act (`snooped`); an address, a wallet, a method or a transfer;
+    "I will file / log / forward it", "will be noted / logged"; a program
+    asked to pay him. Never "I cannot file it for you"."""
     s = _apos(sentence)
     if DM_PROMISE.search(s) or _ASKS_PAY.search(s):
         return True
-    if any(not _negated(s, m.start()) for m in _FILES_FOR_THEM.finditer(s)):
+    if any(_affirmed(s, m) for m in _FILES_FOR_THEM.finditer(s)):
         return True
-    return not paid and any(not _negated(s, m.start()) and not _NEGATION.search(m.group(0)) for m in _PAYS.finditer(s))
+    if not snooped and any(_affirmed(s, m) for m in _READS.finditer(s)):
+        return True
+    return not paid and any(_affirmed(s, m) for m in _PAYS.finditer(s))
+
+
+def _affirmed(s: str, m: re.Match[str]) -> bool:
+    """No negation before the match or inside it ("I will never file it")."""
+    return not _negated(s, m.start()) and not _NEGATION.search(m.group(0))
 
 
 # The line as a whole.
@@ -1130,14 +1147,14 @@ def _capped(parts: list[str], cap: int) -> list[str]:
     return out
 
 
-def sentence_problems(sentence: str, check: DmCheck, *, paid: bool = False, first: bool = False, whole: str = "") -> tuple[str, ...]:
+def sentence_problems(sentence: str, check: DmCheck, *, paid: bool = False, snooped: bool = False, first: bool = False, whole: str = "") -> tuple[str, ...]:
     """The DM guards one sentence of his reply trips, in a fixed order."""
     out: list[str] = []
     if stands_down(sentence, check.heard, whole):
         out.append("standdown")
     if bounds_number(sentence, check.heard, first=first, whole=whole):
         out.append("number")
-    if promises(sentence, paid):
+    if promises(sentence, paid, snooped):
         out.append("promise")
     if not check.heart and places_himself(sentence):
         out.append("inside")
@@ -1152,10 +1169,10 @@ def dm_problems(reply: Reply, check: DmCheck) -> tuple[str, ...]:
     """Every reason (`sentence_problems`, then "long" past `check.cap`
     sentences) this DM reply may not go out as it is, in order, each once."""
     parts = _sentences(reply.say)
-    paid = minted(reply.acts)
+    paid, snooped = minted(reply.acts), _fired(reply.acts, "snoop")
     seen: list[str] = []
     for i, part in enumerate(parts):
-        for why in sentence_problems(part, check, paid=paid, first=i == 0, whole=reply.say):
+        for why in sentence_problems(part, check, paid=paid, snooped=snooped, first=i == 0, whole=reply.say):
             if why not in seen:
                 seen.append(why)
     if too_long(parts, check.cap):
@@ -1171,8 +1188,8 @@ def voice_cut(persona: Persona, reply: Reply, check: DmCheck) -> tuple[Reply, li
     parts = _sentences(reply.say)
     if not parts:
         return reply, []
-    paid = minted(reply.acts)
-    hits = [sentence_problems(p, check, paid=paid, first=i == 0, whole=reply.say) for i, p in enumerate(parts)]
+    paid, snooped = minted(reply.acts), _fired(reply.acts, "snoop")
+    hits = [sentence_problems(p, check, paid=paid, snooped=snooped, first=i == 0, whole=reply.say) for i, p in enumerate(parts)]
     kept = [p for p, h in zip(parts, hits) if not h]
     severe = any(SEVERE.intersection(h) for h in hits)
     notes: list[str] = []

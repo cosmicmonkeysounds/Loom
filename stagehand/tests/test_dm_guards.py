@@ -235,6 +235,17 @@ def test_a_promise_he_cannot_keep_is_a_hit_even_with_the_mint(line):
     assert promises(line, paid=True)
 
 
+def test_a_snoop_promised_is_a_hit_only_without_the_snoop():
+    """The battery (hunt2-snoop): "Understood. I will read Theo’s file for
+    you now." on the promise of a fact later, with no act."""
+    line = "Understood. I will read Theo’s file for you now."
+    assert "promise" in dm_problems(Reply(say=line), check("Snoop on Theo. I'll bring you a fact afterwards, promise."))
+    snoop = {"kind": "fire", "name": "snoop", "args": {"target": "g-2"}}
+    assert dm_problems(Reply(say=line, acts=(snoop,)), check()) == ()
+    assert not promises("I will never read your file for a promise, program.")
+    assert not promises("Bring me a fact first; then I read whatever file you name.")
+
+
 def test_a_sum_promised_is_a_hit_only_without_the_mint():
     line = "Thank you. I will pay you 100 Truthcoins for that fact."
     assert promises(line, paid=False)
@@ -247,6 +258,7 @@ def test_a_sum_promised_is_a_hit_only_without_the_mint():
     "line",
     [
         "I cannot file it for you; only you can, on the 📝 card.",
+        "I will never file it for you, program.",
         "Please file it on the 📝 card.",
         "I pay nobody Truthcoin for nothing.",
         "I will never pay you a single Truthcoin for that.",
