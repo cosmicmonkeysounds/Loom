@@ -7,8 +7,8 @@
 //! the device, never above the URL's `quality` cap).
 
 import { useEffect, useRef, useState } from "react";
-import type { Assignment, HouseMap, KingState } from "@loom/house";
-import { postEnd, type FoundAnswer } from "../api.ts";
+import type { Assignment, HouseMap, KingState, PlayerPose } from "@loom/house";
+import { postEnd, postSuspend, type FoundAnswer } from "../api.ts";
 import { baseOf, qualityHint, type ReinstallConfig } from "../config.ts";
 import { ProgressBar, Window } from "../wizard.tsx";
 import type { Sfx } from "./audio.ts";
@@ -53,6 +53,7 @@ export function Play({
   king,
   sfx,
   held = false,
+  resume,
   takeMic,
   onExit,
 }: {
@@ -64,6 +65,9 @@ export function Play({
   /** The shared King off the dealt map's GET (absent: an old server — no ⚔). */
   king?: KingState | null;
   sfx: Sfx;
+  /** (wave 40) Resuming a held walk: respawn at `pose`, and skip the intro
+   *  when it was already done (`ready`). */
+  resume?: { pose: PlayerPose; ready: boolean };
   /** Something covers the game (a story overlay on the tent laptop, wave
    *  18b): the walk is held — `Game.hold` — never ended. */
   held?: boolean;
@@ -78,8 +82,9 @@ export function Play({
   const [found, setFound] = useState<FoundAnswer | null>(null);
   const [showSticks, setShowSticks] = useState(touchDevice);
   // The intro tutorial (wave 33) teaches the controls; with it off, the
-  // old help card does.
-  const tutorialOn = config.intro !== false;
+  // old help card does. A walk resumed after its intro was done skips it
+  // (wave 40) and drops straight back in-house.
+  const tutorialOn = config.intro !== false && resume?.ready !== true;
   const [helpOpen, setHelpOpen] = useState(!tutorialOn);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const exit = useRef(onExit);
@@ -111,6 +116,7 @@ export function Play({
         voice: config.voice,
         mic,
         ...(tutorialOn ? { intro: { touch: touchDevice(), skippable: introSkippable(assignment.reinstalled) } } : {}),
+        ...(resume !== undefined ? { resumeAt: resume.pose } : {}),
         quality: { choice: loadQuality(), cap: qualityCap(config) },
         lightsDemo: lightsDemo(),
       });
@@ -148,6 +154,24 @@ export function Play({
     window.addEventListener("pointerdown", on);
     return () => window.removeEventListener("pointerdown", on);
   }, []);
+
+  // (wave 40) The tab went to the background, or the page is going away:
+  // hold the walk so the server keeps it for a short grace instead of timing
+  // it out — a reload or a return within the grace resumes it. Coming back
+  // visible needs nothing: the pose pump resumes and clears the hold (a
+  // session the grace already dropped ends the game as any dead one does).
+  useEffect(() => {
+    const hide = () => {
+      if (document.hidden) void postSuspend(base, assignment.token);
+    };
+    const away = () => void postSuspend(base, assignment.token);
+    document.addEventListener("visibilitychange", hide);
+    window.addEventListener("pagehide", away);
+    return () => {
+      document.removeEventListener("visibilitychange", hide);
+      window.removeEventListener("pagehide", away);
+    };
+  }, [base, assignment.token]);
 
   useEffect(() => {
     const t = window.setTimeout(() => setHelpOpen(false), 9000);

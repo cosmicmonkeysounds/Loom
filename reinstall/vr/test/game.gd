@@ -2180,35 +2180,64 @@ func _test_main_and_game() -> void:
 
 	await _test_game_king(game, link, house)
 
-	# Headset off, on a wall clock (a sleeping Quest runs no frames).
+	# Headset off, on a wall clock (a sleeping Quest runs no frames). (wave
+	# 40) Off holds the walk server-side; off past the grace offers a resume
+	# in the lobby instead of ending it.
 	game.clock = func() -> float: return _now
 	link.assignment_received.emit(_assignment(house, "s-4", true))
 	game.presence_changed(false)
+	_check(link.suspends >= 1, "game: the headset coming off holds the walk (suspend)")
 	_now += 1.0
 	game._process(0.016)
 	game.presence_changed(true)
 	_now += 5.0
 	game._process(0.016)
-	_check(game.state() == GameFlow.State.PLAYING, "game: headset back within the grace keeps playing")
+	_check(game.state() == GameFlow.State.PLAYING and game._resume_offer.is_empty(), "game: headset back within the grace keeps playing")
+	var ended_at_doff: int = link.ended.size()
 	game.presence_changed(false)
 	_now += Game.PRESENCE_GRACE + 0.1
 	game._process(0.016)
-	_check(game.state() == GameFlow.State.LOBBY and link.ended.back() == "headset", "game: headset off past the grace ends the session")
+	_check(game.state() == GameFlow.State.LOBBY and link.ended.size() == ended_at_doff and not game._resume_offer.is_empty(), "game: headset off past the grace offers a resume (not ended)")
 
+	# Yes (the hit button): the server gives the walk back, into the house at
+	# the pose it kept.
+	var spawn_pos: Array = house["spawn"]["pos"]
+	var kept := [float(spawn_pos[0]) + 0.5, float(spawn_pos[1]), float(spawn_pos[2])]
+	var resumes_before: int = link.resumes.size()
+	game.player.hit_button = false
+	game._process(0.016)  # arm the press edge
+	game.player.hit_button = true
+	game._process(0.016)
+	_check(link.resumes.size() == resumes_before + 1 and game._resume_offer.is_empty(), "game: Yes asks the server to resume")
+	game.player.hit_button = false
+	link.answer_resumed(_assignment(house, "s-4", true), {"p": kept, "yaw": 90.0, "pitch": 0.0}, true)
+	_check(game.state() == GameFlow.State.PLAYING and not game.in_intro(), "game: a resumed walk is back in the house (intro done)")
+	var feet_h := game.builder.to_house(game.player.feet())
+	_check(absf(feet_h[0] - kept[0]) < 0.4 and absf(feet_h[2] - kept[2]) < 0.4, "game: … respawned at the kept pose (%s)" % [feet_h])
+	link.session_over.emit("test")
+
+	# No (the mute button): hand the headset off — end the walk, back to the lobby.
 	link.assignment_received.emit(_assignment(house, "s-4b", true))
-	var ended_before: int = link.ended.size()
 	game.presence_changed(false)
-	_now += 60.0  # asleep: no frame at all
-	game.presence_changed(true)  # the next wearer puts it on
-	_check(game.state() == GameFlow.State.LOBBY and link.ended.size() == ended_before + 1, "game: a headset handed on after the grace starts in the lobby (no frame needed)")
+	_now += Game.PRESENCE_GRACE + 0.1
+	game._process(0.016)
+	_check(not game._resume_offer.is_empty(), "game: … a held walk offers a resume")
+	game.player.mute_button = false
+	game._process(0.016)
+	game.player.mute_button = true
+	game._process(0.016)
+	_check(game.state() == GameFlow.State.LOBBY and link.ended.back() == "handed off" and game._resume_offer.is_empty(), "game: No ends the walk (handed off)")
+	game.player.mute_button = false
 
+	# Focus coming back never cancels a headset-off countdown (then it offers a resume).
 	link.assignment_received.emit(_assignment(house, "s-4c", true))
 	game.presence_changed(false)
 	_now += 1.0
 	game.focus_changed(true)  # focus back, headset still off
 	_now += 1.5
 	game._process(0.016)
-	_check(game.state() == GameFlow.State.LOBBY, "game: focus coming back never cancels a headset-off countdown")
+	_check(game.state() == GameFlow.State.LOBBY and not game._resume_offer.is_empty(), "game: focus coming back never cancels a headset-off countdown")
+	game._resume_offer = {}
 
 	link.assignment_received.emit(_assignment(house, "s-4d", true))
 	game.focus_changed(false)
@@ -2219,11 +2248,21 @@ func _test_main_and_game() -> void:
 	game.app_paused()
 	_now += 30.0
 	game.app_resumed()
-	_check(game.state() == GameFlow.State.LOBBY, "game: resuming from a pause past the grace ends the session")
+	_check(game.state() == GameFlow.State.LOBBY and not game._resume_offer.is_empty(), "game: resuming from a pause past the grace offers a resume")
+	game._resume_offer = {}
 
 	link.assignment_received.emit(_assignment(house, "s-4e", true))
+	var ended_at_xr: int = link.ended.size()
 	game.headset_gone()
-	_check(game.state() == GameFlow.State.LOBBY and link.ended.back() == "headset", "game: the XR session stopping ends it at once")
+	_check(game.state() == GameFlow.State.LOBBY and link.ended.size() == ended_at_xr and not game._resume_offer.is_empty(), "game: the XR session stopping leaves the house and offers a resume")
+	# The grace elapsed under us: the server refuses, and the lobby moves on.
+	game.player.hit_button = false
+	game._process(0.016)
+	game.player.hit_button = true
+	game._process(0.016)
+	game.player.hit_button = false
+	link.resume_failed.emit()
+	_check(game.state() == GameFlow.State.LOBBY and game._resume_offer.is_empty(), "game: a refused resume starts fresh")
 
 	# Sent while the headset is still off (a past deadline in the lobby): plays.
 	game.presence_changed(false)
@@ -4547,15 +4586,18 @@ func _test_intro_game() -> void:
 	_check(player.feet().distance_to(Lobby.SPOT) < 0.01 and game.lobby.visible, "intro: … standing in the lobby")
 	_check(link.get("readies") == 2, "intro: … no ready for it")
 
-	# The headset off mid-tutorial ends the session.
+	# (wave 40) The headset off mid-tutorial holds the walk and offers a
+	# resume in the lobby (the intro cinema gone), rather than ending it.
 	link.assignment_received.emit(_assignment(house, "in-4", true))
 	game.intro_space.finish_video()
 	game._process(0.016)
 	_check(game.intro.step == IntroFlow.Step.WELCOME, "intro: (mid-tutorial)")
+	var ended_mid: int = link.ended.size()
 	game.presence_changed(false)
 	_now += Game.PRESENCE_GRACE + 0.1
 	game._process(0.016)
-	_check(game.state() == GameFlow.State.LOBBY and link.ended.back() == "headset" and not game.intro_space.visible, "intro: the headset off mid-tutorial → session ended, the lobby")
+	_check(game.state() == GameFlow.State.LOBBY and link.ended.size() == ended_mid and not game._resume_offer.is_empty() and not game.intro_space.visible, "intro: the headset off mid-tutorial → the lobby offers a resume")
+	game._resume_offer = {}
 	game.presence_changed(true)
 
 	# The intro config off: straight to the house.

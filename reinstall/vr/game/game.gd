@@ -102,6 +102,10 @@ const PRESENCE_GRACE := 2.0
 ## Lost focus (system menu, or off on a runtime without user presence).
 const UNFOCUSED_GRACE := 15.0
 const NOTICE_TIME := 4.0
+## (wave 40, DRAFT w40) The resume prompt shown in the lobby when a headset
+## with a held walk is put back on (or picked up after a relaunch).
+const RESUME_PROMPT := "Are you %s?  Trigger: yes · B / Y: no"
+const RESUME_GONE := "That walk already ended."
 ## Within this (plan metres, same floor) of a `king` prop the headset is told how to hit him.
 const KING_NEAR := 1.5
 ## Beyond this the notice may be said again on the next approach.
@@ -207,6 +211,20 @@ var _found_buzzed := false
 ## clock stops while a Quest sleeps, and a sleeping headset runs no frames
 ## — the deadline is checked again the moment anything wakes it.
 var _away_until := {}
+## (wave 40) The current walk was suspended (the headset came off): the
+## server is holding it, so going away does not end it — the lobby offers a
+## resume instead.
+var _suspended := false
+## (wave 40) The held walk the lobby is offering to resume (`{token, name}`),
+## `{}` when none. While set, the lobby shows "Are you {name}?" and the
+## picker is held.
+var _resume_offer := {}
+## (wave 40) Respawn here instead of the spawn when a resumed walk starts
+## in the house (`{p, yaw}`), `{}` otherwise.
+var _resume_pose := {}
+## The Yes / No buttons on the last resume-prompt frame (a press, not a hold).
+var _prompt_hit_was := false
+var _prompt_mute_was := false
 ## Seconds now (wall clock); tests inject a fake.
 var clock: Callable = func() -> float: return Time.get_unix_time_from_system()
 var _notice_left := 0.0
@@ -314,6 +332,8 @@ func setup(l: LinkBase, xr: bool) -> void:
 	link.house_loaded.connect(_on_house)
 	link.found_answered.connect(_on_found_answered)
 	link.session_over.connect(_on_session_over)
+	link.resumed.connect(_on_resumed)
+	link.resume_failed.connect(_on_resume_failed)
 	link.duck_changed.connect(_on_duck_changed)
 	link.map_warning.connect(_on_map_warning)
 	link.stream_frame.connect(ghosts.on_frame)
@@ -331,6 +351,7 @@ func setup(l: LinkBase, xr: bool) -> void:
 	if not link.lights.is_empty():
 		lamps.apply(link.lights)
 	enter_lobby()
+	_maybe_offer_saved()  # (wave 40) a walk saved before a relaunch → the resume prompt
 
 
 func state() -> GameFlow.State:
@@ -375,6 +396,10 @@ func enter_lobby() -> void:
 	# Nothing left to end: a program sent while the headset is still off
 	# plays once it goes on.
 	_away_until.clear()
+	# (wave 40) The playing walk is behind us; a fresh resume offer (if any)
+	# is set right after this call returns.
+	_suspended = false
+	_resume_offer = {}
 	state_changed.emit(flow.state)
 
 
@@ -509,12 +534,20 @@ func _on_map_warning(text: String) -> void:
 func _on_assignment(a: Dictionary) -> void:
 	if flow.state != GameFlow.State.LOBBY:
 		return
+	_resume_offer = {}  # (wave 40) a real assignment supersedes a pending resume offer
 	if builder.house.is_empty():
 		lobby.flash("No house map yet.", 5.0, true)
 		return
 	if not a.get("duck") is Dictionary or not a.get("spawn") is Dictionary:
 		lobby.flash("That assignment has no duck.", 5.0, true)
 		return
+	_enter_walk(a, {})
+
+
+## Take up a walk: a fresh assignment (`resume_pose` `{}`, the intro plays if
+## the station wants it) or a resumed one (`resume_pose` `{p, yaw}` set → in
+## the house at once, the intro already done). The session is adopted here.
+func _enter_walk(a: Dictionary, resume_pose: Dictionary) -> void:
 	if not flow.assign(a):
 		return
 	# TEST MIC ends when a program starts — also with no voice link to take
@@ -535,7 +568,10 @@ func _on_assignment(a: Dictionary) -> void:
 	# hit him (missing on an old server = not yet).
 	king_hit_used = a.get("kingHit", false) == true
 	_king_hit_pending = false
-	if intro_wanted():
+	_resume_pose = resume_pose
+	if not resume_pose.is_empty():
+		_start_play()  # resumed mid-walk: straight in-house, no intro
+	elif intro_wanted():
 		_start_intro(a)
 	else:
 		_start_play()
@@ -553,7 +589,11 @@ func intro_wanted() -> bool:
 func _start_play() -> void:
 	var a := flow.assignment
 	var spawn: Dictionary = a["spawn"]
-	player.teleport(builder.to_world(spawn["pos"]), builder.yaw_to_world(float(spawn["yaw"])))
+	# (wave 40) A resumed walk starts where it left off, not at the spawn.
+	var start_pos: Array = _resume_pose["p"] if not _resume_pose.is_empty() else spawn["pos"]
+	var start_yaw: float = float(_resume_pose.get("yaw", spawn["yaw"])) if not _resume_pose.is_empty() else float(spawn["yaw"])
+	_resume_pose = {}
+	player.teleport(builder.to_world(start_pos), builder.yaw_to_world(start_yaw))
 	player.locomotion_enabled = true
 	_trail_in = 0.0
 	_found_pending = false
@@ -575,7 +615,7 @@ func _start_play() -> void:
 	_hit_was = player.hit_button
 	_mute_was = player.mute_button
 	_update_route_house()
-	hud.show_play(_room_label(HouseLocate.locate(builder.house, spawn["pos"])["room"]))
+	hud.show_play(_room_label(HouseLocate.locate(builder.house, start_pos)["room"]))
 	if link.map_warning_text != "":
 		_notice(link.map_warning_text)  # raised in the lobby, still in force
 	if autopilot != null:
@@ -781,8 +821,9 @@ func focus_changed(focused: bool) -> void:
 
 
 ## The app was paused (a Quest sleeping: no frames from here on) /
-## resumed. Resuming past the grace ends the session at once, so the next
-## wearer never inherits the last program's game.
+## resumed. (wave 40) The walk is held when it goes away, so resuming past
+## the grace offers to resume it in the lobby rather than ending it — the
+## next wearer confirms "Are you {program}?" or declines.
 func app_paused() -> void:
 	_away_changed("paused", true, PRESENCE_GRACE)
 
@@ -791,7 +832,8 @@ func app_resumed() -> void:
 	_away_changed("paused", false, PRESENCE_GRACE)
 
 
-## The XR session is stopping: end now, no frame needed.
+## The XR session is stopping: leave the house now, no frame needed. (wave
+## 40) A live walk is held + offered to resume, not ended.
 func headset_gone() -> void:
 	_away_until.clear()
 	_end_for_headset()
@@ -803,16 +845,25 @@ func _away_changed(why: String, away: bool, grace: float) -> void:
 		# it ends nobody's session.
 		if why != "presence" and voice != null and voice.mic_state == "asking":
 			return
+		# (wave 40) Hold the walk the moment the headset comes off, so a Quest
+		# that sleeps (no more frames, no more poses) keeps it through the
+		# server's resume grace instead of the 60 s pose timeout. Never the
+		# autopilot (no one to resume it).
+		if autopilot == null and flow.state == GameFlow.State.PLAYING and link.has_session() and not _suspended:
+			link.suspend()
+			_suspended = true
 		if not _away_until.has(why):
 			_away_until[why] = float(clock.call()) + grace
 		return
-	# Coming back: a deadline that passed meanwhile (asleep, no frames) still ends it.
+	# Coming back: a deadline that passed meanwhile (asleep, no frames) still applies.
 	if check_away():
 		return
 	_away_until.erase(why)
+	if _away_until.is_empty():
+		_suspended = false  # (wave 40) fully back; a later doff holds the walk again
 
 
-## End the session if an away deadline has passed; true when it did.
+## Offer to resume (or end) if an away deadline has passed; true when it did.
 func check_away() -> bool:
 	if _away_until.is_empty():
 		return false
@@ -825,12 +876,86 @@ func check_away() -> bool:
 	return _end_for_headset()
 
 
+## The headset was away past the grace. (wave 40) A live walk is held
+## server-side and the lobby offers to resume it — the same program picks up
+## where it was, or the next wearer declines. The autopilot just ends.
 func _end_for_headset() -> bool:
 	if flow.state == GameFlow.State.LOBBY:
 		return false
+	if autopilot == null and link.has_session():
+		var token := str(link.session.get("token", ""))
+		var name := str(link.session.get("name", ""))
+		link.suspend()  # idempotent: make sure the server is holding it
+		enter_lobby()
+		_show_resume_offer(token, name)
+		return true
 	link.end_session("headset")
 	enter_lobby()
 	return true
+
+
+# --- resume (wave 40) ----------------------------------------------------------
+
+
+## Show the lobby's "Are you {program}?" prompt for a held walk; the picker
+## is held while it is up ([method _tick_resume_prompt] reads Yes / No).
+func _show_resume_offer(token: String, name: String) -> void:
+	if token == "":
+		return
+	_resume_offer = {"token": token, "name": name}
+	_prompt_hit_was = player.hit_button
+	_prompt_mute_was = player.mute_button
+	lobby.flash(RESUME_PROMPT % (name if name != "" else "this program"), 3600.0)
+
+
+## A walk saved before a relaunch (the Quest slept and the app was killed):
+## offer to resume it once, in the lobby. Never the autopilot or offline.
+func _maybe_offer_saved() -> void:
+	if autopilot != null or link.has_session():
+		return
+	var walk := link.saved_walk()
+	if not walk.is_empty():
+		_show_resume_offer(str(walk.get("token", "")), str(walk.get("name", "")))
+
+
+## One frame of the resume prompt: the hit button (a trigger / A / X) says
+## yes, the mute button (B / Y) says no — each a press, not a hold.
+func _tick_resume_prompt() -> void:
+	var hit := player.hit_button
+	var mute := player.mute_button
+	if hit and not _prompt_hit_was:
+		var token := str(_resume_offer.get("token", ""))
+		_resume_offer = {}
+		lobby.flash("Resuming…", 3.0)
+		link.resume(token)
+	elif mute and not _prompt_mute_was:
+		_resume_offer = {}
+		link.end_session("handed off")
+		enter_lobby()
+	_prompt_hit_was = hit
+	_prompt_mute_was = mute
+
+
+## The server gave the held walk back ([signal LinkBase.resumed]): take it
+## up where it was. `ready` true → straight into the house at `pose`; false
+## → the intro plays first (they had not finished it).
+func _on_resumed(a: Dictionary, pose: Dictionary, ready: bool) -> void:
+	_resume_offer = {}
+	if flow.state != GameFlow.State.LOBBY:
+		return
+	if builder.house.is_empty() or not a.get("duck") is Dictionary or not a.get("spawn") is Dictionary:
+		enter_lobby()
+		return
+	_enter_walk(a, pose if ready else {})
+
+
+## No held walk to resume ([signal LinkBase.resume_failed]): start fresh.
+func _on_resume_failed() -> void:
+	_resume_offer = {}
+	if flow.state != GameFlow.State.LOBBY:
+		enter_lobby()
+	else:
+		lobby.flash(RESUME_GONE, NOTICE_TIME)
 
 
 func _notice(text: String) -> void:
@@ -878,6 +1003,11 @@ func _process(delta: float) -> void:
 
 
 func _tick_lobby(delta: float) -> void:
+	# (wave 40) While a resume is offered, the prompt owns the input: no
+	# picking, no candidate refresh, until Yes / No.
+	if not _resume_offer.is_empty():
+		_tick_resume_prompt()
+		return
 	var aim := pointer.poll()
 	pointer.draw(aim, lobby.aim(aim, delta))
 	# Either stick drives the picker: the larger deflection on each axis.

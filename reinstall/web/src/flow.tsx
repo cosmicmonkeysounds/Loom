@@ -28,7 +28,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import type { Assignment, HouseMap, KingState, StationInfo } from "@loom/house";
+import type { Assignment, HouseMap, KingState, PlayerPose, StationInfo } from "@loom/house";
 import { ApiError, begin, fetchDealtHouse, fetchNightEnded, fetchStations, postEnd } from "./api.ts";
 import { baseOf, type ReinstallConfig } from "./config.ts";
 import type { Sfx } from "./game/audio.ts";
@@ -73,6 +73,8 @@ export function ReinstallFlow({
   canDraw,
   sfx,
   held = false,
+  resuming,
+  onBegun,
   start,
   status,
   onPlaying,
@@ -91,6 +93,13 @@ export function ReinstallFlow({
   /** Something covers the game (a story overlay on the tent laptop): the
    *  walk is held — the leash paused, input ignored, the pose kept alive. */
   held?: boolean;
+  /** (wave 40) Resume a held walk straight into Play — the standalone device
+   *  passes this after `POST /api/spatial/resume` (the tent never does). The
+   *  map is already fetched at the assignment's `houseVersion`. */
+  resuming?: { assignment: Assignment; house: HouseMap; houseVersion: string; king?: KingState | null; pose: PlayerPose; ready: boolean };
+  /** (wave 40) A web walk just began here — the standalone device remembers
+   *  it for resume (the tent passes nothing, so it stores nothing). */
+  onBegun?: (walk: { token: string; session: string; name: string }) => void;
   start: "choose" | "auto";
   /** The desktop's status corner (the standalone wizard's headset LEDs). */
   status?: ReactNode;
@@ -102,7 +111,13 @@ export function ReinstallFlow({
   // `auto` decides once, at mount: on stations it has heard from (null =
   // no poll has answered yet, so the card — a headset may be ready, D8).
   const [first] = useState(() => (start === "auto" ? firstStep(program, ended, config.role, stations.ok ? vr.filter((s) => s.online).length : null, canDraw) : "choose"));
-  const [step, setStep] = useState<Step>(() => (first === "play" ? { kind: "starting", label: "Copying files…" } : { kind: "choose" }));
+  const [step, setStep] = useState<Step>(() =>
+    resuming !== undefined
+      ? { kind: "play", assignment: resuming.assignment, house: resuming.house, houseVersion: resuming.houseVersion, ...(resuming.king !== undefined ? { king: resuming.king } : {}) }
+      : first === "play"
+        ? { kind: "starting", label: "Copying files…" }
+        : { kind: "choose" },
+  );
   const exit = useRef(onExit);
   exit.current = onExit;
   const alive = useRef(true);
@@ -161,6 +176,8 @@ export function ReinstallFlow({
         void postEnd(baseOf(config), assignment.token);
         return;
       }
+      // (wave 40) Remember the walk so a reload / a return within the grace resumes it.
+      onBegun?.({ token: assignment.token, session: assignment.session, name: program.name });
       setStep({ kind: "starting", label: "Building the simulation…" });
       // Only the map the server dealt on: the spawn and Gerald's spot are
       // placed on it (never the bundled stand-in, never another version).
@@ -220,6 +237,7 @@ export function ReinstallFlow({
         {...(step.king !== undefined ? { king: step.king } : {})}
         sfx={sfx}
         held={held}
+        {...(resuming !== undefined ? { resume: { pose: resuming.pose, ready: resuming.ready } } : {})}
         takeMic={takeMic}
         onExit={(e: PlayExit) => exit.current(e)}
       />
