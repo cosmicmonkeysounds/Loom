@@ -321,6 +321,7 @@ def test_a_windowed_burst_gets_no_retry_though_the_worker_s_slots_look_idle(tmp_
         await asyncio.gather(*agents.tasks.values())
 
     async def go():
+        await agents.on_frame("hello", json.dumps({"worker": "w-1", "eventId": "evt", "characters": ["Trabolta"], "capacity": 1}))
         await one(req("first"))  # an idle worker: nobody behind it that it knows of
         for i in range(3):  # the server refills the slot as each reply goes out
             await one(req(f"burst{i}", pid=f"g-{i + 2}", name=f"P{i}"))
@@ -332,6 +333,20 @@ def test_a_windowed_burst_gets_no_retry_though_the_worker_s_slots_look_idle(tmp_
     run(go())
     assert voice.retry == {"first": True, "burst0": False, "burst1": False, "burst2": False, "told": False, "clear": True, "later": True}
     assert agents._pressed == set()
+
+    # A legacy stream (the hello echoes no capacity): the burst queues in the
+    # worker's own slots, so a line right after a reply is no burst by itself.
+    voice = RetryVoice()
+    agents = make(tmp_path, voice=voice, concurrency=1)
+
+    async def legacy():
+        await agents.on_frame("hello", json.dumps({"worker": "w-1", "eventId": "evt", "characters": ["Trabolta"], "capacity": None}))
+        await one(req("a"))
+        await one(req("b", pid="g-2", name="Bo"))
+        await one(req("c", pid="g-3", name="Cy") | {"queued": 4})
+
+    run(legacy())
+    assert voice.retry == {"a": True, "b": True, "c": False}
 
 
 def test_a_quiet_summary_waits_for_a_lull_in_the_traffic(tmp_path, monkeypatch):

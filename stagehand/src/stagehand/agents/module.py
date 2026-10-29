@@ -342,6 +342,9 @@ class Agents:
         #: (wave 42) Requests that arrived while lines queue behind them (the
         #: server's `queued`, or a slot refilled at once): they get no retry.
         self._pressed: set[str] = set()
+        #: (wave 42) The last `hello` echoed a `capacity`: the server holds
+        #: this worker to a window and keeps the burst in its own queue.
+        self._windowed = False
         self.facts: FactsClient | None = None
         #: The voice models, per character — a copy the control panel may retune.
         self.models: dict[str, LlmConfig] = dict(cfg.models)
@@ -950,6 +953,8 @@ class Agents:
         if event == "hello":
             hello = json.loads(data)
             self.worker = hello.get("worker")
+            cap = hello.get("capacity")
+            self._windowed = isinstance(cap, int) and not isinstance(cap, bool) and cap > 0
             log.info("agents online as %r for %s", self.cfg.name, ", ".join(hello.get("characters", [])))
             for name in hello.get("unknown", []):
                 log.warning("%s is not marked `mind: external` in the running story — nobody will ask for it", name)
@@ -1133,13 +1138,16 @@ class Agents:
         keeps the burst in the server's queue, so the worker's own slots
         look idle all through the doors. The frame's `queued` (lines waiting
         on the server for this worker's characters) says it when a server
-        sends it; else a frame that arrives within `BURST_GAP_S` of an
+        sends it; else, on a windowed stream (the `hello` echoed a
+        `capacity`), a frame that arrives within `BURST_GAP_S` of an
         answer going out is the server refilling the slot it freed. (A
         guest who happens to speak a moment after another's reply also
         reads as a burst: that costs one retry, never a line.)"""
         queued = req.get("queued")
         if isinstance(queued, int) and not isinstance(queued, bool):
             return queued > 0
+        if not self._windowed:
+            return False  # a legacy stream: the burst queues in this worker's slots, where the retry rule sees it
         return self._answered_at is not None and time.monotonic() - self._answered_at < BURST_GAP_S
 
     def _cancel_summary(self) -> None:

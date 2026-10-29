@@ -266,9 +266,10 @@ module docstrings that explain the why).
   one answered late is not read as the server's trace restarting
   (`Wire.trace_posted(sent=)`). `retry_allowed` is set inside the slot:
   nobody queued for a slot (`Slots.waiting(BACKGROUND)`) and the line not
-  `_pressed` (the frame's `queued` > 0, else it arrived within
-  `BURST_GAP_S` 2 s of an answer going out: the server refilling the
-  slot from its queue, which the worker's slots never see). A quiet
+  `_pressed` (the frame's `queued` > 0, else, when the `hello` echoed a
+  `capacity` (`_windowed`), it arrived within `BURST_GAP_S` 2 s of an
+  answer going out: the server refilling the slot from its queue, which
+  the worker's slots never see). A quiet
   summary starts on a free slot after `SUMMARY_LULL_S` (10 s) with no
   frame or answer (`_quiet_due`) and is cancelled by `Slots.on_wait`
   (`_slot_contended`) when a line, a ruling, a letter or a director's

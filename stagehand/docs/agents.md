@@ -79,9 +79,10 @@ Inside the worker a slot is spent only on the model:
   ruling or a letter is queued may not (a waiting quiet summary or re-run
   does not count). With a windowed stream the burst waits on the server,
   where the worker's slots cannot see it: a request frame's `queued` (the
-  lines waiting on the server, when a server sends it) above 0, or a
-  frame that arrives within 2 s of an answer going out (the server
-  refilling the slot that answer freed), also means no retry.
+  lines waiting on the server, when a server sends it) above 0, or, when
+  the `hello` echoed a `capacity`, a frame that arrives within 2 s of an
+  answer going out (the server refilling the slot that answer freed),
+  also means no retry.
 - **Quiet summaries take a free slot.** One may start when a slot is
   free, nothing is queued for one, and no request, ruling or letter has
   arrived and no answer has gone out for 10 s (under load a freed slot is
