@@ -47,8 +47,8 @@ not the voices', so an edit on the map is heard at once on a long bed.
 The soundtrack (wave 38, C3; `soundtrack.py`): with `soundtrack:` set the
 router owns a `Director` that plays the scene's beds on the `music` bus.
 The scene comes from, first that applies: a live `cue music_<scene>` on the
-feed; MQTT `show/audio/music` (`{"scene"}`, `{"next": true}`, `{"stop":
-true}`); the **catch-up** — `night.music` from `GET /api/screen/state`, read
+feed; MQTT `show/audio/music` (`{"scene"}`, `{"next": true, "playlist"?}`,
+`{"stop": true}`) or the mixer's music commands (wave 40, below); the **catch-up** — `night.music` from `GET /api/screen/state`, read
 as the lights job reads `night.lights`, on start, on every feed reconnect
 and 2 s after a story restart (a live cue that lands while it is read wins;
 null or unknown is `off`). A story `sound X` the soundtrack lists under
