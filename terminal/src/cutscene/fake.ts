@@ -3,7 +3,7 @@
 //! has a plausible late-night value; override what a scene needs.
 
 import { creditsView, type CreditsFile, type CreditsView } from "../../../core/src/credits.ts";
-import { EMPTY_NIGHT, type ResultOutcome, type ResultRow, type RulingStamp, type ScreenChart, type ScreenKing, type ScreenMoment, type ScreenNight, type ScreenResultQuestion, type ScreenResults, type ScreenState, type ScreenTarget } from "../screen.ts";
+import { EMPTY_NIGHT, type ResultOutcome, type ScreenBathroom, type ResultRow, type RulingStamp, type ScreenChart, type ScreenKing, type ScreenMoment, type ScreenNight, type ScreenResultQuestion, type ScreenResults, type ScreenState, type ScreenTarget } from "../screen.ts";
 
 export interface FakeOpts {
   now?: number;
@@ -150,6 +150,13 @@ const FAKE_CREDITS_FILE: CreditsFile = {
 };
 
 /** A made-up `CreditsView` with `programs` of the fake programs (cycled, numbered past the list). */
+/** (wave 45) A made-up Bathroom Report for `?preview=bathroom` (`bath=one`: one goer; `bath=nobody`). */
+export function fakeBathroom(kind: string | null): ScreenBathroom {
+  if (kind === "nobody") return { goers: 0, never: 9, total_s: 0, most: null, most_s: 0, least: null, least_s: 0, toggler: null, toggles: 0 };
+  if (kind === "one") return { goers: 1, never: 8, total_s: 260, most: "Winamp", most_s: 260, least: null, least_s: 0, toggler: "Winamp", toggles: 2 };
+  return { goers: 31, never: 4, total_s: 24_330, most: "Netscape Navigator", most_s: 2_710, least: "Minesweeper and Solitaire", least_s: 40, toggler: "Winamp", toggles: 14 };
+}
+
 export function fakeCredits(programs = FAKE_PROGRAMS.length): CreditsView {
   const names = Array.from({ length: Math.max(0, programs) }, (_, i) => (i < FAKE_PROGRAMS.length ? FAKE_PROGRAMS[i]! : `${FAKE_PROGRAMS[i % FAKE_PROGRAMS.length]!} ${Math.floor(i / FAKE_PROGRAMS.length) + 1}`));
   return creditsView(FAKE_CREDITS_FILE, names, 1);

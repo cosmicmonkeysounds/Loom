@@ -11,7 +11,8 @@ import { HISTORY_T } from "../src/cutscene/clock.ts";
 import { fakeState } from "../src/cutscene/fake.ts";
 import { componentFor } from "../src/cutscene/pick.ts";
 import { previewBeats } from "../src/cutscene/preview.tsx";
-import { ADVICE_CHAT, CEREMONY_ROLL, SCENES as ACT3 } from "../src/cutscene/scenes/act3.tsx";
+import { ADVICE_CHAT, CEREMONY_ROLL, SCENES as ACT3, bathRows } from "../src/cutscene/scenes/act3.tsx";
+import { nightOf, type ScreenBathroom } from "../src/screen.ts";
 import { SCENES as MOMENTS, OVER_WORLD_MS, finderName } from "../src/cutscene/scenes/moments.tsx";
 import { noteWorldShowing, worldCelebratesFinds } from "../src/cutscene/world-bus.ts";
 import { CELEBRATION_MS } from "../src/world/state.ts";
@@ -142,6 +143,36 @@ describe("every tv3 scene draws", () => {
     const none = draw(award, "tv", 6000, { night: { award_winner: null, award_value: null } });
     expect(none).toContain("Please come forward");
     expect(none).not.toContain("Trust score");
+  });
+
+  it("the Bathroom Report (wave 45) has its own scene, ahead of the award row, with the story's numbers", () => {
+    const i = ACT3.findIndex((d) => d.id === "bathroom");
+    expect(i).toBeGreaterThanOrEqual(0);
+    expect(i).toBeLessThan(ACT3.findIndex((d) => d.id === "award"));
+    const def = ACT3[i]!;
+    const bathroom: ScreenBathroom = { goers: 3, never: 2, total_s: 575, most: "Calculator", most_s: 375, least: "Notepad and Paint Shop", least_s: 100, toggler: "Calculator", toggles: 6 };
+    for (const target of ["tv", "wall"] as const) {
+      const html = draw(def, target, 12_000, { value: "award_bathroom", night: { bathroom } });
+      expect(html, target).toContain("THE BATHROOM REPORT");
+      expect(html).toContain("10 min");
+      expect(html).toContain("Calculator");
+      expect(html).toContain("Notepad and Paint Shop");
+      expect(html).toContain("2 · −5 trust each");
+      expect(html).not.toContain("Netscape Navigator");
+    }
+    // An older server (no report): the title and its line, never a blank.
+    const old = draw(def, "tv", 12_000, { value: "award_bathroom", night: { bathroom: null } });
+    expect(old).toContain("THE BATHROOM REPORT");
+    expect(old).toContain("Every promise was logged");
+  });
+
+  it("the Bathroom Report's rows: no least with one goer, one row when nobody went; the wire parses", () => {
+    const one: ScreenBathroom = { goers: 1, never: 0, total_s: 30, most: "Calculator", most_s: 30, least: null, least_s: 0, toggler: "Calculator", toggles: 2 };
+    expect(bathRows(one).map((r) => r.label)).toEqual(["Most time", "Most switches on / off", "Never went"]);
+    expect(bathRows(one)[2]!.value).toBe("nobody");
+    expect(bathRows({ ...one, goers: 0, most: null, toggler: null, toggles: 0 })).toEqual([{ label: "Nobody used Bathroom Mode", who: null, value: "−5 trust each" }]);
+    expect(nightOf({}).bathroom).toBeUndefined();
+    expect(nightOf({ bathroom: { goers: 2, most: "none", total_s: -4, least: " Notepad " } }).bathroom).toEqual({ goers: 2, never: 0, total_s: 0, most: null, most_s: 0, least: "Notepad", least_s: 0, toggler: null, toggles: 0 });
   });
 
   it("the three staff awards (wave 21) play the same take, TV and walls, from the staff file", () => {

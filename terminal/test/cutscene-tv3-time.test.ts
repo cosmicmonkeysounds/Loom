@@ -35,6 +35,7 @@ import {
   tallyOf,
   vortexAt,
   wrapLines,
+  bathTime,
 } from "../src/cutscene/kit/tv3-time.ts";
 
 const SHOW = join(__dirname, "../../core/examples/trapped-in-the-internet");
@@ -44,9 +45,9 @@ const CEREMONY = readFileSync(join(SHOW, "beats/ceremony.loom"), "utf8");
 // --- the pure timelines -----------------------------------------------------------------
 
 describe("tv3 timelines — the awards", () => {
-  it("knows all nine of the programs' awards, each with a slide in the story", () => {
+  it("knows all nine of the programs' awards and the Bathroom Report (wave 45), each with a slide in the story", () => {
     const programs = AWARDS.filter((a) => a.kind !== "Staff award");
-    expect(programs.map((a) => a.id)).toEqual(["most_trusted", "least_trusted", "frequent_flyer", "lore_hoarder", "truthcoin_tycoon", "best_liar", "duck_speedrun", "quest_completionist", "the_painting"]);
+    expect(programs.map((a) => a.id)).toEqual(["most_trusted", "least_trusted", "frequent_flyer", "lore_hoarder", "truthcoin_tycoon", "best_liar", "duck_speedrun", "quest_completionist", "the_painting", "bathroom"]);
     for (const a of programs) expect(CEREMONY, a.id).toContain(`cue screens_award_${a.id}`);
   });
 
@@ -60,6 +61,17 @@ describe("tv3 timelines — the awards", () => {
     for (const id of cued) expect(AWARDS.map((a) => a.id), id).toContain(id);
     // The ceremony's ticker still promises only the main awards.
     for (const a of AWARDS.filter((x) => x.kind === "Staff award")) expect(a.line).not.toMatch(/performer|crew|John|Steph|Jesse/iu);
+  });
+
+  it("the Bathroom Report's times (wave 45): whole minutes, rounded, hours past the hour", () => {
+    expect(bathTime(0)).toBe("none");
+    expect(bathTime(Number.NaN)).toBe("none");
+    expect(bathTime(20)).toBe("under a minute");
+    expect(bathTime(30)).toBe("1 min");
+    expect(bathTime(375)).toBe("6 min");
+    expect(bathTime(3599)).toBe("1 h 00 min");
+    expect(bathTime(24_300)).toBe("6 h 45 min");
+    expect(awardOf("award_bathroom")).toMatchObject({ title: "The Bathroom Report", kind: "Bonus award", emblem: "roll" });
   });
 
   it("reads an award off its slide value, and makes one up for a value it doesn't know", () => {

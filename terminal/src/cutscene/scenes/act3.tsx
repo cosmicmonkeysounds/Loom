@@ -57,7 +57,7 @@ import {
   type StormMessage,
 } from "../kit/index.ts";
 import { AwardEmblem, BinaryRain, ChatWindow, Curtains, DiscoBall, EqBars, FloatLayer, Heart, Lasers, Motorcycle, Notepad, RainCanvas, SpotCones, Sunburst, Trophy } from "../kit/tv3-parts.tsx";
-import { ASSESSMENT_MS, AWARDS, AWARD_CONFETTI, HAND_JIVE, TRUTH_TXT, awardConfettiAt, awardOf, awardValue, bobStateOf, brokenYear, chatAt, handJivePhase, karaokeAt, notepadAt, sinceMoment, spinAngle, tallyOf, vortexAt, wrapLines, type BobState, type ChatLine } from "../kit/tv3-time.ts";
+import { ASSESSMENT_MS, AWARDS, AWARD_CONFETTI, HAND_JIVE, TRUTH_TXT, awardConfettiAt, awardOf, awardValue, bathTime, bobStateOf, brokenYear, chatAt, handJivePhase, karaokeAt, notepadAt, sinceMoment, spinAngle, tallyOf, vortexAt, wrapLines, type BobState, type ChatLine } from "../kit/tv3-time.ts";
 
 // --- small shared helpers ---------------------------------------------------------------------
 
@@ -1336,6 +1336,95 @@ function AwardScene({ t, value, night, sfx, reduced, target }: SceneProps) {
   );
 }
 
+// --- G13 · the Bathroom Report (wave 45: screens_award_bathroom; persistent) ------------------------------
+//
+//   0–800     the spot narrows (the award's room)
+//   800–2200  the toilet roll flips in, THE BATHROOM REPORT types
+//   2600      ALL TOGETHER: the party's time in Disk Cleanup slams in
+//   4200→     one row every 1.2 s: most time, least time (two or more went),
+//             most switches on and off, never went (−5 trust)
+//   →         hold: the spot breathes, the roll bobs, stars twinkle (one
+//             confetti burst under the total only: no more over the rows)
+// The numbers are the story's (`night.bathroom`, read when G13 was pressed).
+// No report on the night block (an older server): the title and its line.
+
+/** One of the report's rows, as drawn (wave 45). */
+export interface BathRow {
+  label: string;
+  who: string | null;
+  value: string;
+}
+
+/** The report's rows, in the order the host reads them (DRAFT w45). */
+export function bathRows(b: NonNullable<ScreenNight["bathroom"]>): BathRow[] {
+  if (b.goers === 0) return [{ label: "Nobody used Bathroom Mode", who: null, value: "−5 trust each" }];
+  const rows: BathRow[] = [{ label: "Most time", who: b.most, value: bathTime(b.most_s) }];
+  if (b.least !== null) rows.push({ label: "Least time", who: b.least, value: bathTime(b.least_s) });
+  rows.push({ label: "Most switches on / off", who: b.toggler, value: `${b.toggles}` });
+  rows.push(b.never > 0 ? { label: "Never went", who: null, value: `${b.never} · −5 trust each` } : { label: "Never went", who: null, value: "nobody" });
+  return rows;
+}
+
+const BATH_ROW_AT = 4200;
+const BATH_ROW_EVERY = 1200;
+
+function BathroomScene({ t, value, night, sfx, reduced, target }: SceneProps) {
+  const lite = target === "wall";
+  const award = awardOf(value);
+  const report = night.bathroom ?? null;
+  const rows = report === null ? [] : bathRows(report);
+  useSfxCues(t, sfx, [
+    [200, "drumroll", { gain: 0.55 }],
+    [900, "whoosh", { gain: 0.5 }],
+    [2600, "tada"],
+    ...rows.map((_, i) => [BATH_ROW_AT + i * BATH_ROW_EVERY, "blip", { gain: 0.5 }] as const),
+  ]);
+  const flip = reduced ? fade(t, 800, 400) : eased(t, 800, 700, ease.outBack);
+  const confetti = awardConfettiAt(t);
+  return (
+    <Stage bg="radial-gradient(ellipse at 50% 55%, #10405a 0%, #020a10 78%)" className="tv3-award tv3-bath">
+      <SpotCones t={t} reduced={reduced} color="rgba(200, 240, 255, 0.12)" />
+      <Particles t={t} emitters={lite ? TWINKLE_WALL : TWINKLE_TV} blend="add" />
+      <div className="tv3-award-spot" style={{ opacity: 0.55 + 0.25 * pulse(t, 5200), transform: `translate(-50%, -50%) scale(${lerp(2.4, 1, eased(t, 0, 800)).toFixed(3)})` }} />
+      <div className="tv3-award-emblem tv3-bath-emblem" style={{ opacity: clamp01(flip * 2), transform: reduced ? "translateX(-50%)" : `translateX(-50%) perspective(60em) rotateY(${lerp(-90, 0, flip).toFixed(1)}deg) translateY(${(Math.sin(t / 900) * 3).toFixed(1)}%)` }}>
+        <AwardEmblem kind={award.emblem} size={lite ? "13vmin" : "12vmin"} />
+      </div>
+      <div className="tv3-award-kind tv3-bath-kind" style={{ opacity: fade(t, 900, 400) }}>
+        BONUS SECTION
+      </div>
+      <div className="tv3-award-title tv3-bath-title">
+        <Typewriter text={award.title.toUpperCase()} t={t} start={1100} cps={26} caret={t < 2400} />
+      </div>
+      {report === null ? (
+        <div className="tv3-award-line" style={{ opacity: fade(t, 2600, 800) }}>
+          {award.line}
+        </div>
+      ) : (
+        <>
+          <div className="tv3-bath-total" style={t >= 2600 ? slam(t, 2600, reduced, 380) : { opacity: 0 }}>
+            <span className="tv3-award-label">{award.label}</span>
+            <span className="tv3-award-num">{report.goers === 0 ? "0 min" : bathTime(report.total_s)}</span>
+          </div>
+          <div className="tv3-bath-rows">
+            {rows.map((r, i) => {
+              const at = BATH_ROW_AT + i * BATH_ROW_EVERY;
+              return (
+                <div key={r.label} className="tv3-bath-row" style={{ opacity: progress(t, at, 400), transform: reduced ? undefined : `translateX(${lerp(-6, 0, eased(t, at, 400)).toFixed(1)}%)` }}>
+                  <span className="tv3-bath-label">{r.label}</span>
+                  <span className="tv3-bath-who">{r.who ?? ""}</span>
+                  <span className="tv3-bath-value">{r.value}</span>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
+      {/* One burst under the total, never again: it would fall over the rows. */}
+      {!reduced && confetti.n === 0 && <Confetti t={t} start={2600} dur={AWARD_CONFETTI.dur} density={lite ? 0.3 : 0.6} seed={171} />}
+    </Stage>
+  );
+}
+
 // --- G11 · the resurrection (signal resurrection: "you are human again") ---------------------------------
 //
 //   0–2600    "Windows is shutting down…" over the desktop, the hourglass turning (a shutdown chime)
@@ -1417,6 +1506,8 @@ export const SCENES: SceneDef[] = [
   { id: "hand_jive", when: [{ moment: "beat", name: "The Hand Jive" }], ms: HAND_JIVE.end, ...both(HandJive), priority: 4, face: "glitch", faceMs: 3200 },
   { id: "ceremony", when: [{ slide: "ceremony" }], ms: "hold", ...both(Ceremony), face: "pleased" },
   // namesCharacter: the staff award "Trabolta's Favourite Staff" (wave 21) names him (the ceremony is long after his introduction).
+  // Wave 45: G13's report, before the award row so its own scene wins the slide.
+  { id: "bathroom", when: [{ slide: "award_bathroom" }], ms: "hold", ...both(BathroomScene), face: "sly" },
   { id: "award", when: [{ slide: "award_*" }], ms: "hold", ...both(AwardScene), namesCharacter: true, face: "pleased" },
   { id: "resurrection", when: [{ moment: "signal", name: "resurrection" }], ms: RES.end, ...both(Resurrection), priority: 4 },
 ];

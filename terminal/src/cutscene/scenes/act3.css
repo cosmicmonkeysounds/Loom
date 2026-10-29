@@ -317,6 +317,17 @@
 .tv3-award-num { font-family: var(--mono); font-size: min(10vmin, 10vw); color: #ffd23f; line-height: 1; text-shadow: 0 0 0.2em rgba(255, 210, 63, 0.6); }
 .tv3-award-line { top: 90%; font-size: min(3.6vmin, 4.4vw); color: #c8d0ff; }
 
+/* The Bathroom Report (wave 45): the award's room, a smaller top, a table. */
+.tv3-bath-emblem { top: 3%; }
+.tv3-bath-kind { top: 17%; color: #8fe0ff; }
+.tv3-bath-title { top: 21%; font-size: min(7.4vmin, 7.4vw); }
+.tv3-bath-total { position: absolute; left: 4%; right: 4%; top: 33%; display: flex; flex-direction: column; align-items: center; font-family: var(--mono); color: #ffe8c0; }
+.tv3-bath-rows { position: absolute; left: 6%; right: 6%; top: 55%; display: flex; flex-direction: column; gap: 1.4vmin; font-family: var(--mono); }
+.tv3-bath-row { display: flex; align-items: baseline; gap: 2vmin; padding: 0.8vmin 2vmin; border-radius: 1vmin; background: rgba(10, 40, 60, 0.55); font-size: min(3.8vmin, 4.2vw); color: #e8f6ff; will-change: transform, opacity; }
+.tv3-bath-label { flex: 0 0 34%; color: #8fe0ff; letter-spacing: 0.06em; text-transform: uppercase; font-size: 0.8em; }
+.tv3-bath-who { flex: 1 1 auto; min-width: 0; color: #fff; overflow-wrap: break-word; }
+.tv3-bath-value { flex: 0 0 auto; color: #ffd23f; }
+
 /* --- the resurrection --------------------------------------------------------------------------------------------------- */
 .tv3-res-safe { display: flex; align-items: center; justify-content: center; padding: 0 6%; text-align: center; font-family: var(--mono); font-size: min(7vmin, 8vw); color: #ff9a1a; }
 .tv3-res-dawn { background: linear-gradient(180deg, #1a1440 0%, #a04a60 55%, #ffb070 100%); overflow: hidden; }
@@ -331,6 +342,11 @@
   .tv3-award-title, .tv3-cer-title, .tv3-bob-title, .tv3-bag-title { font-size: 11vw; }
   .tv3-award-num { font-size: 13vw; }
   .tv3-award-kind, .tv3-award-lists, .tv3-award-label { font-size: 4.6vw; }
+  .tv3-bath-title { top: 20%; }
+  .tv3-bath-total { top: 31%; }
+  .tv3-bath-rows { top: 48%; left: 4%; right: 4%; gap: 1vmin; }
+  .tv3-bath-row { flex-wrap: wrap; row-gap: 0.4vmin; padding: 0.6vmin 1.6vmin; font-size: 4vw; }
+  .tv3-bath-label { flex-basis: 100%; }
   .tv3-banish-text, .tv3-rave-title, .tv3-helped-title, .tv3-res-title { font-size: 12vw; }
 }
 
