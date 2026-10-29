@@ -90,6 +90,14 @@ test("the show's own hold / busy / canned lines are read from the files, not wri
   assert.ok(p.fallbacks.length >= 10, `only ${p.fallbacks.length} pooled fallbacks`);
   const c = cannedText(cast, p);
   assert.ok(c.fallbacks.has(p.fallback!));
+  // (wave 42d) Every stage's intent pools too: the 42c battery labelled the
+  // new pools' lines `reply`. Every quoted line of the block, none missed.
+  const front = /^---\n([\s\S]*?)\n---/u.exec(persona)![1]!;
+  const block = /^fallbacks:.*\n((?:[ \t]+.*\n|\n)+)/mu.exec(front + "\n")![1]!;
+  const every = [...block.matchAll(/"((?:[^"\\]|\\.)*)"/gu)].map((m) => m[1]!);
+  assert.ok(every.length >= 50, `only ${every.length} lines in the fallbacks block`);
+  for (const line of every) assert.ok(c.fallbacks.has(line), line);
+  assert.equal(classify(dm({ from: "Trabolta", text: every[every.length - 1]! }), c), "fallback");
   const out = personaOutside(persona);
   assert.ok(out.length >= 10);
   const john = out.find((w) => w.word === "John");
@@ -109,6 +117,12 @@ test("personaCanned gathers inline and block fallbacks; outside words match whol
   assert.equal(p.fallback, "One.");
   assert.equal(p.unavailable, "Later.");
   assert.deepEqual(p.fallbacks, ["Two.", "Three.", "Four."]);
+  // (wave 42d) A stage's intent pools, quoted or not; a comment or a bare key
+  // inside the block is no line.
+  const keyed = personaCanned(
+    '---\nfallback: Zero.\nfallbacks:\n  # a "comment" here\n  formal:\n    other: ["One."]\n    offer: ["Two.", "Three."]\n    refuse: Four.\n    praise:\n      - Five.\n      - "Six."\n  hungry: ["Seven."]\nbargain: |\n  "not a fallback"\n---\nbody',
+  );
+  assert.deepEqual(keyed.fallbacks, ["One.", "Two.", "Three.", "Four.", "Five.", "Six.", "Seven."]);
   const out = personaOutside('---\noutside:\n  - John (not followed by McAfee)\n  - the show   # a comment\nnext: 1\n---');
   assert.deepEqual(out, [
     { word: "John", notFollowedBy: "McAfee" },

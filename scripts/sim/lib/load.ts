@@ -71,8 +71,26 @@ function quoted(line: string): string[] {
   return out.filter((s) => s !== "");
 }
 
-/** The persona's canned lines: `fallback:`, `unavailable:`, and every quoted
- *  line under any `fallbacks:` key (the stage pools and each situation's). */
+/** One line of a `fallbacks:` block's lines: every quoted string on it, or
+ *  (wave 42d) an unquoted list item (`- Line.`) or an unquoted scalar after a
+ *  key (`refuse: Line.`); a key with nothing after it (`formal:`), a flow
+ *  list's brackets and a full-line comment give nothing. */
+function poolLines(line: string): string[] {
+  const t = line.trim();
+  if (t === "" || t.startsWith("#")) return [];
+  const q = quoted(line);
+  if (q.length > 0) return q;
+  const item = /^-\s+(.+)$/u.exec(t) ?? /^[\w .-]+:\s+(.+)$/u.exec(t);
+  if (item === null) return [];
+  const v = item[1]!.replace(/\s+#.*$/u, "").trim();
+  return v === "" || /^[[{|>]/u.test(v) ? [] : [unquote(v)];
+}
+
+/** The persona's canned lines: `fallback:`, `unavailable:`, and every line
+ *  under any `fallbacks:` key: the stage pools, (wave 42d) each stage's
+ *  intent pools (`formal: {offer: […], refuse: […]}`) and each situation's.
+ *  Read at run time from the persona the worker voices (`--persona`), so a
+ *  new pool is a fallback without a driver change. */
 export function personaCanned(text: string): { fallback: string | null; unavailable: string | null; fallbacks: string[] } {
   const front = frontmatter(text);
   const top = (key: string): string | null => {
@@ -90,10 +108,10 @@ export function personaCanned(text: string): { fallback: string | null; unavaila
     const indent = m[1]!.length;
     for (let j = i + 1; j < lines.length; j++) {
       const l = lines[j]!;
-      if (l.trim() === "") continue;
+      if (l.trim() === "" || l.trim().startsWith("#")) continue;
       const ind = /^\s*/u.exec(l)![0].length;
       if (ind <= indent) break;
-      pools.push(...quoted(l));
+      pools.push(...poolLines(l));
     }
   }
   return { fallback: top("fallback"), unavailable: top("unavailable"), fallbacks: [...new Set(pools)] };

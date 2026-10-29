@@ -58,6 +58,7 @@
 //   --interval 30 --jitter 5 --talk-every 30 --filers <n> --lines <file.json>
 //   --battery <file.json> --wait-worker 120 --reply-timeout 120 --drain 150
 //   --fake-worker <ms> [--fake-concurrency 1] [--fake-capacity <n>]
+//   --persona <file>       (the worker's persona: its fallbacks; default the show's)
 //   --seed 42 --yes --rerun --allow-remote --allow-dev-server --no-color
 
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -159,7 +160,7 @@ function usage(why: string): never {
   console.error(`${why}\n\nusage: node --experimental-strip-types --no-warnings scripts/sim/trabolta-load.ts --base <url> --code <MOD code> [--scenario burst|steady|mixed | --battery <file.json>] [--phase intro|hunt1|hunt2|y2k] [--guests 50] [--duration 90] [--fake-worker <ms>]`);
   process.exit(2);
 }
-const VALUED = ["base", "code", "event", "guest-code", "out", "guests", "phase", "scenario", "duration", "spread", "think-min", "think-max", "interval", "jitter", "talk-every", "filers", "lines", "battery", "wait-worker", "reply-timeout", "drain", "fake-worker", "fake-concurrency", "fake-capacity", "seed"];
+const VALUED = ["base", "code", "event", "guest-code", "out", "persona", "guests", "phase", "scenario", "duration", "spread", "think-min", "think-max", "interval", "jitter", "talk-every", "filers", "lines", "battery", "wait-worker", "reply-timeout", "drain", "fake-worker", "fake-concurrency", "fake-capacity", "seed"];
 const NUMERIC = new Set(["guests", "duration", "spread", "think-min", "think-max", "interval", "jitter", "talk-every", "filers", "wait-worker", "reply-timeout", "drain", "fake-worker", "fake-concurrency", "fake-capacity", "seed"]);
 const valueErrors = valueProblems(argv, VALUED, NUMERIC);
 if (valueErrors.length > 0) usage(valueErrors.join("\n"));
@@ -177,7 +178,9 @@ const red = (s: string) => (color ? `\u001b[31m${s}\u001b[0m` : s);
 // ------------------------------------------------------------------ the show's text, read at runtime
 
 const cast = castLines(readFileSync(join(SHOW, "cast/trabolta.loom"), "utf8"), CHARACTER);
-const personaText = readFileSync(join(SHOW, "trabolta.persona.md"), "utf8");
+// (wave 42d) `--persona <file>`: the persona the worker voices, when it runs
+// from another checkout (its fallback pools are then this run's fallbacks).
+const personaText = readFileSync(arg("persona") ?? join(SHOW, "trabolta.persona.md"), "utf8");
 const canned = cannedText(cast, personaCanned(personaText));
 const outside = personaOutside(personaText);
 const secrets = new SecretBook();

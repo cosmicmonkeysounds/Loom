@@ -295,6 +295,7 @@ always asks y/N (`--yes` counts only on a scratch server).
 | `--talk-every 30`, `--filers <n>` | Mixed: Clippy's next canned line through `POST /api/mod/talk` while a talk scene is on and his last answer isn't owed (skipped with a note otherwise); `n` guests (default a fifth) file one 📝 guess each when a hunt is open, each a ruling he is asked for |
 | `--lines <file.json>` | The guests' lines (a JSON list, or `{lines: [...]}`) instead of the built-in pool of ~150 (`lib/load-lines.ts`) |
 | `--battery <file.json>` | Run a battery instead of a scenario (below) |
+| `--persona <file>` | The persona the worker voices (default the show's `trabolta.persona.md` in this checkout): its `fallback:` and every `fallbacks:` pool (by stage, by intent, by situation) are what the run counts as fallbacks. Point it at the worker's checkout when the driver runs from another |
 | `--wait-worker 120` | Seconds to wait for a worker voicing him before the lines start (a run without one gets hold lines, and says so) |
 | `--fake-worker <ms>` | The stand-in worker: each request answered after `ms` with an in-world line, `--fake-concurrency 1` at a time (the house worker's one generation slot), each ruling with "not the same"; `--fake-capacity <n>` sends wave 42's `&capacity=n` handshake (an older server ignores it). It stays off when a worker already voices him |
 | `--seed 42` | The lines and the timings repeat for a seed |
