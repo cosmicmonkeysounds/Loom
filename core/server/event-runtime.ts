@@ -3573,14 +3573,15 @@ export class EventRuntime {
    * Wave 42b (B2): tell a DM thread where it stands in a windowed worker's
    * line (`agentWait {channel, audience, character, state, position?,
    * etaS?}`), to the same audience as its typing frames. Never for a public
-   * talk thread (the hub never asks; this is the belt). Memory only: a
-   * reconnecting stream gets its threads' current waits after `history`
-   * (`replayAgentWaits`).
+   * talk thread (the hub never asks; this is the belt), never for a lean
+   * house tool (it never reads them, and a burst sends several a second).
+   * Memory only: a reconnecting stream gets its threads' current waits
+   * after `history` (`replayAgentWaits`).
    */
   private pushAgentWait(thread: AgentThread, wait: AgentLineWait): void {
     if (thread.public === true) return;
     const frame = EventRuntime.agentWaitFrame(thread, wait);
-    for (const c of this.clients) if (this.seesAgentThread(c, thread)) sseSend(c.res, "agentWait", frame);
+    for (const c of this.clients) if (c.lean !== true && this.seesAgentThread(c, thread)) sseSend(c.res, "agentWait", frame);
   }
 
   /** A stream (re)opened: the waits of the threads it may see, as they
