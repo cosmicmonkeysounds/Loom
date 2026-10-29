@@ -86,6 +86,12 @@ def test_check_only_lights_reports_the_broker_z2m_and_unknown_devices(tmp_path, 
     monkeypatch.setattr(lights_module, "probe_broker", lambda cfg: (False, [{"friendly": "other"}]))
     assert cli.main(["check", "--config", c, "--only", "lights"]) == 3
     err = capsys.readouterr().err
-    assert "Zigbee2MQTT is not online" in err and "no Zigbee2MQTT device or group named 'server_room_rgb'" in err
+    assert "check failed: Zigbee2MQTT is not online" in err and "no Zigbee2MQTT device or group named 'server_room_rgb'" in err
+    # An unpaired bulb only warns: the job must install before pairing (pairing goes through it).
+    monkeypatch.setattr(lights_module, "probe_broker", lambda cfg: (True, [{"friendly": "other"}]))
+    assert cli.main(["check", "--config", c, "--only", "lights"]) == 0
+    err = capsys.readouterr().err
+    assert "warning: fixture rgb: no Zigbee2MQTT device or group named 'server_room_rgb'" in err and "check failed" not in err
     monkeypatch.setattr(lights_module, "probe_broker", lambda cfg: (True, [{"friendly": "server_room_rgb"}]))
     assert cli.main(["check", "--config", c, "--only", "lights"]) == 0
+    assert "no Zigbee2MQTT device" not in capsys.readouterr().err
