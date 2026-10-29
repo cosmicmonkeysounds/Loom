@@ -11,6 +11,7 @@ import { Sim, type SimEvent } from "../src/runtime/sim/index.ts";
 import { ChatStore, composeGuestMessages, type ChatMessage } from "../server/chat.ts";
 import { notePress } from "../server/views.ts";
 import { ScreenWatch } from "../server/routes/screen.ts";
+import { computeRecap } from "../server/recap.ts";
 
 const SRC = scenarioSource("trapped-in-the-internet");
 const SLOW = 120_000;
@@ -263,5 +264,27 @@ describe("wave 45: the TV's Bathroom Report slide (the screen state)", () => {
     one.press("bathroom_report");
     const w1 = new ScreenWatch({ now: () => 10_000 });
     expect(w1.poll(one.sim, WHO, () => false).night.bathroom).toMatchObject({ goers: 1, most: "Calculator", least: null, least_s: 0 });
+  });
+});
+
+describe("wave 45: the director's recap", () => {
+  it("lists minutes (an open trip up to now) and switches off the story's counters, and who never went", { timeout: SLOW }, () => {
+    const n = new Night();
+    n.upload("g1", "Calculator");
+    n.upload("g2", "Notepad");
+    n.upload("g3", "Minesweeper");
+    n.trip("g1", 300);
+    n.trip("g1", 70);
+    n.press("go to the bathroom", "g2");
+    n.advance(130);
+    const r = computeRecap(n.sim);
+    expect(r.lists.bathroomMinutes.map((x) => [x.name, x.value, x.rank])).toEqual([["Calculator", 6, 1], ["Notepad", 2, 2], ["Minesweeper", 0, 3]]);
+    expect(r.lists.bathroomSwitches.map((x) => [x.name, x.value])).toEqual([["Calculator", 4], ["Notepad", 1], ["Minesweeper", 0]]);
+    expect(r.lists.bathroom.find((x) => x.id === "g2")?.value).toBe(1);
+    expect(r.totals.bathroomMinutes).toBe(8);
+    expect(r.bathroomNever).toEqual([{ id: "g3", name: "Minesweeper" }]);
+    expect(r.text).toContain("Minutes in Bathroom Mode:\n  1. Calculator — 6\n  2. Notepad — 2");
+    expect(r.text).toContain("Never went to the bathroom (−5 trust): Minesweeper");
+    expect(r.text).toContain("8 bathroom minutes");
   });
 });

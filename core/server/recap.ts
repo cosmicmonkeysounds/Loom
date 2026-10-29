@@ -35,6 +35,12 @@
 //!   `back from the bathroom` or when the story clears `<who>.afk` (the
 //!   show's 15-minute timeout fires no signal). A trip count, not minutes
 //!   (the journal has no `at`).
+//! - **bathroomMinutes** / **bathroomSwitches** (wave 45) — off the story's
+//!   own counters (`bath_s` plus an open trip up to `Time.elapsed`, rounded
+//!   to the nearest minute; `bath_presses`, the on / off switches), the
+//!   same numbers G13 🚻 The Bathroom Report reads. **bathroomNever** —
+//!   the programs with no trip (`bath_trips` 0), who lose 5 trust at G1.
+//!   All three are empty / 0 on a story without the counters.
 //! - **factions** — every declared group with its members, biggest first.
 //! - **duck** — the Golden Duck Speedrun (G8): each program's fastest find
 //!   in the reinstallation games, fastest first, off the `SpatialHub`'s run
@@ -100,7 +106,7 @@ export interface RecapFaction {
   members: Array<{ id: string; name: string }>;
 }
 
-export const RECAP_LISTS = ["trust", "truths", "lies", "internetVisits", "codex", "quests", "truthcoin", "shares", "chess", "bathroom"] as const;
+export const RECAP_LISTS = ["trust", "truths", "lies", "internetVisits", "codex", "quests", "truthcoin", "shares", "chess", "bathroom", "bathroomMinutes", "bathroomSwitches"] as const;
 export type RecapList = (typeof RECAP_LISTS)[number];
 
 export interface Recap {
@@ -117,6 +123,8 @@ export interface Recap {
     shares: number;
     chessWins: number;
     bathroomTrips: number;
+    /** Wave 45: minutes in Bathroom Mode, all together (whole, rounded). */
+    bathroomMinutes: number;
   };
   lists: Record<RecapList, RecapRow[]>;
   /** Everyone who played the King at chess, most wins first. */
@@ -124,6 +132,8 @@ export interface Recap {
   /** The Golden Duck Speedrun, fastest first (empty: nobody found it). */
   duck: RecapDuckRow[];
   factions: RecapFaction[];
+  /** Wave 45: the programs who never went (no Bathroom Mode trip), by name. */
+  bathroomNever: Array<{ id: string; name: string }>;
   /** Paste-ready text: top 5 of each list (bottom 3 for trust as well). */
   text: string;
 }
@@ -139,6 +149,8 @@ const LIST_TITLES: Record<RecapList, string> = {
   shares: "Codex shares",
   chess: "Chess against the King",
   bathroom: "Bathroom trips",
+  bathroomMinutes: "Minutes in Bathroom Mode",
+  bathroomSwitches: "Bathroom Mode switches (on and off)",
 };
 
 function num(sim: Sim, path: string): number | null {
@@ -286,8 +298,11 @@ export function computeRecap(sim: Sim, opts: RecapOptions = {}): Recap {
     RecapList,
     Array<Omit<RecapRow, "rank">>
   >;
-  const totals = { liesAccepted: 0, truthsAccepted: 0, internetVisits: 0, codexHeld: 0, questsDone: 0, shares: 0, chessWins: 0, bathroomTrips: 0 };
+  const totals = { liesAccepted: 0, truthsAccepted: 0, internetVisits: 0, codexHeld: 0, questsDone: 0, shares: 0, chessWins: 0, bathroomTrips: 0, bathroomMinutes: 0 };
   const chessGames: RecapChessRow[] = [];
+  const bathroomNever: Recap["bathroomNever"] = [];
+  const elapsed = num(sim, "Time.elapsed") ?? 0;
+  let bathSeconds = 0;
   for (const p of sim.persons.values()) {
     const base = { id: p.id, name: p.name, persona: personas.has(p.id) };
     const lied = Math.max(0, (lies.get(p.id) ?? 0) - unsettledLies(sim, p.id));
@@ -308,6 +323,14 @@ export function computeRecap(sim: Sim, opts: RecapOptions = {}): Recap {
     lists.shares.push({ ...base, value: shared });
     lists.chess.push({ ...base, value: games?.won ?? 0 });
     lists.bathroom.push({ ...base, value: trips });
+    // Wave 45: the story's own counters (G13 reads the same).
+    const bathS = Math.max(0, (num(sim, `${p.id}.bath_s`) ?? 0) + (num(sim, `${p.id}.bath_open`) === 1 ? elapsed - (num(sim, `${p.id}.afk_since`) ?? elapsed) : 0));
+    lists.bathroomMinutes.push({ ...base, value: Math.round(bathS / 60) });
+    lists.bathroomSwitches.push({ ...base, value: num(sim, `${p.id}.bath_presses`) ?? 0 });
+    // At the party (cleared, not gone, not a persona), as the G1 penalty reads it.
+    const here = display(sim.world.get(`${p.id}.cleared`)) === "true" && display(sim.world.get(`${p.id}.gone`)) !== "true" && !base.persona;
+    if (here && num(sim, `${p.id}.bath_trips`) === 0) bathroomNever.push({ id: p.id, name: p.name });
+    bathSeconds += bathS;
     if (games !== undefined) chessGames.push({ ...base, ...games });
     totals.liesAccepted += lied;
     totals.truthsAccepted += Math.max(0, accepted - lied);
@@ -318,6 +341,7 @@ export function computeRecap(sim: Sim, opts: RecapOptions = {}): Recap {
     totals.chessWins += games?.won ?? 0;
     totals.bathroomTrips += trips;
   }
+  totals.bathroomMinutes = Math.round(bathSeconds / 60);
   const ranked = Object.fromEntries(RECAP_LISTS.map((k) => [k, rank(lists[k])])) as Record<RecapList, RecapRow[]>;
 
   const factions: RecapFaction[] = [...sim.model.factions.values()]
@@ -341,6 +365,7 @@ export function computeRecap(sim: Sim, opts: RecapOptions = {}): Recap {
     chessGames: chessGames.sort((a, b) => b.won - a.won || a.lost - b.lost || b.drawn - a.drawn || a.name.localeCompare(b.name)),
     duck: duckBoard(sim, opts.duckRuns ?? [], personas),
     factions,
+    bathroomNever,
   };
   return { ...recap, text: recapText(recap) };
 }
@@ -369,7 +394,7 @@ export function recapText(r: Omit<Recap, "text">): string {
   out.push(`RECAP — ${r.title}`);
   out.push(`${r.programs} programs${r.ending ? ` · ending: ${r.ending}` : ""}`);
   out.push(
-    `Totals: ${r.totals.truthsAccepted} truths · ${r.totals.liesAccepted} lies accepted · ${r.totals.internetVisits} Internet trips · ${r.totals.codexHeld} codex entries · ${r.totals.questsDone} quests done · ${r.totals.shares} shares · ${r.totals.chessWins} chess wins · ${r.totals.bathroomTrips} bathroom trips`,
+    `Totals: ${r.totals.truthsAccepted} truths · ${r.totals.liesAccepted} lies accepted · ${r.totals.internetVisits} Internet trips · ${r.totals.codexHeld} codex entries · ${r.totals.questsDone} quests done · ${r.totals.shares} shares · ${r.totals.chessWins} chess wins · ${r.totals.bathroomTrips} bathroom trips · ${r.totals.bathroomMinutes} bathroom minutes`,
   );
   for (const k of RECAP_LISTS) {
     if (k === "chess") {
@@ -396,6 +421,11 @@ export function recapText(r: Omit<Recap, "text">): string {
       out.push("Least trusted:");
       out.push(line(least));
     }
+  }
+  // Wave 45: who never went (−5 trust at G1); none on a story without the counters.
+  if (r.bathroomNever.length > 0) {
+    out.push("");
+    out.push(`Never went to the bathroom (−5 trust): ${r.bathroomNever.map((x) => x.name).join(", ")}`);
   }
   out.push("");
   out.push("Golden Duck Speedrun (fastest find):");
