@@ -165,6 +165,14 @@ export const GUEST_LINES: readonly string[] = [
   "Are you listening to everything we say?",
   "Can you make the lights flicker? Just once?",
   "Will you remember tonight after it's over?",
+  "What does a sole owner and founder actually do all day?",
+  "Is Clippy allowed to say no to you?",
+  "If I find you ten facts, can I go home early?",
+  "Why do your dialog boxes always have an OK button and never a No?",
+  "What did the computer look like before you moved in?",
+  "Is it true you count everything? Count me.",
+  "Do you sleep, or just go into standby?",
+  "What's the one fact you want most tonight?",
 ];
 
 /** A guest's next line: from `pool`, never the same as the guest's last
@@ -175,7 +183,7 @@ export function nextLine(pool: readonly string[], r: () => number, last: string 
     const line = pool[Math.floor(r() * pool.length)]!;
     if (line !== last || pool.length === 1) return line;
   }
-  return pool[0]!;
+  return pool.find((l) => l !== last) ?? pool[0]!;
 }
 
 /** A `--lines` file: a JSON list of strings, or `{lines: [...]}`. Null when
