@@ -19,6 +19,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import { AGENT_CAPACITY_MAX, AGENT_JUDGE_AGE_MS, AgentHub, agentCapacityOf, type AgentJudgeRequest, type AgentRequest, type AgentThread, type AgentWorker } from "../server/agents.ts";
 import type { ChatMessage } from "../server/chat.ts";
 import { EventRuntime } from "../server/event-runtime.ts";
+import { vBool } from "../src/runtime/expr.ts";
 import { Store } from "../server/store.ts";
 import type { ModView } from "../server/views.ts";
 
@@ -49,6 +50,10 @@ function harness(opts: HarnessOpts = {}) {
   let builds = 0;
   const lines = new Map<string, string[]>();
   const heart = new Set<string>();
+  /** Threads whose story moved on: `build` finds nothing left to answer. */
+  const gone = new Set<string>();
+  /** The hold and busy lines as posted: `hold g-1 <the line it answers>`. */
+  const posted: string[] = [];
   const typing: Array<[string, boolean]> = [];
   const held: string[] = [];
   const busy: string[] = [];
@@ -56,6 +61,7 @@ function harness(opts: HarnessOpts = {}) {
   const hub = new AgentHub({
     build: (thread, id) => {
       builds += 1;
+      if (gone.has(thread.audience[0]!)) return null;
       const said = lines.get(thread.audience[0]!) ?? [];
       return {
         id,
@@ -72,10 +78,12 @@ function harness(opts: HarnessOpts = {}) {
     typing: (thread, on) => typing.push([thread.audience[0]!, on]),
     hold: (req) => {
       held.push(who(req));
+      posted.push(`hold ${who(req)} ${req.text}`);
       return true;
     },
     busy: (req) => {
       busy.push(who(req));
+      posted.push(`busy ${who(req)} ${req.text}`);
       return true;
     },
     stalled: (w, waiting) => stalls.push({ name: w.name, waiting }),
@@ -119,10 +127,16 @@ function harness(opts: HarnessOpts = {}) {
       hub.sweep();
     }
   };
-  return { hub, worker, say, openOf, answer, q, run, typing, held, busy, stalls, heart, builds: () => builds, now: () => clock };
+  /** The event paused for `ms` (no sweeps), then resumed: the hub's `shift`. */
+  const pause = (ms: number) => {
+    const at = clock;
+    clock += ms;
+    hub.shift(at, clock);
+  };
+  return { hub, worker, say, openOf, answer, q, run, pause, typing, held, busy, posted, stalls, heart, gone, builds: () => builds, now: () => clock };
 }
 
-const RULING = { character: "Trabolta", filing: { id: "g-9:Q1", person: "g-9", name: "Ada", question: "Q1" }, question: { id: "Q1", text: "Who?" }, key: { answer: "Mister Pickles", aliases: [] }, answer: "Mr Pickels", confidence: 100, near: "Mister Pickles" };
+const RULING = { character: "Trabolta", filing: { id: "g-9:Q1", person: "g-9", name: "Ada", question: "Q1" }, question: { id: "Q1", text: "Who?" }, key: { answer: "Captain Teacup", aliases: [] }, answer: "Capt Teacupp", confidence: 100, near: "Captain Teacup" };
 
 describe("capacity= (C1)", () => {
   it("parses a whole number 1..16; anything else is null (legacy)", () => {
@@ -564,6 +578,143 @@ describe("rulings and letters in windowed mode (C5)", () => {
   });
 });
 
+describe("the review's fixes (wave 42)", () => {
+  it("a stall clearing pumps: an aged ruling takes the freed slot before the voice queue", () => {
+    const h = harness();
+    const a = h.worker("laptop", 1);
+    h.hub.attach(a.w);
+    h.say(0);
+    h.say(1);
+    const rid = h.hub.judge(RULING)!;
+    expect(rid).not.toBeNull();
+    h.run(61_000);
+    expect(h.q().stalled).toBe(true);
+    h.answer(0, "laptop"); // clears the stall; the ruling has waited 61 s
+    expect(a.judges().map((j) => j.id)).toEqual([rid]);
+    expect(a.sent()).toEqual(["g-0"]);
+  });
+
+  it("an attach pumps too: an aged ruling asks the new worker's slot first", () => {
+    const h = harness();
+    const a = h.worker("a", 1);
+    h.hub.attach(a.w);
+    h.say(0);
+    h.say(1);
+    const rid = h.hub.judge(RULING)!;
+    h.run(AGENT_JUDGE_AGE_MS + 1000);
+    const b = h.worker("b", 1);
+    h.hub.attach(b.w);
+    expect(b.judges().map((j) => j.id)).toEqual([rid]);
+    expect(b.sent()).toEqual([]);
+  });
+
+  it("a worker that answers inside its send never gets a request twice, and typing ends off", () => {
+    const h = harness();
+    for (let n = 0; n < 3; n++) h.say(n); // nobody online: all wait
+    const sent: string[] = [];
+    const quick: AgentWorker = {
+      id: "quick",
+      name: "quick",
+      characters: new Set(["Trabolta"]),
+      capacity: 1,
+      send: (e, d) => {
+        if (e !== "request") return;
+        const r = d as AgentRequest;
+        sent.push(who(r));
+        h.hub.settle(r.id, "quick");
+      },
+    };
+    h.hub.attach(quick);
+    expect(sent).toEqual(["g-0", "g-1", "g-2"]);
+    expect(h.hub.pending).toEqual([]);
+    for (const g of ["g-0", "g-1", "g-2"]) expect(h.typing.filter(([x]) => x === g).at(-1)).toEqual([g, false]);
+  });
+
+  it("a queued body is rebuilt before the busy and hold lines answer it, and for Run's waiting row", () => {
+    const h = harness();
+    const a = h.worker("laptop", 1);
+    h.hub.attach(a.w);
+    h.say(0); // in the slot for good
+    h.say(1, "first");
+    h.say(1, "newest");
+    const opened = h.openOf(1)!.req.at;
+    expect(h.hub.pending.find((r) => who(r) === "g-1")!.text).toBe("first"); // stale until shown
+    const row = h.hub.pendingFresh.find((r) => who(r) === "g-1")!;
+    expect(row.text).toBe("newest");
+    expect(row.at).toBe(opened); // looking never restarts the queue's max age
+    h.say(1, "newer still");
+    h.run(41_000);
+    expect(h.posted).toEqual(["busy g-1 newer still"]);
+    h.say(1, "last");
+    h.run(20_000); // 61 s: the stall's hold lines
+    expect(h.posted).toEqual(["busy g-1 newer still", "hold g-0 hi from 0", "hold g-1 last"]);
+  });
+
+  it("a queued request whose story moved on is dropped at dispatch, and the slot goes to the next", () => {
+    const h = harness();
+    const a = h.worker("laptop", 1);
+    h.hub.attach(a.w);
+    h.say(0);
+    h.say(1);
+    h.say(2);
+    h.gone.add("g-1");
+    h.answer(0, "laptop");
+    expect(h.openOf(1)).toBeNull();
+    expect(a.sent()).toEqual(["g-0", "g-2"]);
+    expect(h.typing.some(([g]) => g === "g-1")).toBe(false);
+  });
+
+  it("a windowed worker leaving with a ruling out: the ruling waits its turn again, the next worker answers voice first", () => {
+    const h = harness();
+    const a = h.worker("a", 1);
+    h.hub.attach(a.w);
+    const rid = h.hub.judge(RULING)!;
+    expect(a.judges().map((j) => j.id)).toEqual([rid]);
+    h.say(0); // waits: the ruling holds the only slot
+    expect(a.sent()).toEqual([]);
+    h.hub.detach("a");
+    const b = h.worker("b", 1);
+    h.hub.attach(b.w);
+    expect(b.sent()).toEqual(["g-0"]); // a young ruling: voice first
+    expect(b.judges()).toEqual([]);
+    h.run(AGENT_JUDGE_AGE_MS);
+    h.answer(0, "b");
+    expect(b.judges().map((j) => j.id)).toEqual([rid]);
+  });
+
+  it("a pause moves the stall clock's last answer with every other stamp", () => {
+    const h = harness();
+    const a = h.worker("laptop", 2);
+    h.hub.attach(a.w);
+    h.say(0); // stuck
+    h.say(1);
+    h.run(50_000);
+    h.answer(1, "laptop"); // back at t0 + 50 s
+    h.run(5000);
+    h.pause(10 * 60_000);
+    h.run(30_000); // 35 s of running time since that answer
+    expect(h.stalls).toEqual([]);
+    h.run(30_000); // 65 s
+    expect(h.stalls).toHaveLength(1);
+  });
+
+  it("a pause moves a queued line's stamp: the queue's max age counts running time from it", () => {
+    const h = harness();
+    const a = h.worker("laptop", 1);
+    h.hub.attach(a.w);
+    h.say(0); // wedges the slot
+    h.say(1);
+    h.run(9 * 60_000);
+    h.say(1, "still waiting");
+    h.run(30_000);
+    h.pause(20 * 60_000);
+    h.run(2 * 60_000); // 2.5 min of running time since its last line
+    expect(h.openOf(1)).not.toBeNull();
+    h.run(8 * 60_000);
+    expect(h.openOf(1)).toBeNull();
+  });
+});
+
 // ---------------------------------------------------------------------------
 // EventRuntime: the stream's capacity=, the queue readout
 // ---------------------------------------------------------------------------
@@ -584,6 +735,7 @@ CHARACTER Trabolta
   mind: external
   hold: "Jean Trabolta is not responding."
   busy: "Trabolta is processing a high volume of requests. Please hold."
+  mood: 0 to 10 = 5
 `;
 const CODES = { event: "EVT444", prime: "PRM444", mod: "MOD444" };
 const dirs: string[] = [];
@@ -610,6 +762,9 @@ function fakeRes() {
   const res = {
     statusCode: 0,
     body: "",
+    setHeader() {
+      return res;
+    },
     writeHead(s: number) {
       res.statusCode = s;
       return res;
@@ -722,5 +877,94 @@ describe("EventRuntime — the stream's capacity= and the window", () => {
       r.w.close();
       r.rt.dispose();
     }
+  });
+
+  it("a guest who reaches the heart while queued is ranked by where he stands now, not where he opened", async () => {
+    const r = await room(3, "&capacity=1");
+    await r.say(0, "hello?");
+    await r.say(1, "me next?");
+    await r.say(2, "and me");
+    // Guest 2 walks to the heart while he waits (the heart terminal sets it).
+    r.rt.liveSim!.world.set(`${r.people[2]!.id}.at_the_heart`, vBool(true));
+    expect((await call(r.rt, "POST", "/api/agent/reply", { id: r.requests()[0]!.id, say: "Next." }, { moderator: true })).status).toBe(200);
+    expect(r.requests().map((q) => q.speaker.id)).toEqual([r.people[0]!.id, r.people[2]!.id]);
+    r.w.close();
+    r.rt.dispose();
+  });
+
+  it("the next queued body is built after the reply's adjustments land: it carries his new mood", async () => {
+    const r = await room(2, "&capacity=1");
+    await r.say(0, "hello?");
+    await r.say(1, "me too?");
+    const first = r.requests()[0]!;
+    expect(first.self.vars["mood"]).toBe("5");
+    const reply = await call(r.rt, "POST", "/api/agent/reply", { id: first.id, say: "Fine.", adjust: { mood: 3 } }, { moderator: true });
+    expect(reply.json["applied"]).toEqual({ mood: 8 });
+    const second = r.requests()[1]!;
+    expect(second.speaker.id).toBe(r.people[1]!.id);
+    expect(second.self.vars["mood"]).toBe("8");
+    r.w.close();
+    r.rt.dispose();
+  });
+
+  it("Run's waiting row reads a queued guest's newest line", async () => {
+    const r = await room(2, "&capacity=1");
+    await r.say(0, "hello?");
+    await r.say(1, "first");
+    await r.say(1, "newest");
+    const host = JSON.stringify((await call(r.rt, "GET", "/api/state?host=1", {}, { moderator: true })).json);
+    expect(host).toContain(`"text":"newest"`);
+    expect(host).not.toContain(`"text":"first"`);
+    r.w.close();
+    r.rt.dispose();
+  });
+});
+
+const LETTER_STORY = `# Letters
+start: Boot
+
+LOCATION Lobby
+
+ROLE Program
+  secret: inbox
+  inbox: text = "none"
+  when someone joins:
+    -> Ask
+
+CHARACTER The Writer
+  listed: true
+  mind: external
+
+== Boot
+  setting: Lobby
+Nothing yet.
+
+== Ask
+  setting: Lobby
+show email "Your inbox, optional." to program with skip: "No thanks"
+`;
+
+describe("EventRuntime — a letter holds a slot", () => {
+  it("a voice request waits while a letter holds the only slot, and goes out when the draft comes back", async () => {
+    const d = mkdtempSync(join(tmpdir(), "loom-agents-w-"));
+    dirs.push(d);
+    const rt = new EventRuntime({ eventId: "evt", store: new Store(d), codes: CODES, scenarioName: "letters", scenarioSource: LETTER_STORY, joinBase: () => "http://localhost" });
+    rt.openDoors();
+    const g = await call(rt, "POST", "/api/guest/register", { name: "Calculator", passcode: CODES.event });
+    const token = g.json["token"] as string;
+    const id = g.json["id"] as string;
+    const card = rt.chatHistoryFor(id).find((x) => x.kind === "widget" && x.widget?.kind === "email")!;
+    expect((await call(rt, "POST", "/api/guest/widget", { seq: card.seq, result: { email: "calc@example.com" } }, { token })).status).toBe(200);
+    const w = await call(rt, "GET", `/api/agent/stream?characters=${encodeURIComponent("The Writer")}&name=laptop&capacity=1`, {}, { moderator: true });
+    const hello = w.res.frames().find(([e]) => e === "hello")![1] as { worker: string };
+    expect((await call(rt, "POST", "/api/mod/letters/write", {}, { moderator: true })).json["queued"]).toBe(1);
+    const frame = w.res.frames().find(([e]) => e === "letter")![1] as { id: string };
+    expect((await call(rt, "POST", "/api/guest/say", { channel: "dm:The Writer", text: "hello?" }, { token })).status).toBe(200);
+    const requests = () => w.res.frames().filter(([e]) => e === "request");
+    expect(requests()).toHaveLength(0); // the letter holds the slot
+    expect((await call(rt, "POST", "/api/agent/letter", { id: frame.id, worker: hello.worker, text: "Dear Calculator,\n\nThank you.\n\nJean Trabolta" }, { moderator: true })).status).toBe(200);
+    expect(requests()).toHaveLength(1);
+    w.close();
+    rt.dispose();
   });
 });

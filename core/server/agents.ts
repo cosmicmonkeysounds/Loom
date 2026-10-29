@@ -60,7 +60,10 @@
 //! oldest dispatch. The busy line goes to a request still in the hub's
 //! queue at `busyAfterMs` while a worker answers. A ruling takes a free
 //! slot when no voice request waits, or once it has waited `judgeAgeMs`
-//! (15 s); a letter, when a slot is free and no voice request waits.
+//! (15 s); a letter, when a slot is free and no voice request waits. A
+//! queued body a line made stale is rebuilt before it is shown (the hold
+//! and busy lines, `pendingFresh` for Run), and the runtime settles a
+//! reply with `defer` so the next body is built after that reply's effects.
 //!
 //! Within one stall a thread hears the hold line once, however many
 //! requests the guest's lines open meanwhile (a given-up request's thread
@@ -922,6 +925,11 @@ interface OpenRequest {
    *  so the queue's max age reads this as the legacy rebuild's `req.at`
    *  would. Null when no line came while it was queued that way. */
   lineAt: number | null;
+  /** Wave 42 (C2): a line came while it waited in the hub's queue and the
+   *  body does not carry it yet. Whatever shows the body before dispatch
+   *  (the hold and busy lines' reply-to, Run's waiting row) rebuilds it
+   *  first (`refresh`); dispatch always does. */
+  stale: boolean;
 }
 
 /**
@@ -1237,9 +1245,33 @@ export class AgentHub {
     return { queued, out, oldestMs: oldest === null ? null : Math.max(0, this.now() - oldest), stalled: voicing > 0 && stalled === voicing };
   }
 
-  /** Open requests (queued or in flight). */
+  /** Open requests (queued or in flight). A body waiting for a windowed
+   *  worker's slot may not carry the guest's newest lines yet (they ride
+   *  in at dispatch): read `pendingFresh` to show one. */
   get pending(): AgentRequest[] {
     return [...this.open.values()].map((r) => r.req);
+  }
+
+  /** Wave 42 (C2): `pending`, every stale queued body rebuilt first, so
+   *  Run's waiting row reads the guest's newest line (a host answering by
+   *  hand answers that, not the line that opened the request). A body is
+   *  rebuilt once per line said while it waits, not per read. */
+  get pendingFresh(): AgentRequest[] {
+    for (const r of this.open.values()) this.refresh(r);
+    return this.pending;
+  }
+
+  /** Wave 42 (C2): rebuild a queued body a line made stale, before anything
+   *  shows it (the hold and busy lines' reply-to, Run's waiting row) — the
+   *  newest line, as the legacy rebuild per line had it. Its `at` stays:
+   *  the queue's max age runs from the lines (`lineAt`), not from who
+   *  looked. A public talk body is left as it is (its `stage` is the scene
+   *  it was asked in, which decides whether it is still owed). */
+  private refresh(r: OpenRequest): void {
+    if (!r.stale || r.worker !== null || r.req.thread.public === true) return;
+    r.stale = false;
+    const fresh = this.o.build(r.req.thread, r.req.id);
+    if (fresh !== null) r.req = { ...fresh, at: r.req.at };
   }
 
   /** Since when request `id`'s guest has been waiting (hub ms; the queue's
@@ -1281,6 +1313,12 @@ export class AgentHub {
     this.workers.set(worker.id, worker);
     this.pruneHeld();
     this.o.presence?.();
+    // Wave 42 (C5): with a windowed worker, `pump` — an aged ruling asks
+    // for the first free slot before the voice queue fills them.
+    if (this.anyWindowed()) {
+      this.pump();
+      return;
+    }
     for (const r of this.queuedInOrder()) this.dispatch(r);
     this.pumpJudges();
   }
@@ -1383,6 +1421,7 @@ export class AgentHub {
           // built at dispatch, so a line only marks it stale (no O(chat)
           // rebuild per line while 50 guests type into a long queue).
           r.lineAt = this.now();
+          r.stale = true;
         } else if (r.worker === null) {
           // Still queued: refresh the body so the eventual answer sees the
           // whole burst (one request, not one per line).
@@ -1402,7 +1441,7 @@ export class AgentHub {
     const req = this.o.build(thread, id);
     if (req === null) return;
     const key = threadKey(thread);
-    const r: OpenRequest = { req, key, worker: null, dispatchedAt: null, dispatchSeq: 0, startedAt: null, attempts: 0, followUp: false, createdAt: this.now(), since: 0, held: held || this.heldThreads.has(key), behind: false, lineAt: null };
+    const r: OpenRequest = { req, key, worker: null, dispatchedAt: null, dispatchSeq: 0, startedAt: null, attempts: 0, followUp: false, createdAt: this.now(), since: 0, held: held || this.heldThreads.has(key), behind: false, lineAt: null, stale: false };
     r.since = since !== undefined && Number.isFinite(since) ? Math.min(since, r.createdAt) : r.createdAt;
     this.open.set(id, r);
     this.byThread.set(r.key, id);
@@ -1432,9 +1471,18 @@ export class AgentHub {
    * busy = the smallest share of its slots in use), and its body is built
    * now — fresh history and world, every line said while it waited —
    * unless `fresh` (`create` built it a moment ago). The rebuilt body
-   * carries whatever was said, so a follow-up mark ends there.
+   * carries whatever was said, so a follow-up mark ends there. A legacy
+   * worker beside a windowed one compares its line's length with the
+   * windowed one's share of its slots in use (0..1): the windowed slots
+   * fill first and the legacy line takes the overflow — one fleet is
+   * meant to be one mode.
    */
   private dispatch(r: OpenRequest, retryOn: string | null = null, fresh = false): void {
+    // Wave 42: `pump`, `attach` and a stall clearing walk a snapshot of the
+    // queue, and a dispatch can settle something synchronously (a worker
+    // whose `send` answers at once) that pumps again: a request already
+    // sent — or settled, or dropped — meanwhile is not sent twice.
+    if (this.open.get(r.req.id) !== r || r.worker !== null) return;
     let best: AgentWorker | null = null;
     let bestLoad = Infinity;
     for (const w of this.workers.values()) {
@@ -1460,14 +1508,17 @@ export class AgentHub {
       r.req = body;
       r.followUp = false;
       r.lineAt = null;
+      r.stale = false;
     }
     r.worker = best.id;
     r.dispatchedAt = this.now();
     r.dispatchSeq = ++this.dispatches;
     r.startedAt = null;
     r.attempts += 1;
-    best.send("request", r.req);
+    // Typing first: a worker may answer inside `send` (the settle turns it
+    // off), and the guest must not be left reading "typing" after that.
     this.o.typing?.(r.req.thread, true);
+    best.send("request", r.req);
     if (windowed) {
       // In a slot, the worker is on it now: its own reply clock (C3).
       r.startedAt = r.dispatchedAt;
@@ -1501,8 +1552,14 @@ export class AgentHub {
    * calls `line` again after committing, so the model answers the rest. Null
    * when the request is unknown / already settled (a late answer after a
    * timeout re-dispatch, or after a restart) or held by another worker.
+   *
+   * Wave 42: with `defer`, a windowed hub does not pump here — the next
+   * queued body is built at its dispatch, and the caller has yet to commit
+   * this reply's say, adjustments and acts, which that body should carry.
+   * `pumpOwed` then says the caller must call `pump` once they are in. A
+   * legacy hub pumps here as ever (its bodies were built long before).
    */
-  settle(requestId: string, workerId?: string): { req: AgentRequest; followUp: boolean } | null {
+  settle(requestId: string, workerId?: string, opts: { defer?: boolean } = {}): { req: AgentRequest; followUp: boolean; pumpOwed?: true } | null {
     const r = this.open.get(requestId);
     // Any answer shows its worker is answering — a late one the hub refuses too.
     if (r === undefined || (workerId !== undefined && r.worker !== null && r.worker !== workerId)) {
@@ -1518,6 +1575,7 @@ export class AgentHub {
     if (by !== null) this.answering(by);
     // Voice first (legacy): a worker free of voice requests rules next.
     // Wave 42: a windowed worker's freed slot takes the queue's next.
+    if (opts.defer === true && this.anyWindowed()) return { req: r.req, followUp: r.followUp, pumpOwed: true };
     this.pump();
     return { req: r.req, followUp: r.followUp };
   }
@@ -1530,7 +1588,9 @@ export class AgentHub {
     if (!this.workers.has(workerId) || !this.stalls.delete(workerId)) return;
     this.pruneHeld();
     this.o.presence?.();
-    for (const r of this.queuedInOrder()) this.dispatch(r);
+    // Wave 42 (C5): a windowed hub pumps (an aged ruling first), as on a settle.
+    if (this.anyWindowed()) this.pump();
+    else for (const r of this.queuedInOrder()) this.dispatch(r);
   }
 
   /** `workerId`'s head went unanswered `stallAfterMs`: mark it stalled, tell
@@ -1566,6 +1626,7 @@ export class AgentHub {
   private holdOnce(r: OpenRequest): void {
     if (r.held) return;
     r.held = true;
+    this.refresh(r); // wave 42: it answers the newest line
     if (this.o.hold?.(r.req) !== true) return;
     this.heard(r);
     if (r.worker !== null) return; // the worker answers the copy it holds
@@ -1683,6 +1744,7 @@ export class AgentHub {
       const waiting = windowedAny && r.worker === null && this.canAnswer(r.req.character);
       if (!behind && !waiting) continue;
       this.busyThreads.add(r.key);
+      this.refresh(r); // wave 42: it answers the newest line
       this.o.busy?.(r.req);
     }
   }
@@ -1693,6 +1755,7 @@ export class AgentHub {
     this.drop(id, r);
     if (r.held) return;
     r.held = true;
+    this.refresh(r); // wave 42: it answers the newest line
     if (this.o.hold?.(r.req) === true) this.heard(r);
   }
 
