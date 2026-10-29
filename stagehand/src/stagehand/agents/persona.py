@@ -15,7 +15,12 @@
     fallback: "…"                      # said when the model fails (else silence)
     fallbacks: {formal: ["One moment."]}  # the new voice's dead-air lines, by stage
                                        #   (a list = any stage): one this guest
-                                       #   has not heard yet, else `fallback`
+                                       #   has not heard yet, else `fallback`.
+                                       #   (wave 42d) A stage may key its lines by
+                                       #   what the guest just did: {offer: […],
+                                       #   praise: […], refuse: […], other: […]}
+                                       #   (`guards.fallback_intent`; `other`, or
+                                       #   a plain list, for the rest)
     distress: "Step out now: …"        # (wave 42c) the fixed answer to a guest in
                                        #   real distress (no model; else a built-in
                                        #   line, `voice.DISTRESS_LINE`)
@@ -226,6 +231,8 @@ class Persona:
     catchphrase_stages: tuple[str, ...] = ()
     #: The new voice's lines for nothing usable left, by stage ("" = any
     #: stage; `fallbacks:`); `guards.pick_fallback` picks one not heard yet.
+    #: (wave 42d) A stage's lines keyed by the guest's intent sit under
+    #: "<stage>.<intent>" (`FALLBACK_INTENTS`; "other" is the plain key).
     fallbacks: dict[str, tuple[str, ...]] = field(default_factory=dict)
     #: Names the new voice never says until the story has (`unsaid:`): each
     #: (name, condition), the condition read like `when:`.
@@ -513,24 +520,46 @@ def _catchphrase_stages(value: Any, stages: tuple[str, ...], source: str) -> tup
     return names
 
 
+#: (wave 42d) What a guest's last line did, for the dead-air line that
+#: answers it (`guards.fallback_intent`): offered a fact, praised him, asked
+#: for a deal / a stop / payment he refuses, or anything else ("other": the
+#: stage's plain lines).
+FALLBACK_INTENTS = ("offer", "praise", "refuse", "other")
+
+
 def _fallbacks(value: Any, stages: tuple[str, ...], secrets: Secrets, source: str) -> dict[str, tuple[str, ...]]:
+    """`fallbacks:` as {stage: lines}, a stage's intent pools as
+    {"<stage>.<intent>": lines} ("other" stays the plain stage key). A
+    stage's value is a list (every intent), or (wave 42d) a mapping of
+    intent → list."""
     if value in (None, ""):
         return {}
     raw = {"": value} if isinstance(value, list) else value
     if not isinstance(raw, dict):
         raise ConfigError(f"{source}: fallbacks: expected a list of lines, or a mapping of stage → lines")
     out: dict[str, tuple[str, ...]] = {}
+
+    def put(key: str, lines: Any, where: str) -> None:
+        if isinstance(lines, str):
+            lines = [lines]
+        if not isinstance(lines, list) or not all(isinstance(x, str) and x.strip() for x in lines):
+            raise ConfigError(f"{source}: fallbacks.{where}: expected a list of lines")
+        if any(secrets.leaks(x) for x in lines):
+            raise ConfigError(f"{source}: fallbacks.{where}: carries a secrets.never word")
+        out[key] = tuple(" ".join(x.split()) for x in lines)
+
     for key, lines in raw.items():
         stage = str(key).strip()
         if stage and stages and stage not in stages:
             raise ConfigError(f"{source}: fallbacks.{stage}: not a declared stage ({', '.join(stages)})")
-        if isinstance(lines, str):
-            lines = [lines]
-        if not isinstance(lines, list) or not all(isinstance(x, str) and x.strip() for x in lines):
-            raise ConfigError(f"{source}: fallbacks.{stage or '(any)'}: expected a list of lines")
-        if any(secrets.leaks(x) for x in lines):
-            raise ConfigError(f"{source}: fallbacks.{stage or '(any)'}: carries a secrets.never word")
-        out[stage] = tuple(" ".join(x.split()) for x in lines)
+        if not isinstance(lines, dict):
+            put(stage, lines, stage or "(any)")
+            continue
+        for ikey, pool in lines.items():
+            intent = str(ikey).strip()
+            if intent not in FALLBACK_INTENTS:
+                raise ConfigError(f"{source}: fallbacks.{stage or '(any)'}.{intent}: not an intent ({', '.join(FALLBACK_INTENTS)})")
+            put(stage if intent == "other" else f"{stage}.{intent}", pool, f"{stage or '(any)'}.{intent}")
     return out
 
 
