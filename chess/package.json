@@ -4,7 +4,7 @@
   "private": true,
   "license": "MIT",
   "type": "module",
-  "description": "The King's chess: the rules (a thin wrapper over chess.js), the King's AI (negamax, one profile per stage of his shared health bar, time-sliced for old tablets) and the tap-tap board. Played at the wall terminal outside the server-room door.",
+  "description": "The King's chess: the rules (a thin wrapper over chess.js), the King's AI (negamax, one profile per stage of his shared health bar, time-sliced for old tablets) and the board (drag a piece, or tap then tap). Played at the wall terminal outside the server-room door.",
   "exports": {
     ".": "./src/index.ts",
     "./stage": "./src/stage.ts",
