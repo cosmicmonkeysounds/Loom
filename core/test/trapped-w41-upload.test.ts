@@ -39,6 +39,7 @@ describe("wave 41: the problem form's write-in (C1)", () => {
     const card = widgets(other).find((w) => w.widget === "answer")!;
     expect(card.text).toBe("Which problem did the invitation promise to solve?");
     expect(card.params["max"]).toBe("60");
+    expect(card.params["stage"]).toBe("true"); // on the arrival stage, not the tray (play cutscene.tsx)
     expect(card.params["question"]).toBeUndefined(); // never judged by the facts book
     // No deposit menu, no inbox, no pass while the write-in is open.
     expect(sim.pendingChoiceFor("g1")).toBeNull();

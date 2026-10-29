@@ -84,7 +84,8 @@ else:
   * Something else.
     set program.human_problem = "other"
     Task Manager: Something else. The form has a box for that. One line. Per the agenda.
-    show answer "Which problem did the invitation promise to solve?" to program with max: 60, button: "File it", placeholder: "In your own words"
+    // `stage: true`: on the arrival stage (play cutscene.tsx), not the tray.
+    show answer "Which problem did the invitation promise to solve?" to program with max: 60, button: "File it", placeholder: "In your own words", stage: true
 
 // The rest of the upload (wave 41: its own beat, so the write-in can wait
 // for its answer). Ends with the optional inbox (C2: the address goes to
@@ -100,7 +101,8 @@ Task Manager: To complete the installation you must leave one thing behind. Plac
   // so the facts book never judges it); main.loom's `when answer answered`
   // keeps the text in the secret `left_behind_text` and deals the pass.
   Task Manager: Deposited. Now tell me what it was, for the record. It will be looked after.
-  show answer "What did you leave in the deposit box?" to program with max: 80, button: "Leave it behind"
+  // Wave 41: `stage: true`, so the arrival stage shows it (it waited in the tray before).
+  show answer "What did you leave in the deposit box?" to program with max: 80, button: "Leave it behind", stage: true
 * I have nothing to leave.
   set program.left_behind = "nothing"
   set program.doubt += 5

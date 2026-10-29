@@ -601,7 +601,7 @@ describe("Trapped in the Internet — the whole night", () => {
     // the answer is kept in the secret slot and the pass comes with it.
     const card = widgets(dep).find((w) => w.widget === "answer")!;
     expect(card.text).toBe("What did you leave in the deposit box?");
-    expect(card.params).toEqual({ max: "80", button: "Leave it behind" });
+    expect(card.params).toEqual({ max: "80", button: "Leave it behind", stage: "true" });
     expect(widgets(dep).some((w) => w.widget === "pass")).toBe(false);
     const typed = sim.signal("answer answered", "g1", { text: "my car keys", card: 1 });
     expect(v(sim, "g1.left_behind_text")).toBe("my car keys");
