@@ -66,6 +66,16 @@ function Test-Broker {
     } else {
         Write-Bad ('config ' + $conf + ' is not the house one: run .\setup-mosquitto.ps1 elevated')
     }
+    $passwd = Join-Path $DataDir 'passwd'
+    if (-not (Test-Path -LiteralPath $passwd)) {
+        Write-Bad ('no password file ' + $passwd + ': run .\setup-mosquitto.ps1 elevated')
+    } else {
+        $sids = @((Get-Acl -LiteralPath $passwd).Access | ForEach-Object {
+            try { $_.IdentityReference.Translate([Security.Principal.SecurityIdentifier]).Value } catch { '' }
+        })
+        if ($sids -contains 'S-1-5-18') { Write-Ok ('password file ' + $passwd + ' readable by the service') }
+        else { Write-Bad ('password file ' + $passwd + ' is not readable by SYSTEM (the service exits at start): run .\setup-mosquitto.ps1 elevated') }
+    }
 
     if (Test-Port '127.0.0.1' 1883) { Write-Ok '127.0.0.1:1883 (anonymous, this PC) answers' } else { Write-Bad '127.0.0.1:1883 does not answer' }
     $lan = @(Get-LanAddresses)
@@ -119,6 +129,13 @@ if ($ResetPassword -or -not (Test-Path -LiteralPath $passwd)) {
     }
 } else {
     Write-Host ('keeping the password file ' + $passwd + ' (-ResetPassword makes a new one)')
+}
+# mosquitto_passwd 2.1 leaves the file readable by its creator only; the
+# service runs as LocalSystem and exits silently when it cannot read it.
+& icacls.exe $passwd /grant '*S-1-5-18:(R)' | Out-Null
+if ($LASTEXITCODE -ne 0) {
+    Write-Host ('icacls could not let the service (SYSTEM) read ' + $passwd) -ForegroundColor Red
+    exit 1
 }
 
 $conf = Join-Path $script:MosquittoDir 'mosquitto.conf'

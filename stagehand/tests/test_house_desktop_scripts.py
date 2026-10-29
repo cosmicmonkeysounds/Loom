@@ -118,6 +118,13 @@ def test_each_script_has_help_a_param_block_and_the_helpers(path):
     assert '. "$PSScriptRoot\\common.ps1"' in text
 
 
+def test_setup_mosquitto_lets_the_service_read_the_password_file():
+    # The service runs as LocalSystem; mosquitto_passwd 2.1 locks the file to its creator.
+    text = (DIR / "setup-mosquitto.ps1").read_text(encoding="utf-8")
+    assert "icacls.exe $passwd /grant '*S-1-5-18:(R)'" in text
+    assert "'S-1-5-18'" in text  # -Check flags a file SYSTEM cannot read
+
+
 def test_the_tokenizer_blanks_strings_and_comments():
     code = code_only("$a = 'x ?? y' # && here\n$b = \"q `\" (\"\n<# { #>\n@'\n}\n'@\n")
     assert "??" not in code and "&&" not in code and "(" not in code and "{" not in code and "}" not in code
