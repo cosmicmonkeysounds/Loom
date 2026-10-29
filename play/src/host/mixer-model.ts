@@ -235,7 +235,9 @@ export const musicCalls = {
 export function musicDone(cmd: MusicCommand, answer: unknown): string {
   const router = typeof answer === "object" && answer !== null ? (answer as Record<string, unknown>)["router"] : undefined;
   const what = cmd.action === "scene" ? `▶ Scene ${cmd.scene}` : cmd.action === "next" ? (cmd.playlist !== undefined ? `⏭ Skipped ${cmd.playlist}` : "⏭ Skipped every bed") : cmd.action === "stop" ? "■ Music stopped" : "↺ Following the story";
-  return router === false ? `${what} — sent, but no router is listening (it waits a minute)` : what;
+  // The server answers the router's presence (`{online, lastSeen, name}`); a bare false is accepted too.
+  const offline = router === false || (typeof router === "object" && router !== null && (router as Record<string, unknown>)["online"] === false);
+  return offline ? `${what} — sent, but no router is listening (it waits a minute)` : what;
 }
 
 // -- what the panel draws -------------------------------------------------------

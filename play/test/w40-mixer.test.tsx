@@ -252,6 +252,8 @@ describe("which post each control makes", () => {
     ]);
     expect(musicDone(musicCalls.stop(), { ok: true, seq: 1, router: true })).toBe("■ Music stopped");
     expect(musicDone(musicCalls.next("lounge"), { ok: true, seq: 1, router: false })).toMatch(/no router is listening/u);
+    expect(musicDone(musicCalls.next(), { ok: true, seq: 2, router: { online: false, lastSeen: null, name: null } })).toMatch(/no router is listening/u);
+    expect(musicDone(musicCalls.story(), { ok: true, seq: 3, router: { online: true, lastSeen: 1, name: "desk" } })).toBe("↺ Following the story");
   });
 });
 
