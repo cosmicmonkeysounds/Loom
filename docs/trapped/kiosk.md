@@ -407,6 +407,14 @@ he is played at chess. Provision with
   strength line.**
 - **One game per pass scan.** A marked program is refused. The board is
   dealt at the bar's strength when it is dealt; **GIVE UP** takes two taps.
+- **Moving** (wave 43): drag a piece, or tap it and tap a dot. A
+  program's first game on the screen opens a three-card tutorial (SKIP on
+  every card); **? HELP** opens it again. It holds the leash.
+- **On a phone** (checked at iPhone 12 size in Safari's engine): the
+  board is measured to fill the screen in portrait or landscape and keeps
+  clear of the notch and home bar. iPhone Safari has no full-screen API:
+  for a kiosk, open the link, **Share → Add to Home Screen** and launch it
+  from there; set Auto-Lock to Never.
   The leash is 120 s with no touch (held while he thinks).
 - A game's end posts `chess won` / `chess lost` / `chess drawn`, labelled
   *Terminal · Server Door* (retried, kept across a reload for 60 s). A win
