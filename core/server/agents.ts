@@ -1526,7 +1526,7 @@ export class AgentHub {
    *  18b — a judge stall), and the queue goes to it. */
   private answering(workerId: string): void {
     this.judgeAnswered(workerId);
-    if (this.workers.has(workerId)) this.lastBack.set(workerId, this.now()); // wave 42 (C3)
+    if (this.windowed(this.workers.get(workerId))) this.lastBack.set(workerId, this.now()); // wave 42 (C3)
     if (!this.workers.has(workerId) || !this.stalls.delete(workerId)) return;
     this.pruneHeld();
     this.o.presence?.();
@@ -1828,10 +1828,18 @@ export class AgentHub {
    */
   private pumpJudges(): void {
     const judgeAge = this.o.judgeAgeMs ?? AGENT_JUDGE_AGE_MS;
-    const now = this.now();
-    /** Per character, the oldest unsent ruling's wait (FIFO: the first seen). */
-    const oldestUnsent = new Map<string, number>();
-    for (const j of this.judges.values()) if (j.worker === null && !oldestUnsent.has(j.req.character)) oldestUnsent.set(j.req.character, now - j.queuedAt);
+    /** Per character, the oldest unsent ruling's wait (FIFO: the first
+     *  seen). Read only for a windowed worker, so a legacy hub reads its
+     *  clock exactly as before. */
+    let oldestUnsent: Map<string, number> | null = null;
+    const agedFor = (character: string): boolean => {
+      if (oldestUnsent === null) {
+        const now = this.now();
+        oldestUnsent = new Map();
+        for (const j of this.judges.values()) if (j.worker === null && !oldestUnsent.has(j.req.character)) oldestUnsent.set(j.req.character, now - j.queuedAt);
+      }
+      return (oldestUnsent.get(character) ?? 0) >= judgeAge;
+    };
     for (const j of this.judges.values()) {
       if (j.worker !== null) continue;
       let best: AgentWorker | null = null;
@@ -1839,7 +1847,7 @@ export class AgentHub {
         if (!w.characters.has(j.req.character) || this.stalls.has(w.id) || this.judgeStalls.has(w.id)) continue;
         if (this.windowed(w)) {
           if (!this.hasSlot(w)) continue;
-          if (this.voiceWaitingFor(w) && (oldestUnsent.get(j.req.character) ?? 0) < judgeAge) continue;
+          if (this.voiceWaitingFor(w) && !agedFor(j.req.character)) continue;
         } else if (this.loadOf(w.id) > 0) continue; // voice first
         let out = 0;
         for (const o of this.judges.values()) if (o.worker === w.id) out += 1;
