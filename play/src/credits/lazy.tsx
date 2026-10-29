@@ -30,7 +30,7 @@ export interface Credits {
 
 export function useCredits(roll: number | undefined, clock: number | undefined): Credits {
   const [open, set] = useState<number | null>(null);
-  const first = useRef<number>();
+  const first = useRef<number | undefined>(undefined);
   if (first.current === undefined && clock !== undefined) first.current = roll ?? 0;
   return { open, set, first: first.current };
 }
