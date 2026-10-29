@@ -667,7 +667,7 @@ describe("acts on the cue sheet (wave 10: display only)", () => {
       return { cues: v.cues, rows };
     };
     const tagRows = cueRows(modView(acted, "open", "x").interactions ?? [], { last: null, fired: [] });
-    expect(cueActs(tagRows).map((a) => `${a.code ?? a.title} ${a.rows.length}`)).toEqual(["B 10", "C 5", "D 8", "E 17", "Anytime 10", "F 12", "G 16"]); // wave 44: 🎬 G12 in G; wave 18b: −☎️ −🪅; wave 20: +3 in E; wave 21: +3 staff awards in G; wave 22: 🔌 Trust the patch bay in E; wave 26: +3 game moments in Anytime; wave 32: ⚡ ad_burst in Anytime
+    expect(cueActs(tagRows).map((a) => `${a.code ?? a.title} ${a.rows.length}`)).toEqual(["B 10", "C 5", "D 8", "E 17", "Anytime 10", "F 12", "G 17"]); // wave 45: 🚻 G13 in G; wave 44: 🎬 G12 in G; wave 18b: −☎️ −🪅; wave 20: +3 in E; wave 21: +3 staff awards in G; wave 22: 🔌 Trust the patch bay in E; wave 26: +3 game moments in Anytime; wave 32: ⚡ ad_burst in Anytime
     expect(marks(acted)).toEqual(marks(plain));
     const admin = [...plain.model.interactions.values()].filter((i) => i.who === "admin").map((i) => i.id);
     for (const id of admin.slice(0, 30)) {
