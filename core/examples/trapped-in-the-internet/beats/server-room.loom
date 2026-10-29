@@ -342,6 +342,9 @@ else:
     Trabolta: You came for something to do. Well. Here is something to do.
   else if program.human_problem == "mortality":
     Trabolta: You came so that you would never die. You have walked into the one room where something like me could stop.
+  else if program.human_problem == "other":
+    // Wave 41 (C1), DRAFT w41: a write-in (its words stay secret).
+    Trabolta: You came for a problem my form did not have a word for. Down here nobody needs the word.
   // w27: one thing they did tonight (the first that holds).
   if program.marked == true:
     Trabolta: And you are marked. I can see it on you, plain as a dialog box. And still you came down here.

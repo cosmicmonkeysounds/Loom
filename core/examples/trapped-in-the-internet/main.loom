@@ -244,14 +244,19 @@ ROLE Program
   // orders and the virus files are `secret: true` CODEX entries
   // (codex/1-world.loom, 6-missions.loom). Wave 21: `tipped`, `slid` and
   // `slipped` (a player's quiet favour to this program) are secret too.
-  secret: carries_virus, planted_virus, excel_choice, openoffice_choice, dossier_started, dossier_base, dossier_start, left_behind_text, anti_ai, framed, fact_a1, fact_a2, fact_a3, fact_a4, fact_a5, fact_a6, fact_a7, fact_a8, fact_c1, fact_c2, fact_c3, fact_c4, fact_c5, fact_c6, fact_c7, fact_c8, fact_v1, fact_v2, fact_v3, fact_v4, fact_v5, fact_v6, fact_v7, fact_v8, fact_j1, fact_j2, fact_j3, fact_j4, fact_j5, fact_j6, fact_j7, fact_j8, fact_sure, fact_n, fact_try, fact_waiting, fact_q_round, last_fact_q, fact_label, fact_h1, fact_h2, fact_h3, fact_h4, fact_h5, fact_h6, fact_f1, fact_f2, lie_q1, lie_q2, lie_q3, lie_q4, lie_q5, lie_q6, lie_q7, lie_q8, hunt_lie_q1, hunt_lie_q2, hunt_lie_q3, hunt_lie_q4, hunt_lie_q5, hunt_lie_q6, hunt_lie_q7, hunt_lie_q8, quest.excel_mission, quest.openoffice_dossier, quest.find_the_exit, quest.truthcoin_hustle, quest.master_of_the_bugs, quest.unscramble, quest.ten_findings, from_jeeves, jeeves_told, quest.the_painting, paint_told, quest.the_gold_standard, quest.go_viral, quest.keep_the_ball_in_play, quest.recruit_to_stay, quest.recruit_to_leave, recruits, door_digits, quest.the_cold_door, whole_truth, quest.a_faction_of_your_own, tipped, slid, slipped
+  secret: carries_virus, planted_virus, excel_choice, openoffice_choice, dossier_started, dossier_base, dossier_start, left_behind_text, human_problem_text, inbox, anti_ai, framed, fact_a1, fact_a2, fact_a3, fact_a4, fact_a5, fact_a6, fact_a7, fact_a8, fact_c1, fact_c2, fact_c3, fact_c4, fact_c5, fact_c6, fact_c7, fact_c8, fact_v1, fact_v2, fact_v3, fact_v4, fact_v5, fact_v6, fact_v7, fact_v8, fact_j1, fact_j2, fact_j3, fact_j4, fact_j5, fact_j6, fact_j7, fact_j8, fact_sure, fact_n, fact_try, fact_waiting, fact_q_round, last_fact_q, fact_label, fact_h1, fact_h2, fact_h3, fact_h4, fact_h5, fact_h6, fact_f1, fact_f2, lie_q1, lie_q2, lie_q3, lie_q4, lie_q5, lie_q6, lie_q7, lie_q8, hunt_lie_q1, hunt_lie_q2, hunt_lie_q3, hunt_lie_q4, hunt_lie_q5, hunt_lie_q6, hunt_lie_q7, hunt_lie_q8, quest.excel_mission, quest.openoffice_dossier, quest.find_the_exit, quest.truthcoin_hustle, quest.master_of_the_bugs, quest.unscramble, quest.ten_findings, from_jeeves, jeeves_told, quest.the_painting, paint_told, quest.the_gold_standard, quest.go_viral, quest.keep_the_ball_in_play, quest.recruit_to_stay, quest.recruit_to_leave, recruits, door_digits, quest.the_cold_door, whole_truth, quest.a_faction_of_your_own, tipped, slid, slipped
   uploaded: bool = false
   cleared: bool = false
   captchas: 0 to 10 = 0
   human_problem: text? = none
+  // Wave 41 (C1): the form's write-in, when human_problem is "other" (secret).
+  human_problem_text: text? = none
   left_behind: text? = none
   // Wave 18b (R10): what they typed into the deposit box's card (secret).
   left_behind_text: text? = none
+  // Wave 41 (C1, C2): the inbox card's answer, "given" or "skipped". Never
+  // the address: that is in the server's letters book, not the story.
+  inbox: text? = none
   skipped_orientation: bool = false
   featured: text? = none
   anti_ai: bool = false
@@ -2554,6 +2559,13 @@ ROLE Program
         Trabolta: {Night.line_by} said it first, {program.name}. But the house says yes: that is the line.
       else:
         Trabolta: The house says no. That is not the line.
+    // Wave 41 (C1): the problem form's write-in. Answered before the
+    // deposit box is offered (Upload stops at the card), so it is never
+    // mistaken for the deposit's record below. DRAFT w41.
+    else if question == null and program.human_problem == "other" and program.human_problem_text == "none":
+      set program.human_problem_text = text
+      Task Manager: Noted. Filed under other. It is not your concern now.
+      -> Upload Deposit
     // Wave 18b (R10, D22): the deposit box's typed record (the card has no
     // `question:`, so an unbound `question` reads null). Kept in the secret
     // slot, never repeated back; the pass comes with it.
@@ -2561,6 +2573,17 @@ ROLE Program
       set program.left_behind_text = text
       Task Manager: Logged. It is not your concern. Fine.
       show pass "Hold this up. An Antivirus will scan you in. Until then you are nowhere." to program
+
+  // Wave 41 (C1, C2): the optional inbox for Trabolta's letter. The server
+  // keeps the address; the story hears only `given` or `skipped`. DRAFT w41.
+  when email answered for program:
+    if program.inbox == "none":
+      if given:
+        set program.inbox = "given"
+        Task Manager: Inbox on file. He will write when it is over. He always does what he says. Mostly.
+      else:
+        set program.inbox = "skipped"
+        Task Manager: No inbox. Noted. Not flagged.
 
   when pickup_line_works for program:
     set Kernel._pressed_by = "none"
