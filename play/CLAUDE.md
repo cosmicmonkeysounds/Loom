@@ -378,7 +378,7 @@ src/
   sides/                 sides, crews, factions (lazy)
   ui/                    primitives, Win95 windows, objective card, progress
   css/                   base, themes, w95 + one file per lane; styles.css imports them
-  widgets.tsx · widgets-fact.tsx   show-card registry (captcha, image, poll, tutorial, pass, fact, answer)
+  widgets.tsx · widgets-fact.tsx   show-card registry (captcha, image, poll, tutorial, pass, fact, answer, email: wave 41's optional inbox, `emailResult`)
   wallet.tsx · wallet-sheets*.tsx  the Wallet room and its sheets
   director.tsx           director phone (lazy)
   help.tsx · help-lazy.tsx         guests' Help window over docs/help/play (lazy)

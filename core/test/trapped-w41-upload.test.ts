@@ -130,9 +130,12 @@ describe("wave 41: the letter writer's facts (C6)", () => {
     const made = letterFactsOf(entry("g1"), { sim, recap, date: "October 31, 2026" })!;
     expect(made.to).toEqual({ kind: "guest", name: "Calculator" });
     const program = made.facts["program"] as Record<string, unknown>;
-    expect(program["came_for_in_their_words"]).toBe("my landlord");
-    expect(program["came_for"]).toBeNull();
-    expect(program["left_behind"]).toBe("a red scarf");
+    expect(program["came_for_in_their_own_words"]).toBe("my landlord");
+    expect(program["came_for"]).toBeUndefined();
+    expect(program["left_behind_in_their_own_words"]).toBe("a red scarf");
+    expect(program["left_behind"]).toBeUndefined();
+    // Nothing that says nothing: no zero, false or empty field (Truthcoin stays).
+    for (const [k, val] of Object.entries(program)) if (k !== "truthcoin") expect([null, false, 0].includes(val as never) || (Array.isArray(val) && val.length === 0), k).toBe(false);
     expect(program["truthcoin"]).toBe(100);
     expect(made.facts["date"]).toBe("October 31, 2026");
     expect(JSON.stringify(made)).not.toContain("example.com");
@@ -145,7 +148,7 @@ describe("wave 41: the letter writer's facts (C6)", () => {
     const made = letterFactsOf(entry("g1"), { sim, recap: computeRecap(sim), date: "x" })!;
     const program = made.facts["program"] as Record<string, unknown>;
     expect(program["who"]).toMatch(/^Randy Barkmore Sr\./u);
-    expect(program["left_nothing"]).toBe(true);
+    expect(program["left_behind"]).toBe("nothing: they said they had nothing to leave");
   });
 
   it("a performer's part; a gone person or part gives nothing", () => {
@@ -164,6 +167,10 @@ describe("wave 41: the letter writer's facts (C6)", () => {
     sim.choose("g1", 0);
     sim.choose("g1", 1);
     expect(awardsOf(sim, "Calculator")).toEqual([]);
-    expect(highlightsOf(computeRecap(sim), "g1").some((h) => h.includes("Truthcoin"))).toBe(true);
+    // A place means nothing in a house of one…
+    expect(highlightsOf(computeRecap(sim), "g1")).toEqual([]);
+    // …and reads as plain words in a house of four.
+    for (const [id, name] of [["g2", "Notepad"], ["g3", "Paint Shop"], ["g4", "WinAmp"]] as const) toForm(sim, id, name);
+    expect(highlightsOf(computeRecap(sim), "g1")).toContain("the most Truthcoin of the 4 programs (100)");
   });
 });

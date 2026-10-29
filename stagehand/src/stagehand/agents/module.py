@@ -68,7 +68,7 @@ from .config import AgentsConfig, parse_agents
 from .facts import Facts, FactsClient
 from .guards import outside_guard, situation_guard
 from .judge import JUDGE_DEADLINE_S, Ruling, judge_messages, judge_model, parse_ruling
-from .letter import LETTER_ATTEMPTS, LETTER_DEADLINE_S, RETRY_NOTE, Letter, letter_messages, letter_problem, parse_letter
+from .letter import LETTER_ATTEMPTS, LETTER_DEADLINE_S, RETRY_NOTE, Letter, letter_messages, letter_model, letter_problem, parse_letter
 from .llm import Completion, LlmConfig, LlmError, LlmTruncated, complete
 from .mind import Mind, mind_path
 from .orchestrator import Job, Orchestrator, reflect_tokens_needed, voice_tokens_needed
@@ -1370,7 +1370,7 @@ class Agents:
             persona = self.cfg.personas.get(character)
             if persona is None:
                 return  # not ours: the server re-queues it
-            model = self.models[character]
+            model = letter_model(self.models[character])
             log.info("%s ✉ writes to %s", character, str(to.get("name") or "?")[:60])
             letter: Letter | None = None
             note = ""

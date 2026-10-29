@@ -466,9 +466,15 @@ stays at or under 3 Hz; no open flames; VR is played seated with a spotter.
    (`loom-run/1`) for the archive; `scripts/ops/showbackup.sh uninstall` on
    the MacBook once the night's copies are safe.
 3. **Sun Nov 1: change the mod passcode** and rotate anything printed.
-4. End the event; archive the ceremony script, the recap and photos.
-5. Teardown: the tent, cords, GFCIs; tablets back to their owners
+4. **Trabolta's letters, before End** (wave 41; End stops the event and
+   the letters go with it). With the MacBook's `agents` job running: Run →
+   **Letters** → ✍ Ask Trabolta to write them (about 20 s a letter), read
+   every draft, edit or ↻ Rewrite any that miss, then ✉ Send. The card
+   says Send is off when the VPS has no `LOOM_RESEND_API_KEY` /
+   `LOOM_WEBMASTER_FROM`. Help: `docs/help/authoring/52-letters.md`.
+5. End the event; archive the ceremony script, the recap and photos.
+6. Teardown: the tent, cords, GFCIs; tablets back to their owners
    (factory-reset borrowed ones); back up Zigbee2MQTT's `data\` on the
    Desktop.
-6. A one-hour retro with the crew; the post-party roadmap is
+7. A one-hour retro with the crew; the post-party roadmap is
    [`SCHEDULE.md`](./SCHEDULE.md).

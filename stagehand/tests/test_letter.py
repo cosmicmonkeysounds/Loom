@@ -43,7 +43,7 @@ def frame(**over):
         "facts": {
             "date": "October 31, 2026",
             "kind": "guest",
-            "program": {"name": "Calculator", "came_for_in_their_words": "x" * 400, "truthcoin": 412, "highlights": ["1st of 30 for Truthcoin (412)"]},
+            "program": {"name": "Calculator", "came_for_in_their_own_words": "x" * 400, "truthcoin": 412, "highlights": ["the most Truthcoin of the 30 programs (412)"]},
             "night": {"programs": 30, "ending": "song", "ending_note": "You sang to Sandy."},
         },
         "at": 0,
@@ -109,7 +109,7 @@ def test_the_prompt_is_his_persona_the_brief_and_the_night_file():
     assert LETTER_BRIEF in msgs[0]["content"]
     assert "Steph" not in msgs[0]["content"]  # the outside list is never named to him
     user = msgs[1]["content"]
-    assert user.startswith("NIGHT FILE:") and "412" in user and "1st of 30 for Truthcoin" in user
+    assert user.startswith("NIGHT FILE:") and "412" in user and "the most Truthcoin of the 30 programs" in user
     assert "x" * 121 not in user  # a guest's own words are clipped
 
 
@@ -151,6 +151,7 @@ def test_the_worker_writes_and_answers_on_the_letter_route(tmp_path):
 
     async def fake(messages, cfg):
         seen["messages"] = messages
+        seen["cfg"] = cfg
         return GOOD
 
     agents = worker(tmp_path, fake)
@@ -159,6 +160,7 @@ def test_the_worker_writes_and_answers_on_the_letter_route(tmp_path):
     (body,) = posts(agents, "/api/agent/letter")
     assert body == {"id": "lt-1", "text": json.loads(GOOD)["letter"], "subject": "From my desk in Halifax", "worker": "w-1"}
     assert "You are TRABOLTA." in seen["messages"][0]["content"]
+    assert seen["cfg"].max_tokens >= 3000 and seen["cfg"].model == agents.models["Trabolta"].model  # room for a whole letter
     # Never a request: no reply, the mind untouched.
     assert posts(agents, "/api/agent/reply") == [] and agents.minds["Trabolta"].report(None) == before
     (t,) = thoughts(agents)

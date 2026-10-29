@@ -33,37 +33,39 @@ export const LETTER_FEATURED: Readonly<Record<string, { who: string; cameFor: st
 
 /** The four stock answers on the upload form. */
 export const LETTER_PROBLEMS: Readonly<Record<string, string>> = {
-  debt: "their debt",
-  career: "a career",
-  loneliness: "loneliness: they never wanted to be alone",
-  mortality: "mortality: they never wanted to die",
+  debt: "to make their debt go away",
+  career: "a career: always something to do",
+  loneliness: "never to be alone again",
+  mortality: "never to die",
 };
 
 /** How the night ended, from where Trabolta stands (`Night.ending`). */
 export const LETTER_ENDINGS: Readonly<Record<string, string>> = {
-  song: "Every fact the programs gave you was true. You solved the Grand Unified Theory and sang to Sandy: you're the one that I want. Whoever wanted to leave the computer was free to go.",
-  song_pickup:
-    "Not every fact the programs gave you was true, but one of them gave you the line that works on Sandy. You sang it to her. Whoever wanted to leave the computer was free to go.",
-  rave: "Nobody had the line for Sandy. You took your shot alone, she said she did not understand, and you decided that was a yes. You rode off to computer prom.",
-  help: "You asked the programs for relationship advice and they voted to help you win Sandy.",
-  banished: "You asked the programs for relationship advice and they voted to thwart you. They banished you.",
-  hand_jive: "You asked the programs for relationship advice, they voted to thwart you and banished you, and the night ended in the hand jive.",
-  disabled: "The programs found the combination in the server room and switched you off. Every light went out. You have been switched back on since, and you are writing from your desk.",
-  destroyed: "The programs ran the self-destruct in the server room: the computer was turned off without Shut Down being followed. You are writing from a backup.",
+  song: "every fact true; Grand Unified Theory solved; you sang to Sandy; programs free to leave",
+  song_pickup: "some facts false; one program gave you the line for Sandy; you sang it to her; programs free to leave",
+  rave: "nobody had the line for Sandy; you tried alone; she did not understand; you took it as a yes and rode off to computer prom",
+  help: "you asked the programs for relationship advice; they voted to help you win Sandy",
+  banished: "you asked the programs for relationship advice; they voted to thwart you and banished you",
+  hand_jive: "the programs voted to thwart you and banished you; the night ended in the hand jive",
+  disabled: "the programs found the combination in the server room and switched you off; all the lights went out; you are back on now",
+  destroyed: "the programs ran the self-destruct in the server room; the computer went off without Shut Down; you write from a backup",
 };
 
+/** What a place on each list is the most of ("the most Truthcoin"). */
 const LIST_LABELS: Readonly<Record<RecapList, string>> = {
-  trust: "most trusted program",
+  trust: "trusted",
   truths: "true facts given",
   lies: "lies you accepted from them",
   internetVisits: "trips to the Internet",
-  codex: "files in the Codex",
+  codex: "files in their Codex",
   quests: "quests done",
   truthcoin: "Truthcoin",
   shares: "files shared with others",
   chess: "chess wins against the King",
   bathroom: "bathroom breaks",
 };
+/** Fewer programs than this and a place means nothing (1st of 2). */
+export const HIGHLIGHT_MIN_PROGRAMS = 4;
 
 export interface LetterFactsInput {
   sim: Sim;
@@ -103,19 +105,33 @@ export function awardsOf(sim: Sim, name: string): string[] {
   return [...new Set(out)];
 }
 
-/** "1st of 38 for Truthcoin (412)": a program's top-3 places (a value of
- *  0 never ranks), and the bottom of the trust list. */
+/** "the most Truthcoin of the 38 programs (412)": a program's top-3
+ *  places in plain words (a value of 0 never ranks), and the bottom of the
+ *  trust list. None in a house under `HIGHLIGHT_MIN_PROGRAMS`. */
 export function highlightsOf(recap: Recap, id: string): string[] {
   const out: string[] = [];
   for (const k of RECAP_LISTS) {
     const rows = recap.lists[k];
+    if (rows.length < HIGHLIGHT_MIN_PROGRAMS) continue;
     const row = rows.find((r) => r.id === id);
     if (row === undefined) continue;
-    if (row.rank <= 3 && row.value > 0) out.push(`${ordinal(row.rank)} of ${rows.length} for ${LIST_LABELS[k]} (${row.value})`);
-    else if (k === "trust" && rows.length >= 4 && row.rank === rows[rows.length - 1]!.rank && row.value < 0) out.push(`the least trusted program of the night (trust ${row.value})`);
+    const most = row.rank === 1 ? "the most" : `the ${ordinal(row.rank)} most`;
+    if (row.rank <= 3 && row.value > 0) out.push(`${most} ${LIST_LABELS[k]} of the ${rows.length} programs (${row.value})`);
+    else if (k === "trust" && row.rank === rows[rows.length - 1]!.rank && row.value < 0) out.push(`the least trusted of the ${rows.length} programs (trust ${row.value})`);
   }
   const duck = recap.duck.find((d) => d.id === id);
-  if (duck !== undefined && duck.rank <= 3) out.push(`${ordinal(duck.rank)} fastest to find the Golden Duck (${duck.time})`);
+  if (duck !== undefined && duck.rank <= 3 && recap.programs >= HIGHLIGHT_MIN_PROGRAMS) out.push(`${duck.rank === 1 ? "the fastest" : `the ${ordinal(duck.rank)} fastest`} to find the Golden Duck (${duck.time})`);
+  return out;
+}
+
+/** Leave out what says nothing (null, false, 0, an empty list): the writer
+ *  otherwise narrates every zero and flag. Truthcoin stays, zero or not. */
+export function compactFacts(o: Record<string, unknown>, keep: ReadonlySet<string> = new Set(["truthcoin"])): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(o)) {
+    if (!keep.has(k) && (v === null || v === false || v === 0 || (Array.isArray(v) && v.length === 0))) continue;
+    out[k] = v;
+  }
   return out;
 }
 
@@ -158,15 +174,16 @@ export function letterFactsOf(entry: LetterEntry, input: LetterFactsInput): { to
   const leftText = text(sim, `${id}.left_behind_text`);
   const chess = recap.chessGames.find((g) => g.id === id);
   const faction = sim.crews.factionOf(id);
-  const program: Record<string, unknown> = {
+  const program = compactFacts({
     name: p.name,
     who: feat?.who ?? null,
     came_for: feat?.cameFor ?? (problem === null ? null : (LETTER_PROBLEMS[problem] ?? null)),
-    came_for_in_their_words: ownWords,
-    left_behind: leftText ?? (leftKind === "deposited" ? "something in the deposit box (they did not say what)" : null),
-    left_nothing: leftKind === "nothing",
+    // Their words, in their voice: "my landlord" is the program's own.
+    came_for_in_their_own_words: ownWords,
+    left_behind_in_their_own_words: leftText,
+    left_behind:
+      leftText !== null ? null : leftKind === "deposited" ? "something in the deposit box; they never said what" : leftKind === "nothing" ? "nothing: they said they had nothing to leave" : null,
     side: faction === null ? null : (sim.crews.displayName(faction) ?? faction),
-    cleared: text(sim, `${id}.cleared`) === "true",
     left_early: text(sim, `${id}.gone`) === "true",
     truthcoin: valueIn(recap, "truthcoin", id),
     true_facts: valueIn(recap, "truths", id),
@@ -181,6 +198,6 @@ export function letterFactsOf(entry: LetterEntry, input: LetterFactsInput): { to
     golden_duck: recap.duck.find((d) => d.id === id)?.time ?? null,
     awards: awardsOf(sim, p.name),
     highlights: highlightsOf(recap, id),
-  };
+  });
   return { to: { kind: "guest", name: p.name }, facts: { date, kind: "guest", program, night } };
 }
