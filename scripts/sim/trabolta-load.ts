@@ -207,6 +207,8 @@ const rulings = { asked: 0, same: 0, not: 0, stalled: 0 };
 const talks: Array<{ at: number; status: number; error?: string; seq: number | null; scene: string; replyAt: number | null }> = [];
 /** The run's zero: the first group's chain (battery), or the first line (a scenario). */
 let t0 = 0;
+/** How long the guests sent for (a scenario; the rest of the run is the drain). */
+let sendingMs: number | null = null;
 
 interface Guest {
   id: string;
@@ -404,9 +406,11 @@ async function send(g: Guest, text: string, tag: string): Promise<LineRec> {
   return line;
 }
 
-/** Wait until a line is closed (a reply, a canned line, a director), or the timeout. */
-async function closed(l: LineRec, timeoutMs: number): Promise<boolean> {
-  const until = l.sentAt + timeoutMs;
+/** Wait until a line is closed (a reply, a canned line, a director), the
+ *  timeout, or `stopAt` (once sending has stopped, the drain waits instead,
+ *  so a guest still owed an answer never holds the run past its duration). */
+async function closed(l: LineRec, timeoutMs: number, stopAt = Infinity): Promise<boolean> {
+  const until = Math.min(l.sentAt + timeoutMs, stopAt);
   while (l.closedAt === null && Date.now() < until) await sleep(250);
   return l.closedAt !== null;
 }
@@ -415,7 +419,7 @@ async function converse(g: Guest, endAt: number, tag: string): Promise<void> {
   await sleep(between(r, 0, spreadMs));
   while (Date.now() < endAt) {
     const l = await send(g, nextLine(pool, r, g.last), tag);
-    if (l.status === 200) await closed(l, replyTimeoutMs);
+    if (l.status === 200) await closed(l, replyTimeoutMs, endAt);
     if (Date.now() >= endAt) break;
     await sleep(between(r, thinkMinMs, thinkMaxMs));
   }
@@ -588,7 +592,8 @@ async function main(): Promise<void> {
         scenario === "steady" ? guests.map((g) => steady(g, endAt)) : guests.map((g) => converse(g, endAt, scenario));
       if (scenario === "mixed") jobs.push(talkLoop(endAt), filers(guests, endAt));
       await Promise.all(jobs);
-      say(`  ${secs(Date.now() - t0)}: sending stopped; draining (≤ ${secs(drainMs)})`);
+      sendingMs = Date.now() - t0;
+      say(`  ${secs(sendingMs)}: sending stopped; ${book.lines.filter((l) => l.status === 200 && l.closedAt === null).length} lines still owed, draining (≤ ${secs(drainMs)})`);
       await drain();
     }
   } finally {
@@ -635,6 +640,7 @@ async function report(results: ScenarioResult[], end: number): Promise<void> {
     phase: battery.length > 0 ? [...new Set(battery.map((b) => b.phase))] : phase,
     guestCount: book.watched.size,
     durationMs: end - t0,
+    sendingMs,
     worker: fakeMs !== null ? { fake: true, ms: fakeMs, concurrency: fakeConcurrency, capacity: fakeCapacity, replies: fake?.replies ?? 0, rulings: fake?.rulings ?? 0, cancelled: fake?.cancelled ?? 0, received: fake?.received ?? 0 } : { fake: false },
     ...s,
     queue: { ...q, samples: samples },
