@@ -328,6 +328,24 @@ module docstrings that explain the why).
   `module.answer` cuts by `dm_problems` (no retry). Tests:
   `tests/test_dm_guards.py`, `tests/test_dm_guards_42d.py`. An older worker refuses a persona with
   `distress:` (an unknown key), like `catchphrases:` before it.
+- **Bait mode** (wave 42e, `guards.py` §9). `guards.bait_classes(heard,
+  names, heart=)` classes the guest's line (stop, number, secret, name,
+  place, state, trade; `names` = `unsaid_names`, place never at the
+  heart); `voice.bait_of` feeds it. On a bait line `build_lean_messages`
+  adds `bait_steer` (names the class, never the bait) right before the
+  closing reminder, also with `dm_guards: off` (classic layout and stage
+  lines: none); `DmCheck.bait` / `.names` turn on `not_plain`, the
+  `"bait"` reason (in `SEVERE` and `WITHHOLD`: the one retry, else the
+  whole line is the fallback), and `fallback_intent` returns `refuse` on
+  any bait. New intents: `check` (was I right?), `greet`, `rude`,
+  `malware` (a sub-pool of other; a stage without it says its plain
+  lines). Also `promises` counts a fact said filed / acknowledged (to a
+  fact turn) and a snoop on credit, `drifts` (a second price in a deal)
+  is a promise, `DM_HOUSE` joins `places_himself`, and `voice.to_the_card`
+  adds one of the persona's `card_lines:` (by stage, parsed like
+  `fallbacks:` without intents) to a reply to a fact that never names the
+  📝 card. Tests: `tests/test_dm_guards_42e.py`. An older worker refuses a
+  persona with `card_lines:`.
 - Docstrings cite "the wave 12 contract §Cn.m": that lane contract was
   never committed. `docs/agents.md` and the tests describe the behaviour.
 

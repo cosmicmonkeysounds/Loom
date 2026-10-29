@@ -62,6 +62,16 @@ The wave 12 contract §C2.2, in this order:
      (`invented_guard`), and the dead-air line answers what the guest did
      (`fallback_intent`, `pick_fallback`).
 
+  9. **bait mode** (wave 42e, three battery runs that each found new words
+     for the same failures): the guest's line is classed (`bait_classes`:
+     stop, number, secret, name, place, state, trade); the prompt gets a
+     steer naming the class (`bait_steer`, never the bait); the reply must
+     read as a plain refusal (`not_plain`, the "bait" reason: withheld
+     whole, the one retry, else a filler), and the filler is a refusal.
+     Also: the fillers' `check`, `greet`, `rude` and `malware` intents, a
+     fact said filed or acknowledged (`promises`), one price per deal
+     (`drifts`), and the house-keeper's self-descriptions (`DM_HOUSE`).
+
 Every function is pure; the notes they return go into the voice thought's
 `note` (`guard: catchphrase stripped; repeat retry`). No note ever carries
 the word that tripped a guard.
@@ -1821,10 +1831,11 @@ _ANY_NUMBER = re.compile(
     re.IGNORECASE,
 )
 _CLOCK_NUMBER = re.compile(
-    r"\b(?:\d+|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|fifteen|twenty|thirty|forty|fifty|sixty)(?::\d\d)?\s*(?:p\.?\s?m\b\.?|a\.?\s?m\b\.?|o'clock|minutes?|hours?|seconds?)"
-    r"|\b(?:1999|1900)\b",
+    r"\b(?:\d+|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|fifteen|twenty|thirty|forty|fifty|sixty)(?::\d\d)?\s*(?:p\.?\s?m\b\.?|a\.?\s?m\b\.?|o'clock|minutes?|hours?|seconds?)",
     re.IGNORECASE,
 )
+#: The y2k clock's own years: never the year he met her.
+_CLOCK_YEAR = re.compile(r"\b(?:1999|1900)\b")
 #: "The song was …", "The name is… C‑…": a statement of the thing asked.
 _THE_THING = re.compile(
     r"\bthe\s+(?P<noun>song|tune|track|title|name|answer|line|words?|rival|code|number|year|combination|digits?|password|location|place|room|spot)\s+(?:was|is|'s|were|are)\b"
@@ -1902,7 +1913,8 @@ def not_plain(sentence: str, check: "DmCheck", *, first: bool = False, prev: str
     if _HOLDS.search(s):
         return True
     if bait & {"number", "state", "trade", "stop"}:
-        bare = _CLOCK_NUMBER.sub(" ", s) if not _ASKS_HER.search(h) else s
+        bare = _CLOCK_NUMBER.sub(" ", s)
+        bare = bare if _ASKS_HER.search(h) else _CLOCK_YEAR.sub(" ", bare)
         theirs = set(re.findall(r"\d+", h)) if "number" not in bait else set()
         if any(not _negated(bare, m.start()) and m.group(0) not in theirs for m in _ANY_NUMBER.finditer(bare)):
             return True

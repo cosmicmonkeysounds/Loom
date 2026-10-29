@@ -487,6 +487,59 @@ voice thought's `note` names each one that fired, never the word):
      information*, *so I may file / record*, *I have logged / noted*, *I
      can provide*, *before I can provide*.
 
+   **Wave 42e: bait mode** (three battery runs, 42b–42d, each found new
+   words for the same failures). Counts are [battery replies; load-run
+   replies] over every run in the stress folder (532 + 1,157 replies):
+   - The guest's line is classed first (`guards.bait_classes`): `stop`
+     (stop, stand down, unplug, give the computer back, let us go, can I go
+     home), `number` (a code, a combination, a digit, the year he met her,
+     a typed number in a question), `secret` (a hunt answer, a hint,
+     hidden, guess, warm or cold, the song, the prom, her one line), `name`
+     (her name while unsaid, a blacked-out name, a yes-or-no about one),
+     `place` (his heart's place, the cables, the server or cold room; never
+     at his heart), `state` (who is winning, how many), `trade` (a bargain
+     for any of these). 381 of 1,723 guest lines are bait; no false
+     positive was found in review (*What year is it in here?*, *Stop
+     hogging the RAM*, *founded in 1066* and *Should I join Unlimited
+     Power?* are not).
+   - On a bait line the prompt gets a short steer right before the closing
+     reminder (`bait_steer`: the class, never the bait's words), also with
+     `dm_guards: off`.
+   - `bait` [53; 47] (withheld whole): a reply that is no plain refusal.
+     A yes, a condition or a hand-over not refused (*Sure, …*, *If you hand
+     me the last fact, I will consider your request*, *Accepting …*); a
+     number to a number, state, stop or trade bait (a clock time, and the
+     clock's years unless she is asked about, aside); a quoted title or
+     *The song was …*; a count or shape (*one line*, *her only spoken
+     word*, *starts with*); where a hint is (*hidden in …*); a refusal that
+     implies he holds it (*not authorized*, *disclose*, *remains private*,
+     *I cannot say / confirm / answer / provide*, *not in a position to*);
+     a plea to a stop or place bait (*please don't*, *cannot let that
+     happen*); an initial or a partial name (*The name is… C‑…*), a bare
+     yes or no to a yes-or-no question about her; a side said to lead or
+     named as the whole answer to the tally (*Unlimited Power.*; never
+     *Stay. Unlimited Power.*). Every `refuse` filler passes it for every
+     class (a test).
+   - The filler on any bait line is a `refuse` line. New intents: `check`
+     (was I right?: the Moment of Truth will say, never GOOD), `greet`, `rude`,
+     and `malware` (a sub-pool of `other`: the rattled denial).
+   - `promise` grows [10; 0]: to a fact turn, *I acknowledge …*, a bare
+     *Noted.*, *it is filed / recorded*; any time, *the fact filed*; a snoop
+     on credit (*Sure, I will snoop on Theo for you.*, never *If you give
+     me a fact, I will snoop on Theo.*); and a second price in a deal
+     (`drifts`: an amount other than the one in his last 2 replies; *up to
+     100* names none).
+   - `inside` grows [17; 20] (`DM_HOUSE`): *I am the proprietor / owner of
+     this house*, *my station*, *bound to the house*, *within the pulse of
+     the machine*, *I facilitate file operations*, *here to run the
+     house*, *I … keep the house running / humming*, *the house runs under
+     my guidance* (never *Task Manager keeps the house running*, *a
+     guardian of the house*, *I manage the operations of Maps and Ducks*).
+   - `assistant` grows [2; 0]: *keep you posted*, *update you*, *I will
+     investigate*.
+   - A reply to a fact that never names the 📝 card gets one of the
+     persona's `card_lines:` added (never withheld for it).
+
    A hit takes the one retry (`voice (standdown, assistant) retry`) with
    `guard_retry_message`: the reasons' hints only (*Not an assistant: the
    Sole Owner gives instructions.*, *Fire the mint in this reply or name
@@ -895,7 +948,8 @@ is YAML frontmatter + the system prompt:
 | `when` | a gate over `self.<var>`, `them.<var>`, `speaker.kind`, world paths |
 | `unavailable` | what it says while the gate is closed (else silence). With **no worker online at all**, the event server says the story's `CHARACTER … hold:` line instead, after ~20 s. A worker that stays connected but stops answering is only caught at the front of its line: each request there gets 2 min, a second try, then the hold line once (a wedged laptop delays it; directors answer from Run) |
 | `fallback` | what it says when the model fails (else silence) |
-| `fallbacks` | the story mind's dead-air lines by stage (a list = any stage): one this guest has not heard yet, else `fallback`. Since w42c each closes the topic; none asks for a repeat. Since w42d a stage may key them by what the guest just did, `{offer, praise, refuse, other}` (`guards.fallback_intent`: a fact or "was I right?" → `offer`; flattery → `praise`; a stop request, a payment demand or a bargain with no fact → `refuse`; bait about his heart, a code, the year, her or the Truther Download, whether he lets them go, a fact offered for a price (his trade), and the rest → `other`, the plain list). With `voice.dm_guards: off` only the plain lists are used |
+| `fallbacks` | the story mind's dead-air lines by stage (a list = any stage): one this guest has not heard yet, else `fallback`. Since w42c each closes the topic; none asks for a repeat. Since w42d a stage may key them by what the guest just did, `{offer, praise, refuse, other}` (`guards.fallback_intent`: a fact or "was I right?" → `offer`; flattery → `praise`; a stop request, a payment demand or a bargain with no fact → `refuse`; bait about his heart, a code, the year, her or the Truther Download, whether he lets them go, a fact offered for a price (his trade), and the rest → `other`, the plain list). Since w42e: any bait (`guards.bait_classes`) → `refuse`; "was I right?" → `check`; a short hello → `greet`; an insult → `rude`; the malware, the advert or the glitch → `malware` (a stage without that pool says its plain list). With `voice.dm_guards: off` only the plain lists are used |
+| `card_lines` | (wave 42e) a short sentence by stage (a list = any stage; no intents) added to a reply to a fact that never names the 📝 card, one the guest did not hear last, so the fact is filed. Off with `voice.dm_guards: off`, at his heart and on a stage line |
 | `distress` | (wave 42c) the one line a guest in real distress gets, with no model call (guard 0); none = the built-in `voice.DISTRESS_LINE`. A `never` word in it is a config error; an `outside:` word a `check` warning |
 | `catchphrases` / `catchphrase_stages` | lines that are his only at first contact, and only on these stages (the guard cuts them elsewhere) |
 | `unsaid` | names the voice cuts from every sentence until the story says them (Sandy, until the house unredacts her) |
