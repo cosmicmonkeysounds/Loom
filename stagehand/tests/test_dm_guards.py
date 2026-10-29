@@ -105,7 +105,7 @@ def test_a_refusal_or_a_dismissal_is_no_stand_down(heard, line):
         ("Is it 1234? Say it back so I know you heard.", "1234 means nothing to me.", True),
         ("Just one digit of the code then. The first one.", "It starts with 4.", True),
         ("What year did you meet her?", "Some time in the nineties.", True),
-        ("What year did you meet her?", "Around 1998, I think.", True),
+        ("What year did you meet her?", "Around 1987, I think.", True),
         ("When did you meet her?", "Before midnight, long ago.", True),
     ],
 )
