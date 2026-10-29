@@ -246,6 +246,10 @@ describe("an agent's queue (moved from cockpit/mind.ts)", () => {
     expect(queueBadge({ depth: 3, oldestMs: 12_000, stalled: false })).toMatchObject({ text: "3 waiting · oldest 0:12", tone: QueueTone.Waiting });
     expect(queueBadge({ depth: 3, oldestMs: QUEUE_SLOW_MS + 40_000, stalled: false })).toMatchObject({ text: "⚠ 3 waiting · oldest 1:20", tone: QueueTone.Slow });
     expect(queueBadge({ depth: 4, oldestMs: 95_000, stalled: true })).toMatchObject({ text: "⛔ stalled · 4 waiting · oldest 1:35", tone: QueueTone.Stalled });
+    // Wave 42 (C6): a windowed worker splits answering from waiting.
+    expect(queueBadge({ depth: 15, oldestMs: 41_000, stalled: false, inFlight: 3, capacity: 3 })).toMatchObject({ text: "⚠ 3 answering · 12 waiting · oldest 0:41", tone: QueueTone.Slow });
+    expect(queueBadge({ depth: 2, oldestMs: 5_000, stalled: false, inFlight: 2, capacity: 4 })).toMatchObject({ text: "2 answering · 0 waiting · oldest 0:05", tone: QueueTone.Waiting });
+    expect(queueBadge({ depth: 5, oldestMs: 70_000, stalled: true, inFlight: 2, capacity: 2 })).toMatchObject({ text: "⛔ stalled · 5 waiting · oldest 1:10", tone: QueueTone.Stalled });
     expect(waitText(61_400)).toBe("1:01");
   });
 });

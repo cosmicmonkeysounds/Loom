@@ -340,6 +340,14 @@ export class LettersBook {
     return this.frames.size;
   }
 
+  /** Frames out with `worker` now (wave 42, C2: a letter takes one of a
+   *  windowed worker's slots, so the agent hub counts it). */
+  outOn(worker: string): number {
+    let n = 0;
+    for (const f of this.frames.values()) if (f.worker === worker) n += 1;
+    return n;
+  }
+
   /** Send queued frames to the free workers, one each, oldest first. */
   pump(): void {
     const busy = new Set<string>();
