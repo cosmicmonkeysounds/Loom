@@ -97,15 +97,22 @@ the character, the server tells each DM thread where it stands with an
 etaS?}`) to the same people who see its typing: `queued` with the
 guest's 1-based place in the rank order above and `etaS = ceil(position
 × mean ÷ slots)` (the mean is a moving average of how long a slot takes
-from dispatch to reply, 6 s before the first), `answering` once a slot
-has it (typing is on), `idle` when it is answered, answered by hand,
-given up or the worker goes. A place that moves is re-told at most once
-every 5 s per thread. Play and the terminals draw it as an in-fiction
-status strip above the composer. Never for a stage request, and never
-with only a legacy worker (it holds the whole line, so the server cannot
-know a place in it). A phone that reconnects gets its threads' current
+from dispatch to reply, 6 s before the first; the slots are those of the
+windowed workers not stalled, less their rulings and letters out, at
+least 1), `answering` once a slot has it (typing is on), `idle` when it
+is answered, answered by hand, given up or the worker goes. While the
+character's only workers are stalled, its waiting threads and the
+stalled worker's own go `idle` (the hold line is all the guest sees) and
+are told again once it answers. A place that moves is re-told at most
+once every 5 s per thread. Play and the terminals draw it as an
+in-fiction status strip above the composer. Never for a stage request,
+never to a lean house tool, and never with only a legacy worker (it
+holds the whole line, so the server cannot know a place in it); a legacy
+worker beside a windowed one takes the overflow at once, so its line
+reads `answering`. A phone that reconnects gets its threads' current
 (non-idle) waits right after `history`, so a client clears its waits on
 `history`.
+
 A worker that sends no `capacity` (an older stagehand) is **legacy**:
 every request goes to it at once, it answers them one at a time, only
 the head of its line runs the reply and stall clocks, and rulings wait

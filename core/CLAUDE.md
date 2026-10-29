@@ -293,15 +293,22 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   position?, etaS?}`; the runtime sends it as the SSE event `agentWait
   {channel, audience, character, state, position?, etaS?}` to the typing
   frames' audience (`seesAgentThread`: the guest, the performer whose
-  cast thread it is, an admin booth, every director). `position` is
-  1-based in the rank order (a public request counts but is never told),
-  `etaS = ceil(position × mean ÷ windowed slots)`, the mean an EMA (0.2)
-  of a windowed request's dispatch → reply, 6 s before the first
-  (`serviceMeanS`, kept across a story restart). A state change is told
-  at once, a position change at most once per 5 s per thread (the 1 s
-  sweep sends a held-back one); idle on settle, a hand answer, a give-up,
-  a drop, a restart, the last window going. Never for a public talk
-  thread, never with only a legacy worker (or none). Typing is not
+  cast thread it is, an admin booth, every director; never a lean house
+  tool). `position` is 1-based in the rank order (a public request counts
+  but is never told; a `stale` one holds no place), `etaS = ceil(position
+  × mean ÷ live slots)` (`liveSlotsFor`: the windowed workers not
+  stalled, less their rulings and letters out, at least 1), the mean an
+  EMA (0.2) of a windowed request's dispatch → reply, 6 s before the
+  first (`serviceMeanS`, kept across a story restart). A state change is
+  told at once, a position change at most once per 5 s per thread (the
+  1 s sweep sends a held-back one); idle on settle, a hand answer, a
+  give-up, a drop, a restart, the last window going, and during a stall:
+  with only stalled workers voicing the character its queued threads and
+  the stalled worker's in-flight ones are idle (the hold line is all they
+  show), told again when it answers. A timeout re-dispatch stays
+  `answering` (no idle blip). Never for a public talk thread, never with
+  only a legacy worker (or none); a legacy worker beside a windowed one
+  takes the overflow at once, so its line reads `answering`. Typing is not
   replayed on a reconnect; `agentWait` is: a (re)opened `/events` stream
   gets its threads' current waits right after `history`
   (`replayAgentWaits`, `AgentHub.waitList`), so `answering` stands in for
