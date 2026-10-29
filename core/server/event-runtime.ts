@@ -75,6 +75,11 @@ import { buildCards } from "./routes/cards.ts";
 import { CLAIM_UNLOCK_ROUTE, Claims, mintClaimSecret } from "./routes/claims.ts";
 import { modPatch, modViewJson } from "./mod-patch.ts";
 import { sendRecap } from "./routes/recap.ts";
+import { computeRecap, type Recap } from "./recap.ts";
+import { LettersBook, emailOf, type LetterEntry, type LettersMailer } from "./letters.ts";
+import { letterFactsOf } from "./letter-facts.ts";
+import { lettersMailerFromEnv } from "./letters-mail.ts";
+import { handleAgentLetter, handleLettersPost, handlePrimeLetter, lettersView, type LettersContext } from "./routes/letters.ts";
 import { forBooth, hostSeen, seenCues, seenName } from "./unseen-directors.ts";
 import { guestSide } from "./routes/sides.ts";
 import { CrewRoutes, answeredInviteCards, crewDrafts } from "./routes/crews.ts"; // w18 crews
@@ -543,6 +548,9 @@ export interface EventRuntimeInit {
   eventId: string;
   /** Durable per-event state (journal / sessions / hidden). */
   store: Store;
+  /** Wave 41: how Trabolta's letters go out. Absent → the environment's
+   *  (`LOOM_RESEND_API_KEY` + `LOOM_WEBMASTER_FROM`); null → mail off. */
+  lettersMailer?: LettersMailer | null;
   /** The three passcodes gating this event's roles. */
   codes: Passcodes;
   /** Human label for the loaded scenario. */
@@ -832,6 +840,13 @@ export class EventRuntime {
   private readonly agentMinds = new Map<string, AgentMindSummary>();
   /** Every worker's recorded model calls — the Mind page's debugger feed. */
   private readonly agentTrace = new AgentTraceLog();
+  /** Wave 41 (C4): the inboxes, drafts and sends (state dir, never journaled). */
+  private readonly letters: LettersBook;
+  private readonly lettersMailer: LettersMailer | null;
+  private readonly lettersTimer: ReturnType<typeof setInterval>;
+  /** The recap the writer's frames read, per log length (a write asks for
+   *  a whole house at once). */
+  private lettersRecap: { len: number; recap: Recap } | null = null;
   // The reinstallation games (`docs/loom-reinstall.md` §2): sessions,
   // stations, poses and the house map. In memory; poses never journal.
   readonly spatial: SpatialHub;
@@ -959,7 +974,10 @@ export class EventRuntime {
     judgeSent: () => this.pushModSnapshots(),
     judgeStalled: () => this.postJudgeStall(),
     now: () => this.clock(),
-    presence: () => this.pushSnapshots(),
+    presence: () => {
+      this.letters?.pump(); // wave 41: a worker came back for the letters
+      this.pushSnapshots();
+    },
   });
 
   /** The registry's preview flag (`EventRuntimeInit.isPreview`). */
@@ -996,6 +1014,20 @@ export class EventRuntime {
     this.audio = new AudioHub({ store: this.store, ...(init.audio !== undefined ? { projectText: init.audio } : {}), envFile: init.audioFile !== undefined ? init.audioFile : defaultAudioFile(), ...(init.now !== undefined ? { now: init.now } : {}) });
     this.lights = new LightsHub({ store: this.store, ...(init.lights !== undefined ? { projectText: init.lights } : {}), envFile: init.lightsFile !== undefined ? init.lightsFile : defaultLightsFile(), ...(init.now !== undefined ? { now: init.now } : {}) });
     this.isPreview = init.isPreview ?? (() => false);
+    // Wave 41 (C4–C6): Trabolta's letters.
+    this.lettersMailer = init.lettersMailer !== undefined ? init.lettersMailer : lettersMailerFromEnv();
+    this.letters = new LettersBook({
+      load: () => this.store.loadLetters(),
+      save: (doc) => this.store.saveLetters(doc),
+      workers: (character, all) => this.agents.letterWorkers(character, all),
+      facts: (e) => this.letterFacts(e),
+      changed: () => this.pushModSnapshots(),
+      ...(init.now !== undefined ? { now: init.now } : {}),
+    });
+    this.lettersTimer = setInterval(() => {
+      if (this.letters.pending() > 0) this.letters.tick();
+    }, 5000);
+    this.lettersTimer.unref?.();
     // The house desk drives both hubs and fires story events (wave 25).
     this.desk = new DeskHub({
       store: this.store,
@@ -1397,6 +1429,51 @@ export class EventRuntime {
     return lines;
   }
 
+  /** A widget's result as the story hears it. Wave 41 (C2): an `email`
+   *  card's address is taken out (`email`, for the letters book) and the
+   *  story hears `{given: true}` or `{skipped: true}`. */
+  private widgetArgsOf(raw: unknown, kind: string): { args: Record<string, string | number | boolean>; email: string | null } | "bad_email" | null {
+    if (kind === "email") {
+      const r = typeof raw === "object" && raw !== null && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {};
+      if (r["skipped"] === true) return { args: { skipped: true }, email: null };
+      const email = emailOf(r["email"]);
+      return email === null ? "bad_email" : { args: { given: true }, email };
+    }
+    const args = widgetResultArgs(raw, this.sim!, kind);
+    return args === null ? null : { args, email: null };
+  }
+
+  /** Wave 41 (C6): who writes the letters: the story's `judge:`, else its
+   *  only agent-voiced character. */
+  private letterWriter(): { character: string; online: boolean } | null {
+    const model = this.sim?.model;
+    if (model == null) return null;
+    const agents = [...model.characters.values()].filter((c) => c.mind === "external").map((c) => c.id);
+    const character = model.judge !== null && agents.includes(model.judge) ? model.judge : agents.length === 1 ? agents[0]! : null;
+    return character === null ? null : { character, online: this.agents.isOnline(character) };
+  }
+
+  private lettersContext(): LettersContext {
+    return {
+      book: this.letters,
+      mailer: this.lettersMailer,
+      writer: () => this.letterWriter(),
+      nameOf: (e) => (e.kind === "guest" ? (this.sim?.persons.get(e.id)?.name ?? e.id) : e.id),
+    };
+  }
+
+  /** A `letter` frame's `to` + `facts` (letter-facts.ts), read now. */
+  private letterFacts(e: LetterEntry): ReturnType<typeof letterFactsOf> {
+    const sim = this.sim;
+    if (sim === null) return null;
+    const len = sim.log.len();
+    if (this.lettersRecap === null || this.lettersRecap.len !== len) {
+      this.lettersRecap = { len, recap: computeRecap(sim, { title: this.title, personas: this.personaOwners, duckRuns: this.spatial.runs() }) };
+    }
+    const date = new Date().toLocaleDateString("en-CA", { timeZone: "America/Halifax", month: "long", day: "numeric", year: "numeric" });
+    return letterFactsOf(e, { sim, recap: this.lettersRecap.recap, date });
+  }
+
   /** A performer's snapshot, plus the cards their character has already
    *  answered, with everyone's profile pictures. */
   private primeViewFor(character: string, online: ReadonlySet<string>, avatars = this.avatarMap(), host = false): PrimeView {
@@ -1418,6 +1495,8 @@ export class EventRuntime {
       ...this.showClockField(),
       // Wave 32 (C5): a host booth's talk panel (never a player's).
       ...(host ? { talk: this.talkViewNow() } : {}),
+      // Wave 41 (C3): this part's inbox for Trabolta's letter.
+      letter: { email: this.letters.get(`p:${character}`)?.email ?? null, from: this.lettersMailer?.from ?? null },
     };
   }
 
@@ -3497,6 +3576,7 @@ export class EventRuntime {
       clearInterval(ping);
       this.agentStreams.delete(res);
       this.agents.detach(worker.id);
+      this.letters.detach(worker.id);
     });
   }
 
@@ -5016,6 +5096,9 @@ export class EventRuntime {
     // Push follows the sessions: every guest's device unbinds (the phone
     // re-subscribes when it re-joins), a booth's only when the show goes live.
     this.push.drop((owner) => owner.startsWith("guest:") || (kind === "golive" && owner.startsWith("prime:")));
+    // Wave 41 (C4): the letters follow the same rule: every guest's inbox
+    // dies with the story it was given in, a booth's when the show goes live.
+    this.letters.clear((e) => e.kind === "guest" || kind === "golive");
     if (kind === "golive") {
       // A host part's session goes with its part (never a headless admin).
       for (const [token, session] of this.sessions.entries()) {
@@ -5079,6 +5162,7 @@ export class EventRuntime {
   dispose(by?: string): void {
     this.flushClock();
     this.stopTicker();
+    clearInterval(this.lettersTimer);
     this.desk.dispose();
     if (this.modSnapshotTimer !== null) clearTimeout(this.modSnapshotTimer);
     this.modSnapshotTimer = null;
@@ -5365,6 +5449,12 @@ export class EventRuntime {
     if (method === "GET" && path === "/api/mod/recap") {
       if (opts.moderator !== true && !this.canHostToken(queryTokenOf(req, url))) sendJson(res, 403, { error: "moderators only" });
       else sendRecap(res, url, this.sim, { title: this.title, personas: this.personaOwners, duckRuns: this.spatial.runs() });
+      return true;
+    }
+    // --- wave 41 (C5): Trabolta's letters (directors only, never a host booth) ---
+    if (method === "GET" && path === "/api/mod/letters") {
+      if (opts.moderator !== true && !this.sessions.canModerate(queryTokenOf(req, url))) sendJson(res, 403, { error: "moderators only" });
+      else sendJson(res, 200, lettersView(this.lettersContext()));
       return true;
     }
     // --- wave 14: the scan-from-the-screen cards (directors only, never a host booth) ---
@@ -5692,6 +5782,15 @@ export class EventRuntime {
       this.agentJudge(res, body);
       return true;
     }
+    if (path === "/api/agent/letter") {
+      // Wave 41 (C6): the writer's draft of one letter.
+      if (opts.moderator !== true && !this.sessions.canModerate(tokenOf(req, body))) {
+        sendJson(res, 403, { error: "moderators only" });
+        return true;
+      }
+      handleAgentLetter(this.letters, body, res);
+      return true;
+    }
     if (path === "/api/agent/trace") {
       if (opts.moderator !== true && !this.sessions.canModerate(tokenOf(req, body))) {
         sendJson(res, 403, { error: "moderators only" });
@@ -5846,6 +5945,9 @@ export class EventRuntime {
       const booth = opts.moderator === true ? null : this.characterOf(caller);
       const by = opts.moderatorName ?? imp?.by ?? (booth !== null ? `Booth · ${booth}` : "Director");
       const hostOnly = opts.moderator !== true && this.hostOnly(caller);
+      // Wave 41 (C5): never on the host allowlist, so a host-only token
+      // was refused above.
+      if (handleLettersPost(this.lettersContext(), path, body, res, by)) return true;
       if (path === "/api/mod/spatial/house/project") return this.saveMapToProject(res, body, opts.moderatorName ?? "Director");
       if (path === "/api/mod/audio" || path.startsWith("/api/mod/audio/")) {
         const project = this.project;
@@ -6282,11 +6384,12 @@ export class EventRuntime {
           sendJson(res, 409, { error: "answer an invitation with /api/guest/recruit/answer" });
           return true;
         }
-        const args = widgetResultArgs(body["result"], this.sim!, m.widget.kind);
-        if (args === null) {
-          sendJson(res, 400, { error: "bad widget result" });
+        const parsed = this.widgetArgsOf(body["result"], m.widget.kind);
+        if (parsed === "bad_email" || parsed === null) {
+          sendJson(res, 400, { error: parsed ?? "bad widget result" });
           return true;
         }
+        const { args, email } = parsed;
         // The facts judge (facts.ts): a 📝 fact / keyed answer card gets its
         // verdict here, journaled with the answer — never re-judged on replay.
         const judged = this.judgeWidget(m.widget, args);
@@ -6299,6 +6402,8 @@ export class EventRuntime {
           return true;
         }
         this.answeredWidgets.add(key);
+        // Wave 41 (C2): the inbox goes to the letters book, never the journal.
+        if (email !== null) this.letters.set("guest", id, email);
         // `card` rides the journaled args so a restart rebuilds the
         // answered set (`restore`) — the story sees it as one more argument.
         const answered = () => this.commit("signal", `${m.widget!.kind} answered`, id, { ...args, ...(judged?.args ?? {}), card: seq });
@@ -6858,6 +6963,17 @@ export class EventRuntime {
           this.actingToken = undefined;
         }
       }
+      case "/api/prime/letter": {
+        // Wave 41 (C3): a performer's own inbox for Trabolta's letter. Posts
+        // nothing into the story, so the doors may be closed.
+        const character = this.characterOf(tokenOf(req, body));
+        if (!character) {
+          sendJson(res, 403, { error: "no performer capability — sign in" });
+          return true;
+        }
+        handlePrimeLetter(this.letters, character, body, res);
+        return true;
+      }
       case "/api/prime/widget": {
         // A performer answered a card the story showed their character
         // (`show <kind> … to <Character>`): the named event `<kind> answered`
@@ -6885,16 +7001,18 @@ export class EventRuntime {
           sendJson(res, 409, { error: "already answered" });
           return true;
         }
-        const args = widgetResultArgs(body["result"], this.sim!, m.widget.kind);
-        if (args === null) {
-          sendJson(res, 400, { error: "bad widget result" });
+        const parsed = this.widgetArgsOf(body["result"], m.widget.kind);
+        if (parsed === "bad_email" || parsed === null) {
+          sendJson(res, 400, { error: parsed ?? "bad widget result" });
           return true;
         }
+        const { args, email } = parsed;
         if (!this.widgetAnswers.take(character)) {
           sendJson(res, 429, { error: "slow down — wait a minute" });
           return true;
         }
         this.answeredWidgets.add(key);
+        if (email !== null) this.letters.set("performer", character, email);
         this.fanout(this.commit("signal", `${m.widget.kind} answered`, character, { ...args, card: seq }, character));
         sendJson(res, 200, { ok: true });
         return true;

@@ -548,7 +548,7 @@ export interface AgentThought {
   character: string;
   worker: string;
   at: number;
-  kind: "voice" | "lookup" | "reflect" | "survey" | "rerun" | "judge" | "reset" | "control" | "error" | "brief" | "summary";
+  kind: "voice" | "lookup" | "reflect" | "survey" | "rerun" | "judge" | "reset" | "control" | "error" | "brief" | "summary" | "letter";
   trigger: string;
   model: { name: string; api: string; endpoint: string; temperature: number | null; max_tokens: number | null; reasoning_effort: string | null; think: boolean | string | null } | null;
   request_id: string | null;
@@ -573,7 +573,7 @@ export interface AgentThought {
   note: string;
 }
 
-const THOUGHT_KINDS = new Set<AgentThought["kind"]>(["voice", "lookup", "reflect", "survey", "rerun", "judge", "reset", "control", "error", "brief", "summary"]);
+const THOUGHT_KINDS = new Set<AgentThought["kind"]>(["voice", "lookup", "reflect", "survey", "rerun", "judge", "reset", "control", "error", "brief", "summary", "letter"]);
 /** Characters kept per message / per output field on the server. */
 const THOUGHT_TEXT_MAX = 32_000;
 
@@ -1129,6 +1129,25 @@ export class AgentHub {
   }
 
   // -- workers --------------------------------------------------------------
+
+  /**
+   * Wave 41 (C6): the connected workers voicing `character` free to take a
+   * `letter` frame now: not stalled or judge-stalled and — voice first — no
+   * open voice request or ruling out. With `all`, every connected one (a
+   * `cancel` reaches a busy worker too).
+   */
+  letterWorkers(character: string, all = false): AgentWorker[] {
+    const out: AgentWorker[] = [];
+    for (const w of this.workers.values()) {
+      if (!w.characters.has(character)) continue;
+      if (!all) {
+        if (this.stalls.has(w.id) || this.judgeStalls.has(w.id) || this.loadOf(w.id) > 0) continue;
+        if ([...this.judges.values()].some((j) => j.worker === w.id)) continue;
+      }
+      out.push(w);
+    }
+    return out;
+  }
 
   /** A worker connected: register it and hand it every queued request it can answer. */
   attach(worker: AgentWorker): void {
