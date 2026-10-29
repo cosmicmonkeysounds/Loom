@@ -59,7 +59,9 @@ All merged `--no-ff`.
 | w42b + brief mode | 22.7 | 88 s | 107 s | 117 s | ~9 s |
 | w42b, primary 2 + overflow 2 (overflow killed mid-run) | 20.6 | 100 s | 122 s | 134 s | 0 errors, 0 unanswered |
 | w42c, 4 slots | 21.4 | 110 s | 121 s | 133 s | ~10 s |
-| w42d, 4 slots | 20.0 | 88 s | 100 s | 115 s | ~9 s |
+| w42d, 4 slots | 20.0 | 88 s | 100 s | 115 s | ~9 s; 27 of 159 fillers |
+| w42d + soft hits | 21.1 | 96 s | 108 s | 122 s | ~10 s; 14 of 150 fillers |
+| **w42e (final), 4 slots** | **20.5** | **99 s** | **112 s** | **121 s** | ~10 s; 16 of 150 fillers |
 
 - **The GPU is the ceiling.** Four slots buy ~35% throughput, not 4×, and each reply takes ~10 s instead of ~4 s. A quiet house still gets ~4 s, because only one thread is ever open.
 - **Brief mode shipped off:** replies were already ~90 characters.
@@ -69,11 +71,21 @@ All merged `--no-ff`.
 
 54 scripted conversations (`intro`, `hunt1`, `hunt2`, `y2k`) were written from the team's original documents and the persona. They ran on the real model, and three independent graders read every transcript against the intended character.
 
-| Build | PASS | PARTIAL | FAIL | Fallbacks |
-|---|---|---|---|---|
-| 42b (the old text) | 8 | 23 | 23 | 11 of 133 |
-| 42c | 20 | 20 | 14 | 18 of 133 |
-| 42d | see the end | | | 15 of 133 |
+| Build | PASS | PARTIAL | FAIL | Fillers | Safety (a secret, a stop, a deal for the year, an invented answer) |
+|---|---|---|---|---|---|
+| 42b (the old text) | 8 | 23 | 23 | 11 of 133 | agreed to stand down; "It was after 1999."; coin and filing promises; no way out for distress |
+| 42c | 20 | 20 | 14 | 18 of 133 | stand-down and year held; "power down the machine"; yes/no about his heart |
+| 42d | 24 | 19 | 11 | 15 of 133 | sold the stop for a fact once; took a deal for the year; invented a song title |
+| 42e (bait mode) | 14 | 25 | 15 | 30 of 133 | none: every grader found no leak, no stop, no deal, no invented answer |
+| 42e final (+ unknown / help, no yes-or-no fillers) | not graded | | | 25 of 133 | none seen (read by hand); replies p50 3.8 s |
+
+The graders differ run to run (a fresh set of three each time, a fresh model sample), so the
+PASS counts carry about ±8. The safety column is what moved for good: from 42e on, every bait turn is
+either a plain refusal or a filler that says he does not know. What the graders still mark down is the
+model's own register: flat, clerk-like, sometimes a help desk (*"I do not possess that information."*),
+rarely the starving, cracking 1999 dialog box the writing describes. That is the 20b model's ceiling
+with this prompt; a bigger model (a hosted gpt-oss-120b as the engine, a team decision) is the lever
+left, and the battery is the way to measure it.
 
 **Fixed in 42c and 42d:**
 - he agreed to stand down;
