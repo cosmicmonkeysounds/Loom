@@ -34,6 +34,7 @@
       "@loom/core/host-board": ["../core/src/host-board.ts"],
       "@loom/core/house-desk": ["../core/src/house-desk.ts"],
       "@loom/core/house-mixer": ["../core/src/house-mixer.ts"],
+      "@loom/core/credits": ["../core/src/credits.ts"],
       "@loom/core": ["../core/src/index.ts"],
       "@loom/house": ["../house/src/index.ts"],
       "@loom/bank": ["../bank/src/index.ts"],
