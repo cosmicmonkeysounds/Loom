@@ -1,5 +1,5 @@
 //! Widgets — the cards a `show <kind> …` statement puts in a conversation:
-//! a CAPTCHA to solve, a picture, a poll, a 📝 fact to file, a 💬 free-text answer. The story names a kind and some
+//! a CAPTCHA to solve, a picture, a poll, a 📝 fact to file, a 💬 free-text answer, an ✉️ email for a letter. The story names a kind and some
 //! text/params; this registry maps the kind to a React card. A widget that
 //! wants an answer calls `onAnswer(result)` once, and the story hears it as
 //! the named event `<kind> answered` with the result bound as arguments.
@@ -465,6 +465,77 @@ function AnswerCard({ card, onAnswer, answered }: WidgetProps) {
   );
 }
 
+// --- email (wave 41, C2) ------------------------------------------------------
+
+/** The longest address the card sends (RFC 5321's path limit). */
+export const EMAIL_MAX = 254;
+
+const EMAIL_SHAPE = /^[^\s@<>,;"]+@[^\s@<>,;"]+\.[^\s@<>,;"]+$/u;
+
+/** The address an email card sends (`{email}`), or null while it isn't one.
+ *  The same check as the server's (`bad_email`). */
+export function emailResult(text: string): WidgetResult | null {
+  const t = text.trim();
+  if (t.length > EMAIL_MAX || !EMAIL_SHAPE.test(t)) return null;
+  return { email: t };
+}
+
+/** The answered receipt: `✔ on file` (the story's `given: true`, or this
+ *  phone's own `{email}`), `✖ no thanks` (`skipped: true`). After a reload
+ *  the server only says the card *was* answered: `✔ answered`. Never the
+ *  address itself. */
+export function emailReceipt(answered: WidgetResult): string {
+  if (answered["skipped"] === true) return "✖ no thanks";
+  if (answered["given"] === true || typeof answered["email"] === "string") return "✔ on file";
+  return "✔ answered";
+}
+
+/**
+ * `show email "Where should Trabolta write?" to program with button: "Send",
+ * skip: "No thanks", placeholder: "you@example.com"` — one optional address
+ * for the letter at the end of the night. The result is `{email}` or
+ * `{skipped: true}` → `email answered`; the server keeps the address in the
+ * letters book and tells the story only `given` / `skipped`.
+ */
+function EmailCard({ card, onAnswer, answered }: WidgetProps) {
+  const [text, setText] = useState("");
+  const done = answered !== null && answered !== undefined;
+  const result = emailResult(text);
+  const button = card.params["button"] ?? "Send";
+  const skip = card.params["skip"] ?? "No thanks";
+  return (
+    <div className={`widget email ${done ? "done" : ""}`} role="group" aria-label={card.text || "Your email"}>
+      <div className="widget-head">
+        <span className="widget-glyph" aria-hidden>
+          ✉️
+        </span>
+        <div>
+          <div className="widget-title">{card.text || "Your email"}</div>
+        </div>
+      </div>
+      {!done && onAnswer && (
+        <input className="email-text" type="email" autoComplete="email" inputMode="email" autoCapitalize="off" spellCheck={false} maxLength={EMAIL_MAX} placeholder={card.params["placeholder"] ?? "you@example.com"} value={text} onChange={(e) => (setText(e.target.value), keepFootInView(e.currentTarget))} onFocus={(e) => footInViewSoon(e.currentTarget)} onKeyDown={(e) => { if (e.key === "Enter" && result !== null) onAnswer(result); }} />
+      )}
+      <div className="widget-foot">
+        {done ? (
+          <span className="widget-state">{emailReceipt(answered)}</span>
+        ) : onAnswer ? (
+          <>
+            <button type="button" className="link" onClick={() => onAnswer({ skipped: true })}>
+              {skip}
+            </button>
+            <button type="button" className="choice primary widget-go" disabled={result === null} onClick={() => result && onAnswer(result)}>
+              {button}
+            </button>
+          </>
+        ) : (
+          <span className="widget-state">shown to a guest</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // --- registry ---------------------------------------------------------------
 
 export const WIDGETS: Record<string, WidgetDef> = {
@@ -475,6 +546,7 @@ export const WIDGETS: Record<string, WidgetDef> = {
   pass: { label: "🎟️ your pass", answerable: false, render: (p) => <PassCard {...p} /> },
   fact: { label: "📝 file a fact", answerable: true, supersedes: true, closed: (c) => factQuestions(c.params["questions"]).length === 0, render: (p) => <LazyFactCard {...p} /> },
   answer: { label: "💬 your answer", answerable: true, inline: true, render: (p) => <AnswerCard {...p} /> },
+  email: { label: "✉️ your inbox", answerable: true, inline: true, render: (p) => <EmailCard {...p} /> },
 };
 
 /** What `registerWidget` takes besides a whole def: the component and its flags. */
