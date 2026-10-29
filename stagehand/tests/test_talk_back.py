@@ -907,7 +907,9 @@ def test_the_fallbacks_are_fine_on_air_the_dm_pools_included():
     # air they are never picked while a scene's pool holds, but the outside
     # and digit rules stay theirs.
     p = load_persona(TRABOLTA)
-    assert p.fallbacks["rattled"] == ("No. No. Disregard that. Bring me a fact.", "That was— a minor irregularity. Facts, program. Now.")
+    assert p.fallbacks["rattled"] == ("No. No. Disregard that. Bring me a fact.", "Not now— not that. Everything is fine. Facts, program.")
+    # (w42e) The denial answers only the malware, the advert or the glitch.
+    assert "That was— a minor irregularity. Facts, program. Now." in p.fallbacks["rattled.malware"]
     assert p.fallback == "…packet loss. That matter is closed, program. The hunt is waiting."
     for stage, lines in p.fallbacks.items():
         for line in (*lines, p.fallback):

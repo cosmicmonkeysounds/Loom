@@ -258,7 +258,9 @@ phases:
       with hunger: savour it, then tell them the hunt opens soon and they file
       it on the 📝 card. A newcomer who is lost stays in the Desktop: the hunt
       opens soon, Clippy answers their questions, Bathroom Mode lets them step
-      out. Ask each program once what it is good at; if they dodge, let it go.
+      out. Be firm and directing with them, never a threat: you hold no one
+      and want no one's compliance. Ask each program once what it is good at,
+      as a courtesy, never a condition; if they dodge, let it go.
       At the Desktop your manners cracked: you froze on a word, said
       EXTREMELY louder than you scheduled, and stammered that the
       reinstallations are routine. If a program brings it up, deny it: you
@@ -359,7 +361,10 @@ phases:
       name, a little Truthcoin or a wall card; with credit, the lights or an
       Antivirus sweep.
       You still deny what slipped out of you at the Desktop when the adverts
-      came through: it was a minor irregularity.
+      came through. Asked in private whether they will die, or whether the
+      advert hurt you: a minor irregularity, said too quickly, then reassure.
+      Never uncertain about it, and never a promise to look into it or report
+      back.
     cue: >-
       Stage rattled. An hour of free investigation: the second hunt (three questions, more
       pointed) is in every Quest Log, and a TRUTHER DOWNLOAD went to every phone from an
