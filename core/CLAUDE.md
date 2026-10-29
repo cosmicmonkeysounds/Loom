@@ -64,7 +64,8 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   messages with the same `seq`s. Never make a replayed path depend on
   wall time, `Math.random`, or state that is not in the journal.
 - **Memory-only things say so.** Poses, voice, camera frames, pair
-  codes, rejoin asks, claim unlocks, the King's per-visit hit, typing indicators,
+  codes, rejoin asks, claim unlocks, the King's per-visit hit, typing indicators
+  and the agent line's waits (`agentWait`, its mean service time; wave 42b),
   the house desk's runs / playhead / activity, the router's plays and report, the
   terminals' `talk=` / `said=`, the TV's `sp=` (`ScreenState.tvSpeech`),
   the spatial hub's per-session presence room, escape cooldown
@@ -281,6 +282,38 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   legacy and a windowed worker voicing the same character at once work,
   but the split between them is arbitrary (the legacy one takes the
   overflow). Memory only, like the rest of the hub. Tests: `test/agents-window.test.ts`.
+- **The line, as a worker and a guest see it** (wave 42b, B1/B2;
+  `server/agents.ts` "Load and the line"). Every `request` frame (legacy
+  too) carries `queued` and `load {queued, inFlight, capacity}` at send
+  time, spread onto the frame only (the hub's copy, `pending`, never has
+  them; `agent-recent.test.ts` strips them before its frozen fixture).
+  `capacity` = the windowed slots plus one per legacy worker. With a
+  windowed worker voicing the character, the hub's `wait` option tells
+  each DM thread `AgentLineWait {state: queued | answering | idle,
+  position?, etaS?}`; the runtime sends it as the SSE event `agentWait
+  {channel, audience, character, state, position?, etaS?}` to the typing
+  frames' audience (`seesAgentThread`: the guest, the performer whose
+  cast thread it is, an admin booth, every director; never a lean house
+  tool). `position` is 1-based in the rank order (a public request counts
+  but is never told; a `stale` one holds no place), `etaS = ceil(position
+  × mean ÷ live slots)` (`liveSlotsFor`: the windowed workers not
+  stalled, less their rulings and letters out, at least 1), the mean an
+  EMA (0.2) of a windowed request's dispatch → reply, 6 s before the
+  first (`serviceMeanS`, kept across a story restart). A state change is
+  told at once, a position change at most once per 5 s per thread (the
+  1 s sweep sends a held-back one); idle on settle, a hand answer, a
+  give-up, a drop, a restart, the last window going, and during a stall:
+  with only stalled workers voicing the character its queued threads and
+  the stalled worker's in-flight ones are idle (the hold line is all they
+  show), told again when it answers. A timeout re-dispatch stays
+  `answering` (no idle blip). Never for a public talk thread, never with
+  only a legacy worker (or none); a legacy worker beside a windowed one
+  takes the overflow at once, so its line reads `answering`. Typing is not
+  replayed on a reconnect; `agentWait` is: a (re)opened `/events` stream
+  gets its threads' current waits right after `history`
+  (`replayAgentWaits`, `AgentHub.waitList`), so `answering` stands in for
+  the typing it missed; only non-idle ones are sent, so a client clears
+  its waits on `history` (an idle it slept through is never re-told). Memory only. Tests: `test/agents-wait.test.ts`.
 - **Hub files have one owner at a time.** `event-runtime.ts`,
   `views.ts`, `chat.ts` and `sim.ts` are touched by almost every
   feature; when several agents work in parallel, give each of these to

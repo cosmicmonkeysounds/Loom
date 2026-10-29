@@ -166,6 +166,7 @@ import {
   type AgentRecent,
   type AgentRequest,
   type AgentThread,
+  type AgentLineWait,
   type AgentWorker,
   threadKey,
 } from "./agents.ts";
@@ -970,6 +971,8 @@ export class EventRuntime {
     // to the heart while queued would keep the rank he opened with.
     rank: (req) => (req.thread.public === true ? 0 : this.sim !== null && this.agentPeek(`${req.speaker.id}.at_the_heart`) === "true" ? 1 : 2),
     typing: (thread, on) => this.pushTyping(thread, on),
+    // Wave 42b (B2): a guest's place in a windowed worker's line.
+    wait: (thread, wait) => this.pushAgentWait(thread, wait),
     hold: (req) => this.postAgentHold(req),
     busy: (req) => this.postAgentBusy(req),
     stalled: (worker, waiting) => this.postAgentStall(worker, waiting),
@@ -3535,7 +3538,6 @@ export class EventRuntime {
 
   /** Show / hide "<Character> is typing…" to whoever is in the thread. */
   private pushTyping(thread: AgentThread, on: boolean): void {
-    const who = thread.audience[0]!;
     const data = { channel: thread.channel, from: thread.character, on };
     if (thread.public === true) {
       // Wave 32 (C4): his thinking reaches the host booths and the directors
@@ -3544,9 +3546,49 @@ export class EventRuntime {
       return;
     }
     for (const c of this.clients) {
-      if (c.role === "guest" ? c.id === who : c.role === "prime" ? `@${c.id}` === who || c.admin === true : true) {
-        sseSend(c.res, "typing", { ...data, audience: thread.audience });
-      }
+      if (this.seesAgentThread(c, thread)) sseSend(c.res, "typing", { ...data, audience: thread.audience });
+    }
+  }
+
+  /** May `c` see a DM agent thread's typing and wait frames? Its guest, a
+   *  performer whose cast thread it is, an admin booth, every director. */
+  private seesAgentThread(c: Client, thread: AgentThread): boolean {
+    const who = thread.audience[0]!;
+    return c.role === "guest" ? c.id === who : c.role === "prime" ? `@${c.id}` === who || c.admin === true : true;
+  }
+
+  /** The `agentWait` frame's body (wave 42b, B2). */
+  private static agentWaitFrame(thread: AgentThread, wait: AgentLineWait): Record<string, unknown> {
+    return {
+      channel: thread.channel,
+      audience: thread.audience,
+      character: thread.character,
+      state: wait.state,
+      ...(wait.position !== undefined ? { position: wait.position } : {}),
+      ...(wait.etaS !== undefined ? { etaS: wait.etaS } : {}),
+    };
+  }
+
+  /**
+   * Wave 42b (B2): tell a DM thread where it stands in a windowed worker's
+   * line (`agentWait {channel, audience, character, state, position?,
+   * etaS?}`), to the same audience as its typing frames. Never for a public
+   * talk thread (the hub never asks; this is the belt), never for a lean
+   * house tool (it never reads them, and a burst sends several a second).
+   * Memory only: a reconnecting stream gets its threads' current waits
+   * after `history` (`replayAgentWaits`).
+   */
+  private pushAgentWait(thread: AgentThread, wait: AgentLineWait): void {
+    if (thread.public === true) return;
+    const frame = EventRuntime.agentWaitFrame(thread, wait);
+    for (const c of this.clients) if (c.lean !== true && this.seesAgentThread(c, thread)) sseSend(c.res, "agentWait", frame);
+  }
+
+  /** A stream (re)opened: the waits of the threads it may see, as they
+   *  stand now — typing is not replayed, so `answering` stands in for it. */
+  private replayAgentWaits(c: Client): void {
+    for (const { thread, wait } of this.agents.waitList()) {
+      if (thread.public !== true && this.seesAgentThread(c, thread)) sseSend(c.res, "agentWait", EventRuntime.agentWaitFrame(thread, wait));
     }
   }
 
@@ -5451,6 +5493,8 @@ export class EventRuntime {
         // A moderator sees the full feed *including* hidden messages (greyed in
         // the UI) so they can un-hide; performers see the public feed only.
         sseSend(res, "history", this.historyFor(client));
+        // Wave 42b (B2): a phone back from sleep learns its place in line.
+        this.replayAgentWaits(client);
       }
       if (!fullMod) this.pushPresence();
       const ping = setInterval(() => {
