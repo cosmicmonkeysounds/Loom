@@ -210,7 +210,7 @@ def test_local_overlay_fills_the_placeholders(tmp_path):
 
     p = _house(tmp_path, {"url": "https://x", "event": "CHANGE-ME-EVENT-ID", "mod_passcode": "CHANGE-ME"})
     assert placeholders(load_config(p, env={}).server) == ["event", "mod_passcode"]
-    (tmp_path / "trapped.house.local.yaml").write_text("server: { event: ev-7, mod_passcode: 'real' }\n")
+    (tmp_path / "trapped.house.local.yaml").write_text("server: { event: ev-7, mod_passcode: 'real' }\n", encoding="utf-8")
     cfg = load_config(p, env={})
     assert (cfg.server.url, cfg.server.event, cfg.server.mod_passcode) == ("https://x", "ev-7", "real")
     assert placeholders(cfg.server) == []
@@ -218,14 +218,14 @@ def test_local_overlay_fills_the_placeholders(tmp_path):
 
 def test_env_beats_the_overlay_and_a_token_drops_the_placeholder_passcode(tmp_path):
     p = _house(tmp_path, {"url": "https://x", "event": "CHANGE-ME-EVENT-ID", "mod_passcode": "CHANGE-ME"})
-    (tmp_path / "trapped.house.local.yaml").write_text("server: { event: ev-7 }\n")
+    (tmp_path / "trapped.house.local.yaml").write_text("server: { event: ev-7 }\n", encoding="utf-8")
     cfg = load_config(p, env={"LOOM_EVENT_ID": "ev-9", "LOOM_MOD_TOKEN": "tok", "LOOM_MOD_PASSCODE": ""})
     assert (cfg.server.event, cfg.server.mod_token, cfg.server.mod_passcode) == ("ev-9", "tok", None)
 
 
 def test_local_overlay_may_only_hold_server(tmp_path):
     p = _house(tmp_path, {"url": "https://x", "mod_passcode": "x"})
-    (tmp_path / "trapped.house.local.yaml").write_text("show: { cues: [] }\n")
+    (tmp_path / "trapped.house.local.yaml").write_text("show: { cues: [] }\n", encoding="utf-8")
     with pytest.raises(ConfigError, match="only hold a 'server:'"):
         load_config(p, env={})
 
@@ -264,9 +264,9 @@ def test_extends_builds_on_the_parent_and_its_secrets(tmp_path):
     house["server"] = {"url": "https://x", "event": "CHANGE-ME-EVENT-ID", "mod_passcode": "CHANGE-ME"}
     house["audio"] = {"announce": True, "mqtt": {"host": "127.0.0.1", "port": 1883}}
     _write(tmp_path / "trapped.house.yaml", house)
-    (tmp_path / "trapped.house.local.yaml").write_text("server: { event: ev-7, mod_passcode: 'real' }\n")
+    (tmp_path / "trapped.house.local.yaml").write_text("server: { event: ev-7, mod_passcode: 'real' }\n", encoding="utf-8")
     _write(tmp_path / "trapped.macbook.yaml", {"extends": "trapped.house.yaml", "audio": {"mqtt": {"host": "192.168.8.10", "port": 1884, "username": "props"}}})
-    (tmp_path / "trapped.macbook.local.yaml").write_text("server: {}\naudio: { mqtt: { password: s3cret }, device: '828x' }\n")
+    (tmp_path / "trapped.macbook.local.yaml").write_text("server: {}\naudio: { mqtt: { password: s3cret }, device: '828x' }\n", encoding="utf-8")
     cfg = load_config(tmp_path / "trapped.macbook.yaml", env={})
     assert (cfg.server.event, cfg.server.mod_passcode) == ("ev-7", "real")  # the house's own overlay
     m = cfg.modules["audio"].cfg.mqtt
@@ -300,11 +300,11 @@ def test_extends_refuses_a_circle_another_folder_and_a_missing_file(tmp_path):
 
 def test_the_overlay_carries_credentials_but_never_rules_or_a_new_module(tmp_path):
     p = _house(tmp_path, {"url": "https://x", "mod_passcode": "x"})
-    (tmp_path / "trapped.house.local.yaml").write_text("server: {}\nshow: { mqtt: { password: p } }\n")
+    (tmp_path / "trapped.house.local.yaml").write_text("server: {}\nshow: { mqtt: { password: p } }\n", encoding="utf-8")
     assert load_config(p, env={}).modules["show"].cfg.mqtt.password == "p"
-    (tmp_path / "trapped.house.local.yaml").write_text("server: {}\nlights: { mqtt: { password: p } }\n")
+    (tmp_path / "trapped.house.local.yaml").write_text("server: {}\nlights: { mqtt: { password: p } }\n", encoding="utf-8")
     assert set(load_config(p, env={}).modules) == {"show"}  # never switches a module on
     for bad in ("server: {}\naudio: { play_sounds: true }\n", "server: {}\nshow: { mqtt: { topic: x } }\n", "server: {}\nnope: {}\n"):
-        (tmp_path / "trapped.house.local.yaml").write_text(bad)
+        (tmp_path / "trapped.house.local.yaml").write_text(bad, encoding="utf-8")
         with pytest.raises(ConfigError, match="only hold a 'server:'"):
             load_config(p, env={})

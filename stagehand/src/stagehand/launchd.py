@@ -57,7 +57,7 @@ def job_plist(
     """The LaunchAgent property list for one module."""
     if job not in JOBS:
         raise ConfigError(f"launchd: unknown job {job!r} (jobs: {', '.join(JOBS)})")
-    log = str(log_dir / f"{job}.log")
+    log = (log_dir / f"{job}.log").as_posix()  # a macOS plist, even printed on Windows
     return {
         "Label": label_for(job),
         "ProgramArguments": [
@@ -119,7 +119,7 @@ class Launchd:
         uv = self.uv or shutil.which("uv")
         if uv is None:
             raise ConfigError("launchd: `uv` is not on PATH (install it, or pass its path)")
-        dirs = [str(Path(uv).parent), "/opt/homebrew/bin", "/usr/local/bin", "/usr/bin", "/bin", "/usr/sbin", "/sbin"]
+        dirs = [Path(uv).parent.as_posix(),"/opt/homebrew/bin", "/usr/local/bin", "/usr/bin", "/bin", "/usr/sbin", "/sbin"]
         path_env = ":".join(dict.fromkeys(dirs))
         return job_plist(job, cfg, stagehand_dir=self.stagehand_dir, uv=uv, log_dir=self.log_dir, path_env=path_env)
 

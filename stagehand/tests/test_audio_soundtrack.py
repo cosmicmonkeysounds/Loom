@@ -28,7 +28,7 @@ from stagehand.audio.soundtrack import (
 )
 from stagehand.module import ConfigError
 
-FIXTURE = json.loads((Path(__file__).parent / "fixtures" / "router-audio.json").read_text())
+FIXTURE = json.loads((Path(__file__).parent / "fixtures" / "router-audio.json").read_text(encoding="utf-8"))
 DOC = parse_audio(FIXTURE["audio"])
 HOUSE = FIXTURE["house"]
 RATE = 1000  # 100-frame blocks are 0.1 s: the arithmetic stays readable
@@ -190,10 +190,10 @@ def test_a_missing_or_broken_file_is_a_config_error_and_the_router_refuses_to_bo
 
     with pytest.raises(ConfigError, match="no such file"):
         parse_audio_section({"soundtrack": "nope.yaml"}, str(tmp_path))
-    (tmp_path / "bad.yaml").write_text("playlists: [unclosed\n")
+    (tmp_path / "bad.yaml").write_text("playlists: [unclosed\n", encoding="utf-8")
     with pytest.raises(ConfigError, match="not valid YAML"):
         parse_audio_section({"soundtrack": "bad.yaml"}, str(tmp_path))
-    (tmp_path / "ok.yaml").write_text(yaml.safe_dump({"playlists": {"a": {"dir": "music/a"}}, "scenes": {"a": [{"to": "everywhere", "play": "a"}]}}))
+    (tmp_path / "ok.yaml").write_text(yaml.safe_dump({"playlists": {"a": {"dir": "music/a"}}, "scenes": {"a": [{"to": "everywhere", "play": "a"}]}}), encoding="utf-8")
     cfg = parse_audio_section({"soundtrack": "ok.yaml"}, str(tmp_path))
     assert cfg.soundtrack is not None and cfg.soundtrack.playlists["a"].dir == str((tmp_path / "music/a").resolve())
     assert cfg.music_topic == "show/audio/music" and parse_audio_section({}, str(tmp_path)).soundtrack is None

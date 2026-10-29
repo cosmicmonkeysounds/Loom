@@ -159,7 +159,7 @@ def codex_codes():
     """Every codex unlock code: the story's `code:` lines and facts.json."""
     codes = set()
     for f in SHOW.rglob("*.loom"):
-        for m in re.finditer(r'^\s*code:\s*"?([^"\n#]+?)"?\s*$', f.read_text(), re.M):
+        for m in re.finditer(r'^\s*code:\s*"?([^"\n#]+?)"?\s*$', f.read_text(encoding="utf-8"), re.M):
             codes.add(m.group(1).strip().lower())
 
     def walk(o):
@@ -172,7 +172,7 @@ def codex_codes():
             for v in o:
                 walk(v)
 
-    walk(json.loads((SHOW / "facts.json").read_text()))
+    walk(json.loads((SHOW / "facts.json").read_text(encoding="utf-8")))
     return codes
 
 

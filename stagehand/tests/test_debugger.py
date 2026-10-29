@@ -86,7 +86,7 @@ def test_trace_records_rings_appends_jsonl_and_reloads(tmp_path):
     assert len(seen) == 5 and trace.recent("Trabolta", 2)[-1].id == t.id and len(trace.all("Trabolta")) == 3  # ring of 3
     assert trace.find(t.id) is t and trace.find("nope") is None
     path = tmp_path / "evt" / "Trabolta.trace.jsonl"
-    lines = path.read_text().splitlines()
+    lines = path.read_text(encoding="utf-8").splitlines()
     assert len(lines) == 5 and json.loads(lines[-1])["kind"] == "voice"
     fresh = Trace(tmp_path, "evt", ring=10)
     assert fresh.load_recent("Trabolta") == 5 and fresh.all("Trabolta")[-1].thinking == "she is the ferry bot"
@@ -409,7 +409,7 @@ def test_control_actions_edit_the_mind_and_are_mirrored_and_traced(tmp_path):
     controls = [t for p, b in agents.mod.posts if p == "/api/agent/trace" for t in b["thoughts"] if t["kind"] == "control"]
     assert controls[0]["note"] == "nudge: be shaken" and controls[0]["trigger"] == "Jo"
     assert any(t["note"].startswith("set stage") for t in controls) and any(t["note"] == "forgot Ada" for t in controls)
-    saved = json.loads((tmp_path / "minds" / "evt" / "Trabolta.mind.json").read_text())
+    saved = json.loads((tmp_path / "minds" / "evt" / "Trabolta.mind.json").read_text(encoding="utf-8"))
     assert saved["stage"] == "the question" and saved["revisions"][-1]["by"] in ("Jo", "server", "director")
 
 

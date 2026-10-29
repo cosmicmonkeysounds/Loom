@@ -563,9 +563,9 @@ def test_the_worker_sends_acts_reflects_and_mirrors_the_mind(tmp_path):
     assert mind.exchanges == 1 and mind.people["g-1"].turns == 1
     # Persisted per event + character; a reset empties it (and the file).
     saved = tmp_path / "minds" / "evt" / "Trabolta.mind.json"
-    assert saved.exists() and json.loads(saved.read_text())["brief"] == "Be kind to Ada."
+    assert saved.exists() and json.loads(saved.read_text(encoding="utf-8"))["brief"] == "Be kind to Ada."
     run(agents.on_frame("control", json.dumps({"action": "reset", "by": "server", "reason": "restart"})))
-    assert mind.brief == "" and json.loads(saved.read_text())["exchanges"] == 0
+    assert mind.brief == "" and json.loads(saved.read_text(encoding="utf-8"))["exchanges"] == 0
     assert calls.count("orch") >= 1  # the survey on hello + the reflection
 
 
