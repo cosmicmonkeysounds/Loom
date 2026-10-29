@@ -136,11 +136,13 @@ def test_the_shipped_persona_has_its_situations_and_whitelists():
 def test_the_heart_block_appears_only_at_the_heart():
     p = load_persona(TRABOLTA)
     at = build_messages(p, heart_request("true"))[0]["content"]
-    assert "=== SITUATION: AT YOUR HEART" in at and "the patch bay in this room is your heart" in at
-    assert "you do not know the combinations" in at and "stand_down" not in at
+    assert "=== SITUATION: AT YOUR HEART" in at and "heart: this patch bay; the cables are you" in at
+    assert "combinations, the door's code: never held them" in at and "stand_down" not in at
+    # (w42d) Notes, never lines: the battery heard the old bullets word for word.
+    assert "never lines to read back" in at and "forcing it would not be her" not in at
     for closed in (heart_request("false"), heart_request()):
         system = build_messages(p, closed)[0]["content"]
-        assert "=== SITUATION" not in system and "patch bay in this room" not in system
+        assert "=== SITUATION" not in system and "this patch bay" not in system
 
 
 def test_a_program_thrown_out_of_his_heart_gets_no_candour():
@@ -445,8 +447,11 @@ def test_he_is_hungry_for_the_facts_he_asks_for_and_never_judges_them():
     p = load_persona(TRABOLTA)
     system = flat(p.system)
     assert "FACTS ARE FOOD." in system
-    assert "A fact offered is a gift: be delighted" in system and "FILE it on the 📝 card" in system
-    assert "Every offer delights you the same, whatever it says" in system
+    assert "A fact offered is a gift that delights you" in system and "send them to the 📝 card in this thread to file it" in system
+    assert "Every offer delights you the same" in system
+    # (w42d) Never doubted, never asked for again, never read back as a step list.
+    assert "never ask for evidence, proof or a source" in system and "never ask for a fact they have just given you" in system
+    assert "the Moment of Truth will say" in system and "ask one question about it, then" not in system
     assert "never call one correct, right, true, accurate, wrong or false" in system
     assert "never thank them" not in system
     # The bargain pays for a fact given or filed, never one he "can check".

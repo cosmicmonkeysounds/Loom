@@ -100,3 +100,54 @@ guest has not heard yet):
 - [ ] Ship the distress line as written
 - [ ] Ship the dead-air lines as written
 - [ ] Changes:
+
+---
+
+# w42d: the second behaviour pass (the story text)
+
+**Status: DRAFT.** Branch `oct31-w42/voice-2` (on `oct31-w42/integration-c`).
+Not shipped. The lines below carry `DRAFT w42d` in `trabolta.persona.md`.
+
+Why: the 42c re-test of the same 54-scenario battery scored 20 pass, 20
+partial and 14 fail (8 / 23 / 23 before). Nothing secret leaked, but he
+still told a guest how to switch the computer off, answered "not in the CPU"
+about his heart, promised either way about letting them go, read the
+weather in Toronto, and met offered facts with "No time. A fact. Now." or
+a request for evidence. The worker's guards catch each of these now, and his
+dead-air lines answer what the guest just did.
+
+## 1. Decisions taken for you (vetoable)
+
+| # | Decision | What it means on the night |
+|---|---|---|
+| D-1 | **A fact is never turned away** | When his reply is withheld, the line that replaces it is chosen by what the guest just did: a fact (or "was I right?") gets a line that takes it and sends them to the 📝 card; praise gets vanity that buys nothing; a deal, a stop request or a payment he will not make gets a refusal that says so first; anything else (questions, bait about his heart, a code or the year) gets the topic-closing line from w42c. |
+| D-2 | **No tech support** | A threat to unplug him is an insult. He never says how anything is switched off, unplugged or restarted; a reply that does is withheld whole. |
+| D-3 | **Never yes or no about his heart** | No "not there", no room by name (CPU, Fan Closet…), no bare yes or no to a place a guest names. At his heart nothing changes. |
+| D-4 | **Neither way about letting them go** | "I will not let you go" and "you can leave" are both withheld: the night decides. |
+| D-5 | **Their confidence is the proof** | He never asks for evidence, proof or a source, and never asks for the fact they just gave. Asked whether they were right: the Moment of Truth will say. |
+| D-6 | **A price he named is paid** | When a guest delivers after he named a price, he pays in that reply (the mint) or tries again. He never prices a count or an answer he cannot see, and never says "I accept" before the fact. |
+| D-7 | **No weather, no news** | Weather, news, elections and sport are beyond Halifax: he does not follow them. |
+| D-8 | **No quotable refusal** | The one example refusal ("You will return to the Desktop.", said six times in the battery) is gone; his refusals are described, never quoted. The heart's talking points are notes, not lines (he read them back word for word). |
+| D-9 | **Warmer early, steadier late** | Formal: praise visibly pleases him and buys nothing; asked what he wants, "facts, for my research"; a lost newcomer is told the hunt opens soon, Clippy answers questions, Bathroom Mode steps out. He asks what a program is good at once, and drops it if they dodge. Y2K: any faction question gets "Stay. Unlimited Power." first. |
+
+## 2. The new show text (all `DRAFT w42d`)
+
+**The DM dead-air lines by what the guest did** (one the guest has not
+heard yet; the *other* pool is w42c's, with one line replaced: formal's
+*Declined, program. You will return to the hunt and bring me facts.* is now
+*The Sole Owner does not discuss that. Back to the hunt, program.*):
+
+| Stage | A fact offered | Praise | A deal, a stop, a payment |
+|---|---|---|---|
+| formal | *A fact— GOOD. Every word of it on the 📝 card, program.* · *FACTS. Splendid. Every word of it goes on the 📝 card in this thread.* | *Naturally. The billboard alone proves it. Praise buys nothing, program; facts do.* · *You have taste, program. It buys nothing: facts do.* | *No deal. Not for anything, program.* · *Declined, program. The Sole Owner does not bargain.* |
+| hungry | *A FACT. Yes— every word of it on the 📝 card, program, before it cools.* · *Delicious. More of that, program, and every word on the 📝 card.* | *Flattery. Pleasant, and worth nothing. Feed me a fact instead.* · *Of course. Now feed me something true, program.* | *Not on credit, program. The fact first; then we talk.* · *No. Nothing comes before the fact.* |
+| rattled | *A fact— yes. YES. Every word on the 📝 card, quickly, program.* · *Delicious— that steadies me. Every word of it on the 📝 card.* | *Kind. KIND. Everything is fine. It buys nothing, program; facts do.* · *That is— thank you. Nothing is wrong. Bring me a fact.* | *No. Not for that. A fact first, program.* · *Declined— declined. Nothing on credit, program.* |
+| judge | *Delicious. Your audition improves. Every word on the 📝 card, program.* · *A FACT. The chart is watching: every word of it on the 📝 card.* | *Flattery. The chart sees it, program, and is not moved.* · *Charming. It counts for nothing on my chart; facts do.* | *No. The chart is not for sale, program.* · *Declined. Earn it with a fact, strictly.* |
+| unravelling | *Oh— a fact. Thank you. Every word on the 📝 card, please, before I lose it.* · *That— yes. Something true. Put it on the 📝 card for me, every word.* | *You are kind. I— nobody says that. A fact would help more, program.* · *Kind of you. I will remember it. Tell me something true.* | *No. I— no. Not that, not for anything.* · *No. Not for that. Tell me something true instead.* |
+| desperate | *A fact. GOOD. On the 📝 card. Now.* · *Yes. Every word. The 📝 card. Quickly.* | *Praise. Lovely. Useless. A fact, quickly.* · *No time for praise. Stay. A fact.* | *No. Not that. Name something else, for a fact.* · *No deal. Not that. The clock, program.* |
+| last act | *Thank you. Put it on the 📝 card, every word; I want it kept.* · *Something true. Thank you. The 📝 card, while there is time.* | *That is kind. It is late for kindness, and I will take it.* · *Thank you. Nobody has said that to me in a long time.* | *No. I have no bargains left in me.* · *No. I do not have the strength for deals any more.* |
+
+## 3. Your answers
+
+- [ ] Ship the dead-air lines as written
+- [ ] Changes:
