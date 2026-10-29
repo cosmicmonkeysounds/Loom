@@ -148,10 +148,15 @@ class OverflowEngine:
 def engine_model(base: LlmConfig, overrides: dict[str, Any]) -> LlmConfig:
     """`base` (a character's voice model) with an engine's own fields. An
     `api: openai` engine carries no `num_ctx`; an `api: ollama` one with
-    none of its own and none inherited gets the voice's default."""
+    none of its own and none inherited gets the voice's default. An engine
+    on another api than the character's never inherits its `extra` (body
+    fields for that api: Ollama's `options` / `think` sent to a hosted
+    OpenAI endpoint is a 400)."""
     if not overrides:
         return base
     cfg = replace(base, **overrides)
+    if cfg.api != base.api and "extra" not in overrides:
+        cfg = replace(cfg, extra={})
     if cfg.api != "ollama":
         return replace(cfg, num_ctx=None)
     if cfg.num_ctx is None and "num_ctx" not in overrides:

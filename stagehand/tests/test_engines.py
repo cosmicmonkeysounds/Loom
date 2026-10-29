@@ -550,3 +550,76 @@ def test_one_engine_keeps_the_worker_as_it_was(tmp_path):
     thought = voice_thoughts(agents)[0]
     assert thought["engine"] == PRIMARY and "engine" not in (thought["note"] or "")
     assert NORMAL == 2  # the lanes are unchanged
+
+
+# -- review fixes (wave 42b) -------------------------------------------------------------------
+
+
+def test_retries_sent_to_the_front_are_served_first_come_first_served():
+    async def go():
+        slots = Slots(engines=[(PRIMARY, 1)])
+        await slots.acquire()
+        plain = asyncio.ensure_future(slots.acquire())
+        await asyncio.sleep(0)
+        first = asyncio.ensure_future(slots.acquire(front=True))
+        await asyncio.sleep(0)
+        second = asyncio.ensure_future(slots.acquire(front=True))
+        await asyncio.sleep(0)
+        slots.release(PRIMARY)
+        await asyncio.sleep(0)
+        assert first.done() and not second.done() and not plain.done()  # the older retry, ahead of the line
+        slots.release(PRIMARY)
+        await asyncio.sleep(0)
+        assert second.done() and not plain.done()
+        slots.release(PRIMARY)
+        assert await plain == PRIMARY
+
+    run(go())
+
+
+def test_when_the_last_engine_goes_down_a_waiter_takes_a_free_slot_at_once():
+    async def go():
+        slots = Slots(engines=[(PRIMARY, 1), ("a", 1)])
+        assert await slots.acquire() == PRIMARY
+        assert await slots.acquire() == "a"
+        slots.release(PRIMARY)
+        slots.mark_down(PRIMARY)  # its slot is free but skipped
+        waiter = asyncio.ensure_future(slots.acquire())
+        await asyncio.sleep(0)
+        assert not waiter.done()
+        slots.mark_down("a")  # now every engine is down: trying the free one costs nothing
+        await asyncio.sleep(0)
+        assert waiter.done() and waiter.result() == PRIMARY  # not 30 s later
+
+    run(go())
+
+
+def test_a_key_the_endpoint_echoes_never_reaches_the_log_or_the_trace(tmp_path, monkeypatch, caplog):
+    secret = "sk-test-echoed-key-0042"
+    monkeypatch.setenv("LOOM_TEST_ECHO_KEY", secret)
+    hosted = {"name": "cloud", "endpoint": "http://cloud:8000/v1", "capacity": 1, "api": "openai", "api_key_env": "LOOM_TEST_ECHO_KEY"}
+    agents, primary, cloud = two(tmp_path, overflow=hosted, voice={"warm_head": "off"})
+
+    async def echo(request: httpx.Request) -> httpx.Response:
+        cloud.calls.append({"path": request.url.path, "headers": dict(request.headers)})
+        return httpx.Response(401, text=f"Incorrect API key provided: {request.headers['authorization'][7:]}")
+
+    cloud.handle = echo  # type: ignore[method-assign]
+    primary.fail = "down"
+    caplog.set_level(logging.DEBUG)
+    run(agents._handle(req("r1")))
+    assert len(cloud.calls) == 1 and cloud.calls[0]["headers"]["authorization"] == f"Bearer {secret}"
+    thought = voice_thoughts(agents)[0]
+    assert "401" in thought["error"] and "[key]" in thought["error"]
+    assert secret not in caplog.text and secret not in json.dumps(agents.mod.posts)
+    assert secret[:12] not in json.dumps(agents.mod.posts)  # not even a clipped prefix
+
+
+def test_an_engine_on_another_api_does_not_inherit_the_character_s_extra():
+    base = LlmConfig(api="ollama", extra={"think": False, "options": {"num_ctx": 20480}}, keep_alive="60m", num_ctx=32768)
+    cloud = OverflowEngine("cloud", 1, {"endpoint": "https://hosted.example/v1", "api": "openai", "api_key_env": None})
+    assert cloud.model(base).extra == {}  # Ollama's body fields never go to a hosted OpenAI endpoint
+    lan = OverflowEngine("lan", 1, {"endpoint": "http://192.168.8.10:11434/v1", "api_key_env": None})
+    assert lan.model(base).extra == base.extra  # the same api: the character's own
+    own = OverflowEngine("own", 1, {"endpoint": "https://hosted.example/v1", "api": "openai", "extra": {"top_p": 0.9}, "api_key_env": None})
+    assert own.model(base).extra == {"top_p": 0.9}

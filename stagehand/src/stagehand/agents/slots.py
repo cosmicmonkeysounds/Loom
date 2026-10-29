@@ -62,6 +62,11 @@ BACKGROUND = 3
 PRIMARY = "primary"
 #: (wave 42b) How long an engine that failed is skipped.
 ENGINE_DOWN_S = 30.0
+#: (wave 42b) Taken off a `front=True` waiter's arrival number: ahead of
+#: every ordinary waiter in its lane, and still first come first served
+#: among the calls that went to the front (a count down would serve the
+#: newest retry first).
+_FRONT = 1 << 62
 
 
 @dataclass
@@ -98,7 +103,6 @@ class Slots:
         self._cap: dict[str, int] = dict(engines)
         self._free: dict[str, int] = dict(engines)
         self._order = itertools.count()
-        self._front = itertools.count(-1, -1)
         self._waiters: list[_Waiter] = []
         #: The tasks holding a slot, with the engine of each slot they hold (`holding()`).
         self._holders: dict[asyncio.Task[Any], list[str]] = {}
@@ -149,12 +153,15 @@ class Slots:
     def mark_down(self, engine: str) -> None:
         """Skip `engine` for `down_s` seconds; whoever waits is served by
         the others meanwhile, and its free slots are handed out again when
-        it is back."""
+        it is back. Pumped at once too: with this engine down every engine
+        some waiter may use can be down, and then a free slot on any of
+        them is on offer again (it would sit idle until the timer)."""
         self._down[engine] = self.clock() + self.down_s
         try:
             loop = asyncio.get_running_loop()
         except RuntimeError:
             return
+        self._pump()
         loop.call_later(self.down_s + 0.01, self._pump)
 
     def up(self, exclude: Collection[str] = ()) -> list[str]:
@@ -190,7 +197,7 @@ class Slots:
             self._held(name, +1)
             return name
         fut: asyncio.Future[str] = asyncio.get_running_loop().create_future()
-        self._waiters.append(_Waiter(lane, next(self._front) if front else next(self._order), fut, allowed))
+        self._waiters.append(_Waiter(lane, next(self._order) - (_FRONT if front else 0), fut, allowed))
         if lane < BACKGROUND and self.on_wait is not None:
             try:
                 self.on_wait(lane)
