@@ -21,6 +21,7 @@
     "./host-board": "./src/host-board.ts",
     "./casino": "./src/casino.ts",
     "./house-desk": "./src/house-desk.ts",
+    "./house-mixer": "./src/house-mixer.ts",
     "./talk-back": "./src/talk-back.ts"
   },
   "scripts": {

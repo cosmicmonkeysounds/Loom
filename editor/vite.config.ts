@@ -43,6 +43,7 @@ export default defineConfig({
       // The house desk (wave 25): the cue list, its timelines, the checks and
       // the status chips Run → House draws (pure, dependency-free).
       '@loom/core/house-desk': path.resolve(__dirname, '../core/src/house-desk.ts'),
+      '@loom/core/house-mixer': path.resolve(__dirname, '../core/src/house-mixer.ts'),
       '@loom/core': path.resolve(__dirname, '../core/src/index.ts'),
       // The house model (wave 30): the Cue designer edits, plans and
       // previews `lights.json` looks with the server's own rules.
