@@ -430,6 +430,19 @@ uv run stagehand music stop --config trapped.desktop.yaml         # scene off
   the TV page mutes him).
 - `pnpm showctl doctor` prints the scene and the input levels too.
 
+**The mixer** (wave 40). Run → House → 🎚 Mixer in the editor, or 🎚 Mixer
+in a host's Desk window, balances the house live: Music, Featured tracks,
+Sound effects, Announcements and Trabolta's TV, everywhere, per room and
+per speaker (the sub has its own fader), with live meters while the panel
+is open. Its Now playing shows each bed's track with ⏭ Skip, the scene
+picker (a hand scene, held like `music scene`), Stop music and *Follow the
+story*. The mix is kept by the server for the event (a router restart
+picks it up) and never edits `audio.json`: the speaker trims stay the
+install. Speaker tests ignore it. Clippy's mic shows as a meter only (it
+lives in CueMix). Muting the TV *everywhere* also stops it ducking the
+music; a featured track muted somewhere takes nothing over there.
+`pnpm showctl doctor`'s Mixer row lists what is off 0 dB.
+
 ## 4. Zigbee2MQTT on the CC2652P
 
 The coordinator is the **Zigbee 3.0 USB dongle, TI CC2652P + CP2102N, 20
