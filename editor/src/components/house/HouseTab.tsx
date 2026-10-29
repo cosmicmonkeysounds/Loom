@@ -10,9 +10,11 @@
 //!   fires each.
 //! - **Setup** (`SetupPanel.tsx`): is the sound router, the lights module
 //!   and each outside mind connected, and what to do when not.
+//! - **Mixer** (`MixerPanel.tsx`, wave 40): the live balance of the house
+//!   sound per room and source, and the soundtrack's transport.
 //!
 //! Server runs only: a local run explains why. The stores are
-//! `store/house-desk.ts` and `store/cue-designer.ts` (bound from `App.tsx`);
+//! `store/house-desk.ts`, `store/cue-designer.ts` and `store/house-mixer.ts` (bound from `App.tsx`);
 //! the view models are `lib/house-desk-view.ts` and `lib/cue-designer.ts`.
 //!
 //! Keys (Desk view only; never while typing, never under a dialog): in the
@@ -36,11 +38,13 @@ import { ChecksPanel } from './ChecksPanel'
 import { useHouseView, type HouseView } from '@/store/house-view'
 import { CueDesigner } from './CueDesigner'
 import { SetupPanel } from './SetupPanel'
+import { MixerPanel } from './MixerPanel'
 
 const VIEWS: Array<{ id: HouseView; label: string }> = [
   { id: 'desk', label: '🎛 Desk' },
   { id: 'designer', label: '🎨 Cue designer' },
   { id: 'setup', label: '🔌 Setup' },
+  { id: 'mixer', label: '🎚 Mixer' },
 ]
 
 export function HouseTab() {
@@ -194,6 +198,7 @@ function DeskPage({ view }: { view: DeskView }) {
           onDesigner={() => setView('designer')}
         />
       )}
+      {houseView === 'mixer' && <MixerPanel />}
       {houseView === 'desk' && (
       <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
         <section className="flex min-h-0 flex-col border-r border-zinc-800" onMouseDown={() => setKeys('cues')}>

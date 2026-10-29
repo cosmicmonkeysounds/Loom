@@ -17,6 +17,8 @@ import { lightsStatusOf, type LightsStatus } from '@/lib/lights-status'
 import { designerLightsOf, type DesignerLights } from '@/lib/cue-designer'
 import type { LightsConfig } from '@loom/house'
 import type { DeskConfig, DeskTestCall, DeskView } from '@loom/core/house-desk'
+import type { AudioMix, MixChange, MixerView, MusicCommand } from '@loom/core/house-mixer'
+import { audioMixOf, mixerViewOf } from '@/lib/house-mixer-view'
 
 const BASE = import.meta.env.VITE_LOOM_API ?? ''
 
@@ -557,6 +559,26 @@ export const audioApi = {
   ): Promise<{ seq: number }> {
     const r = await req<{ seq?: unknown }>('POST', `/e/${eventId}/api/mod/audio/play`, play)
     return { seq: typeof r.seq === 'number' ? r.seq : 0 }
+  },
+  /** (wave 40) Run → House → 🎚 Mixer: the mix, the sources and rooms, the
+   *  router's live meters and the soundtrack. Each read keeps the router's
+   *  meters coming for a few seconds (`MIX_WATCH_MS`). 404 from an older server. */
+  async getMixer(eventId: string): Promise<MixerView> {
+    const v = mixerViewOf(await req<unknown>('GET', `/e/${eventId}/api/mod/audio/mixer`))
+    if (v === null) throw new ApiError(502, { error: 'the server’s mixer answer is not one' })
+    return v
+  },
+  /** (wave 40) Move the mix: `changes` in order, or `resetAll` (every level back to 0 dB). */
+  async postMix(eventId: string, changes: MixChange[], resetAll = false): Promise<{ mix: AudioMix }> {
+    const r = await req<{ mix?: unknown }>('POST', `/e/${eventId}/api/mod/audio/mix`, resetAll ? { changes, resetAll: true } : { changes })
+    const mix = audioMixOf(r.mix)
+    if (mix === null) throw new ApiError(502, { error: 'the server’s mix answer is not one' })
+    return { mix }
+  },
+  /** (wave 40) Tell the soundtrack: skip, a scene by hand, stop, follow the story. One-shot. */
+  async postMusic(eventId: string, cmd: MusicCommand): Promise<{ seq: number; router: boolean }> {
+    const r = await req<{ seq?: unknown; router?: unknown }>('POST', `/e/${eventId}/api/mod/audio/music`, cmd)
+    return { seq: typeof r.seq === 'number' ? r.seq : 0, router: typeof r.router === 'boolean' ? r.router : routerOf(r.router).online }
   },
 }
 
