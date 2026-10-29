@@ -190,9 +190,12 @@ async function miniNight() {
 }
 
 /** A request with its run-to-run noise (random ids, the injected clock)
- *  replaced by placeholders, so two builds compare field by field. */
+ *  replaced by placeholders, so two builds compare field by field. The
+ *  frame's own line (wave 42b's `queued` / `load`, set as it is sent, not
+ *  built into the body) is left out: this pins the body. */
 function normalised(r: AgentRequest, guestId: string): unknown {
-  return JSON.parse(JSON.stringify({ ...r, id: "<request>" }).split(guestId).join("<guest>"));
+  const { queued: _queued, load: _load, ...body } = r;
+  return JSON.parse(JSON.stringify({ ...body, id: "<request>" }).split(guestId).join("<guest>"));
 }
 
 describe("LOOM_AGENT_RECENT=off: the base branch's request, field for field (C1.6)", () => {

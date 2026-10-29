@@ -65,6 +65,22 @@
 //! and busy lines, `pendingFresh` for Run), and the runtime settles a
 //! reply with `defer` so the next body is built after that reply's effects.
 //!
+//! **Load and the line** (wave 42b, B1/B2). Every `request` frame carries
+//! `queued` (the requests for its character waiting in the hub's queue as
+//! it goes out) and `load {queued, inFlight, capacity}` — so a worker can
+//! answer briefly when the line is long (a legacy worker gets them too and
+//! ignores them). While a windowed worker voices the character, each DM
+//! thread's guest is told where they stand through the `wait` option (the
+//! runtime's `agentWait` SSE frame): `queued` with their 1-based `position`
+//! in the rank-ordered queue and an `etaS` (position × the character's
+//! mean service time, an exponential moving average of dispatch → reply,
+//! 6 s before the first, ÷ the windowed slots), `answering` once a slot
+//! has it, `idle` when it settles, is answered by hand, given up, dropped
+//! or the window goes. A position change is told at most once per
+//! `waitThrottleMs` (5 s) per thread (the sweep sends a held-back one); a
+//! state change at once. Never for a public talk thread, never with only a
+//! legacy worker (it holds the whole line). Memory only.
+//!
 //! Within one stall a thread hears the hold line once, however many
 //! requests the guest's lines open meanwhile (a given-up request's thread
 //! starts its next request held); once the stall ends — or the worker goes
@@ -221,7 +237,45 @@ export interface AgentRequest {
    *  scene and a canned line's steer. Absent on every DM request, and from
    *  an older server; an older worker ignores it. */
   stage?: AgentStage;
+  /** Wave 42b (B1): set on the frame as it is sent, never on the hub's
+   *  copy — the requests for this character waiting in the hub's queue at
+   *  that moment (the worker's brief mode reads it). Absent from an older
+   *  server. */
+  queued?: number;
+  /** Wave 42b (B1): the character's line at send time, with `queued`. */
+  load?: AgentLoad;
 }
+
+/**
+ * Wave 42b (B1): a character's line as a request frame goes out. `inFlight`
+ * counts the frame itself. `capacity` = the windowed workers' slots voicing
+ * the character, plus one per legacy worker (it answers one at a time).
+ */
+export interface AgentLoad {
+  queued: number;
+  inFlight: number;
+  capacity: number;
+}
+
+/**
+ * Wave 42b (B2): where a guest's DM thread stands in a windowed worker's
+ * line — the runtime's `agentWait` frame. `queued`: waiting in the hub's
+ * queue, `position` 1-based in its rank order, `etaS` seconds until a slot
+ * should reach it. `answering`: a slot has it (typing is on). `idle`: no
+ * open request any more (answered, by hand, given up), or no window.
+ */
+export interface AgentLineWait {
+  state: "queued" | "answering" | "idle";
+  position?: number;
+  etaS?: number;
+}
+
+/** A position change is told at most this often per thread (wave 42b). */
+export const AGENT_WAIT_THROTTLE_MS = 5_000;
+/** The mean service time (s) before a character's first settled request. */
+export const AGENT_SERVICE_DEFAULT_S = 6;
+/** The moving average's weight for each new settled request (wave 42b). */
+export const AGENT_SERVICE_ALPHA = 0.2;
 
 /** A verdict on one of the guest's filings, as the dossier carries it (an id
  *  and a verdict: never the answer, the key or the confidence). */
@@ -1080,6 +1134,12 @@ export interface AgentHubOptions {
    *  runtime's `LettersBook.outOn`): each takes one of a windowed worker's
    *  slots. Default: none. */
   letterLoad?: (workerId: string) => number;
+  /** (wave 42b, B2) A DM thread's place in a windowed worker's line
+   *  changed: tell whoever may see the thread (`AgentLineWait`). */
+  wait?: (thread: AgentThread, wait: AgentLineWait) => void;
+  /** (wave 42b, B2) At most one position change per thread this often
+   *  (`AGENT_WAIT_THROTTLE_MS`); a state change goes at once. */
+  waitThrottleMs?: number;
   now?: () => number;
 }
 
@@ -1129,6 +1189,13 @@ export class AgentHub {
    *  settling by hand. Its stall clock runs from this or its oldest
    *  in-flight request's dispatch, whichever is later. */
   private readonly lastBack = new Map<string, number>();
+  /** Wave 42b (B2): per thread key, the wait last told (`idle` is never
+   *  kept: telling it deletes the entry). */
+  private readonly waits = new Map<string, { thread: AgentThread; state: AgentLineWait["state"]; position: number | null; at: number }>();
+  /** Wave 42b (B2): per character, the moving average of a windowed
+   *  request's dispatch → reply (s). Kept across a story restart (the
+   *  worker's speed is not the story's). */
+  private readonly serviceS = new Map<string, number>();
 
   private readonly o: AgentHubOptions;
 
@@ -1222,6 +1289,105 @@ export class AgentHub {
     const judging = this.judgingOf(character);
     if (judging.queued > 0 || judging.out > 0 || judging.stalled) out.judging = judging;
     return out;
+  }
+
+  // -- the line, as a guest sees it (wave 42b, B1/B2) ----------------------
+
+  /** The slots voicing `character`: every windowed worker's capacity, plus
+   *  one per legacy worker (it answers its line one at a time). */
+  private capacityFor(character: string): number {
+    let n = 0;
+    for (const w of this.workers.values()) if (w.characters.has(character)) n += this.windowed(w) ? w.capacity : 1;
+    return n;
+  }
+
+  /** `character`'s line right now (a request frame's `load`). */
+  loadFor(character: string): AgentLoad {
+    let queued = 0;
+    let inFlight = 0;
+    for (const r of this.open.values()) {
+      if (r.req.character !== character) continue;
+      if (r.worker === null) queued += 1;
+      else inFlight += 1;
+    }
+    return { queued, inFlight, capacity: this.capacityFor(character) };
+  }
+
+  /** The mean dispatch → reply of `character`'s windowed requests (s). */
+  serviceMeanS(character: string): number {
+    return this.serviceS.get(character) ?? AGENT_SERVICE_DEFAULT_S;
+  }
+
+  /** The waits every DM thread should show now (thread key →): queued
+   *  ones by their place in the rank order, the ones a slot has as
+   *  `answering`. Only for characters a windowed worker voices; a public
+   *  talk request takes its place in the order but is never told. */
+  private waitsNow(): Map<string, { thread: AgentThread; wait: AgentLineWait }> {
+    const out = new Map<string, { thread: AgentThread; wait: AgentLineWait }>();
+    const queued = new Map<string, OpenRequest[]>();
+    for (const r of this.open.values()) {
+      if (!this.windowedFor(r.req.character)) continue;
+      if (r.worker !== null) {
+        if (r.req.thread.public !== true) out.set(r.key, { thread: r.req.thread, wait: { state: "answering" } });
+        continue;
+      }
+      let list = queued.get(r.req.character);
+      if (list === undefined) queued.set(r.req.character, (list = []));
+      list.push(r);
+    }
+    for (const [character, list] of queued) {
+      let slots = 0;
+      for (const w of this.workers.values()) if (this.windowed(w) && w.characters.has(character)) slots += w.capacity;
+      const mean = this.serviceMeanS(character);
+      this.inRankOrder(list).forEach((r, i) => {
+        if (r.req.thread.public === true) return;
+        const position = i + 1;
+        out.set(r.key, { thread: r.req.thread, wait: { state: "queued", position, etaS: Math.ceil((position * mean) / Math.max(1, slots)) } });
+      });
+    }
+    return out;
+  }
+
+  /** `thread`'s wait right now (a reconnecting phone's first frame), or
+   *  null when it has nothing to show (no open request, a legacy worker, a
+   *  public thread). Never throttled, never recorded. */
+  waitOf(thread: AgentThread): AgentLineWait | null {
+    if (thread.public === true || this.byThread.get(threadKey(thread)) === undefined) return null;
+    return this.waitsNow().get(threadKey(thread))?.wait ?? null;
+  }
+
+  /** Every DM thread's wait right now (`waitOf` for all, one pass). */
+  waitList(): Array<{ thread: AgentThread; wait: AgentLineWait }> {
+    return [...this.waitsNow().values()];
+  }
+
+  /**
+   * Tell every thread whose wait moved (wave 42b, B2): `idle` to one told
+   * before that has nothing to show now, a new state at once, a new
+   * position once `waitThrottleMs` has passed since its last (the sweep
+   * comes back for a held-back one). Called after everything that moves
+   * the line: pump, create, settle, a hand answer, attach, detach, reset
+   * and every sweep.
+   */
+  private flushWaits(): void {
+    const tell = this.o.wait;
+    if (tell === undefined || (this.waits.size === 0 && !this.anyWindowed())) return;
+    const now = this.now();
+    const throttle = this.o.waitThrottleMs ?? AGENT_WAIT_THROTTLE_MS;
+    const want = this.waitsNow();
+    for (const [key, last] of [...this.waits]) {
+      if (want.has(key)) continue;
+      this.waits.delete(key);
+      tell(last.thread, { state: "idle" });
+    }
+    for (const [key, { thread, wait }] of want) {
+      const last = this.waits.get(key);
+      if (last !== undefined && last.state === wait.state) {
+        if (wait.state !== "queued" || last.position === wait.position || now - last.at < throttle) continue;
+      }
+      this.waits.set(key, { thread, state: wait.state, position: wait.position ?? null, at: now });
+      tell(thread, wait);
+    }
   }
 
   /** `character`'s judge queue right now (`AgentQueue.judging`). */
@@ -1321,6 +1487,7 @@ export class AgentHub {
     }
     for (const r of this.queuedInOrder()) this.dispatch(r);
     this.pumpJudges();
+    this.flushWaits(); // wave 42b: a legacy worker took over a windowed line
   }
 
   /** A worker went away: its in-flight requests go back in the queue, and
@@ -1363,6 +1530,7 @@ export class AgentHub {
     }
     this.o.presence?.();
     this.pumpJudges(); // another worker may take the queue now
+    this.flushWaits(); // wave 42b: the last window went — every wait is idle
   }
 
   /**
@@ -1381,6 +1549,7 @@ export class AgentHub {
       for (const r of this.queuedInOrder()) this.dispatch(r);
     }
     this.pumpJudges();
+    this.flushWaits();
   }
 
   /** The requests queued in the hub, in the order they go out: by `rank`
@@ -1390,9 +1559,16 @@ export class AgentHub {
     if (this.o.stale !== undefined) {
       for (const [id, r] of [...this.open]) if (r.worker === null && this.o.stale(r.req)) this.drop(id, r);
     }
+    return this.inRankOrder([...this.open.values()].filter((r) => r.worker === null));
+  }
+
+  /** `list` (in opening order) sorted by `rank`, opening order within one. */
+  private inRankOrder(list: OpenRequest[]): OpenRequest[] {
     const rank = this.o.rank ?? ((req: AgentRequest) => (req.thread.public === true ? 0 : 1));
-    const queued = [...this.open.values()].filter((r) => r.worker === null).map((r, i) => ({ r, i, k: rank(r.req) }));
-    return queued.sort((a, b) => a.k - b.k || a.i - b.i).map((q) => q.r);
+    return list
+      .map((r, i) => ({ r, i, k: rank(r.req) }))
+      .sort((a, b) => a.k - b.k || a.i - b.i)
+      .map((q) => q.r);
   }
 
   /** Wave 32 (C4/C5): the open request on `thread`, as the host's talk panel
@@ -1450,7 +1626,10 @@ export class AgentHub {
     // freed by a letter coming back may not have pumped yet — never jump
     // the line). Else straight to a worker, as ever.
     if (this.windowedFor(req.character) && [...this.open.values()].some((o) => o !== r && o.worker === null && o.req.character === req.character)) this.pump();
-    else this.dispatch(r, null, true);
+    else {
+      this.dispatch(r, null, true);
+      this.flushWaits(); // wave 42b: queued (no slot) or answering
+    }
   }
 
   /** How many requests are in `workerId`'s line. */
@@ -1518,7 +1697,9 @@ export class AgentHub {
     // Typing first: a worker may answer inside `send` (the settle turns it
     // off), and the guest must not be left reading "typing" after that.
     this.o.typing?.(r.req.thread, true);
-    best.send("request", r.req);
+    // Wave 42b (B1): the line as it goes out, on the frame only.
+    const load = this.loadFor(r.req.character);
+    best.send("request", { ...r.req, queued: load.queued, load });
     if (windowed) {
       // In a slot, the worker is on it now: its own reply clock (C3).
       r.startedAt = r.dispatchedAt;
@@ -1570,12 +1751,22 @@ export class AgentHub {
     if (this.byThread.get(r.key) === requestId) this.byThread.delete(r.key);
     this.heldThreads.delete(r.key); // the character speaks
     this.o.typing?.(r.req.thread, false);
+    // Wave 42b (B2): a windowed slot's dispatch → reply feeds the mean
+    // service time the queue's `etaS` reads.
+    if (r.worker !== null && r.dispatchedAt !== null && this.windowed(this.workers.get(r.worker))) {
+      const took = Math.max(0, this.now() - r.dispatchedAt) / 1000;
+      const mean = this.serviceMeanS(r.req.character);
+      this.serviceS.set(r.req.character, mean + AGENT_SERVICE_ALPHA * (took - mean));
+    }
     if (r.worker !== null) this.startHead(r.worker);
     const by = workerId ?? r.worker;
     if (by !== null) this.answering(by);
     // Voice first (legacy): a worker free of voice requests rules next.
     // Wave 42: a windowed worker's freed slot takes the queue's next.
-    if (opts.defer === true && this.anyWindowed()) return { req: r.req, followUp: r.followUp, pumpOwed: true };
+    if (opts.defer === true && this.anyWindowed()) {
+      this.flushWaits(); // wave 42b: this thread is idle now; the rest move at the pump
+      return { req: r.req, followUp: r.followUp, pumpOwed: true };
+    }
     this.pump();
     return { req: r.req, followUp: r.followUp };
   }
@@ -1812,7 +2003,7 @@ export class AgentHub {
       // stall clock restarts here, as a legacy head's does above.
       if (this.windowed(this.workers.get(r.worker))) this.lastBack.set(r.worker, this.now());
       this.pump();
-    }
+    } else this.flushWaits(); // wave 42b: a queued one answered by hand moves the line up
     return true;
   }
 
@@ -1848,6 +2039,7 @@ export class AgentHub {
     this.busyThreads.clear();
     this.heldThreads.clear();
     if (wasStalled) this.o.presence?.();
+    this.flushWaits(); // wave 42b: every wait told goes idle
     this.control({ action: "reset", character: null, by, reason });
   }
 
