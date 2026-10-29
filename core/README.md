@@ -203,6 +203,15 @@ into channel-routed messages — the single source of truth the
   `@<Character>` rows and its own `dm:<Character>` threads,
   `boothOwnRow`). Directors' streams and `GET /api/history` stay whole.
   Performer/mod clients get the room's feed for context + moderation.
+- **An agent's thread:** `typing {channel, from, on, audience}` shows and
+  hides "… is typing" (live only, never replayed). With a windowed worker
+  (wave 42b) the same audience also gets `agentWait {channel, audience,
+  character, state: "queued" | "answering" | "idle", position?, etaS?}`:
+  the guest's 1-based place in his line and the seconds until a slot
+  should reach it, re-told when the place moves (at most once per 5 s per
+  thread), `answering` once a slot has it, `idle` when it is over. A
+  (re)opened stream gets its threads' current `agentWait` right after
+  `history`. Never for the public talk thread or a legacy worker.
 - **Moderation:** `POST /api/mod/message { seq, hidden }` hides/shows a
   message — guests in its audience see it vanish/return (a
   `messageModerated` event), admins keep it flagged. `GET /api/history?role=

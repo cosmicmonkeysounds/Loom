@@ -81,6 +81,30 @@ still works, but it soaks up whatever overflows. Consequences a guest sees:
 
 Hosts read it as "3 answering · 12 waiting · oldest 0:41" (the queue
 summary's `inFlight` / `capacity`, present only with a windowed worker).
+
+**The line on every frame** (wave 42b). Each `request` frame carries
+`queued` — the requests for that character still waiting in the server's
+queue as it goes out — and `load: {queued, inFlight, capacity}`
+(`inFlight` counts the frame itself; `capacity` is the windowed workers'
+slots plus one per legacy worker). The worker's brief mode
+(`agents.voice.brief_at`) and its retry rule read `queued`. A legacy
+worker gets the same fields; an older server sends neither (read them as
+absent, not 0).
+
+**What a waiting guest sees** (wave 42b). While a windowed worker voices
+the character, the server tells each DM thread where it stands with an
+`agentWait` SSE frame (`{channel, audience, character, state, position?,
+etaS?}`) to the same people who see its typing: `queued` with the
+guest's 1-based place in the rank order above and `etaS = ceil(position
+× mean ÷ slots)` (the mean is a moving average of how long a slot takes
+from dispatch to reply, 6 s before the first), `answering` once a slot
+has it (typing is on), `idle` when it is answered, answered by hand,
+given up or the worker goes. A place that moves is re-told at most once
+every 5 s per thread. Play and the terminals draw it as an in-fiction
+status strip above the composer. Never for a stage request, and never
+with only a legacy worker (it holds the whole line, so the server cannot
+know a place in it). A phone that reconnects gets its threads' current
+waits right after `history`.
 A worker that sends no `capacity` (an older stagehand) is **legacy**:
 every request goes to it at once, it answers them one at a time, only
 the head of its line runs the reply and stall clocks, and rulings wait
