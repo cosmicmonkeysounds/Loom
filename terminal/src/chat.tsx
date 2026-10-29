@@ -8,8 +8,9 @@
 //! still queued for the voice waits behind one typing row.
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { waitBar, waitLine } from "@loom/play/agent-wait-words.ts";
+import { waitBar } from "@loom/play/agent-wait-words.ts";
 import type { AgentWait } from "@loom/play/agent-wait.ts";
+import { useWaitWords } from "@loom/play/stream/wait-strip.tsx";
 import type { Line } from "./pilot.ts";
 
 /** The wait to draw: `name` is his display name in the guest's view. */
@@ -29,19 +30,27 @@ export function waitCells(w: Pick<AgentWait, "position" | "from">, cells = 10): 
 /**
  * Wave 42b (B5): the phone's "you are 7th in line" strip, as a system line
  * at the foot of the log (the typing row's place) — the same words
- * (`waitLine`, DRAFT w42) and a block bar. Not a message: it goes when he
+ * (`waitWords`, DRAFT w42) and a block bar. Not a message: it goes when he
  * starts answering (the typing row) or the wait ends.
  */
 function WaitLine({ name, wait }: WaitProps) {
   const bar = waitCells(wait);
+  // The estimate counts down; only the place is spoken.
+  const [said, eta, tail] = useWaitWords(name, wait);
   return (
     <div className="line system wait" role="status" aria-live="polite">
       <span className="text">
         <span className="wait-glass" aria-hidden>
           ⌛{" "}
         </span>
-        {waitLine(name, wait)}
-        {bar !== null && <span className="wait-cells">{`[${bar}]`}</span>}
+        {said}
+        <span aria-hidden>{eta}</span>
+        {tail}
+        {bar !== null && (
+          <span className="wait-cells" aria-hidden>
+            {`[${bar}]`}
+          </span>
+        )}
       </span>
     </div>
   );

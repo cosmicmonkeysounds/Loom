@@ -451,7 +451,7 @@ export function useGuestSession(): GuestSession {
   // needs the hook's `onHistory` — a ref breaks the cycle.
   const alertsRef = useRef<ReturnType<typeof useAlerts> | null>(null);
   const { typing, onTyping } = useTyping(me !== null ? { role: "guest" } : null);
-  const { waits, onAgentWait } = useAgentWait(me !== null);
+  const { waits, onAgentWait, onWaitsReset } = useAgentWait(me?.id ?? null);
   const { messages, connected } = useChatStream(url, {
     onSnapshot: (v) => {
       setStatus(v as GuestView);
@@ -459,6 +459,7 @@ export function useGuestSession(): GuestSession {
     },
     onTyping,
     onAgentWait,
+    onWaitsReset,
     // The crawl decides at arrival (wave 13: a no-op until the stream lane)
     // and the backlog sets its baseline (stream-handlers.ts).
     ...guestStreamHandlers(crawl, me, (list) => {

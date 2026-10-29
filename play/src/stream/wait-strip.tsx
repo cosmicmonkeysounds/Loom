@@ -6,17 +6,36 @@
 // lazy chunk (`channel-view.tsx` `LazyWaitStrip`); the bar is a bare navy
 // fill (the Win95 `BlockBar` is in another lazy chunk).
 
-import { waitBar, waitLine } from "../agent-wait-words.ts";
+import { useEffect, useState } from "react";
+import { etaLeft, waitBar, waitWords } from "../agent-wait-words.ts";
 import type { AgentWait } from "../agent-wait.ts";
+
+/** The wait's words with its estimate counting down (a 1 s tick while
+ *  shown; the terminal's line reads it too). */
+export function useWaitWords(name: string, wait: AgentWait): [string, string, string] {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    setNow(Date.now());
+    const t = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(t);
+  }, [wait]);
+  return waitWords(name, { position: wait.position, etaS: etaLeft(wait, now) });
+}
 
 export function WaitStrip({ name, wait }: { name: string; wait: AgentWait }) {
   const bar = waitBar(wait);
+  const [said, eta, tail] = useWaitWords(name, wait);
   return (
-    <div className="wait-strip" role="status" aria-live="polite">
+    <div className="wait-strip">
       <span className="wait-glass" aria-hidden>
         ⌛
       </span>
-      <span>{waitLine(name, wait)}</span>
+      {/* Polite, and only the place is spoken: the countdown is hidden. */}
+      <span role="status" aria-live="polite">
+        {said}
+        <span aria-hidden>{eta}</span>
+        {tail}
+      </span>
       {bar !== null && (
         <span className="wait-bar" aria-hidden>
           <i style={{ width: `${Math.round((bar.done / bar.total) * 100)}%` }} />

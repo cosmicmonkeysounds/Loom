@@ -2,6 +2,7 @@
 // terminal piloting their DM with him. Fixture waits (play's
 // `applyAgentWait` over the server's `agentWait` frames) through
 // `pilotWait` and the thread.
+import { readFileSync } from "node:fs";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
@@ -12,7 +13,9 @@ import { Thread, waitCells } from "../src/chat.tsx";
 import { pilotWait, type Line } from "../src/pilot.ts";
 
 const frame = (state: AgentWaitNotice["state"], extra: Partial<AgentWaitNotice> = {}): AgentWaitNotice => ({ channel: "dm:Trabolta", audience: ["g-1"], character: "Trabolta", state, ...extra });
-const waitOf = (...frames: AgentWaitNotice[]): AgentWait | undefined => frames.reduce<ReadonlyMap<string, AgentWait>>((m, f) => applyAgentWait(m, f, 1), new Map()).get("dm:Trabolta");
+const waitAt = (at: number, ...frames: AgentWaitNotice[]): AgentWait | undefined => frames.reduce<ReadonlyMap<string, AgentWait>>((m, f) => applyAgentWait(m, f, at), new Map()).get("dm:Trabolta");
+const waitOf = (...frames: AgentWaitNotice[]): AgentWait | undefined => waitAt(Date.now(), ...frames);
+const text = (h: string) => h.replace(/<[^>]+>/gu, "");
 const view = { people: [{ id: "Trabolta", name: "Jean Trabolta", kind: "character" }] } as unknown as GuestView;
 const line = (seq: number, text: string): Line => ({ seq, text, theirs: false, from: "Winamp", channel: "dm:Trabolta", ts: 0, kind: "line" }) as unknown as Line;
 const render = (p: Partial<Parameters<typeof Thread>[0]>) =>
@@ -37,10 +40,20 @@ describe("the thread's wait line", () => {
     const w = waitOf(frame("queued", { position: 8, etaS: 90 }), frame("queued", { position: 7, etaS: 63 }))!;
     const html = render({ wait: { name: "Jean Trabolta", wait: w } });
     expect(html).toContain('class="line system wait" role="status"');
-    expect(html).toContain("Jean Trabolta is answering other programs. You are 7th in line, about 1 min. Please do not move the mouse.");
+    expect(text(html)).toContain("⌛ Jean Trabolta is answering other programs. You are 7th in line, about 1 min. Please do not move the mouse.[■■■□□□□□□□]");
+    // The place is spoken; the countdown and the bar are not.
+    expect(html).toContain('You are 7th in line<span aria-hidden="true">, about 1 min</span>');
+    expect(html).toContain('<span class="wait-cells" aria-hidden="true">');
     // 2 of 8 places up the line: 3 of 10 cells.
     expect(html).toContain("[■■■□□□□□□□]");
     expect(html.indexOf("Hello?")).toBeLessThan(html.indexOf("answering other programs"));
+  });
+
+  it("counts the estimate down from its frame and drops it once it runs out", () => {
+    const half = waitAt(Date.now() - 30_000, frame("queued", { position: 3, etaS: 60 }))!;
+    expect(text(render({ wait: { name: "Jean Trabolta", wait: half } }))).toContain("You are 3rd in line, about 30 sec.");
+    const gone = waitAt(Date.now() - 61_000, frame("queued", { position: 3, etaS: 60 }))!;
+    expect(text(render({ wait: { name: "Jean Trabolta", wait: gone } }))).toContain("You are 3rd in line. Please do not move the mouse.");
   });
 
   it("gives way to the typing row, and to a line still queued for the voice", () => {
@@ -55,5 +68,13 @@ describe("the thread's wait line", () => {
     expect(waitCells(waitOf(frame("queued", { position: 20 }))!)).toBe("■□□□□□□□□□");
     expect(waitCells(waitOf(frame("queued", { position: 20 }), frame("queued", { position: 1 }))!)).toBe("■■■■■■■■■■");
     expect(waitCells(waitOf(frame("queued"))!)).toBeNull();
+  });
+});
+
+describe("the pilot's stream", () => {
+  it("scopes waits to the piloted guest and clears them on every history frame (a reconnect, a story reset)", () => {
+    const src = readFileSync(new URL("../src/pilot.ts", import.meta.url), "utf8");
+    expect(src).toContain("useAgentWait(pilot?.id ?? null)");
+    expect(src).toMatch(/useChatStream\(url, \{[^]*onAgentWait,\s*onWaitsReset,/u);
   });
 });

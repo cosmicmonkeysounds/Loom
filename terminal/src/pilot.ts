@@ -463,7 +463,7 @@ export function usePilotSession(config: TerminalConfig, pilot: Pilot | null): Pi
   const listeners = useRef(new Set<(line: Line) => void>());
   const announced = useRef(new Set<number>());
   const { typing, onTyping } = useTyping(pilot !== null ? { role: "guest" } : null);
-  const { waits, onAgentWait } = useAgentWait(pilot !== null);
+  const { waits, onAgentWait, onWaitsReset } = useAgentWait(pilot?.id ?? null);
 
   useEffect(() => {
     setView(null);
@@ -478,6 +478,7 @@ export function usePilotSession(config: TerminalConfig, pilot: Pilot | null): Pi
     onSnapshot: (v) => setView(v as GuestView),
     onTyping,
     onAgentWait,
+    onWaitsReset,
     onHistory: (list) => {
       baseline.current = list.reduce((m, x) => Math.max(m, x.seq), -1);
       setFloor((prev) => floorAfter(prev, list, undefined, pilotRef.current?.visitSeq));

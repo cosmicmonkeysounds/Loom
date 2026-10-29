@@ -282,6 +282,9 @@ export interface ChatStreamHandlers {
   onTyping?: (n: TypingNotice) => void;
   /** Wave 42b: where this guest stands in an agent's line (`agent-wait.ts`). */
   onAgentWait?: (n: AgentWaitNotice) => void;
+  /** Every `history` frame, first: the waits start over (the server
+   *  re-sends the open ones after it). */
+  onWaitsReset?: () => void;
   /** The full thread history just (re)loaded — the baseline for "new". */
   onHistory?: (messages: ChatMessage[]) => void;
   /** A live `message` frame (never the history), before it is applied —
@@ -327,6 +330,7 @@ export function chatFrameHandler(handlers: () => ChatStreamHandlers, ops: ChatMa
         return;
       case "history": {
         const list = d as ChatMessage[];
+        handlers().onWaitsReset?.();
         handlers().onHistory?.(list);
         ops.replace(list);
         return;

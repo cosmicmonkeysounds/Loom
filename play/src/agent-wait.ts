@@ -5,11 +5,11 @@
 // frames' audience). This keeps the guest's threads → their wait; the
 // strip's words are `agent-wait-words.ts` (with the strip, a lazy chunk:
 // the guest's first load is at its gate). `answering` reads
-// as the typing note (`withAgents`), `idle` clears it. Memory only, like
-// typing: a reconnecting phone learns nothing until the next frame (the
-// server re-sends on a position change, so a queued guest hears again
-// within seconds), and one that never gets its `idle` ages out after
-// `AGENT_WAIT_TTL_MS`.
+// as the typing note (`withAgents`), `idle` clears it. Memory only: every
+// `history` frame (a reconnect, a story reset) clears them all, and the
+// server re-sends the still-open waits right after it; one that never gets
+// its `idle` ages out after `AGENT_WAIT_TTL_MS`. A frame whose audience is
+// not this guest is dropped (the server never sends one: the belt).
 
 import { useCallback, useEffect, useState } from "react";
 
@@ -57,21 +57,23 @@ export function applyAgentWait(prev: ReadonlyMap<string, AgentWait>, n: AgentWai
   return next;
 }
 
-/** Live waits for a guest session: `waits.get(threadId)`. */
-export function useAgentWait(on: boolean): { waits: ReadonlyMap<string, AgentWait>; onAgentWait: (n: AgentWaitNotice) => void } {
+/** Live waits for a guest session (`me` is their id, null signed out):
+ *  `waits.get(threadId)`. `onWaitsReset` is the stream's `history`. */
+export function useAgentWait(me: string | null): { waits: ReadonlyMap<string, AgentWait>; onAgentWait: (n: AgentWaitNotice) => void; onWaitsReset: () => void } {
   const [waits, setWaits] = useState<ReadonlyMap<string, AgentWait>>(() => new Map());
   const onAgentWait = useCallback(
     (n: AgentWaitNotice) => {
-      if (!on || n.public === true) return;
+      if (me === null || n.public === true || n.audience?.includes(me) !== true) return;
       const at = Date.now();
       setWaits((prev) => applyAgentWait(prev, n, at));
       if (n.state !== "idle") {
         window.setTimeout(() => setWaits((prev) => (prev.get(n.channel)?.at === at ? applyAgentWait(prev, { ...n, state: "idle" }, at) : prev)), AGENT_WAIT_TTL_MS);
       }
     },
-    [on],
+    [me],
   );
+  const onWaitsReset = useCallback(() => setWaits((prev) => (prev.size === 0 ? prev : new Map())), []);
   // A new session starts with nobody waiting.
-  useEffect(() => setWaits(new Map()), [on]);
-  return { waits, onAgentWait };
+  useEffect(() => setWaits(new Map()), [me]);
+  return { waits, onAgentWait, onWaitsReset };
 }

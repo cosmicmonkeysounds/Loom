@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import { AGENT_WAIT_TTL_MS, applyAgentWait, useAgentWait, type AgentWait, type AgentWaitNotice } from "../src/agent-wait.ts";
-import { etaWords, waitBar, waitLine } from "../src/agent-wait-words.ts";
+import { etaLeft, etaWords, waitBar, waitLine, waitWords } from "../src/agent-wait-words.ts";
 import { mountHooks } from "./hooks-harness.ts";
 import { ChannelView } from "../src/chat.tsx";
 import { chatFrameHandler } from "../src/client.ts";
@@ -23,7 +23,7 @@ const frame = (state: AgentWaitNotice["state"], extra: Partial<AgentWaitNotice> 
   ...extra,
 });
 
-const fold = (frames: AgentWaitNotice[], at = 1000): ReadonlyMap<string, AgentWait> => frames.reduce<ReadonlyMap<string, AgentWait>>((m, f) => applyAgentWait(m, f, at), new Map());
+const fold = (frames: AgentWaitNotice[], at = Date.now()): ReadonlyMap<string, AgentWait> => frames.reduce<ReadonlyMap<string, AgentWait>>((m, f) => applyAgentWait(m, f, at), new Map());
 
 function dm(extra: Partial<Channel> = {}): Channel {
   return { id: "dm:Trabolta", kind: "dm", title: "Jean Trabolta", spaceId: "story", messages: [], unread: 0, decision: null, lastTs: 0, ...extra };
@@ -42,7 +42,7 @@ describe("the agentWait frame", () => {
 
 describe("the wait model", () => {
   it("keeps the furthest place back while the line moves up, and idle clears it", () => {
-    const m = fold([frame("queued", { position: 7, etaS: 60 }), frame("queued", { position: 3, etaS: 24 })]);
+    const m = fold([frame("queued", { position: 7, etaS: 60 }), frame("queued", { position: 3, etaS: 24 })], 1000);
     expect(m.get("dm:Trabolta")).toMatchObject({ state: "queued", position: 3, etaS: 24, from: 7, at: 1000 });
     expect(waitBar(m.get("dm:Trabolta")!)).toEqual({ done: 5, total: 7 });
     const answering = applyAgentWait(m, frame("answering"), 2000);
@@ -66,9 +66,6 @@ describe("the wait model", () => {
     expect(waitBar(w)).toBeNull();
   });
 
-  it("lingers no longer than a typing note", () => {
-    expect(AGENT_WAIT_TTL_MS).toBe(150_000);
-  });
 });
 
 describe("useAgentWait", () => {
@@ -82,7 +79,7 @@ describe("useAgentWait", () => {
   });
 
   it("a wait with no follow-up ages out; a newer frame restarts its clock; a public thread is ignored", () => {
-    const h = mountHooks(useAgentWait, true);
+    const h = mountHooks(useAgentWait, "g-1");
     const out = () => h.output as ReturnType<typeof useAgentWait>;
     h.act(() => out().onAgentWait(frame("queued", { position: 5 })));
     expect(out().waits.get("dm:Trabolta")?.position).toBe(5);
@@ -97,8 +94,49 @@ describe("useAgentWait", () => {
     expect(out().waits.size).toBe(0);
   });
 
+  it("another guest's frame is never this guest's wait", () => {
+    const h = mountHooks(useAgentWait, "g-1");
+    const out = () => h.output as ReturnType<typeof useAgentWait>;
+    h.act(() => out().onAgentWait(frame("queued", { position: 3, audience: ["g-2"] })));
+    h.act(() => out().onAgentWait(frame("answering", { audience: ["@Clippy"] })));
+    expect(out().waits.size).toBe(0);
+    h.act(() => out().onAgentWait(frame("queued", { position: 3 })));
+    expect(out().waits.get("dm:Trabolta")?.position).toBe(3);
+    // Another guest's idle does not clear mine.
+    h.act(() => out().onAgentWait(frame("idle", { audience: ["g-2"] })));
+    expect(out().waits.size).toBe(1);
+  });
+
+  it("a history frame (reconnect, story reset) clears every wait; the replay after it restores the open ones", () => {
+    const h = mountHooks(useAgentWait, "g-1");
+    const out = () => h.output as ReturnType<typeof useAgentWait>;
+    h.act(() => out().onAgentWait(frame("queued", { position: 4 })));
+    h.act(() => out().onAgentWait({ ...frame("answering"), channel: "dm:WebMD" }));
+    expect(out().waits.size).toBe(2);
+    const seen: string[] = [];
+    const onFrame = chatFrameHandler(
+      () => ({ onWaitsReset: () => (seen.push("reset"), out().onWaitsReset()), onHistory: () => void seen.push("history"), onAgentWait: (n) => out().onAgentWait(n) }),
+      { replace: () => {}, upsert: () => {}, drop: () => {} },
+    );
+    // The server: `history`, then only the still-open waits (this one moved up; WebMD's went idle while asleep).
+    h.act(() => onFrame("history", "[]"));
+    expect(seen).toEqual(["reset", "history"]);
+    expect(out().waits.size).toBe(0);
+    h.act(() => onFrame("agentWait", JSON.stringify(frame("queued", { position: 2 }))));
+    expect([...out().waits.keys()]).toEqual(["dm:Trabolta"]);
+    expect(out().waits.get("dm:Trabolta")).toMatchObject({ position: 2, from: 2 });
+  });
+
+  it("another guest signing in on this phone starts with no waits", () => {
+    const h = mountHooks(useAgentWait, "g-1");
+    const out = () => h.output as ReturnType<typeof useAgentWait>;
+    h.act(() => out().onAgentWait(frame("queued", { position: 4 })));
+    h.act(() => h.rerender("g-2"));
+    expect(out().waits.size).toBe(0);
+  });
+
   it("no session, no waits", () => {
-    const h = mountHooks(useAgentWait, false);
+    const h = mountHooks(useAgentWait, null);
     const out = () => h.output as ReturnType<typeof useAgentWait>;
     h.act(() => out().onAgentWait(frame("queued", { position: 2 })));
     expect(out().waits.size).toBe(0);
@@ -116,6 +154,23 @@ describe("the strip's words (DRAFT w42)", () => {
     const place = (n: number) => /You are (\S+) in line/.exec(waitLine("X", { position: n, etaS: null }))![1];
     expect([2, 3, 4, 11, 12, 13, 21, 22, 23, 101, 111].map(place)).toEqual(["2nd", "3rd", "4th", "11th", "12th", "13th", "21st", "22nd", "23rd", "101st", "111th"]);
     expect([0, 2, 33, 59, 60, 89, 90, 164].map(etaWords)).toEqual(["about 5 sec", "about 5 sec", "about 35 sec", "about 55 sec", "about 1 min", "about 1 min", "about 2 min", "about 3 min"]);
+  });
+
+  it("the estimate counts down from its frame and is dropped, never negative, once it runs out", () => {
+    const w = { etaS: 63, at: 10_000 };
+    expect(etaLeft(w, 10_000)).toBe(63);
+    expect(etaLeft(w, 40_000)).toBe(33);
+    expect(etaLeft(w, 72_500)).toBe(1);
+    expect(etaLeft(w, 73_000)).toBeNull();
+    expect(etaLeft(w, 500_000)).toBeNull();
+    expect(etaLeft({ etaS: null, at: 10_000 }, 10_000)).toBeNull();
+    // Run out: the place stays, no time is said.
+    expect(waitLine("Jean Trabolta", { position: 2, etaS: etaLeft(w, 90_000) })).toBe("Jean Trabolta is answering other programs. You are 2nd in line. Please do not move the mouse.");
+  });
+
+  it("splits the place, the wait and the tail (the wait is not spoken)", () => {
+    expect(waitWords("Jean Trabolta", { position: 3, etaS: 20 })).toEqual(["Jean Trabolta is answering other programs. You are 3rd in line", ", about 20 sec", ". Please do not move the mouse."]);
+    expect(waitWords("Jean Trabolta", { position: 3, etaS: null })[1]).toBe("");
   });
 });
 
@@ -150,15 +205,24 @@ describe("the guest's DM with him", () => {
     for (const f of ["agent-wait.ts", "agent-wait-words.ts", "stream/wait-strip.tsx"]) expect(src(f)).not.toMatch(/^\/\/!/mu);
   });
 
+  it("the guest's stream scopes waits to them and clears them on every history frame", () => {
+    const src = readFileSync(new URL("../src/session/guest.ts", import.meta.url), "utf8");
+    expect(src).toContain("useAgentWait(me?.id ?? null)");
+    expect(src).toMatch(/useChatStream\(url, \{[^]*onAgentWait,\s*onWaitsReset,/u);
+  });
+
   it("the room draws the strip (its own chunk) above the composer, never as a message", async () => {
     const c = withAgents([dm()], view, new Map(), fold([frame("queued", { position: 7, etaS: 63 })]))[0]!;
+    const text = (h: string) => h.replace(/<[^>]+>/gu, "");
     const room = () => renderToStaticMarkup(<ChannelView channel={c} onBack={() => {}} onSend={() => {}} />);
     // Still loading: nothing in its place, and the room renders.
     expect(room()).not.toContain("wait-strip");
     await new Promise((r) => setTimeout(r, 20));
     const html = room();
-    expect(html).toContain('class="wait-strip" role="status"');
-    expect(html).toContain("Jean Trabolta is answering other programs. You are 7th in line, about 1 min.");
+    expect(html).toContain('class="wait-strip"');
+    // Polite, the place spoken, the countdown hidden from a screen reader.
+    expect(html).toContain('<span role="status" aria-live="polite">Jean Trabolta is answering other programs. You are 7th in line<span aria-hidden="true">, about 1 min</span>. Please do not move the mouse.</span>');
+    expect(text(html)).toContain("Jean Trabolta is answering other programs. You are 7th in line, about 1 min.");
     expect(html.indexOf("wait-strip")).toBeLessThan(html.indexOf("stream-foot"));
     expect(html).not.toMatch(/class="msg[^"]*"[^>]*>[^]*answering other programs/u);
     // Answering: the typing note, no strip.
@@ -175,6 +239,11 @@ describe("the guest's DM with him", () => {
     expect(html).toContain("You are next in line");
     const mid = fold([frame("queued", { position: 8 }), frame("queued", { position: 5 })]).get("dm:Trabolta")!;
     expect(renderToStaticMarkup(<WaitStrip name="Jean Trabolta" wait={mid} />)).toContain('<i style="width:50%"></i>');
+    // An old frame's estimate has run down: the place, no time.
+    const old = fold([frame("queued", { position: 2, etaS: 30 })], Date.now() - 31_000).get("dm:Trabolta")!;
+    expect(renderToStaticMarkup(<WaitStrip name="Jean Trabolta" wait={old} />)).toContain('You are 2nd in line<span aria-hidden="true"></span>. Please');
+    const half = fold([frame("queued", { position: 2, etaS: 90 })], Date.now() - 45_000).get("dm:Trabolta")!;
+    expect(renderToStaticMarkup(<WaitStrip name="Jean Trabolta" wait={half} />)).toContain(", about 45 sec");
     // No position: the words, no bar.
     const none = fold([frame("queued")]).get("dm:Trabolta")!;
     expect(renderToStaticMarkup(<WaitStrip name="Jean Trabolta" wait={none} />)).not.toContain("wait-bar");
