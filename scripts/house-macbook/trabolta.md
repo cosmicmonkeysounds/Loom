@@ -152,10 +152,11 @@ VPS event server ◄── HTTPS (SSE GET /api/agent/stream + POSTs) ── stag
    (§6). To go back: comment the block out again and restart. Run → Mind
    shows `engine <name>` on each thought an overflow engine served.
 
-   **Brief mode** (wave 42b, on by default): when 6 or more lines wait for
-   him on the server, a DM gets at most two short sentences (never a talk
-   scene, never a guest at his heart). `voice.brief_at: 0` in
-   `laptop.yaml` turns it off.
+   **Brief mode** (wave 42b, off by default): `voice.brief_at: 6` in
+   `laptop.yaml` asks for at most two short sentences when 6 or more lines
+   wait for him (never a talk scene, never a guest at his heart). Measured
+   on this MacBook it bought no throughput (his DMs are already short), so
+   leave it off.
 
 ## 3. `stagehand/laptop.yaml` (git-ignored)
 

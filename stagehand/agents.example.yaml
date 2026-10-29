@@ -38,9 +38,11 @@ agents:
     warm_head: on              #   api: ollama — a one-token call with the shared head first, so the
                                #   prompt cache holds under gpt-oss's sliding window (~5 s → ~2 s a line)
     layout: lean               #   lean (the cached P1–P4 prompt) | classic (today's prompt, new mind)
-    brief_at: 6                #   (wave 42b) brief mode: a DM with this many lines queued behind it on
-                               #   the server asks for at most 2 short sentences (0 = never); never a
-                               #   stage line or a guest at his heart; the lean layout only
+    brief_at: 0                #   (wave 42b) brief mode: a DM with this many lines queued behind it on
+                               #   the server asks for at most 2 short sentences (0 = never, the default:
+                               #   his DMs are already ~1-2 sentences, so on the show MacBook it saved
+                               #   ~7 tokens a reply and no throughput); never a stage line or a guest at
+                               #   his heart; the lean layout only
     brief_max_tokens: 600      #   … and its call's max_tokens is capped here (reasoning counts: ≥ 400)
   mind:                        # read only in mind_mode: new
     stage_from_phase: on       #   Night.phase's card sets stage, favours, drives, live powers, brief

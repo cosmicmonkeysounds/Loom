@@ -59,7 +59,7 @@ def test_example_agents_config_loads():
     assert agents.cfg.voice.warm_head is True
     assert (agents.cfg.mind.stage_from_phase, agents.cfg.mind.phase_poll_s) == (True, 30.0)
     # (wave 42b) brief mode at its defaults; the overflow engines only as a comment.
-    assert (agents.cfg.voice.brief_at, agents.cfg.voice.brief_max_tokens) == (6, 600)
+    assert (agents.cfg.voice.brief_at, agents.cfg.voice.brief_max_tokens) == (0, 600)
     assert agents.cfg.overflow == () and agents.capacity == 1
 
 

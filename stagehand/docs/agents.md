@@ -243,7 +243,7 @@ agents:
 ### Brief mode: shorter answers under a deep queue (wave 42b)
 
 When a request frame's `queued` (the lines waiting for him on the
-server) is at least `voice.brief_at` (default 6; 0 = off), the lean voice
+server) is at least `voice.brief_at` (default 0 = off), the lean voice
 asks for a short answer: the closing note gains *"Keep this answer short:
 at most 2 short sentences."* after the persona's own length rule (it is
 read last, and is neutral on purpose: a note about a queue gets said back
@@ -253,6 +253,14 @@ against it, so at least 400). The cap and the note hold through the
 voice's retry. **Never** for a stage request (a talk scene), a guest at
 his heart (`them.at_the_heart`), a frame without `queued`, or `layout:
 classic`. The thought carries `brief: true` and its note says `brief`.
+
+**Off by default, because it did not pay.** Measured on the show MacBook
+(2026-10-29, gpt-oss:20b, 50 guests at the intro, `concurrency: 4`): with
+`brief_at: 6` his replies went from 97 to 91 characters (90 → 83 completion
+tokens, reasoning included) and the house's rate from 22.6 to 22.7 replies
+a minute. His DMs are already one or two sentences and the prompt read is
+cached; what a burst needs is more compute (an overflow engine), not shorter
+lines.
 
 ### Stage requests: answering aloud (wave 32)
 
@@ -458,7 +466,7 @@ agents:
     dossier_on_close: on   # the quiet summary
     warm_head: on          # the one-token cache warm before each line (api: ollama)
     layout: lean           # lean | classic (today's prompt inside the new mind)
-    brief_at: 6            # (wave 42b) brief mode at this many lines queued (0 = off)
+    brief_at: 0            # (wave 42b) brief mode at this many lines queued (0 = off, the default)
     brief_max_tokens: 600  # … and its token cap (≥ 400)
   mind:
     stage_from_phase: on   # the phase cards set stage / favours / drives / powers / brief

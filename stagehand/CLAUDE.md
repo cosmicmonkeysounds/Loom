@@ -292,7 +292,7 @@ module docstrings that explain the why).
   `module.py` goes through it; quiet summaries, letters, Rewrite and
   re-run are `primary_only`. `Agents.capacity` is the slots' sum (≤ 16).
   `llm._redacted` keeps the bearer key out of every LlmError. Brief mode:
-  `Agents._brief` (the frame's `queued` ≥ `voice.brief_at`, `lane_of` ==
+  `Agents._brief` (off by default: `voice.brief_at` 0; the frame's `queued` ≥ it, `lane_of` ==
   NORMAL) sets `VoiceOptions.brief`; `voice.answer_lean` re-checks
   `brief_applies` (no stage, no heart, lean only), caps `max_tokens` at
   `brief_max_tokens` and `reminder` adds `BRIEF_NOTE`. Tests:

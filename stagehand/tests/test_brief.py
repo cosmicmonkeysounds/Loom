@@ -178,7 +178,7 @@ def worker(tmp_path, model: Model, **voice) -> Agents:
     (tmp_path / "t.persona.md").write_text(PERSONA_TEXT, encoding="utf-8")
     (tmp_path / "t.mind.md").write_text(MIND, encoding="utf-8")
     cfg = parse_agents(
-        {"characters": ["t.persona.md"], "state_dir": "minds", "mind_mode": "new", "llm": {"endpoint": "http://fake/v1", "max_tokens": 1000}, "voice": {"warm_head": "off", **voice}},
+        {"characters": ["t.persona.md"], "state_dir": "minds", "mind_mode": "new", "llm": {"endpoint": "http://fake/v1", "max_tokens": 1000}, "voice": {"warm_head": "off", "brief_at": 6, **voice}},
         str(tmp_path),
     )
     agents = Agents(cfg, model)
@@ -195,6 +195,8 @@ def test_the_frame_s_queued_turns_brief_mode_on_at_brief_at(tmp_path):
     model = Model()
     agents = worker(tmp_path, model)
     assert agents.cfg.voice.brief_at == 6 and agents.cfg.voice.brief_max_tokens == 600
+    # off unless a YAML asks for it (measured: no throughput on the show MacBook)
+    assert parse_agents({"characters": ["t.persona.md"], "llm": {"endpoint": "http://fake/v1"}}, str(tmp_path)).voice.brief_at == 0
     run(agents._handle(request(id="r1", queued=5)))
     run(agents._handle(request(id="r2", queued=6)))
     run(agents._handle(request(id="r3", queued=40, speaker={"kind": "guest", "id": "g-2", "name": "Bo"})))

@@ -35,8 +35,9 @@
         dossier_on_close: on       #   the quiet-conversation summary (120 s idle, ≥ 3 turns)
         warm_head: on              #   a one-token call with the shared head before each line (api: ollama)
         layout: lean               #   lean | classic (today's prompt, inside the new mind)
-        brief_at: 6                #   (wave 42b) a request with this many lines queued behind it
-                                   #   asks for two short sentences (0 = never)
+        brief_at: 0                #   (wave 42b) a request with this many lines queued behind it
+                                   #   asks for two short sentences (0 = never, the default: measured
+                                   #   on the show MacBook it saved ~7 tokens a reply and no throughput)
         brief_max_tokens: 600      #   … and caps the call's max_tokens (reasoning counts: ≥ 400)
       overflow:                    # (wave 42b) more engines for the same mind (one worker)
         - name: desktop            #   shown in the trace and `check`
@@ -111,7 +112,7 @@ class VoiceSettings:
     #: on the server) is at least this asks for at most two short
     #: sentences and caps the call's tokens. 0 = never. Never a stage
     #: request or a guest at his heart.
-    brief_at: int = 6
+    brief_at: int = 0
     #: (wave 42b) Brief mode's `max_tokens` cap (reasoning counts against it).
     brief_max_tokens: int = 600
 
@@ -268,7 +269,7 @@ def _voice(raw: Any) -> VoiceSettings:
     layout = str(raw.get("layout", "lean")).strip().lower()
     if layout not in VOICE_LAYOUTS:
         raise ConfigError(f"agents.voice.layout: must be one of {', '.join(VOICE_LAYOUTS)}")
-    brief_at = raw.get("brief_at", 6)
+    brief_at = raw.get("brief_at", 0)
     if isinstance(brief_at, bool) or not isinstance(brief_at, int) or brief_at < 0:
         raise ConfigError("agents.voice.brief_at: must be a whole number of queued lines (0 = never)")
     brief_max = raw.get("brief_max_tokens", 600)
