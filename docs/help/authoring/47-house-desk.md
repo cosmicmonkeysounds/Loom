@@ -20,7 +20,7 @@ look, one row at a time.
 The desk lives on the event server, so Run → House works on a server
 project with a run. On a local folder it explains that it needs one.
 
-Run → House has three views, under the status strip:
+Run → House has four views, under the status strip:
 
 - **🎛 Desk** — the cue list, GO and the checks (this page).
 - **🎨 Cue designer** — design lighting looks with a live preview,
@@ -30,6 +30,9 @@ Run → House has three views, under the status strip:
   mind connected, and what to do when not (a ✗ on the tab says something
   is down). The full runbooks are in
   [Setting up the house](49-house-setup.md).
+- **🎚 Mixer** — the live balance of the house sound, everywhere and per
+  room, and the soundtrack's transport: skip a track, pick a scene by
+  hand, stop the music ([The Mixer](51-house-mixer.md)).
 
 ## The page
 

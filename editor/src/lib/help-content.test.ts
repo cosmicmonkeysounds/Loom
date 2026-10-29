@@ -135,6 +135,9 @@ describe('the bundled authoring collection', () => {
     expect(helpSearch('go live')[0]?.article.slug).toBe('run-mode')
     expect(helpSearch('house desk')[0]?.article.slug).toBe('house-desk')
     expect(helpSearch('test next').map((h) => h.article.slug)).toContain('house-desk')
+    // Wave 40: the Mixer has its own article.
+    expect(helpSearch('mixer')[0]?.article.slug).toBe('house-mixer')
+    expect(helpSearch('follow the story').map((h) => h.article.slug)).toContain('house-mixer')
     expect(helpArticle('deploy-mode')).toBeUndefined()
   })
 
