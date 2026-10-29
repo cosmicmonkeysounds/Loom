@@ -208,6 +208,8 @@ describe("the allowlist", () => {
       lightsTest: [{ look: "heart_wake" }],
       deskTest: [{ route: "/api/mod/audio/test", body: { speaker: "s1" } }],
       talk: ["Clippy", "hi"],
+      mix: [[{ key: "master", db: -3 }]],
+      music: [{ action: "next" }],
     };
     for (const [name, fn] of Object.entries(calls)) {
       await (fn as (...a: unknown[]) => unknown)(...(args[name] ?? ["g1", true]));
