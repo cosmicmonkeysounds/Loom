@@ -496,10 +496,13 @@ voice thought's `note` names each one that fired, never the word):
    each sentence that trips one and caps the rest at 3: what is left must
    be 6 words and, for `standdown`, `number`, `promise`, `place` or
    `letgo`, keep the first sentence, else the fallback; a `kit` or `world`
-   hit anywhere is the fallback (wave 42d). Measured on the load runs' replies (the
-   persona before wave 42c's text): with no retry 342 of 671 would pass,
-   180 be cut and 149 become the fallback, almost all for the assistant's
-   voice; the persona's own text is the first line of defence.
+   hit anywhere is the fallback (wave 42d). **Soft hits never cost the
+   answer** (`guards.SOFT`: `assistant`, `long`): when every hit is soft and
+   too little is left, what is left goes out, or the line itself (capped).
+   Measured on the show MacBook (50 guests at the intro, `concurrency: 4`,
+   no retry in a burst): the assistant guard alone turned 21 of 159 replies
+   into a topic-closing filler after a ~90 s wait; a help-desk sentence is
+   the lesser harm. The persona's own text is the first line of defence.
 4. **repeats** — a line that shares half its 4-word runs with what *this
    guest* heard from him (his last 3 lines to them, his replies in the
    thread, the story's lines there) gets **one** retry, quoting what they

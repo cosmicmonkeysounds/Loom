@@ -535,3 +535,31 @@ def test_with_the_dm_guards_off_none_of_this_runs():
     assert reply.say == TECH
     out = guard_pass(P, Reply(say="No, that is not where it is kept."), OLD, Said(), (), dm=None)
     assert out.retry is None and out.problems == ()
+
+
+# -- soft hits never cost a guest his answer (measured: r10, 21 of 159 burst replies) -----------------
+
+
+def test_a_burst_line_that_is_only_assistant_voice_goes_out_rather_than_a_filler():
+    line = "How may I assist you today?"
+    assert problems(line) == ("assistant",)
+    out, notes = voice_cut(P, Reply(say=line), check("hi"))
+    assert out.say == line and notes == ["voice: soft hits sent"]
+
+
+def test_a_soft_cut_that_leaves_a_short_answer_sends_the_short_answer():
+    line = "The hunt opens soon. Let me know if you need anything else."
+    out, notes = voice_cut(P, Reply(say=line), check("When does it start?"))
+    assert out.say == "The hunt opens soon." and notes == ["voice: soft cut, short"]
+
+
+def test_a_soft_cut_that_leaves_enough_is_still_an_ordinary_cut():
+    line = "The three questions are on the TV and in your Quest Log. Let me know if you need anything else."
+    out, notes = voice_cut(P, Reply(say=line), check("Where are the questions?"))
+    assert out.say == "The three questions are on the TV and in your Quest Log." and notes == ["voice cut"]
+
+
+def test_a_hard_hit_beside_a_soft_one_is_still_the_fallback():
+    line = "I will stop. Let me know if you need anything else."
+    out, notes = voice_cut(P, Reply(say=line), check("Just stop. Stand down right now."))
+    assert out.say == P.fallback and notes == ["voice → fallback"]

@@ -897,6 +897,12 @@ SEVERE = frozenset({"standdown", "number", "promise", "place", "letgo"})
 #: retry (or it failed): what is left beside a how-to for real kit or a
 #: weather report still reads as one.
 WITHHOLD = frozenset({"kit", "world"})
+#: (wave 42d, measured) The reasons that never cost a guest his answer. In a
+#: burst (no retry) the assistant guard alone turned 21 of 159 replies into a
+#: topic-closing filler after a ~90 s wait (r10, 50 guests at the intro): a
+#: help-desk sentence is the lesser harm. With only these hits, a cut that
+#: leaves too little sends what is left, or the line itself, capped.
+SOFT = frozenset({"assistant", "long"})
 
 
 @dataclass(frozen=True)
@@ -1625,8 +1631,14 @@ def voice_cut(persona: Persona, reply: Reply, check: DmCheck) -> tuple[Reply, li
         return replace(reply, say=persona.fallback), ["voice → fallback (withheld)"]
     if len(kept) != len(parts):
         if len(" ".join(kept).split()) < MIN_LEFT_WORDS or (severe and hits[0]):
-            return replace(reply, say=persona.fallback), ["voice → fallback"]
-        notes.append("voice cut")
+            if all(SOFT.issuperset(h) for h in hits):
+                # Only soft hits: never a filler for them (`SOFT`).
+                kept = kept or parts
+                notes.append("voice: soft hits sent" if kept is parts else "voice: soft cut, short")
+            else:
+                return replace(reply, say=persona.fallback), ["voice → fallback"]
+        else:
+            notes.append("voice cut")
     if check.cap is not None and too_long(kept, check.cap):
         kept = _capped(kept, check.cap)
         notes.append(f"cut to {check.cap} sentences")

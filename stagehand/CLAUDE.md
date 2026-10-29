@@ -313,7 +313,8 @@ module docstrings that explain the why).
   that trips again or fails: `voice_cut` (offending sentences out, cap 3,
   ≥ 6 words left and, for standdown / number / promise, the first
   sentence, else the fallback; a kit or world hit anywhere is the
-  fallback). Wave 42d: the fallback is picked by `guards.fallback_intent`
+  fallback; only `guards.SOFT` hits, assistant / long, never the
+  fallback: what is left, or the line). Wave 42d: the fallback is picked by `guards.fallback_intent`
   on the guest's line (`persona.fallbacks["<stage>.<intent>"]`, parsed from
   `fallbacks: {stage: {offer|praise|refuse|other: […]}}`), and the guest's
   own words (`DmCheck.theirs`, with his visible codex titles) are never
