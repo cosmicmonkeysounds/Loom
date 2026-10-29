@@ -46,6 +46,44 @@ more with the whole burst. Requests queue while no worker is online
 time out after 2 minutes (one retry), and are cancelled by a run
 restart.
 
+**The window** (wave 42, "Trabolta under load"). A worker opens its
+stream as `GET /api/agent/stream?characters=…&name=…&capacity=N`, with
+`N` its `agents.concurrency` (a whole number 1..16); the `hello` frame
+echoes the `capacity` the server holds it to (`null` = legacy). With a
+capacity the server never gives that worker more than `N` things at
+once — open voice requests, a ruling and a letter all take a slot.
+Everything else waits in the **server's** queue, in rank order (a stage
+request, then a guest at his heart, then every other DM; first come
+first served within a rank), and goes out the moment a slot frees: a
+reply, a cancel, a timeout, a worker leaving or coming back, a stall
+clearing. Two workers share one queue and each takes work as it frees a
+slot, so a slower one simply takes less. A queued request's body is built
+when it goes out, so it carries every line the guest sent while it
+waited and the world as it is then. Consequences a guest sees:
+
+- "Trabolta is typing…" shows only once a slot has the request — a
+  guest still in the queue sees nothing, not minutes of typing.
+- A guest still in the queue after 40 s, while the worker is answering
+  others, hears the character's `busy:` line, once per thread.
+- Each request in a slot has its own 2-minute reply timeout. The worker
+  is **stalled** only when nothing came back from it (an answer, or one
+  of its requests settled by hand) for 60 s, counted from the later of
+  its last answer and its oldest request in flight: one stuck slot while
+  the others answer is not a stall.
+- A ruling no longer waits for the voice queue to empty: it takes a free
+  slot when no DM waits, or once it has waited 15 s (`judgeAgeMs`),
+  ahead of the queued DMs. At most one ruling is out per worker. A
+  letter goes when a slot is free and no DM waits.
+
+Hosts read it as "3 answering · 12 waiting · oldest 0:41" (the queue
+summary's `inFlight` / `capacity`, present only with a windowed worker).
+A worker that sends no `capacity` (an older stagehand) is **legacy**:
+every request goes to it at once, it answers them one at a time, only
+the head of its line runs the reply and stall clocks, and rulings wait
+for its line to empty ("voice first"), exactly as before wave 42. Ollama
+must run with `OLLAMA_NUM_PARALLEL` ≥ `concurrency`, or the extra slots
+just wait inside Ollama.
+
 ### Stage requests: answering aloud (wave 32)
 
 During a talk scene (the story's `Night.talk`) a host relays what Clippy
