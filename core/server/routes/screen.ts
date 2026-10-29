@@ -752,7 +752,21 @@ export const SCREEN_NIGHT_VARS = {
   // 🔌 / 💥 / ❌ press puts the story on the buttons until 🔌 Trust the
   // patch bay, and the terminal's bridge stops posting while it holds.
   patch_override: "Night.patch_override",
+  // Wave 45: the Bathroom Report (G13), only while its slide is up.
+  bath_goers: "Night.bath_goers",
+  bath_never: "Night.bath_never",
+  bath_total_s: "Night.bath_total_s",
+  bath_most: "Night.bath_most",
+  bath_most_s: "Night.bath_most_s",
+  bath_least: "Night.bath_least",
+  bath_least_s: "Night.bath_least_s",
+  bath_toggler: "Night.bath_toggler",
+  bath_toggles: "Night.bath_toggles",
 } as const;
+/** (wave 45) The longest tie the Bathroom Report's slide carries. */
+const MAX_TIE_NAMES = 120;
+/** (wave 45) The slide the Bathroom Report (G13) cues. */
+export const BATHROOM_SLIDE = "award_bathroom";
 /** A story var holding this names nobody / nothing yet (the show's "none"). */
 const NIGHT_NONE = "none";
 
@@ -804,6 +818,25 @@ export interface ScreenNight {
   door_override: boolean | null;
   /** (wave 22) `Night.patch_override`: the story follows the 🔌 buttons, not the patch bay. */
   patch_override: boolean | null;
+  /** (wave 45) The Bathroom Report's numbers, only while its slide
+   *  (`award_bathroom`) is up on this target; absent otherwise. */
+  bathroom?: ScreenBathroom;
+}
+
+/** (wave 45) The Bathroom Report (G13), as the story read it. Times are
+ *  story seconds; a name is one program or a tie ("A and B"), null for
+ *  nobody. `least` is null with fewer than two who went (the story reads
+ *  no least then). */
+export interface ScreenBathroom {
+  goers: number;
+  never: number;
+  total_s: number;
+  most: string | null;
+  most_s: number;
+  least: string | null;
+  least_s: number;
+  toggler: string | null;
+  toggles: number;
 }
 
 // --- the results block (wave 18b) ----------------------------------------------
@@ -1679,6 +1712,26 @@ export class ScreenWatch {
       door_override: flag(SCREEN_NIGHT_VARS.door_override),
       patch_override: flag(SCREEN_NIGHT_VARS.patch_override),
     };
+    if (slideUp === BATHROOM_SLIDE) {
+      const count = (path: string): number => Math.max(0, Math.floor(num(path) ?? 0));
+      const goers = count(SCREEN_NIGHT_VARS.bath_goers);
+      // A tie names everyone in it: a longer clip than a moment's name.
+      const tied = (path: string): string | null => {
+        const v = peek(path);
+        return v === null || v.trim() === "" || v === NIGHT_NONE ? null : clip(v, MAX_TIE_NAMES);
+      };
+      night.bathroom = {
+        goers,
+        never: count(SCREEN_NIGHT_VARS.bath_never),
+        total_s: count(SCREEN_NIGHT_VARS.bath_total_s),
+        most: tied(SCREEN_NIGHT_VARS.bath_most),
+        most_s: count(SCREEN_NIGHT_VARS.bath_most_s),
+        least: goers > 1 ? tied(SCREEN_NIGHT_VARS.bath_least) : null,
+        least_s: goers > 1 ? count(SCREEN_NIGHT_VARS.bath_least_s) : 0,
+        toggler: tied(SCREEN_NIGHT_VARS.bath_toggler),
+        toggles: count(SCREEN_NIGHT_VARS.bath_toggles),
+      };
+    }
 
     // Wave 18b: the published results — the verdict for its window, else a
     // reading while the reading's slide is up on this target.

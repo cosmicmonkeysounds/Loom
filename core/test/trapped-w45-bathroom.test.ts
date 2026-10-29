@@ -10,6 +10,7 @@ import { scenarioSource } from "../examples/load.ts";
 import { Sim, type SimEvent } from "../src/runtime/sim/index.ts";
 import { ChatStore, composeGuestMessages, type ChatMessage } from "../server/chat.ts";
 import { notePress } from "../server/views.ts";
+import { ScreenWatch } from "../server/routes/screen.ts";
 
 const SRC = scenarioSource("trapped-in-the-internet");
 const SLOW = 120_000;
@@ -233,5 +234,34 @@ describe("wave 45: G13 🚻 The Bathroom Report", () => {
     d.press("own_award_lines");
     expect(desktop(d.press("bathroom_report"))).toEqual([]);
     expect(v(d.sim, "Night.screen")).toBe("award_bathroom");
+  });
+});
+
+describe("wave 45: the TV's Bathroom Report slide (the screen state)", () => {
+  const WHO = { name: "TV", spot: "desktop-tv", view: "tv", character: "" };
+  it("carries the report only while award_bathroom is up; the least only with two or more who went", { timeout: SLOW }, () => {
+    const n = new Night();
+    n.upload("g1", "Calculator");
+    n.upload("g2", "Notepad");
+    n.upload("g3", "Minesweeper");
+    n.trip("g1", 300);
+    n.trip("g2", 100);
+    n.ceremony();
+    const w = new ScreenWatch({ now: () => 10_000 });
+    const poll = () => w.poll(n.sim, WHO, () => false).night;
+    expect(poll().bathroom).toBeUndefined();
+    n.press("bathroom_report");
+    expect(poll().bathroom).toEqual({ goers: 2, never: 1, total_s: 400, most: "Calculator", most_s: 300, least: "Notepad", least_s: 100, toggler: "Calculator and Notepad", toggles: 2 });
+    n.press("award_most_trusted", "g1");
+    expect(poll().bathroom).toBeUndefined();
+    expect(poll().award_winner).toBe("Calculator");
+
+    const one = new Night();
+    one.upload("g1", "Calculator");
+    one.trip("g1", 30);
+    one.ceremony();
+    one.press("bathroom_report");
+    const w1 = new ScreenWatch({ now: () => 10_000 });
+    expect(w1.poll(one.sim, WHO, () => false).night.bathroom).toMatchObject({ goers: 1, most: "Calculator", least: null, least_s: 0 });
   });
 });
