@@ -31,7 +31,7 @@ SHARED_FILES = ("audio-resolve.json", "audio-basic.json", "audio-house.json")
 
 
 def _shared(name: str):
-    return json.loads((SHARED_COPY / name).read_text())
+    return json.loads((SHARED_COPY / name).read_text(encoding="utf-8"))
 
 
 SHARED = _shared("audio-resolve.json")
@@ -40,7 +40,7 @@ SHARED_HOUSE = _shared(SHARED["house"])
 
 #: The router's own fixture (inline audio + house) for the router-only bits:
 #: `unknown`, parsing, the end-to-end router test.
-FIXTURE = json.loads((HERE / "fixtures" / "router-audio.json").read_text())
+FIXTURE = json.loads((HERE / "fixtures" / "router-audio.json").read_text(encoding="utf-8"))
 AUDIO = parse_audio(FIXTURE["audio"])
 HOUSE = FIXTURE["house"]
 

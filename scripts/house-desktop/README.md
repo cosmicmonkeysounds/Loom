@@ -44,6 +44,90 @@ Zigbee2MQTT → §5 the bulbs → §6 the WLED strip → §7 stagehand (`show`,
 `lights`, `audio`) → §8 place and test everything on the map and in Run →
 House → §9 the TV. Show night is §10.
 
+### Just the lights: the short path
+
+The lights don't need the 828x. To get them going before the sound, do
+these in order (each step links to its full section):
+
+1. **The broker** (§2), in an **Administrator** PowerShell:
+   `.\setup-mosquitto.ps1 -SetPrivate`. The `props` password is one **you
+   make up** here; nothing ships one. It is stored hashed in
+   `C:\ProgramData\mosquitto\passwd` and goes only into the WLED strip
+   (step 5) and the MacBook's fallback overlay. The Zigbee bulbs and this
+   PC's stagehand jobs never use it (they use the anonymous loopback
+   `127.0.0.1:1883`). Then `.\setup-mosquitto.ps1 -Check`: the service
+   running, the password file readable by the service, `1883` and `1884`
+   answering.
+2. **Zigbee2MQTT** (§4). Install it (a normal PowerShell, a few minutes):
+
+   ```powershell
+   git clone --depth 1 https://github.com/Koenkk/zigbee2mqtt.git C:\zigbee2mqtt
+   cd C:\zigbee2mqtt; corepack enable; pnpm install --frozen-lockfile; pnpm run build
+   ```
+
+   Then from this folder, with the stick's port from `.\zigbee2mqtt.ps1
+   -Ports` (on this PC it has shown as `COM3`):
+
+   ```powershell
+   .\zigbee2mqtt.ps1 -WriteConfig -Port COM3   # skip if you copied the Mac's data\ (below)
+   .\zigbee2mqtt.ps1 -Start                    # wait for "Zigbee2MQTT started!", then Ctrl+C
+   .\zigbee2mqtt.ps1 -InstallTask              # Administrator: runs at boot
+   .\zigbee2mqtt.ps1 -Check
+   ```
+
+   **If bulbs were already paired on the MacBook's Zigbee2MQTT**, copy its
+   whole `data\` folder to `C:\zigbee2mqtt\data\` instead of
+   `-WriteConfig` and change only `serial.port` to the COM port; a fresh
+   config means re-pairing every bulb.
+3. **stagehand `show` + `lights`** (§7). Write
+   `stagehand\trapped.house.local.yaml` (git-ignored) with the event's id
+   and its mod passcode:
+
+   ```yaml
+   server: { event: <the event's id>, mod_passcode: "<the mod passcode>" }
+   ```
+
+   The event id is a UUID (the `/e/<id>/` in a Run URL), **not** the
+   project's or the event's name: a name logs in as `404 unknown event`.
+   The mod passcode tells you the id:
+
+   ```powershell
+   Invoke-RestMethod -Method Post https://app.mapsandducks.com/api/resolve-code -ContentType application/json -Body '{"code": "<the mod passcode>"}'
+   ```
+
+   `uv run stagehand lights devices --config trapped.desktop.yaml` (in
+   `stagehand\`) then says `mod login ok`. Never put either in
+   `trapped.house.yaml` itself: it is tracked.
+   Then `.\start-stagehand.ps1 -NoAudio` (show + lights only, until the
+   828x is done). The `lights` job must run **before** pairing: every
+   *Pair* button goes through it.
+4. **Pair and name every bulb** (§5). Open joining (Run → House → 🔌 Setup
+   → 💡 Lights → **🔗 Pair a bulb**, or http://localhost:8080 → *Permit
+   join*), then reset the bulb: a **ZL1** by flicking its switch 5–6 times
+   until it blinks, a **Hue** by Touchlink from the frontend (or delete it
+   in the Hue app while it is still on a bridge). Nearest the stick first.
+   For each: **rename** it to its §5.4 name (`living_1`, `hall_main`,
+   `server_room_rgb`, …) and set **Power-on behavior → `on`**. Back up
+   `C:\zigbee2mqtt\data\` after the session.
+5. **The WLED strip** (§6): Wi-Fi, LED preferences, then MQTT to this PC
+   on **`1884`**, user `props`, the password from step 1, device topic
+   **`wled/living`**.
+6. **Sync the lights to the project** (from the **MacBook**, not this PC):
+   `sync-show --replace-lights` (with the other flags of the root
+   CLAUDE.md's shipping steps) sends the repo's `lights.json` (every bulb,
+   the strip, every look) into the project; until then the project knows
+   only the server-room bulb. Do it once the bulbs carry their names. If
+   anyone saved looks to the project, Download JSON them first and commit
+   them, or the replace drops them.
+7. **Walk it** (§8): Run → House → 🔌 Setup green for 💡; **Checks**, every
+   light and look; the 🎨 **Cue designer**, every look ▶ Tested on the house.
+
+**The address.** The WLED strip and `trapped.macbook.yaml` dial this PC at
+**`192.168.8.10`** (the house router's DHCP reservation). `-Check` warns
+when this PC has another address: on the show network, move the
+reservation to this PC, or point the strip's broker (and the MacBook
+overlay's `audio.mqtt.host`) at the PC's real address.
+
 ## 1. Install (once)
 
 ```powershell

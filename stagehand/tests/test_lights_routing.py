@@ -42,7 +42,7 @@ FILES = ("lights-basic.json", "lights-house.json", "lights-resolve.json", "light
 
 
 def _load(name: str):
-    return json.loads((COPY / name).read_text())
+    return json.loads((COPY / name).read_text(encoding="utf-8"))
 
 
 RESOLVE = _load("lights-resolve.json")

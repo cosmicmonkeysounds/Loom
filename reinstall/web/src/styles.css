@@ -318,6 +318,7 @@ code { font-family: var(--pixel); font-size: 1.15em; background: rgba(255, 255, 
 .w98-button.station { justify-content: flex-start; text-align: left; min-height: 3.4em; }
 .w98-button.station small { display: block; font-size: 0.8em; color: #404040; font-weight: normal; }
 .sent-big { font-family: var(--pixel); font-size: clamp(26px, 3.4vw, 40px); line-height: 1.05; color: var(--navy); }
+.resume-big { font-family: var(--pixel); font-size: clamp(26px, 3.4vw, 40px); line-height: 1.05; color: var(--navy); }
 
 .flash {
   position: fixed;

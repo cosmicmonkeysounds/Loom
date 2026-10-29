@@ -94,6 +94,34 @@ func give_king(k: Variant) -> void:
 	_adopt_king(k)
 
 
+## (wave 40) suspend / resume, and the walk a relaunch would find saved.
+var suspends := 0
+var resumes: Array = []
+var saved := {}
+
+
+func suspend() -> void:
+	suspends += 1
+
+
+func resume(token: String) -> void:
+	resumes.append(token)
+
+
+func saved_walk() -> Dictionary:
+	return saved
+
+
+## The server gives a held walk back.
+func answer_resumed(assignment: Dictionary, pose := {}, is_ready := true) -> void:
+	adopt(assignment)
+	resumed.emit(assignment, pose, is_ready)
+
+
+func fail_resume() -> void:
+	resume_failed.emit()
+
+
 func end_session(reason: String) -> void:
 	ended.append(reason)
 	session = {}

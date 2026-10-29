@@ -60,7 +60,7 @@ def worker(tmp_path, *, interval=WIN, dry_run=False):
 
 
 def saved(tmp_path):
-    return json.loads((tmp_path / "minds" / "evt" / "Trabolta.mind.json").read_text())
+    return json.loads((tmp_path / "minds" / "evt" / "Trabolta.mind.json").read_text(encoding="utf-8"))
 
 
 def voice(character="Trabolta", static=STATIC, line="hi"):
@@ -347,7 +347,7 @@ def test_a_repeated_prefix_is_stored_once_in_the_file_and_the_ring_keeps_it_whol
     first, second, third = voice(line="a"), voice(line="b"), voice(line="c")
     for t in (first, second, third):
         run(trace.record(t))
-    lines = [json.loads(x) for x in trace.path("Trabolta").read_text().splitlines()]
+    lines = [json.loads(x) for x in trace.path("Trabolta").read_text(encoding="utf-8").splitlines()]
     assert lines[0]["messages"][0]["content"] == STATIC  # the first after a start: in full
     assert lines[1]["messages"][0]["content"] == f"[same prefix as {first.id}]"
     assert lines[2]["messages"][0]["content"] == prefix_ref(first.id)
@@ -365,7 +365,7 @@ def test_a_short_or_non_system_first_message_is_never_shared(tmp_path):
     user = [new_thought("Trabolta", "voice", messages=[{"role": "user", "content": STATIC}]) for _ in range(2)]
     for t in user:
         run(trace.record(t))
-    lines = [json.loads(x) for x in trace.path("Trabolta").read_text().splitlines()]
+    lines = [json.loads(x) for x in trace.path("Trabolta").read_text(encoding="utf-8").splitlines()]
     assert [ln["messages"][0]["content"] for ln in lines] == [short, short, STATIC, STATIC]
 
 
@@ -529,7 +529,7 @@ def test_an_unresolvable_reference_stays_the_literal_and_its_rerun_is_refused(tm
     run(trace.record(first))
     run(trace.record(second))
     path = trace.path("Trabolta")
-    path.write_text(path.read_text().splitlines()[1] + "\n")  # the full copy is gone
+    path.write_text(path.read_text(encoding="utf-8").splitlines()[1] + "\n")  # the full copy is gone
     fresh = Trace(tmp_path, "evt")
     assert fresh.load_recent("Trabolta") == 1
     held = fresh.all("Trabolta")[0]
@@ -544,7 +544,7 @@ def test_a_rerun_of_a_thought_whose_prefix_is_lost_is_refused(tmp_path):
     run(agents.trace.record(first))
     run(agents.trace.record(second))
     path = agents.trace.path("Trabolta")
-    path.write_text(path.read_text().splitlines()[1] + "\n")
+    path.write_text(path.read_text(encoding="utf-8").splitlines()[1] + "\n")
     agents.trace = Trace(agents.trace.state_dir, "evt")
     agents.trace.load_recent("Trabolta")
     out = run(agents.control({"action": "rerun", "character": "Trabolta", "thought": second.id}))

@@ -379,7 +379,7 @@ def test_the_health_loop_reports_the_stats_and_every_sound_file(tmp_path):
     async def go():
         r = playing(tmp_path, health_s=5)
         write_wav(tmp_path / "sounds" / "long.wav", seconds=1.5)
-        (tmp_path / "sounds" / "notes.txt").write_text("not a sound")
+        (tmp_path / "sounds" / "notes.txt").write_text("not a sound", encoding="utf-8")
         mod = FakeMod([])
         await linked(r, mod)
         r.mqtt = FakeBridge([])

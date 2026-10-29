@@ -304,8 +304,11 @@ class HouseLights:
 
     def preflight(self) -> list[str]:
         """`stagehand check --only lights`: config valid, broker reachable,
-        Z2M online, every fixture's device in Z2M's device list."""
+        Z2M online. A fixture whose device Z2M doesn't know yet is only a
+        warning (`warnings()`): pairing goes through this job, so it has to
+        install before the first bulb joins."""
         problems: list[str] = []
+        self._unpaired: list[str] = []
         if self.cfg.config_file:
             raw = self._read_json(self.cfg.config_file)
             if raw is None:
@@ -327,13 +330,13 @@ class HouseLights:
             names = {d["friendly"] for d in devices}
             for f in doc.fixtures:
                 if f.get("kind") in ("zigbee", "zigbee-group") and f["device"] not in names:
-                    problems.append(f"fixture {f['id']}: no Zigbee2MQTT device or group named {f['device']!r} (rename it in the Z2M frontend, or fix lights.json)")
+                    self._unpaired.append(f"fixture {f['id']}: no Zigbee2MQTT device or group named {f['device']!r} (pair it and rename it in the Z2M frontend, or fix lights.json)")
         return problems
 
     def warnings(self) -> list[str]:
         if self._local_doc() is None:
             return ["no lights.json on this Mac yet (no cache, no config_file): the module plays the server's once it answers"]
-        return []
+        return list(getattr(self, "_unpaired", []))
 
     # -- files -----------------------------------------------------------------
 

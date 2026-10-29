@@ -404,7 +404,7 @@ def test_check_exits_nonzero_when_the_alexa_device_is_unusable(tmp_path, monkeyp
     conf.write_text(
         "server: {url: 'http://h', mod_passcode: x}\n"
         f"alexa: {{mqtt: {{host: 127.0.0.1}}, device: MOTU, cache_dir: '{tmp_path / 'c'}'}}\n"
-    )
+    , encoding="utf-8")
     monkeypatch.setattr(DeviceOutput, "probe", lambda self, query=None: "output device 'MOTU': Multiple output devices found")
     assert main(["check", "--config", str(conf)]) == 3
     assert "Multiple output devices" in capsys.readouterr().err

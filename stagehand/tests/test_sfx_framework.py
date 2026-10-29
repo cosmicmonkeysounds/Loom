@@ -355,12 +355,12 @@ def test_the_manifest_library_keys_name_library_sounds():
 
 def test_a_bad_library_key_is_refused(tmp_path):
     p = tmp_path / "m.yaml"
-    p.write_text("sounds: {zip: {motif: zip, seconds: 1, library: Zipper!}}")
+    p.write_text("sounds: {zip: {motif: zip, seconds: 1, library: Zipper!}}", encoding="utf-8")
     with pytest.raises(ValueError, match="library"):
         load_manifest(p)
-    p.write_text("sounds: {zip: {motif: zip, seconds: 1, library: zipper}}")
+    p.write_text("sounds: {zip: {motif: zip, seconds: 1, library: zipper}}", encoding="utf-8")
     assert load_manifest(p)["zip"].library == "zipper"
-    p.write_text("sounds: {zip: {motif: zip, seconds: 1}}")
+    p.write_text("sounds: {zip: {motif: zip, seconds: 1}}", encoding="utf-8")
     assert load_manifest(p)["zip"].library is None
 
 
@@ -425,7 +425,7 @@ def test_install_story_replaces_only_placeholders_and_library_files(tmp_path):
 
 def conf(tmp_path) -> str:
     p = tmp_path / "house.yaml"
-    p.write_text(f"server: {{url: 'http://h', mod_passcode: x}}\naudio: {{sounds_dir: '{tmp_path / 'sounds'}', play_sounds: true}}\n")
+    p.write_text(f"server: {{url: 'http://h', mod_passcode: x}}\naudio: {{sounds_dir: '{tmp_path / 'sounds'}', play_sounds: true}}\n", encoding="utf-8")
     return str(p)
 
 
@@ -444,7 +444,7 @@ def test_the_cli_lists_writes_and_installs_story_sounds(tmp_path, capsys):
         "  beans_spill: {motif: rattle, seconds: 1, library: packet_burst}\n"
         "  rave: {motif: beat_fast, seconds: 1}\n"
         "  motorcycle: {motif: engine, seconds: 1, library: not_made_yet}\n"
-    )
+    , encoding="utf-8")
     sounds = tmp_path / "sounds"
     sounds.mkdir()
     (sounds / "beans_spill.wav").write_bytes(b"RIFF a real recording")
@@ -463,6 +463,6 @@ def test_the_cli_lists_writes_and_installs_story_sounds(tmp_path, capsys):
 def test_the_default_library_folder_is_git_ignored():
     stagehand = Path(__file__).resolve().parents[1]
     assert sfx_cli.LIBRARY_DIR == stagehand / "media" / "library"
-    ignored = (stagehand / ".gitignore").read_text().split()
+    ignored = (stagehand / ".gitignore").read_text(encoding="utf-8").split()
     assert "media/library/" in ignored and "media/music/" in ignored
     assert MANIFEST.parent == stagehand / "media"

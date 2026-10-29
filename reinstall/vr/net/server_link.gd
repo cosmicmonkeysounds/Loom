@@ -111,6 +111,9 @@ const SETUP_EMPTY := "Type the moderator passcode."
 const NOT_CONFIGURED := "Not configured — set this headset up."
 ## Where a working setup is saved (tests point it elsewhere).
 var user_path := StationConfig.USER_PATH
+## (wave 40) Where the adopted walk is saved for a resume across a relaunch
+## (tests point it elsewhere).
+var session_path := "user://session.json"
 ## The sources under the user file, for [method forget_setup]: the files
 ## and the command line it was loaded with.
 var base_files: Array = [StationConfig.RES_PATH]
@@ -536,6 +539,7 @@ func adopt(assignment: Dictionary) -> void:
 	_duck_version = v
 	if v != "":
 		_want_version = v
+	_save_walk()  # (wave 40) remember this walk for a resume across a relaunch
 	if not is_offline() and map_is_stale():
 		fetch_house()
 
@@ -740,6 +744,32 @@ func mark_ready() -> void:
 	_post_session("/api/spatial/ready", {})
 
 
+## (wave 40) Hold the walk server-side so a doffed headset (or a sleeping
+## Quest, which stops sending poses) keeps it through the resume grace
+## rather than the 60s pose timeout. A dead token ends us (401 / 410).
+func suspend() -> void:
+	_post_session("/api/spatial/suspend", {})
+
+
+## (wave 40) Pick a held walk back up by `token` (this run's, or one saved
+## to [member session_path] before a relaunch): the server answers the
+## assignment, the pose to respawn at, and whether the intro was done.
+func resume(token: String) -> void:
+	if is_offline() or phase != "ready" or token == "":
+		resume_failed.emit.call_deferred()
+		return
+	transport.send("POST", _base() + "/api/spatial/resume", {}, token,
+		func(status_code: int, data: Variant) -> void:
+			if status_code == 200 and data is Dictionary and (data as Dictionary).get("assignment") is Dictionary:
+				var a: Dictionary = data["assignment"]
+				adopt(a)
+				var pose: Dictionary = data["pose"] if data.get("pose") is Dictionary else {}
+				resumed.emit(a, pose, bool(data.get("ready", false)))
+			else:
+				_forget_saved()  # the grace elapsed, or the station was taken
+				resume_failed.emit())
+
+
 ## A session-token call whose answer only matters when the session is dead
 ## (401 / 410 → the lobby); a 404 (an old server without the route) or any
 ## other refusal is ignored. Nothing offline.
@@ -870,7 +900,45 @@ static func _same_spot(a: Dictionary, b: Dictionary) -> bool:
 
 func _session_gone() -> void:
 	_duck_version = ""
+	_forget_saved()  # (wave 40) a walk that ended for good is never offered to resume
 	_update_map_warning()
+
+
+## (wave 40) The walk saved to `user://` so a relaunched app (the Quest
+## slept and the process was killed) can offer a resume within the grace.
+## Written whenever a walk is adopted (begin or resume), forgotten when one
+## ends for good. Never offline (there is no server walk to pick back up).
+func _save_walk() -> void:
+	if is_offline() or not has_session():
+		return
+	var walk := {
+		"token": str(session.get("token", "")),
+		"name": str(session.get("name", "")),
+		"session": session_id(),
+		"station": str(config.get("station", "")),
+	}
+	var f := FileAccess.open(session_path, FileAccess.WRITE)
+	if f != null:
+		f.store_string(JSON.stringify(walk))
+		f.close()
+
+
+func _forget_saved() -> void:
+	if FileAccess.file_exists(session_path):
+		DirAccess.remove_absolute(session_path)
+
+
+func saved_walk() -> Dictionary:
+	if is_offline() or not FileAccess.file_exists(session_path):
+		return {}
+	var f := FileAccess.open(session_path, FileAccess.READ)
+	if f == null:
+		return {}
+	var parsed: Variant = JSON.parse_string(f.get_as_text())
+	f.close()
+	if parsed is Dictionary and str((parsed as Dictionary).get("token", "")) != "":
+		return parsed
+	return {}
 
 
 func _on_frame(event: String, data: Variant) -> void:

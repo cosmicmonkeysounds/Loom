@@ -26,7 +26,7 @@ from stagehand.module import ConfigError
 
 from test_audio_engine import FakeStream, fake_query  # the shared fakes
 
-FIXTURE = json.loads((Path(__file__).parent / "fixtures" / "router-audio.json").read_text())
+FIXTURE = json.loads((Path(__file__).parent / "fixtures" / "router-audio.json").read_text(encoding="utf-8"))
 RATE = 8000
 
 
@@ -195,7 +195,7 @@ def test_the_answer_is_cached_and_a_restart_routes_from_it(tmp_path):
 
 def test_a_local_config_file_is_used_with_no_cache(tmp_path):
     local = tmp_path / "audio.json"
-    local.write_text(json.dumps(FIXTURE["audio"]))
+    local.write_text(json.dumps(FIXTURE["audio"]), encoding="utf-8")
     r = router(tmp_path, config_file=str(local))
     assert r.load_local() and r.source == "file" and r.doc.device == "MOTU"
 
@@ -920,7 +920,7 @@ def test_an_explicit_reach_and_the_check_warnings(tmp_path):
 
 def _local(tmp_path, **over) -> str:
     path = tmp_path / "local-audio.json"
-    path.write_text(json.dumps({**FIXTURE["audio"], **over}))
+    path.write_text(json.dumps({**FIXTURE["audio"], **over}), encoding="utf-8")
     return str(path)
 
 
@@ -1119,7 +1119,7 @@ def test_on_the_real_rig_the_router_owns_every_sound_and_the_show_keeps_only_the
     import yaml
 
     house = Path(__file__).parents[1] / "trapped.house.yaml"
-    doc = yaml.safe_load(house.read_text())
+    doc = yaml.safe_load(house.read_text(encoding="utf-8"))
     assert doc["audio"]["play_sounds"] is True and doc["audio"]["announce"] is True and "alexa" not in doc
     show = parse_config(doc, str(tmp_path), only=["show"], env={}).modules["show"]
     left = [r for r in show.cfg.cues if r.on_directive == "sfx"]
@@ -1190,7 +1190,7 @@ def music_router(tmp_path, soundtrack: dict | None = None, lib: Library | None =
         d.mkdir(parents=True, exist_ok=True)
         for f in files:
             (d / f).write_bytes(b"")
-    (tmp_path / "soundtrack.yaml").write_text(yaml.safe_dump(soundtrack or MUSIC))
+    (tmp_path / "soundtrack.yaml").write_text(yaml.safe_dump(soundtrack or MUSIC), encoding="utf-8")
     (tmp_path / "sounds").mkdir(exist_ok=True)
     section = {
         "sounds_dir": str(tmp_path / "sounds"),
@@ -1433,7 +1433,7 @@ def test_health_and_the_report_carry_the_music(tmp_path):
 def test_check_lists_the_playlists_and_warns_per_c3(tmp_path):
     r = music_router(tmp_path, config_file=_local(tmp_path), house_file=None)
     (tmp_path / "cache").mkdir(exist_ok=True)
-    (tmp_path / "cache" / "house.json").write_text(json.dumps(FIXTURE["house"]))
+    (tmp_path / "cache" / "house.json").write_text(json.dumps(FIXTURE["house"]), encoding="utf-8")
     warnings = "\n".join(r.warnings())
     assert "music: playlist empty has no file" in warnings
     assert "scene two entry 2 (a): 'The Fan Closet' names no zone, room, LOCATION or speaker" in warnings

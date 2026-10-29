@@ -211,6 +211,9 @@ export interface GameOptions {
    *  `skippable` shows Skip (the program completed a reinstallation).
    *  Absent: no tutorial (the device turned the intro off). */
   intro?: { touch: boolean; skippable: boolean };
+  /** (wave 40) Resume a held walk: respawn at the server's last pose for
+   *  this session instead of the map's spawn. */
+  resumeAt?: PlayerPose;
   /** (wave 39) The graphics setting and the device's cap (default: auto, no cap). */
   quality?: { choice: QualityChoice; cap: QualityTier };
   /** (wave 39, dev only) Feed a synthetic `lights` frame (`demoLights`). */
@@ -411,7 +414,12 @@ export class Game {
     this.lamps.bindHouse(opts.house, this.house.root);
     root.add(this.lamps.object);
 
-    this.body = { ...spawnBody(opts.house, opts.assignment.spawn), pitch: START_PITCH };
+    // (wave 40) A resumed walk respawns where the server last saw it, keeping
+    // its facing; a fresh one starts at the map's spawn.
+    this.body =
+      opts.resumeAt !== undefined
+        ? { ...spawnBody(opts.house, { pos: opts.resumeAt.p, yaw: opts.resumeAt.yaw }), pitch: opts.resumeAt.pitch }
+        : { ...spawnBody(opts.house, opts.assignment.spawn), pitch: START_PITCH };
     this.tutorial = opts.intro !== undefined ? startTutorial(opts.intro.touch) : null;
     this.pump = new PosePump({
       send: (body) => postPose(opts.base, opts.assignment.token, body),

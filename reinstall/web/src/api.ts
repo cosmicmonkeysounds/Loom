@@ -13,6 +13,7 @@ import type {
   HouseResponse,
   KingState,
   MapVariantsResponse,
+  PlayerPose,
   SaveHouseResult,
   SaveToProjectResult,
   SpatialCandidate,
@@ -484,6 +485,57 @@ export async function postEnd(base: string, token: string): Promise<void> {
   } catch {
     /* gone either way */
   }
+}
+
+// --- suspend + resume (wave 40): a doffed headset / a hidden web tab --------
+
+/** `POST /api/spatial/suspend` with the session token (wave 40): hold the
+ *  walk so the server keeps it past the pose timeout for a short grace,
+ *  ready to resume. Best effort, `keepalive` so it survives the tab going to
+ *  the background (the x-loom-token header rules out `sendBeacon`). */
+export async function postSuspend(base: string, token: string, fetcher: typeof fetch = fetch): Promise<boolean> {
+  try {
+    const res = await fetcher(`${base}/api/spatial/suspend`, { method: "POST", headers: { "content-type": "application/json", "x-loom-token": token }, body: "{}", keepalive: true });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+function poseOf(raw: unknown): PlayerPose | null {
+  if (typeof raw !== "object" || raw === null) return null;
+  const { p, yaw, pitch } = raw as { p?: unknown; yaw?: unknown; pitch?: unknown };
+  if (!Array.isArray(p) || p.length !== 3 || !p.every((n) => typeof n === "number" && Number.isFinite(n))) return null;
+  return { p: [p[0], p[1], p[2]], yaw: num(yaw) ?? 0, pitch: num(pitch) ?? 0 };
+}
+
+/** What `POST /api/spatial/resume` said (wave 40), every outcome a value. */
+export type ResumeReply =
+  /** The walk to pick up: the assignment to rebuild it, the pose to respawn
+   *  at, and whether its intro was already done (resume in-house, not the video). */
+  | { kind: "ok"; assignment: Assignment; pose: PlayerPose; ready: boolean }
+  /** 401 / 410 / 404: the walk is gone (the grace elapsed, or it was taken over). */
+  | { kind: "over"; status: number }
+  | { kind: "error"; message: string };
+
+/** `POST /api/spatial/resume {}` with the session token: pick a held walk
+ *  back up where it was. */
+export async function postResume(base: string, token: string, fetcher: typeof fetch = fetch): Promise<ResumeReply> {
+  let res: Response;
+  try {
+    res = await fetcher(`${base}/api/spatial/resume`, { method: "POST", headers: { "content-type": "application/json", "x-loom-token": token }, body: "{}" });
+  } catch (e) {
+    return { kind: "error", message: (e as Error).message };
+  }
+  const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+  if (res.ok) {
+    const pose = poseOf(data["pose"]);
+    const assignment = data["assignment"];
+    if (pose === null || typeof assignment !== "object" || assignment === null) return { kind: "error", message: "the resume answer was incomplete" };
+    return { kind: "ok", assignment: assignment as Assignment, pose, ready: data["ready"] === true };
+  }
+  if (res.status === 401 || res.status === 410 || res.status === 404) return { kind: "over", status: res.status };
+  return { kind: "error", message: typeof data["error"] === "string" ? data["error"] : `HTTP ${res.status}` };
 }
 
 /** The spatial stream's URL (a mod token or a session token). */

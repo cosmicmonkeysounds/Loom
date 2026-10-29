@@ -35,7 +35,7 @@ class FakeSchtasks:
 def _tasks(tmp_path: Path, runner: FakeSchtasks, *, python: Path | None = None) -> Tasks:
     py = python or tmp_path / "venv" / "pythonw.exe"
     py.parent.mkdir(parents=True, exist_ok=True)
-    py.write_text("")
+    py.write_text("", encoding="utf-8")
     return Tasks(stagehand_dir=ROOT, log_dir=tmp_path / "logs", user="DESKTOP\\john", run=runner, python=str(py))
 
 

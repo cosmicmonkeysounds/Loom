@@ -108,6 +108,11 @@ export const POSE_TIMEOUT_MS = 60_000;
 export const PARK_TIMEOUT_MS = 5 * 60_000;
 /** A found session lingers this long (terminals celebrate), then leaves. */
 export const FOUND_LINGER_MS = 8_000;
+/** (wave 40) A suspended walk (the headset doffed, the web tab hidden) is
+ *  held — exempt from the pose timeout — for this long, so it can resume
+ *  where it was. After it, the walk is given up (`timeout`): the duck frees,
+ *  the device returns to its lobby / scanner. */
+export const SUSPEND_GRACE_MS = 2 * 60_000;
 /** `found` accepts a last pose within this plan distance of the duck… */
 export const FOUND_PLAN_M = 2.0;
 /** Every pose coordinate is clamped to ± this many metres. */
@@ -249,6 +254,12 @@ interface Session {
   /** The game said its intro (video + tutorial) is over (`ready`): the
    *  duck run's clock restarted then, once. */
   ready: boolean;
+  /** (wave 40) Suspended: the headset was doffed or the web tab hidden. A
+   *  held session is exempt from the pose timeout (it keeps its pose, duck
+   *  and intro phase) until `SUSPEND_GRACE_MS` after `heldAt`, so the same
+   *  program can resume where it was. A pose or `resume` clears it. */
+  held: boolean;
+  heldAt: number;
 }
 
 interface Station {
@@ -272,6 +283,13 @@ export interface BeginInput {
 }
 
 export type PoseOutcome = "ok" | "unknown" | "over";
+
+/** (wave 40) What `resume` answers: the dead token's state, or the walk to
+ *  pick up — its assignment, the pose to respawn at, and whether its intro
+ *  was already done (so the game resumes in-house, not back in the video). */
+export type ResumeOutcome =
+  | { kind: "unknown" | "over" }
+  | { kind: "ok"; assignment: Assignment; pose: PlayerPose; ready: boolean };
 
 export type FoundOutcome =
   | { kind: "unknown" }
@@ -805,7 +823,10 @@ export class SpatialHub {
     for (const s of [...this.sessions.values()]) {
       if (s.guest === input.guest) {
         this.finish(s, "replaced");
-      } else if (input.station !== null && s.station === input.station && !s.claimed) this.finish(s, "replaced");
+      } else if (input.station !== null && s.station === input.station && (!s.claimed || s.held)) this.finish(s, "replaced");
+      // (wave 40) A different program taking a station supersedes whatever
+      // was there — a parked assignment, or a walk held for resume (one
+      // headset, one walk). An active, un-held walk is left alone.
     }
     const id = this.mintSessionId();
     const token = this.o.newToken?.() ?? randomUUID();
@@ -845,6 +866,8 @@ export class SpatialHub {
       kingHit,
       avatar: null,
       ready: false,
+      held: false,
+      heldAt: 0,
     };
     s.avatar = this.avatarFor(s);
     this.sessions.set(id, s);
@@ -899,6 +922,35 @@ export class SpatialHub {
       s.playingAt = this.runClock();
     }
     return "ok";
+  }
+
+  /** (wave 40) The headset was doffed, or the web tab hidden: hold the walk
+   *  so the pose timeout does not end it, keeping its pose, duck and intro
+   *  phase for a resume within `SUSPEND_GRACE_MS`. Only a claimed, un-found
+   *  walk holds (a parked one keeps its own `PARK_TIMEOUT_MS`; a found one
+   *  lingers and leaves). The stream is told nothing — the player stays put,
+   *  paused, so the terminals do not flicker. A dead token hears unknown/over. */
+  suspend(token: string | undefined): PoseOutcome {
+    const s = this.byTokenLive(token);
+    if (s === null) return this.tokenState(token);
+    if (s.claimed && !s.found && !s.held) {
+      s.held = true;
+      s.heldAt = this.now();
+    }
+    return "ok";
+  }
+
+  /** (wave 40) Pick a held (or still-live) walk back up: clear the hold,
+   *  refresh its timeout, and answer with the assignment, the pose to
+   *  respawn at, and whether the intro was done. A dead token (the grace
+   *  elapsed, or a different program took the station) hears unknown/over,
+   *  and the game starts fresh. */
+  resume(token: string | undefined): ResumeOutcome {
+    const s = this.byTokenLive(token);
+    if (s === null) return { kind: this.tokenState(token) };
+    s.held = false;
+    s.activeAt = this.now();
+    return { kind: "ok", assignment: this.assignmentOf(s), pose: s.pose, ready: s.ready };
   }
 
   /** Save the program's game settings (merged over what it had); a dead
@@ -990,6 +1042,7 @@ export class SpatialHub {
     if (s === null) return this.tokenState(token);
     const map = this.map;
     s.activeAt = this.now();
+    s.held = false; // (wave 40) poses are flowing again — the walk is live
     const same = s.pose.p[0] === pose.p[0] && s.pose.p[1] === pose.p[1] && s.pose.p[2] === pose.p[2] && s.pose.yaw === pose.yaw && s.pose.pitch === pose.pitch;
     if (!same) {
       s.pose = { p: [...pose.p], yaw: pose.yaw, pitch: pose.pitch };
@@ -1309,6 +1362,10 @@ export class SpatialHub {
         // release): it ends before a find could reward a healthy program
         // (R16, G2). A found walk is exempt — its own release unmarks it.
         this.finish(s, "unmarked");
+      } else if (s.held) {
+        // (wave 40) A suspended walk is exempt from the pose timeout; it is
+        // given up only after the resume grace, freeing its duck.
+        if (now - s.heldAt >= SUSPEND_GRACE_MS) this.finish(s, "timeout");
       } else if (now - s.activeAt >= POSE_TIMEOUT_MS) {
         this.finish(s, "timeout");
       }

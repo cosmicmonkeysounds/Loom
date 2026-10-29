@@ -1,16 +1,16 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene format=3 uid="uid://cvxdxrxkapvg0"]
 
-[ext_resource type="Script" path="res://main.gd" id="1_main"]
-[ext_resource type="Script" path="res://game/game.gd" id="2_game"]
+[ext_resource type="Script" uid="uid://basdwnuair6op" path="res://main.gd" id="1_main"]
+[ext_resource type="Script" uid="uid://dcvg2iqlo7pye" path="res://game/game.gd" id="2_game"]
 
-[node name="Main" type="Node3D"]
+[node name="Main" type="Node3D" unique_id=1823817795]
 script = ExtResource("1_main")
 
-[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=949516546]
 
-[node name="Sun" type="DirectionalLight3D" parent="."]
+[node name="Sun" type="DirectionalLight3D" parent="." unique_id=1557924715]
 light_color = Color(0.85, 0.95, 1, 1)
 light_energy = 0.7
 
-[node name="Game" type="Node3D" parent="."]
+[node name="Game" type="Node3D" parent="." unique_id=1917714981]
 script = ExtResource("2_game")

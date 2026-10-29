@@ -11,7 +11,7 @@ from stagehand.lights import module as lights_module
 
 def conf(tmp_path, lights: str = "{}") -> str:
     p = tmp_path / "house.yaml"
-    p.write_text(f"server: {{url: 'http://h', mod_passcode: x}}\nlights: {lights}\n")
+    p.write_text(f"server: {{url: 'http://h', mod_passcode: x}}\nlights: {lights}\n", encoding="utf-8")
     return str(p)
 
 
@@ -78,7 +78,7 @@ def test_devices_lists_zigbee2mqtt_and_the_module(tmp_path, server, capsys):
 
 def test_check_only_lights_reports_the_broker_z2m_and_unknown_devices(tmp_path, monkeypatch, capsys):
     lj = tmp_path / "lights.json"
-    lj.write_text('{"version": 1, "fixtures": [{"id": "rgb", "kind": "zigbee", "device": "server_room_rgb"}], "zones": [], "looks": {}}')
+    lj.write_text('{"version": 1, "fixtures": [{"id": "rgb", "kind": "zigbee", "device": "server_room_rgb"}], "zones": [], "looks": {}}', encoding="utf-8")
     c = conf(tmp_path, f"{{config_file: '{lj}', cache_dir: '{tmp_path / 'cache'}'}}")
     monkeypatch.setattr(lights_module, "probe_broker", lambda cfg: None)
     assert cli.main(["check", "--config", c, "--only", "lights"]) == 3
@@ -86,6 +86,12 @@ def test_check_only_lights_reports_the_broker_z2m_and_unknown_devices(tmp_path, 
     monkeypatch.setattr(lights_module, "probe_broker", lambda cfg: (False, [{"friendly": "other"}]))
     assert cli.main(["check", "--config", c, "--only", "lights"]) == 3
     err = capsys.readouterr().err
-    assert "Zigbee2MQTT is not online" in err and "no Zigbee2MQTT device or group named 'server_room_rgb'" in err
+    assert "check failed: Zigbee2MQTT is not online" in err and "no Zigbee2MQTT device or group named 'server_room_rgb'" in err
+    # An unpaired bulb only warns: the job must install before pairing (pairing goes through it).
+    monkeypatch.setattr(lights_module, "probe_broker", lambda cfg: (True, [{"friendly": "other"}]))
+    assert cli.main(["check", "--config", c, "--only", "lights"]) == 0
+    err = capsys.readouterr().err
+    assert "warning: fixture rgb: no Zigbee2MQTT device or group named 'server_room_rgb'" in err and "check failed" not in err
     monkeypatch.setattr(lights_module, "probe_broker", lambda cfg: (True, [{"friendly": "server_room_rgb"}]))
     assert cli.main(["check", "--config", c, "--only", "lights"]) == 0
+    assert "no Zigbee2MQTT device" not in capsys.readouterr().err

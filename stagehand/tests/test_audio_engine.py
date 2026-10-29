@@ -110,7 +110,7 @@ def test_a_role_may_set_its_own_sidechain_threshold(tmp_path):
 
 
 def test_section_paths_resolve_beside_the_yaml(tmp_path):
-    (tmp_path / "a.json").write_text("{}")
+    (tmp_path / "a.json").write_text("{}", encoding="utf-8")
     cfg = parse_audio_section({"sounds_dir": "media", "config_file": "a.json", "latency": 0.02, "mqtt": {"host": "127.0.0.1"}}, str(tmp_path))
     assert cfg.sounds_dir == str((tmp_path / "media").resolve())
     assert cfg.config_file == str((tmp_path / "a.json").resolve())
@@ -346,7 +346,7 @@ def test_mod_client_feed_url_and_long_poll_timeout():
 def test_the_bank_finds_names_exactly_then_case_insensitively(tmp_path):
     write_wav(tmp_path / "zip.wav")
     write_wav(tmp_path / "Motorcycle.AIFF")
-    (tmp_path / "notes.txt").write_text("x")
+    (tmp_path / "notes.txt").write_text("x", encoding="utf-8")
     bank = SoundBank(tmp_path, RATE)
     assert bank.find("zip") == tmp_path / "zip.wav"
     assert bank.find("motorcycle").samefile(tmp_path / "Motorcycle.AIFF")

@@ -82,16 +82,19 @@ function Test-Z2m {
     if ((Test-Path -LiteralPath $ConfigFile) -and (Select-String -LiteralPath $ConfigFile -Pattern 'GENERATE' -Quiet)) {
         Write-Warn 'configuration.yaml still says GENERATE: Z2M has never started with it (the network keys are made on the first start; back up data\ after)'
     }
+    $state = Get-Retained 'zigbee2mqtt/bridge/state' 3
+    $online = ($null -ne $state) -and (($state -join ' ') -match 'online')
     $task = Get-ScheduledTask -TaskName $TaskName -TaskPath $TaskPath -ErrorAction SilentlyContinue
     if ($task) {
-        if ($task.State -eq 'Running') { Write-Ok 'task \Loom\zigbee2mqtt running' } else { Write-Bad ('task \Loom\zigbee2mqtt is ' + $task.State + ': Start-ScheduledTask -TaskPath \Loom\ -TaskName zigbee2mqtt') }
+        if ($task.State -eq 'Running') { Write-Ok 'task \Loom\zigbee2mqtt running' }
+        elseif ($online) { Write-Bad ('task \Loom\zigbee2mqtt is ' + $task.State + ' but Zigbee2MQTT is online: another copy (a -Start window?) holds the COM port. Stop it (Ctrl+C) and the task takes over within a minute') }
+        else { Write-Bad ('task \Loom\zigbee2mqtt is ' + $task.State + ': Start-ScheduledTask -TaskPath \Loom\ -TaskName zigbee2mqtt, then see ' + (Join-Path $Dir 'data\log')) }
     } else {
         Write-Warn 'no \Loom\zigbee2mqtt task: it will not start at boot (.\zigbee2mqtt.ps1 -InstallTask, elevated)'
     }
-    $state = Get-Retained 'zigbee2mqtt/bridge/state' 3
     if ($null -eq $state) {
         Write-Warn 'mosquitto_sub not found: cannot read zigbee2mqtt/bridge/state'
-    } elseif (($state -join ' ') -match 'online') {
+    } elseif ($online) {
         Write-Ok 'zigbee2mqtt/bridge/state online'
     } else {
         Write-Bad ('zigbee2mqtt/bridge/state is not online (' + (($state -join ' ').Trim()) + '): see ' + (Join-Path $Dir 'data\log'))
@@ -129,6 +132,8 @@ if ($InstallTask) {
     $node = Find-Exe 'node' @((Join-Path $env:ProgramFiles 'nodejs\node.exe'))
     if (-not $node) { Write-Host 'node is not installed: winget install OpenJS.NodeJS.LTS' -ForegroundColor Red; exit 2 }
     if (-not (Test-Path -LiteralPath $ConfigFile)) { Write-Host ('no ' + $ConfigFile + ' yet: -WriteConfig (or copy the old data\) and -Start once first') -ForegroundColor Red; exit 2 }
+    $held = Get-Retained 'zigbee2mqtt/bridge/state' 3
+    if (($null -ne $held) -and (($held -join ' ') -match 'online')) { Write-Host 'Zigbee2MQTT is already running (a -Start window?): the task cannot open the COM port until you stop it (Ctrl+C there); it takes over within a minute.' -ForegroundColor Yellow }
     $action = New-ScheduledTaskAction -Execute $node -Argument 'index.js' -WorkingDirectory $Dir
     $triggers = @()
     $triggers += New-ScheduledTaskTrigger -AtStartup

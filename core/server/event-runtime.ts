@@ -4426,6 +4426,25 @@ export class EventRuntime {
         else sendJson(res, 200, { ok: true });
         return true;
       }
+      case "/api/spatial/suspend": {
+        // (wave 40) The headset was doffed, or the web tab hidden: hold the
+        // walk so it can resume where it was. Commits nothing, so it is open
+        // while the doors are closed. A dead token hears 401 / 410.
+        const out = this.spatial.suspend(token);
+        if (out !== "ok") refuse(out);
+        else sendJson(res, 200, { ok: true });
+        return true;
+      }
+      case "/api/spatial/resume": {
+        // (wave 40) Pick a held walk back up: the assignment, the pose to
+        // respawn at, and whether its intro was already done. A dead token
+        // (the grace elapsed, or the station was taken) hears 401 / 410, and
+        // the game starts fresh. Commits nothing to the story.
+        const out = this.spatial.resume(token);
+        if (out.kind !== "ok") refuse(out.kind);
+        else sendJson(res, 200, { ok: true, assignment: out.assignment, pose: out.pose, ready: out.ready });
+        return true;
+      }
       case "/api/spatial/prefs": {
         // A program's game settings (VR: snap / smooth turning), saved for
         // its next reinstallation. Commits nothing to the story.

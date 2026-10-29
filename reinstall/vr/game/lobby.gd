@@ -28,6 +28,9 @@ extends Node3D
 
 ## A MICROPHONE box button was pressed: "mic:test" (TEST MIC / STOP TEST) or "mic:ask" (ASK AGAIN).
 signal mic_action(id: String)
+## (wave 40, DRAFT w40) The resume card ("Are you {name}?") was answered —
+## true on YES (pick the held walk back up), false on NO (hand the headset off).
+signal resume_answered(yes: bool)
 
 ## Where the player stands in the lobby (world frame), far from any house.
 const SPOT := Vector3(0, 400, 0)
@@ -48,6 +51,13 @@ const NAME_HEIGHT := 0.044
 const START_AT := Vector2(-0.36, 1.06)
 const BACK_AT := Vector2(0.36, 1.06)
 const CARD_BUTTON := Vector2(0.56, 0.2)
+## (wave 40, DRAFT w40) The resume card: "Are you {name}?" with YES / NO, on
+## the confirm card's footprint.
+const RESUME_ASK := "Are you %s?"
+const RESUME_YES := "YES"
+const RESUME_NO := "NO"
+const RESUME_YES_AT := Vector2(-0.36, 1.06)
+const RESUME_NO_AT := Vector2(0.36, 1.06)
 const GEAR_AT := Vector2(1.3, 0.44)
 const GEAR_SIZE := Vector2(0.16, 0.16)
 const PAGE_Y := 0.64
@@ -79,6 +89,8 @@ const MIC_ASK := "ASK AGAIN"
 var picker := CandidatePicker.new()
 ## The confirm card's START / BACK ([member picker]'s twin, 2 columns).
 var card_picker := CandidatePicker.new()
+## (wave 40) The resume card's YES / NO ([member card_picker]'s twin).
+var resume_picker := CandidatePicker.new()
 var link: LinkBase
 var avatars: AvatarCache
 ## Avatar key → picture URL ([method LinkBase.avatar_url]).
@@ -101,6 +113,11 @@ var _card_text: Label3D
 var _card_picture: Sprite3D
 var _card_initials: Label3D
 var _card_tag: Label3D
+## (wave 40) The resume card and its "Are you {name}?" line (`_resume` holds
+## the offered walk's `{name}`, `{}` when there is no offer).
+var _resume_card: Node3D
+var _resume_text: Label3D
+var _resume := {}
 var _setup: SetupPanel
 var _buttons: Array = []  # {id, center, size} of the view, for hits
 var _looks := {}  # button id → its node (for hover)
@@ -218,6 +235,22 @@ func _ready() -> void:
 	_card.visible = false
 	card_picker.columns = 2
 	card_picker.set_items([{"id": "start"}, {"id": "back"}])
+
+	# (wave 40) The resume card: a prompt line over YES / NO, same footprint.
+	_resume_card = Node3D.new()
+	_resume_card.name = "ResumeCard"
+	_panel.add_child(_resume_card)
+	var resume_bg := _quad(Vector2(1.7, 0.95), HouseLook.screen("#0b2630"))
+	resume_bg.position = Vector3(0, LobbyTiles.GRID_Y, -0.01)
+	_resume_card.add_child(resume_bg)
+	_resume_text = _text(_resume_card, "", 0.09, HouseLook.GOLD, 1.45)
+	_resume_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_resume_text.width = 1.6 / _resume_text.pixel_size
+	_looks["resume:yes"] = make_button(_resume_card, RESUME_YES, RESUME_YES_AT, CARD_BUTTON, 0.08)
+	_looks["resume:no"] = make_button(_resume_card, RESUME_NO, RESUME_NO_AT, CARD_BUTTON, 0.08)
+	_resume_card.visible = false
+	resume_picker.columns = 2
+	resume_picker.set_items([{"id": "resume:yes"}, {"id": "resume:no"}])
 
 	_looks["prev"] = make_button(_panel, "◀", Vector2(-0.55, PAGE_Y), Vector2(0.18, 0.12), 0.06)
 	_looks["next"] = make_button(_panel, "▶", Vector2(0.55, PAGE_Y), Vector2(0.18, 0.12), 0.06)
@@ -502,6 +535,28 @@ func confirming() -> Dictionary:
 	return _confirming
 
 
+## (wave 40) Offer to resume a held walk: show the "Are you {name}?" card
+## (it takes the view until YES / NO or [method clear_resume]).
+func offer_resume(name: String) -> void:
+	_resume = {"name": name}
+	resume_picker.index = 0
+	resume_picker.disarm()
+	_render()
+
+
+## (wave 40) Take the resume card down (answered, superseded, or gone).
+func clear_resume() -> void:
+	if _resume.is_empty():
+		return
+	_resume = {}
+	_render()
+
+
+## (wave 40) Is the resume card up?
+func resuming() -> bool:
+	return not _resume.is_empty()
+
+
 ## The button the pointer is over ("" = none).
 func hovered() -> String:
 	return _hover
@@ -556,6 +611,9 @@ func reset() -> void:
 func press(id: String) -> void:
 	if id.begins_with("mic:"):
 		mic_action.emit(id)
+		return
+	if id == "resume:yes" or id == "resume:no":
+		resume_answered.emit(id == "resume:yes")  # (wave 40) the game resumes / hands off
 		return
 	if _view == "setup":
 		_setup.press(id)
@@ -643,11 +701,21 @@ func tick(stick: Vector2, delta: float) -> Dictionary:
 			_render()
 		elif got.get("id") == "back":
 			cancel()
+	elif _view == "resume":
+		var before := resume_picker.index
+		var got := resume_picker.update(stick, delta)
+		if resume_picker.index != before:
+			_render_looks()
+		var picked_id := str(got.get("id", ""))
+		if picked_id == "resume:yes" or picked_id == "resume:no":
+			resume_answered.emit(picked_id == "resume:yes")
 	var p := 0.0
 	if _view == "pick":
 		p = picker.progress()
 	elif _view == "confirm":
 		p = card_picker.progress()
+	elif _view == "resume":
+		p = resume_picker.progress()
 	if _gear_t > 0.0:
 		p = forget_progress()
 	_bar_fill.scale.x = maxf(p, 0.001)
@@ -697,14 +765,22 @@ func _on_picture(url: String, _tex: Texture2D) -> void:
 
 
 func _sync_view() -> void:
-	var v := "pick"
-	if link != null and link.needs_setup():
-		v = "setup"
-	elif not _confirming.is_empty():
-		v = "confirm"
+	var v := _want_view()
 	if v != _view:
 		_view = v
 		_render()
+
+
+## The view the lobby should show: setup first, then a resume offer (wave
+## 40), then the confirm card, else the tiles.
+func _want_view() -> String:
+	if link != null and link.needs_setup():
+		return "setup"
+	if not _resume.is_empty():
+		return "resume"
+	if not _confirming.is_empty():
+		return "confirm"
+	return "pick"
 
 
 func _picture(key: Variant) -> Texture2D:
@@ -729,16 +805,19 @@ static func _show(sprite: Sprite3D, tex: Texture2D) -> void:
 func _render() -> void:
 	if _grid == null:
 		return
-	var v := "pick"
-	if link != null and link.needs_setup():
-		v = "setup"
-	elif not _confirming.is_empty():
-		v = "confirm"
+	var v := _want_view()
 	_view = v
 	if v != _announced and link != null:
 		# The editor's Output says where the lobby is.
 		_announced = v
-		print("reinstall-vr: lobby — %s" % ("SET UP THIS HEADSET" if v == "setup" else ("Start as %s?" % _confirming.get("name", "") if v == "confirm" else TITLE)))
+		var where := TITLE
+		if v == "setup":
+			where = "SET UP THIS HEADSET"
+		elif v == "resume":
+			where = RESUME_ASK % str(_resume.get("name", ""))
+		elif v == "confirm":
+			where = "Start as %s?" % _confirming.get("name", "")
+		print("reinstall-vr: lobby — %s" % where)
 	_buttons = []
 	var items := picker.items
 	_layout = LobbyTiles.layout(items.size())
@@ -755,6 +834,7 @@ func _render() -> void:
 	_setup.visible = v == "setup"
 	_grid.visible = v == "pick"
 	_card.visible = v == "confirm"
+	_resume_card.visible = v == "resume"
 	_hint.visible = v != "setup"
 	_bar_track.visible = v != "setup"
 	_bar_fill.visible = v != "setup"
@@ -791,6 +871,11 @@ func _render() -> void:
 		if paged:
 			_buttons.append({"id": "prev", "center": Vector2(-0.55, PAGE_Y), "size": Vector2(0.18, 0.12)})
 			_buttons.append({"id": "next", "center": Vector2(0.55, PAGE_Y), "size": Vector2(0.18, 0.12)})
+	elif v == "resume":
+		# (wave 40) "Are you {name}?" with YES / NO, pointed at or stick-picked.
+		fit(_resume_text, RESUME_ASK % str(_resume.get("name", "this program")), 1.6, 0.09)
+		_buttons.append({"id": "resume:yes", "center": RESUME_YES_AT, "size": CARD_BUTTON})
+		_buttons.append({"id": "resume:no", "center": RESUME_NO_AT, "size": CARD_BUTTON})
 	else:
 		fit(_card_text, "Start as %s?" % str(_confirming.get("name", _confirming.get("id", "?"))), 1.6, 0.09)
 		var card_tex := _picture(_confirming.get("avatar"))
@@ -822,6 +907,8 @@ func _render_looks() -> void:
 			on = _view == "pick" and int(id.substr(5)) == picker.index
 		elif id == "start" or id == "back":
 			on = _view == "confirm" and card_picker.selected().get("id") == id
+		elif id == "resume:yes" or id == "resume:no":
+			on = _view == "resume" and resume_picker.selected().get("id") == id
 		elif id == "mic:test":
 			on = _mic_testing
 		set_look(_looks[id], id == _hover, on)

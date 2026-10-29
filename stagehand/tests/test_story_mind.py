@@ -882,7 +882,7 @@ def test_a_reset_clears_the_new_minds_bookkeeping(tmp_path):
     run(agents.control({"action": "reset", "by": "server"}))
     mind = agents.minds["Trabolta"]
     assert agents._quiet == {} and mind.people == {} and mind.said == [] and mind.phase_applied == "" and mind.mode == "new"
-    saved = json.loads((tmp_path / "minds" / "evt" / "Trabolta.mind.json").read_text())
+    saved = json.loads((tmp_path / "minds" / "evt" / "Trabolta.mind.json").read_text(encoding="utf-8"))
     assert saved["people"] == {} and saved["mode"] == "new"
 
 

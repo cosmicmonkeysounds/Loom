@@ -244,10 +244,10 @@ def make_run(tmp: Path, script: str, *, history: list | None = None, thoughts: l
     d = tmp / name
     (d / "minds" / "default").mkdir(parents=True)
     (d / "run.json").write_text(json.dumps({"script": script, "mode": "new", "holds": list(holds), "records": records or [], "idle": idle or [], "bursts": []}))
-    (d / "history.json").write_text(json.dumps(history or []))
+    (d / "history.json").write_text(json.dumps(history or []), encoding="utf-8")
     (d / "minds" / "default" / "Trabolta.trace.jsonl").write_text("".join(json.dumps(t) + "\n" for t in thoughts or []))
     if mind is not None:
-        (d / "minds" / "default" / "Trabolta.mind.json").write_text(json.dumps(mind))
+        (d / "minds" / "default" / "Trabolta.mind.json").write_text(json.dumps(mind), encoding="utf-8")
     return d
 
 
@@ -375,9 +375,9 @@ def test_score_and_table_print_every_bar(tmp_path: Path) -> None:
 
 
 def _with_meta(d: Path, **meta) -> Path:
-    doc = json.loads((d / "run.json").read_text())
+    doc = json.loads((d / "run.json").read_text(encoding="utf-8"))
     doc.update(meta)
-    (d / "run.json").write_text(json.dumps(doc))
+    (d / "run.json").write_text(json.dumps(doc), encoding="utf-8")
     return d
 
 
@@ -583,27 +583,31 @@ def test_the_mirror_keeps_history_messages_mind_copies_and_presence() -> None:
 def test_the_lock_is_a_directory_with_a_pid_and_waits_for_a_live_holder(tmp_path: Path) -> None:
     lock = tmp_path / "ollama.lock"
     with drive.ollama_lock(lock, log=lambda *a: None):
-        assert (lock / "pid").read_text() == str(os.getpid())
+        assert (lock / "pid").read_text(encoding="utf-8") == str(os.getpid())
         with pytest.raises(drive.HarnessError, match="held"):
             with drive.ollama_lock(lock, wait_s=0.2, poll_s=0.05, log=lambda *a: None):
                 pass
     assert not lock.exists()
 
 
+POSIX_ONLY = pytest.mark.skipif(sys.platform == "win32", reason="the replay harness runs on the MacBook (os.kill(pid, 0), process groups)")
+
+
+@POSIX_ONLY
 def test_a_lock_whose_holder_is_gone_is_taken_over(tmp_path: Path) -> None:
     lock = tmp_path / "ollama.lock"
     dead = subprocess.Popen([sys.executable, "-c", "pass"])
     dead.wait()
     lock.mkdir()
-    (lock / "pid").write_text(str(dead.pid))
+    (lock / "pid").write_text(str(dead.pid), encoding="utf-8")
     with drive.ollama_lock(lock, wait_s=1, poll_s=0.05, log=lambda *a: None):
-        assert (lock / "pid").read_text() == str(os.getpid())
+        assert (lock / "pid").read_text(encoding="utf-8") == str(os.getpid())
 
 
 def test_the_rig_is_busy_while_a_trace_moved_in_the_last_ten_minutes(tmp_path: Path) -> None:
     (tmp_path / "evt").mkdir()
     trace = tmp_path / "evt" / "Trabolta.trace.jsonl"
-    trace.write_text("{}\n")
+    trace.write_text("{}\n", encoding="utf-8")
     now = time.time()
     os.utime(trace, (now - 30, now - 30))
     assert drive.rig_busy(tmp_path, now=now) == [trace]
@@ -626,7 +630,7 @@ def test_the_generated_yamls_are_scratch_only_and_the_classic_one_parses(tmp_pat
     assert cfg.orchestrator.enabled and cfg.state_dir == tmp_path
     path = tmp_path / "agents.classic.yaml"
     drive.write_worker_yaml(path, classic)
-    assert "never laptop.yaml" in path.read_text()
+    assert "never laptop.yaml" in path.read_text(encoding="utf-8")
 
 
 def test_the_environments_point_only_at_the_scratch_server(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
@@ -647,17 +651,18 @@ def test_a_live_run_refuses_a_port_outside_the_lane_block() -> None:
 
 
 def test_the_childrens_logs_are_redacted_after_the_run_but_minds_are_not(tmp_path: Path) -> None:
-    (tmp_path / "worker.log").write_text("INFO Trabolta ← Ada: is it Mister Wigglesworth?\nINFO reply: the code is 4242\n")
-    (tmp_path / "server.log").write_text("listening\n")
+    (tmp_path / "worker.log").write_text("INFO Trabolta ← Ada: is it Mister Wigglesworth?\nINFO reply: the code is 4242\n", encoding="utf-8")
+    (tmp_path / "server.log").write_text("listening\n", encoding="utf-8")
     (tmp_path / "minds").mkdir()
-    (tmp_path / "minds" / "Trabolta.trace.jsonl").write_text('{"say": "Wigglesworth"}\n')
+    (tmp_path / "minds" / "Trabolta.trace.jsonl").write_text('{"say": "Wigglesworth"}\n', encoding="utf-8")
     drive.redact_logs(tmp_path, src.Redactor(FAKE))
-    log = (tmp_path / "worker.log").read_text()
+    log = (tmp_path / "worker.log").read_text(encoding="utf-8")
     assert "Wigglesworth" not in log and "4242" not in log and log.count("\n") == 2 and "Trabolta ← Ada" in log
-    assert (tmp_path / "server.log").read_text() == "listening\n"
-    assert "Wigglesworth" in (tmp_path / "minds" / "Trabolta.trace.jsonl").read_text()
+    assert (tmp_path / "server.log").read_text(encoding="utf-8") == "listening\n"
+    assert "Wigglesworth" in (tmp_path / "minds" / "Trabolta.trace.jsonl").read_text(encoding="utf-8")
 
 
+@POSIX_ONLY
 def test_a_proc_is_stopped_by_its_own_group(tmp_path: Path) -> None:
     p = drive.Proc("sleeper", [sys.executable, "-c", "import time; time.sleep(60)"], tmp_path, dict(os.environ), tmp_path / "s.log")
     assert p.alive()
@@ -691,7 +696,7 @@ def test_offline_classic_resends_each_recorded_prompt_once(monkeypatch: pytest.M
 
     run = drive.offline("classic", _trace_file(tmp_path), runs_root=tmp_path / "runs", chat=chat)
     assert len(sent) == 2 and sent[0][-1]["content"] == "hello"
-    rep = json.loads((run / "report.json").read_text())
+    rep = json.loads((run / "report.json").read_text(encoding="utf-8"))
     assert rep["bars"][1]["value"] == "2 of 2" and rep["bars"][1]["pass"] is False
     assert "prompt_ms_p50" in S.table(rep) and "None of None" not in S.table(rep)
 
@@ -784,9 +789,9 @@ def test_offline_new_builds_a_voice_context_per_line_and_times_every_call(monkey
     assert req["self"]["vars"]["awake"] == "true" and req["self"]["vars"]["truth"] == "40" and req["self"]["ranges"]["regard"] == [-50, 50]
     assert req["them"]["vars"] == {"trust": "30"} and req["them"]["location"] == "The Desktop"
     assert [c.person.name for _, c in seen] == ["Ada", "Bo"] and seen[1][1].said.elsewhere == ("new words 1",)
-    recs = json.loads((run / "offline.json").read_text())["records"]
+    recs = json.loads((run / "offline.json").read_text(encoding="utf-8"))["records"]
     assert [r["ms"] for r in recs] == [5000, 5000] and all(r["calls"] == 2 and r["gated"] is False for r in recs)
-    rep = json.loads((run / "report.json").read_text())
+    rep = json.loads((run / "report.json").read_text(encoding="utf-8"))
     assert rep["bars"][0]["pass"] is True and rep["extras"]["no_call_lines"] == 0
 
 
@@ -803,7 +808,7 @@ def test_offline_new_counts_a_warm_head_call_in_the_lines_ms_but_not_its_prompt_
 
     run = drive.offline("new", _trace_file(tmp_path), runs_root=tmp_path / "runs", chat=chat)
     assert budgets[:3] == [1, drive.HOUSE_LLM["max_tokens"], drive.HOUSE_LLM["max_tokens"]]
-    recs = json.loads((run / "offline.json").read_text())["records"]
+    recs = json.loads((run / "offline.json").read_text(encoding="utf-8"))["records"]
     assert [(r["calls"], r["warm_calls"], r["ms"], r["prompt_ms"]) for r in recs] == [(2, 1, 5100, 150.0)] * 2
 
 
@@ -818,9 +823,9 @@ def test_offline_new_with_the_gate_shut_makes_no_call_and_scores_n_a(monkeypatch
     monkeypatch.setattr(drive, "load_show_persona", lambda *a, **k: shut)
     run = drive.offline("new", _trace_file(tmp_path), runs_root=tmp_path / "runs", chat=_chat_2500)
     assert seen == []
-    recs = json.loads((run / "offline.json").read_text())["records"]
+    recs = json.loads((run / "offline.json").read_text(encoding="utf-8"))["records"]
     assert all(r["calls"] == 0 and r["gated"] is True for r in recs)
-    rep = json.loads((run / "report.json").read_text())
+    rep = json.loads((run / "report.json").read_text(encoding="utf-8"))
     assert [b["pass"] for b in rep["bars"]] == [None, None, None] and "made no model call" in rep["bars"][0]["detail"]
     assert rep["extras"]["no_call_lines"] == 2
 
@@ -853,7 +858,7 @@ def test_the_cli_extracts_a_script_that_carries_no_answer(tmp_path: Path) -> Non
 
     out = tmp_path / "s.json"
     assert main(["extract", "--trace", str(_trace_file(tmp_path)), "--out", str(out)]) == 0
-    doc = json.loads(out.read_text())
+    doc = json.loads(out.read_text(encoding="utf-8"))
     assert doc["name"] == "s" and [s.get("say") for s in doc["steps"] if "say" in s] == ["hello", "hi there"]
 
 

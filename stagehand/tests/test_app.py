@@ -9,7 +9,10 @@ from __future__ import annotations
 import asyncio
 import os
 import signal
+import sys
 from types import SimpleNamespace
+
+import pytest
 
 from stagehand import app
 
@@ -29,6 +32,7 @@ class Forever:
             self.finally_ran = True  # e.g. Agents.run -> abandon_all -> flush_saves
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="os.kill(SIGTERM) is TerminateProcess on Windows: it would end the test run")
 def test_sigterm_runs_every_modules_finally_and_returns():
     mod = Forever()
     cfg = SimpleNamespace(

@@ -22,8 +22,8 @@ from stagehand.module import ConfigError
 
 HERE = Path(__file__).parent
 FIX = HERE / "fixtures" / "house-lights"
-BASIC = json.loads((FIX / "lights-basic.json").read_text())
-HOUSE = json.loads((FIX / "lights-house.json").read_text())
+BASIC = json.loads((FIX / "lights-basic.json").read_text(encoding="utf-8"))
+HOUSE = json.loads((FIX / "lights-house.json").read_text(encoding="utf-8"))
 RGB = "zigbee2mqtt/server_room_rgb/set"
 
 
@@ -372,7 +372,7 @@ def test_the_section_parses_and_refuses_typos(tmp_path):
 
 
 def test_the_show_hands_its_cue_rules_to_the_lights_module(tmp_path):
-    (tmp_path / "lights.json").write_text(json.dumps({"version": 1, "fixtures": [], "zones": [], "looks": {"heart_idle": {"to": [], "set": {"state": "ON"}}}}))
+    (tmp_path / "lights.json").write_text(json.dumps({"version": 1, "fixtures": [], "zones": [], "looks": {"heart_idle": {"to": [], "set": {"state": "ON"}}}}), encoding="utf-8")
     doc = {
         "server": {"url": "http://x", "mod_token": "t"},
         "show": {"mqtt": {"host": "h"}, "cues": [
@@ -495,7 +495,7 @@ async def test_a_broker_or_feed_reconnect_catches_the_lights_up(tmp_path, monkey
 
     monkeypatch.setattr(mqtt_module, "MqttBridge", FakeBridge)
     monkeypatch.setattr(mod_module, "run_stream", fake_stream)
-    (tmp_path / "lights.json").write_text(json.dumps(BASIC))
+    (tmp_path / "lights.json").write_text(json.dumps(BASIC), encoding="utf-8")
 
     class Mod(FakeMod):
         def feed_url(self, name):
@@ -534,7 +534,7 @@ def test_the_show_re_asks_the_looks_on_every_restart(tmp_path, kind):
 
 
 async def _show_re_asks(tmp_path, kind):
-    (tmp_path / "lights.json").write_text(json.dumps({"version": 1, "fixtures": [], "zones": [], "looks": {}}))
+    (tmp_path / "lights.json").write_text(json.dumps({"version": 1, "fixtures": [], "zones": [], "looks": {}}), encoding="utf-8")
     doc = {
         "server": {"url": "http://x", "mod_token": "t"},
         "show": {"mqtt": {"host": "h"}, "cues": [

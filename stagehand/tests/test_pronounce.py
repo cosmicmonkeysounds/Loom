@@ -71,7 +71,7 @@ def test_pronounce_folds_case_in_ascii_only():
 
 def test_a_broken_table_says_every_word_as_written(monkeypatch, tmp_path):
     bad = tmp_path / "pronounce.json"
-    bad.write_text("{nope")
+    bad.write_text("{nope", encoding="utf-8")
     monkeypatch.setattr(localvoice, "PRONOUNCE_FILE", bad)
     localvoice.pronounce_table.cache_clear()
     try:

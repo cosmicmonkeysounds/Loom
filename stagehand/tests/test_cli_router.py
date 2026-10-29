@@ -15,7 +15,7 @@ SERVER = "server: {url: 'http://h', mod_passcode: x}\n"
 
 def conf(tmp_path, audio: str, extra: str = "") -> str:
     p = tmp_path / "house.yaml"
-    p.write_text(SERVER + f"audio: {{sounds_dir: '{tmp_path / 'sounds'}', {audio}}}\n" + extra)
+    p.write_text(SERVER + f"audio: {{sounds_dir: '{tmp_path / 'sounds'}', {audio}}}\n" + extra, encoding="utf-8")
     return str(p)
 
 
@@ -78,6 +78,9 @@ def test_sounds_stop_and_play_publish_to_the_router(tmp_path, sent):
         ("show/audio/play", {"name": "zip", "gain": 12.0}),
     ]
     assert cli.main(["sounds", "play", "--config", path]) == 2
+    # A second bare word is still an error (only the missing name is taken late).
+    with pytest.raises(SystemExit):
+        cli.main(["sounds", "play", "zip", "--to", "living", "zap", "--config", path])
 
 
 def test_sounds_placeholders_writes_into_the_routers_sounds_dir(tmp_path, capsys):
@@ -96,7 +99,7 @@ def test_sounds_placeholders_writes_into_the_routers_sounds_dir(tmp_path, capsys
 def test_an_alexa_section_still_announces_through_alexa(tmp_path):
     assert cli._announcer(conf(tmp_path, BROKER)) == "audio"
     p = tmp_path / "old.yaml"
-    p.write_text(SERVER + "alexa: {mqtt: {host: 127.0.0.1}}\n")
+    p.write_text(SERVER + "alexa: {mqtt: {host: 127.0.0.1}}\n", encoding="utf-8")
     assert cli._announcer(str(p)) == "alexa"
 
 
@@ -126,7 +129,7 @@ def test_the_retained_look_gives_up_quietly_with_no_broker():
 def music_conf(tmp_path) -> str:
     (tmp_path / "soundtrack.yaml").write_text(
         "playlists: {act_1: {dir: music/act-1}}\nscenes:\n  act_1: [{to: everywhere, play: act_1}]\n  off: []\n"
-    )
+    , encoding="utf-8")
     return conf(tmp_path, BROKER + ", soundtrack: soundtrack.yaml")
 
 

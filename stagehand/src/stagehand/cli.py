@@ -127,7 +127,14 @@ def main(argv: list[str] | None = None) -> int:
     ask.add_argument("--reflect", action="store_true", help="run the orchestrator after each exchange and print the mind")
     ask.add_argument("--power", action="append", default=[], metavar="NAME", help="pretend the story declares this power (repeatable)")
     ask.add_argument("text", nargs="*", help="one line to send; omit for an interactive chat")
-    args = parser.parse_args(argv)
+    # Python 3.11's argparse gives an optional positional (`sounds` / `lights`
+    # `name`) its empty value at the action, so a name after an option
+    # (`sounds play --to living zip`) comes back unrecognized; 3.12+ takes it.
+    args, extra = parser.parse_known_args(argv)
+    if len(extra) == 1 and not extra[0].startswith("-") and getattr(args, "name", "") is None and args.command in ("sounds", "lights"):
+        args.name, extra = extra[0], []
+    if extra:
+        parser.error("unrecognized arguments: " + " ".join(extra))
 
     _logging(args.verbose, getattr(args, "log_file", None))
     if not args.verbose:

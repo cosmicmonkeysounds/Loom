@@ -57,6 +57,14 @@ signal setup_answered(ok: bool, message: String)
 ## effect, pulse, safety}]}`), or `{}` once the link is gone — the house
 ## then looks as it did before the lights frame existed.
 signal lights_changed(lights: Dictionary)
+## (wave 40) A held walk was picked back up ([method resume]): `assignment`
+## is the same shape [signal assignment_received] carries, `pose` is where
+## to respawn (`{p, yaw, pitch}`), `ready` is whether its intro was already
+## done (so the game goes straight in-house).
+signal resumed(assignment: Dictionary, pose: Dictionary, ready: bool)
+## (wave 40) [method resume] found no walk to pick up (the grace elapsed, or
+## another program took the station): start fresh.
+signal resume_failed()
 
 ## The station's configuration ([StationConfig]).
 var config: Dictionary = StationConfig.defaults()
@@ -158,6 +166,25 @@ func voice_token() -> String:
 ## `ready` signal.)
 func mark_ready() -> void:
 	pass
+
+
+## (wave 40) Hold our walk so the server keeps it (pose, duck, intro phase)
+## through a doff / sleep for the resume grace, instead of the pose timeout.
+func suspend() -> void:
+	pass
+
+
+## (wave 40) Pick a held walk back up by its token ([signal resumed] /
+## [signal resume_failed]). The token may be this run's, or one saved to
+## `user://` from before a relaunch.
+func resume(_token: String) -> void:
+	pass
+
+
+## (wave 40) The walk saved to `user://` to offer a resume for (`{token,
+## name, session, station}`), `{}` when there is none (or offline).
+func saved_walk() -> Dictionary:
+	return {}
 
 
 ## End our session (found + celebrated, headset off, …).

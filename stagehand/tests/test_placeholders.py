@@ -40,7 +40,7 @@ def test_a_bad_manifest_is_refused(tmp_path):
         ("sounds: {zip: {motif: zip, seconds: 0}}", "seconds"),
         ("sounds: {zip: {motif: zip, seconds: 1, lead_silence: 99}}", "lead_silence"),
     ):
-        p.write_text(body)
+        p.write_text(body, encoding="utf-8")
         with pytest.raises(ValueError, match=msg):
             load_manifest(p)
 

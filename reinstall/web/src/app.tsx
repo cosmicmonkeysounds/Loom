@@ -11,27 +11,42 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import type { StationInfo } from "@loom/house";
+import type { Assignment, HouseMap, KingState, PlayerPose, StationInfo } from "@loom/house";
 import { matchName, parseScan } from "@loom/terminal/scan.ts";
 import { Scanner, cameraProblem, type CameraState } from "@loom/terminal/scanner.tsx";
 import { hasWebGL2 } from "@loom/terminal/webgl.ts";
-import { ApiError, fetchCandidates, tokenAlive } from "./api.ts";
-import { applyHints, dropConfig, hintsFromSearch, loadConfig, provision, saveConfig, withoutSecrets, type DeviceRole, type ReinstallConfig } from "./config.ts";
+import { ApiError, fetchCandidates, fetchDealtHouse, postEnd, postResume, tokenAlive } from "./api.ts";
+import { applyHints, baseOf, dropConfig, hintsFromSearch, loadConfig, provision, saveConfig, withoutSecrets, type DeviceRole, type ReinstallConfig } from "./config.ts";
 import { createSfx, type Sfx } from "./game/audio.ts";
+import { primeSpeech } from "./game/lines.ts";
 import { markedLegend, quickPicks, type Program } from "./program.ts";
 import { HOLD_MS, useLongPress } from "./kiosk.ts";
 import { NO_WEBGL2 } from "./game/Play.tsx";
-import { ReinstallFlow, exitFlash, useNightEnded, useStations, type FlowExit } from "./flow.tsx";
+import { clearResume, loadResume, saveResume, type StoredWalk } from "./resume-store.ts";
+import { IndeterminateBar, ReinstallFlow, exitFlash, useNightEnded, useStations, type FlowExit } from "./flow.tsx";
 import { Desktop, Window, Wizard } from "./wizard.tsx";
 
+/** (wave 40) A held walk picked back up, ready to drop straight into Play. */
+type ResumeData = { assignment: Assignment; house: HouseMap; houseVersion: string; king?: KingState | null; pose: PlayerPose; ready: boolean };
 
-type Screen = { kind: "setup"; notice: string | null } | { kind: "scan" } | { kind: "flow"; program: Program };
+type Screen =
+  | { kind: "setup"; notice: string | null }
+  | { kind: "scan" }
+  // (wave 40) A walk from a previous load is still resumable: "Are you NAME?".
+  | { kind: "resume"; walk: StoredWalk }
+  | { kind: "flow"; program: Program; resuming?: ResumeData };
 
 type Flash = { text: string; tone: "good" | "bad" } | null;
 
 export function App() {
   const [config, setConfig] = useState<ReinstallConfig | null>(() => loadConfig());
-  const [screen, setScreen] = useState<Screen>(() => (loadConfig() ? { kind: "scan" } : { kind: "setup", notice: null }));
+  const [screen, setScreen] = useState<Screen>(() => {
+    const c = loadConfig();
+    if (c === null) return { kind: "setup", notice: null };
+    // (wave 40) A walk from a previous load still resumable → ask before scan.
+    const walk = loadResume(baseOf(c));
+    return walk !== null ? { kind: "resume", walk } : { kind: "scan" };
+  });
   const [flash, setFlash] = useState<Flash>(null);
   const sfx = useMemo(() => createSfx(), []);
   useEffect(() => () => sfx.dispose(), [sfx]);
@@ -184,7 +199,31 @@ function Device({
     </>
   );
 
+  // (wave 40) A walk from a previous load: "Are you NAME?" before the scanner.
+  if (screen.kind === "resume") {
+    return (
+      <ResumePrompt
+        config={config}
+        walk={screen.walk}
+        status={status}
+        onYes={(data) => {
+          // The tap is the gesture the device voice + audio need.
+          sfx.resume();
+          primeSpeech();
+          setFlash(null);
+          setScreen({ kind: "flow", program: resumeProgram(data.assignment), resuming: data });
+        }}
+        onDone={(flash) => {
+          clearResume();
+          setFlash(flash);
+          setScreen({ kind: "scan" });
+        }}
+      />
+    );
+  }
+
   if (screen.kind === "flow") {
+    const resuming = screen.resuming;
     return (
       <>
         <ReinstallFlow
@@ -196,8 +235,12 @@ function Device({
           sfx={sfx}
           start="choose"
           status={status}
+          {...(resuming !== undefined ? { resuming } : {})}
+          onBegun={(walk) => saveResume({ ...walk, base: baseOf(config) })}
           onPlaying={setPlaying}
           onExit={(e: FlowExit) => {
+            // The walk is over or moved on: forget it so it isn't offered again.
+            clearResume();
             setFlash(exitFlash(e));
             setScreen({ kind: "scan" });
           }}
@@ -214,6 +257,83 @@ function Device({
         <ScanStep config={config} ended={ended} canDraw={canDraw} onCode={onCode} onPick={(p) => setScreen({ kind: "flow", program: p })} onProblem={(t) => setFlash({ text: t, tone: "bad" })} stations={vr} showStations={config.role !== "player"} onSetup={onSetup} />
       </Window>
       {flash !== null && <div className={`flash ${flash.tone}`}>{flash.text}</div>}
+    </Desktop>
+  );
+}
+
+// --- resume (wave 40) ----------------------------------------------------------
+
+/** A resumed walk's assignment → a minimal `Program` (resume goes straight to
+ *  Play, so only the name/id/captured matter; the choose screen is skipped). */
+function resumeProgram(a: Assignment): Program {
+  return { id: a.guest, name: a.name, captured: a.captured, restricted: false, eligible: true, marked: false, favour: false, location: null, reinstalled: a.reinstalled };
+}
+
+/** "Are you NAME?" — resume a held walk, or step aside for someone else. Yes
+ *  resumes it (the server's pose + whether the intro was done); No ends it and
+ *  goes to the scanner. A walk the server has already given up (the grace
+ *  elapsed, or it was taken over) just falls through to the scanner. DRAFT w40. */
+function ResumePrompt({
+  config,
+  walk,
+  status,
+  onYes,
+  onDone,
+}: {
+  config: ReinstallConfig;
+  walk: StoredWalk;
+  status: ReactNode;
+  onYes: (data: ResumeData) => void;
+  onDone: (flash: Flash) => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const base = baseOf(config);
+  const yes = async () => {
+    if (busy) return;
+    setBusy(true);
+    const r = await postResume(base, walk.token);
+    if (r.kind !== "ok") {
+      onDone(r.kind === "over" ? { text: "That reinstallation already ended.", tone: "bad" } : { text: `Couldn't resume — ${r.message}`, tone: "bad" });
+      return;
+    }
+    const loaded = await fetchDealtHouse(base, walk.token, r.assignment.houseVersion);
+    if (loaded === null) {
+      void postEnd(base, walk.token);
+      onDone({ text: "Couldn't load the house — scan the pass again.", tone: "bad" });
+      return;
+    }
+    onYes({ assignment: r.assignment, house: loaded.house, houseVersion: loaded.version, ...(loaded.king !== undefined ? { king: loaded.king } : {}), pose: r.pose, ready: r.ready });
+  };
+  const no = async () => {
+    if (busy) return;
+    setBusy(true);
+    await postEnd(base, walk.token);
+    onDone(null);
+  };
+  return (
+    <Desktop status={status}>
+      <Window title={`Reinstallation Wizard — ${config.name}`} className="main-window">
+        <Wizard
+          heading="Resume your reinstallation?"
+          actions={
+            <>
+              <button className="w98-button" onClick={() => void no()} disabled={busy}>
+                No, start over
+              </button>
+              <span className="spacer" />
+              <button className="w98-button default big" onClick={() => void yes()} disabled={busy} autoFocus>
+                Yes, continue &gt;
+              </button>
+            </>
+          }
+        >
+          <p className="resume-big">
+            Are you <b>{walk.name}</b>?
+          </p>
+          <p>Your last reinstallation is still running. Pick up where you left off, or start over as a different program.</p>
+          {busy && <IndeterminateBar />}
+        </Wizard>
+      </Window>
     </Desktop>
   );
 }
