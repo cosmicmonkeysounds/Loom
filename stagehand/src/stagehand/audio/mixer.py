@@ -25,8 +25,22 @@ the interface's outputs from
     `announce` and `test` buses and the matrix are never ducked;
   - the per-output **trim** (the speakers' `gain`, `set_trim`), ramped
     over 50 ms so a trim edit is heard at once, even on an hour-long bed;
+  - the house **mix** (wave 40, `set_mix`): each voice's **strip** (`music`
+    the beds, `tracks` the soundtrack's songs, `sfx` every other sound,
+    `announce` the announcements and their chime, `test` the speaker tests)
+    has a linear gain per output, applied to its chunk after the duck and
+    ramped over `TRIM_S`; `test` is never mixed (a muted room can still be
+    walked). The matrix's target is `routes × input gain` (the same
+    smoothing), and an input role the mix silences everywhere (`master`
+    or `src:in:<role>` muted) ducks nothing;
   - the **master** gain, then a per-output peak **limiter** (instant attack,
     smooth release) and a hard clip as the last word.
+
+Two sets of meters: `take_meters` (the health line's, every `health_s`) and
+`take_live` (wave 40, the mixer panel's, every 0.25 s while one watches:
+the outputs, the inputs and each strip's peak per output before the
+limiter). Each keeps its own accumulators, so neither empties the other's;
+the per-strip sums run only while `take_live` is being called.
 
 Everything else talks to the mixer through a command queue drained at the
 top of each block, so the control side never touches a live array: arrays
@@ -52,6 +66,13 @@ from typing import Any
 import numpy as np
 
 BUSES = ("sfx", "music", "announce", "test")
+#: The mix's strips (wave 40): a voice's own, by default its bus's; `tracks`
+#: is an sfx-bus voice the soundtrack lists under `tracks:`.
+STRIPS = ("music", "tracks", "sfx", "announce", "test")
+#: The strips the mix moves (in its gain table's order); `test` never is.
+MIXED = STRIPS[:4]
+#: The strip metering stops this long after the last `take_live`.
+LIVE_IDLE_S = 2.0
 #: The buses priority ducking acts on (in the depth vectors' order).
 DUCKED = ("sfx", "music")
 #: Voices beyond this fade out the oldest short sfx voice (a runaway cue
@@ -183,6 +204,20 @@ class Meters:
 
 
 @dataclass
+class LiveMeters:
+    """`take_live` (wave 40): each output's peak since the last take (after
+    the limiter, linear), the inputs' peaks (1-based ch → dBFS; empty on an
+    output-only stream), each mixed strip's peak per output (linear, after
+    the mix, the trim and the master, before the limiter; zeros until the
+    second take) and every source's activity now."""
+
+    outputs: np.ndarray
+    inputs: dict[int, float]
+    strips: dict[str, np.ndarray]
+    sources: dict[str, float]
+
+
+@dataclass
 class Voice:
     id: int
     samples: np.ndarray | None  # (frames, channels) float32 at the mixer's rate, or None (a stream)
@@ -200,6 +235,9 @@ class Voice:
     layout: tuple[tuple[int, ...], ...] | None = None
     #: A `stream.Stream` instead of `samples` (the mixer closes it when done).
     stream: Any = None
+    #: The mix's strip (`STRIPS`; empty: the bus's) and its row in the gain table.
+    strip: str = ""
+    strip_i: int = -1
     #: Start on this frame of the mixer's clock (None: the next block).
     start_at: int | None = None
     #: The live level (linear) and its ramp (`Mixer.level`).
@@ -230,6 +268,8 @@ class Voice:
         self.src = np.asarray(source_map(outs, channels, self.layout), dtype=np.intp)
         self.mix_mono = channels > 1 and bool((self.src == channels).any())
         self.gain_vec = np.asarray([self.gains[o] for o in outs], dtype=np.float32)
+        self.strip = self.strip or self.bus
+        self.strip_i = MIXED.index(self.strip) if self.strip in MIXED else -1
 
     @property
     def channels(self) -> int:
@@ -321,6 +361,15 @@ class Mixer:
         self._announce_reach = everywhere.copy()
         self._duck = np.ones((len(DUCKED), n_out), dtype=np.float32)
         self._duck_ex = np.ones((len(DUCKED), n_out), dtype=np.float32)
+        # The house mix (wave 40): per strip per output, linear, ramped
+        # toward its target over TRIM_S; each input's gain per output (it
+        # multiplies the routes); the input roles silenced everywhere.
+        self.mix_gain = np.ones((len(MIXED), n_out), dtype=np.float32)
+        self._mix_to = self.mix_gain.copy()
+        self._mix_left = 0
+        self._mix_unity = True
+        self._in_gain = np.ones((n_in, n_out), dtype=np.float32)
+        self._silent: frozenset[str] = frozenset()
         self._ids = itertools.count(1)
         self._commands: queue.SimpleQueue = queue.SimpleQueue()
         self._ramps: dict[int, np.ndarray] = {}
@@ -330,6 +379,15 @@ class Mixer:
         self.metered = False
         self.limited_blocks = 0
         self.blocks = 0
+        # The live meters (wave 40; reset by `take_live`).
+        self._live_out = np.zeros(n_out, dtype=np.float32)
+        self._live_in = np.zeros(n_in, dtype=np.float32)
+        self._live_metered = False
+        self._live_strips = np.zeros((len(MIXED), n_out), dtype=np.float32)
+        #: The per-strip sums run while `take_live` is called (`LIVE_IDLE_S`).
+        self._live_on = False
+        self._live_taken = 0
+        self._strip_buf: np.ndarray | None = None
         #: Blocks ever processed (never reset: the stall watchdog reads it).
         self.ticks = 0
         #: Frames ever processed: the clock `play(start_at=)` and the
@@ -358,6 +416,7 @@ class Mixer:
         layout: list[tuple[int, ...]] | tuple[tuple[int, ...], ...] | None = None,
         level_db: float = 0.0,
         start_at: int | None = None,
+        strip: str | None = None,
     ) -> int:
         """Queue a voice. → its id (for `stop`, `level`, `pos`).
 
@@ -374,9 +433,12 @@ class Mixer:
         by its own claim). `layout` lists each speaker's 1-based outputs in
         its own order (`source_map`). `level_db` is the starting live level
         (`level` ramps it). `start_at` starts the voice on that frame of
-        the mixer clock (`frames`): a gapless crossfade's second track."""
+        the mixer clock (`frames`): a gapless crossfade's second track.
+        `strip` is the mix's strip (`STRIPS`; None: the bus's own)."""
         if bus not in BUSES:
             raise ValueError(f"bus {bus!r}: {', '.join(BUSES)}")
+        if strip is not None and strip not in STRIPS:
+            raise ValueError(f"strip {strip!r}: {', '.join(STRIPS)}")
         lin = {ch - 1: db_to_lin(db) for ch, db in gains.items() if 1 <= ch <= self.n_out}
         vid = next(self._ids)
         stream = source if _is_stream(source) else None
@@ -393,6 +455,7 @@ class Mixer:
             duck=duck,
             takeover=takeover,
             start_at=start_at,
+            strip=strip or "",
             level=level,
             level_to=level,
             layout=None
@@ -535,6 +598,27 @@ class Mixer:
                 m[i - 1, o - 1] = db_to_lin(db)
         self._commands.put(("routes", m))
 
+    def set_mix(self, gains: Any | None) -> None:
+        """The house mix (wave 40, `mix.MixGains`; None = unity): each mixed
+        strip's linear gain per 0-based output (absent strips and outputs:
+        1.0), each input channel's (1-based) gain per output (× the routes),
+        and the input roles whose sidechain ducks nothing. The strips ramp
+        over `TRIM_S`; the matrix follows its usual smoothing."""
+        table = np.ones((len(MIXED), self.n_out), dtype=np.float32)
+        in_gain = np.ones((self.n_in, self.n_out), dtype=np.float32)
+        silent: frozenset[str] = frozenset()
+        if gains is not None:
+            for name, row in (getattr(gains, "strips", None) or {}).items():
+                if name in MIXED:
+                    vals = np.asarray(list(row)[: self.n_out], dtype=np.float32)
+                    table[MIXED.index(name), : len(vals)] = vals
+            for ch, row in (getattr(gains, "inputs", None) or {}).items():
+                if 1 <= ch <= self.n_in:
+                    vals = np.asarray(list(row)[: self.n_out], dtype=np.float32)
+                    in_gain[ch - 1, : len(vals)] = vals
+            silent = frozenset(getattr(gains, "silent", None) or ())
+        self._commands.put(("mix", (table, in_gain, silent)))
+
     def set_passthrough(self, on: bool) -> None:
         self._commands.put(("passthrough", bool(on)))
 
@@ -561,6 +645,20 @@ class Mixer:
         self.limited_blocks = self.blocks = 0
         sources = {k: round(float(v), 3) for k, v in self._activities().items()}
         return Meters(peak, limited, blocks, inputs, sources, self.underruns)
+
+    def take_live(self) -> LiveMeters:
+        """The live meters since the last call (see `LiveMeters`); keeps the
+        per-strip sums running for `LIVE_IDLE_S` more."""
+        outputs, strips_now = self._live_out.copy(), self._live_strips.copy()
+        inputs = {i + 1: round(lin_to_db(float(p)), 1) for i, p in enumerate(self._live_in)} if self._live_metered else {}
+        self._live_out[:] = 0
+        self._live_in[:] = 0
+        self._live_strips[:] = 0
+        self._live_metered = False
+        self._live_taken = self.frames
+        self._live_on = True
+        sources = {k: round(float(v), 3) for k, v in self._activities().items()}
+        return LiveMeters(outputs, inputs, {name: strips_now[i] for i, name in enumerate(MIXED)}, sources)
 
     def active(self, bus: str | None = None) -> int:
         return sum(1 for v in self.voices if bus is None or v.bus == bus)
@@ -614,10 +712,19 @@ class Mixer:
                             v.level = lin
             elif kind == "routes":
                 self._routes = arg
-                self._matrix_target = arg if self.passthrough else np.zeros_like(arg)
+                self._retarget()
             elif kind == "passthrough":
                 self.passthrough = arg
-                self._matrix_target = self._routes if arg else np.zeros_like(self._routes)
+                self._retarget()
+            elif kind == "mix":
+                table, self._in_gain, self._silent = arg
+                if self.ticks == 0:  # a fresh stream starts at the mix
+                    self.mix_gain, self._mix_to, self._mix_left = table.copy(), table, 0
+                    self._mix_unity = bool((table == 1.0).all())
+                else:
+                    self._mix_to, self._mix_left = table, self.trim_frames
+                    self._mix_unity = False
+                self._retarget()
             elif kind == "master":
                 self.master = arg
             elif kind == "duck_hold":
@@ -655,6 +762,11 @@ class Mixer:
                     self.trim, self._trim_to, self._trim_left = arg.copy(), arg, 0
                 else:
                     self._trim_to, self._trim_left = arg, self.trim_frames
+
+    def _retarget(self) -> None:
+        """The matrix's target: the routes × the mix's input gains (none
+        with passthrough off)."""
+        self._matrix_target = self._routes * self._in_gain if self.passthrough else np.zeros_like(self._routes)
 
     @staticmethod
     def _refade(v: Voice, start: int, length: int) -> None:
@@ -711,6 +823,12 @@ class Mixer:
 
     def _update_sources(self, frames: int, in_peak: np.ndarray | None) -> None:
         for s in self._inputs:
+            if s.name in self._silent:
+                # The mix silences this input everywhere (wave 40): it ducks
+                # nothing, releasing from where it is (never a snap).
+                s.hold_left = 0
+                self._move(s, False, frames)
+                continue
             if in_peak is not None:
                 ins = s.inputs[s.inputs < len(in_peak)]
                 loud = bool(len(ins)) and float(in_peak[ins].max()) > s.threshold
@@ -798,7 +916,8 @@ class Mixer:
             if n:
                 in_peak = np.abs(src).max(axis=0)
                 np.maximum(self.in_peak[:n], in_peak, out=self.in_peak[:n])
-                self.metered = True
+                np.maximum(self._live_in[:n], in_peak, out=self._live_in[:n])
+                self.metered = self._live_metered = True
             # The matrix: in @ current, crossfaded toward the target over the block.
             if self.matrix.any() or self._matrix_target.any():
                 alpha = min(1.0, frames / self.smooth_frames)
@@ -816,6 +935,26 @@ class Mixer:
             duck_ex = self._duck_block(frames, ramp, exempt=True)
         else:
             self._duck_ex = self._duck.copy()
+
+        # The mix: per strip per output, ramped across the block while it
+        # moves (frames × strips × outputs), else one row per voice.
+        mix_ramp: np.ndarray | None = None
+        if self._mix_left > 0:
+            mix_ramp, self.mix_gain, self._mix_left = _linear(self.mix_gain, self._mix_to, self._mix_left, frames)
+            if self._mix_left == 0:
+                self.mix_gain = np.asarray(self._mix_to, dtype=np.float32).copy()
+                self._mix_unity = bool((self.mix_gain == 1.0).all())
+        mixing = mix_ramp is not None or not self._mix_unity
+        # The live per-strip sums (only while someone reads them).
+        if self._live_on and self.frames - self._live_taken > LIVE_IDLE_S * self.rate:
+            self._live_on = False
+        strip_buf: np.ndarray | None = None
+        if self._live_on:
+            strip_buf = self._strip_buf
+            if strip_buf is None or strip_buf.shape[1] != frames:
+                strip_buf = self._strip_buf = np.zeros((len(MIXED), frames, self.n_out), dtype=np.float32)
+            else:
+                strip_buf.fill(0.0)
 
         finished: list[Voice] = []
         for v in self.voices:
@@ -848,6 +987,13 @@ class Mixer:
                     d = duck_ex if v.takeover else duck
                     if d is not None:
                         chunk *= d[DUCKED.index(v.bus), off : off + real][:, v.outs]
+                if v.strip_i >= 0:
+                    if mix_ramp is not None:
+                        chunk *= mix_ramp[off : off + real, v.strip_i][:, v.outs]
+                    elif mixing:
+                        chunk *= self.mix_gain[v.strip_i, v.outs]
+                    if strip_buf is not None:
+                        strip_buf[v.strip_i][off : off + real, v.outs] += chunk
                 mix[off : off + real, v.outs] += chunk
             elif real > 0:
                 v.envelope(real)
@@ -870,6 +1016,9 @@ class Mixer:
             mix *= self.trim
         if self.master != 1.0:
             mix *= self.master
+        if strip_buf is not None:
+            # Each strip's peak per output, as the outputs hear it before the limiter.
+            np.maximum(self._live_strips, np.abs(strip_buf).max(axis=1) * (self.trim * self.master), out=self._live_strips)
 
         # The limiter: per output, instant attack, smooth release.
         peak = np.abs(mix).max(axis=0)
@@ -885,7 +1034,9 @@ class Mixer:
             self.limited_blocks += 1
         self.limiter = new
         np.clip(mix, -1.0, 1.0, out=mix)
-        np.maximum(self.peak, np.abs(mix).max(axis=0), out=self.peak)
+        out_peak = np.abs(mix).max(axis=0)
+        np.maximum(self.peak, out_peak, out=self.peak)
+        np.maximum(self._live_out, out_peak, out=self._live_out)
         self.blocks += 1
         self.ticks += 1
         self.frames += frames

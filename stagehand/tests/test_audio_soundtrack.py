@@ -293,9 +293,12 @@ def test_a_scene_lays_its_beds_on_their_speakers(tmp_path):
     s = d.status()
     assert s["scene"] == "one" and s["missing"] == ["c"]
     assert s["beds"] == [
-        {"playlist": "a", "speakers": ["desk-l", "desk-r", "hall-1", "stairs-1", "bath-1"], "track": "a1", "pos_s": 0.5},
-        {"playlist": "b", "speakers": ["bar-1"], "track": "b1", "pos_s": 0.5},
+        {"playlist": "a", "speakers": ["desk-l", "desk-r", "hall-1", "stairs-1", "bath-1"], "track": "a1", "pos_s": 0.5, "dur_s": 10.0},
+        {"playlist": "b", "speakers": ["bar-1"], "track": "b1", "pos_s": 0.5, "dur_s": 10.0},
     ]
+    # Wave 40: every scene (off included) and every playlist, for the mixer's picker.
+    assert s["scenes"] == ["one", "two", "three", "off"]
+    assert s["playlists"] == [{"name": "a", "tracks": 1, "loop": False}, {"name": "b", "tracks": 1, "loop": False}, {"name": "c", "tracks": 0, "loop": False}]
 
 
 def test_a_scene_change_keeps_an_unchanged_bed_untouched_and_fades_the_rest(tmp_path):
@@ -394,6 +397,9 @@ def test_a_one_file_loop_is_one_seamless_stream(tmp_path):
     out = run(d, m, 40)[:, 4]
     assert len(lib.opened) == 1 and lib.opened[0].loop and np.allclose(out[400:], 0.2)
     assert d.next() == 0  # a loop has no next
+    status = d.status()
+    assert "dur_s" not in status["beds"][0] and status["playlists"] == [{"name": "fan", "tracks": 1, "loop": True}]
+    assert status["scenes"] == ["s", "off"]  # off is always a scene
 
 
 def test_next_crossfades_every_bed_to_its_next_track(tmp_path):
@@ -405,6 +411,24 @@ def test_next_crossfades_every_bed_to_its_next_track(tmp_path):
     assert d.next() == 1
     out = run(d, m, 10)[:, 0]
     assert out[0] == pytest.approx(0.2) and out[-1] == pytest.approx(0.4)
+
+
+def test_next_with_a_playlist_skips_only_that_bed(tmp_path):
+    _fill(tmp_path, {"a": ["x.mp3", "y.mp3"], "b": ["p.mp3", "q.mp3"]})
+    doc = {
+        "playlists": {"a": {"dir": "music/a", "shuffle": False}, "b": {"dir": "music/b", "shuffle": False}},
+        "scenes": {"s": [{"to": "desk-l", "play": "a"}, {"to": "hall-1", "play": "b"}]},
+    }
+    d, m, lib = director(tmp_path, doc, Library({"x": (0.2, 60_000), "y": (0.4, 60_000), "p": (0.1, 60_000), "q": (0.3, 60_000)}))
+    d.set_scene("s")
+    run(d, m, 10)
+    assert d.next("b") == 1
+    out = run(d, m, 10)
+    assert out[-1, 0] == pytest.approx(0.2) and out[-1, 4] == pytest.approx(0.3)  # a plays on, b moved to q
+    assert d.next("nobody") == 0
+    assert d.next() == 2
+    out = run(d, m, 10)
+    assert out[-1, 0] == pytest.approx(0.4) and out[-1, 4] == pytest.approx(0.1)
 
 
 def test_a_takeover_track_silences_the_beds_on_its_speakers_only_and_they_come_back(tmp_path):

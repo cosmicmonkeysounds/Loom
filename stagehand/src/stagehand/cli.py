@@ -383,10 +383,11 @@ def _sounds(cfg: StagehandConfig, args: argparse.Namespace) -> int:
 
 
 def _music_parser(sub) -> None:
-    """`stagehand music scene <name> | next | stop | status` (wave 38, C3)."""
+    """`stagehand music scene <name> | next [--playlist X] | stop | status` (wave 38, C3; wave 40)."""
     mus = sub.add_parser("music", help="the house soundtrack by hand (MQTT): a scene, the next track, stop, status")
     mus.add_argument("action", choices=("scene", "next", "stop", "status"))
     mus.add_argument("name", nargs="?", help="scene: the scene's name (soundtrack.yaml; `off` is silence)")
+    mus.add_argument("--playlist", help="next: skip only this playlist's bed (default: every bed)")
     mus.add_argument("--config", required=True)
 
 
@@ -394,7 +395,7 @@ def _music(cfg: StagehandConfig, args: argparse.Namespace) -> int:
     """The soundtrack over the LAN broker, like `sounds play` (the uplink may
     be down): `scene` / `next` / `stop` publish to the router's music topic;
     `status` reads its retained `health/audio/stats` (the scene, every bed,
-    the input levels)."""
+    the input levels, the house mix's levels that are not at unity)."""
     router = cfg.modules["audio"]
     rc = router.cfg  # type: ignore[attr-defined]
     st = rc.soundtrack
@@ -411,6 +412,11 @@ def _music(cfg: StagehandConfig, args: argparse.Namespace) -> int:
             print(f"music scene: no scene {args.name!r} in {st.path} ({', '.join(sorted({*st.scenes, 'off'}))})", file=sys.stderr)
             return 2
         return _to_router(router, rc.music_topic, {"scene": args.name, "by": "cli"})
+    if args.action == "next" and args.playlist:
+        if args.playlist not in st.playlists:
+            print(f"music next: no playlist {args.playlist!r} in {st.path} ({', '.join(st.playlists)})", file=sys.stderr)
+            return 2
+        return _to_router(router, rc.music_topic, {"next": True, "playlist": args.playlist, "by": "cli"})
     return _to_router(router, rc.music_topic, {args.action: True, "by": "cli"})
 
 
@@ -438,9 +444,11 @@ def _music_status(router) -> int:
     if music is None:
         print("the router reports no soundtrack (an older router, or no soundtrack: in its YAML)")
     else:
-        print(f"scene    : {music.get('scene') or '— (none: stopped, or no cue yet)'}")
+        hand = " (by hand: the story's music cues are held)" if music.get("hand") is True else ""
+        print(f"scene    : {music.get('scene') or '— (none: stopped, or no cue yet)'}{hand}")
         for b in music.get("beds") or []:
-            print(f"  {b.get('playlist')}: {b.get('track') or '—'} at {float(b.get('pos_s') or 0):.0f}s on {', '.join(b.get('speakers') or [])}")
+            dur = f" / {float(b['dur_s']):.0f}s" if isinstance(b.get("dur_s"), (int, float)) else ""
+            print(f"  {b.get('playlist')}: {b.get('track') or '—'} at {float(b.get('pos_s') or 0):.0f}s{dur} on {', '.join(b.get('speakers') or [])}")
         if music.get("missing"):
             print(f"no files : {', '.join(music['missing'])}")
     inputs = h.get("inputs") if isinstance(h.get("inputs"), dict) else {}
@@ -451,6 +459,19 @@ def _music_status(router) -> int:
     sources = {k: v for k, v in (h.get("sources") or {}).items() if isinstance(v, (int, float)) and v > 0}
     if sources:
         print("ducking  : " + ", ".join(f"{k} {v:.0%}" for k, v in sources.items()))
+    # Wave 40: the house mix in force (an older router reports none).
+    mix = h.get("mix") if isinstance(h.get("mix"), dict) else None
+    if mix is not None:
+        levels = mix.get("levels") if isinstance(mix.get("levels"), dict) else {}
+        moved = []
+        for key, lv in sorted(levels.items()):
+            if not isinstance(lv, dict):
+                continue
+            if lv.get("mute") is True:
+                moved.append(f"{key} muted")
+            elif isinstance(lv.get("db"), (int, float)) and lv["db"] != 0:
+                moved.append(f"{key} {float(lv['db']):+g} dB")
+        print(f"mix      : {', '.join(moved) if moved else 'every level at unity'}" + (f" (seq {mix['seq']})" if isinstance(mix.get("seq"), int) else " (none from the server yet)"))
     return 0
 
 
