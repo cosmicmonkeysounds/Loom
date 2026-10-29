@@ -41,6 +41,8 @@ import { IntroVideo } from "./IntroVideo.tsx";
 import { beginErrorText, NOT_MARKED, programPitch, programState, programStatus, startingHeading, type Program } from "./program.ts";
 import { firstStep } from "./flow-state.ts";
 import { Desktop, ProgressBar, Window, Wizard } from "./wizard.tsx";
+import { HelpMeButton, useHelpMe } from "./help-me.tsx";
+import { helpOffered } from "./help.ts";
 
 /** How the flow ended: the game's own exits, a park on a headset, Back on
  *  the card, or a begin / map load that failed (its words in `text`). */
@@ -112,6 +114,9 @@ export function ReinstallFlow({
       alive.current = false;
     };
   }, []);
+  // Wave 44 (C9): 🆘 Help Me on every step, for a program being reinstalled.
+  const help = useHelpMe(config, program.id);
+  const offerHelp = helpOffered(program);
   // The video covers the screen like the game does (the host hides its flash).
   const playing = step.kind === "play" || step.kind === "video";
   const playingRef = useRef(onPlaying);
@@ -207,7 +212,12 @@ export function ReinstallFlow({
   }, [step]);
 
   if (step.kind === "video") {
-    return <IntroVideo skippable={introSkippable(program.reinstalled)} held={held} onDone={() => void beginHere()} />;
+    return (
+      <>
+        <IntroVideo skippable={introSkippable(program.reinstalled)} held={held} onDone={() => void beginHere()} />
+        {offerHelp && <HelpMeButton help={help} place="corner" />}
+      </>
+    );
   }
 
   if (step.kind === "play") {
@@ -221,6 +231,7 @@ export function ReinstallFlow({
         sfx={sfx}
         held={held}
         takeMic={takeMic}
+        {...(offerHelp ? { help: <HelpMeButton help={help} place="hud" /> } : {})}
         onExit={(e: PlayExit) => exit.current(e)}
       />
     );
@@ -232,6 +243,7 @@ export function ReinstallFlow({
   const info = programStatus(program, ended);
   return (
     <Desktop status={status}>
+      {offerHelp && <HelpMeButton help={help} place="corner" />}
       <Window title={`Reinstallation Wizard — ${config.name}`} className="main-window">
         {step.kind === "choose" && (
           <Wizard

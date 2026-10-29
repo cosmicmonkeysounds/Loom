@@ -734,3 +734,15 @@ textarea.json { width: 100%; height: 100%; min-height: 320px; resize: none; font
 @media (max-height: 500px) { .tutorial-card { bottom: 44px; } .tutorial-card p { margin-bottom: 0.3em; } }
 
 .mouse-hint { position: absolute; left: 50%; bottom: clamp(120px, 22vh, 200px); transform: translateX(-50%); padding: 0.5em 1em; color: var(--ink); font-family: var(--ui); pointer-events: none; }
+
+/* --- 🆘 Help Me at the tent (wave 44, C9) ----------------------------------------- */
+
+.help-me { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; font-family: var(--ui); }
+/* Over the wizard and the video (z 40): the top-right corner neither uses. */
+.help-me-corner { position: fixed; top: max(10px, env(safe-area-inset-top)); right: max(10px, env(safe-area-inset-right)); z-index: 41; }
+/* In the game's top-right row: its note hangs under the row. */
+.help-me-hud { position: relative; }
+.help-me-hud .help-me-note { position: absolute; top: calc(100% + 6px); right: 0; width: max-content; max-width: 60vw; }
+.help-me-button { min-height: 48px; min-width: 48px; padding: 0 14px; font-size: 18px; font-weight: bold; color: #a00000; }
+.help-me-button:disabled { color: #5a5a5a; }
+.help-me-note { padding: 6px 10px; color: var(--ink); font-size: 16px; }
