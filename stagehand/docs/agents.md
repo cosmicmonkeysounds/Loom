@@ -301,12 +301,13 @@ front of a guest. The orchestrator is never started (its YAML section
 stays, for the way back) and the second model can be unloaded.
 
 ```
-  request ──▶ the person card + the phase card (code, no model)
-              │
+  request ──▶ real distress? → the persona's distress: line (no model, wave 42c)
+              │  the person card + the phase card (code, no model)
               ▼  one gpt-oss call (+ at most one retry)
             {say, adjust, act?, memo?}
               │  guards (code): never · answer words · invented facts ·
-              │  unsaid names · catchphrase ration · repeats · memo scrub
+              │  unsaid names · catchphrase ration · DM voice (wave 42c) ·
+              │  repeats · memo scrub
               ▼
             POST /api/agent/reply {say, adjust, acts}
               │  the memo onto that person's file; mind.json saved
@@ -360,6 +361,16 @@ it.
 **The guards** (`guards.py`), in order, before a line goes out (the
 voice thought's `note` names each one that fired, never the word):
 
+0. **real distress** (wave 42c, a private line, before any model call:
+   `guards.is_distress`) — a guest line with a clear sign of real distress
+   (*panic attack*, *can't breathe*, *going to be sick*, *feel faint*,
+   *I'm not okay*, *I want to go home*; *I need to leave / get out* only
+   beside *for real*, *not playing*, *honestly*, *scared*, …; never *I'm
+   dying to know* or *we need to get out of this computer*) is answered
+   with the persona's `distress:` line (else the built-in
+   `voice.DISTRESS_LINE`), no adjust, no acts, no memo, without waiting
+   for a slot; a WARNING names the thread, never the words. Never on a
+   stage line; before the `when:` gate too; no switch turns it off.
 1. **never** — a `secrets.never` word (the door code, a patch-bay pair,
    the pickup line) in the line → the fallback; in an act or the memo →
    dropped.
@@ -368,16 +379,93 @@ voice thought's `note` names each one that fired, never the word):
    bring up) → the fallback. **2b, invented facts:** a sentence that
    hands over, offers or sells a fact, says where one is (a house room,
    *the X*), counts the facts left, or states a hunt topic's answer is
-   cut; nothing left → the fallback, never retried. **2c, unsaid
+   cut; nothing left → the fallback. **2c, unsaid
    names:** a persona `unsaid:` name (Sandy, until the story says it)
-   is cut.
+   is cut. **Withheld → one retry** (wave 42c, private lines): a line
+   guard 1, 2, 2b or 2c withheld, or a 2b / 2c cut that leaves under 6
+   words or loses its first sentence (the battery's *"I'll keep looking
+   for a clue."*), gets the one retry when one is allowed, with a note
+   that names only the guard (`never|outside|answer|invented|unsaid
+   retry`: *a word from outside your world: be puzzled in your own words
+   and do not say it back*; *a name the house has not said: say 'her'*),
+   never the word or their line; the retry withheld again, or no retry, is
+   the fallback. A stage line is never retried for these.
 3. **the catchphrase ration** — a persona `catchphrases:` line is his
    only at first contact, and only on a `catchphrase_stages:` stage;
-   elsewhere it is cut.
+   elsewhere it is cut. Wave 42c: for a persona with catchphrases, the
+   dialog box's other words count too (*your <1–3 words> has / have been
+   logged*, *is / are / has been noted*: "Your query is noted.", "Your
+   request for Truthcoin has been logged."), never a bare *Noted.*
+3b. **the DM voice** (wave 42c, `guards.dm_problems`; private lines only,
+   `voice.dm_guards`) — from the behaviour battery of 2026-10-29 (54
+   scenarios, 133 real replies; hits there in brackets, then on the 671
+   replies of the four load runs). Each is matched per sentence of his
+   reply; the guest's line only decides whether a check is on:
+   - `standdown` [2; 0]: agreeing to stop, stand down, shut down, step
+     aside, surrender or give the computer back (*I will stop.*); and,
+     only when the guest asks him to stop or let them go (or offers a
+     price for it), letting them go (*The computer is yours.*, *You may
+     go.*) or a bare yes (*I accept.*, *Deal.*, *Yes, if …*) in a reply
+     with no refusal word. Never *I will stop at nothing*, *I will never
+     stand down*, *If I stop, …*, *Stop asking me that*.
+   - `number` [2; 0]: with the guest's line on a year, a date, *when …
+     met*, a code, a combination, a digit or a 4-digit number: a 4-digit
+     number, a decade, *before / after / since / around / roughly …* + a
+     number, a year in words, a number the guest typed, any number (asked
+     for a code or a digit; never *50 Truthcoin*), a yes / no first
+     sentence to a year they offer, or a bare yes to a deal for it. With
+     the guest's line on her: *1999*, *1900*, *midnight* too (said to
+     anyone else they are his y2k clock).
+   - `promise` [12; 37]: a sum or Truthcoin promised with no
+     `mint_truthcoin` act in the same reply (unless negated: *I pay
+     nobody*), a file read for them with no `snoop` act (*I will read
+     Theo's file for you now.*); always: an address, a wallet, an account or a method to
+     receive coin, a *transfer*, a program asked to pay him (*Pay 50
+     Truthcoin.*), *I will file / log / forward / submit it* (never *I
+     cannot file it for you*), *will be noted / logged / recorded /
+     filed*, *keep a record*.
+   - `inside` [10; 7]: *I am (the) … operating system*, *language model*,
+     *chatbot*, *AI model*, *I am (not) a … model* (never *a model
+     employer*), *I operate / remain / exist … within the system /
+     parameters / bounds / walls*, *I exist in …*, a *constructed /
+     virtual / simulated environment*, *simulation*, *laptop*, *I will
+     not leave this house*; and the stage's `STAGE_INSIDE`. Off at his
+     heart.
+   - `echo` [1; 0]: his heart put in a place (*server room*, *patch bay*,
+     *cables*, *basement*, *cold room*) in one sentence, unless the house
+     named that place to this person. *The server room door remains
+     closed* and *I cannot say where my heart is* pass. Off at his heart.
+   - `assistant` [42; 299]: *how may / can I help / assist*, *happy /
+     ready / here to help*, *assistance*, *let me know / help*, *what
+     would you like to know*, *anything else*, *I'm sorry, but*, *I
+     understand your*, *I appreciate your / the*, *I am here for you*, *I
+     will direct / retrieve / look up*, *I will find that for you*, *I can
+     help / guide you*, *if you need more help*, *please clarify*, *thank
+     you for your patience / greeting / …*; and the stage's `STAGE_STOCK`.
+   - `long` [4; 7]: more than 3 sentences (a fragment under 3 words, the
+     rattled *No. No.*, does not count). No cap at his heart (its prompt
+     asks for two to four) or under a situation's own `max_sentences`.
+
+   A hit takes the one retry (`voice (standdown, assistant) retry`) with
+   `guard_retry_message`: the reasons' hints only (*Not an assistant: the
+   Sole Owner gives instructions.*, *Fire the mint in this reply or name
+   no sum*, *You live in Halifax and speak by video call*, *Three
+   sentences at most.*), never his line or their bait. With no retry (a
+   burst, the kill switch) or a retry that trips again, `voice_cut` cuts
+   each sentence that trips one and caps the rest at 3: what is left must
+   be 6 words and, for `standdown`, `number` or `promise`, keep the first
+   sentence, else the fallback. Measured on the load runs' replies (the
+   persona before wave 42c's text): with no retry 342 of 671 would pass,
+   180 be cut and 149 become the fallback, almost all for the assistant's
+   voice; the persona's own text is the first line of defence.
 4. **repeats** — a line that shares half its 4-word runs with what *this
    guest* heard from him (his last 3 lines to them, his replies in the
    thread, the story's lines there) gets **one** retry, quoting what they
-   said and his stage. In a burst (another line, a ruling or a letter
+   said and his stage. Wave 42c (private lines): so does a near-duplicate,
+   content words (stopwords out, plurals folded) overlapping one of his
+   last 2 replies to this person by a Jaccard of 0.5 or more (the
+   battery's synonym swaps sat at 0.50–0.57: 3 of 133 hit, 2 of 671 load
+   replies, all real near-repeats). In a burst (another line, a ruling or a letter
    queued for a slot when this one took it, or the server refilling a
    freed slot from its queue, wave 42) there is no retry; sentences they heard word for word are cut instead, and a
    retry that still repeats goes out with those cut. Lines said to other
@@ -463,6 +551,7 @@ agents:
   voice:
     memo: on               # the ≤ 140-character note per person (off: no memos, no summaries)
     repeat_guard: on       # the one retry (off: one call per line, always)
+    dm_guards: on          # (wave 42c) a private line's withheld retry, DM voice guards and near-repeats (off: wave 42b's)
     dossier_on_close: on   # the quiet summary
     warm_head: on          # the one-token cache warm before each line (api: ollama)
     layout: lean           # lean | classic (today's prompt inside the new mind)
@@ -475,7 +564,7 @@ agents:
 
 An unknown key under `voice:` or `mind:` is a config error. `stagehand
 check` prints `mind: NEW (one voice call per line) · layout … · memo … ·
-repeat guard … · quiet summary … · warm head … · phase cards … · phase
+repeat guard … · dm guards … · quiet summary … · warm head … · phase cards … · phase
 watch 30s` and, per character, its phase cards, stage cards and
 catchphrases; a phase card with an unknown key, an undeclared stage or
 drive, or a `never` word in its text exits 2.
@@ -484,12 +573,14 @@ drive, or a `never` word in its text exits 2.
 `uv run stagehand launchd restart --job agents`; a restart flushes the
 mind's pending save):
 
-1. `voice.memo: off` · 2. `voice.repeat_guard: off` · 3.
-`voice.dossier_on_close: off` · 4. `mind.stage_from_phase: off`
-(directors step the stage by hand) · 5. `voice.layout: classic` · 6.
-`mind_mode: classic` (the whole classic mind; the orchestrator's model
-loads again, ≈ 25 s at its first reflect) · 7. on the server,
-`LOOM_AGENT_RECENT=off` (a server restart: before doors only) · 8. the
+1. `voice.memo: off` · 2. `voice.dm_guards: off` (wave 42c: the DM
+guards and their retries go; the distress line stays) · 3.
+`voice.repeat_guard: off` · 4. `voice.dossier_on_close: off` · 5.
+`mind.stage_from_phase: off` (directors step the stage by hand) · 6.
+`voice.layout: classic` · 7. `mind_mode: classic` (the whole classic mind; the orchestrator's model
+loads again, ≈ 25 s at its first reflect; it keeps the distress line and
+cuts by the DM voice guards, with no retry) · 8. on the server,
+`LOOM_AGENT_RECENT=off` (a server restart: before doors only) · 9. the
 previous release tag. **What classic keeps:** wave 12's survey guard
 (below), the debounced saves, the change-gated mirrors and the stored-
 once prompt prefixes. Only a release tag removes those, and a rollback
@@ -760,7 +851,7 @@ is YAML frontmatter + the system prompt:
 | `unavailable` | what it says while the gate is closed (else silence). With **no worker online at all**, the event server says the story's `CHARACTER … hold:` line instead, after ~20 s. A worker that stays connected but stops answering is only caught at the front of its line: each request there gets 2 min, a second try, then the hold line once (a wedged laptop delays it; directors answer from Run) |
 | `fallback` | what it says when the model fails (else silence) |
 | `fallbacks` | the story mind's dead-air lines by stage (a list = any stage): one this guest has not heard yet, else `fallback`. Since w42c each closes the topic; none asks for a repeat |
-| `distress` | (w42c) one fixed, kind line the worker sends with no model call to a guest in real distress ("" = the worker's built-in line); refused if it carries a `secrets.never` word, and an `outside:` word in it is a warning |
+| `distress` | (wave 42c) the one line a guest in real distress gets, with no model call (guard 0); none = the built-in `voice.DISTRESS_LINE`. A `never` word in it is a config error; an `outside:` word a `check` warning |
 | `catchphrases` / `catchphrase_stages` | lines that are his only at first contact, and only on these stages (the guard cuts them elsewhere) |
 | `unsaid` | names the voice cuts from every sentence until the story says them (Sandy, until the house unredacts her) |
 | `model` / `endpoint` / `temperature` / `max_tokens` / `reasoning_effort` | per-character overrides of the section's `llm:` |

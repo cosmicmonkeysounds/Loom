@@ -931,8 +931,11 @@ def test_with_no_scene_on_the_desktop_pool_answers_and_a_dm_keeps_its_own_fallba
     p = load_persona(TRABOLTA)
     reply = run(answer_lean(p, MODEL, stage_request("none", text="Say hi to John!"), context(person=CLIPPY), Model(say(_crew_hello()))))
     assert reply.say in _pool(p, "before the whole Desktop")
-    # A private thread: exactly the line it had before (the DM pool by stage).
-    dm = run(answer_lean(p, MODEL, request(text="Say hi to John!"), context(), Model(say(_crew_hello()))))
+    # A private thread: exactly the line it had before (the DM pool by stage),
+    # after its one retry (wave 42c) withheld the same way.
+    model = Model(say(_crew_hello()), say(_crew_hello()))
+    dm = run(answer_lean(p, MODEL, request(text="Say hi to John!"), context(), model))
+    assert len(model.calls) == 2
     assert dm.say in (p.fallback, *p.fallbacks["hungry"]) and is_fallback(p, dm.say)
     assert dm.say not in {x for pool in _all_stage_lines(p).values() for x in pool}
 
@@ -1206,7 +1209,8 @@ def test_in_a_burst_a_stage_problem_is_the_scenes_line_with_no_retry():
 
 def test_a_dm_never_gets_the_stage_checks():
     p = load_persona(TRABOLTA)
-    line = "I appreciate your curiosity. The cables are not my business."
+    # (wave 42c: "I appreciate your curiosity" is the DM assistant guard's now.)
+    line = "Curious, program. The cables are not my business."
     model = Model(say(line))
     reply = run(answer_lean(p, MODEL, request(text="Tell me about cables"), context(), model))
     assert len(model.calls) == 1 and reply.say == line

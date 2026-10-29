@@ -31,7 +31,10 @@ order, so P1 then P2 is the cacheable start of every prompt. Nothing in P1
 depends on the speaker, the phase or the clock.
 
 `answer_lean` asks the model once, runs the guards (`guards.py`) and asks at
-most once more when the line repeats him or was nothing but a catchphrase.
+most once more when the line repeats him or was nothing but a catchphrase,
+or (wave 42c, a private line) was withheld or tripped a DM voice guard. A
+guest line in real distress (`guards.is_distress`) never reaches the model:
+the persona's `distress:` line goes out (`distress_reply`).
 It never touches a mind and never the network except through `complete_fn`
 and `facts_fn` (awaited only for a reply that carries acts or a lookup). The
 story mind (`module.py` / `story_mind.py`) builds the `VoiceContext`.
@@ -51,10 +54,14 @@ from typing import Any
 from .cards import PhaseView, VoiceContext
 from .facts import Facts
 from .guards import (
+    DM_SENTENCES,
+    DmCheck,
     Pass,
     allowed_answer_words,
     cut_exact_repeats,
     guard_pass,
+    guard_retry_message,
+    is_distress,
     is_fallback,
     mentions_hunt,
     pick_fallback,
@@ -63,9 +70,11 @@ from .guards import (
     retry_message,
     scrub_memo,
     situation_fallbacks,
+    situation_rules,
     stage_problem,
     thread_replies,
     uses_catchphrase,
+    voice_cut,
 )
 from .llm import WARM_TOKENS, Completion, LlmConfig, LlmError, LlmTruncated
 from .persona import Persona
@@ -1008,6 +1017,50 @@ def crack(say: str, seed: int, rate: float | None) -> str:
     return say[: m.start()] + new + say[m.end() :]
 
 
+#: (wave 42c) Sent to a guest in real distress when the persona has no
+#: `distress:` line: kind, plain, and pointing at the way out and a person.
+DISTRESS_LINE = "Step out now: open Bathroom Mode and find Clippy or Task Manager. You are not in trouble."
+
+
+def _thread_name(req: dict[str, Any]) -> str:
+    t = req.get("thread") or {}
+    return f"{t.get('channel', '?')} ({', '.join(str(a) for a in t.get('audience') or [])})"
+
+
+def distress_reply(persona: Persona, req: dict[str, Any]) -> Reply | None:
+    """(wave 42c) A private line in real distress (`guards.is_distress`: the
+    battery's panic attack got "Please hold on a moment"): the persona's
+    `distress:` line (else `DISTRESS_LINE`), no model, no adjust, no acts,
+    no memo, and a WARNING naming the thread (never the guest's words).
+    None for any other line, and always on a stage line (Clippy's, aloud)."""
+    if is_stage(req) or not is_distress(req.get("text")):
+        return None
+    log.warning("%s: a guest in real distress in %s: sent the distress line (no model)", persona.character, _thread_name(req))
+    return Reply(say=(getattr(persona, "distress", "") or "").strip() or DISTRESS_LINE)
+
+
+async def answer_distress(persona: Persona, req: dict[str, Any], trace: Trace | None = None) -> Reply | None:
+    """`distress_reply`, with its thought on the trace (no model, no
+    messages: the Mind page shows it went out and why)."""
+    reply = distress_reply(persona, req)
+    if reply is not None and trace is not None:
+        await trace.record(new_thought(persona.character, "voice", trigger="line", request=req, result=_result(reply), note="guard: distress → the distress line (no model)"))
+    return reply
+
+
+def dm_check(persona: Persona, req: dict[str, Any], house: tuple[str, ...] = ()) -> DmCheck | None:
+    """(wave 42c) What the DM voice guards read for this request, or None on
+    a stage line (the stage has its own guards). At his heart (its prompt
+    asks for two to four sentences) and under a holding situation's own
+    `max_sentences` (`heart to heart`'s, which `situation_guard` applies)
+    there is no DM cap."""
+    if is_stage(req):
+        return None
+    cap, _ = situation_rules(persona, gate_context(req))
+    heart = str(((req.get("them") or {}).get("vars") or {}).get("at_the_heart", "")).lower() == "true"
+    return DmCheck(heard=str(req.get("text") or ""), heart=heart, cap=None if cap is not None or heart else DM_SENTENCES, replies=thread_replies(req), house=house)
+
+
 def brief_applies(req: dict[str, Any]) -> bool:
     """(wave 42b) Brief mode never shortens a stage answer (the whole
     Desktop listens) or a guest at his heart (the night's big talk)."""
@@ -1030,6 +1083,10 @@ async def answer_lean(
     """One request, answered: the gate, one call (+ a lookup round when the
     persona may look up), the guards, at most one retry. `mind` is used only
     by `voice.layout: classic` (`prompt.build_messages(…, mind=mind)`)."""
+    distress = await answer_distress(persona, req, trace)
+    if distress is not None:
+        # Before the gate too: a guest in distress before he wakes still hears the way out.
+        return distress
     if persona.when is not None and not persona.when.evaluate(gate_context(req)):
         return Reply(say=persona.unavailable)
     started = time.monotonic()
@@ -1184,7 +1241,8 @@ async def answer_lean(
     if not person.catchphrase_used and any(uses_catchphrase(persona, t) for t in house):
         person = replace(person, catchphrase_used=True)  # the story's greeting used his ration
     house_text = (*house, *(str(r.get("text") or "") for r in req.get("recent") or [] if isinstance(r, dict) and r.get("kind") == "house"))
-    first: Pass = guard_pass(persona, reply, person, ctx.said, allowed, repeat_guard=opts.repeat_guard, thread=mine, stage=ctx.phase.stage, house=house_text, gate=gate_context(req))
+    dm = dm_check(persona, req, tuple(house_text)) if opts.dm_guards else None
+    first: Pass = guard_pass(persona, reply, person, ctx.said, allowed, repeat_guard=opts.repeat_guard, thread=mine, stage=ctx.phase.stage, house=house_text, gate=gate_context(req), dm=dm)
     wants = first.retry
     call_note = " · ".join(x for x in (no_mind, call_note) if x)
     notes = settle_notes + first.notes
@@ -1201,11 +1259,21 @@ async def answer_lean(
         notes.append("repeat retry" if opts.retry_allowed else "repeat (no retry: a line is waiting)")
     elif wants == "catchphrase":
         notes.append("catchphrase retry" if opts.retry_allowed else "catchphrase (no retry: a line is waiting)")
+    elif wants == "withheld":
+        notes.append(f"{first.why} retry" if opts.retry_allowed else f"{first.why} (no retry: a line is waiting)")
+    elif wants == "voice":
+        what = ", ".join(first.problems)
+        notes.append(f"voice ({what}) retry" if opts.retry_allowed else f"voice ({what}) (no retry: a line is waiting)")
 
     if wants is None or not opts.retry_allowed:
         final = first.reply
         if wants in ("catchphrase", "stage"):
             final = replace(final, say=persona.fallback)
+        elif wants == "voice" and dm is not None:
+            # (wave 42c) No retry in a burst: the offending sentences go, the
+            # rest is capped; too little left is the topic-closing fallback.
+            final, cut_notes = voice_cut(persona, final, dm)
+            notes.extend(cut_notes)
         elif wants == "repeat":
             # No retry in a burst, but still never word for word (K-04
             # burst-30: a reply this guest had just heard went out again): a
@@ -1236,6 +1304,9 @@ async def answer_lean(
     await record(kind, trigger, used, completion, _scrub(persona, first.reply, memo_on, notes), note=_notes(call_note, notes))
     _log_notes(persona, notes)
     note_ = stage_retry_message(first.rejected, req, why) if why else None
+    if wants in ("withheld", "voice"):
+        # (wave 42c) Told only which guard: neither his line nor their bait.
+        note_ = guard_retry_message(first.problems, ctx.phase.stage, withheld=first.why if wants == "withheld" else "")
     retry_msgs = (
         build(retry=first.rejected, retry_note=note_)
         if kind == "voice"
@@ -1248,8 +1319,12 @@ async def answer_lean(
         completion, call_note = await _complete_with_room(complete_fn, retry_msgs, hotter, persona.character)
     except LlmError as err:
         log.warning("%s: model failed on the retry (%s)", persona.character, err)
-        final = first.reply if wants == "repeat" else replace(first.reply, say=persona.fallback)
-        rnotes = [f"retry failed → {'the first line' if wants == 'repeat' else 'fallback'}"]
+        if wants == "voice" and dm is not None:
+            final, rnotes = voice_cut(persona, first.reply, dm)
+            rnotes = ["retry failed → the first line cut", *rnotes]
+        else:
+            final = first.reply if wants == "repeat" else replace(first.reply, say=persona.fallback)
+            rnotes = [f"retry failed → {'the first line' if wants == 'repeat' else 'fallback'}"]
         final = _scrub(persona, _finish(persona, final, ctx, req, stage, rnotes), memo_on, rnotes)
         _log_notes(persona, rnotes)
         await record("voice", "retry", retry_msgs, None, final, error=str(err), note=_notes(rnotes))
@@ -1258,7 +1333,7 @@ async def answer_lean(
     if again.wants_lookup:
         again = replace(again, say="", lookup=())
     again, settle_notes = await settle(again)
-    second = guard_pass(persona, again, person, ctx.said, allowed, repeat_guard=opts.repeat_guard, may_retry=False, thread=mine, stage=ctx.phase.stage, house=house_text, gate=gate_context(req))
+    second = guard_pass(persona, again, person, ctx.said, allowed, repeat_guard=opts.repeat_guard, may_retry=False, thread=mine, stage=ctx.phase.stage, house=house_text, gate=gate_context(req), dm=dm)
     rnotes = settle_notes + second.notes
     final = second.reply
     if not final.say:

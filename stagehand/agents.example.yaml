@@ -34,6 +34,12 @@ agents:
     repeat_guard: on           #   one retry when a reply repeats what this guest heard from him (his
                                #   last 3 lines to them, his thread replies); in a burst, no retry: the
                                #   sentences they heard are cut instead
+    dm_guards: on              #   (wave 42c) a private reply: a withheld line gets the one retry, and
+                               #   agreeing to stop, narrowing a secret number, promising coin or a
+                               #   filing, the assistant's voice, placing himself inside, > 3 sentences
+                               #   and a near-repeat retry once (in a burst: cut, else the fallback);
+                               #   off = wave 42b's guards. A guest in real distress always gets the
+                               #   persona's `distress:` line with no model call.
     dossier_on_close: on       #   condense a quiet conversation (≥ 3 turns, 120 s idle) on the voice model
     warm_head: on              #   api: ollama — a one-token call with the shared head first, so the
                                #   prompt cache holds under gpt-oss's sliding window (~5 s → ~2 s a line)
@@ -48,7 +54,7 @@ agents:
     stage_from_phase: on       #   Night.phase's card sets stage, favours, drives, live powers, brief
     phase_poll_s: 30           #   the phase watch: a facts fetch every N s, no model call (0 = off)
   # The kill-switch ladder, one step at a time (then `stagehand launchd restart --job
-  # agents`): voice.memo off → voice.repeat_guard off → voice.dossier_on_close off →
+  # agents`): voice.memo off → voice.dm_guards off → voice.repeat_guard off → voice.dossier_on_close off →
   # mind.stage_from_phase off → voice.layout classic → mind_mode classic (the qwen
   # model below loads again) → the server's LOOM_AGENT_RECENT=off → the previous
   # release tag (the whole checkout, never stagehand alone).

@@ -82,7 +82,7 @@ stagehand/
 ```bash
 cd stagehand
 uv sync                                            # once; makes .venv
-uv run pytest                                      # 2376 passed + 4 skipped, ~100 s, no hardware, no network
+uv run pytest                                      # 2499 passed + 4 skipped, ~80 s, no hardware, no network
 uv run pytest tests/test_trapped_house.py -q       # after any story or rig change
 uv run stagehand modules
 uv run stagehand check --config trapped.desktop.yaml --only show,lights,audio
@@ -297,6 +297,30 @@ module docstrings that explain the why).
   `brief_applies` (no stage, no heart, lean only), caps `max_tokens` at
   `brief_max_tokens` and `reminder` adds `BRIEF_NOTE`. Tests:
   `tests/test_engines.py`, `tests/test_brief.py`.
+- **The DM guards** (wave 42c, `docs/agents.md` "The guards" 0, 2, 3, 3b,
+  4). A private line (never a stage line: `voice.dm_check` is None there)
+  gets `guards.DmCheck` (the guest's line, at the heart or not, the cap,
+  his last replies, the house's lines) passed to `guard_pass(dm=)`. Then a
+  withheld line (`Pass.why`: never / outside / answer / invented /
+  unsaid; a 2b / 2c cut under 6 words or without its first sentence
+  counts) asks for the one retry (`retry == "withheld"`); `dm_problems`
+  (standdown, number, promise, inside, echo, assistant, long) asks for it
+  (`"voice"`, `Pass.problems`); a near-duplicate (Jaccard ≥ 0.5 on content
+  words) is a `"repeat"`. Both new retries close with
+  `guard_retry_message` (reasons only: it never quotes his line or the
+  guest's). No retry (`retry_allowed` false, `repeat_guard` off), a retry
+  that trips again or fails: `voice_cut` (offending sentences out, cap 3,
+  ≥ 6 words left and, for standdown / number / promise, the first
+  sentence, else the fallback). The catchphrase ration also counts
+  `CATCHPHRASE_VARIANTS`. `guards.is_distress` on the guest's line
+  short-circuits `answer_lean`, `module.answer` and `_answer_new` /
+  `_handle` (before the slot): `voice.distress_reply` sends the persona's
+  `distress:` (parsed in `persona.py`, else `voice.DISTRESS_LINE`) and
+  logs a WARNING naming the thread only. `voice.dm_guards: off` is the
+  kill switch (wave 42b's guards; the distress line stays). The classic
+  `module.answer` cuts by `dm_problems` (no retry). Tests:
+  `tests/test_dm_guards.py`. An older worker refuses a persona with
+  `distress:` (an unknown key), like `catchphrases:` before it.
 - Docstrings cite "the wave 12 contract §Cn.m": that lane contract was
   never committed. `docs/agents.md` and the tests describe the behaviour.
 

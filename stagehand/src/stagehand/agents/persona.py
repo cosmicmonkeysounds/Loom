@@ -16,8 +16,9 @@
     fallbacks: {formal: ["One moment."]}  # the new voice's dead-air lines, by stage
                                        #   (a list = any stage): one this guest
                                        #   has not heard yet, else `fallback`
-    distress: "Step out now: …"        # (wave 42c) the fixed line sent, with no model,
-                                       #   to a guest in real distress ("" = none)
+    distress: "Step out now: …"        # (wave 42c) the fixed answer to a guest in
+                                       #   real distress (no model; else a built-in
+                                       #   line, `voice.DISTRESS_LINE`)
     temperature: 0.9                   # optional per-character model overrides:
     max_tokens: 800                    #   model / temperature / max_tokens /
     reasoning_effort: low              #   reasoning_effort
@@ -186,7 +187,8 @@ class Persona:
     unavailable: str = ""
     fallback: str = ""
     #: (wave 42c) The fixed, kind line the worker sends with no model call when a
-    #: guest is in real distress (`distress:`); "" = none (the worker's own).
+    #: guest is in real distress (`distress:`); "" = the voice's built-in
+    #: `DISTRESS_LINE`.
     distress: str = ""
     #: Per-character model overrides (merged over the section's `llm:`).
     llm: dict[str, Any] = field(default_factory=dict)

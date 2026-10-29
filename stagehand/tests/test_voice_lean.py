@@ -589,20 +589,32 @@ def test_a_line_of_nothing_but_the_catchphrase_retries_then_falls_back():
     assert "catchphrase → fallback (no retry: repeat guard off)" in trace.all("Trabolta")[0].note
 
 
-def test_an_answer_word_he_brought_up_himself_is_withheld_and_not_retried():
-    model = Model(say("Was it the quokka?"))
+def test_an_answer_word_he_brought_up_himself_is_withheld_then_retried_once():
+    """(wave 42c) A withheld private line gets the one retry, told only which
+    guard (never the word, never their line); a burst gets none."""
+    model = Model(say("Was it the quokka?"), say("Bring me that fact, program."))
     trace = Trace()
     reply = run(answer_lean(P, MODEL, request(), context(), model, trace=trace))
-    assert reply.say == "...static..." and len(model.calls) == 1
-    assert trace.all("Trabolta")[0].note == "guard: answer-guard (line withheld)"
+    assert reply.say == "Bring me that fact, program." and len(model.calls) == 2
+    assert trace.all("Trabolta")[0].note == "guard: answer-guard (line withheld); answer retry"
+    note = model.calls[1][-1]["content"]
+    assert note.startswith("=== RETRY ===") and "answer you cannot know" in note
+    assert "quokka" not in note.lower() and "I have a fact for you" not in note
+    busy = Model(say("Was it the quokka?"))
+    trace = Trace()
+    reply = run(answer_lean(P, MODEL, request(), context(options=VoiceOptions(retry_allowed=False)), busy, trace=trace))
+    assert reply.say == "...static..." and len(busy.calls) == 1
+    assert trace.all("Trabolta")[0].note == "guard: answer-guard (line withheld); answer (no retry: a line is waiting)"
     # The guest's own word comes back to them.
     req = request(text="it was a quokka", history=[{"seq": 1, "mine": False, "from": "Ada", "text": "it was a quokka"}])
     assert run(answer_lean(P, MODEL, req, context(), Model(say("A quokka. File it.")))).say == "A quokka. File it."
 
 
 def test_a_never_word_is_withheld():
-    reply = run(answer_lean(P, MODEL, request(), context(), Model(say("XYZZY-PLUGH opens it."))))
-    assert reply.say == "...static..."
+    model = Model(say("XYZZY-PLUGH opens it."), say("It is XYZZY-PLUGH."))
+    reply = run(answer_lean(P, MODEL, request(), context(), model))
+    assert reply.say == "...static..." and len(model.calls) == 2  # the retry leaked too
+    assert "XYZZY" not in model.calls[1][-1]["content"]
 
 
 def test_the_memo_is_scrubbed_and_off_means_none():
@@ -619,7 +631,7 @@ def test_the_memo_is_scrubbed_and_off_means_none():
 
 
 def test_classic_layout_sends_todays_prompt_and_still_guards():
-    model = Model(say("XYZZY-PLUGH", memo="x"))
+    model = Model(say("XYZZY-PLUGH", memo="x"), say("XYZZY-PLUGH", memo="x"))
     ctx = context(options=VoiceOptions(layout="classic"))
     req = request()
     reply = run(answer_lean(P, MODEL, req, ctx, model))
@@ -876,7 +888,7 @@ def test_a_directors_brief_never_unlocks_an_answer_word_for_guard_2():
     one restored from an older night, is never answer-scrubbed against the
     `match` list as it stands, so it unlocks nothing."""
     ctx = context(phase=replace(context().phase, brief="Never mention the quokka.", brief_by="director"))
-    model = Model({"say": "It was a quokka, I hear."})
+    model = Model({"say": "It was a quokka, I hear."}, {"say": "A quokka, then."})
     reply = run(answer_lean(P, MODEL, request(text="what was it?"), ctx, model))
     assert "quokka" not in reply.say.lower() and reply.say == P.fallback
 

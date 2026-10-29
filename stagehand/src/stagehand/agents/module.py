@@ -69,7 +69,7 @@ from . import story_mind
 from .cards import PersonCard, PhaseView, VoiceContext, VoiceOptions
 from .config import AgentsConfig, parse_agents
 from .facts import Facts, FactsClient
-from .guards import outside_guard, situation_guard
+from .guards import dm_problems, outside_guard, situation_guard, voice_cut
 from .judge import JUDGE_DEADLINE_S, Ruling, judge_messages, judge_model, parse_ruling
 from .letter import LETTER_ATTEMPTS, LETTER_DEADLINE_S, RETRY_NOTE, Letter, letter_messages, letter_model, letter_problem, parse_letter
 from .llm import Completion, LlmConfig, LlmError, LlmTruncated, complete
@@ -191,6 +191,11 @@ async def answer(
     `stagehand ask`). A `lookup` in the first answer earns exactly one
     second call with the session's cards appended. With a `trace`, each
     model call is recorded as a thought."""
+    from .voice import answer_distress, dm_check  # voice imports this module
+
+    quick = await answer_distress(persona, req, trace)
+    if quick is not None:
+        return quick  # (wave 42c) real distress: never the model
     if gate and persona.when is not None and not persona.when.evaluate(gate_context(req)):
         return Reply(say=persona.unavailable)
     powers = [p for p in (req.get("powers") or []) if isinstance(p, dict)]
@@ -264,6 +269,11 @@ async def answer(
     # never word; a holding situation's `acts: none` / `max_sentences` apply.
     reply, notes = outside_guard(persona, reply)
     reply, more = situation_guard(persona, reply, gate_context(req))
+    dm = dm_check(persona, req)
+    if dm is not None and reply.say and reply.say != persona.fallback and dm_problems(reply, dm):
+        # (wave 42c) The DM voice guards, cut only: this path has no retry.
+        reply, cut = voice_cut(persona, reply, dm)
+        more = [*more, *cut]
     if notes or more:
         log.info("%s: %s", persona.character, "; ".join((*notes, *more)))
     if reply.empty:
@@ -462,7 +472,7 @@ class Agents:
             v, m = self.cfg.voice, self.cfg.mind
             onoff = lambda b: "on" if b else "off"  # noqa: E731
             lines.append(
-                f"  mind     : NEW (one voice call per line) · layout {v.layout} · memo {onoff(v.memo)} · repeat guard {onoff(v.repeat_guard)} · "
+                f"  mind     : NEW (one voice call per line) · layout {v.layout} · memo {onoff(v.memo)} · repeat guard {onoff(v.repeat_guard)} · dm guards {onoff(v.dm_guards)} · "
                 f"quiet summary {onoff(v.dossier_on_close)} · warm head {onoff(v.warm_head)} · phase cards {onoff(m.stage_from_phase)} · phase watch {f'{m.phase_poll_s:.0f}s' if m.phase_poll_s else 'off'}"
             )
             for name, persona in self.cfg.personas.items():
@@ -1103,9 +1113,13 @@ class Agents:
                 await self._answer_new(rid, persona, mind, req)
                 settle = True
                 return
-            facts = await self._facts() if persona.lookup or persona.powers != () else None
-            async with self.engines.call(lane_of(req), who=character) as call:
-                reply = await answer(persona, call.bind(self.models[character]), req, call.complete, mind=mind, facts=facts, trace=self.trace)
+            from .voice import answer_distress
+
+            reply = await answer_distress(persona, req, self.trace)  # (wave 42c) never waits for a slot
+            if reply is None:
+                facts = await self._facts() if persona.lookup or persona.powers != () else None
+                async with self.engines.call(lane_of(req), who=character) as call:
+                    reply = await answer(persona, call.bind(self.models[character]), req, call.complete, mind=mind, facts=facts, trace=self.trace)
             log.info(
                 "%s → %s: %s%s%s",
                 persona.character,
@@ -1343,25 +1357,38 @@ class Agents:
             since=since,
             whispers=tuple(mind.director),
             options=VoiceOptions(
-                memo=v.memo, repeat_guard=v.repeat_guard, layout=v.layout, warm_head=v.warm_head, brief=self._brief(req), brief_max_tokens=v.brief_max_tokens
+                memo=v.memo,
+                repeat_guard=v.repeat_guard,
+                dm_guards=v.dm_guards,
+                layout=v.layout,
+                warm_head=v.warm_head,
+                brief=self._brief(req),
+                brief_max_tokens=v.brief_max_tokens,
             ),
         )
         if ctx.options.brief:
             log.info("%s: brief mode for %s (%s line(s) queued behind)", character, who, req.get("queued"))
-        async with self.engines.call(lane_of(req), who=character) as call:
-            # (wave 42) The retry is decided with the slot in hand: a line that
-            # waited behind another but finds nobody behind it now may retry;
-            # one taken while lines or rulings queue for a slot may not.
-            # (A quiet summary or a director's re-run waiting never counts.)
-            # A windowed stream keeps the burst on the server, so a line the
-            # server refilled a slot with (or told us has lines behind it,
-            # `_backlogged`) gets no retry either.
-            ctx = replace(ctx, options=replace(ctx.options, retry_allowed=self._slots.waiting(BACKGROUND) == 0 and rid not in self._pressed))
-            voice_mind = mind if quiet_ok or v.layout != "classic" else story_mind.without_summaries(mind)
-            # (wave 42b) The voice model on the slot's engine, and a complete_fn
-            # that keeps the warm head there and moves to another engine once
-            # if this one fails (`engines.py`).
-            reply = await self._voice()(persona, call.bind(self.models[character]), req, ctx, call.complete, trace=self.trace, facts_fn=self._facts, mind=voice_mind)
+        from .voice import answer_distress
+
+        # (wave 42c) A guest in real distress never waits for a slot or the model.
+        quick = await answer_distress(persona, req, self.trace)
+        if quick is not None:
+            reply = quick
+        else:
+            async with self.engines.call(lane_of(req), who=character) as call:
+                # (wave 42) The retry is decided with the slot in hand: a line that
+                # waited behind another but finds nobody behind it now may retry;
+                # one taken while lines or rulings queue for a slot may not.
+                # (A quiet summary or a director's re-run waiting never counts.)
+                # A windowed stream keeps the burst on the server, so a line the
+                # server refilled a slot with (or told us has lines behind it,
+                # `_backlogged`) gets no retry either.
+                ctx = replace(ctx, options=replace(ctx.options, retry_allowed=self._slots.waiting(BACKGROUND) == 0 and rid not in self._pressed))
+                voice_mind = mind if quiet_ok or v.layout != "classic" else story_mind.without_summaries(mind)
+                # (wave 42b) The voice model on the slot's engine, and a complete_fn
+                # that keeps the warm head there and moves to another engine once
+                # if this one fails (`engines.py`).
+                reply = await self._voice()(persona, call.bind(self.models[character]), req, ctx, call.complete, trace=self.trace, facts_fn=self._facts, mind=voice_mind)
         log.info(
             "%s → %s: %s%s%s",
             character,
