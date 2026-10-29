@@ -70,6 +70,11 @@ export interface QueueLike {
   depth: number;
   oldestMs: number | null;
   stalled: boolean;
+  /** Wave 42 (C6): of `depth`, the ones a windowed worker is answering
+   *  now (absent with a legacy worker, or from an older server). */
+  inFlight?: number;
+  /** Wave 42 (C6): the windowed workers' slots, summed. */
+  capacity?: number;
   receivedAt?: number;
 }
 
@@ -371,8 +376,11 @@ export function queueBadge(q: QueueLike): { text: string; tone: QueueTone; title
   }
   if (q.depth === 0) return { text: "queue empty", tone: QueueTone.Idle, title: "No conversation is waiting for a reply." };
   const slow = q.oldestMs !== null && q.oldestMs >= QUEUE_SLOW_MS;
+  // Wave 42 (C6): a windowed worker says how many it is answering now and
+  // how many still wait in the server's queue for a slot.
+  const split = typeof q.inFlight === "number" ? `${q.inFlight} answering · ${Math.max(0, q.depth - q.inFlight)} waiting` : `${q.depth} waiting`;
   return {
-    text: `${slow ? "⚠ " : ""}${q.depth} waiting${oldest}`,
+    text: `${slow ? "⚠ " : ""}${split}${oldest}`,
     tone: slow ? QueueTone.Slow : QueueTone.Waiting,
     title: slow ? "A guest has waited past the busy line (40 s): the worker is behind." : "Conversations waiting for the worker, oldest first.",
   };
@@ -819,7 +827,8 @@ export interface HostView extends CueSheetView {
   agents: Array<{
     id: string;
     online: boolean;
-    queue: { depth: number; oldestMs: number | null; stalled: boolean } | null;
+    /** `inFlight` / `capacity` (wave 42, C6) only with a windowed worker. */
+    queue: { depth: number; oldestMs: number | null; stalled: boolean; inFlight?: number; capacity?: number } | null;
     /** Guests waiting on this character, oldest first, at most 10. The host
      *  answers with `say {channel: "guest:<guest>", …}`. */
     waiting: Array<{ guest: string; name: string; since: number; text: string }>;
@@ -1005,7 +1014,8 @@ export function hostView(input: HostViewInput): HostView {
     .map((c) => {
       const q = agentQueueOf(c.id, cast, minds, now);
       const waiting = [...(input.waiting.get(c.id) ?? [])].sort((a, b) => a.since - b.since).slice(0, 10).map((x) => ({ ...x, text: x.text.slice(0, 200) }));
-      return { id: c.id, online: c.online === true, queue: q === null ? null : { depth: q.depth, oldestMs: q.oldestMs, stalled: q.stalled }, waiting };
+      const window = q !== null && typeof q.inFlight === "number" && typeof q.capacity === "number" ? { inFlight: q.inFlight, capacity: q.capacity } : {};
+      return { id: c.id, online: c.online === true, queue: q === null ? null : { depth: q.depth, oldestMs: q.oldestMs, stalled: q.stalled, ...window }, waiting };
     });
   const parts = performerParts(cast).map((c) => ({ id: c.id, presence: castPresence(c, true) }));
   const people: HostPerson[] = [];

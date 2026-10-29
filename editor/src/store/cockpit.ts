@@ -379,6 +379,12 @@ export interface AgentQueue {
   /** The oldest wait as of the server's send (it never ages on the wire). */
   oldestMs: number | null
   stalled: boolean
+  /** Wave 42 (C6): of `depth`, the ones a windowed worker is answering now
+   *  (the rest wait in the server's queue for a slot). Absent with a legacy
+   *  worker and from an older server. */
+  inFlight?: number
+  /** Wave 42 (C6): the windowed workers' slots, summed. */
+  capacity?: number
   /** Wave 18b (O4): the character's judge queue — rulings waiting in the
    *  hub, the one out to a worker, the oldest wait, a judge stall. Absent
    *  when nothing is queued or out and nothing stalled (and on an older
