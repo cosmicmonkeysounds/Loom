@@ -202,6 +202,11 @@ queued.
    44) and tells every phone the show is over (pressed before the last
    award, `# hosts` asks and the sheet says *Not taken*, nothing ticks; press
    again within 30 s to end it anyway). **G12 🎬** rolls the credits again.
+   **G13 🚻 The Bathroom Report** (wave 45): press it between any two
+   awards, best right after G1 (no winner to pick: the story reads the
+   minutes, most, least, the switches and who never went). Under ✍ post
+   your own lines for it as for an award. Every program that never went
+   lost 5 trust at G1; a trip now gives it back.
    Then Run → 🎥 Video consent → ⬇ Download CSV, before End.
 
 **10. The backup console.** If your laptop dies, John signs in on his; if the
