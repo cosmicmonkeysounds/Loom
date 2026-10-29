@@ -7,8 +7,9 @@
 //! the hub's `wait` option, which the runtime sends as the `agentWait` SSE
 //! frame to the thread's typing audience; a position change at most once
 //! per 5 s per thread, a state change at once; never for a public talk
-//! thread, never with only a legacy worker; a reopened stream gets its
-//! threads' current waits after `history`.
+//! thread, never with only a legacy worker, never to a lean house tool;
+//! a stall makes its threads idle until the worker answers again; a
+//! reopened stream gets its threads' current waits after `history`.
 
 import { afterAll, describe, expect, it } from "vitest";
 import { mkdtempSync, rmSync } from "node:fs";
@@ -28,7 +29,7 @@ const th = (n: number): AgentThread => ({ character: "Trabolta", channel: "dm:Tr
 const STAGE: AgentThread = { character: "Trabolta", channel: "loc:The Desktop", audience: ["@Clippy"], public: true };
 const who = (r: AgentRequest): string => r.thread.audience[0]!;
 
-function harness(opts: { queueMaxAgeMs?: number; replyTimeoutMs?: number; maxAttempts?: number } = {}) {
+function harness(opts: { queueMaxAgeMs?: number; replyTimeoutMs?: number; maxAttempts?: number; stallAfterMs?: number; stale?: (req: AgentRequest) => boolean; letterLoad?: (workerId: string) => number } = {}) {
   let clock = 1000;
   const heart = new Set<string>();
   /** Every wait told, in order: `[guest, wait]`. */
@@ -264,6 +265,123 @@ describe("B2: agentWait in the hub", () => {
     expect(h.hub.waitList().map(({ thread }) => thread.audience[0])).toEqual(["g-1"]);
   });
 
+  it("a stall: every thread goes idle (the hold line is all it shows), and is told again once the worker answers", () => {
+    const h = harness();
+    const a = h.worker("laptop", 1);
+    h.hub.attach(a.w);
+    for (let n = 0; n < 3; n++) h.say(n);
+    expect(h.hub.waitOf(th(2))).toEqual({ state: "queued", position: 2, etaS: 12 });
+    // 70 s of silence: stalled at 60 s (the reply timeout is 120 s).
+    let from = h.waits.length;
+    h.run(70_000);
+    expect(h.since(from).map(([g, w]) => [g, w.state]).sort()).toEqual([
+      ["g-0", "idle"],
+      ["g-1", "idle"],
+      ["g-2", "idle"],
+    ]);
+    expect(h.hub.waitList()).toEqual([]);
+    expect(h.hub.waitOf(th(0))).toBeNull(); // in its stalled slot
+    expect(h.hub.waitOf(th(2))).toBeNull(); // no place, no eta
+    // Nothing more while it stays stalled (no stale "position 1, eta 6 s").
+    from = h.waits.length;
+    h.run(20_000);
+    expect(h.since(from)).toEqual([]);
+    // It answers g-0: the line moves and every wait is told again at once.
+    h.answer(0, "laptop");
+    const mean = h.hub.serviceMeanS("Trabolta");
+    expect(h.since(from)).toEqual([
+      ["g-1", { state: "answering" }],
+      ["g-2", { state: "queued", position: 1, etaS: Math.ceil(mean) }],
+    ]);
+  });
+
+  it("a stalled worker's in-flight thread goes idle; a healthy one's slots still count", () => {
+    const h = harness({ stallAfterMs: 30_000 });
+    h.hub.attach(h.worker("a", 1).w);
+    h.say(0); // a's slot
+    h.run(10_000);
+    h.hub.attach(h.worker("b", 1).w);
+    h.say(1); // b's slot
+    h.say(2);
+    h.say(3);
+    h.run(25_000); // a stalls (35 s without an answer); b at 25 s does not
+    expect(h.hub.waitOf(th(0))).toBeNull();
+    expect(h.hub.waitOf(th(1))).toEqual({ state: "answering" });
+    // b alone takes the line: one live slot.
+    expect(h.hub.waitOf(th(2))).toEqual({ state: "queued", position: 1, etaS: 6 });
+    expect(h.hub.waitOf(th(3))).toEqual({ state: "queued", position: 2, etaS: 12 });
+  });
+
+  it("a reply timeout re-dispatches with no idle blip, and the re-sent frame carries the line", () => {
+    const h = harness({ replyTimeoutMs: 30_000 });
+    const a = h.worker("laptop", 1);
+    h.hub.attach(a.w);
+    for (let n = 0; n < 3; n++) h.say(n);
+    const from = h.waits.length;
+    h.run(31_000);
+    expect(a.sent()).toEqual(["g-0", "g-0"]);
+    const again = a.requests().at(-1)!;
+    expect(again.queued).toBe(2);
+    expect(again.load).toEqual({ queued: 2, inFlight: 1, capacity: 1 });
+    expect(h.since(from)).toEqual([]); // still answering, still 1st and 2nd
+    expect(h.hub.waitOf(th(0))).toEqual({ state: "answering" });
+  });
+
+  it("a stale request holds no place, and goes idle when the pump drops it", () => {
+    const stale = new Set<string>();
+    const h = harness({ stale: (req) => stale.has(who(req)) });
+    h.hub.attach(h.worker("laptop", 1).w);
+    for (let n = 0; n < 4; n++) h.say(n);
+    stale.add("g-1");
+    // At once, before any pump: g-2 is 1st.
+    expect(h.hub.waitOf(th(2))).toEqual({ state: "queued", position: 1, etaS: 6 });
+    let from = h.waits.length;
+    h.run(1000);
+    expect(h.since(from)).toEqual([["g-1", { state: "idle" }]]);
+    expect(h.hub.openOn(th(1))).toBeNull();
+    from = h.waits.length;
+    h.run(4000); // the moved places, once the 5 s throttle allows
+    expect(h.since(from)).toEqual([
+      ["g-2", { state: "queued", position: 1, etaS: 6 }],
+      ["g-3", { state: "queued", position: 2, etaS: 12 }],
+    ]);
+  });
+
+  it("eta divides by the slots left after letters (and rulings) out", () => {
+    const letters = new Map<string, number>([["laptop", 1]]);
+    const h = harness({ letterLoad: (id) => letters.get(id) ?? 0 });
+    h.hub.attach(h.worker("laptop", 2).w);
+    for (let n = 0; n < 3; n++) h.say(n);
+    // One slot writes a letter, one answers g-0: the line moves one at a time.
+    expect(h.hub.waitOf(th(1))).toEqual({ state: "queued", position: 1, etaS: 6 });
+    expect(h.hub.waitOf(th(2))).toEqual({ state: "queued", position: 2, etaS: 12 });
+    letters.set("laptop", 2); // both slots busy elsewhere: at least 1
+    expect(h.hub.waitOf(th(2))).toEqual({ state: "queued", position: 2, etaS: 12 });
+    letters.clear();
+    expect(h.hub.waitOf(th(2))).toEqual({ state: "queued", position: 2, etaS: 6 });
+  });
+
+  it("a mixed fleet (legacy + windowed): the legacy worker takes the overflow at once, so every thread reads answering; idle when the window goes", () => {
+    const h = harness();
+    const win = h.worker("laptop", 1);
+    const old = h.worker("old");
+    h.hub.attach(win.w);
+    h.hub.attach(old.w);
+    for (let n = 0; n < 4; n++) h.say(n);
+    expect(win.sent()).toEqual(["g-0"]);
+    expect(old.sent()).toEqual(["g-1", "g-2", "g-3"]);
+    expect(h.hub.loadFor("Trabolta")).toEqual({ queued: 0, inFlight: 4, capacity: 2 });
+    // Nothing waits in the hub's queue, so nobody is told a place: the
+    // legacy line is "answering" (as its typing is), though its worker
+    // answers it one at a time.
+    expect(h.waits).toEqual([0, 1, 2, 3].map((n) => [`g-${n}`, { state: "answering" }]));
+    // Only the legacy worker left: it holds the whole line, every wait idle.
+    const from = h.waits.length;
+    h.hub.detach("laptop");
+    expect(h.since(from).map(([g, w]) => [g, w.state]).sort()).toEqual([0, 1, 2, 3].map((n) => [`g-${n}`, "idle"]));
+    expect(h.hub.waitList()).toEqual([]);
+  });
+
   it("a legacy worker (it holds the whole line) and nobody online: no wait is ever told", () => {
     const h = harness();
     for (let n = 0; n < 3; n++) h.say(n); // nobody online: queued in the hub
@@ -294,6 +412,16 @@ CHARACTER Trabolta
   mind: external
   hold: "Jean Trabolta is not responding."
   busy: "Trabolta is processing a high volume of requests. Please hold."
+
+CHARACTER Clippy
+  listed: true
+
+CHARACTER Norton
+  listed: true
+
+CHARACTER Task Manager
+  listed: true
+  admin: true
 `;
 const CODES = { event: "EVT555", prime: "PRM555", mod: "MOD555" };
 const dirs: string[] = [];
@@ -377,7 +505,9 @@ async function room(guests: number, query: string) {
   }
   /** Each guest's own stream (the phone). */
   const phones = await Promise.all(people.map((p) => call(rt, "GET", "/events?role=guest", {}, { token: p.token })));
-  const director = await call(rt, "GET", "/events?role=mod&lean=1", {}, { moderator: true });
+  const director = await call(rt, "GET", "/events?role=mod", {}, { moderator: true });
+  /** A house tool on the mod feed (stagehand): never an agentWait. */
+  const lean = await call(rt, "GET", "/events?role=mod&lean=1", {}, { moderator: true });
   const w = await call(rt, "GET", `/api/agent/stream?characters=Trabolta&name=laptop${query}`, {}, { moderator: true });
   const requests = () => w.res.frames().filter(([e]) => e === "request").map(([, d]) => d as AgentRequest);
   const say = (i: number, text: string) => call(rt, "POST", "/api/guest/say", { channel: "dm:Trabolta", text }, { token: people[i]!.token });
@@ -392,9 +522,10 @@ async function room(guests: number, query: string) {
     w.close();
     for (const p of phones) p.close();
     director.close();
+    lean.close();
     rt.dispose();
   };
-  return { rt, people, phones, director, w, requests, say, waitsOf, tick, done };
+  return { rt, people, phones, director, lean, w, requests, say, waitsOf, tick, done };
 }
 
 describe("EventRuntime — agentWait", () => {
@@ -410,6 +541,8 @@ describe("EventRuntime — agentWait", () => {
     // Another guest never receives my wait.
     for (let i = 0; i < 3; i++) for (const f of r.waitsOf(r.phones[i]!)) expect(f.audience).toEqual([r.people[i]!.id]);
     expect(r.waitsOf(r.director).map((f) => f.audience[0])).toEqual([p0!.id, p1!.id, p2!.id]);
+    // A lean house tool on the mod feed: none (it never reads them).
+    expect(r.waitsOf(r.lean)).toEqual([]);
     r.done();
   });
 
@@ -447,6 +580,53 @@ describe("EventRuntime — agentWait", () => {
     expect(first.res.frames().some(([e]) => e === "typing")).toBe(false);
     again.close();
     first.close();
+    r.done();
+  });
+
+  it("the typing audience: a performer's booth hears its own cast thread, an admin booth every one, a host booth (not admin) none", async () => {
+    const r = await room(1, "&capacity=1");
+    const booth = async (character: string, mod = false) => {
+      const token = (await call(r.rt, "POST", "/api/prime/login", { character, passcode: CODES.prime })).json["token"] as string;
+      if (mod) expect((await call(r.rt, "POST", "/api/mod/login", { passcode: CODES.mod, token })).status).toBe(200);
+      return { token, stream: await call(r.rt, "GET", `/events?role=prime&token=${encodeURIComponent(token)}`, {}) };
+    };
+    const clippy = await booth("Clippy");
+    const admin = await booth("Norton", true);
+    const host = await booth("Task Manager");
+    await r.say(0, "hello?"); // in the slot
+    expect((await call(r.rt, "POST", "/api/prime/say", { channel: "cast:Trabolta", text: "Boss?" }, { token: clippy.token })).status).toBe(200);
+    const g = r.people[0]!.id;
+    const seen = (s: typeof clippy) => r.waitsOf(s.stream).map((f) => [f.channel, f.audience[0], f.state, f.position ?? null]);
+    const typed = (s: typeof clippy) => s.stream.res.frames().filter(([e]) => e === "typing").map(([, d]) => (d as { audience: string[] }).audience[0]);
+    expect(seen(clippy)).toEqual([["dm:Trabolta", "@Clippy", "queued", 1]]);
+    expect(seen(admin)).toEqual([
+      ["dm:Trabolta", g, "answering", null],
+      ["dm:Trabolta", "@Clippy", "queued", 1],
+    ]);
+    expect(seen(host)).toEqual([]);
+    // The same people as its typing.
+    expect(typed(admin)).toEqual([g]);
+    expect(typed(host)).toEqual([]);
+    expect(r.waitsOf(r.phones[0]!).map((f) => f.audience[0])).toEqual([g]);
+    for (const b of [clippy, admin, host]) b.stream.close();
+    r.done();
+  });
+
+  it("a stalled worker: 70 s of silence leaves every phone idle under the hold line; a reply tells them again", async () => {
+    const r = await room(3, "&capacity=1");
+    await r.say(0, "hello?");
+    await r.say(1, "me too");
+    await r.say(2, "and me");
+    r.tick(70_000);
+    for (const p of r.phones) {
+      expect(r.waitsOf(p).at(-1)!.state).toBe("idle");
+      const said = p.res.frames().filter(([e]) => e === "message").map(([, d]) => (d as { text: string }).text);
+      expect(said).toContain("Jean Trabolta is not responding.");
+    }
+    expect((await call(r.rt, "POST", "/api/agent/reply", { id: r.requests()[0]!.id, say: "Sorry, I was away." }, { moderator: true })).status).toBe(200);
+    expect(r.waitsOf(r.phones[0]!).at(-1)!.state).toBe("idle");
+    expect(r.waitsOf(r.phones[1]!).at(-1)!.state).toBe("answering");
+    expect(r.waitsOf(r.phones[2]!).at(-1)).toMatchObject({ state: "queued", position: 1 });
     r.done();
   });
 
