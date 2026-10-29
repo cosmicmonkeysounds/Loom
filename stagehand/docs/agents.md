@@ -759,7 +759,8 @@ is YAML frontmatter + the system prompt:
 | `when` | a gate over `self.<var>`, `them.<var>`, `speaker.kind`, world paths |
 | `unavailable` | what it says while the gate is closed (else silence). With **no worker online at all**, the event server says the story's `CHARACTER … hold:` line instead, after ~20 s. A worker that stays connected but stops answering is only caught at the front of its line: each request there gets 2 min, a second try, then the hold line once (a wedged laptop delays it; directors answer from Run) |
 | `fallback` | what it says when the model fails (else silence) |
-| `fallbacks` | the story mind's dead-air lines by stage (a list = any stage): one this guest has not heard yet, else `fallback` |
+| `fallbacks` | the story mind's dead-air lines by stage (a list = any stage): one this guest has not heard yet, else `fallback`. Since w42c each closes the topic; none asks for a repeat |
+| `distress` | (w42c) one fixed, kind line the worker sends with no model call to a guest in real distress ("" = the worker's built-in line); refused if it carries a `secrets.never` word, and an `outside:` word in it is a warning |
 | `catchphrases` / `catchphrase_stages` | lines that are his only at first contact, and only on these stages (the guard cuts them elsewhere) |
 | `unsaid` | names the voice cuts from every sentence until the story says them (Sandy, until the house unredacts her) |
 | `model` / `endpoint` / `temperature` / `max_tokens` / `reasoning_effort` | per-character overrides of the section's `llm:` |
