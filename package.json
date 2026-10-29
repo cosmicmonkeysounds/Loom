@@ -11,6 +11,7 @@
     "showctl": "node --experimental-strip-types --no-warnings scripts/show/showctl.ts",
     "sim": "node --experimental-strip-types --no-warnings scripts/sim/evening.ts",
     "sim:heart": "node --experimental-strip-types --no-warnings scripts/sim/heart.ts",
+    "sim:trabolta": "node --experimental-strip-types --no-warnings scripts/sim/trabolta-load.ts",
     "house:sync": "pnpm --filter @loom/house goldens && pnpm --filter @loom/house sync",
     "test": "pnpm -r test",
     "test:vr": "bash reinstall/vr/test/run.sh",
