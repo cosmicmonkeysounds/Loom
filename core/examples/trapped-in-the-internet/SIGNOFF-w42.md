@@ -20,6 +20,7 @@ in the thread.
 | Q-2 | **His name is the thread's own** | The strip names whoever the DM is with (*Jean Trabolta* on the show), never a hard-coded name. |
 | Q-3 | **A status strip, not a message** | It sits above the composer on the phone, and as an amber system line where the typing row goes on a wall terminal. It leaves the moment he starts answering (the usual *is typing…*) or the wait ends. |
 | Q-4 | **Times are rounded** | Under a minute in 5-second steps (*about 35 sec*), then whole minutes (*about 2 min*). |
+| Q-4b | **The time counts down, and is never wrong** | The estimate counts down between the server's updates. If it runs out while the guest is still waiting, the strip stops naming a time (*You are 2nd in line.*) rather than say *0 sec* or stay stuck. |
 | Q-5 | **A wall terminal holds the visit while the guest is in line** | The 30 s leash does not throw a waiting guest off the terminal (it waits as it does while he types). |
 | Q-6 | **Nothing new for performers or hosts** | A booth's own DM with him, and a host watching a guest's thread, still show only *is typing…*. Talk scenes (the TV) never show a line. |
 
@@ -37,6 +38,7 @@ Examples as they read:
 - *Jean Trabolta is answering other programs. You are 7th in line, about 1 min. Please do not move the mouse.*
 - *Jean Trabolta is answering other programs. You are next in line, about 5 sec. Please do not move the mouse.*
 - *Jean Trabolta is answering other programs. You are in line. Please do not move the mouse.*
+- *Jean Trabolta is answering other programs. You are 2nd in line. Please do not move the mouse.* (the estimate ran out)
 
 Beside it: an hourglass (⌛, it flips; still under reduced motion) and a
 thin navy progress bar on the phone, a ten-block bar `[■■■□□□□□□□]` on a
