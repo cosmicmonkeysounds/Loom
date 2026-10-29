@@ -10,6 +10,7 @@
 
 import { ALERT_LEVELS, type AlertLevel } from "../../../core/src/delivery.ts";
 import { verdictCall, type FactsLike, type FactVerdictLike } from "../../../core/src/host-board.ts";
+import type { MixChange, MusicCommand } from "../../../core/src/house-mixer.ts";
 
 /** The POST routes the panel may call — the server's host allowlist. */
 export const HOST_ROUTES = [
@@ -63,12 +64,19 @@ export const HOST_ROUTES = [
   // answers it live in the Desktop) or a canned line as Trabolta himself.
   // Never under the Mind's agent routes (the Mind stays out of Play).
   "/api/mod/talk",
+  // Wave 40 (contract C2 / C5): the house mixer from the Desk window — move
+  // the live balance (never audio.json), and the soundtrack's transport
+  // (skip, a scene by hand, stop, follow the story). Never the router's
+  // own meters route.
+  "/api/mod/audio/mix",
+  "/api/mod/audio/music",
 ] as const;
 export type HostRoute = (typeof HOST_ROUTES)[number];
 
-/** The GET reads: the host view (`?role=mod&host=1`), the recap and (wave
- *  25) the house desk (`?after=<rev>&wait=<s>` long-polls it). */
-export const HOST_READS = ["/api/state?role=mod&host=1", "/api/mod/recap", "/api/mod/desk"] as const;
+/** The GET reads: the host view (`?role=mod&host=1`), the recap, (wave
+ *  25) the house desk (`?after=<rev>&wait=<s>` long-polls it) and (wave
+ *  40) the mixer, polled each second while the Desk's 🎚 Mixer is open. */
+export const HOST_READS = ["/api/state?role=mod&host=1", "/api/mod/recap", "/api/mod/desk", "/api/mod/audio/mixer"] as const;
 
 /** A desk check's test (`house-desk.ts` `DeskTestCall`): one of the three
  *  test routes and its body. */
@@ -244,6 +252,12 @@ export function hostCalls(post: HostPost, alertsPath: () => string) {
     audioTest: (body: Record<string, unknown>) => post("/api/mod/audio/test", body),
     /** A light test: a look (`{look}`), a fixture's identify (`{fixture}`), or one state (`{fixture, set}`). */
     lightsTest: (body: Record<string, unknown>) => post("/api/mod/lights/test", body),
+    /** Wave 40: move the house mix (`{changes}`; a `reset` puts a key back
+     *  at 0 dB, unmuted). Resolves with `{ok, mix}`. */
+    mix: (changes: readonly MixChange[]) => post("/api/mod/audio/mix", { changes: changes.map((c) => ({ ...c })) }),
+    /** Wave 40: the soundtrack — `next` (one bed or all), `scene` (by hand),
+     *  `stop`, `story` (follow the story again). Resolves with `{ok, seq, router}`. */
+    music: (cmd: MusicCommand) => post("/api/mod/audio/music", { ...cmd }),
     /** Run a desk check's test (`deskChecks`' `test` / `extra`), only on its three routes. */
     deskTest: (call: DeskTestLike) => {
       if (!DESK_TEST_ROUTES.includes(call.route)) return Promise.reject(new Error(`not a test route: ${call.route}`));
