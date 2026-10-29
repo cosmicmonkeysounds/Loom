@@ -186,7 +186,21 @@ its **Desk** window. Help: `docs/help/authoring/49-house-setup.md`,
 
 ### Release status
 
-The VPS runs **`w37b`** (master `90bdd2e0`, shipped 2026-10-28; rollback
+The VPS runs **`w39`** (master `31377ada`, shipped 2026-10-28; rollback
+`w37b`): wave 39 (the house lights meet the reinstallation games: a program
+standing under a `rooms` bulb in the web or VR game breathes the real bulb,
+never a safety fixture; both games are lit by the real fixtures, or by the
+server's estimate of the last look; web quality tiers low/medium/high/auto
+with bloom and a grade pass, VR `graphics` tiers in `station.json`;
+`docs/loom-w39-contract.md`; the ⚙ Graphics copy is `DRAFT w39`). No
+`sync-show` was needed: the project's `lights.json` has no presence block,
+so the default (`rooms`) applies, the same set as the repo's. For it: on
+the Desktop `git pull` and `start-stagehand.ps1 -Restart lights`, reload
+the tent and the web game, re-export and sideload the Quest APK. Not yet
+proven on hardware: a look's command cancelling a Hue breathe, the tent
+MacBook's frame rate, the Quest holding 90 Hz on `medium`.
+
+Before it, `w37b` (master `90bdd2e0`, shipped 2026-10-28; rollback
 `w37`): wave 37 (the Play de-clutter: one × closes a scan, nothing floats
 over a scan or a card, one thing at the bottom of a booth, NEW MISSION said
 once, game pop-outs that yield and retire, a performer's feed about their
