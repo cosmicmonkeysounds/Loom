@@ -94,6 +94,9 @@ signal state_changed(state: GameFlow.State)
 const PLAYER_SCENE := preload("res://player/player.tscn")
 ## The trail is re-routed this often (twice a second).
 const TRAIL_INTERVAL := 0.5
+## The lobby and the intro float in the sky: feet this far (m) under their
+## floor have fallen through it, and go back on it.
+const FELL_BELOW := 3.0
 const CANDIDATE_INTERVAL := 5.0
 ## After a "not near the duck" answer, wait this long before claiming again.
 const FOUND_RETRY := 1.0
@@ -980,6 +983,7 @@ func _process(delta: float) -> void:
 			hud.notice("")
 	if check_away():
 		return
+	_catch_fall()
 	match flow.state:
 		GameFlow.State.LOBBY:
 			_tick_lobby(delta)
@@ -996,6 +1000,27 @@ func _process(delta: float) -> void:
 			if flow.tick(delta):
 				link.end_session("found")
 				enter_lobby()
+
+
+## The safety net under the lobby and the intro: a body that fell through
+## their floor (it never should) is put back on it, and the log says so.
+func _catch_fall() -> void:
+	var spot: Vector3
+	if flow.state == GameFlow.State.LOBBY:
+		spot = Lobby.SPOT
+	elif flow.state == GameFlow.State.PLAYING and intro.running():
+		spot = IntroSpace.SPOT
+	else:
+		return
+	if player.feet().y > spot.y - FELL_BELOW:
+		return
+	falls += 1
+	print("reinstall-vr: fell through the floor at %.1f m; back on it" % player.feet().y)
+	player.teleport(spot, player.head_yaw())
+
+
+## How often [method _catch_fall] caught a fall (for the tests).
+var falls := 0
 
 
 func _tick_lobby(delta: float) -> void:

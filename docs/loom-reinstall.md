@@ -1781,10 +1781,13 @@ Provision: `/terminal/?code=…&name=Kitchen&character=Trabolta&spot=start-bar&v
   right controller) the right stick's forward / back walks too, its weaker
   axis dropped unless the push is a real diagonal (`Locomotion.axis_lock`,
   0.5; once in, an axis holds down to 0.3, so a push near the edge never
-  flickers turning on and off). The rig moves every rendered frame
-  (`_process`), not on the physics tick, and `main.gd` asks for 90 Hz once
-  the OpenXR session has begun and sets the physics tick to the display's
-  rate (a 90 Hz tick on the Quest's default 72 Hz judders). Foveation is
+  flickers turning on and off). The turn and the vignette run every
+  rendered frame; walking, gravity and room scale stay on the physics
+  tick (moved per frame, the body fell through floors not yet in the
+  physics space), and `main.gd` asks for 90 Hz once the OpenXR session has
+  begun and sets the physics tick to the display's rate (a 90 Hz tick on
+  the Quest's default 72 Hz judders). A body under the lobby's or the
+  intro's floor is put back on it (`Game._catch_fall`, logged). Foveation is
   level 1 (low), dynamic. A comfort vignette closes while moving or turning (turning to
   0.85); walking into a wall gives a light haptic buzz (at most every
   0.6 s); room-scale head offset folded into the body. The buttons are the King's

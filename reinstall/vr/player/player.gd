@@ -8,11 +8,14 @@
 ##   left stick idle (the show's headsets have only the right controller),
 ##   its forward / back walks too, each axis locked out unless the push is
 ##   a real diagonal ([method Locomotion.axis_lock]).
-## - **Every rendered frame** (`_process`, not the physics tick): the view
-##   moves by exactly the frame's time, so walking and turning never step
-##   unevenly when the display and the physics tick drift apart (90 ticks
-##   on a 72 Hz display judders at 18 Hz — the eyes feel it in minutes).
-## - **Room scale**: each frame the head's horizontal offset from the
+## - **Two clocks.** The sticks, the turn and the vignette run every
+##   rendered frame (`_process`): a turn is only a rotation, and turning by
+##   exactly the frame's time never steps unevenly. Everything that touches
+##   the floors and walls (walking, gravity, room scale) stays on the
+##   physics tick, which `main.gd` matches to the display's rate: a body
+##   moved outside the tick fell through floors not yet in the physics
+##   space (the lobby's, built at start-up) on the Quest.
+## - **Room scale**: each physics tick the head's horizontal offset from the
 ##   body is folded into the body with its own slide (so a real step climbs a
 ##   stair and slides along a wall like a stick step) and taken back out of
 ##   the origin. Whatever the walls refused is pushed back too (past a few
@@ -50,9 +53,8 @@ const MAX_HEAD_GAP := 0.05
 const TURN_VIGNETTE := 0.85
 const VIGNETTE_CLOSE := 10.0
 const VIGNETTE_OPEN := 2.5
-## The longest step the rig takes at once (s). A frame is not a physics
-## tick: the first one after the house loads, or a hitch, can last a second,
-## and gravity over a whole second falls clean through a floor.
+## The longest turn step (s): a hitch (the first frame after the house
+## loads can last a second) must not jump the view round.
 const MAX_STEP := 1.0 / 30.0
 ## Walking into a wall buzzes the controllers at most this often (s).
 const WALL_BUMP_EVERY := 0.6
@@ -61,7 +63,7 @@ const WALL_BUMP_EVERY := 0.6
 
 ## Whether the rig runs on a headset (set by `main.gd` before play).
 var xr_active := false
-## The sticks after the dead zone, refreshed every frame (the lobby
+## The sticks after the dead zone, refreshed every rendered frame (the lobby
 ## picker reads them). Tests write them directly with [member read_input] off.
 var left_stick := Vector2.ZERO
 var right_stick := Vector2.ZERO
@@ -179,17 +181,23 @@ func face(yaw: float) -> void:
 # --- the loop ----------------------------------------------------------------
 
 
+## Every rendered frame: the sticks, the turn, the vignette.
 func _process(frame: float) -> void:
 	var delta := minf(frame, MAX_STEP)
 	if read_input:
 		_read_sticks()
-	if xr_active:
-		_fold_head()
 	if locomotion_enabled and delta > 0.0:
 		var turn := Locomotion.smooth_turn(right_stick.x, delta)
 		if turn != 0.0:
 			origin.global_transform = Locomotion.rotate_about(origin.global_transform, camera.global_position, turn)
 			_turn_flash = maxf(_turn_flash, absf(turn) / (Locomotion.TURN_RATE * delta))
+	_update_vignette(delta, Vector2(velocity.x, velocity.z).length())
+
+
+## Every physics tick: room scale, walking, gravity — all that collides.
+func _physics_process(delta: float) -> void:
+	if xr_active:
+		_fold_head()
 	var walk := Locomotion.head_relative(left_stick, head_yaw()) * Locomotion.WALK_SPEED if locomotion_enabled else Vector3.ZERO
 	velocity.x = walk.x
 	velocity.z = walk.z
@@ -199,7 +207,12 @@ func _process(frame: float) -> void:
 		velocity.y -= _gravity * delta
 	move_and_slide()
 	_wall_bump(delta, Vector2(walk.x, walk.z).length())
-	_update_vignette(delta, Vector2(velocity.x, velocity.z).length())
+
+
+## One frame and one tick of `delta` (the tests' and the autopilot's clock).
+func step(delta: float) -> void:
+	_process(delta)
+	_physics_process(delta)
 
 
 ## A light buzz when a walk is held up by a wall (not on every frame of it).
@@ -248,7 +261,7 @@ func _fold_head() -> void:
 	if d.length_squared() < 1e-6:
 		return
 	# move_and_slide moves velocity × the engine's own delta (physics or idle).
-	var dt := get_physics_process_delta_time() if Engine.is_in_physics_frame() else minf(get_process_delta_time(), MAX_STEP)
+	var dt := get_physics_process_delta_time() if Engine.is_in_physics_frame() else get_process_delta_time()
 	if dt <= 0.0:
 		return
 	var before := global_position
