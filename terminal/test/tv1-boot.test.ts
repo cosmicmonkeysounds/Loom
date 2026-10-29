@@ -183,10 +183,10 @@ describe("tv1 boot — the introduction", () => {
     const comes = new IntroMirror();
     let bye: (() => void) | null = null;
     try {
-      let last = introDeskAt(IN.back - frame, comes.at(IN.back - frame));
+      let last = introDeskAt(IN.back - frame, comes.showsAt(IN.back - frame));
       for (let t = IN.back; t <= IN.end; t += frame) {
         if (bye === null && t >= IN.back + 700) bye = noteWorldShowing();
-        const desk = introDeskAt(t, comes.at(t));
+        const desk = introDeskAt(t, comes.showsAt(t));
         expect(desk, String(t)).toBeGreaterThanOrEqual(last);
         last = desk;
       }
@@ -201,15 +201,15 @@ describe("tv1 boot — the introduction", () => {
     try {
       for (let t = IN.back; t <= IN.end; t += frame) {
         if (!gone && t >= IN.back + 2000) { bye2(); gone = true; }
-        expect(introDeskAt(t, goes.at(t)), String(t)).toBe(0);
+        expect(introDeskAt(t, goes.showsAt(t)), String(t)).toBe(0);
       }
     } finally {
       bye2();
     }
     // A scrub back before the hand-back reads the screen again.
-    expect(goes.at(IN.back + 100)).toBe(true);
-    expect(goes.at(IN.back - 100)).toBe(false);
-    expect(goes.at(IN.back + 100)).toBe(false);
+    expect(goes.showsAt(IN.back + 100)).toBe(true);
+    expect(goes.showsAt(IN.back - 100)).toBe(false);
+    expect(goes.showsAt(IN.back + 100)).toBe(false);
   });
 
   it("hands back to the mirror: fully transparent at its end", () => {

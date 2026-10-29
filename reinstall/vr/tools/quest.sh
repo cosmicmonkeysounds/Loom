@@ -6,11 +6,12 @@
 #
 #   tools/quest.sh setup [--yes]          check + fix the toolchain, fetch the OpenXR vendors plugin
 #   tools/quest.sh build [--debug] [--station vr-1] [--name "Headset 1"] [--code PASS] [--server URL]
+#                        [--graphics low|medium|high]
 #                                        export build/reinstall-vr[-<station>].apk (release by default)
 #   tools/quest.sh install [APK]          adb install -r + launch (the newest APK when none given)
-#   tools/quest.sh provision vr-1 --code PASS [--name …] [--server …]
+#   tools/quest.sh provision vr-1 --code PASS [--name …] [--server …] [--graphics …]
 #                                        push user://station.json to a DEBUG build over adb
-#   tools/quest.sh station vr-1 --code PASS [--name …] [--server …]
+#   tools/quest.sh station vr-1 --code PASS [--name …] [--server …] [--graphics …]
 #                                        print the station.json it would bake / push
 #   tools/quest.sh logs                   adb logcat, the game's lines only
 #
@@ -69,10 +70,14 @@ default_name() { # vr-1 → "Headset 1"; anything else → itself
   esac
 }
 
-station_json() { # station_json <station> <name> <code> <server>
-  printf '{\n  "server": "%s",\n  "code": "%s",\n  "station": "%s",\n  "name": "%s"\n}\n' \
-    "$(json_escape "$4")" "$(json_escape "$3")" "$(json_escape "$1")" "$(json_escape "$2")"
+station_json() { # station_json <station> <name> <code> <server> [graphics]
+  local gfx=""
+  [[ -n "${5:-}" ]] && gfx="$(printf ',\n  "graphics": "%s"' "$(json_escape "$5")")"
+  printf '{\n  "server": "%s",\n  "code": "%s",\n  "station": "%s",\n  "name": "%s"%s\n}\n' \
+    "$(json_escape "$4")" "$(json_escape "$3")" "$(json_escape "$1")" "$(json_escape "$2")" "$gfx"
 }
+
+valid_graphics() { [[ "$1" == "low" || "$1" == "medium" || "$1" == "high" ]]; } # wave 39: the picture's tier
 
 build_json() { # build_json <short sha> <UTC time> — the lobby's build stamp (config/build.json)
   printf '{\n  "build": "%s",\n  "at": "%s"\n}\n' "$(json_escape "$1")" "$(json_escape "$2")"
@@ -261,7 +266,7 @@ cmd_setup() {
 
 # ── build ─────────────────────────────────────────────────────────────────
 
-stage_project() { # stage_project <station> <name> <code> <server>
+stage_project() { # stage_project <station> <name> <code> <server> [graphics]
   run mkdir -p "$stage"
   [[ $DRY == 1 ]] || touch "$build/.gdignore"   # the outer project never imports build/
   run rsync -a --delete \
@@ -279,7 +284,7 @@ stage_project() { # stage_project <station> <name> <code> <server>
   fi
   if [[ -n "$1" ]]; then
     if [[ $DRY == 1 ]]; then echo "  (would bake $1 / $2 / $4 into $stage/config/station.json)"
-    else station_json "$1" "$2" "$3" "$4" > "$stage/config/station.json"; fi
+    else station_json "$1" "$2" "$3" "$4" "${5:-}" > "$stage/config/station.json"; fi
   fi
   # The lobby's build stamp (wave 26): the staged copy only, never the project.
   local sha when; sha="$(build_sha)"; when="$(date -u +%Y-%m-%dT%H:%MZ)"
@@ -288,10 +293,11 @@ stage_project() { # stage_project <station> <name> <code> <server>
 }
 
 cmd_build() {
-  local debug=0 station="" name="" code="${LOOM_MOD_CODE:-}" server="$DEFAULT_SERVER"
+  local debug=0 station="" name="" code="${LOOM_MOD_CODE:-}" server="$DEFAULT_SERVER" graphics=""
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --debug) debug=1 ;;
+      --graphics) graphics="$2"; shift ;;
       --station) station="$2"; shift ;;
       --name) name="$2"; shift ;;
       --code) code="$2"; shift ;;
@@ -300,6 +306,8 @@ cmd_build() {
     esac
     shift
   done
+  [[ -z "$graphics" ]] || valid_graphics "$graphics" || die "--graphics is low, medium or high"
+  [[ -z "$graphics" || -n "$station" ]] || die "--graphics needs --station (it is baked into the station's config)"
   if [[ -n "$station" ]]; then
     valid_station "$station" || die "bad station id '$station' (e.g. vr-1)"
     [[ -n "$code" ]] || die "build --station needs --code (or LOOM_MOD_CODE): the mod passcode baked in"
@@ -311,7 +319,7 @@ cmd_build() {
   [[ -n "$jdk" || $DRY == 1 ]] || die "no JDK 17–21 — run tools/quest.sh setup"
   [[ -n "$sdk" || $DRY == 1 ]] || die "no Android SDK — run tools/quest.sh setup"
 
-  stage_project "$station" "$name" "$code" "$server"
+  stage_project "$station" "$name" "$code" "$server" "$graphics"
 
   local out; out="$build/$(apk_name "$station" "$debug")"
   local mode="--export-release"; [[ $debug == 1 ]] && mode="--export-debug"
@@ -362,10 +370,11 @@ cmd_install() {
 
 cmd_station() {
   local station="${1:-}"; shift || true
-  local name="" code="${LOOM_MOD_CODE:-}" server="$DEFAULT_SERVER"
+  local name="" code="${LOOM_MOD_CODE:-}" server="$DEFAULT_SERVER" graphics=""
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --name) name="$2"; shift ;; --code) code="$2"; shift ;; --server) server="$2"; shift ;;
+      --graphics) graphics="$2"; shift ;;
       *) die "unknown flag $1" ;;
     esac
     shift
@@ -373,7 +382,8 @@ cmd_station() {
   valid_station "$station" || die "usage: tools/quest.sh $CMD vr-1 --code PASS [--name …] [--server …]"
   [[ -n "$code" ]] || die "--code (or LOOM_MOD_CODE) is required: the event's mod passcode"
   [[ -n "$name" ]] || name="$(default_name "$station")"
-  STATION_OUT="$(station_json "$station" "$name" "$code" "$server")"
+  [[ -z "$graphics" ]] || valid_graphics "$graphics" || die "--graphics is low, medium or high"
+  STATION_OUT="$(station_json "$station" "$name" "$code" "$server" "$graphics")"
 }
 
 cmd_provision() {

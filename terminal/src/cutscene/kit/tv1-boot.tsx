@@ -346,7 +346,7 @@ export function IntroTv({ t, sfx, reduced, voice }: SceneProps) {
   // or goes mid hand-back never cuts the desktop away or pops it in.
   const latch = useRef<IntroMirror | null>(null);
   latch.current ??= new IntroMirror();
-  const mirror = latch.current.at(t);
+  const mirror = latch.current.showsAt(t);
   const desk = introDeskAt(t, mirror);
   return (
     <div className="kit-stage a1-tv a1-in" style={{ background: introStageBg(t, mirror), opacity: out }}>
@@ -376,7 +376,7 @@ export function IntroTv({ t, sfx, reduced, voice }: SceneProps) {
  *  a peek (and a scrub back before it reads it again). */
 export class IntroMirror {
   private held: boolean | null = null;
-  at(t: number, showing: () => boolean = worldCelebratesFinds): boolean {
+  showsAt(t: number, showing: () => boolean = worldCelebratesFinds): boolean {
     if (t < IN.back) {
       this.held = null;
       return showing();

@@ -33,7 +33,7 @@ The design contract is [`docs/loom-reinstall.md`](../../docs/loom-reinstall.md)
 ```bash
 pnpm --filter loom-reinstall dev        # :5176, proxies /api + /e to LOOM_SERVER (default :7000)
 pnpm --filter loom-reinstall build      # → dist/ (base /reinstall/), served by the event server
-pnpm --filter loom-reinstall test       # 623 tests in 46 files: physics, input, sticks, the pose pump, config, HUD, stream, voice, cams, the moments and lines, map editor (ops, yard cut fuzz, speakers, lights), the autopilot
+pnpm --filter loom-reinstall test       # 678 tests in 51 files: physics, input, sticks, the pose pump, config, HUD, stream, voice, cams, the moments and lines, the house lights + graphics quality, map editor (ops, yard cut fuzz, speakers, lights + presence), the autopilot
 pnpm --filter loom-reinstall typecheck
 ```
 
@@ -61,6 +61,9 @@ https://<site>/reinstall/?code=<mod passcode>&name=Spare tablet&role=both
   only sends programs to headsets.
 - `camera=environment` uses the back camera (default `user`, the front).
 - `arrows=strafe` makes ←/→ strafe instead of turn.
+- `quality=low|medium|high` caps the graphics (wave 39; default: no cap,
+  `auto`). It stays on the URL; the tent terminal's link takes it too
+  (`/terminal/?…&spot=tent&quality=medium`).
 
 The passcode and the hints are scrubbed from the address bar at once. A
 stored token the server no longer accepts sends the device back to setup.
@@ -168,6 +171,21 @@ shows in the server room once the King has fallen, and a floppy disk
 floats in the Hard Drive. Their lines are captioned in a *Message* window
 and spoken by the device voice (`game/lines.ts`). `game/moments.ts`
 decides when to post and what each answer means.
+
+**The real house lights and the graphics** (wave 39,
+[`docs/loom-reinstall.md`](../../docs/loom-reinstall.md) §3). The stream's
+`lights` frame draws every real fixture as a bulb in the colour and level
+it shows in the house, breathing while a program stands under it (the
+real bulb breathes too); the nearest get real point lights, and the
+house's ambient dims toward a night floor (never so dark Gerald is hard
+to see). The ⚙ button (top right) picks the graphics: **Auto** (the
+default: it starts at Medium, Low on a touch screen, and follows the
+frame rate), **Low** (no post-processing, 2 lights), **Medium** (bloom at
+half resolution, vignette and grain, 4 lights) or **High** (full bloom,
+a faint chromatic edge, MSAA, 8 lights), remembered on the device and
+never above the URL's `quality` cap. On the dev server, `?lightsDemo=1`
+feeds a synthetic lights frame (a light per room) for a check without the
+lights module.
 
 Other players are ghosts wearing their profile picture as a head
 (`PlayerState.avatar` → `/e/<id>/api/avatar/<key>`, `@loom/house/three`

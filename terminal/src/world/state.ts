@@ -255,6 +255,9 @@ export function reduce(state: WorldState, frame: SpatialFrame, now: number): Wor
     case "reset":
       // The sessions end; the King's bar is the story's and comes back on a `king` frame.
       return { ...state, players: new Map(), celebrations: [], resetAt: now };
+    case "lights":
+      // Wave 39: the house lights are the games' (the world view keeps its own look).
+      return state;
   }
 }
 

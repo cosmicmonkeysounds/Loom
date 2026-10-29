@@ -43,11 +43,18 @@
 //! where the lock is refused). The session opens with the intro tutorial
 //! (`tutorial.ts`, `opts.intro`): when it ends (or is skipped) the game posts
 //! `ready` and its clock — the path reveal's too — starts from there.
+//!
+//! Wave 39 (C4): the real house lights (`lamps.ts`, off the stream's `lights`
+//! frame) — a bulb per fixture, breathing while a program is under it, a
+//! fixed pool of point lights on the nearest, the ambient dimmed toward a
+//! night floor — and the graphics quality (`quality.ts`: a tier, or `auto`
+//! following the frame time under the device's cap), with the
+//! post-processing (`post.ts`: bloom + grade) loaded only when a tier wants it.
 
-import { PerspectiveCamera, Scene, Vector3, WebGLRenderer } from "three";
+import { ACESFilmicToneMapping, PerspectiveCamera, Scene, Vector3, WebGLRenderer } from "three";
 import type { Group } from "three";
-import { buildWalls, heartProps, heartReached, outsideGround, pathLength, pickupProps, pickupReach, presenceRoom, spaceOf, toSpace, wrapYaw, yawFromSpace, yawToSpace } from "@loom/house";
-import type { Assignment, DuckSpot, HouseMap, KingState, PlayerPose, PlayerState, Prop, Spawn, SpatialFrame, Vec3 } from "@loom/house";
+import { buildWalls, heartProps, locate, heartReached, outsideGround, pathLength, pickupProps, pickupReach, presenceRoom, spaceOf, toSpace, wrapYaw, yawFromSpace, yawToSpace } from "@loom/house";
+import type { Assignment, DuckSpot, GameLights, HouseMap, KingState, PlayerPose, PlayerState, Prop, Spawn, SpatialFrame, Vec3 } from "@loom/house";
 import { applySpace, buildHouseScene, createAvatar, createDuck, createTrail, GAME_TERMINAL_SCALE, houseAtmosphere, PoseBuffer, spaceGroup } from "@loom/house/three";
 import type { Avatar, Duck, HouseScene, King, Trail } from "@loom/house/three";
 import { fetchHouse, postEnd, postFound, postKingHit, postMoment, postPose, postReady, streamProbe, streamUrl, type FoundAnswer, type MomentLine, type MomentReply } from "../api.ts";
@@ -81,6 +88,10 @@ import type { DeviceSpeaker } from "./lines.ts";
 import { escapeDue, escapeStep, heartStep, PICKUP_NOTICE, pickupStep, SCARE_MS, SCARE_WAIT_MS } from "./moments.ts";
 import { bodyAfterRemap, buildPhysicsWorld, eyeOf, move, NO_INPUT, spawnBody, type Body, type PhysicsOptions, type PhysicsWorld } from "./physics.ts";
 import { NoRenderer } from "./no-start.ts";
+import { demoLights } from "./house-lights.ts";
+import { HouseLamps } from "./lamps.ts";
+import type { Post } from "./post.ts";
+import { AutoQuality, LEVEL_OF, settingsAt, startLevel, tierOf, type QualityChoice, type QualityLevel, type QualitySettings, type QualityTier } from "./quality.ts";
 import { PosePump } from "./pump.ts";
 import { trail, trailMap } from "./trail.ts";
 
@@ -93,6 +104,13 @@ const START_PITCH = -8;
 const DEG = Math.PI / 180;
 /** While a line plays, the mic is held this far ahead, every frame (ms). */
 const SPEAKING_HOLD_MS = 250;
+/** The tone map's exposure (ACES filmic, every tier): the house's colours
+ *  stay as bright as they were before the tone map. */
+export const EXPOSURE = 1.3;
+/** The point lights go to the nearest fixtures this often (ms). */
+const LAMPS_EVERY_MS = 500;
+/** `?lightsDemo=1` (dev only): a synthetic `lights` frame this often (ms). */
+const DEMO_EVERY_MS = 250;
 
 const wait = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
 
@@ -134,6 +152,14 @@ export interface HudState {
   /** Hint "click to look around": the mouse could be the game's (pointer
    *  lock) and isn't yet. */
   mouseHint: boolean;
+  /** (wave 39) The graphics: the setting, the tier drawn now, the device's cap. */
+  quality: QualityHud;
+}
+
+export interface QualityHud {
+  choice: QualityChoice;
+  tier: QualityTier;
+  cap: QualityTier;
 }
 
 
@@ -185,6 +211,10 @@ export interface GameOptions {
    *  `skippable` shows Skip (the program completed a reinstallation).
    *  Absent: no tutorial (the device turned the intro off). */
   intro?: { touch: boolean; skippable: boolean };
+  /** (wave 39) The graphics setting and the device's cap (default: auto, no cap). */
+  quality?: { choice: QualityChoice; cap: QualityTier };
+  /** (wave 39, dev only) Feed a synthetic `lights` frame (`demoLights`). */
+  lightsDemo?: boolean;
 }
 
 interface Ghost {
@@ -319,18 +349,37 @@ export class Game {
   private mouseLocked = false;
   /** The browser refused the lock (`pointerlockerror`): a drag looks instead. */
   private lockRefused = false;
+  // Wave 39: the real house lights and the graphics quality.
+  private readonly lamps: HouseLamps;
+  private lastLampsAt = Number.NEGATIVE_INFINITY;
+  private demoTimer = 0;
+  private qualityChoice: QualityChoice;
+  private readonly qualityCap: QualityTier;
+  private auto: AutoQuality;
+  private settings: QualitySettings;
+  /** The post-processing (bloom + grade) while the tier wants it and it has loaded. */
+  private post: Post | null = null;
+  /** Bumped on every tier change: a post module that lands late for an old tier is dropped. */
+  private postWanted = 0;
+  private lastFrameAt = 0;
 
   constructor(opts: GameOptions) {
     this.o = opts;
     const coarse = typeof matchMedia === "function" && matchMedia("(pointer: coarse)").matches;
-    const dpr = window.devicePixelRatio || 1;
-    // A cheap tablet at DPR 1 pays for MSAA it can't afford.
+    // No MSAA on the canvas (wave 39): `high` multisamples the post-processing's
+    // target instead, and `low` / `medium` keep the fill rate for the frame.
     try {
-      this.renderer = new WebGLRenderer({ canvas: opts.canvas, antialias: !(coarse && dpr < 2), powerPreference: "high-performance" });
+      this.renderer = new WebGLRenderer({ canvas: opts.canvas, antialias: false, powerPreference: "high-performance" });
     } catch (e) {
       throw new NoRenderer(e);
     }
-    this.renderer.setPixelRatio(Math.min(dpr, 1.5));
+    this.renderer.toneMapping = ACESFilmicToneMapping;
+    this.renderer.toneMappingExposure = EXPOSURE;
+    this.qualityChoice = opts.quality?.choice ?? "auto";
+    this.qualityCap = opts.quality?.cap ?? "high";
+    this.auto = this.makeAuto(coarse, performance.now());
+    this.settings = settingsAt(this.auto.level, window.devicePixelRatio || 1);
+    this.renderer.setPixelRatio(this.settings.pixelRatio);
     houseAtmosphere(this.scene);
     this.camera.rotation.order = "YXZ";
 
@@ -358,6 +407,9 @@ export class Game {
     root.add(this.duck.object);
     this.trail = createTrail();
     root.add(this.trail.object);
+    this.lamps = new HouseLamps(opts.house, this.settings.pointLights);
+    this.lamps.bindHouse(opts.house, this.house.root);
+    root.add(this.lamps.object);
 
     this.body = { ...spawnBody(opts.house, opts.assignment.spawn), pitch: START_PITCH };
     this.tutorial = opts.intro !== undefined ? startTutorial(opts.intro.touch) : null;
@@ -397,6 +449,7 @@ export class Game {
       streamUrl(this.o.base, this.o.assignment.token, this.o.device),
       {
         onFrame: (f) => this.onFrame(f),
+        onLights: (l) => this.onLights(l),
         onState: (up) => (this.live = up),
       },
       { probe: streamProbe(this.o.base, this.o.assignment.token) },
@@ -409,7 +462,75 @@ export class Game {
     });
     this.voice = this.startVoice();
     this.syncFeeds();
+    if (this.o.lightsDemo === true) {
+      const feed = () => this.onLights(demoLights(this.map, this.body.p, Date.now()));
+      feed();
+      this.demoTimer = window.setInterval(feed, DEMO_EVERY_MS);
+    }
+    this.applyQuality();
     this.loop(performance.now());
+  }
+
+  // --- wave 39: the house lights and the graphics ------------------------
+
+  /** A `lights` frame: the real house as it is now. */
+  private onLights(l: GameLights): void {
+    if (this.phase === "ended") return;
+    this.lamps.set(l, performance.now() / 1000);
+    this.lastLampsAt = Number.NEGATIVE_INFINITY;
+  }
+
+  private makeAuto(coarse: boolean, now: number): AutoQuality {
+    const start = startLevel(this.qualityChoice, this.qualityCap, coarse);
+    const max = this.qualityChoice === "auto" ? LEVEL_OF[this.qualityCap] : start;
+    return new AutoQuality({ start, max, adaptive: this.qualityChoice === "auto", now });
+  }
+
+  /** The settings control: a new choice (re-started from its own tier). */
+  setQuality(choice: QualityChoice): void {
+    if (choice === this.qualityChoice) return;
+    this.qualityChoice = choice;
+    const coarse = typeof matchMedia === "function" && matchMedia("(pointer: coarse)").matches;
+    // Auto picks up from where the tier is now; a fixed tier goes there.
+    const now = performance.now();
+    this.auto = choice === "auto" ? new AutoQuality({ start: Math.min(this.auto.level, LEVEL_OF[this.qualityCap]) as QualityLevel, max: LEVEL_OF[this.qualityCap], adaptive: true, now }) : this.makeAuto(coarse, now);
+    this.applyQuality();
+    this.lastHudAt = Number.NEGATIVE_INFINITY;
+  }
+
+  /** Draw at the auto's level: pixel ratio, the light pool, the post-processing. */
+  private applyQuality(): void {
+    const s = settingsAt(this.auto.level, window.devicePixelRatio || 1);
+    const was = this.settings;
+    this.settings = s;
+    if (s.pixelRatio !== this.renderer.getPixelRatio()) this.renderer.setPixelRatio(s.pixelRatio);
+    this.lamps.setPool(s.pointLights);
+    this.lastLampsAt = Number.NEGATIVE_INFINITY;
+    const samePost = this.post !== null && was.post && s.post && was.bloom === s.bloom && was.film === s.film && was.chroma === s.chroma && was.msaa === s.msaa;
+    if (!samePost) {
+      this.post?.dispose();
+      this.post = null;
+      const ticket = ++this.postWanted;
+      if (s.post) {
+        void import("./post.ts").then(
+          ({ createPost }) => {
+            if (ticket !== this.postWanted || this.phase === "ended") return;
+            try {
+              this.post = createPost(this.renderer, this.scene, this.camera, s);
+              this.resize();
+            } catch (e) {
+              console.warn("reinstall: no post-processing", e);
+            }
+          },
+          (e: unknown) => console.warn("reinstall: the post-processing didn't load", e),
+        );
+      }
+    }
+    this.resize();
+  }
+
+  private qualityHud(): QualityHud {
+    return { choice: this.qualityChoice, tier: tierOf(this.auto.level), cap: this.qualityCap };
   }
 
   /** The voice link on the effects' context, when this device has it on. */
@@ -526,6 +647,11 @@ export class Game {
     this.phase = this.phase === "found" ? "found" : "ended";
     cancelAnimationFrame(this.raf);
     window.clearInterval(this.pumpTimer);
+    window.clearInterval(this.demoTimer);
+    this.postWanted += 1;
+    this.post?.dispose();
+    this.post = null;
+    this.lamps.dispose();
     this.pump.stop();
     this.stream?.close();
     this.feeds?.dispose();
@@ -640,6 +766,8 @@ export class Game {
         void this.pump.tick(); // timed out meanwhile → the 410 ends it as "over"
       }
       this.last = now;
+      this.auto.reset(now);
+      this.lastFrameAt = 0;
       this.loop(now);
     };
     // Leaving the page (reload, close, navigate) ends the session at once —
@@ -686,6 +814,7 @@ export class Game {
     const w = Math.max(1, el.clientWidth);
     const h = Math.max(1, el.clientHeight);
     this.renderer.setSize(w, h, false);
+    this.post?.setSize(w, h);
     this.camera.aspect = w / h;
     // A portrait tablet sees more ceiling than room at 70°: widen a little.
     this.camera.fov = w < h ? 78 : 70;
@@ -699,6 +828,9 @@ export class Game {
     this.raf = requestAnimationFrame(this.loop);
     const dt = Math.min(0.1, Math.max(0, (now - (this.last || now)) / 1000));
     this.last = now;
+    // The frame rate decides `auto`'s tier (a held walk under an overlay still draws).
+    if (this.lastFrameAt > 0 && this.auto.sample(now, now - this.lastFrameAt) !== null) this.applyQuality();
+    this.lastFrameAt = now;
     this.frame(now, dt);
   };
 
@@ -770,12 +902,18 @@ export class Game {
     this.duck.update(dt);
     this.trail.update(dt);
     this.house.update(dt, this.camera);
+    if (now - this.lastLampsAt >= LAMPS_EVERY_MS) {
+      this.lastLampsAt = now;
+      this.lamps.repick(this.body.p, locate(this.map, this.body.p).floor);
+    }
+    this.lamps.update(now / 1000, dt);
     for (const g of this.ghosts.values()) {
       const s = g.buffer.sample(now);
       if (s !== null) g.avatar.setPose(s.p, s.yaw, s.pitch);
       g.avatar.update(dt);
     }
-    this.renderer.render(this.scene, this.camera);
+    if (this.post) this.post.render(dt);
+    else this.renderer.render(this.scene, this.camera);
 
     if (now - this.lastHudAt >= HUD_EVERY_MS) {
       this.lastHudAt = now;
@@ -848,6 +986,7 @@ export class Game {
       caption: this.caption,
       tutorial: this.tutorial !== null && this.phase === "playing" ? tutorialHud(this.tutorial, this.o.intro?.skippable === true) : null,
       mouseHint: !this.mouseLocked && !this.lockRefused,
+      quality: this.qualityHud(),
     });
   }
 
@@ -1324,6 +1463,8 @@ export class Game {
     this.feeds?.forget();
     this.root.add(scene.root);
     applySpace(this.root, spaceOf(house, "web"));
+    this.lamps.bindHouse(house, scene.root);
+    this.lastLampsAt = Number.NEGATIVE_INFINITY;
     this.map = house;
     this.mapVersion = version;
     this.voice?.remap();

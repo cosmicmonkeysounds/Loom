@@ -51,6 +51,12 @@ signal stream_frame(event: String, data: Variant)
 ## The answer to [method try_setup]: `ok`, else `message` for the SET UP
 ## panel ("That isn't a moderator passcode." / "Can't reach the server.").
 signal setup_answered(ok: bool, message: String)
+## The house's real lights changed (wave 39, C5): the spatial stream's
+## `lights` frame read by [method HouseLights.game_lights_of] (`GameLights`:
+## `{at, source, pulse, lights: [{id, room, pos, kind, color, level,
+## effect, pulse, safety}]}`), or `{}` once the link is gone — the house
+## then looks as it did before the lights frame existed.
+signal lights_changed(lights: Dictionary)
 
 ## The station's configuration ([StationConfig]).
 var config: Dictionary = StationConfig.defaults()
@@ -65,6 +71,8 @@ var status := ""
 var king: Dictionary = {}
 ## The map warning in force ([signal map_warning]; `""` = the event's map is up).
 var map_warning_text := ""
+## The latest `lights` frame ([signal lights_changed]; `{}` = none).
+var lights: Dictionary = {}
 
 
 ## Ask the server to start `guest` on this station.
@@ -239,6 +247,22 @@ func _adopt_king(k: Variant) -> void:
 		return
 	king = next
 	king_changed.emit(king)
+
+
+## Take a `lights` frame off the wire ([method HouseLights.game_lights_of]);
+## one that isn't a frame is ignored. `{}` forgets the last one.
+func _adopt_lights(raw: Variant) -> void:
+	if raw is Dictionary and (raw as Dictionary).is_empty():
+		if lights.is_empty():
+			return
+		lights = {}
+		lights_changed.emit(lights)
+		return
+	var next: Variant = HouseLights.game_lights_of(raw)
+	if next == null:
+		return
+	lights = next
+	lights_changed.emit(lights)
 
 
 ## Parse and emit a map from a JSON string; false when it isn't one.

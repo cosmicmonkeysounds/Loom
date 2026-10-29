@@ -8,7 +8,7 @@
 ##   godot --path . -- --server http://10.0.0.2:7000 --code 4821 \
 ##         --station vr-1 --name "Headset 1" [--guest g-3f9a1c] [--offline]
 ##         [--autopilot [--hit-king]] [--voice false] [--mic false] [--trail-delay 0]
-##         [--intro false]
+##         [--intro false] [--graphics low|medium|high]
 ##
 ## `voice` (default on) is the voice link (wave 19): the terminals heard in
 ## the house, this headset heard on them; `mic` (default on) off = listen only.
@@ -20,6 +20,10 @@
 ## `intro` (default on, wave 33) plays the reinstallation video and the
 ## tutorial before each walk; `--intro false` goes straight to the house
 ## (the autopilot always does).
+##
+## `graphics` (wave 39, default `medium`) is the picture's tier
+## ([HouseLights]): `low` (2 real house lights), `medium` (4) or `high` (5,
+## plus glow and 2× MSAA). Anything else reads as `medium`.
 ##
 ## `--autopilot` (dev / CI only) walks the trail to the duck by itself and
 ## quits when the session is over — see [Autopilot]. With `--hit-king` it
@@ -54,6 +58,7 @@ const KEYS := {
 	"mic": TYPE_BOOL,
 	"trail_delay": TYPE_FLOAT,
 	"intro": TYPE_BOOL,
+	"graphics": TYPE_STRING,
 }
 
 
@@ -71,6 +76,7 @@ static func defaults() -> Dictionary:
 		"mic": true,
 		"trail_delay": HouseRoute.PATH_REVEAL_MS / 1000.0,
 		"intro": true,
+		"graphics": HouseLights.DEFAULT_TIER,
 	}
 
 
@@ -94,6 +100,10 @@ static func merge(base: Dictionary, overlay: Dictionary) -> Dictionary:
 				out[k] = float(v)
 			elif v is String and (v as String).strip_edges().is_valid_float() and float(v) >= 0.0:
 				out[k] = float(v)
+		elif k == "graphics":
+			# Only a tier; anything else keeps what was there.
+			if v is String and HouseLights.TIERS.has((v as String).strip_edges().to_lower()):
+				out[k] = (v as String).strip_edges().to_lower()
 		elif v is String or v is float or v is int:
 			var s := str(v).strip_edges()
 			if s != "":

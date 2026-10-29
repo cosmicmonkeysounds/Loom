@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { applyHints, baseOf, CONFIG_KEY, defaultConfig, dropConfig, hintsFromSearch, loadConfig, provision, saveConfig, withoutSecrets } from "../src/config.ts";
+import { applyHints, baseOf, CONFIG_KEY, defaultConfig, dropConfig, hintsFromSearch, loadConfig, provision, qualityHint, saveConfig, withoutSecrets } from "../src/config.ts";
 
 class MemoryStorage {
   readonly map = new Map<string, string>();
@@ -24,7 +24,25 @@ describe("URL hints", () => {
       arrowsTurn: false,
       voice: null,
       intro: null,
+      quality: null,
     });
+  });
+
+  it("reads the graphics cap (quality=, wave 39), keeps it on the URL and in the config", () => {
+    expect(hintsFromSearch("?quality=medium").quality).toBe("medium");
+    expect(hintsFromSearch("?quality=AUTO").quality).toBe("auto");
+    expect(hintsFromSearch("?quality=ultra").quality).toBeNull();
+    expect(qualityHint("?code=x&quality=low")).toBe("low");
+    expect(qualityHint("")).toBeNull();
+    expect(withoutSecrets("?code=x&quality=low")).toBe("?quality=low");
+    const c = applyHints(defaultConfig({ eventId: "e1", token: "t" }), { name: null, role: null, camera: null, arrowsTurn: null, voice: null, quality: "low" });
+    expect(c.quality).toBe("low");
+    expect(applyHints(c, { name: null, role: null, camera: null, arrowsTurn: null, voice: null }).quality).toBe("low");
+    const m = new Map<string, string>();
+    saveConfig(c, { setItem: (k, v) => void m.set(k, v) });
+    expect(loadConfig({ getItem: (k) => m.get(k) ?? null })?.quality).toBe("low");
+    m.set(CONFIG_KEY, JSON.stringify({ ...c, quality: "ultra" }));
+    expect(loadConfig({ getItem: (k) => m.get(k) ?? null })?.quality).toBeUndefined();
   });
 
   it("reads the voice link switch (voice=1 / voice=0)", () => {
@@ -34,7 +52,7 @@ describe("URL hints", () => {
   });
 
   it("ignores junk and blanks", () => {
-    expect(hintsFromSearch("?name=%20&role=admin&camera=side&arrows=x")).toEqual({ code: "", name: null, role: null, camera: null, arrowsTurn: null, voice: null, intro: null });
+    expect(hintsFromSearch("?name=%20&role=admin&camera=side&arrows=x")).toEqual({ code: "", name: null, role: null, camera: null, arrowsTurn: null, voice: null, intro: null, quality: null });
   });
 
   it("withoutSecrets scrubs the passcode and the hints but keeps the rest", () => {

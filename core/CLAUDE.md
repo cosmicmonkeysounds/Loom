@@ -26,7 +26,7 @@ The show, *Trapped in the Internet* (Oct 31 2026), is the Loom project in
 | `server/registry.ts` | `EventRegistry`: one `EventRuntime` per event, rehydrated at boot |
 | `server/views.ts`, `chat.ts` | pure projections: `GuestView` / `PrimeView` / `ModView`, and SimEvent → channel messages. The editor imports both (`@loom/core/views`, `@loom/core/chat`) |
 | `server/routes/` | route modules split out of the runtime: `host.ts` (the host allowlist), `screen.ts` (the terminals' screen state + heartbeat), `claims.ts`, `crews.ts`, `sides.ts`, `cards.ts`, `recap.ts`, `mod-log.ts`, `metrics.ts`, `press-lines.ts`, and the OCT31 item files `k12.ts` (print sheet), `k13.ts` (check-in), `k31.ts` / `k31b.ts` (push), `n02.ts` (re-pair, release), `rejoin.ts` (wave 23: badges, invitations re-entering, ask a host, per-part cast cards) |
-| `server/` hubs | transport-free, clock-injected classes: `agents.ts` (`AgentHub`), `spatial.ts` (`SpatialHub`), `spatial-voice.ts`, `spatial-cams.ts`, `wallet.ts` (`WalletBook`), `facts.ts` (`FactsBook`), `push.ts` (`PushHub`), `audio.ts`, `lights.ts`, `desk.ts` (`DeskHub`, wave 25: the house desk's runs, playhead, check marks; pure model `src/house-desk.ts`), `collab.ts` (`CollabHub`, Yjs) |
+| `server/` hubs | transport-free, clock-injected classes: `agents.ts` (`AgentHub`), `spatial.ts` (`SpatialHub`), `spatial-voice.ts`, `spatial-cams.ts`, `wallet.ts` (`WalletBook`), `facts.ts` (`FactsBook`), `push.ts` (`PushHub`), `audio.ts`, `lights.ts`, `lights-shown.ts` (wave 39: the lights estimate + the games' `lights` frame feed), `desk.ts` (`DeskHub`, wave 25: the house desk's runs, playhead, check marks; pure model `src/house-desk.ts`), `collab.ts` (`CollabHub`, Yjs) |
 | `server/` control plane | `config.ts` (env), `boot.ts`, `db/` (`queries.ts`: access is `getProjectFor` / `listProjectsFor`), `auth-server.ts` (BetterAuth), `projects.ts`, `events-api.ts`, `collab-api.ts`, `mail.ts`, `migrate.ts` |
 | `server/store.ts` | the per-event state dir: journal, codes, sessions, meta (scenario source + phase), project snapshots |
 | `scripts/` | `titi-facts.ts`, `loomcheck.ts`, `show-page.ts`, `sync-example.ts`, `live-guard.ts` |
@@ -72,7 +72,9 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   each pickup (`picked`), each wall terminal's visit floor per guest
   (`terminal-visits.ts`, `/api/mod/impersonate` `visitSeq`, wave 28), the cam upload's `watched`,
   a public talk request and the last canned Clippy steer (`talkDirection`,
-  wave 32: a restart never re-asks it; the host taps again), and
+  wave 32: a restart never re-asks it; the host taps again), the house
+  lights' presence pulses, the module's `shown` report and the server's
+  lights estimate (wave 39), and
   most hub timers live in memory and are lost on a process restart.
   Document a new one the same way.
 - **Server changes are additive.** Old clients (terminals on old
@@ -140,6 +142,19 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   voice relay (`voicePlayers()`), the screen state's `spot.here`
   (`spotHere`) and a game session's camera list judge by it; the stream's
   `room` stays the raw one.
+- **The house lights meet the games** (wave 39,
+  [`docs/loom-w39-contract.md`](../docs/loom-w39-contract.md) C2,
+  [`docs/loom-reinstall.md`](../docs/loom-reinstall.md) §1.4 + §2.2).
+  `SpatialHub` runs `presenceStep` on every flush / leave / reset / map
+  swap through injected `lights` / `onPresence` options (it never imports
+  `LightsHub`); `LightsHub.setPresence` moves `presenceSeq` (the GET's
+  `presence` field and `presence=<seq>` cursor). `POST
+  /api/mod/lights/shown` (mod only, never on the host allowlist) feeds the
+  `house` source; `lights-shown.ts` holds the `estimate` (fed by live
+  `cue X` looks in `fanout` via `lightCues`, `LightsHub.onChange` tests,
+  the `boot` look) and `GameLightsFeed`, which sends the spatial stream's
+  `lights` frame (after `hello`, on change ≤ 4/s, while an estimate
+  animates). Tests: `test/w39-lights-presence.test.ts`.
 - **Talk scenes** (wave 32, [`docs/loom-w32-contract.md`](../docs/loom-w32-contract.md)).
   The story's `Night.talk` names one (`intro`, `bottle`, `ad`, `beans`;
   `"none"` otherwise) and `src/talk-scenes.ts` `TALK_SCENES` holds each

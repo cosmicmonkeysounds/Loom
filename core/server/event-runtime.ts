@@ -17,7 +17,7 @@ import { readFileSync, statSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { ESCAPE_COOLDOWN_MS, VOICE_MAX_BYTES, kingSignal, lightStateDoes, lightStateProblems, validateHouse, voiceOn, type HouseMap, type KingState, type LightState, type MapVariantsResponse } from "@loom/house";
+import { ESCAPE_COOLDOWN_MS, VOICE_MAX_BYTES, kingSignal, lightStateDoes, lightStateProblems, validateHouse, voiceOn, type GameLights, type HouseMap, type KingState, type LightState, type MapVariantsResponse } from "@loom/house";
 
 import { asNumber, truthy } from "../src/runtime/expr.ts";
 import { Sim, type SimEvent } from "../src/runtime/sim/index.ts";
@@ -80,7 +80,8 @@ import { guestSide } from "./routes/sides.ts";
 import { CrewRoutes, answeredInviteCards, crewDrafts } from "./routes/crews.ts"; // w18 crews
 import { isCrewId, isCrewRoom } from "../src/runtime/sim/crews.ts"; // w18 crews
 import { AUDIO_FILE, AudioHub, audioProblems, handleAudioGet, handleAudioPost, type AudioContext } from "./audio.ts";
-import { LIGHTS_FILE, LightsHub, handleLightsGet, handleLightsPost, lightsProblems, type LightsContext } from "./lights.ts";
+import { LIGHTS_FILE, LightsHub, handleLightsGet, handleLightsPost, lightsProblems, type LightTest, type LightsContext } from "./lights.ts";
+import { GameLightsFeed, LightsEstimate, buildGameLights } from "./lights-shown.ts";
 import { DESK_BY, DESK_FILE, DeskHub, deskHouseOf, deskLightFixtures, deskProblems, deskRefsOf, deskSeen, handleDeskGet, handleDeskPost, lookMsOf, type DeskContext, type DeskTimers } from "./desk.ts";
 import { DESK_SPEECH_GRACE_MS } from "../src/house-desk.ts";
 import { ScreenWatch, speechWatchOf, handleScreenGet, handleScreenTerminalsGet, handleScreenVoicePost, screenKingOf, screenTerminals } from "./routes/screen.ts";
@@ -861,6 +862,15 @@ export class EventRuntime {
   readonly lights: LightsHub;
   /** The house desk: its cue list, runs, playhead and checks (`desk.ts`, wave 25). */
   readonly desk: DeskHub;
+  /** (wave 39) The server's replay of what each house light shows
+   *  (`lights-shown.ts`): the games' `lights` frame reads it while the
+   *  module's own report is missing or stale. Memory only; the config's
+   *  `boot` look plays into it on first use, as long settled (the module
+   *  played it when it started), and again after every story restart. */
+  private readonly lightsEstimate = new LightsEstimate();
+  private lightsBooted = false;
+  /** (wave 39) When the spatial stream's `lights` frame goes out. */
+  readonly gameLights: GameLightsFeed;
   /** Near misses a restore found still pending (person, question, answer):
    *  the only ones put to the `judge:` character after they landed —
    *  contract J. A near miss filed with nobody online keeps wave 11's
@@ -1046,6 +1056,28 @@ export class EventRuntime {
       },
       // A ghost wears the program's profile picture (C3), read live.
       avatarOf: (_guest, name) => this.avatars.keyFor(name),
+      // (wave 39) A program under a real light pulses it: presence reads the
+      // lights config in force and hands each change of the set to the hub
+      // the module long-polls.
+      lights: () => this.lights.config(),
+      onPresence: (entries) => this.lights.setPresence(entries),
+      lightsHello: () => this.gameLights.hello(),
+      onHouse: () => this.gameLights.changed(),
+    });
+    this.gameLights = new GameLightsFeed({
+      now: () => this.clock(),
+      build: () => this.gameLightsFrame(),
+      send: (frame) => this.spatial.sendLights(frame),
+      listeners: () => this.spatial.subscriberCount,
+      animating: () => this.lights.gameSource() === "estimate" && this.estimate().animating(this.clock()),
+      flipAt: () => this.lights.sourceFlipAt(),
+    });
+    // A test (a look or a {fixture, set}; a desk cue's burst too) plays into
+    // the estimate; every change (a report, presence, the config, the
+    // module coming or going) re-sends the frame.
+    this.lights.onChange((c) => {
+      if (c.kind === "test") this.estimateTest(c.test);
+      this.gameLights.changed();
     });
     this.spatial.setOpen(false); // idle until the doors open
     this.cams = new CamStore({ now: () => this.clock() });
@@ -1982,6 +2014,7 @@ export class EventRuntime {
     this.syncConditionalAvatars();
     this.pushSnapshots();
     this.deskCues(events);
+    this.lightCues(events);
     this.runPicks(events);
     return appended;
   }
@@ -2202,6 +2235,54 @@ export class EventRuntime {
       const id = e.args.trim().split(/[\s,]+/u)[0] ?? "";
       if (id !== "" && this.desk.hasCue(id)) this.desk.storyCue(id);
     }
+  }
+
+  /** (wave 39) A live batch's `cue X` naming a look plays it into the
+   *  lights estimate (the games' `lights` frame). Called from `fanout`
+   *  only — never on a journal replay. */
+  private lightCues(events: readonly SimEvent[]): void {
+    let played = false;
+    for (const e of events) {
+      if (e.type !== "directive" || e.verb !== "cue") continue;
+      const id = e.args.trim().split(/[\s,]+/u)[0] ?? "";
+      if (id === "") continue;
+      const lights = this.lights.config();
+      if (!Object.prototype.hasOwnProperty.call(lights.looks, id)) continue;
+      if (this.estimate().playLook(lights, this.spatialHouse(), id, this.clock())) played = true;
+    }
+    if (played) this.gameLights.changed();
+  }
+
+  /** (wave 39) The lights estimate, its `boot` look played on first use. */
+  private estimate(): LightsEstimate {
+    if (!this.lightsBooted) {
+      this.lightsBooted = true;
+      // Started at 0: long settled. (No clock read here: a fake clock that
+      // counts its reads must not see a new one.)
+      this.lightsEstimate.boot(this.lights.config(), this.spatialHouse(), 0);
+    }
+    return this.lightsEstimate;
+  }
+
+  /** (wave 39) A lights test into the estimate; an identify is ignored. */
+  private estimateTest(t: LightTest): void {
+    const lights = this.lights.config();
+    if (t.look !== undefined) this.estimate().playLook(lights, this.spatialHouse(), t.look, t.at);
+    else if (t.fixture !== undefined && t.set !== undefined) this.estimate().set(lights, t.fixture, t.set, t.at);
+  }
+
+  /** (wave 39) The spatial stream's `lights` frame as it stands now. */
+  private gameLightsFrame(): GameLights {
+    const now = this.clock();
+    return buildGameLights({
+      lights: this.lights.config(),
+      house: this.spatial.house,
+      source: this.lights.gameSource(),
+      reported: this.lights.shown()?.fixtures ?? null,
+      estimate: this.estimate(),
+      pulsed: this.lights.pulsedIds(),
+      now,
+    });
   }
 
   /**
@@ -3792,6 +3873,8 @@ export class EventRuntime {
       clearInterval(ping);
       this.spatialStreams.delete(res);
       this.spatial.detach(sub.id);
+      // The last one gone: the lights frame's timers stop.
+      this.gameLights.changed();
     });
   }
 
@@ -4947,6 +5030,11 @@ export class EventRuntime {
     this.talkDirection = null; // wave 32: the public request was memory-only
     this.rulingsDue.clear();
     this.spatial.reset(kind);
+    // (wave 39) The module plays the config's `boot` look after a story
+    // reset: so does the estimate (before the entry beat's own cues).
+    this.estimate();
+    this.lightsEstimate.boot(this.lights.config(), this.spatialHouse(), this.clock());
+    this.gameLights.changed();
     // Every session just ended: the voice streams close (games re-begin,
     // terminals reconnect to a fresh routing).
     this.voice.reset();
@@ -5016,6 +5104,7 @@ export class EventRuntime {
     }
     this.agentStreams.clear();
     this.stopSpatialLoop();
+    this.gameLights.dispose();
     this.voice.reset();
     this.spatial.detachAll();
     for (const s of [...this.spatialStreams]) {
@@ -7037,10 +7126,12 @@ export class EventRuntime {
           sendJson(res, 400, { error: `invalid ${DESK_FILE}`, problems: deskBad });
           return true;
         }
+        // (wave 39) The lights first: the restart boots the games' estimate
+        // with the config's `boot` look, so it must read the new file.
+        if (lights !== undefined) this.setProjectLights(lightsText);
         this.restart(source, name, { by });
         if (facts !== undefined) this.setProjectFacts(factsText);
         if (audio !== undefined) this.setProjectAudio(audioText);
-        if (lights !== undefined) this.setProjectLights(lightsText);
         if (desk !== undefined) this.setProjectDesk(deskText);
         if (maps !== null) {
           this.setProjectMaps(maps);

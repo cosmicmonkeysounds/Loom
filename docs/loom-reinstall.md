@@ -669,6 +669,57 @@ version, and both map variants share one physical house. Never name it
   rides the GET for 60 s so the module sends it). Tests, pairs and devices
   are memory only.
 
+#### Presence: a program pulses the light it walks under (wave 39)
+
+`lights.json` `presence {enabled?, to?, radius?, effect?}` (`@loom/house`
+`presenceSettings`: on, `to: ["everywhere"]`, `radius` 1.6 m, `effect:
+"breathe"` by default; the show's is `to: ["rooms"]`) says which fixtures
+a program in the reinstallation games may pulse; a **safety** fixture never
+does (`presenceFixtures`).
+
+- **The server judges it** (`core/server/spatial.ts`). On every pose flush
+  (100 ms, moved or not), a session leaving, a map swap and a story reset,
+  `SpatialHub` runs `presenceStep` over its joined sessions (a director's
+  `force` walk too): `{session, room: its presence room, p: its feet}`. A
+  fixture is under a program when its `room` is the program's presence room
+  and its plan distance is ≤ `radius` (+ `LIGHT_PRESENCE_LEAVE_M` 0.6 for
+  one already under it); it stays pulsed `LIGHT_PRESENCE_HOLD_MS` 4 s after
+  the last one left (the flush loop keeps running for that). A story reset
+  is a cut: no pulse is held over it. The hub reads the config through an
+  injected getter and tells the runtime when the pulsed **set** changes;
+  memory only.
+- **The module hears it** on its long poll: `LightsView.presence = {seq,
+  fixtures: [{fixture, since}]}` (`since` server ms, the config's file
+  order). `seq` moves on with every change of the set (never for the same
+  set with new times); `GET /api/mod/lights?…&presence=<seq>` answers at
+  once when the server's seq is not `<seq>` (a newer set, or a cursor from
+  before a restart) and a parked poll wakes on a change. An older module
+  sends no cursor and ignores the field. The module plays the firmware
+  effect (one command on arrival, one every `LIGHT_PRESENCE_REPEAT_MS` 12 s,
+  `finish_effect` on leaving; `docs/loom-show-control.md`).
+- **What the fixtures show**: `POST /api/mod/lights/shown {fixtures: {[id]:
+  LightState}}` (a mod token, like `/devices`; never on the host allowlist)
+  is the module's model of every fixture, every command it published merged
+  like `mergeLightState`, replacing the last report whole. An id the config
+  in force lacks, or a state `lightStateProblems` refuses, is dropped (not
+  the post); 400 only when `fixtures` is not an object; `{ok: true}`;
+  memory only. The games' source (§2.2 `lights`) is `house` while the
+  module is online (`LightsView.module.online`) and its report is ≤
+  `LIGHTS_SHOWN_FRESH_MS` 30 s old, else `estimate`.
+- **The estimate** (`core/server/lights-shown.ts` `LightsEstimate`): per
+  fixture, the last look or test that reached it, replayed with `planLook`
+  + `previewAt` at `now − start` from what the fixture showed when it
+  started (a `then: "restore"` look gives that back). It hears a live
+  batch's `cue X` naming a look (never a journal replay), every
+  `/api/mod/lights/test` with a `look` or a `{fixture, set}` (a desk cue's
+  too; an identify is ignored), and the config's `boot` look: at start as
+  long settled (the module played it when it started), and played afresh
+  after every story restart (reset, reload, go live). A fixture nothing
+  reached shows `LAMP_SETTLED`. The module's report names only fixtures it
+  has commanded since it started (colours normalised to lower case); under
+  `house` every other fixture is estimated. Memory only: a server restart
+  starts again from the settled boot look.
+
 ## 2. Server — `core/server/spatial.ts`
 
 A transport-free **`SpatialHub`** (the `AgentHub` pattern: injected `now`,
@@ -746,6 +797,36 @@ found last (when another spot remains).
 | `reset` | `{kind}` — the story restarted; every session is over |
 | `king` | `KingState & {by}` — the shared King changed: a hit (`by` = the hitter's display name), a director's edit or the story's restore (`by: null`), a map swap. Sent **only when** `id:hp/max` differs from the last one sent; the runtime calls `syncKing()` after every committed mutation, so a story `set Night.king_hp = …` reaches the games too |
 | `avatar` | `{session, avatar}` — a live player's profile picture changed (their own pick on `/api/guest/picture`, a Wikipedia lookup that landed), one frame per live session of that guest |
+| `lights` | `GameLights` (wave 39, `@loom/house` `lights-presence.ts`; read it with `gameLightsOf`) — what every real house light shows now, below |
+
+**The `lights` frame** (wave 39): `{at, source: "house" | "estimate",
+pulse: "breathe" | "blink" | "okay" | null, lights: GameLight[]}` with
+`GameLight = {id, room, pos: {x, y, z}, kind, color: "#rrggbb", level:
+0..1, effect, pulse, safety}`. `lights` is every fixture of the config in
+force whose room is on the map in force, in file order (absolute house
+metres, like `lights.json`); `color` is the colour at full brightness and
+`level` its brightness (OFF is 0; rounded to 0.001); `pulse` is true for a
+fixture a program is under (§1.4 presence) and the top-level `pulse` is
+the presence effect, null when presence is off. `source` says where the
+states come from: `house` is the lights module's own report (a fixture
+the report lacks is estimated), `estimate` the server's replay (§1.4).
+It is sent:
+
+- to each new subscriber right after its `hello`, **only when it has
+  lights** (a config with nothing placed on this map sends no frame, so a
+  game draws the house as it always did);
+- to every subscriber on a change (a `shown` report, a presence change, a
+  story cue, a test, a config save or snapshot, a map swap, the module
+  coming or going), at most once per `GAME_LIGHTS_MIN_MS` 250 ms with the
+  trailing edge kept, and only when it differs from the last one sent
+  (`at` aside);
+- every 250 ms while the source is `estimate` and a fade, a repeat, an
+  effect or a loop is running, again only when it changed (a settled house
+  sends nothing); and once when a `house` report goes stale by itself.
+
+Once a stream has had lights, a change that leaves none sends `lights:
+[]`: a game treats that like no frame. No timer runs while the stream has
+no subscriber, and `dispose()` stops them. Older clients ignore the frame.
 
 `PlayerState = {session, guest, name, world, device, p, yaw, pitch, room,
 floor, duck, found, startedAt, avatar}`; `room`/`floor` are computed
@@ -1347,6 +1428,58 @@ and every op is pure (`reinstall/web/src/map/`: `edit.ts`, `doors.ts`,
   the server's `warnings` on a save add `guardWarnings` (a king too far
   from the door he guards).
 
+### The real house lights and the graphics (wave 39)
+
+Contract: `docs/loom-w39-contract.md` C4. The stream's `lights` frame
+(`GameLights`, §2.2) is read by `spatial.ts` (`LIGHTS_FRAME`,
+`decodeLights` → `gameLightsOf`; `onLights` on `openSpatialStream`) and
+never enters the player table: a stream without one (an older server) and
+a malformed one change nothing.
+
+- **The bulbs** (`game/lamps.ts`, pure half `game/house-lights.ts`): every
+  fixture is a small emissive sphere + an additive glow sprite at its
+  `pos`, in its colour × level (over 1 in linear light, so it blooms). A
+  fixture with `pulse` (a program under it) or a firmware breathe / blink /
+  okay breathes with `pulseFactor` (`lampLevel`, the phase kept per fixture
+  across frames); a level-0 bulb stays dark, pulse or not, as in the house.
+- **The point lights**: a fixed pool per tier (2 / 4 / 8), handed every
+  500 ms to the nearest lit fixtures, the player's floor first
+  (`pickLamps`; a light keeps its fixture while it stays picked), the rest
+  at intensity 0. The pool's size changes only with the tier (three
+  recompiles the materials then; the frame time is ignored over 250 ms).
+  `LAMP_CANDELA` 18 at level 1, range 7 m, decay 2.
+- **The ambient**: with a frame, the house scene's own `house:hemi` and
+  `house:sun` ease (1.2 s) to `ambientFactor`: 0.5 (`NIGHT_FLOOR`, the real
+  house dark) to 0.65 (every fixture full) of their built intensity.
+  Without one, the house looks as it did before wave 39. The terminals'
+  world view and the map preview are untouched (`buildHouseScene` as is).
+- **Quality** (`game/quality.ts`, pure): `low` (pixel ratio ≤ 1, 0.75 under
+  pressure; 2 lights; no post-processing: the renderer's ACES tone map),
+  `medium` (≤ 1; 4 lights; bloom at half resolution; vignette + grain),
+  `high` (≤ 1.5; 8 lights; full bloom; + a faint chromatic edge; 4× MSAA on
+  the post target). The canvas has no MSAA. `auto` (the default) starts at
+  `medium` (`low` on a coarse pointer); down a step when the median frame
+  interval of a 2 s window is over 24 ms, up after 10 s with every
+  window's median under 17.5 ms (holding 60 fps: an interval can't beat the
+  display's, so the contract's 13 ms only fires on a 90 Hz+ screen), at
+  most one change per 5 s, and each time a level was left for being slow,
+  going back up to it waits 3× longer. The **cap** is the device's
+  `?quality=low|medium|high` (`config.ts`, kept in its config and on the
+  URL; the tent terminal's flow reads it off the terminal's URL,
+  `qualityHint`): the ⚙ setting (Auto / Low / Medium / High, remembered in
+  `localStorage` `loom.reinstall.quality`) picks under it, `auto` adapts
+  under it. On the tent's 2014 MacBook use `…&quality=medium` if `high`
+  ever stutters.
+- **Post-processing** (`game/post.ts`, a lazy chunk: `low` never loads
+  it): `EffectComposer` into a half-float target (8-bit without a
+  float colour buffer, then no bloom), `UnrealBloomPass` (threshold 0.82),
+  then one grade pass to the screen (three's ACES curve at the same
+  exposure, sRGB, vignette, grain, chromatic edge). Exposure 1.3 on every
+  tier.
+- Dev only: `?lightsDemo=1` on the Vite dev server feeds a synthetic
+  frame (`demoLights`: a light per indoor room, the one you stand under
+  pulsing).
+
 ## 4. The terminals — world view
 
 `TerminalConfig` gains `spot` (a `house.terminals[].id`; the terminal's
@@ -1710,8 +1843,9 @@ Provision: `/terminal/?code=…&name=Kitchen&character=Trabolta&spot=start-bar&v
   rule, the lobby's tiles / laser / confirm card / setup panel / mic box on
   `main.tscn` with a fake link, the wave 26 moments, sounds, speech and
   path reveal, and the autopilot reaching every show duck spot
-  kinematically and with real collision (1011 checks, plus 34 for
-  `quest.sh`, among them the `text_to_speech` setting and the build stamp).
+  kinematically and with real collision, and (wave 39) the real lights
+  and the graphics tiers (1208 checks, plus 42 for `quest.sh`, among them
+  the `text_to_speech` setting, the build stamp and `--graphics`).
 - **Not proven on hardware** (wave 26): whether Horizon OS has a TTS voice
   (without one the headset only captions) and whether the Quest's mic
   delivers real samples. The device check (HW-TENT-07) settles both: the
@@ -1756,6 +1890,52 @@ ignored). A session that ends mid-intro stops the video and returns to the
 lobby. `intro: false` (`--intro false`) skips it; `--autopilot` never
 plays it. The copy was signed off on 2026-10-28. Unproven on hardware: Theora at 720p30
 beside 90 Hz rendering, the video's level, the panel's comfort.
+
+### The real house's lights and the graphics tiers (wave 39)
+
+The spatial stream's `lights` frame (§2.2, `GameLights`) reaches the game
+through `LinkBase.lights_changed` and `LinkBase.lights` (the latest; `{}`
+once the link drops or is reconfigured). `house/house_lights.gd`
+(`HouseLights`) is the literal port of `gameLightsOf` (a malformed light is
+dropped, not the frame; an unknown frame is ignored as before) and
+`pulseFactor` (1 → 0.35 → 1 every 2 s), pinned in `test/game.gd` to what
+the TS answers for the same inputs. `house/house_lamps.gd` (`HouseLamps`)
+draws it:
+
+- **A bulb per fixture**: an unshaded sphere and an additive glow quad at
+  its `pos`, in its `color` × `level`; a dark fixture is a grey bulb with
+  no glow. A fixture with `pulse` breathes with `pulseFactor`, counted from
+  when it started. (The real pulse is the server's and stagehand's; this is
+  the game showing it.)
+- **A fixed pool of `OmniLight3D`s** (no shadows): 2 / 4 / 5 by tier, made
+  once, re-picked four times a second onto the lit fixtures (level > 0.02)
+  nearest the player on their floor (`HouseLights.pick_pool`); a light
+  keeps its fixture while it stays picked; unused ones are hidden. The
+  Mobile renderer lights a mesh with at most 8 omni lights (it drops the
+  rest), and the duck, the heart and the disk carry one each: `high` stops
+  at 5 so a large floor mesh never loses one, least of all the duck's.
+- **The ambient**: while a frame is in and the player walks the house (not
+  the lobby, not the intro), the environment's ambient (0.55 today) and the
+  sun (0.7) ease (≈ 1.5 s) toward a night floor of 0.24 / 0.22, lifted back
+  up to 40 % of the way by the real house's mean level and tinted by its
+  level-weighted colour (`HouseLights.ambient`). No frame — an old server,
+  no lights module, the link gone — is today's house.
+
+`graphics` in `station.json` (`low | medium | high`, default `medium`; also
+`--graphics`, and `tools/quest.sh build|station|provision … --graphics`)
+picks the picture (`HouseLook.environment(tier)`, `HouseLook.msaa`,
+`HouseLook.set_tier`):
+
+| | real lights | shading | tone map | glow | MSAA |
+|---|---|---|---|---|---|
+| low | 2 | per vertex | ACES (white 2.0) | off | off |
+| medium | 4 | per pixel (Lambert, no specular) | ACES | off | off |
+| high | 5 | per pixel | ACES | on (screen, threshold 0.7) | 2× |
+
+No tier has SSAO, SSR, SSIL, SDFGI or volumetric fog. Comfort is unchanged.
+Unproven on hardware: whether Quest 3 holds 90 Hz on `medium` (per-pixel
+shading with four lights is the one new cost; `low` is the fallback) and
+on `high`.
 
 ## 6. The story
 

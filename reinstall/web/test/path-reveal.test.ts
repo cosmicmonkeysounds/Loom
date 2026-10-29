@@ -56,6 +56,9 @@ function game(revealed = false) {
     voice: null,
     kingProp: null,
     kingState: null,
+    auto: { level: 2 }, // wave 39: the graphics (quality.test.ts)
+    qualityChoice: "auto",
+    qualityCap: "high",
     o: { assignment: { session: "s-1" }, sfx: { quack: (v: number) => quacks.push(v) }, onHud: (h: Record<string, unknown>) => huds.push(h) },
     say: (line: string) => said.push(line),
   });

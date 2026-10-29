@@ -409,11 +409,12 @@ export async function handleEvent(
       }
       const data = await projectData(projectId);
       const runtime = registry.ensure(specFromRow(active));
+      // The lights before the restart: it boots the games' lights estimate (wave 39).
+      runtime.setProjectLights(data.lights);
       runtime.restart(src.source, project.name, { kind: "reload", by });
       runtime.setProjectMaps(data.maps);
       runtime.setProjectFacts(data.facts);
       runtime.setProjectAudio(data.audio);
-      runtime.setProjectLights(data.lights);
       runtime.setProjectDesk(data.desk);
       await setEventSource(active.id, src.source);
       await setEventHouseMaps(active.id, data.snapshot);

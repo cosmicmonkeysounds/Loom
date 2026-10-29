@@ -57,6 +57,11 @@
 ##   [constant HouseMoment.PICKUP_REACH_M] a pickup moment goes up; taken
 ##   (or "already", or in the assignment's `picked`), the disk goes, a blip
 ##   plays and the answer's lines are captioned.
+## - **The real lights** (wave 39, [HouseLamps]): the spatial stream's
+##   `lights` frame puts a bulb at every fixture of the real house in the
+##   colour and level it shows now, lights the nearest few for real, pulses
+##   the ones a program stands under, and dims the house's ambient toward
+##   night while the player walks it ([signal LinkBase.lights_changed]).
 ## - **Found**: egg, flight, "REINSTALLATION COMPLETE" (or "YOU FOUND
 ##   GERALD" for a program that wasn't corrupted); then the session ends and
 ##   the lobby comes back.
@@ -138,6 +143,12 @@ var builder: HouseBuilder
 var player: VrPlayer
 var lobby: Lobby
 var duck: Duck
+## The real house's lights (wave 39).
+var lamps: HouseLamps
+## The world's environment and sun (set by `main.gd` before [method setup];
+## null in a test without them).
+var world_env: Environment
+var sun: DirectionalLight3D
 var trail: Trail
 var ghosts: Ghosts
 ## The terminals' live camera feeds on their screens ([CamFeeds]).
@@ -248,6 +259,11 @@ func setup(l: LinkBase, xr: bool) -> void:
 	duck = Duck.new()
 	duck.name = "Duck"
 	add_child(duck)
+	lamps = HouseLamps.new()
+	lamps.name = "Lamps"
+	add_child(lamps)
+	lamps.setup(builder, world_env, sun, HouseLights.tier_of(link.config.get("graphics", HouseLights.DEFAULT_TIER)))
+	lamps.feet = func() -> Array: return builder.to_house(player.feet())
 	trail = Trail.new()
 	trail.name = "Trail"
 	add_child(trail)
@@ -304,6 +320,7 @@ func setup(l: LinkBase, xr: bool) -> void:
 	link.king_changed.connect(_on_king_changed)
 	link.king_hit_answered.connect(_on_king_hit_answered)
 	link.moment_answered.connect(_on_moment_answered)
+	link.lights_changed.connect(lamps.apply)
 	ghosts.url_of = link.avatar_url
 
 	lobby.set_station(link.station_name())
@@ -311,6 +328,8 @@ func setup(l: LinkBase, xr: bool) -> void:
 	if not link.house.is_empty():
 		_on_house(link.house, link.house_version)
 	_on_king_changed(link.king)
+	if not link.lights.is_empty():
+		lamps.apply(link.lights)
 	enter_lobby()
 
 
@@ -825,6 +844,8 @@ func _notice(text: String) -> void:
 func _process(delta: float) -> void:
 	if player == null:
 		return
+	# The real lights' ambient and pool follow the player in the house only.
+	lamps.in_house = flow.state != GameFlow.State.LOBBY and not intro.running()
 	if autopilot != null:
 		_autopilot_left -= delta
 		if _autopilot_left <= 0.0:
