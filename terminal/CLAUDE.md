@@ -11,7 +11,7 @@ the show's device setup is [`../docs/trapped/kiosk.md`](../docs/trapped/kiosk.md
 ```bash
 pnpm --filter loom-terminal dev        # Vite :5175, proxies /api + /e to LOOM_SERVER (default http://localhost:7000)
 pnpm --filter loom-terminal build      # dist/ (base /terminal/)
-pnpm --filter loom-terminal test       # vitest run: 1117 tests, 89 files (test/**/*.test.ts)
+pnpm --filter loom-terminal test       # vitest run: 1128 tests, 90 files (test/**/*.test.ts)
 pnpm --filter loom-terminal typecheck  # tsc --noEmit
 pnpm --filter loom-terminal exec vitest run test/door-bridge.test.ts   # one file
 ```
@@ -64,7 +64,7 @@ play app's own `useChatStream` (imported as source) and narrows it to
 | `src/camfeed.ts` | the camera feed to the games (`POST /api/mod/spatial/cam`); one frame / 2 s while the reply says `watched: false`; never from the tent |
 | `src/voice/` | the voice link: `roles.ts` (who takes part, `micReport`), `mic.ts`, `capture.ts`, `uplink.ts`, `stream.ts`, `playback.ts`, `link.ts` (lazy `VoiceLink`), `hook.ts`, `MicCue.tsx` |
 | `src/Tv.tsx`, `src/tv.ts` | `view=tv`: which lines are spoken / captioned (`TV_SILENT_BEATS`), the cursor, the mute |
-| `src/chess/` | `view=chess`: `session.ts` (pure), `post.ts` (chess results, pending in `loom.terminal.pending-chess`), `ChessTerminal.tsx` (lazy, `@loom/chess`) |
+| `src/chess/` | `view=chess`: `session.ts` (pure), `post.ts` (chess results, pending in `loom.terminal.pending-chess`), `ChessTerminal.tsx` (lazy, `@loom/chess`; the board measured to its pane by `useFit` + `fit.ts` `boardSide`, since a phone's `100vh` overshoots), `tutorial.ts` + `Tutorial.tsx` (wave 43: three cards, once per challenger per page, ? HELP; holds the leash, locks the board) |
 | `src/casino/` | `view=casino`: `session.ts` (pure), `post.ts` (`/api/mod/casino/bet`, never retried), `CasinoTerminal.tsx` (lazy) |
 | `src/reinstall/` | `view=reinstall`: `session.ts` (pure: what a pass does), `ReinstallTerminal.tsx` (the scan kiosk between walks), `pane.tsx` (shadow root), `scope-css.ts`, `adapter.ts` |
 | `src/kiosk.ts`, `src/fullscreen.ts`, `src/webgl.ts` | Wake Lock + the ⚙ long press; `KioskFullscreen`; the one-time WebGL2 probe |

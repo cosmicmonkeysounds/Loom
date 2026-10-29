@@ -155,8 +155,10 @@ At *Trapped in the Internet* one terminal hangs outside a door: the
 plays chess. It is awake all night.
 
 1. Hold up your pass. One pass, one game.
-2. You play White: tap a piece, then the square it goes to. A pawn that
-   reaches the far side becomes a queen. **GIVE UP** takes two taps.
+2. You play White: drag a piece to its square, or tap it and then tap
+   one of its dots. A pawn that reaches the far side becomes a queen.
+   **? HELP** shows how (a short tutorial opens at your first game; skip
+   it any time). **GIVE UP** takes two taps.
 3. **Checkmate him.** A loss or a draw: scan your pass to play him again.
 
 There are **no hints**. A restricted program can't challenge him. Two
