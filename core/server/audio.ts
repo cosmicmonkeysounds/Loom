@@ -58,6 +58,29 @@
 //!   one is dropped alone (`audioHealthW38Of`). The GET view (not the
 //!   router's own, `router=1`) carries the last report as `health`, minus
 //!   its `sounds`, for `showctl doctor`.
+//! - (wave 40, the house mixer: `docs/loom-w40-contract.md` C2, the shared
+//!   model `src/house-mixer.ts`) the GET also carries `mix {seq, levels}`,
+//!   `music` (the recent soundtrack commands) and `mixWatch` (a mixer panel
+//!   is open); the long poll takes `mix=<seq>` (moved when the seq
+//!   differs), `music=<seq>` (as `plays=`) and `watch=0|1` (moved when
+//!   `mixWatched()` differs). The mix is kept in the state dir
+//!   (`audio-mix.json`, its seq too) and never journaled; the commands,
+//!   the meters and the watch are memory only.
+//! - `GET /api/mod/audio/mixer` → `MixerView` (wave 40): the mix, the
+//!   sources and rooms of the config in force (named from the house map),
+//!   the router's meters (null when older than `MIX_METERS_STALE_MS`), the
+//!   soundtrack now (the freshest of the meters' and the health's `music`),
+//!   the router and `now`; no `by`. Each read extends the watch by
+//!   `MIX_WATCH_MS`. Hosts may (the host allowlist).
+//! - `POST /api/mod/audio/mix {changes, resetAll?}` → `{ok, mix}` (400 a
+//!   bad change with its index, more than `MIX_CHANGES_MAX`, or a result
+//!   over `MIX_LEVELS_MAX` levels); `POST /api/mod/audio/music
+//!   {action: next | scene | stop | story, …}` → `{ok, seq, router}`. Hosts
+//!   may both.
+//! - `POST /api/mod/audio/meters {outputs, inputs, sources, buses?, music?}`
+//!   → `{ok, watch}` (wave 40): the router's live meters while a panel
+//!   watches (clamped, lists cut, stamped with the server's clock). The
+//!   router's own: never on the host allowlist.
 //!
 //! Transport-light: `AudioHub` takes an injected clock and store; the
 //! handlers take the runtime's context.
