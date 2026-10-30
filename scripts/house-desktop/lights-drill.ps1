@@ -132,10 +132,10 @@ function Drill-Z2m {
     Write-Step 'z2m: kill Zigbee2MQTT'
     $from = (Get-LogLines).Count
     schtasks /End /TN $Z2mTask | Out-Null
-    $down = Wait-For { (Test-Z2mHealth 2) -lt 0 } 15
+    $down = Wait-For { -not (Test-Port '127.0.0.1' 8080) } 40
     $back = Wait-For { (Test-Z2mHealth 3) -ge 0 } 100
     $look = Wait-For { Test-LogSince $from 'catch-up z2m' } 30
-    Add-Result 'z2m' (($down -ge 0) -and ($back -ge 0) -and ($look -ge 0)) ('answering again after ' + $back + ' s, the look replayed: ' + ($look -ge 0))
+    Add-Result 'z2m' (($down -ge 0) -and ($back -ge 0) -and ($look -ge 0)) ('gone after ' + $down + ' s, answering ' + $back + ' s later, the look replayed: ' + ($look -ge 0))
 }
 
 function Set-ProcessFrozen([int]$ProcessId, [bool]$Frozen) {

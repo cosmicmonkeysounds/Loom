@@ -214,8 +214,9 @@ module docstrings that explain the why).
   stopped answering wedged it overnight. So every Zigbee command from
   `_send` goes through the `Pacer`: one state per bulb, the next only after
   Z2M's state echo (`ACK_MS` else; ≤ `MAX_IN_FLIGHT` across the house), a
-  bulb with no echo three times or `availability` offline gets one probe
-  every 30 s. A fixture Z2M doesn't know is not sent. `_z2m_loop` asks
+  bulb with no echo three times gets one probe every 30 s (`availability`
+  only frees a bulb: a restarting Z2M says offline for bulbs that are fine).
+  A fixture Z2M doesn't know is not sent. `_z2m_loop` asks
   `bridge/request/health_check`; silent for `z2m_stall_s` it restarts
   `lights.z2m_task` (no `z2m_task`: it only logs) and the catch-up plays when
   Z2M is back. `pace: false` is the kill switch. Tests:
