@@ -277,19 +277,30 @@ never in git or an image (`scripts/ops/dream-media.sh`; already on the VPS).
 
 ### Release status
 
-The VPS runs **`w50`** (master `03d09bf7`, shipped 2026-10-30; rollback
-`w45`): waves 46 to 50 (the Quest fixes and the new look, nothing twice, the
-Password Manager's filter, the descent with the footsteps and Run → House →
-🗺 Map, Clippy's dream). The preview was synced (`--replace-maps --keep-audio
---keep-lights --keep-desk`) and reloaded; the project's maps were replaced on
-the user's word, so its three survey edits are gone (duck spots `cpu-desk`
-`[-6.8, 0.75, 14.3]`, `start-bar-counter` `[6.65, 0.9, 16.85]`, the `router`
-prop `[3.3, 0.9, 15.25]`). The project's `audio.json` is still the wave 31
-layout (no sub, the living room on outs 1–2). Still owed: on the Desktop
-`git pull` and `start-stagehand.ps1 -Restart audio` (the router was offline
-at the ship, and the footsteps need it), reload every phone, terminal and the
-TV, re-export and sideload the Quest APK, sign off `SIGNOFF-w48.md` and
-`SIGNOFF-w49.md`. Before it, `w45` (master `d7c52aef`, shipped 2026-10-29;
+The VPS runs **`w51`** (master `a033840b`, shipped 2026-10-30; rollback
+`w50`): the ghosts as glitchy swarms of their profile pictures, VR's right
+hand as the player's own swarm with no left hand, the underside of an upper
+floor, the reinstall test code; for the house, Zigbee flow control with
+`lights-reset` / `lights-drill`, and `audio.tap` (VoiceMeeter into input 3)
+with `audio.json` in the 828x's ASIO order. No server code or story changed.
+The preview was synced (`--replace-audio --keep-maps --keep-lights
+--keep-desk`) and reloaded, so the project's `audio.json` is now the repo's.
+Keep `--keep-lights`: the project's `lights.json` has hand edits the repo
+lacks (the `steam-1` fixture, surveyed positions, the paired names
+`kitchen_main`, `kitchen_dining`, `kitchen_hall`, `hall_upper`); Download
+JSON and commit it before any `--replace-lights`. Still owed: on the Desktop
+`git pull` and `start-stagehand.ps1 -Restart audio` and `-Restart lights`
+(the router was offline at the ship, and the footsteps and the tap need it),
+reload every phone, terminal and the TV, re-export and sideload the Quest
+APK, sign off `SIGNOFF-w48.md` and `SIGNOFF-w49.md`. Before it, `w50` (master
+`03d09bf7`, shipped 2026-10-30; rollback `w45`): waves 46 to 50 (the Quest
+fixes and the new look, nothing twice, the Password Manager's filter, the
+descent with the footsteps and Run → House → 🗺 Map, Clippy's dream). The
+preview was synced (`--replace-maps --keep-audio --keep-lights --keep-desk`)
+and reloaded; the project's maps were replaced on the user's word, so its
+three survey edits are gone (duck spots `cpu-desk` `[-6.8, 0.75, 14.3]`,
+`start-bar-counter` `[6.65, 0.9, 16.85]`, the `router` prop
+`[3.3, 0.9, 15.25]`). Before it, `w45` (master `d7c52aef`, shipped 2026-10-29;
 rollback `w44`): wave 45 (the Bathroom Report, G13) and the merged
 `oct31-w40/reinstall-resume` branch (the reinstall walk resumes across
 devices; the Desktop's lights fixes and `scripts/house-desktop/INFO.md`;
