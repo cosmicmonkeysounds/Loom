@@ -207,11 +207,13 @@ queued.
    minutes, most, least, the switches and who never went). Under ✍ post
    your own lines for it as for an award. Every program that never went
    lost 5 trust at G1; a trip now gives it back.
-   **G14 🔑 The Language Report** (wave 48): the same kind of aside, any
-   time between two awards (no winner to pick: the story reads who cursed
-   the most, how many words the Password Manager censored out of every word
-   her filter caught, and every censored word). Under ✍ post your own lines
-   for it too.
+   **G14 🔑 The Language Report** (wave 48, 48b): the same kind of aside,
+   any time between two awards (no winner to pick: the story reads who
+   cursed the most, how many words the Password Manager censored out of
+   every word her filter caught, the five she censored most, her ⭐ and
+   where she left the filter's strength; the TV then shows every censored
+   word). Slurs are never read or shown (only counted). Under ✍ post your
+   own lines for it too, and never name a censored slur.
    Then Run → 🎥 Video consent → ⬇ Download CSV, before End.
 
 **10. The backup console.** If your laptop dies, John signs in on his; if the

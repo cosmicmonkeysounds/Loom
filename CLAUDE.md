@@ -231,16 +231,21 @@ TRUST FORMULA's `- no_bath * 5`); a first trip after gives it back. Run's
 recap lists the minutes, the switches and who never went. Help:
 `docs/help/authoring/54-bathroom-report.md`.
 
-**The Password Manager's filter** (wave 48, not shipped;
-`docs/loom-w48-contract.md`, show text `DRAFT w48` on `SIGNOFF-w48.md`):
-`censor: Password Manager` in the header. Every line a guest types that
-holds a swear stem (over-eager on purpose: *password*, *hello*, *check*)
-pops up in her booth as 🔑 LANGUAGE (the rest behind a 🔑 n tray counter);
-✂ Censor stars it out everywhere (`p***word`) and marks the program for
-reinstallation (*censored: …*). G14 🔑 The Language Report (appended last,
-an aside) reads who cursed the most, n of m words censored and every
-censored word, on the TV too (`award_language`, the screen state's
-`night.language`). Help: `docs/help/authoring/55-language-filter.md`.
+**The Password Manager's filter** (waves 48 and 48b, not shipped;
+`docs/loom-w48-contract.md`, show text `DRAFT w48` / `DRAFT w48b` on
+`SIGNOFF-w48.md`): `censor: Password Manager` in the header. Every line a
+guest sends that the filter catches at her strength pops up in her booth
+as 🔑 LANGUAGE (the rest behind a 🔑 n tray counter). The strength (48b) is
+a slider in her ⊞ Start menu, 0–100% in bands, starting at 100% (over-eager
+on purpose: *password*, *hello*, *check*); whole words go through the
+`obscenity` library, buried stems are ours. Slurs are starred before a line
+is stored. ✂ Censor stars it out everywhere (`p***word`), pays her ⭐
+(points × a heat multiplier) and raises the program's doubt (+5) with an
+automated notice; it marks nobody. G14 🔑 The Language Report (appended
+last, an aside) reads who cursed the most, n of m words censored and the
+top five; the TV lets every censored word out (`award_language`, the
+screen state's `night.language`). Help:
+`docs/help/authoring/55-language-filter.md`.
 
 ### Release status
 
