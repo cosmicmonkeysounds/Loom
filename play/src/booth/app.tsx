@@ -821,7 +821,7 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
               <MomentsLayer />
               {/* Wave 41 (C3): the letter opt-in, on the booth's home only, never over a scan. */}
               {letterOnHome({ player, mission: pwin === "mission", host: hostWins, showOnScreen: hostShown === "show", wide, roomOpen: t.activeId !== null, scanning: layer?.kind === "scan" }) && (
-                <LetterCard letter={s.view?.letter} eventId={s.auth?.eventId ?? ""} character={character} save={s.letter} />
+                <LetterCard letter={s.view?.letter} eventId={s.auth?.eventId ?? ""} character={character} save={s.letter} startOpen={wide} />
               )}
               <Shell side={side} stage={stage} wide={wide} placeholder={player ? "Pick a chat, or follow your mission." : "Pick a room — or 📷 Scan a pass."} />
               {/* No `hidden` here: the dock owns its keyboard rule. With the

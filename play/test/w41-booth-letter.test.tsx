@@ -14,9 +14,9 @@ import type { PrimeLetter } from "../src/types.ts";
 
 const save = async (email: string | null) => ({ ok: true as const, email });
 
-function render(letter: PrimeLetter | undefined, storage: SessionStorage = memoryStore(), withSave = true): string {
+function render(letter: PrimeLetter | undefined, storage: SessionStorage = memoryStore(), withSave = true, startOpen = true): string {
   return renderToStaticMarkup(
-    createElement(PlayHostContext.Provider, { value: { ...browserHost, storage } }, createElement(LetterCard, { letter, eventId: "ev-1", character: "Clippy", save: withSave ? save : undefined })),
+    createElement(PlayHostContext.Provider, { value: { ...browserHost, storage } }, createElement(LetterCard, { letter, eventId: "ev-1", character: "Clippy", save: withSave ? save : undefined, startOpen })),
   );
 }
 
@@ -110,6 +110,16 @@ describe("the card", () => {
     expect(html).toContain(">No thanks</button>");
     const css = readFileSync(new URL("../src/css/booth.css", import.meta.url), "utf8");
     expect(css).toMatch(/\.booth-letter-input \{[^}]*font: 16px/u);
+  });
+  it("wave 47: on a phone the ask starts as one row (the title, No thanks), never the whole form over Mission", () => {
+    const html = render({ email: null, from: null }, memoryStore(), true, false);
+    expect(html).toContain('class="booth-letter folded"');
+    expect(html).toContain(LETTER_TITLE);
+    expect(html).toContain(">No thanks</button>");
+    expect(html).not.toContain("<input");
+    expect(html).not.toContain(LETTER_COPY.replace(/'/gu, "&#x27;"));
+    const app = readFileSync(new URL("../src/booth/app.tsx", import.meta.url), "utf8");
+    expect(app).toMatch(/<LetterCard [^>]*startOpen=\{wide\} \/>/u);
   });
   it("folds to ✔ <address> with Change / Remove when one is on file", () => {
     const html = render({ email: "guest@example.com", from: null });
