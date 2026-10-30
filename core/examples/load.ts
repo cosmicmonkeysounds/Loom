@@ -22,6 +22,7 @@ import { join, relative, sep } from "node:path";
 
 import { isMapFile } from "../server/house-maps.ts";
 import { FACTS_FILE } from "../src/facts.ts";
+import { DESCENT_FILE } from "@loom/house";
 import { CREDITS_FILE } from "../src/credits.ts";
 
 export interface ScenarioFile {
@@ -102,13 +103,26 @@ export function scenarioFactsFile(name: string): ScenarioFile | null {
  * project file, read live by the server (`server/credits.ts`).
  */
 export function scenarioCreditsFile(name: string): ScenarioFile | null {
-  const full = join(scenarioDir(name), CREDITS_FILE);
+  return scenarioDataFile(name, CREDITS_FILE);
+}
+
+/**
+ * The example's `descent.json` (wave 49, `@loom/house` `descent.ts`) as `{
+ * path, source }`, or null when the example has none. Not story: synced as a
+ * project file, read live by the server (`server/descent.ts`).
+ */
+export function scenarioDescentFile(name: string): ScenarioFile | null {
+  return scenarioDataFile(name, DESCENT_FILE);
+}
+
+function scenarioDataFile(name: string, file: string): ScenarioFile | null {
+  const full = join(scenarioDir(name), file);
   try {
     if (!statSync(full).isFile()) return null;
   } catch {
     return null;
   }
-  return { path: CREDITS_FILE, source: readFileSync(full, "utf8") };
+  return { path: file, source: readFileSync(full, "utf8") };
 }
 
 /**
