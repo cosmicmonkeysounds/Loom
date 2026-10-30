@@ -116,7 +116,7 @@ describe("Trapped in the Internet — wave 10 (the Director page's acts and boar
     // The two `act: Anytime` lines are one act (💡, the reinstallation cues,
     // and wave 11's 👑 / 🔧, appended last so no cue number moved).
     const anytime = acts.find((a) => a.state === "anytime")!;
-    expect(anytime.rows.map((r) => r.id)).toEqual(["restore_the_lights", "the simulation completed", "the golden duck", "reinstallation begun", "restore_the_king", "crew_through_the_door", "simulation escape attempt", "simulation heart reached", "simulation pickup taken", "ad_burst"]);
+    expect(anytime.rows.map((r) => r.id)).toEqual(["restore_the_lights", "the simulation completed", "the golden duck", "reinstallation begun", "restore_the_king", "crew_through_the_door", "simulation escape attempt", "simulation heart reached", "simulation pickup taken", "ad_burst", "dream_toggle"]);
     // Titles keep the README's wording.
     expect(acts.map((a) => a.title)).toEqual([
       "Act I: the Desktop, Bingo and the first truth",

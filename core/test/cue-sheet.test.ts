@@ -651,6 +651,8 @@ describe("acts on the cue sheet (wave 10: display only)", () => {
       "simulation escape attempt": "Anytime",
       // Wave 44: 🎬 G12, appended last, rejoins G.
       roll_the_credits: "G · The awards ceremony",
+      // Wave 49: 🌀, appended last, rejoins Anytime.
+      dream_toggle: "Anytime",
     };
     const bare = scenarioSource("trapped-in-the-internet").replace(/^ {2}act:.*\n/gmu, "");
     let tagged = bare;
