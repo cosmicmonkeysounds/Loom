@@ -386,7 +386,9 @@ C2, C5). Everything is booth chunk only, in `booth/filter/`:
   `filterOpen`) runs `filterPlan`; `BoothDo` has `censor` / `letGo` /
   `filter`. The tray's `🔑 n` (`BoothTray filter`, calm, no alarm tone)
   follows 🚨 in `boothTrayOrder`. A guest needs no change: a censored line
-  is a `message` frame with the same seq (`ChatMessage.censored`).
+  comes back as a `messageModerated` frame carrying the whole message
+  (same seq, `ChatMessage.censored`), which `chatFrameHandler` upserts
+  silently.
 - Help: `docs/help/play/22-language-filter.md` (`role: performer`). Tests:
   `test/w48-filter.test.ts` (the rules, a flood through the real reducer),
   `test/w48-filter-booth.test.tsx` (the hook, the real driver over the
