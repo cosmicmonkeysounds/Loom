@@ -53,7 +53,7 @@ import { backFor, boothFoldable, boothHost, boothSidebar, closeTo, closedGate, g
 import { boothMine, boothMomentFeed } from "./moments-feed.ts";
 import { PeopleSheet } from "./people.tsx";
 import { PlayerMission, playerTaskbarButtons } from "./player.tsx";
-import { WANTED_ROOM, playerChats } from "./mission-model.ts";
+import { FILTER_ROOM, WANTED_ROOM, playerChats } from "./mission-model.ts";
 import { ChatsWindow } from "../guest/chats.tsx";
 import { NowBar } from "../guest/frame.tsx";
 import { chatsDot } from "../rooms/chats.ts";
@@ -642,6 +642,7 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
         return;
       case "room":
         if (nav.id === WANTED_ROOM) openBoard();
+        else if (nav.id === FILTER_ROOM) setLayer({ kind: "filter" });
         else t.open(nav.id);
         return;
       case "quests":
@@ -697,7 +698,7 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
       ) : (
         <PlayerMission
           view={s.view}
-          ctx={{ list: t.list, claimer, loose: wanted !== null ? loose : null }}
+          ctx={{ list: t.list, claimer, loose: wanted !== null ? loose : null, filter: filter.view !== null ? filter.waiting.length : null }}
           open={{
             scan: (caption) => setLayer({ kind: "scan", ...(caption !== undefined ? { caption } : {}) }),
             pick: openPick,

@@ -391,6 +391,9 @@ C2, C5). Everything is booth chunk only, in `booth/filter/`:
   `test/w48-filter.test.ts` (the rules, a flood through the real reducer),
   `test/w48-filter-booth.test.tsx` (the hook, the real driver over the
   real store, the pop-out, the tray, the window, the first-load fence).
+- **The 🔑 Filter tile** (`booth/mission-model.ts` `FILTER_ROOM`): the
+  censor's Mission home always has it beside Wanted (*n to judge*), since on
+  a phone the tray fits two items and 🔔 + 🚨 push its 🔑 out.
 
 ### Host windows (wave 25; the contract is `docs/loom-house-desk.md` §6.2)
 

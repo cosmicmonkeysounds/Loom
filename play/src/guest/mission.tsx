@@ -49,7 +49,7 @@ function Where({ where, onGo }: { where: WhereRow; onGo: (n: Nav) => void }) {
   );
 }
 
-const TILE_ICON: Record<MissionTile["id"], "coin" | "quest" | "codex" | "door" | "people"> = { wallet: "coin", quests: "quest", codex: "codex", faction: "door", wanted: "people" };
+const TILE_ICON: Record<MissionTile["id"], "coin" | "quest" | "codex" | "door" | "people"> = { wallet: "coin", quests: "quest", codex: "codex", faction: "door", wanted: "people", filter: "people" };
 
 function Tiles({ tiles, scores = [], onGo }: { tiles: readonly MissionTile[]; scores?: readonly MissionScore[]; onGo: (n: Nav) => void }) {
   if (tiles.length === 0 && scores.length === 0) return null;

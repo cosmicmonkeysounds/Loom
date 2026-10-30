@@ -26,6 +26,9 @@ export const NOTES_TITLE = "📋 Notes";
 /** The Wanted tile's nav: a sentinel room the booth's `onGo` opens as the board. */
 export const WANTED_ROOM = "__wanted";
 export const WANTED_NAV: Nav = { to: "room", id: WANTED_ROOM };
+/** Wave 48: the 🔑 Filter tile's nav, a sentinel room the booth opens as the filter window. */
+export const FILTER_ROOM = "__filter";
+export const FILTER_NAV: Nav = { to: "room", id: FILTER_ROOM };
 
 export interface BoothMissionCtx {
   /** The session's room list (`buildPrimeChannels`). */
@@ -34,6 +37,10 @@ export interface BoothMissionCtx {
   claimer: boolean;
   /** Marked programs still loose (`looseWanted`), or null when the booth gets no board. */
   loose: number | null;
+  /** Wave 48: the censor's lines to judge, or null (not the censor). The
+   *  tile is always there for her: on a phone the tray fits two items, so
+   *  🔔 and 🚨 can push its 🔑 out. */
+  filter?: number | null;
 }
 
 /** A standing condition (no to-dos, no buttons): a strip, never folded. */
@@ -72,6 +79,10 @@ export function boothMissionOf(view: PrimeView, ctx: BoothMissionCtx): MissionMo
   const tiles: MissionTile[] = [];
   if (ctx.claimer && ctx.loose !== null) {
     tiles.push({ id: "wanted", label: "Wanted", status: ctx.loose === 0 ? "none loose" : `${ctx.loose} loose`, dot: ctx.loose > 0, glyph: "🚨", nav: WANTED_NAV });
+  }
+  // DRAFT w48
+  if (ctx.filter !== undefined && ctx.filter !== null) {
+    tiles.push({ id: "filter", label: "Filter", status: ctx.filter === 0 ? "nothing to judge" : `${ctx.filter} to judge`, dot: ctx.filter > 0, glyph: "🔑", nav: FILTER_NAV });
   }
   if (view.wallet !== undefined) {
     const held = heldCount(view.wallet);
