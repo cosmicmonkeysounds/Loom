@@ -133,6 +133,16 @@ or bake / push it: `tools/quest.sh build --station vr-1 --graphics low`
 (or `provision` / `station … --graphics`). If a headset drops frames on
 `medium`, try `low`. There is no in-headset control (a guest could reach it).
 
+Wave 47's look (computer horror, squeaky clean): a prop with a `model`
+(`house_models.gd`, the port of `@loom/house` `models.ts`, golden-tested)
+is drawn from its parts, and every prop is merged into one mesh per role
+(glossy white bodies, chrome trim, black gloss, screens, red alarms); neon
+skirting and cove strips run along every wall; the neon is unlit, unfogged
+and stutters now and then; the fog is a violet exponential haze, thicker
+near the floor, with drifting haze sheets per floor (none on `low`, one on
+`medium`, two on `high`). The King is a turned chess king, Gerald a smoother
+duck on a gold ring, the terminals carry a neon rim.
+
 ## Run it from the Godot editor
 
 Open `reinstall/vr/project.godot` in Godot 4.7 and press **F5**. No headset,
@@ -513,7 +523,7 @@ with `released: true` while you walk to Gerald.
 ```
 
 On 2026-10-28 (wave 39, branch `oct31-w39/vr`, Godot 4.7.1) it reports
-1208 checks and `quest.sh` 42, all passing.
+1237 checks and `quest.sh` 42, all passing.
 
 The runner refreshes the import, compiles every script and loads every
 scene, then runs `test/game.gd` headless with `--offline`:

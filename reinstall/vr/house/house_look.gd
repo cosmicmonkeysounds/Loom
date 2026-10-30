@@ -7,7 +7,9 @@
 ## graphics tiers (wave 39: the real house's lights pool on the walls and
 ## floors, [HouseLamps]), per vertex on `low` — cheapest on the Quest's
 ## tiler, and enough light to read corners. [method set_tier] picks it
-## before anything is built.
+## before anything is built. Wave 47 adds the props' clean glossy roles
+## ([method role]), the shared flickering neon ([method neon]), the haze
+## sheets and a violet, height-thickened fog ([method environment]).
 class_name HouseLook
 extends RefCounted
 
@@ -331,10 +333,11 @@ static func haze_sheet(opacity: float) -> StandardMaterial3D:
 static func king_gold(color: Variant) -> Material:
 	var c: Color = Color(str(color)) if color is String and str(color).begins_with("#") else GOLD
 	return _cached("king:%s" % c.to_html(), func() -> Material:
-		var m := _gloss(c, 0.28, 0.75)
+		# Metal with nothing to reflect reads dark: half metal, lit a little from within.
+		var m := _gloss(c, 0.3, 0.45)
 		m.emission_enabled = true
-		m.emission = c.darkened(0.6)
-		m.emission_energy_multiplier = 0.3
+		m.emission = c
+		m.emission_energy_multiplier = 0.45
 		return m)
 
 
