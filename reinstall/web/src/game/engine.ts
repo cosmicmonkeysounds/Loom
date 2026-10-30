@@ -640,6 +640,7 @@ export class Game {
     if (!hall) return;
     this.pocket = null;
     hall.leave();
+    for (const group of this.house.floors.values()) group.visible = true;
     this.trail.object.visible = true;
     this.lamps.borrow(null);
     this.o.sfx.drone(false);

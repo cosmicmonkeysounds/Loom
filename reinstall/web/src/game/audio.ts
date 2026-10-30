@@ -403,8 +403,8 @@ function sfxOn(get: () => { ctx: Ctx; out: AudioNode } | null, close: () => void
     mumble(volume, pan = 0) {
       const a = get();
       if (a === null) return;
-      const v = Math.max(0, Math.min(1, volume)) * 0.14;
-      if (v < 0.004) return;
+      const v = Math.max(0, Math.min(1, volume)) * 0.5;
+      if (v < 0.01) return;
       const out = panned(a, pan);
       const base = a.ctx.currentTime + 0.01;
       const grains = 4 + Math.floor(Math.random() * 4);
@@ -434,8 +434,8 @@ function sfxOn(get: () => { ctx: Ctx; out: AudioNode } | null, close: () => void
       const a = get();
       if (a === null) return;
       const t = a.ctx.currentTime + 0.01;
-      breathOf(a.ctx, a.out, t, 0.9, 0.05, 2400, 3600, 1.4);
-      breathOf(a.ctx, a.out, t + 0.95, 1.2, 0.035, 3200, 1500, 1.2);
+      breathOf(a.ctx, a.out, t, 0.9, 0.13, 2400, 3600, 1.4);
+      breathOf(a.ctx, a.out, t + 0.95, 1.2, 0.09, 3200, 1500, 1.2);
     },
     mains() {
       const a = get();
@@ -487,7 +487,7 @@ function sfxOn(get: () => { ctx: Ctx; out: AudioNode } | null, close: () => void
       const t = a.ctx.currentTime + 0.01;
       const bus = a.ctx.createGain();
       bus.gain.setValueAtTime(0.0001, t);
-      bus.gain.exponentialRampToValueAtTime(0.2, t + 2.5);
+      bus.gain.exponentialRampToValueAtTime(0.13, t + 2.5);
       bus.connect(a.out);
       const low = a.ctx.createBiquadFilter();
       low.type = "lowpass";
