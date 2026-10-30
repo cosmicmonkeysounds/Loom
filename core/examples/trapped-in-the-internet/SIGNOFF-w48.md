@@ -168,3 +168,23 @@ Her booth (`play/src/booth/filter/model.ts`):
 | the strength window | Filter strength · {n}% · Catches · ◀ Less · More ▶ · Saving… · *It decides what new lines get caught. Lines it no longer catches wait hidden until you raise it again.* |
 | the bands | Slurs only · + fuck, cunt · + shit, asshole, bitch… · + crap, balls, butt, ass… · + hell, heck, darn, fart… · + swears hiding inside words (Scunthorpe) · + mild ones inside words (password, button) · + everything (hello, check, Password Manager); the legend's slur row: *Slurs (never shown)* |
 | a refused move | Not changed: that strength isn't on the dial. / the doors are closed. / this part isn't the censor tonight. … Still {n}%. |
+
+The TV and the walls (`terminal/src/cutscene/scenes/language.tsx`, the
+containment breach; nobody reads these aloud):
+
+| Where | Text |
+|---|---|
+| the window | censored.log - MS-DOS Prompt · `C:\FILTER>type censored.log` · the status bar: CENSORED c/f · FILTER n% · ⭐ n · BUFFER → OVERFLOW |
+| the notes | *Password Manager*: WARNING: Profanity buffer overflow. · *Password Manager*: Please do not read the words aloud. · *KERNEL32.DLL*: kernel panic: too many feelings · *censored.log*: IT HAS SEEN WHAT YOU TYPED. · *SWEAR.DLL*: This program has performed an illegal operation and will not go quietly. |
+| the end | *C:\FILTER*: Abort, Retry, Censor? (✂ Censor is pressed) |
+| the summary | Cursed the most · Censored c of f words · Filter strength n% with its caption (*Paranoid: hello is a swear* · *Suspicious: password is a swear* · *Nosy: Scunthorpe is a swear* · *Soft: heck is a swear* · *Mild: crap is a swear* · *Strong words only* · *Only the worst words* · *Slurs only*) · Password Manager ⭐ n *earned with ✂* · censored.log, n lines, Most censored: "word" ×n, ✂ CONTAINED |
+| quiet nights | Nobody said anything the filter caught. · Not one of them was censored. |
+
+## 5. To ship wave 48b
+
+Server first (`ship.sh`, after the roster check), then `sync-show` with its
+reload (the story changed: the ⭐, the suspicion, the notice, G14's lines,
+`swear_filter`). The server image gains the `obscenity` package (in the
+lockfile). Reload the Password Manager's booth, the TV and every wall.
+Reprint the Password Manager's pack and the director and second-director
+cards. Nothing on the house machines.
