@@ -28,9 +28,10 @@ with each flagged bit highlighted.
   window.
 - **Later** (or the phone's Back) puts it in **🔔 Waiting**.
 
-**One at a time**, so a flood stays calm: while a 🔑 pop-out is up, or
-waiting in 🔔 Waiting, new lines don't pop. They only add to the tray's
-count, and they never pop later either. A more important pop-out (a new
+**One at a time**, so a flood stays calm: while a 🔑 pop-out is up, new
+lines don't pop. They only add to the tray's count, and they never pop
+later either. One you put in 🔔 Waiting doesn't hold the next back: the
+next new line pops and takes its place (the old one is still on the list). A more important pop-out (a new
 mission, your game) takes the screen from it, and it comes back after.
 
 ## The filter window

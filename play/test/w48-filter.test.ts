@@ -104,6 +104,19 @@ describe("what pops (filterPlan)", () => {
     expect(filterPlan([L(2), L(3), L(4)], [1, 2, 3], []).raise?.seq).toBe(4);
   });
 
+  it("one put off with Later never blocks: a new line pops and retires it (Waiting keeps one 🔑 at most)", () => {
+    const later = new Set([filterPopKey(1)]);
+    const p = filterPlan([L(1), L(2)], [1], [filterPopKey(1)], { deferred: later });
+    expect(p.raise?.seq).toBe(2);
+    expect(p.retire).toEqual(["filter:1"]);
+    expect(p.refresh).toEqual([]);
+    // With nothing new, the one in Waiting just refreshes.
+    const q = filterPlan([L(1), L(2)], [1, 2], [filterPopKey(1)], { deferred: later });
+    expect(q.raise).toBeNull();
+    expect(q.refresh.map((l) => l.seq)).toEqual([1]);
+    expect(q.retire).toEqual([]);
+  });
+
   it("of several new lines at once, the newest pops; every one is seen", () => {
     const p = filterPlan([L(1), L(2), L(3)], [], []);
     expect(p.raise?.seq).toBe(3);

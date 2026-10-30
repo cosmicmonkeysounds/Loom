@@ -284,16 +284,18 @@ export function useBoothPopOuts({ session, open, now, placeTitle, ownFireAt, tar
   }, [mootKey]);
 
   // Wave 48 (C5): the censor's 🔑 LANGUAGE. A new line pops once, one at a
-  // time; while one is up or held (on screen, queued, quiet, in 🔔 Waiting)
-  // or the window is open, new lines only count. A held one whose line left
+  // time; while one is up (on screen, queued, quiet) or the window is open,
+  // new lines only count. One put off with Later never blocks: a new line
+  // pops and retires it (still on the 🔑 list). A held one whose line left
   // the list (censored, let go, hidden) retires; one still waiting is raised
   // again in place (its 🔑 All flagged count, a refusal, buttons after a reload).
   const heldFilter = rung.held.filter((e) => filterPopSeq(e.spec.key) !== null);
-  const heldFilterKey = heldFilter.map((e) => `${e.spec.key}:${e.restored === true ? 1 : 0}`).join("|");
+  const heldFilterKey = heldFilter.map((e) => `${e.spec.key}:${e.restored === true ? 1 : 0}:${e.deferredAt !== undefined ? 1 : 0}`).join("|");
   const filterKey = filter === undefined || session.view === null ? null : filter.key;
   useEffect(() => {
     if (filter === undefined || filterKey === null) return;
-    const plan = filterPlan(filter.waiting, filter.seen, heldFilter.map((e) => e.spec.key), { windowOpen: filterOpen });
+    const deferred = new Set(heldFilter.filter((e) => e.deferredAt !== undefined).map((e) => e.spec.key));
+    const plan = filterPlan(filter.waiting, filter.seen, heldFilter.map((e) => e.spec.key), { windowOpen: filterOpen, deferred });
     if (plan.seen.length > 0) filter.markSeen(plan.seen);
     for (const k of plan.retire) rung.retire(k);
     const n = filter.waiting.length;

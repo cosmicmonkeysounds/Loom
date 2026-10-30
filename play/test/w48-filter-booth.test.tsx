@@ -239,12 +239,13 @@ describe("the booth's driver raises 🔑 LANGUAGE on the real store", () => {
     expect(held().map((s) => s.key)).toEqual(["filter:3"]);
   });
 
-  it("Later puts it in 🔔 Waiting, which still holds the next one back", () => {
+  it("Later puts it in 🔔 Waiting; the next line still pops and takes its place", () => {
     const r = rig([L(1)]);
     api().defer("filter:1");
-    r.lines([L(1), L(2)]);
     expect(api().tray.map((s) => s.key)).toEqual(["filter:1"]);
-    expect(held().map((s) => s.key)).toEqual(["filter:1"]);
+    r.lines([L(1), L(2)]);
+    expect(api().tray.map((s) => s.key)).toEqual([]);
+    expect(held().map((s) => s.key)).toEqual(["filter:2"]);
   });
 
   it("✂ answered 200 retires it; a refusal keeps it up with the reason on its status line", async () => {

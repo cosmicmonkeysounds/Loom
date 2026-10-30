@@ -191,13 +191,15 @@ export interface FilterPlan {
 /**
  * C5's rules for one snapshot: a line in `waiting` not seen before on this
  * sign-in pops, one pop-out at a time, only while no filter pop-out is up
- * or held (on screen, queued, quiet or in 🔔 Waiting: `held` keys) and the
+ * (on screen, queued or quiet: `held` keys not in `opts.deferred`) and the
  * window is closed. Lines that arrive while one is (or the window is open)
  * only count: they are remembered as seen and never pop. Of several new
- * lines at once, the newest pops. A held pop-out whose line left the list
- * retires; the open window retires them all.
+ * lines at once, the newest pops. One put off with Later (in 🔔 Waiting,
+ * `opts.deferred`) never blocks a new one: the new one retires it (its line
+ * stays on the 🔑 list), so Waiting holds one 🔑 at most. A held pop-out
+ * whose line left the list retires; the open window retires them all.
  */
-export function filterPlan(waiting: readonly FilterLine[], seen: readonly number[], held: readonly string[], opts: { windowOpen?: boolean } = {}): FilterPlan {
+export function filterPlan(waiting: readonly FilterLine[], seen: readonly number[], held: readonly string[], opts: { windowOpen?: boolean; deferred?: ReadonlySet<string> } = {}): FilterPlan {
   const bySeq = new Map(waiting.map((l) => [l.seq, l]));
   const retire: string[] = [];
   const refresh: FilterLine[] = [];
@@ -210,8 +212,13 @@ export function filterPlan(waiting: readonly FilterLine[], seen: readonly number
   }
   const known = new Set(seen);
   const fresh = waiting.filter((l) => !known.has(l.seq));
-  const busy = refresh.length > 0 || opts.windowOpen === true;
-  return { raise: busy || fresh.length === 0 ? null : fresh[fresh.length - 1]!, seen: fresh.map((l) => l.seq), retire, refresh };
+  const deferred = opts.deferred ?? new Set<string>();
+  const busy = refresh.some((l) => !deferred.has(filterPopKey(l.seq))) || opts.windowOpen === true;
+  const raise = busy || fresh.length === 0 ? null : fresh[fresh.length - 1]!;
+  if (raise === null) return { raise, seen: fresh.map((l) => l.seq), retire, refresh };
+  // The new one takes over from any put off with Later.
+  const later = refresh.filter((l) => deferred.has(filterPopKey(l.seq)));
+  return { raise, seen: fresh.map((l) => l.seq), retire: [...retire, ...later.map((l) => filterPopKey(l.seq))], refresh: refresh.filter((l) => !later.includes(l)) };
 }
 
 // --- the highlight ---------------------------------------------------------------------

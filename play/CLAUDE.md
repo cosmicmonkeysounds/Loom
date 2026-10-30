@@ -360,8 +360,9 @@ C2, C5). Everything is booth chunk only, in `booth/filter/`:
 - `model.ts` (pure, copy `FILTER_COPY`, `DRAFT w48`): `waitingLines` (not
   let go on this phone, not censored here while the view catches up),
   `filterPlan` (a line not seen before pops once, the newest of a batch,
-  only while no `filter:<seq>` pop-out is up or held — on screen, queued,
-  quiet or in 🔔 Waiting — and the window is closed; lines that land
+  only while no `filter:<seq>` pop-out is up — on screen, queued or
+  quiet — and the window is closed; one in 🔔 Waiting never blocks: the
+  new one retires it, so Waiting holds one 🔑 at most; lines that land
   meanwhile only count; a held one whose line left retires, one still
   waiting is raised again in place), `filterDraft` (🔑 LANGUAGE: picture,
   name, `whereLine`, the line as `PopOutSpec.quote` with each `hits` range
