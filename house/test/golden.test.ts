@@ -17,10 +17,11 @@ describe("conformance goldens", () => {
       "show.routes.json",
       "show.walls.json",
     ]);
-    const plain = [...files.keys()].filter((f) => !/\.(king|fallen|moments)\.json$/.test(f) && f !== "constants.json" && f !== "models.json");
+    const plain = [...files.keys()].filter((f) => !/\.(king|fallen|moments)\.json$/.test(f) && f !== "constants.json" && f !== "models.json" && f !== "descent.json");
     expect(plain.length % 5).toBe(0);
     expect(files.has("constants.json")).toBe(true);
     expect(files.has("models.json")).toBe(true);
+    expect(files.has("descent.json")).toBe(true);
   });
 
   it("the wave 26 goldens: every verdict appears", () => {

@@ -161,8 +161,9 @@ describe("wave 48: G14 🔑 The Language Report", () => {
   it("is appended last in act G as an aside, after G13", () => {
     const sim = Sim.fromSources(SRC);
     const admin = [...sim.model.interactions.values()].filter((i) => i.who === "admin");
-    expect(admin.map((i) => i.id).slice(-2)).toEqual(["bathroom_report", "language_report"]);
-    expect(admin[admin.length - 1]!.label.startsWith("G14 · 🔑")).toBe(true);
+    // Wave 50: 🌀 is appended after it, on Anytime.
+    expect(admin.map((i) => i.id).slice(-3)).toEqual(["bathroom_report", "language_report", "dream_toggle"]);
+    expect(admin[admin.length - 2]!.label.startsWith("G14 · 🔑")).toBe(true);
   });
 
   it("refuses before G1", { timeout: SLOW }, () => {

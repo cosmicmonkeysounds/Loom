@@ -256,7 +256,7 @@ completed` and `the golden duck` for them, journaled like any other
 event, and your `when … for program:` hooks take it from there. The
 house itself is a map file beside the story (`house.json` — rooms,
 doors, stairs, where each terminal hangs, where the duck may hide),
-edited live at `/reinstall/map` (see [the house map](39-house-map.md)).
+edited live in **Run → House → 🗺 Map** (see [the house map](39-house-map.md)).
 
 **Screens** follow cues too. A `cue` in the `screens_`, `terminals_`
 or `tv_` family (`cue screens_bingo`, `cue tv_award_most_trusted`,

@@ -12,8 +12,10 @@
 //! resolves (via `/api/resolve-code`) to the event and is traded for a
 //! **moderator token** (`/api/mod/login`) — what lets this device `begin` a
 //! scanned program's simulation, list the VR stations, and (on the map page)
-//! save the house map. The passcode itself is never stored.
+//! save the house map. The passcode itself is never stored. `?descent=N` (wave
+//! 49, `descentHint`) stays on the URL: it is for rehearsals, never provisioned.
 
+import { clampDescent } from "@loom/house";
 import { api, ApiError } from "@loom/play/client.ts";
 import { parseQuality, type QualityChoice } from "./game/quality.ts";
 
@@ -44,6 +46,9 @@ export interface ReinstallConfig {
   /** (wave 39) The graphics cap (`quality=low|medium|high|auto`): the game's
    *  setting picks under it and `auto` adapts under it. Missing = no cap. */
   quality?: QualityChoice;
+  /** (wave 49) The server's address when it isn't this page's (the map embedded
+   *  in an editor built with `VITE_LOOM_API`). Missing = same origin. */
+  apiBase?: string;
 }
 
 export const CONFIG_KEY = "loom.reinstall";
@@ -157,6 +162,15 @@ export function qualityHint(search: string): QualityChoice | null {
   return parseQuality(new URLSearchParams(search).get("quality"));
 }
 
+/** (wave 49) `?descent=N` on a page's URL (dev and rehearsal): this device
+ *  plays at that level whatever the server says, null when none. Like
+ *  `quality` it stays on the URL: the tent terminal's flow reads its own page's. */
+export function descentHint(search: string): number | null {
+  const raw = new URLSearchParams(search).get("descent");
+  if (raw === null || !/^[0-9]+$/u.test(raw.trim())) return null;
+  return clampDescent(Number(raw));
+}
+
 /** The URL with the passcode (and the other provisioning hints) scrubbed. */
 export function withoutSecrets(search: string): string {
   const p = new URLSearchParams(search);
@@ -196,6 +210,6 @@ export async function provision(code: string, hints: Omit<UrlHints, "code">): Pr
 }
 
 /** The event-scoped API base for a configured device. */
-export function baseOf(c: Pick<ReinstallConfig, "eventId">): string {
-  return `/e/${encodeURIComponent(c.eventId)}`;
+export function baseOf(c: Pick<ReinstallConfig, "eventId" | "apiBase">): string {
+  return `${c.apiBase ?? ""}/e/${encodeURIComponent(c.eventId)}`;
 }

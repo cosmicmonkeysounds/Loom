@@ -1925,6 +1925,43 @@ func _test_swarm() -> void:
 	_check(bare.get_width() == AvatarCache.TILE and bare.get_height() == AvatarCache.TILE and bare.has_mipmaps() and bare.get_pixel(64, 64).a < 0.6, "swarm: the bare picture is a square, mipmapped, transparency kept")
 
 
+## The player's hands: no left hand drawn, the right one their own picture as
+## a swarm, from the assignment, live off an `avatar` frame, gone with the walk.
+func _test_hand_swarm(game: Game, link: LinkBase) -> void:
+	var meshes := 0
+	for h: XRController3D in [game.player.left_hand, game.player.right_hand]:
+		for c in h.get_children():
+			meshes += 1 if c is MeshInstance3D else 0
+	_check(meshes == 0, "hands: no box is drawn on either hand (%d)" % meshes)
+	_check(game.player.left_hand.get_child_count() == 0, "hands: the left hand draws nothing; its controller still reads")
+	var hand := game.hand
+	_check(hand.get_parent() == game.player.right_hand and hand.top_level and hand.multimesh == Ghosts.shards(), "hands: the right hand is a swarm of the ghosts' shards")
+	var mat := hand.material_override as ShaderMaterial
+	_check(_near(float(mat.get_shader_parameter("swarm_scale")), HandSwarm.SCALE) and float(mat.get_shader_parameter("near_weight")) == 0.0, "hands: … small, and its face doesn't lock on for a camera that is always near")
+	var asked: Array = []
+	game.ghosts.avatars.requester = func(url: String, done: Callable) -> void: asked.append([url, done])
+	var src := Image.create(8, 8, false, Image.FORMAT_RGBA8)
+	src.fill(Color(0.1, 0.9, 0.1))
+	var ok_headers := PackedStringArray(["Content-Type: image/png"])
+	var a := _assignment(game.builder.house, "s-hand", true)
+	a["avatar"] = "hand1"
+	link.session_over.emit("test")
+	link.assignment_received.emit(a)
+	_check(hand.picture_url() == "fixture://avatar/hand1" and not hand.worn() and asked.size() == 1, "hands: the assignment's key is fetched (%s)" % hand.picture_url())
+	(asked[0][1] as Callable).call(true, ok_headers, src.save_png_to_buffer())
+	_check(hand.worn() and is_same(mat.get_shader_parameter("map"), game.ghosts.avatars.bare("fixture://avatar/hand1")), "hands: … and worn, the bare picture")
+	link.stream_frame.emit("avatar", {"session": "someone-else", "avatar": "hand2"})
+	_check(hand.picture_url() == "fixture://avatar/hand1", "hands: another program's avatar frame changes nothing")
+	link.stream_frame.emit("avatar", {"session": "s-hand", "avatar": "hand2"})
+	_check(hand.picture_url() == "fixture://avatar/hand2" and not hand.worn(), "hands: our own avatar frame changes it")
+	(asked[1][1] as Callable).call(false, PackedStringArray(), PackedByteArray())
+	_check(not hand.worn(), "hands: a picture that won't load leaves static")
+	link.session_over.emit("test")
+	_check(hand.picture_url() == "" and not hand.worn() and hand.own_session == "", "hands: the walk's end takes it off, for the next program")
+	game.ghosts.avatars.requester = Callable()
+	game.ghosts.avatars.forget_failures()
+
+
 func _test_ghost_pictures(game: Game, link: LinkBase) -> void:
 	var g := game.ghosts
 	var asked: Array = []  # [url, done]
@@ -2594,6 +2631,7 @@ func _test_main_and_game() -> void:
 	link.stream_frame.emit("leave", {"session": "other", "reason": "ended"})
 	_check(game.ghosts.count() == 0, "game: a leave removes the ghost")
 	_test_swarm()
+	_test_hand_swarm(game, link)
 	_test_ghost_pictures(game, link)
 
 	# Is-at-duck: plan radius 0.9 on the duck's own floor.

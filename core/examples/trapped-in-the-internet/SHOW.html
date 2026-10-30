@@ -465,8 +465,8 @@ ul.check label { min-width: 0; cursor: pointer; }
     <dl class="counts">
 <div><dt>Story files</dt><dd>35</dd></div>
 <div><dt>Beats</dt><dd>143 (140 written; a trait's beat counts once per character that has it)</dd></div>
-<div><dt>Admin cues</dt><dd>80 (44 in sequence)</dd></div>
-<div><dt>Story rules</dt><dd>156</dd></div>
+<div><dt>Admin cues</dt><dd>81 (44 in sequence)</dd></div>
+<div><dt>Story rules</dt><dd>157</dd></div>
 <div><dt>Rooms (LOCATIONs)</dt><dd>14</dd></div>
 <div><dt>Characters</dt><dd>48</dd></div>
 <div><dt>Codex entries</dt><dd>278 (172 with a QR code)</dd></div>
@@ -697,7 +697,7 @@ ul.check label { min-width: 0; cursor: pointer; }
 <tr class="aside"><td class="n">73</td><td class="label">🔌 Trust the patch bay again<span class="tags"><span class="tag aside">off sequence</span><span class="tag">has while:</span></span></td><td><code>trust_patch_bay</code></td><td class="desc">After a 🔌 / 💥 / ❌ press in the Y2K hour: hands the cables back to the patch bay on the server-room terminal. The bay judges the next full patch it reports (the same four cables plugged in again never count twice).</td></tr>
 </tbody></table></div>
 <h3 class="act" id="cues-act-5">Anytime</h3>
-<p class="act-note">0 in sequence, 10 off the running order (timers, fallbacks, toggles).</p>
+<p class="act-note">0 in sequence, 11 off the running order (timers, fallbacks, toggles).</p>
 <div class="scroll"><table class="cues"><thead><tr><th scope="col">#</th><th scope="col">Cue</th><th scope="col">Id</th><th scope="col">What it does</th></tr></thead><tbody>
 <tr class="aside"><td class="n">37</td><td class="label">💡 Restore the house lights<span class="tags"><span class="tag aside">off sequence</span></span></td><td><code>restore_the_lights</code></td><td class="desc"></td></tr>
 <tr class="aside"><td class="n">65</td><td class="label">Reinstallation: simulation completed (server)<span class="tags"><span class="tag aside">off sequence</span></span></td><td><code>the simulation completed</code></td><td class="desc">Fired by the reinstallation games (headset or tablet) for one program when they reach Gerald, the golden duck. Releases a corrupted program.</td></tr>
@@ -709,6 +709,7 @@ ul.check label { min-width: 0; cursor: pointer; }
 <tr class="aside"><td class="n">75</td><td class="label">Reinstallation: reached Trabolta's heart in the simulation (server)<span class="tags"><span class="tag aside">off sequence</span></span></td><td><code>simulation heart reached</code></td><td class="desc">Fired by the reinstallation games for one program who walks into the simulation's server room once the King has fallen. Once a night per program, and only once Trabolta is awake: a short monologue, in the game only. Flavour; # hosts is told.</td></tr>
 <tr class="aside"><td class="n">76</td><td class="label">Reinstallation: picked up the floppy disk (server)<span class="tags"><span class="tag aside">off sequence</span></span></td><td><code>simulation pickup taken</code></td><td class="desc">Fired by the reinstallation games for one program who picks up the floppy disk in the simulation (args item, prop). The virus disk unlocks the same Codex entry as the tent's QR (Free Antivirus Trial for a paranoid Excel, ILOVEYOU for everyone else). Once per program.</td></tr>
 <tr class="aside"><td class="n">77</td><td class="label">⚡ Glitch: an ad burst through Trabolta (talk scenes)<span class="tags"><span class="tag aside">off sequence</span><span class="tag">repeat</span><span class="tag">has while:</span></span></td><td><code>ad_burst</code></td><td class="desc">Only while a talk scene is on (🤖 Talk on the hosts' phones). Before the ad attack the screens flicker; from the ad attack on, a short ad bursts through every screen and phone with one of Trabolta's pained lines. The scene also glitches on its own every 45 seconds or so. Two seconds apart at least.</td></tr>
+<tr class="aside"><td class="n">81</td><td class="label">🌀 Clippy's dream: on / off<span class="tags"><span class="tag aside">off sequence</span><span class="tag">has while:</span></span></td><td><code>dream_toggle</code></td><td class="desc">The dream starts by itself on &quot;…the Y2K BUG.&quot; and runs until an ending. Press it to put every terminal and the games' terminals back on their usual screens (the house wifi can't carry it, or a scene must read clean), and again to bring it back.</td></tr>
 </tbody></table></div>
 <h3 class="act" id="cues-act-6">F · The final reveal and the endings</h3>
 <p class="act-note">12 in sequence.</p>
@@ -1154,7 +1155,7 @@ ul.check label { min-width: 0; cursor: pointer; }
         <tr><td>Any terminal</td><td><code>https://app.mapsandducks.com/terminal/?code=&lt;mod&gt;&amp;spot=&lt;spot&gt;</code></td></tr>
         <tr><td>Server-room terminal</td><td><code>…/terminal/?code=&lt;mod&gt;&amp;spot=server-room&amp;door=serial&amp;camera=user</code></td></tr>
         <tr><td>Tent laptop</td><td><code>…/terminal/?code=&lt;mod&gt;&amp;spot=tent&amp;announce=1</code> (never add <code>&amp;view=reinstall</code>)</td></tr>
-        <tr><td>Map editor (tent / shed switch)</td><td><code>https://app.mapsandducks.com/reinstall/map</code></td></tr>
+        <tr><td>Map editor (tent / shed switch)</td><td>Run → House → 🗺 Map, or <code>https://app.mapsandducks.com/reinstall/map</code></td></tr>
         <tr><td>QR presenter</td><td><code>https://app.mapsandducks.com/cards</code></td></tr>
         <tr><td>Health</td><td><code>https://app.mapsandducks.com/api/health</code></td></tr>
       </tbody>
@@ -1254,7 +1255,7 @@ Windows (PowerShell):
 
     <h3>By time</h3>
     <div class="slot"><div class="t">10:00<small>director, tech op</small></div><ul class="check" data-list="t1000">
-      <li><input type="checkbox" id="ck-t1000-weather-call-gusts-over-30-40"><label for="ck-t1000-weather-call-gusts-over-30-40">Weather call: gusts over 30–40 km/h or steady rain means the shed. Switch at <code>/reinstall/map</code> (<em>Map: Tent | Shed</em>).</label></li>
+      <li><input type="checkbox" id="ck-t1000-weather-call-gusts-over-30-40"><label for="ck-t1000-weather-call-gusts-over-30-40">Weather call: gusts over 30–40 km/h or steady rain means the shed. Switch on Run's House map card (<em>Tent | Shed</em>), or at <code>/reinstall/map</code>.</label></li>
       <li><input type="checkbox" id="ck-t1000-first-pause-doors-closed-a-restart"><label for="ck-t1000-first-pause-doors-closed-a-restart"><strong>First ⏸ Pause</strong> (doors closed). A restart keeps the doors as it finds them: Push draft or Go live on an open event plays Power On at once, and a pause afterwards cannot take it back.</label></li>
       <li><input type="checkbox" id="ck-t1000-morning-reset-a-plain-sync-loom"><label for="ck-t1000-morning-reset-a-plain-sync-loom">Morning reset: a <em>plain</em> sync (<code>LOOM_SSH=loom-vps LOOM_PROJECT="trapped in the internet" pnpm sync-show</code>, no <code>--replace-*</code>: the project now holds the bulb placement, the look tests and any speaker survey, and a replace would overwrite them), then <strong>Push draft</strong>, scan the door QR on a phone on cellular, then <strong>Go live in place</strong>, before anyone registers.</label></li>
       <li><input type="checkbox" id="ck-t1000-run-world-does-not-show-kernel"><label for="ck-t1000-run-world-does-not-show-kernel">Run → World does <em>not</em> show <code>Kernel.door_code</code> set yet. If it does, Power On already played: pause, then Restart (still before anyone registers).</label></li>
@@ -1372,7 +1373,7 @@ Windows (PowerShell):
         <tr><td>House internet down</td><td>Guests turn Wi-Fi off and use cellular. Keep firing cues from Run on a phone hotspot. Stagehand catches the lights up once it reconnects.</td></tr>
         <tr><td>Server restarted</td><td>Nothing to press. Everything reconnects by itself (Caddy holds requests for up to 60 s; the server answers 503 <code>starting</code> until the events are back). Reinstallation walks end (rescan in the tent).</td></tr>
         <tr><td>VPS dead</td><td>Start the warm standby, restore the newest backup from the MacBook (<code>~/LoomBackups</code>), repoint DNS.</td></tr>
-        <tr><td>Rain or wind</td><td>Switch to the shed at <code>/reinstall/map</code>.</td></tr>
+        <tr><td>Rain or wind</td><td>Switch to the shed on Run's House map card, or at <code>/reinstall/map</code>.</td></tr>
         <tr><td>A terminal silent, or red ⛶</td><td>Its Wi-Fi, power, is the page open? Relaunch Chrome with <code>--kiosk</code> (TV, laptops) or touch the tablet once. A loop or a lost camera: hold ⚙ 2 s → View <code>mirror</code>.</td></tr>
         <tr><td>The TV silent after a reboot</td><td>Click once into the TV page; <kbd>M</kbd> unmutes.</td></tr>
         <tr><td>Server Door terminal dead</td><td>♟ <em>They beat the King: the door code</em> (<code>chess_won</code>) naming the winner.</td></tr>

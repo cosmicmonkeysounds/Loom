@@ -151,3 +151,29 @@ describe("loomcheck — the house desk (wave 25)", () => {
     expect(r.out).toMatch(/desk\.json: cues\[0\]: id must match/u);
   });
 });
+
+describe("loomcheck — the descent's words (wave 49)", () => {
+  const ok = (extra: object = {}) =>
+    JSON.stringify({ version: 1, talkers: [], whispers: {}, grin: [], whiteduck: [], self: [], small: [], big: [], hallway: { enter: [], far: [], out: [] }, found: {}, ...extra });
+
+  it("a usable descent.json lints clean", () => {
+    const r = loomcheck(CLEAN, { "descent.json": ok() });
+    expect(r.out).not.toContain("descent.json");
+    expect(r.status).toBe(0);
+  });
+
+  it("a descent.json that doesn't validate, or isn't JSON, is an error", () => {
+    const bad = loomcheck(CLEAN, { "descent.json": ok({ version: 2 }) });
+    expect(bad.out).toMatch(/ERROR.*descent\.json: version must be 1/u);
+    expect(bad.status).not.toBe(0);
+    const junk = loomcheck(CLEAN, { "descent.json": "{ nope" });
+    expect(junk.out).toMatch(/ERROR.*descent\.json: not JSON/u);
+  });
+
+  it("a talker on a model that isn't one yet is a warning", () => {
+    const talker = { id: "ghost", from: 1, models: ["no-such-model"], nodes: { start: { say: ["Hello."] } } };
+    const r = loomcheck(CLEAN, { "descent.json": ok({ talkers: [talker] }) }, false);
+    expect(r.out).toMatch(/WARN.*descent\.json: talker "ghost": "no-such-model" is not a model yet/u);
+    expect(r.status).toBe(0);
+  });
+});

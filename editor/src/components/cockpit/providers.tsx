@@ -11,7 +11,7 @@ import type { ReactNode } from 'react'
 import { CockpitContext, RunBackend } from '@/store/cockpit'
 import { useOperate } from '@/store/operate'
 import { useSim } from '@/store/sim'
-import { useRunBackend, useScratch } from '@/store/run'
+import { runBackend, useRunBackend, useScratch } from '@/store/run'
 
 /** Run mode's provider — the stage, rail, and inspector tray all peer
  *  into whichever backend the workspace resolves to. `shared` ignores a
@@ -21,4 +21,10 @@ export function RunCockpit({ children, shared = false }: { children: ReactNode; 
   const scratch = useScratch((s) => s.active)
   const store = backend === RunBackend.Local || (scratch && !shared) ? useSim : useOperate
   return <CockpitContext.Provider value={store}>{children}</CockpitContext.Provider>
+}
+
+/** `RunCockpit`'s pick for code outside the provider (the command palette). */
+// eslint-disable-next-line react-refresh/only-export-components
+export function currentCockpit(): typeof useOperate | typeof useSim {
+  return runBackend() === RunBackend.Local || useScratch.getState().active ? useSim : useOperate
 }

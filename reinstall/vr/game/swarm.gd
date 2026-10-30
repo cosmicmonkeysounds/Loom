@@ -11,6 +11,7 @@ const BODY_SHARDS := 120
 ## Every shard of a ghost.
 const SHARDS := FACE_GRID * FACE_GRID + BODY_SHARDS
 const FACE_SIZE := 0.56
+const FACE_Y := 1.5
 ## The capsule the shards hold to (metres): the collider, never drawn.
 const RADIUS := 0.22
 const HEIGHT := 1.6

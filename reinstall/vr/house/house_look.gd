@@ -250,7 +250,8 @@ static func _gloss(albedo: Color, roughness: float, metallic := 0.0, vertex := f
 ## The material a model part's role is drawn in ([constant HouseModels.PART_ROLES]):
 ## `body` white plastic coloured per vertex (the prop's colour), `trim`
 ## chrome, `dark` black gloss, `neon` the shared neon ([method neon]),
-## `screen` / `alert` lit from inside, `glass`, `leaf` plastic.
+## `screen` / `alert` / `flame` lit from inside, `glass`, `leaf` plastic,
+## `wood` (wave 49) a duller gloss.
 static func role(r: String) -> Material:
 	match r:
 		"body":
@@ -261,12 +262,15 @@ static func role(r: String) -> Material:
 			return _cached("role:dark", func() -> Material: return _gloss(Color(HouseModels.ROLE_COLORS["dark"]), 0.18))
 		"neon":
 			return neon()
-		"screen", "alert":
+		"screen", "alert", "flame":
+			# [constant HouseModels.GLOW_ROLES]: lit from inside.
 			return _cached("role:%s" % r, func() -> Material:
 				var c := Color(HouseModels.ROLE_COLORS[r])
 				var m := _unshaded(c)
-				m.disable_fog = r == "alert"
+				m.disable_fog = r != "screen"
 				return m)
+		"wood":
+			return _cached("role:wood", func() -> Material: return _gloss(Color(HouseModels.ROLE_COLORS["wood"]), 0.55))
 		"glass":
 			return _cached("role:glass", func() -> Material: return _gloss(Color(HouseModels.ROLE_COLORS["glass"]), 0.06))
 		"leaf":
@@ -286,6 +290,12 @@ static func neon() -> StandardMaterial3D:
 		m.albedo_color = Color(HouseModels.NEON_GAIN, HouseModels.NEON_GAIN, HouseModels.NEON_GAIN)
 		m.disable_fog = true
 		return m) as StandardMaterial3D
+
+
+## (wave 49) The Hallway's walls: a dim grey tile, only ever lit by the one
+## light that follows the player ([Hallway]).
+static func hallway() -> Material:
+	return _cached("hallway", func() -> Material: return _lit(Color("#6a6f7a"), tile()))
 
 
 ## The neon at `level` (0 … 1, [method HouseModels.neon_flicker]).

@@ -812,6 +812,7 @@ watcher/rule, **S** = server hard-code.
 | trabolta_overshares | D | — | rule |
 | y2k_clock | D | — | rule |
 | y2k_midnight | W (60 min) or D | — | rule |
+| dream_toggle | D | — | rule |
 | majority_reached | W | — | rule |
 | server_door_opened | D (🚪) or P (`radio_door_opened`); wave 20: no longer a sensor (the M4 posts `door_sensor_opened`) | — | rule (§3 E2w: sets `Night.door_override`, fires `heart_door_opened`; never an alarm) |
 | alarm_tripped | W (Server Room Alarm beat, once per latch; only the patch bay reaches it since wave 7) | — | Enforcer trait hook (readout) |
@@ -889,6 +890,7 @@ reads as a cue sheet):**
 | trabolta_overshares | `🤖 Trabolta shares the next facts (scenario 1–4)` |
 | y2k_clock | `🕚 System clock → 11 PM, 31 Dec 1999 (final round, 60 min)` |
 | y2k_midnight | `🎆 Midnight (auto at 60 min)` |
+| dream_toggle | `🌀 Clippy's dream: on / off` |
 | waive_leader_tasks | ~~`🧾 Let a faction win without its leader's task (leader absent)`~~ (deleted in wave 18b) |
 | force_their_majority | `🗳 Force the majority: this program's faction` (wave 18b) |
 | server_door_opened | `🚪 Server room door opened (sensor fallback)` (`sequence: false`; wave 20: the door sensor posts `door_sensor_opened` itself, a press hands the door to the 🚪 buttons) |

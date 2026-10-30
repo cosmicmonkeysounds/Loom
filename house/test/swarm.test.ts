@@ -121,7 +121,7 @@ describe("the Godot port", () => {
     // Only three has: `here` (a shard dropped, the shadow view's), the flip; only Godot: the v flip.
     const threeOnly = ts.replace(/float here = .*\n/u, "").replace(/vUv = .*\n/u, "");
     const named = /\b(STEP_HZ|STORM_S|FACE_GRID|FACE_SIZE|FACE_Y|HEIGHT)\b/gu;
-    const inlined = gd.replace(named, (n) => String(constant(n)).replace(/^(\d+)$/u, "$1.0")).replace(/v_uv = .*\n/u, "");
+    const inlined = gd.replace(named, (n) => String(constant(n)).replace(/^(\d+)$/u, "$1.0")).replace(/v_uv = .*\n/u, "").replace(/float here = .*\n/u, "");
     expect(numbers(threeOnly)).toEqual(numbers(inlined));
   });
 });

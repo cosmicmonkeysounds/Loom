@@ -35,6 +35,8 @@ export interface ToolbarProps {
   onFloor: (id: string) => void;
   onFloorInspect: (id: string) => void;
   onAddFloor: () => void;
+  /** In a host page (Run → House): no ✕ back to the game. */
+  embedded?: boolean;
   onEdit: (on: boolean) => void;
   onView3d: (on: boolean) => void;
   onTool: (t: Tool) => void;
@@ -113,9 +115,11 @@ export function Toolbar(p: ToolbarProps) {
           {p.loaded.source === "bundled" ? sourceLabel("bundled") : `${sourceLabel(p.loaded.source)} · v${p.loaded.version}`}
           {p.dirty && <b> · unsaved</b>}
         </span>
-        <a className="w98-button" href="./" title="Back to the game">
-          ✕
-        </a>
+        {p.embedded !== true && (
+          <a className="w98-button" href="./" title="Back to the game">
+            ✕
+          </a>
+        )}
       </div>
       {p.edit && (
         <div className="map-toolbar-row tools" role="toolbar" aria-label="Drawing tools">

@@ -37,6 +37,11 @@
 ## into [member LinkBase.lights] ([signal LinkBase.lights_changed]); a
 ## malformed one is ignored, and a dropped or reconfigured link forgets it.
 ##
+## The descent (wave 49): [method fetch_descent] reads the walk's words from
+## `GET /api/spatial/descent`, falling back on the bundled
+## `res://house/descent.json`; [method post_told] posts what a talker was
+## told. Neither ever blocks a walk.
+##
 ## `--offline` plays without a server at all (the duck is picked locally,
 ## the King's bar is kept here; a moment answers "offline").
 ##
@@ -742,6 +747,27 @@ func voice_token() -> String:
 
 func mark_ready() -> void:
 	_post_session("/api/spatial/ready", {})
+
+
+## (wave 49) The descent's words for this walk (`GET /api/spatial/descent`
+## with the session token, like the map). Never blocks anything; an old
+## server (404), no script (`{script: null}`), a bad one or no answer means
+## the bundled `res://house/descent.json`, offline too.
+func fetch_descent() -> void:
+	if is_offline() or phase != "ready" or not has_session():
+		_adopt_descent(null)
+		return
+	var sid := session_id()
+	transport.send("GET", _base() + "/api/spatial/descent", null, str(session.get("token", "")),
+		func(status_code: int, data: Variant) -> void:
+			if sid == session_id():
+				_adopt_descent(data.get("script") if status_code == 200 and data is Dictionary else null))
+
+
+## (wave 49) What a program told a talker (`POST /api/spatial/told`, a
+## session call: memory only on the server).
+func post_told(talker: String, mark: String) -> void:
+	_post_session("/api/spatial/told", {"talker": talker, "mark": mark})
 
 
 ## (wave 40) Hold the walk server-side so a doffed headset (or a sleeping

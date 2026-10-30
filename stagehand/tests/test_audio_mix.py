@@ -169,6 +169,38 @@ def test_the_strips_move_apart_and_the_subs_own_fader():
         m.play(tone(10), {1: 0.0}, strip="nope")
 
 
+def test_the_footsteps_have_a_strip_of_their_own_on_the_sfx_bus():
+    doc = show_doc()
+    m = Mixer(10, 12, RATE)
+    m.set_mix(mix_gains({"src:steps": lv(-6), "room:start-bar/src:steps": lv(0, True), "src:sfx": lv(-20)}, doc, 12))
+    block(m)  # a fresh stream starts at the mix
+    m.play(tone(5000), {3: 0.0}, bus="sfx", strip="steps", fade_in_s=0)  # the kitchen: muted there
+    m.play(tone(5000), {9: 0.0}, bus="sfx", strip="steps", fade_in_s=0)  # the living room
+    m.play(tone(5000), {4: 0.0}, bus="sfx", fade_in_s=0)
+    out = block(m)
+    assert out[-1, 2] == 0.0
+    assert out[-1, 8] == pytest.approx(0.1 * db_to_lin(-6), rel=1e-3)
+    assert out[-1, 3] == pytest.approx(0.1 * db_to_lin(-20), rel=1e-3)  # other sfx: their own fader
+    assert m.active("sfx") == 3  # the sfx bus: Stop house sounds and a restart reach them
+
+
+def test_the_footsteps_duck_like_the_sound_effects():
+    m = Mixer(4, 4, RATE, priority={"announce": {"sfx": -12, "music": -15}})
+    m.play(tone(5000), {1: 0.0}, bus="sfx", strip="steps", fade_in_s=0)
+    m.play(tone(5000), {2: 0.0}, bus="sfx", fade_in_s=0)
+    m.duck_for(3.0)  # an announcement, held everywhere
+    for _ in range(8):  # ANNOUNCE_ATTACK_S is 0.3 s
+        out = block(m)
+    assert out[-1, 0] == pytest.approx(0.1 * db_to_lin(-12), rel=1e-3)
+    assert out[-1, 0] == pytest.approx(out[-1, 1], rel=1e-6)
+
+
+def test_an_older_routers_keys_for_a_newer_strip_are_dropped_and_this_one_keeps_them():
+    assert parse_mix_key("src:steps") == ("all", None, "steps")
+    assert parse_mix_key("room:desktop/src:steps") == ("room", "desktop", "steps")
+    assert mix_levels_of({"src:steps": lv(-3), "src:nope": lv(-3)}) == {"src:steps": (-3.0, False)}
+
+
 def test_the_tv_route_follows_its_source():
     doc = show_doc()
     m = Mixer(10, 12, RATE, smooth_s=0.01)

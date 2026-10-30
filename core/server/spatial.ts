@@ -39,17 +39,35 @@
 //! changed (`onPresence`). The `lights` frame (`GameLights`) is built
 //! elsewhere (`lights-shown.ts`): the hub sends it after each `hello`
 //! (`lightsHello`) and broadcasts it (`sendLights`).
+//!
+//! **The house hears them walk** (wave 49, C3.1): each session measures its
+//! speed from its poses (`FOOTSTEP_MEASURE_MS` at least); on every flush the
+//! hub runs `walkersOf` over its joined, unfound, un-held sessions with the
+//! audio config in force (an injected getter: it never imports `AudioHub`)
+//! and tells the runtime when the answer changed (`onWalkers`), at most every
+//! `FOOTSTEPS_MIN_MS`, at once when the last one stops.
+//!
+//! **The descent** (wave 49, C3.3): a walk's level is dealt with it (the
+//! forced level, else `descentLevel(reinstalled)`) and never moves under it;
+//! what a program told a talker is remembered per guest (`tell`). Memory
+//! only, both: a story reset forgets them.
 
 import { randomBytes, randomUUID } from "node:crypto";
 
 import {
+  DESCENT_MAX,
   DUCK_MAX_RISE,
   ESCAPE_M,
   ESCAPE_SIGNAL,
   ESCAPE_SLACK,
   ESCAPE_COOLDOWN_MS,
+  FOOTSTEP_MAX_MPS,
+  FOOTSTEP_MEASURE_MS,
+  FOOTSTEP_MOVING_MPS,
+  FOOTSTEPS_MIN_MS,
   KING_HIT_SLACK,
   PICKUP_SLACK_M,
+  descentLevel,
   floorOf,
   guardWarnings,
   heartReached,
@@ -66,13 +84,16 @@ import {
   presenceStep,
   propSignal,
   samePulsed,
+  sameWalkers,
   standable,
   voidDistance,
+  walkersOf,
   withFallenKings,
   wrapYaw,
 } from "@loom/house";
 import type {
   Assignment,
+  AudioConfig,
   DuckSpot,
   GameLights,
   HouseMap,
@@ -94,6 +115,8 @@ import type {
   Spawn,
   StationInfo,
   Vec3,
+  Walker,
+  WalkerInput,
 } from "@loom/house";
 
 import type { MomentLine } from "./chat.ts";
@@ -119,6 +142,13 @@ export const FOUND_PLAN_M = 2.0;
 export const MAX_COORD = 1000;
 /** How many finished session tokens are remembered (→ 410, not 401). */
 const ENDED_MEMORY = 1000;
+/** (wave 49) A game sends no pose while its player stands still, so a pose
+ *  that hasn't moved for this long reads as standing. */
+export const WALK_STILL_MS = FOOTSTEP_MEASURE_MS * 2;
+/** (wave 49) The longest talker id and mark a program may tell. */
+export const TOLD_CHARS = 64;
+/** (wave 49) The most talkers one program's memory holds. */
+export const TOLD_TALKERS = 64;
 
 /** One stream subscriber (a terminal, the map page, a game watching ghosts). */
 export interface SpatialSubscriber {
@@ -164,6 +194,12 @@ export interface SpatialHubOptions {
   /** (wave 39) The map was swapped (the `lights` frame drops a fixture
    *  whose room it lost). */
   onHouse?: () => void;
+  /** (wave 49) The house speakers in force: the footsteps read them while
+   *  anyone moves. Absent: nobody is ever heard. */
+  audio?: () => AudioConfig;
+  /** (wave 49) Who is heard walking changed (`sameWalkers` false): the
+   *  runtime hands it to `AudioHub.setWalkers`. */
+  onWalkers?: (walkers: Walker[]) => void;
 }
 
 /** One find of the duck: who, on what, and how long it took — from the
@@ -260,6 +296,16 @@ interface Session {
    *  program can resume where it was. A pose or `resume` clears it. */
   held: boolean;
   heldAt: number;
+  /** (wave 49) This walk's level, dealt with it: a director's force or a find
+   *  never moves it under a walk. Memory only, like the session. */
+  descent: number;
+  /** (wave 49) Measured m/s (`measureWalk`), 0 standing. Memory only. */
+  speed: number;
+  /** (wave 49) The pose and time the speed's window opened at. */
+  stride: { p: Vec3; at: number };
+  /** (wave 49) When a pose last changed: a game sends none while its player
+   *  stands still, so this is how a stop is told from a slow window. */
+  movedAt: number;
 }
 
 interface Station {
@@ -372,6 +418,20 @@ export function parseMomentRequest(body: Record<string, unknown>): MomentRequest
   const prop = typeof body["prop"] === "string" ? body["prop"].trim() : "";
   if (prop === "" || prop.length > MOMENT_PROP_MAX) return null;
   return { kind, prop };
+}
+
+/** (wave 49) A `POST /api/spatial/told` body: `talker` and `mark`, non-empty
+ *  strings of at most `TOLD_CHARS`. Null when malformed (the route's 400). */
+export function parseTold(body: Record<string, unknown>): { talker: string; mark: string } | null {
+  const { talker, mark } = body;
+  if (typeof talker !== "string" || typeof mark !== "string") return null;
+  if (talker === "" || mark === "" || talker.length > TOLD_CHARS || mark.length > TOLD_CHARS) return null;
+  return { talker, mark };
+}
+
+/** (wave 49) Is this a level a director may force? */
+export function isDescentLevel(v: unknown): v is number {
+  return typeof v === "number" && Number.isInteger(v) && v >= 0 && v <= DESCENT_MAX;
 }
 
 /** Is this a game world name? */
@@ -524,6 +584,16 @@ export class SpatialHub {
   /** (wave 39) The fixtures a program is under now (`presenceStep`'s last
    *  answer, its hold included). Memory only. */
   private pulsed: Map<string, PresenceEntry> = new Map();
+  /** (wave 49) Who the runtime last heard is walking, and when it heard.
+   *  Memory only. */
+  private walkers: Walker[] = [];
+  private walkersAt = -Infinity;
+  /** (wave 49) What each guest told each talker (guest → talker → mark).
+   *  Memory only: never journaled, forgotten by a story reset. */
+  private readonly told = new Map<string, Map<string, string>>();
+  /** (wave 49) A director's forced level (null: by visits). Memory only:
+   *  a story reset clears it. */
+  private forcedDescent: number | null = null;
 
   constructor(o: SpatialHubOptions) {
     this.o = o;
@@ -603,7 +673,10 @@ export class SpatialHub {
       // where the new map has no floor (in a room that is a solid prop
       // there — the shed on the tent map — or outside every room) is put
       // back at it, as the games put their body back (`standable`).
-      if (!s.claimed || !standable(walk, s.pose.p)) s.pose = { p: [...house.spawn.pos], yaw: house.spawn.yaw, pitch: 0 };
+      if (!s.claimed || !standable(walk, s.pose.p)) {
+        s.pose = { p: [...house.spawn.pos], yaw: house.spawn.yaw, pitch: 0 };
+        this.standStill(s);
+      }
       const at = locate(house, s.pose.p);
       s.room = at.room;
       s.floor = at.floor;
@@ -737,8 +810,8 @@ export class SpatialHub {
    *  runs its flush loop only while this holds. */
   get active(): boolean {
     // (wave 39) A pulse held after its program left still needs the flush
-    // loop to let it go.
-    return this.subscribers.size > 0 || this.sessions.size > 0 || this.pulsed.size > 0;
+    // loop to let it go; (wave 49) so does a walker to be heard stopping.
+    return this.subscribers.size > 0 || this.sessions.size > 0 || this.pulsed.size > 0 || this.walkers.length > 0;
   }
 
   get subscriberCount(): number {
@@ -868,6 +941,10 @@ export class SpatialHub {
       ready: false,
       held: false,
       heldAt: 0,
+      descent: this.descentFor(input.guest),
+      speed: 0,
+      stride: { p: [...spawn.pos], at: now },
+      movedAt: now,
     };
     s.avatar = this.avatarFor(s);
     this.sessions.set(id, s);
@@ -898,6 +975,10 @@ export class SpatialHub {
       // The intro video and tutorial are skippable once a find is on the
       // run log; the settings a headset saved come back with every deal.
       reinstalled: this.reinstalledBy(s.guest),
+      // (wave 49) The level this walk was dealt, and what this program told
+      // the talkers so far (read live: a resume must not forget a tell).
+      descent: s.descent,
+      told: Object.fromEntries(this.told.get(s.guest) ?? []),
       prefs: this.prefs.get(s.guest) ?? null,
     };
   }
@@ -908,6 +989,37 @@ export class SpatialHub {
     let n = 0;
     for (const r of this.runLog) if (r.guest === guest) n++;
     return n;
+  }
+
+  // -- the descent (wave 49, C3.3) ------------------------------------------
+
+  /** The level this guest's next walk is dealt: the forced one, else by the
+   *  finds behind it (`descentLevel`: the first walk is clean). */
+  descentFor(guest: string): number {
+    return this.forcedDescent ?? descentLevel(this.reinstalledBy(guest));
+  }
+
+  /** The director's forced level (null: by visits). */
+  get forcedLevel(): number | null {
+    return this.forcedDescent;
+  }
+
+  /** Force the level of every next deal (null: by visits again). A walk
+   *  under way keeps the one it was dealt. */
+  forceDescent(level: number | null): void {
+    this.forcedDescent = level;
+  }
+
+  /** Remember what a program told a talker, for its later visits. Past
+   *  `TOLD_TALKERS` a new talker is dropped: a game has far fewer. */
+  tell(token: string | undefined, talker: string, mark: string): PoseOutcome {
+    const s = this.byTokenLive(token);
+    if (s === null) return this.tokenState(token);
+    s.activeAt = this.now();
+    let book = this.told.get(s.guest);
+    if (book === undefined) this.told.set(s.guest, (book = new Map()));
+    if (book.has(talker) || book.size < TOLD_TALKERS) book.set(talker, mark);
+    return "ok";
   }
 
   /** The game's intro (the video, the tutorial) is over: the duck run's
@@ -1046,6 +1158,7 @@ export class SpatialHub {
     const same = s.pose.p[0] === pose.p[0] && s.pose.p[1] === pose.p[1] && s.pose.p[2] === pose.p[2] && s.pose.yaw === pose.yaw && s.pose.pitch === pose.pitch;
     if (!same) {
       s.pose = { p: [...pose.p], yaw: pose.yaw, pitch: pose.pitch };
+      s.movedAt = s.activeAt;
       if (map !== null) {
         const at = locate(map.house, pose.p);
         s.room = at.room;
@@ -1053,6 +1166,7 @@ export class SpatialHub {
         s.presence = presenceRoom(map.house, pose.p, s.presence);
       }
     }
+    this.measureWalk(s);
     if (!s.claimed) {
       // A parked assignment whose program is no longer marked (released
       // between the send and the put-on) never plays (R16, G1).
@@ -1204,6 +1318,7 @@ export class SpatialHub {
       // flush, and the voice and cams follow the presence room at once.
       const spawn = s.spawn;
       s.pose = { p: [...spawn.pos], yaw: spawn.yaw, pitch: 0 };
+      this.standStill(s); // a teleport is no walk
       const at = locate(house, spawn.pos);
       s.room = at.room;
       s.floor = at.floor;
@@ -1316,6 +1431,8 @@ export class SpatialHub {
     }
     // (wave 39) Every tick, moved or not: a held pulse lets go by the clock.
     this.stepPresence();
+    // (wave 49) And a walker stops by the clock: a still player sends no pose.
+    this.stepWalkers();
     if (players.length === 0) return null;
     const frame = { t: this.now(), players };
     this.broadcast("poses", frame);
@@ -1347,6 +1464,67 @@ export class SpatialHub {
     const changed = !samePulsed(this.pulsed, next);
     this.pulsed = next;
     if (changed) this.o.onPresence?.(next);
+  }
+
+  // -- the house hears them walk (wave 49, C3.1) ----------------------------
+
+  /** Who is heard walking now (the last answer told `onWalkers`). */
+  walking(): readonly Walker[] {
+    return this.walkers;
+  }
+
+  /** The session stands where its pose says, as of now: nothing before this
+   *  counts toward a walk (a teleport, a re-seat, a silence). */
+  private standStill(s: Session): void {
+    s.speed = 0;
+    s.stride = { p: s.pose.p, at: this.now() };
+  }
+
+  /** Close the speed's window, once it is `FOOTSTEP_MEASURE_MS` long, on the
+   *  pose that just landed. Two walking windows in a row are averaged: poses
+   *  land with the network's jitter, and the pace must not wobble with it. A
+   *  jump past `FOOTSTEP_MAX_MPS` is kept as it reads, so `walkersOf` skips
+   *  it and it never leaks into the next window's average. */
+  private measureWalk(s: Session): void {
+    const now = this.now();
+    const ms = now - s.stride.at;
+    if (ms < FOOTSTEP_MEASURE_MS) return;
+    const [ax, ay, az] = s.stride.p;
+    const [bx, by, bz] = s.pose.p;
+    const measured = (Math.hypot(bx - ax, by - ay, bz - az) * 1000) / ms;
+    const walking = (v: number): boolean => v >= FOOTSTEP_MOVING_MPS && v <= FOOTSTEP_MAX_MPS;
+    s.speed = walking(s.speed) && walking(measured) ? (s.speed + measured) / 2 : measured;
+    s.stride = { p: s.pose.p, at: now };
+  }
+
+  /** Run `walkersOf` over the joined, unfound, un-held sessions; tell the
+   *  runtime when the answer changed, at most every `FOOTSTEPS_MIN_MS` (a
+   *  change held back is still different on a later tick, so the trailing
+   *  edge is kept) and at once when the last one stops. */
+  private stepWalkers(): void {
+    const getAudio = this.o.audio;
+    if (getAudio === undefined) return;
+    const now = this.now();
+    const players: WalkerInput[] = [];
+    for (const s of this.sessions.values()) {
+      if (!s.joined || s.found || s.held) continue;
+      if (now - s.movedAt >= WALK_STILL_MS) this.standStill(s);
+      players.push({ session: s.id, room: s.presence, p: s.pose.p, speed: s.speed });
+    }
+    let next: Walker[] = [];
+    // Nobody moving asks nothing of the audio config.
+    if (players.some((p) => p.speed >= FOOTSTEP_MOVING_MPS)) {
+      try {
+        next = walkersOf(getAudio(), this.map?.house ?? null, players);
+      } catch {
+        next = [];
+      }
+    }
+    if (sameWalkers(this.walkers, next)) return;
+    if (next.length > 0 && now - this.walkersAt < FOOTSTEPS_MIN_MS) return;
+    this.walkers = next;
+    this.walkersAt = now;
+    this.o.onWalkers?.(next);
   }
 
   /** Time out silent sessions, let found ones go, drop stale parked ones. */
@@ -1383,8 +1561,12 @@ export class SpatialHub {
     this.kingSpent.clear();
     this.heartHeard.clear();
     this.picked.clear();
+    // (wave 49) What was told and a forced level die with the story.
+    this.told.clear();
+    this.forcedDescent = null;
     // (wave 39) A story reset is a cut: no pulse is held over it.
     this.stepPresence(true);
+    this.stepWalkers();
     this.broadcast("reset", { kind });
     this.syncKing(null);
   }

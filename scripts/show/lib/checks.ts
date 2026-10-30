@@ -64,6 +64,16 @@ export function healthCheck(status: number | null, body: Json | null, error?: st
 /** The run's phase, doors and scenario (off the full `ModView`), plus
  *  whether the server advertises it on `/` (`/api/landing`): only an open
  *  **live** event is — a preview never is, so "advertised" means live. */
+/** (wave 50) Clippy's dream: the set's last frame, a small file that proves
+ *  the upload reached its end and the proxy serves the folder. */
+export const DREAM_PROBE = "/media/dream/frames/010800.jpg";
+export function dreamMediaCheck(status: number | null): Check {
+  const read = `GET ${DREAM_PROBE}`;
+  if (status === 200) return row("Clippy's dream", "ok", "the media is served", read);
+  const why = status === null ? "no answer" : `HTTP ${status}`;
+  return row("Clippy's dream", "warn", `${why}: terminals keep their idle show at the Y2K bug. scripts/ops/dream-media.sh upload`, read);
+}
+
 export function runCheck(view: Json, title: string | null, landingTitle: string | null): Check[] {
   const read = "GET /api/state?role=mod";
   const out: Check[] = [];

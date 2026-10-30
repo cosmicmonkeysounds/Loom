@@ -24,6 +24,7 @@ import {
 } from "./geometry.ts";
 import { BODY_CLEAR, FLOOR_SLACK, STEP_UP, floorOf, locate, solidPropAt } from "./locate.ts";
 import { MODEL_KINDS, PROP_MODEL_PATTERN } from "./models.ts";
+import { DESCENT_MAX, TALKER_ID_PATTERN } from "./descent.ts";
 import type { HouseMap, Room, SpaceTransform, TerminalViewName, Validation, Vec2, Vec3 } from "./types.ts";
 
 /** Every screen type a terminal spot may name (`TerminalSpot.view`) — the
@@ -265,6 +266,8 @@ function checkShape(raw: unknown, problems: string[]): void {
     ["label", isStr, "a string", true],
     ["model", (v) => isStr(v) && PROP_MODEL_PATTERN.test(v), "a model id (\"wall\", \"rack\", …)", true],
     ["neon", (v) => isStr(v) && COLOR.test(v), '"#rrggbb"', true],
+    ["from", (v) => Number.isInteger(v) && (v as number) >= 1 && (v as number) <= DESCENT_MAX, `a descent level, 1–${DESCENT_MAX}`, true],
+    ["talk", (v) => isStr(v) && TALKER_ID_PATTERN.test(v), 'a talker id ("stove") or "none"', true],
     ["solid", (v) => typeof v === "boolean", "a boolean", true],
     ["hp", (v) => Number.isInteger(v) && (v as number) >= 1 && (v as number) <= KING_MAX_HP, `an integer 1–${KING_MAX_HP}`, true],
     ["health", (v) => isStr(v) && WORLD_PATH.test(v), 'a world path ("Night.king_hp")', true],
@@ -302,6 +305,9 @@ function checkShape(raw: unknown, problems: string[]): void {
     }
     // A model is drawn on a box or a cylinder only.
     if ((item["model"] !== undefined || item["neon"] !== undefined) && !(isStr(kind) && MODEL_KINDS.includes(kind))) problems.push(`${at}: "model" / "neon" are only for kind "box" or "cylinder"`);
+    // A prop only some programs see can't stand in anyone's way.
+    if (item["from"] !== undefined && item["solid"] === true) problems.push(`${at}: a prop with "from" is never solid`);
+    if (item["from"] !== undefined && !(isStr(kind) && MODEL_KINDS.includes(kind))) problems.push(`${at}: "from" is only for kind "box" or "cylinder"`);
     // A pickup says what it is; nothing else does.
     if (kind === "pickup" && item["item"] === undefined) problems.push(`${at}: a "pickup" needs an "item" ("virus")`);
     if (kind !== "pickup" && item["item"] !== undefined) problems.push(`${at}: "item" is only for kind "pickup"`);

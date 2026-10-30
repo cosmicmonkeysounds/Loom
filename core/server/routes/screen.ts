@@ -762,12 +762,25 @@ export const SCREEN_NIGHT_VARS = {
   bath_least_s: "Night.bath_least_s",
   bath_toggler: "Night.bath_toggler",
   bath_toggles: "Night.bath_toggles",
+  // Wave 50: Clippy's dream, on from the Y2K bug until an ending or a 🌀.
+  dream: "Night.dream",
   // Wave 48: the Language Report (G14), only while its slide is up.
   lang_flagged: "Night.lang_flagged",
   lang_censored: "Night.lang_censored",
   lang_curser: "Night.lang_curser",
   lang_curses: "Night.lang_curses",
 } as const;
+/** (wave 50) The story's cue that readies Clippy's dream: never a screen cue
+ *  (no slide, no family), only the moment the takeover counts from. */
+export const DREAM_CUE = "dream_begin";
+/** (wave 50) The takeover with no word from the TV (muted, off): this long
+ *  after the cue. His word can only bring it sooner, so this is set past the
+ *  slowest voice that could reach the words (about 30 s on the show's). */
+export const DREAM_FALLBACK_MS = 42_000;
+/** (wave 50) From the TV starting that sentence (`bug=1`) to the words. Long
+ *  enough that a wall's next poll (2 s) hears it first: every screen in the
+ *  house goes at the same server instant, on his word. */
+export const DREAM_LEAD_MS = 3200;
 /** (wave 45) The longest tie the Bathroom Report's slide carries. */
 const MAX_TIE_NAMES = 120;
 /** (wave 45) The slide the Bathroom Report (G13) cues. */
@@ -1060,6 +1073,9 @@ export interface ScreenDevice {
    *  (spoken, skipped or muted); −1 = none. Absent: no cursor yet, or a build
    *  too old to send it. */
   said?: number;
+  /** (wave 50) `bug=1`: the TV has started the sentence that names the Y2K
+   *  bug (its own text says so). Kept only from a `view=tv` poller. */
+  bug?: boolean;
   /** (wave 26, V1 phase 2) `sp=<seq>:<chunk>` / `sp=<seq>:d`: the line the
    *  TV is speaking now (its room-line seq) and the sentence (`chunk`, from
    *  0), or `chunk: null` once that line is done. Kept only from a `view=tv`
@@ -1144,6 +1160,7 @@ export function screenDeviceOf(q: (k: string) => string): ScreenDevice {
   if (/^-?\d{1,12}$/u.test(said) && Number(said) >= -1) d.said = Number(said);
   const sp = speechReportOf(q("sp"));
   if (sp !== null) d.speech = sp;
+  if (q("bug") === "1") d.bug = true;
   return d;
 }
 
@@ -1224,6 +1241,15 @@ export interface ScreenState {
    *  `chunk` null = that line is done. Memory only; null when no TV reported
    *  in the last 6 s (`TV_SPEECH_FRESH_MS`). */
   tvSpeech?: { seq: number; chunk: number | null; at: number } | null;
+  /** (wave 50) Clippy's dream; null: off, or a story without it. */
+  dream?: ScreenDream | null;
+}
+
+/** (wave 50) Clippy's dream while the story has it on. `at`: when the takeover
+ *  starts (server ms; 0 = before this boot), known ahead of time, so a
+ *  terminal readies its video first and every screen goes together. */
+export interface ScreenDream {
+  at: number;
 }
 
 /** The house's word on a poller's map spot (Q8). */
@@ -1360,6 +1386,11 @@ export class ScreenWatch {
   private readonly truths = new Map<string, "true" | "lie" | "none">();
   private truthAt: { seq: number; at: number } | null = null;
   private resultSeq = 0;
+  /** (wave 50) When Clippy's dream takes over (0: history), from `dream_begin`
+   *  until the TV reaches the words; `dreamHeard`: it did. Memory only: a
+   *  restart replays the cue as history, so the dream is simply on. */
+  private dreamAt: number | null = null;
+  private dreamHeard = false;
   /** Per target, the chart slide on screen and when it went up (`revealAt`). */
   private readonly chartUp = new Map<ScreenTarget, { slide: string; at: number }>();
   /** The chart call-out vars this sim's story mentions (null = not read yet). */
@@ -1416,6 +1447,8 @@ export class ScreenWatch {
       this.truths.clear();
       this.truthAt = null;
       this.resultSeq = 0;
+      this.dreamAt = null;
+      this.dreamHeard = false;
     }
     if (sim === null) return false;
     const events = sim.log.all();
@@ -1476,6 +1509,10 @@ export class ScreenWatch {
         continue;
       }
       if (e.verb !== "cue") continue;
+      if (e.args.trim().split(/[\s,]+/u)[0] === DREAM_CUE) {
+        this.dreamAt = at === 0 ? 0 : at + DREAM_FALLBACK_MS;
+        continue;
+      }
       // Wave 20: a room terminal's picture, kept per LOCATION (last wins).
       const roomCue = roomCueOf(e.args);
       if (roomCue !== null) {
@@ -1515,6 +1552,20 @@ export class ScreenWatch {
     this.sync(sim);
   }
 
+  /** Clippy's dream now (wave 50): null unless `Night.dream` is on and no
+   *  ending has come. The story's var is what a restart keeps; with no cue
+   *  seen (a story that sets it by hand) it is simply on. */
+  dreamOf(sim: Sim | null): ScreenDream | null {
+    if (sim === null) return null;
+    this.sync(sim);
+    const on = (path: string): boolean => {
+      const v = sim.world.peek(path);
+      return v?.kind === "bool" && v.value;
+    };
+    if (!on(SCREEN_NIGHT_VARS.dream) || on(SCREEN_NIGHT_VARS.ended)) return null;
+    return { at: this.dreamAt ?? 0 };
+  }
+
   /** Remember a terminal's poll (unnamed polls aren't recorded). */
   private note(who: ScreenWho): void {
     const name = clip(who.name);
@@ -1523,9 +1574,14 @@ export class ScreenWatch {
     const room = clip(who.room ?? "");
     const voice = clip(who.voice ?? "");
     // Wave 26: `sp=` counts only from the TV (`view=tv`); any other drops it.
-    const { speech, ...device } = who.device ?? {};
+    const { speech, bug, ...device } = who.device ?? {};
     const tv = who.view === "tv";
     if (tv && speech !== undefined) this.tvSpeech = { ...speech, at: this.now() };
+    // Wave 50: his word sets the takeover, once, and only ever sooner.
+    if (tv && bug === true && this.dreamAt !== null && !this.dreamHeard) {
+      this.dreamHeard = true;
+      this.dreamAt = Math.min(this.dreamAt, this.now() + DREAM_LEAD_MS);
+    }
     this.polls.set(name, { name, spot: clip(who.spot), view: clip(who.view, 16), character: clip(who.character), ...(room !== "" ? { room } : {}), ...(voice !== "" ? { voice } : {}), ...device, ...(tv && speech !== undefined ? { speech } : {}), at: this.now() });
     while (this.polls.size > MAX_SCREENS) this.polls.delete(this.polls.keys().next().value!);
   }
@@ -1842,6 +1898,7 @@ export class ScreenWatch {
       ...(results !== undefined ? { results } : {}),
       ...(spot !== undefined ? { spot } : {}),
       tvSpeech,
+      dream: this.dreamOf(sim),
     };
   }
 }

@@ -2,15 +2,28 @@
 title: The house map — drawing the house from a survey
 section: Live Shows
 order: 39
-keywords: house map, house desk, map editor, voice link, microphone, mic, floor plan, survey, measure, rooms, doors, yard, outdoor, tent, shed, stairs, floors, basement, upstairs, duck spot, spawn, terminal, location, reinstall, house.json, walkable, unreachable, undo, speaker, speakers, house speakers, audio, audio.json, Audio tab, interface, MOTU, 828x, ADAT, expander, expect, layout, inputs, ducks as, reach, sidechain, subwoofer, outputs, routing, matrix, zone, cue, announcements, TV voice, tablets, terminals, announce, test, router, stagehand, placeholder, stop, light, lights, bulb, lights.json, Lights tab, Zigbee, Zigbee2MQTT, Z2M, pair, pairing, permit join, device, identify, colour, look, looks, cue, safety light, WLED, zone
+keywords: house map, house desk, map editor, Run → House, open in a new tab, open in browser, descent, level, voice link, microphone, mic, floor plan, survey, measure, rooms, doors, yard, outdoor, tent, shed, stairs, floors, basement, upstairs, duck spot, spawn, terminal, location, reinstall, house.json, walkable, unreachable, undo, speaker, speakers, house speakers, audio, audio.json, Audio tab, interface, MOTU, 828x, ADAT, expander, expect, layout, inputs, ducks as, reach, sidechain, subwoofer, outputs, routing, matrix, zone, cue, announcements, TV voice, tablets, terminals, announce, test, router, stagehand, placeholder, stop, light, lights, bulb, lights.json, Lights tab, Zigbee, Zigbee2MQTT, Z2M, pair, pairing, permit join, device, identify, colour, look, looks, cue, safety light, WLED, zone
 ---
 
 The reinstallation games and the wall terminals share one **house map**
 (`house.json` — see [live verbs](33-live-verbs.md)): every room a
 rectangle (or a rectilinear polygon) on a floor, doors in the walls
 between them, stairs, the terminals where they hang, and the spots the
-golden duck may hide. You draw it at **`/reinstall/map`** on a device set
-up with the moderator passcode. Tick **Edit** to change it.
+golden duck may hide. You draw it in **Run → House → 🗺 Map**, with a
+rehearsal running: your own run signs you in, so nothing asks for a
+passcode. Tick **Edit** to change it.
+
+Three ways lead there: **🗺 Edit the map** on the Run page's House map card,
+*Open the house map* in the command palette (⌘⇧P), and the banner on a
+`house*.json` open in Writing. With no run they tell you to start a
+rehearsal. Your edits are kept while you visit another page or mode, until
+the run ends; save before you leave for long.
+
+**Open in a new tab ↗** beside the map opens the same editor on its own page
+(`/reinstall/map`), for a second screen. The desktop app can't show the map's
+questions, so there it opens in your browser instead. A device that goes
+straight to `/reinstall/map` with no link is set up with the moderator
+passcode, and asks for it again before its first save.
 
 ## Measuring
 
@@ -81,7 +94,9 @@ out is plenty; 5 cm is close enough.
   server rack, a mainframe, a PC tower, a CRT, a workstation, a video
   wall, a printer, a cable run, an error dialog or a security camera; a
   desk, a table, a filing cabinet, an office chair, a water cooler, a
-  plastic plant or a recycle bin. Each one lands at its own size in a
+  plastic plant or a recycle bin; and, under **Home**, **Studio** and
+  **Strange**, a stove, a fridge, a broken microwave, a BBQ, a couch, a
+  modular synth, a piano, a tea party, a door to nowhere and more. Each one lands at its own size in a
   clean white with its own neon; the plan draws it outlined in that
   neon with its name. Turn it with the round handle or **R** / **⇧R**
   (a wall panel stands along the way it faces, so turn it 90° to run it
@@ -91,6 +106,18 @@ out is plenty; 5 cm is close enough.
   games and the 3D preview draw it: it is solid as its box (or its
   circle, for the round ones), and an older game draws the plain box.
   Any box or cylinder can take a model.
+
+  A box or a cylinder also has two descent fields in the inspector (a
+  program reinstalled often enough starts to see things):
+
+  - **Appears** — *Always*, or *From level 1…4*: only a program that far
+    gone sees it, in the games only. It never collides (choosing a level
+    clears **solid**) and no route or terminal knows it is there. The plan
+    draws it dashed, with its level.
+  - **Talks** — *by model* (the first talker in the event's `descent.json`
+    that lists its model), a talker by name, or *never*. With no script on
+    the event it is a text box: a talker's id, or `none`. A name the script
+    doesn't have is a warning under Check.
 
 Doors, wall terminals, speakers and lights follow a room you move or
 resize (deleting a room deletes its speakers and lights; the confirm says
@@ -214,6 +241,14 @@ speakers** and redo your edits. **Save to project** (once they are saved)
 writes `audio.json` into the project for the next launch and every
 co-writer; **Download JSON** gives you the file. With no file yet the tab starts from a blank
 16 in / 16 out interface.
+
+**👣 Footsteps** — a program walking in the games is heard in the real
+house, on the speakers near where it walks and, muffled, through the walls
+and floors. **On**, the **reach** in metres a speaker carries a program, and
+the **level** in dB on top of the mix's Footsteps strip. Selecting a speaker
+gives a **👣 Test** beside 🔈 Test: a program's steps on that speaker alone
+for a few seconds (save the speakers first). The router makes the steps
+itself. It needs the `audio` job restarted on a new release, nothing else.
 
 The speaker router (stagehand's `audio` job, at the show on John's Desktop;
 the MacBook is only the fallback) plays every story sound, every house

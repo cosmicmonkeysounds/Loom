@@ -62,6 +62,16 @@
 ##   colour and level it shows now, lights the nearest few for real, pulses
 ##   the ones a program stands under, and dims the house's ambient toward
 ##   night while the player walks it ([signal LinkBase.lights_changed]).
+## - **The descent** (wave 49, [Descent], [Hallway], [TalkPanel]): the more
+##   often a program has been reinstalled, the less the house holds together
+##   (`descent` on the assignment, else `reinstalled`; `--descent N` forces it;
+##   level 0 is all of the above and nothing else). Visions on a seeded plan,
+##   props that wake and talk, a chosen answer told to the server
+##   ([method LinkBase.post_told]), a door to a corridor off the map. Nothing
+##   here ever blocks a find, a King hit, the void, the heart or the disk;
+##   in the Hallway `_tick_play` returns early like `_tick_escape`, poses go
+##   out from the door, and any way out (the far door, the time limit, a remap,
+##   a session end) brings the player back clean.
 ## - **Found**: egg, flight, "REINSTALLATION COMPLETE" (or "YOU FOUND
 ##   GERALD" for a program that wasn't corrupted); then the session ends and
 ##   the lobby comes back.
@@ -132,6 +142,8 @@ const AUTOPILOT_LIMIT := 180.0
 ## and waits at most this long (s) for the hit's answer.
 const AUTOPILOT_KING_STAND := 0.9
 const AUTOPILOT_KING_WAIT := 10.0
+## (DRAFT w49) The lobby's line for the deep test level.
+const TEST_DEEP := "Test level, deep (offline)…"
 ## The lobby's TEST MIC closes itself after this long (s).
 const MIC_TEST_LIMIT := 30.0
 ## The void's scare holds at least this long (s), and waits at most
@@ -157,6 +169,8 @@ var world_env: Environment
 var sun: DirectionalLight3D
 var trail: Trail
 var ghosts: Ghosts
+## The player's right hand: their own picture as a swarm.
+var hand: HandSwarm
 ## The terminals' live camera feeds on their screens ([CamFeeds]).
 var cams: CamFeeds
 var hud: Hud
@@ -168,6 +182,15 @@ var sfx: Sfx
 var speech: Speech
 ## The lobby's laser / mouse ([LobbyPointer]).
 var pointer: LobbyPointer
+## The descent (wave 49): the visions and talkers, the options' panel, the
+## Hallway.
+var descent: Descent
+var talk: TalkPanel
+var hallway: Hallway
+## Where the player walked into the Hallway (house frame) and the way they
+## face coming back out of it: the pose the server sees while they are inside.
+var _hall_feet: Array = []
+var _hall_yaw := 0.0
 ## The intro before each walk (wave 33): its steps ([IntroFlow]) and its
 ## place ([IntroSpace]); the tutorial's ring and duck (world).
 var intro := IntroFlow.new()
@@ -190,6 +213,10 @@ var trail_revealed := false
 var _cand_in := 0.0
 ## B B A A B A B A A B B in the lobby: the offline test level ([TestCombo]).
 var _combo := TestCombo.new()
+## … and its mirror, A A B B A B A B B A A: the same at the deepest level.
+var _combo_deep := TestCombo.new(TestCombo.MIRROR)
+## The level the test level plays at (< 0: not a test level).
+var _test_level := -1
 ## Seconds to Gerald's next quack look ([method Sfx.quack_plan]).
 var _quack_in := Sfx.QUACK_FIRST
 ## Seconds to the found screen's fanfare (< 0: none due).
@@ -288,7 +315,7 @@ func setup(l: LinkBase, xr: bool) -> void:
 	lamps.name = "Lamps"
 	add_child(lamps)
 	lamps.setup(builder, world_env, sun, HouseLights.tier_of(link.config.get("graphics", HouseLights.DEFAULT_TIER)))
-	lamps.feet = func() -> Array: return builder.to_house(player.feet())
+	lamps.feet = func() -> Array: return body_feet()
 	trail = Trail.new()
 	trail.name = "Trail"
 	add_child(trail)
@@ -322,6 +349,17 @@ func setup(l: LinkBase, xr: bool) -> void:
 	pointer.name = "Pointer"
 	pointer.player = player
 	add_child(pointer)
+	talk = TalkPanel.new()
+	talk.name = "TalkPanel"
+	add_child(talk)
+	hallway = Hallway.new()
+	hallway.name = "Hallway"
+	add_child(hallway)
+	descent = Descent.new()
+	descent.name = "Descent"
+	descent.game = self
+	add_child(descent)
+	builder.built.connect(descent.on_rebuilt)
 	lobby.attach(link, ghosts.avatars)
 	lobby.mic_action.connect(_on_mic_action)
 	lobby.resume_answered.connect(_on_resume_answer)  # (wave 40) the resume card's YES / NO
@@ -349,7 +387,12 @@ func setup(l: LinkBase, xr: bool) -> void:
 	link.king_hit_answered.connect(_on_king_hit_answered)
 	link.moment_answered.connect(_on_moment_answered)
 	link.lights_changed.connect(lamps.apply)
+	link.descent_loaded.connect(func(words: Variant) -> void: descent.adopt_script(words))
 	ghosts.url_of = link.avatar_url
+	hand = HandSwarm.new()
+	hand.attach(ghosts.avatars, link.avatar_url)
+	player.right_hand.add_child(hand)
+	link.stream_frame.connect(hand.on_frame)
 
 	lobby.set_station(link.station_name())
 	lobby.set_status(link.status)
@@ -372,6 +415,9 @@ func state() -> GameFlow.State:
 func enter_lobby() -> void:
 	if autopilot != null and _autopilot_played:
 		_autopilot_quit(0 if _autopilot_found else 1, "session over (%s)" % ("found" if _autopilot_found else "no find"))
+	_close_hallway()  # the house back first: nobody stays in there
+	descent.stop()
+	_test_level = -1
 	flow.abort()
 	intro.abort()
 	intro_space.close()
@@ -386,6 +432,8 @@ func enter_lobby() -> void:
 	_escape_t = -1.0
 	_escape_answer = {}
 	ghosts.own_session = ""
+	hand.own_session = ""
+	hand.wear(null)
 	# The head-locked HUD would float over the tiles: a notice still up
 	# (the session ended, …) moves to the lobby's own message line.
 	var carried := hud.notice_text() if _notice_left > 0.0 and hud.big_text() == "" else ""
@@ -413,6 +461,8 @@ func enter_lobby() -> void:
 
 
 func _on_house(h: Dictionary, _version: String) -> void:
+	if hallway.active():
+		_leave_hallway()  # the house back first: a remap never reaches the pocket
 	builder.build(h)
 	_update_route_house()
 	if flow.state != GameFlow.State.LOBBY:
@@ -443,7 +493,7 @@ func _update_route_house() -> bool:
 	var fallen: bool = not k.is_empty() and k["fallen"] == true
 	var hold := false
 	if id != "" and not fallen and king_door_open and flow.state == GameFlow.State.PLAYING:
-		hold = HouseKing.keep_door_open(builder.house, prop, builder.to_house(player.feet()))
+		hold = HouseKing.keep_door_open(builder.house, prop, body_feet())
 	if id != "":
 		builder.hold_door(id, hold)
 	var open := id != "" and (fallen or hold)
@@ -554,6 +604,11 @@ func _on_assignment(a: Dictionary) -> void:
 	if not a.get("duck") is Dictionary or not a.get("spawn") is Dictionary:
 		lobby.flash("That assignment has no duck.", 5.0, true)
 		return
+	if _test_level > 0:
+		# (wave 49) A program that has been through this many times: its
+		# intro is skippable and its lines count right.
+		a = a.duplicate()
+		a["reinstalled"] = _test_level
 	_enter_walk(a, {})
 
 
@@ -574,6 +629,8 @@ func _enter_walk(a: Dictionary, resume_pose: Dictionary) -> void:
 	ghosts.own_session = str(a.get("session", ""))
 	ghosts.on_frame("leave", {"session": ghosts.own_session})
 	ghosts.new_visit()
+	hand.own_session = ghosts.own_session
+	hand.wear(a.get("avatar"))
 	_escaped_at = -1.0
 	_reset_props(a)
 	_king_said = false
@@ -582,6 +639,8 @@ func _enter_walk(a: Dictionary, resume_pose: Dictionary) -> void:
 	king_hit_used = a.get("kingHit", false) == true
 	_king_hit_pending = false
 	_resume_pose = resume_pose
+	if walk_level(a) > 0:
+		link.fetch_descent()  # never waited for: the walk starts on what we have
 	if not resume_pose.is_empty():
 		_start_play()  # resumed mid-walk: straight in-house, no intro
 	elif intro_wanted():
@@ -595,6 +654,15 @@ func _enter_walk(a: Dictionary, resume_pose: Dictionary) -> void:
 ## on), never for the autopilot.
 func intro_wanted() -> bool:
 	return autopilot == null and bool(link.config.get("intro", true))
+
+
+## This walk's level of the descent: the test level's, the headset's own
+## (`--descent N`), else the assignment's.
+func walk_level(a: Dictionary) -> int:
+	if _test_level >= 0:
+		return _test_level
+	var forced: Variant = link.config.get("descent")
+	return HouseDescent.clamp_descent(forced) if forced != null else HouseDescent.descent_of(a)
 
 
 ## Into the house at the assignment's spawn: the walk (and its clocks — the
@@ -629,6 +697,7 @@ func _start_play() -> void:
 	_update_route_house()
 	_sight_room = null
 	_tick_sight(start_pos)
+	descent.start(a, walk_level(a), link.descent_script if link.descent_script != null else HouseDescent.bundled())
 	hud.show_play()
 	if link.map_warning_text != "":
 		_notice(link.map_warning_text)  # raised in the lobby, still in force
@@ -763,12 +832,15 @@ func _on_found_answered(ok: bool, data: Dictionary) -> void:
 	var still_captured: bool = data.get("captured") == true if data.get("captured") is bool else flow.assignment.get("captured") == true
 	var refused: bool = not released and still_captured
 	var who := str(flow.assignment.get("name", ""))
+	if flow.state == GameFlow.State.PLAYING and hallway.active():
+		_leave_hallway()  # claimed on the way in: out to the find
 	if not flow.found(released):
 		return
 	if autopilot != null:
 		_autopilot_found = true
 		player.left_stick = Vector2.ZERO
 		print("autopilot: found — released=%s already=%s" % [data.get("released"), data.get("already")])
+	descent.on_found()
 	sfx.quack_at(duck.emitter, 1.0)
 	sfx.set_hum(false)
 	if not refused:
@@ -781,6 +853,7 @@ func _on_found_answered(ok: bool, data: Dictionary) -> void:
 		hud.show_found("GERALD CAN'T HELP", who)
 	else:
 		hud.show_found("YOU FOUND GERALD", who)
+	speech.say(descent.found_lines())
 	state_changed.emit(flow.state)
 
 
@@ -1012,6 +1085,7 @@ func _process(delta: float) -> void:
 			if flow.tick(delta):
 				link.end_session("found")
 				enter_lobby()
+	descent.step(delta)
 
 
 ## The safety net under the lobby and the intro: a body that fell through
@@ -1037,10 +1111,21 @@ var falls := 0
 
 ## The test level: play offline (the bundled house) as the captured
 ## offline program, no server needed ([TestCombo]).
-func start_test_level() -> void:
+func start_test_level(level := -1) -> void:
+	_test_level = level
 	link.play_offline()
-	lobby.flash("Test level (offline)…", 3.0)
+	lobby.flash(TEST_DEEP if level > 0 else "Test level (offline)…", 3.0)
 	link.begin("g-000001")
+
+
+## One frame of the lobby's test combos; true when one started the test level:
+## the plain one as ever, its mirror (wave 49) at the deepest level.
+func feed_combos(a_down: bool, b_down: bool, delta: float) -> bool:
+	var plain := _combo.feed(a_down, b_down, delta)
+	var deep := _combo_deep.feed(a_down, b_down, delta)
+	if plain or deep:
+		start_test_level(HouseDescent.DESCENT_MAX if deep else -1)
+	return plain or deep
 
 
 func _tick_lobby(delta: float) -> void:
@@ -1055,8 +1140,7 @@ func _tick_lobby(delta: float) -> void:
 	var stick := Vector2(l.x if absf(l.x) >= absf(r.x) else r.x, l.y if absf(l.y) >= absf(r.y) else r.y)
 	var chosen := lobby.tick(stick, delta)
 	var hands := [player.left_hand, player.right_hand]
-	if _combo.feed(TestCombo.held(hands, "ax_button"), TestCombo.held(hands, "by_button"), delta):
-		start_test_level()
+	if feed_combos(TestCombo.held(hands, "ax_button"), TestCombo.held(hands, "by_button"), delta):
 		return
 	if not chosen.is_empty():
 		lobby.flash("Starting %s…" % chosen.get("name", chosen.get("id", "")), 3.0)
@@ -1099,6 +1183,11 @@ func _on_mic_action(id: String) -> void:
 
 func _tick_play(delta: float) -> void:
 	var house := builder.house
+	if hallway.active():
+		# Off the map: the server keeps seeing them at the door they went
+		# through; no void, heart, pickup, King or find in here.
+		_tick_hallway(delta)
+		return
 	var feet := builder.to_house(player.feet())
 	if _escape_t >= 0.0:
 		# Frozen in the void: no poses (the server judges the one outside),
@@ -1139,7 +1228,109 @@ func _tick_play(delta: float) -> void:
 	if not _found_pending and _found_retry <= 0.0 and at_duck:
 		_found_pending = true
 		link.report_found()
+	if _tick_descent(house, feet):
+		return
 	_tick_king(house, feet, builder.yaw_to_house(player.head_yaw()))
+
+
+# --- the descent (wave 49) ---
+
+
+## Where the body counts as standing (house frame): its feet, or in the Hallway
+## the spot it walked in from.
+func body_feet() -> Array:
+	return _hall_feet if hallway.active() else builder.to_house(player.feet())
+
+
+## The visions and talkers for one walking frame; true when the player has just
+## gone through the door (this frame's walk is over). The autopilot walks past.
+func _tick_descent(house: Dictionary, feet: Array) -> bool:
+	if not descent.running:
+		return false
+	descent.tick(house, feet, descent_held(house, feet))
+	if autopilot == null and descent.door_reached(house, feet):
+		_enter_hallway(feet)
+		return true
+	return false
+
+
+## Whether the descent's beats wait: a suspended walk, or near the King. (An
+## escape and the Hallway never reach here.)
+func descent_held(house: Dictionary, feet: Array) -> bool:
+	if _suspended or not _away_until.is_empty():
+		return true
+	var prop := HouseKing.king_prop(house)
+	if prop.is_empty():
+		return false
+	var pos: Array = prop["pos"]
+	return HouseLocate.floor_of(house, float(feet[1])) == HouseLocate.floor_of(house, float(pos[1])) and Vector2(float(feet[0]) - float(pos[0]), float(feet[2]) - float(pos[2])).length() <= Descent.KING_CLEAR_M
+
+
+## The press that just picked a talker's row is not a hit on the King.
+func swallow_hit() -> void:
+	_hit_was = true
+
+
+## Show or hide everything of the house (the Hallway has none of it).
+func _show_house(on: bool) -> void:
+	builder.visible = on
+	ghosts.visible = on
+	lamps.visible = on
+	trail.visible = on
+	duck.set_floor_hidden(not on)
+
+
+## Through the door: off the map, the server seeing them stand at `feet`.
+func _enter_hallway(feet: Array) -> void:
+	var spot: Variant = descent.take_door()
+	_hall_feet = feet.duplicate()
+	var door: Array = spot["pos"] if spot != null else feet
+	var plan := Vector2(float(feet[0]) - float(door[0]), float(feet[2]) - float(door[2]))
+	# Coming back, they face away from where the door stood.
+	_hall_yaw = HouseRoute.yaw_toward(door, feet) if plan.length() > 0.05 else float(spot["yaw"]) if spot != null else 0.0
+	_clear_trail()
+	_show_house(false)
+	descent.pocket(true)
+	player.teleport(hallway.enter(), 0.0)
+	descent.say_hallway("enter")
+	print("reinstall-vr: the Hallway — %s went through" % flow.assignment.get("name", ""))
+
+
+## One frame in the pocket, the shape of [method _tick_escape]: the pose at the
+## door, voice and cams on the door's room, the walk's clocks running.
+func _tick_hallway(delta: float) -> void:
+	link.send_pose(_hall_feet, _hall_yaw, 0.0)
+	cams.tick(delta, builder.house, _hall_feet, link.cams_url(), link.cams_token())
+	_tick_voice()
+	_played_for += delta
+	_hit_was = player.hit_button
+	match hallway.tick(delta, player.feet()):
+		"far":
+			descent.say_hallway("far")
+		"done":
+			_leave_hallway()
+
+
+## Out of the pocket, at the door they went through, facing away from it. The
+## door is gone.
+func _leave_hallway() -> void:
+	var at := _hall_feet
+	_close_hallway()
+	player.teleport(builder.to_world(at), builder.yaw_to_world(_hall_yaw))
+	descent.say_hallway("out")
+	_trail_in = 0.0
+	_sight_room = null
+	_tick_sight(at)
+	print("reinstall-vr: the Hallway — back")
+
+
+## The pocket shut and the house shown again, wherever the player goes next.
+func _close_hallway() -> void:
+	if not hallway.active():
+		return
+	hallway.leave()
+	descent.pocket(false)
+	_show_house(true)
 
 
 # --- the void (R4) ---
@@ -1153,6 +1344,7 @@ func escaping() -> bool:
 ## The player is [constant HouseEscape.ESCAPE_M] into the void: scare them
 ## and post the escape — or, within the cooldown, put them back quietly.
 func _start_escape() -> void:
+	descent.interrupt()
 	_clear_trail()
 	var now := float(clock.call())
 	if _escaped_at >= 0.0 and (now - _escaped_at) * 1000.0 < HouseEscape.ESCAPE_COOLDOWN_MS:
@@ -1338,7 +1530,7 @@ func prop_state(id: String) -> String:
 func _say_lines(data: Dictionary, anchor: Node3D) -> void:
 	var lines: Variant = data.get("lines")
 	if lines is Array and not (lines as Array).is_empty():
-		speech.say(lines, anchor)
+		speech.say(lines, null if hallway.active() else anchor)
 
 
 ## The path reveal (R2): the trail stays off for the walk's first
@@ -1405,7 +1597,8 @@ func _stop_voice() -> void:
 ## once per approach how to hit him; on a press of the hit button, near and
 ## facing him ([method HouseKing.king_reach]), hit — once per visit.
 func _tick_king(house: Dictionary, feet: Array, yaw: float) -> void:
-	var pressed := player.hit_button and not _hit_was
+	# (wave 49) A trigger on a talker's row picks the row, never hits him.
+	var pressed := player.hit_button and not _hit_was and not descent.trigger_taken()
 	_hit_was = player.hit_button
 	var prop := HouseKing.king_prop(house)
 	var k := link.king

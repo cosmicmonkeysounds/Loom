@@ -153,6 +153,56 @@ func _show_picture(g: Dictionary, tex: Texture2D) -> void:
 	mat.set_shader_parameter("worn", tex != null)
 
 
+## (wave 49) The bare picture of avatar key `key`, once it is here (asked
+## for otherwise); null when there is none, or not yet.
+func picture_for(key: Variant) -> Texture2D:
+	var url: String = str(url_of.call(str(key))) if key is String and str(key) != "" else ""
+	if url == "" or avatars == null:
+		return null
+	var tex := avatars.bare(url)
+	if tex == null:
+		avatars.fetch(url)
+	return tex
+
+
+## (wave 49, the `self` vision) The program's own copy: a swarm of its
+## picture ([method set_pale_picture]) that fades by losing shards.
+static func make_pale() -> Node3D:
+	var root := Node3D.new()
+	var mat := ShaderMaterial.new()
+	mat.shader = SWARM_SHADER
+	var swarm := MultiMeshInstance3D.new()
+	swarm.name = "Swarm"
+	swarm.multimesh = shards()
+	swarm.material_override = mat
+	swarm.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	root.add_child(swarm)
+	return root
+
+
+static func _pale_mat(root: Node3D) -> ShaderMaterial:
+	return (root.get_node("Swarm") as MultiMeshInstance3D).material_override as ShaderMaterial
+
+
+static func set_pale_picture(root: Node3D, tex: Texture2D) -> void:
+	_pale_mat(root).set_shader_parameter("map", tex)
+	_pale_mat(root).set_shader_parameter("worn", tex != null)
+
+
+## How much of the copy is there, 0 … 1.
+static func set_pale_alpha(root: Node3D, a: float) -> void:
+	_pale_mat(root).set_shader_parameter("present", a)
+
+
+## After moving it: the shader works in world space from here.
+static func place_pale(root: Node3D) -> void:
+	_pale_mat(root).set_shader_parameter("origin", root.global_position)
+
+
+static func pale_picture(root: Node3D) -> Texture2D:
+	return _pale_mat(root).get_shader_parameter("map")
+
+
 ## The URL a ghost's picture is (or would be) from ("" = none).
 func picture_url(session: String) -> String:
 	return str(_ghosts[session]["url"]) if _ghosts.has(session) else ""
@@ -181,16 +231,16 @@ func _make(sid: String) -> Node3D:
 	mat.set_shader_parameter("tint", Color.from_hsv(seed_of / 1000.0, 0.6, 1.0))
 	var swarm := MultiMeshInstance3D.new()
 	swarm.name = "Swarm"
-	swarm.multimesh = _shards()
+	swarm.multimesh = shards()
 	swarm.material_override = mat
 	swarm.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	root.add_child(swarm)
 	return root
 
 
-## Every ghost's one set of shards, built once. Its bounds cover the trail
+## Every swarm's one set of shards, built once. Its bounds cover the trail
 ## and the shards that jump: the shader places them, so Godot can't know.
-static func _shards() -> MultiMesh:
+static func shards() -> MultiMesh:
 	if _shared_shards != null:
 		return _shared_shards
 	var quad := QuadMesh.new()

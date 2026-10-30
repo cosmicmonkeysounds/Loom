@@ -51,14 +51,20 @@
 //! night floor — and the graphics quality (`quality.ts`: a tier, or `auto`
 //! following the frame time under the device's cap), with the
 //! post-processing (`post.ts`: bloom + grade) loaded only when a tier wants it.
+//!
+//! Wave 49 (the descent, `descent.ts`, `visions.ts`, `hallway.ts`): a walk at
+//! level 1 or deeper has a `Director` (when things happen), `Visions` (what
+//! they look like) and a `Hallway`. Level 0 builds none of them. In the
+//! Hallway `this.body` stays at the door, so the pose pump, the voice link and
+//! the cameras keep reading the door's room, and `this.pocket` walks instead.
 
 import { ACESFilmicToneMapping, PerspectiveCamera, Scene, Vector3, WebGLRenderer } from "three";
 import type { Group } from "three";
-import { buildWalls, heartProps, hiddenFloors, locate, heartReached, outsideGround, pathLength, pickupProps, pickupReach, presenceRoom, spaceOf, toSpace, wrapYaw, yawFromSpace, yawToSpace } from "@loom/house";
+import { visitOf, buildWalls, clampDescent, heartProps, propModel, hiddenFloors, locate, heartReached, outsideGround, pathLength, pickupProps, pickupReach, presenceRoom, spaceOf, toSpace, wrapYaw, yawFromSpace, yawToSpace, yawToward } from "@loom/house";
 import type { Assignment, DuckSpot, GameLights, HouseMap, KingState, PlayerPose, PlayerState, Prop, Spawn, SpatialFrame, Vec3 } from "@loom/house";
 import { applySpace, buildHouseScene, createAvatar, createDuck, createTrail, GAME_TERMINAL_SCALE, houseAtmosphere, PoseBuffer, spaceGroup } from "@loom/house/three";
 import type { Avatar, Duck, HouseScene, King, Trail } from "@loom/house/three";
-import { fetchHouse, postEnd, postFound, postKingHit, postMoment, postPose, postReady, streamProbe, streamUrl, type FoundAnswer, type MomentLine, type MomentReply } from "../api.ts";
+import { fetchDescent, fetchHouse, postEnd, postFound, postKingHit, postMoment, postPose, postReady, postTold, streamProbe, streamUrl, type FoundAnswer, type MomentLine, type MomentReply } from "../api.ts";
 import { CamFeeds } from "./cams.ts";
 import { createVoiceSink, earsFor, micSourceOf, stopStream, VoiceLink, type VoiceHudState } from "./voice.ts";
 import { applyFrame, avatarUrl, duckToAdopt, houseVersionOf, kingOf, openSpatialStream, type SpatialStreamHandle } from "../spatial.ts";
@@ -89,6 +95,10 @@ import type { DeviceSpeaker } from "./lines.ts";
 import { escapeDue, escapeStep, heartStep, PICKUP_NOTICE, pickupStep, SCARE_MS, SCARE_WAIT_MS } from "./moments.ts";
 import { bodyAfterRemap, buildPhysicsWorld, eyeOf, move, NO_INPUT, spawnBody, type Body, type PhysicsOptions, type PhysicsWorld } from "./physics.ts";
 import { NoRenderer } from "./no-start.ts";
+import { Director, KING_HOLD_M, talkKey, type DoorAt } from "./descent.ts";
+import { Hallway } from "./hallway.ts";
+import type { TalkHud } from "./Talk.tsx";
+import { Visions } from "./visions.ts";
 import { demoLights } from "./house-lights.ts";
 import { HouseLamps } from "./lamps.ts";
 import type { Post } from "./post.ts";
@@ -155,6 +165,12 @@ export interface HudState {
   mouseHint: boolean;
   /** (wave 39) The graphics: the setting, the tier drawn now, the device's cap. */
   quality: QualityHud;
+  /** (wave 49) A prop is talking to the player, null when none. */
+  talk: TalkHud | null;
+  /** (wave 49) In the Hallway: there is nothing to tell them. */
+  hallway: boolean;
+  /** (wave 49) What Gerald said at the find, null when he said nothing. */
+  foundLine: string | null;
 }
 
 export interface QualityHud {
@@ -219,6 +235,8 @@ export interface GameOptions {
   quality?: { choice: QualityChoice; cap: QualityTier };
   /** (wave 39, dev only) Feed a synthetic `lights` frame (`demoLights`). */
   lightsDemo?: boolean;
+  /** (wave 49) This walk's descent level (`descentOf`, or `?descent=N`). Absent: 0, the clean game. */
+  descent?: number;
 }
 
 interface Ghost {
@@ -368,6 +386,23 @@ export class Game {
   /** Bumped on every tier change: a post module that lands late for an old tier is dropped. */
   private postWanted = 0;
   private lastFrameAt = 0;
+  // Wave 49: the descent. All null at level 0.
+  private readonly descentLevel: number;
+  private director: Director | null = null;
+  private visions: Visions | null = null;
+  private hallway: Hallway | null = null;
+  /** In the Hallway: `hallway` while the player is in it, else null. */
+  private pocket: Hallway | null = null;
+  /** The door they came through. */
+  private pocketDoor: DoorAt | null = null;
+  /** The descent's own lines: never the story's, and cut for them. */
+  private descentLines: LinePlayer | null = null;
+  private descentSpeaker: DeviceSpeaker | null = null;
+  private descentCaption: MomentLine | null = null;
+  private descentSpeaking = false;
+  /** The line a prop is on: it stays up under the answers. */
+  private talkLine: string | null = null;
+  private saidAtFind: string | null = null;
 
   constructor(opts: GameOptions) {
     this.o = opts;
@@ -400,7 +435,8 @@ export class Game {
     const root = spaceGroup(spaceOf(opts.house, "web"));
     this.root = root;
     this.scene.add(root);
-    this.house = buildHouseScene(opts.house, { walls, ground: true, pickups: true, terminalScale: GAME_TERMINAL_SCALE, neon: true });
+    this.descentLevel = clampDescent(opts.descent ?? 0);
+    this.house = buildHouseScene(opts.house, { walls, ground: true, pickups: true, terminalScale: GAME_TERMINAL_SCALE, neon: true, descent: this.descentLevel });
     root.add(this.house.root);
     this.house.setHaze(this.settings.haze);
     for (const id of opts.assignment.picked ?? []) this.taken.add(id);
@@ -445,6 +481,7 @@ export class Game {
         if (on) this.voice?.holdFor(SPEAKING_HOLD_MS);
       },
     });
+    if (this.descentLevel > 0) this.descentSafely(() => this.buildDescent());
   }
 
   /** Start rendering, listening and streaming. */
@@ -480,7 +517,178 @@ export class Game {
       this.demoTimer = window.setInterval(feed, DEMO_EVERY_MS);
     }
     this.applyQuality();
+    if (this.director !== null) {
+      // Never waited for: a failure (or an old server) means visions without words.
+      void fetchDescent(this.o.base, this.o.assignment.token).then((script) => {
+        if (this.phase === "ended" || this.director === null) return;
+        this.director.setScript(script);
+        this.visions?.setAwake(this.director.awake, this.map);
+      });
+    }
     this.loop(performance.now());
+  }
+
+  // --- wave 49: the descent --------------------------------------------------
+
+  /** Everything a descent needs, built once at walk start. */
+  private buildDescent(): void {
+    const a = this.o.assignment;
+    const speaker = deviceSpeaker();
+    this.descentSpeaker = speaker;
+    this.descentLines = new LinePlayer({
+      speak: (text, started) => speaker.speak(text, started),
+      cut: () => speaker.stop(),
+      show: (line) => {
+        this.descentCaption = line;
+        if (line !== null) this.talkLine = line.text;
+        this.lastHudAt = Number.NEGATIVE_INFINITY;
+      },
+      sleep: wait,
+      speaking: (on) => {
+        this.descentSpeaking = on;
+        if (on) this.voice?.holdFor(SPEAKING_HOLD_MS);
+      },
+    });
+    const hallway = new Hallway();
+    this.hallway = hallway;
+    this.root.add(hallway.object);
+    this.director = new Director({
+      level: this.descentLevel,
+      seed: a.session,
+      house: this.map,
+      who: { name: a.name, visit: visitOf(a.reinstalled, this.descentLevel) },
+      told: a.told,
+      host: {
+        start: (kind, n, door) => this.visions?.start(kind, n, door) ?? false,
+        stop: (kind) => this.visions?.stop(kind),
+        say: (lines) => this.descentLines?.play(lines.map((text) => ({ from: "", text }))) ?? Promise.resolve(),
+        hush: () => {
+          this.descentLines?.stop();
+          this.descentSpeaker?.stop();
+        },
+        tell: (talker, mark) => void postTold(this.o.base, a.token, talker, mark),
+        talkChanged: () => {
+          const t = this.director?.talk ?? null;
+          if (t === null) this.talkLine = null;
+          this.visions?.setSpeaking(t !== null && t.stage === "saying" ? t.prop.id : null);
+          this.lastHudAt = Number.NEGATIVE_INFINITY;
+        },
+        enterHallway: (door) => this.enterHallway(door),
+        mumble: (prop, closeness) => {
+          const rel = relativeBearing(this.body.p, prop.pos, this.body.yaw);
+          this.o.sfx.mumble(closeness, Math.sin(rel * DEG) * 0.8);
+        },
+      },
+    });
+    this.visions = new Visions({
+      root: this.root,
+      scene: this.scene,
+      lamps: this.lamps,
+      sfx: this.o.sfx,
+      level: this.descentLevel,
+      name: a.name,
+      guest: a.guest,
+      picture: avatarUrl(this.o.base, a.avatar ?? null),
+      view: () => ({ map: this.map, world: this.world, body: this.body, route: this.pathRevealed && this.path.length >= 2 ? this.path : null, house: this.house }),
+      setExposure: (x) => {
+        this.renderer.toneMappingExposure = EXPOSURE * x;
+        this.post?.setExposure(EXPOSURE * x);
+      },
+    });
+    // What only a vision ever draws is compiled now, not the first time it shows.
+    this.renderer.compile(this.scene, this.camera);
+  }
+
+  /** One frame of the descent (the intro over, a walk under way). */
+  private tickDescent(dt: number): void {
+    const d = this.director;
+    if (!d) return;
+    const king = this.kingProp;
+    d.tick(dt, {
+      feet: this.body.p,
+      yaw: this.body.yaw,
+      escaping: this.escaping,
+      held: this.held,
+      kingNear: king !== null && Math.hypot(king.pos[0] - this.body.p[0], king.pos[2] - this.body.p[2]) <= KING_HOLD_M,
+    });
+  }
+
+  /** Nothing here can stop a walk, a bug included: it drops the descent, and the game goes on clean. */
+  private descentSafely(step: () => void): void {
+    try {
+      step();
+    } catch (e) {
+      console.warn("reinstall: the descent gave way", e);
+      this.dropDescent();
+    }
+  }
+
+  private dropDescent(): void {
+    const hall = this.pocket;
+    this.pocket = null;
+    this.pocketDoor = null;
+    hall?.leave();
+    for (const group of this.house.floors.values()) group.visible = true;
+    this.trail.object.visible = true;
+    this.lamps.borrow(null);
+    this.o.sfx.drone(false);
+    this.descentLines?.stop();
+    this.descentSpeaker?.stop();
+    this.descentCaption = null;
+    this.talkLine = null;
+    this.director = null;
+    this.hallway = null;
+    this.visions?.calm(this.house);
+    this.visions = null;
+  }
+
+  /** Key 1–4, or a button: an answer to the prop talking. */
+  talkPick(index: number): void {
+    if (this.director?.pick(index) === true) this.leash.touch(performance.now());
+  }
+
+  /**
+   * Through the door. Only the camera goes: `this.body` stays where it is.
+   * They keep walking the way they were, turned as they were to the door.
+   */
+  private enterHallway(door: DoorAt): void {
+    const hall = this.hallway;
+    if (hall === null) return;
+    this.pocket = hall;
+    this.pocketDoor = door;
+    hall.enter(wrapYaw(this.body.yaw - (door.yaw + 180)), this.body.pitch);
+    this.trail.object.visible = false;
+    this.hitQueued = false;
+    this.lamps.borrow(hall.light());
+    this.o.sfx.drone(true);
+    this.lastHudAt = Number.NEGATIVE_INFINITY;
+  }
+
+  /** Back in the house: at the door they came in by, facing away from it, the door gone. */
+  private leaveHallway(quiet: boolean): void {
+    const hall = this.pocket;
+    if (!hall) return;
+    this.pocket = null;
+    hall.leave();
+    for (const group of this.house.floors.values()) group.visible = true;
+    this.trail.object.visible = true;
+    this.lamps.borrow(null);
+    this.o.sfx.drone(false);
+    this.visions?.reveal();
+    const door = this.pocketDoor;
+    this.pocketDoor = null;
+    if (door !== null) this.body = { ...this.body, yaw: yawToward(door.pos, this.body.p), vy: 0 };
+    this.lastTrailAt = Number.NEGATIVE_INFINITY;
+    this.distHistory = [];
+    this.leash.touch(performance.now());
+    this.lastHudAt = Number.NEGATIVE_INFINITY;
+    this.director?.leftHallway(quiet);
+  }
+
+  /** The walk is over: restore the house and say nothing more. */
+  private stopDescent(): void {
+    this.leaveHallway(true);
+    this.director?.stop();
   }
 
   // --- wave 39: the house lights and the graphics ------------------------
@@ -643,6 +851,7 @@ export class Game {
   /** The player gave up (the ✕ button): end the session on the server. */
   quit(): void {
     if (this.phase === "ended") return;
+    this.stopDescent();
     this.phase = "ended";
     this.pump.stop();
     this.syncFeeds();
@@ -657,6 +866,7 @@ export class Game {
 
   dispose(): void {
     this.releaseMouse();
+    this.stopDescent();
     this.phase = this.phase === "found" ? "found" : "ended";
     cancelAnimationFrame(this.raf);
     window.clearInterval(this.pumpTimer);
@@ -671,6 +881,8 @@ export class Game {
     this.voice?.stop();
     this.lines?.stop();
     this.speaker?.stop();
+    this.visions?.dispose();
+    this.hallway?.dispose();
     this.resizeObserver?.disconnect();
     for (const c of this.cleanups) c();
     for (const g of this.ghosts.values()) g.avatar.dispose();
@@ -700,6 +912,11 @@ export class Game {
       if (this.held) return;
       if (!e.repeat && !e.metaKey && !e.ctrlKey && !e.altKey && this.phase === "playing" && e.code === "Space") this.hitQueued = true;
       if (!e.repeat && !e.metaKey && !e.ctrlKey && !e.altKey && e.code === "KeyM") this.voice?.toggleMute();
+      // An answer to a prop: 1–4, never the movement keys.
+      if (!e.repeat && !e.metaKey && !e.ctrlKey && !e.altKey && this.director?.options != null) {
+        const i = talkKey(e.code);
+        if (i !== null) this.talkPick(i);
+      }
       if (keyDown(this.keys, e)) e.preventDefault();
     };
     const up = (e: KeyboardEvent): void => keyUp(this.keys, e);
@@ -854,7 +1071,10 @@ export class Game {
     this.drag = [0, 0];
     if (isActive(input)) this.leash.touch(now);
     const before = this.body;
-    this.body = move(this.body, input, dt, this.world);
+    // In the Hallway the real body stands at the door; the walking is in there.
+    const pocket = this.pocket;
+    const step = pocket ? pocket.update(dt, input) : null;
+    if (!pocket) this.body = move(this.body, input, dt, this.world);
     if (this.tutorial !== null && playing && !this.held && !this.escaping) {
       const moved = Math.hypot(this.body.p[0] - before.p[0], this.body.p[2] - before.p[2]);
       this.tutorial = advance(this.tutorial, {
@@ -880,12 +1100,12 @@ export class Game {
         this.presence = presenceRoom(this.map, this.body.p, this.presence);
       }
       // Held (an overlay over the game): Gerald keeps quiet under it too.
-      if (!this.held) this.maybeQuack(now);
-      if (this.kingProp !== null && this.phase === "playing" && !this.escaping) this.tickKing(now);
-      // The void, the heart and the disks (never under an overlay, never mid-escape).
-      if (this.phase === "playing" && !this.held && !this.escaping) this.tickMoments(now);
-      // Held (an overlay over the game): nobody can see Gerald, so no find.
-      if (this.phase === "playing" && this.duck.state === "idle" && !this.held && !this.escaping) {
+      if (!this.held && !pocket) this.maybeQuack(now);
+      if (this.kingProp !== null && this.phase === "playing" && !this.escaping && !pocket) this.tickKing(now);
+      // The void, the heart and the disks (never under an overlay, never mid-escape, never in the Hallway).
+      if (this.phase === "playing" && !this.held && !this.escaping && !pocket) this.tickMoments(now);
+      // Held (an overlay over the game): nobody can see Gerald, so no find. Nor from the Hallway.
+      if (this.phase === "playing" && this.duck.state === "idle" && !this.held && !this.escaping && !pocket) {
         if (!withinReach(this.map, this.body.p, this.duckSpot)) {
           this.foundRefusals = 0;
           // Right under him but he sits higher than the server allows (a map
@@ -900,28 +1120,39 @@ export class Game {
         this.end({ kind: "idle" });
         return;
       }
+      if (this.tutorial === null && this.director) this.descentSafely(() => this.tickDescent(dt));
+      if (step?.far === true) {
+        this.director?.hallwayFar();
+        this.visions?.hallwayFollower();
+      }
+      if (step?.end != null) this.leaveHallway(false);
     }
 
-    // Camera: the eye, in the web space.
+    // Camera: the eye, in the web space (the Hallway's while in it).
     const space = spaceOf(this.map, "web");
-    const eye = toSpace(space, eyeOf(this.body));
+    const sight = this.pocket ? this.pocket.body : this.body;
+    const eye = toSpace(space, this.visions ? this.visions.eye(sight, this.map) : eyeOf(sight));
     this.camera.position.set(eye[0], eye[1], eye[2]);
-    this.camera.rotation.set(this.body.pitch * DEG, yawToSpace(space, this.body.yaw) * DEG, 0);
+    this.camera.rotation.set(sight.pitch * DEG, yawToSpace(space, sight.yaw) * DEG, 0);
     // The ears, in house metres (the voices hang there too).
     this.voice?.listen(eyeOf(this.body), this.body.yaw, this.body.pitch);
     // The game is speaking: the terminals must never hear it back.
-    if (this.speaking) this.voice?.holdFor(SPEAKING_HOLD_MS);
+    if (this.speaking || this.descentSpeaking) this.voice?.holdFor(SPEAKING_HOLD_MS);
 
     this.sightRoom = presenceRoom(this.map, this.body.p, this.sightRoom);
+    // In the Hallway there is no house: its floors hide, and everything on them.
+    const away = !!this.pocket;
     const hidden = hiddenFloors(this.map, this.sightRoom);
-    for (const [id, group] of this.house.floors) group.visible = !hidden.includes(id);
+    for (const [id, group] of this.house.floors) group.visible = !away && !hidden.includes(id);
     // Nothing on a hidden floor floats in the sky: Gerald and the other programs hide with it.
-    const onHidden = (p: Vec3): boolean => hidden.length > 0 && hidden.includes(locate(this.map, p).floor);
+    const onHidden = (p: Vec3): boolean => away || (hidden.length > 0 && hidden.includes(locate(this.map, p).floor));
     this.duck.object.visible = !onHidden(this.duckSpot.pos);
 
     this.duck.update(dt);
     this.trail.update(dt);
     this.house.update(dt, this.camera);
+    if (this.pocket) this.lamps.borrow(this.pocket.light());
+    if (this.visions) this.descentSafely(() => this.visions?.update(dt, this.director?.run ?? null, this.pocket ? { light: this.pocket.walk.light, body: this.pocket.body } : null));
     if (now - this.lastLampsAt >= LAMPS_EVERY_MS) {
       this.lastLampsAt = now;
       this.lamps.repick(this.body.p, locate(this.map, this.body.p).floor);
@@ -1006,11 +1237,23 @@ export class Game {
       king: this.kingHud(),
       voice: this.voiceHud(),
       scare: this.scare,
-      caption: this.caption,
+      // A prop's line sits in its own window (`talk`).
+      caption: this.caption ?? (this.director?.talk ? null : this.descentCaption),
       tutorial: this.tutorial !== null && this.phase === "playing" ? tutorialHud(this.tutorial, this.o.intro?.skippable === true) : null,
       mouseHint: !this.mouseLocked && !this.lockRefused,
       quality: this.qualityHud(),
+      talk: this.talkHud(),
+      hallway: !!this.pocket,
+      foundLine: this.saidAtFind,
     });
+  }
+
+  private talkHud(): TalkHud | null {
+    const t = this.director?.talk;
+    if (!t) return null;
+    // DRAFT w49 (UI copy): the prop's own name, the only title a talk has.
+    const title = (t.prop.model !== undefined ? propModel(t.prop.model)?.label : undefined) ?? t.prop.label ?? t.prop.id;
+    return { title, line: this.talkLine, options: this.director?.options ?? null };
   }
 
   private voiceHud(): VoiceHudState | null {
@@ -1215,6 +1458,7 @@ export class Game {
     if (this.escaping) return;
     this.escaping = true;
     this.scare = true;
+    this.director?.interrupt();
     this.keys.clear();
     this.hitQueued = false;
     this.o.sfx.scare();
@@ -1241,9 +1485,15 @@ export class Game {
         const s = escapeStep(late);
         if (this.phase === "ended") return;
         if (s.over) this.end({ kind: "over", reason: "This session is over." });
-        else void this.lines?.play(s.lines);
+        else this.playLines(s.lines);
       });
-    } else void this.lines?.play(step.lines);
+    } else this.playLines(step.lines);
+  }
+
+  /** The story's lines, in-game: the descent falls silent for them. */
+  private playLines(lines: readonly MomentLine[]): void {
+    if (lines.length > 0) this.director?.hush();
+    void this.lines?.play(lines);
   }
 
   private async postEscape(): Promise<MomentReply> {
@@ -1293,7 +1543,7 @@ export class Game {
       switch (step.kind) {
         case "speak":
           this.heartDone = true;
-          void this.lines?.play(step.lines);
+          this.playLines(step.lines);
           return;
         case "done":
           this.heartDone = true;
@@ -1343,7 +1593,7 @@ export class Game {
           this.take(prop.id);
           this.o.sfx.pickup();
           this.say(PICKUP_NOTICE, 3000);
-          void this.lines?.play(step.lines);
+          this.playLines(step.lines);
           return;
         case "hide":
           this.take(prop.id);
@@ -1387,11 +1637,13 @@ export class Game {
         window.clearInterval(this.pumpTimer);
         this.trail.set([]);
         this.o.sfx.quack(1);
+        this.stopDescent();
         // A refused find (the story keeps them captured): no fanfare, no
         // egg, Gerald stays put — nothing that reads as a release.
         if (findOutcome(reply.result, this.o.assignment.captured) !== "refused") {
           window.setTimeout(() => this.o.sfx.fanfare(), 650);
           void this.duck.layEgg();
+          this.sayAtFind();
         }
         this.o.onFound(reply.result);
         return;
@@ -1425,6 +1677,14 @@ export class Game {
         this.phase = "playing";
         return;
     }
+  }
+
+  /** (wave 49) The next time round, Gerald has something to say. */
+  private sayAtFind(): void {
+    const line = this.director?.lineAtFind();
+    if (line == null) return;
+    this.saidAtFind = line;
+    void this.lines?.play([{ from: "", text: line }]);
   }
 
   /** After the find: turn to watch Gerald fly off. */
@@ -1478,8 +1738,10 @@ export class Game {
   }
 
   private swapMap(house: HouseMap, version: string, incoming?: KingState | null): void {
+    // Out of the Hallway first: the house comes back before it is rebuilt.
+    this.leaveHallway(true);
     const walls = buildWalls(house);
-    const scene = buildHouseScene(house, { walls, ground: true, pickups: true, terminalScale: GAME_TERMINAL_SCALE, neon: true });
+    const scene = buildHouseScene(house, { walls, ground: true, pickups: true, terminalScale: GAME_TERMINAL_SCALE, neon: true, descent: this.descentLevel });
     this.house.root.removeFromParent();
     this.house.dispose();
     this.house = scene;
@@ -1505,6 +1767,8 @@ export class Game {
     this.sightRoom = null;
     this.bindMoments();
     this.bindKing();
+    this.director?.setHouse(house);
+    if (this.director) this.visions?.setAwake(this.director.awake, house);
     this.lastTrailAt = Number.NEGATIVE_INFINITY;
     // Standing somewhere the new map has no floor for (the shed is a solid
     // box on the tent map): back to the start, as the server re-seats too.
@@ -1543,6 +1807,7 @@ export class Game {
   private end(e: GameEnd): void {
     if (this.phase === "ended" || this.phase === "found") return;
     this.releaseMouse();
+    this.stopDescent();
     this.phase = "ended";
     this.lines?.stop();
     this.speaker?.stop();

@@ -183,6 +183,14 @@ export interface Prop {
   model?: string;
   /** (wave 47) A model's neon colour, "#rrggbb" (default: the model's). */
   neon?: string;
+  /** (wave 49) Only there from this descent level (1–`DESCENT_MAX`): the
+   *  games draw it for a program that far gone, and nothing else ever does
+   *  (no terminal, no route, no collision: `propSolid` is false, `solid: true`
+   *  is refused). Absent: always there. */
+  from?: number;
+  /** (wave 49) Which talker in `descent.json` speaks through it. Absent: the
+   *  first talker that lists its `model`. `"none"`: it never talks. */
+  talk?: string;
   /** Collides. Default: true for box / cylinder / king, false otherwise (`propSolid`) — so false for heart and pickup. */
   solid?: boolean;
   /** kind "king" only: his maximum hit points, an integer 1–99 (default 4) —
@@ -353,6 +361,13 @@ export interface Assignment {
    *  (re)started: 0 shows the intro video and tutorial in full, ≥ 1 lets
    *  them be skipped. Missing (an old server) = 0. */
   reinstalled?: number;
+  /** (wave 49) This walk's descent level, the server's word (0 clean …
+   *  `DESCENT_MAX`): `descentLevel(reinstalled)` unless a director forced one.
+   *  Missing (an old server): read `reinstalled` (`descentOf`). */
+  descent?: number;
+  /** (wave 49) What this program told each talker on earlier visits
+   *  (talker id → the mark). Memory only. Missing = nothing yet. */
+  told?: Record<string, string>;
   /** The program's saved game settings (missing / null: none saved). */
   prefs?: SpatialPrefs | null;
 }

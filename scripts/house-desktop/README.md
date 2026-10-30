@@ -579,8 +579,8 @@ Pair the bulbs nearest the stick first, then outwards.
 Any of these opens joining for a couple of minutes (it closes by itself):
 
 - Run → House → **Setup** pane → 💡 Lights → **🔗 Pair a bulb**;
-- the map editor (`/reinstall/map`, or Run → House map → 🗺) → **💡
-  Lights** tab → **📡 Pair new device**;
+- the map editor (Run → House → 🗺 Map) → **💡 Lights** tab → **📡 Pair
+  new device**;
 - the Z2M frontend (http://localhost:8080) → *Permit join (All)*;
 - `uv run stagehand lights pair --seconds 120 --config trapped.desktop.yaml`.
 

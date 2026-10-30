@@ -7,7 +7,7 @@ editor. MIT.
 
 | Folder | What | Stack |
 |---|---|---|
-| `web/` (`loom-reinstall`) | the web game, the wizard flow and the map editor at `/reinstall/map` | Vite + React 18 + three.js, in the pnpm workspace; served by the event server at `/reinstall/` |
+| `web/` (`loom-reinstall`) | the web game, the wizard flow and the map editor (at `/reinstall/map`, and in Loom Edit as Run → House → 🗺 Map) | Vite + React 18 + three.js, in the pnpm workspace; served by the event server at `/reinstall/` |
 | `vr/` | the Quest 3 game | Godot 4.7 OpenXR (GDScript only). **Not** in the pnpm workspace or the Docker image |
 
 Human overviews: [`README.md`](./README.md), [`web/README.md`](./web/README.md),
@@ -22,10 +22,10 @@ and is played only at a wall terminal, never in these games.
 ```bash
 pnpm --filter loom-reinstall dev          # :5176, proxies /api + /e to LOOM_SERVER (default :7000)
 pnpm --filter loom-reinstall build        # dist/ (base /reinstall/)
-pnpm --filter loom-reinstall test         # vitest: 701 tests, 56 files
+pnpm --filter loom-reinstall test         # vitest: 788 tests, 60 files
 pnpm --filter loom-reinstall typecheck
 pnpm dev --reinstall                      # repo root: the dev stack + this Vite on :5176
-pnpm test:vr                              # = reinstall/vr/test/run.sh [godot]: 1251 checks + quest.sh 42
+pnpm test:vr                              # = reinstall/vr/test/run.sh [godot]: 1261 checks + 300 descent + quest.sh 42
 pnpm house:sync                           # after any show-map or house geometry change
 reinstall/vr/tools/quest.sh setup|build --station vr-N|install   # the Quest APKs
 ```
@@ -44,7 +44,7 @@ reveal, and `--trail-delay 0` turns it off for a hand-driven dev run).
 | `web/src/app.tsx`, `flow.tsx`, `flow-state.ts`, `program.ts`, `wizard.tsx`, `IntroVideo.tsx` | the standalone device's screens; the choose / video / play / send flow (mounted by the tent terminal too); what the wizard says about a program; the intro video (wave 33) |
 | `web/src/config.ts`, `api.ts`, `spatial.ts`, `kiosk.ts` | provisioning (`?code= name= role= camera= arrows= voice= intro= quality=`), the spatial routes and stream, the 2 s holds |
 | `web/src/game/` | `engine.ts` (three.js), `Play.tsx` + `joystick.tsx`, and pure `physics.ts` (with the outside ground), `input.ts`, `pump.ts` (10 Hz latest-only poses), `hud.ts` (with the path reveal and `kingInView`), `fight.ts` (the King), `trail.ts`, `leash.ts`; wave 26: `moments.ts` (the void, the heart, the disk: when to post and what each answer means), `lines.ts` (`LinePlayer`: in-game captions + the device voice), `Scare.tsx` (the jump scare); wave 33 `tutorial.ts` (the training's steps, the skip rule); wave 39 `quality.ts` (the tiers, `auto`'s frame-time rule, the cap and the remembered setting; pure), `house-lights.ts` (the lights frame's bulbs: levels, the pulse, the point lights' pick, the ambient's dim; pure), `lamps.ts` (their three.js half) and `post.ts` (bloom + the grade, a lazy chunk); `cams.ts`, `voice.ts`, `audio.ts` |
-| `web/src/map/` | the editor: `MapApp.tsx`, `Canvas.tsx`, `Toolbar.tsx`, `Inspector.tsx`, `Panels.tsx`, `Preview3D.tsx`, `ProjectBar.tsx`, and pure `plan.ts`, `edit.ts`, `doors.ts`, `yards.ts`, `structure.ts`, `props.ts`, `history.ts`, `check.ts`, `project.ts`; speakers `audio*.ts` + `AudioPanel.tsx` (wave 38: an input's *Ducks as* role and its reach, `setInputRole` / `setInputReach` / `inputReachSpeakers`; renaming or removing a speaker or zone rewrites every input's reach too); lights `lights*.ts` + `LightsPanel.tsx` (wave 39: the Presence block, `setLightPresence`) |
+| `web/src/map/` | the editor: `MapEditor.tsx` (the editor, needing neither `Setup` nor the game), `MapApp.tsx` (the page: `Setup`, `?code=`), `embed.tsx` + `embed-css.ts` (wave 49: the embed for Loom Edit, a shadow root), `Canvas.tsx`, `Toolbar.tsx`, `Inspector.tsx`, `Panels.tsx`, `Preview3D.tsx`, `ProjectBar.tsx`, and pure `plan.ts`, `edit.ts`, `doors.ts`, `yards.ts`, `structure.ts`, `props.ts`, `history.ts`, `check.ts`, `project.ts`; speakers `audio*.ts` + `AudioPanel.tsx` (wave 38: an input's *Ducks as* role and its reach, `setInputRole` / `setInputReach` / `inputReachSpeakers`; renaming or removing a speaker or zone rewrites every input's reach too); lights `lights*.ts` + `LightsPanel.tsx` (wave 39: the Presence block, `setLightPresence`) |
 | `vr/house/*.gd` | literal GDScript ports of `@loom/house` (walls, locate + presence, route, frames, duck, the King, and wave 26's `house_escape.gd` + `house_moment.gd`), diffed against `test/golden/`; `house_builder.gd` also draws the heart and the disk; wave 39 `house_lights.gd` (`gameLightsOf` / `pulseFactor` ported, the pool pick, the night ambient, the graphics tiers) and `house_lamps.gd` (the real house's bulbs, the fixed `OmniLight3D` pool, the ambient) |
 | `vr/net/` | `server_link.gd` (the autoload: config, polling, begin / pose / found / hit / moment, wave 33 `mark_ready`, the stream), `cam_feeds.gd` (the presence room's feeds), `voice_link.gd` (with `hold_for`, TEST MIC, ASK AGAIN) + `voice_codec.gd`, `avatar_cache.gd`, `config.gd` (with `trail_delay`, wave 33 `intro`, wave 39 `graphics` and the build stamp); the stream's `lights` frame → `LinkBase.lights_changed` / `lights` (wave 39) |
 | `vr/game/`, `vr/player/` | the state machine (`game.gd`: the path reveal, the void, the heart, the disk, the intro), wave 33's intro (`intro_flow.gd`: the video → tutorial steps and the skip rule, pure; `intro_space.gd`: the cinema, the practice floor, the tutorial panel), the lobby (PICK YOUR PROGRAM tiles, SET UP THIS HEADSET, the MICROPHONE box with the build stamp), the duck, trail, ghosts (wave 51: `ghosts.gd` + `swarm.gd` + `swarm.gdshader`), HUD; wave 26 `sfx.gd` (synthesised sounds on the `Sfx` bus) and `speech.gd` (captions + `tts_speak`); the XR rig and pointer |
@@ -109,6 +109,18 @@ presence rooms and `moment`), `spatial-cams.ts`, `spatial-voice.ts` and the
   autopilot never plays it. Re-encode both videos from the source if it
   changes (the ffmpeg lines are in `docs/loom-reinstall.md` §3).
 
+- **The descent** (wave 49, `docs/loom-w49-contract.md`). A walk's level is
+  `descentOf(assignment)`, 0 on a first walk: level 0 is the game as it always
+  was, at no extra cost. Both games run the same seeded plan and wake the same
+  props (`@loom/house` `descent.ts`, the VR port `house_descent.gd`, diffed
+  against the golden); what a vision looks like is each game's own. A vision or
+  a talk never blocks a find, a hit or a moment, talking never stops walking,
+  and one vision runs at a time. In the Hallway (the `door` vision) the pose
+  pump keeps sending the pose at the door it entered, and everything judged is
+  off. A `from` prop is drawn only by the games, at its level, and is never
+  solid. The words are `descent.json`, served live; the props know nothing
+  useful, and the play help never describes any of it.
+
 ## Conventions and gotchas
 
 - **Old devices.** `web/` builds for `chrome87` / `safari14`: use
@@ -122,6 +134,20 @@ presence rooms and `moment`), `spatial-cams.ts`, `spatial-voice.ts` and the
   `reinstall-*` tests too.
 - **Pure first.** Physics, input, the pump, the HUD, the trail and every
   map edit are pure and node-tested; keep new logic that way.
+- **The map runs embedded** (wave 49, C7). Loom Edit mounts `MapEditor` in a
+  shadow root in its own React 19 page, so map code answers to that too. At
+  the window `e.target` is the shadow host: read a key's target through
+  `keyOrigin` (`unlock.ts`), and a new key the map answers to goes in
+  `mapAnswersKey`, or it also fires the host's shortcut. Never bring `app.tsx`,
+  `flow.tsx` or the three.js game into `MapEditor`'s static imports
+  (`test/map-embed.test.ts` walks them): the 3D preview stays a lazy import,
+  and CSS goes through `embed.tsx` (`?inline`), not a stylesheet import in
+  `MapEditor.tsx`. `editor/tsconfig.app.json` typechecks these sources, and is
+  stricter than ours (no parameter properties, no unused imports or
+  parameters). `@font-face` doesn't apply in a shadow root: the embed puts
+  VT323 on the document. A link out of the page (`Toolbar`'s ✕) is hidden when
+  `embedded`. `MapEditor`'s `connections` prop: long polls on its own page,
+  short polls embedded, none while the host keeps it off screen.
 - **The house lights and quality** (wave 39). The web game's point-light
   pool is sized by the quality tier and changes only with it (a light-count
   change recompiles every material); the post-processing stays a lazy
@@ -136,6 +162,12 @@ presence rooms and `moment`), `spatial-cams.ts`, `spatial-voice.ts` and the
   times its size across the wall (`GAME_TERMINAL_SCALE`, VR
   `HouseBuilder.TERMINAL_SCALE`); the terminals' world view and the map
   editor keep 1×. The terminals send 320 × 240 frames to fill them.
+- **Clippy's dream** (wave 50, `docs/loom-w50-contract.md` C4). From the Y2K
+  bug the terminals stay on their real room cameras, and the server breaks
+  the video through them down the same routes in irregular spurts (3–6 s,
+  about every 30 s, each terminal on its own clock; never the tent's), a
+  terminal with no camera included. Neither game has any code for it, so an
+  older APK shows it; it is 3 fps, like the feeds.
 - **Comfort in VR** (wave 33b). Smooth turning only, gentle near the
   stick's centre; a 1.4 m/s walk with no acceleration; the one stick's
   axis lock; the vignette; a light buzz on a wall. Keep new movement to
@@ -161,6 +193,11 @@ presence rooms and `moment`), `spatial-cams.ts`, `spatial-voice.ts` and the
   its face. Keep it one draw per ghost, opaque and cut with `discard`, all
   motion in the vertex shader (Quest 3, old tablets), and any storm under the
   glitch's 3 Hz.
+- **The player's hands** (wave 51). VR draws no left hand, and the right is
+  the player's own picture as a small swarm (`game/hand_swarm.gd`, from the
+  assignment's `avatar`), its face gathering only now and then. Both
+  controllers still work: the sticks, the triggers and the lobby's laser, so
+  a dead right controller never strands a guest.
 - **Station config.** VR reads `user://station.json` (written by the
   in-headset setup) over the committed `config/station.json` (which must
   keep `CHANGEME`; a test checks it). Never write `res://`.
@@ -192,6 +229,7 @@ presence rooms and `moment`), `spatial-cams.ts`, `spatial-voice.ts` and the
 
 ## Pointers
 
+- The map editor in Loom Edit: `docs/loom-w49-contract.md` C7, `editor/CLAUDE.md`.
 - The map editor walkthrough: `docs/help/authoring/39-house-map.md`
   (test-pinned by `web/test/help-docs.test.ts` and `lights-help.test.ts`).
 - The player's guide: `docs/help/play/11-reinstallation.md`.

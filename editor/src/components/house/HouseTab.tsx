@@ -12,6 +12,8 @@
 //!   and each outside mind connected, and what to do when not.
 //! - **Mixer** (`MixerPanel.tsx`, wave 40): the live balance of the house
 //!   sound per room and source, and the soundtrack's transport.
+//! - **Map** (`HouseMapHost.tsx`, `HouseMapPanel.tsx`, wave 49): the real
+//!   house map editor, kept mounted once opened, in a lazy chunk.
 //!
 //! Server runs only: a local run explains why. The stores are
 //! `store/house-desk.ts`, `store/cue-designer.ts` and `store/house-mixer.ts` (bound from `App.tsx`);
@@ -39,12 +41,14 @@ import { useHouseView, type HouseView } from '@/store/house-view'
 import { CueDesigner } from './CueDesigner'
 import { SetupPanel } from './SetupPanel'
 import { MixerPanel } from './MixerPanel'
+import { HouseMapSlot } from './HouseMapHost'
 
 const VIEWS: Array<{ id: HouseView; label: string }> = [
   { id: 'desk', label: '🎛 Desk' },
   { id: 'designer', label: '🎨 Cue designer' },
   { id: 'setup', label: '🔌 Setup' },
   { id: 'mixer', label: '🎚 Mixer' },
+  { id: 'map', label: '🗺 Map' },
 ]
 
 export function HouseTab() {
@@ -89,6 +93,7 @@ function Explain({ title, children }: { title: string; children?: ReactNode }) {
 }
 
 function DeskPage({ view }: { view: DeskView }) {
+  const eventId = useCockpit((s) => s.run?.eventId ?? null)
   const draft = useHouseDesk((s) => s.draft)
   const skew = useHouseDesk((s) => s.skew)
   const check = useHouseDesk((s) => s.check)
@@ -199,6 +204,7 @@ function DeskPage({ view }: { view: DeskView }) {
         />
       )}
       {houseView === 'mixer' && <MixerPanel />}
+      {houseView === 'map' && <HouseMapSlot eventId={eventId} />}
       {houseView === 'desk' && (
       <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
         <section className="flex min-h-0 flex-col border-r border-zinc-800" onMouseDown={() => setKeys('cues')}>

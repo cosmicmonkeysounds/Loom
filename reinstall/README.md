@@ -16,7 +16,7 @@ party favour).
 
 | Piece | Where | What it is |
 |---|---|---|
-| [`web/`](./web) (`loom-reinstall`) | `/reinstall/` on the event server | The **web game**: Vite + React + three.js. Its screens are setup → scan a pass → **Play here** or **Send to <headset>** → play → found. You move with the on-screen twin sticks or the keyboard; **⚔ HIT** (or Space) is this visit's one hit on **the King** (below). On the night it runs inside the tent laptop's terminal (`view=reinstall`); the standalone page is for a spare device. The same app serves the **house map** editor at `/reinstall/map` (rooms, doors, stairs, props, terminals, speakers and lights). §3. |
+| [`web/`](./web) (`loom-reinstall`) | `/reinstall/` on the event server | The **web game**: Vite + React + three.js. Its screens are setup → scan a pass → **Play here** or **Send to <headset>** → play → found. You move with the on-screen twin sticks or the keyboard; **⚔ HIT** (or Space) is this visit's one hit on **the King** (below). On the night it runs inside the tent laptop's terminal (`view=reinstall`); the standalone page is for a spare device. The same app serves the **house map** editor at `/reinstall/map` (rooms, doors, stairs, props, terminals, speakers and lights); directors use it in Loom Edit, Run → House → 🗺 Map. §3. |
 | [`vr/`](./vr) | Quest 3 headsets in the tent | The **VR game**: a Godot 4.7 OpenXR project, thumbsticks plus the trigger (or A / X) for the King. A headset is a station that polls for work, or its wearer picks a program with the stick. On a Mac it runs as a desktop game. §5. |
 | [`../house`](../house) (`@loom/house`) | shared | The **house map**: one frame (metres, Y up, `+z` south). It holds the schema (incl. the `king` prop and a door's `guard`), validation, the procedural geometry, `locate` and `route` (a guarded door is shut until its King falls), the King's reach rule (`kingReach`), and the duck pick. `@loom/house/three` is the three.js scene that the web game and the terminals both render: the King with his shared bar, and ghosts wearing profile pictures. §1. |
 | [`../core/server/spatial.ts`](../core/server/spatial.ts) | the event server | `SpatialHub` holds sessions, stations, poses, and a found check gated on distance and height (`nearDuck`), refused while the run is paused. Only the outcome ever reaches the journal: `the simulation completed` + `the golden duck`, and a hit on the shared King (`POST /api/spatial/king/hit`: his health into `Night.king_hp`, then `king hit` / `king fallen`). A map save carries live sessions over and moves their ducks (`duck` frame). Each player carries their profile picture's avatar key (`avatar` frame on a change). §2. |
@@ -48,7 +48,7 @@ project map that differs from the repo's (it only warns), so a change made
 here (the King's `hp: 15` + `health`, the Server Door spot, the `"variant"` labels) reaches a project that
 already has maps only through one `pnpm sync-show --replace-maps`, run
 after checking the project's maps carry no surveyed edits worth keeping. An event plays, in order: a director's save from
-`/reinstall/map` (kept per event in the server's state directory as
+the map editor (kept per event in the server's state directory as
 `spatial-house.json`), the project's active variant, then the show file
 (`LOOM_HOUSE`, now only the fallback). A save carries the version the
 editor loaded, so two directors never silently overwrite each other (409,
@@ -150,7 +150,7 @@ game-to-game voice: two players never hear each other.
 - In a headset, **B / Y** mutes (**M** on a desktop run); the terminals
   have their own ⚙ `mic` / `voices` switches.
 
-### The map editor (`/reinstall/map`)
+### The map editor (Run → House → 🗺 Map, or `/reinstall/map`)
 
 Tick **Edit** to build the house from a survey (the walkthrough is the
 help article `docs/help/authoring/39-house-map.md`; the rules are

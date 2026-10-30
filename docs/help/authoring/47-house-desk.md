@@ -2,7 +2,7 @@
 title: The house desk — cues for the house, and testing every speaker and light
 section: Live Shows
 order: 47
-keywords: house desk, desk, House tab, setup, connect, cue designer, Trabolta, mind, Run → House, desk.json, cue list, house cue, QLab, GO, standby, playhead, stop, stop all, panic, step, steps, parallel, series, with, then, wait, sound, say, announcement, look, light, story event, done, speech, wait for speech, timeline, sections, cue number, inspector, checks, test, test next, speaker test, output test, story sounds, lights test, colours, mark, heard it, nothing, reset marks, zigbee, pair, pairing, bulb, live, router, lights module, save to project, cue, when, fire, house
+keywords: house desk, desk, House tab, setup, connect, cue designer, map, house map, Trabolta, mind, Run → House, desk.json, cue list, house cue, QLab, GO, standby, playhead, stop, stop all, panic, step, steps, parallel, series, with, then, wait, sound, say, announcement, look, light, story event, done, speech, wait for speech, timeline, sections, cue number, inspector, checks, test, test next, speaker test, output test, story sounds, lights test, colours, mark, heard it, nothing, reset marks, zigbee, pair, pairing, bulb, live, router, lights module, save to project, cue, when, fire, house
 ---
 
 The **house desk** is the house's own cue list: a small QLab built into
@@ -20,7 +20,7 @@ look, one row at a time.
 The desk lives on the event server, so Run → House works on a server
 project with a run. On a local folder it explains that it needs one.
 
-Run → House has four views, under the status strip:
+Run → House has five views, under the status strip:
 
 - **🎛 Desk** — the cue list, GO and the checks (this page).
 - **🎨 Cue designer** — design lighting looks with a live preview,
@@ -33,6 +33,9 @@ Run → House has four views, under the status strip:
 - **🎚 Mixer** — the live balance of the house sound, everywhere and per
   room, and the soundtrack's transport: skip a track, pick a scene by
   hand, stop the music ([The Mixer](51-house-mixer.md)).
+- **🗺 Map** — the house map editor itself: rooms, doors, props, terminals,
+  speakers and lights ([The house map](39-house-map.md)). The desk's keys
+  are off while it shows; the map has its own.
 
 ## The page
 

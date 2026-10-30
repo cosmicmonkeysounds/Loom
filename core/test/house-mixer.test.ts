@@ -114,9 +114,10 @@ describe("house mixer: music commands", () => {
 describe("house mixer: the show's sources and rooms", () => {
   const audio = JSON.parse(readFileSync(new URL("../examples/trapped-in-the-internet/audio.json", import.meta.url), "utf8"));
 
-  it("has the four buses, Trabolta's TV as a fader and Clippy's mic as a meter", () => {
+  it("has the five buses, Trabolta's TV as a fader and Clippy's mic as a meter", () => {
     const sources = mixerSources(audio);
-    expect(sources.map((s) => s.id)).toEqual(["music", "tracks", "sfx", "announce", "in:clippy", "in:trabolta"]);
+    expect(sources.map((s) => s.id)).toEqual(["music", "tracks", "sfx", "steps", "announce", "in:clippy", "in:trabolta"]);
+    expect(sources.find((s) => s.id === "steps")).toMatchObject({ label: "Footsteps", kind: "bus", meterOnly: false });
     expect(sources.find((s) => s.id === "in:trabolta")).toMatchObject({ kind: "input", ch: 3, meterOnly: false });
     expect(sources.find((s) => s.id === "in:clippy")).toMatchObject({ kind: "input", ch: 1, meterOnly: true });
   });
@@ -181,14 +182,20 @@ describe("house mixer: a scope's strips", () => {
       ["source", "src:music"],
       ["source", "src:tracks"],
       ["source", "src:sfx"],
+      ["source", "src:steps"],
       ["source", "src:announce"],
       ["meter", null],
       ["source", "src:in:trabolta"],
     ]);
     expect(strips[0]).toMatchObject({ effective: -2, meterDb: -12 });
     expect(strips[1]).toMatchObject({ effective: -6, meterDb: -14 });
-    expect(strips[5]).toMatchObject({ meterDb: -25, source: "in:clippy" });
-    expect(strips[6]).toMatchObject({ meterDb: -9 });
+    expect(strips[6]).toMatchObject({ meterDb: -25, source: "in:clippy" });
+    expect(strips[7]).toMatchObject({ meterDb: -9 });
+  });
+
+  it("an older router that sends no steps bus just shows an idle Footsteps strip", () => {
+    const steps = scopeStrips(view(), { kind: "all" }).find((s) => s.source === "steps");
+    expect(steps).toMatchObject({ key: "src:steps", label: "Footsteps", kind: "source", effective: 0, meterDb: null });
   });
 
   it("a room: its own keys, its speakers, its outputs' meters", () => {

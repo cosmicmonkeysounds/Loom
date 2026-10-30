@@ -22,6 +22,12 @@ uniform sampler2D map : source_color, filter_linear_mipmap, repeat_disable;
 uniform bool worn = false;
 uniform vec3 tint : source_color = vec3(0.24, 0.95, 0.91);
 uniform float swarm_seed = 0.0;
+// The player's own hand (`hand_swarm.gd`): the swarm's size, and whether the
+// face gathers for a nearby camera (a hand is always near one).
+uniform float swarm_scale = 1.0;
+uniform float near_weight = 1.0;
+// The share of the shards drawn (the `self` vision's fade).
+uniform float present = 1.0;
 uniform vec3 origin = vec3(0.0);
 uniform vec3 look = vec3(0.0, 0.0, -1.0);
 uniform vec3 trail[TRAIL];
@@ -71,21 +77,21 @@ void vertex() {
 	}
 
 	float lag = (1.0 - y / HEIGHT) * 0.55 + rnd.y * 0.45;
-	vec3 body = vec3(cos(angle) * radius, y, sin(angle) * radius) + trail_at(lag);
+	vec3 body = vec3(cos(angle) * radius, y, sin(angle) * radius) * swarm_scale + trail_at(lag);
 
 	float away = step(1.0 - mix(0.01, 0.12, storm), hash(tick * 0.37 + rnd.y * 91.0));
 	if (away > 0.5) {
 		float a = hash(tick + rnd.z * 11.0) * TAU;
 		float d = 0.3 + 0.7 * hash(tick * 0.71 + rnd.x * 5.0);
-		body += vec3(cos(a) * d, (hash(tick * 0.23 + r) - 0.5) * 0.6, sin(a) * d);
+		body += vec3(cos(a) * d, (hash(tick * 0.23 + r) - 0.5) * 0.6, sin(a) * d) * swarm_scale;
 	}
-	body.x += storm * (hash(floor(y * 14.0) + tick * 0.5) - 0.5) * 0.3;
+	body.x += storm * (hash(floor(y * 14.0) + tick * 0.5) - 0.5) * 0.3 * swarm_scale;
 
 	vec4 view = VIEW_MATRIX * vec4(origin + body, 1.0);
 
-	vec3 head_at = vec3(0.0, FACE_Y, 0.0) + look * 0.12 + trail_at(0.1);
+	vec3 head_at = (vec3(0.0, FACE_Y, 0.0) + look * 0.12) * swarm_scale + trail_at(0.1);
 	vec4 head = VIEW_MATRIX * vec4(origin + head_at, 1.0);
-	float near = 1.0 - smoothstep(2.2, 4.6, length(head.xyz));
+	float near = near_weight * (1.0 - smoothstep(2.2, 4.6, length(head.xyz)));
 	float mood = smoothstep(0.15, 0.7, sin(t * 0.7 + swarm_seed * 3.0));
 	float gather = clamp(max(mood, near) - 0.3 * storm, 0.0, 1.0);
 	float g = is_face * smoothstep(rnd.y * 0.6, rnd.y * 0.6 + 0.4, gather);
@@ -94,11 +100,12 @@ void vertex() {
 	float row_tick = floor(TIME * STEP_HZ);
 	float tear = step(mix(0.9, 0.55, storm), hash(row * 3.1 + row_tick * 0.17 + swarm_seed));
 	face_at.x += tear * (hash(row + row_tick * 0.31) - 0.5) * 0.42;
-	vec4 face = head + vec4(face_at, rnd.z * 0.03, 0.0);
+	vec4 face = head + vec4(face_at, rnd.z * 0.03, 0.0) * swarm_scale;
 	view = mix(view, face, g);
 
 	float big = 1.0 + (1.0 - g) * storm * step(0.8, rnd.z) * 1.5;
-	view.xy += corner * size * big;
+	float here = step(rnd.x * 0.999, present);
+	view.xy += corner * size * big * swarm_scale * here;
 	VERTEX = view.xyz;
 
 	// The layout's v is up (three's); a Godot texture's is down.

@@ -435,8 +435,9 @@ describe("EventRuntime — the project's maps", () => {
     };
     const firstSpot = show().duck.spots[0]!.id;
     // Deal until one session holds the spot the shed lacks and one doesn't.
+    // Session ids are random, so the spot takes ~12 deals, and 40 missed it 3 % of runs.
     const sessions: Assignment[] = [];
-    for (let i = 0; i < 40 && !(sessions.some((s) => s.duck.id === firstSpot) && sessions.some((s) => s.duck.id !== firstSpot)); i++) {
+    for (let i = 0; i < 200 && !(sessions.some((s) => s.duck.id === firstSpot) && sessions.some((s) => s.duck.id !== firstSpot)); i++) {
       const a = (await mod(rt, "/api/mod/spatial/begin", { guest: await person(`P${i}`), world: "web", device: "Tent tablet" })).json as unknown as Assignment;
       sessions.push(a);
     }

@@ -551,7 +551,7 @@ function LookEditor(p: {
             </tr>
           </thead>
           <tbody>
-            {steps.map((s, i) => (
+            {steps.map((_, i) => (
               <StepRow key={i} i={i} steps={steps} off={off} onPatch={(patch) => commit(patchLookStep(lights, name, i, patch))} onRemove={steps.length > 1 ? () => commit(removeLookStep(lights, name, i)) : null} />
             ))}
           </tbody>

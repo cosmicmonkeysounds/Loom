@@ -29,6 +29,9 @@
 ## - **Hit** ([member hit_button]): either trigger, or A / X — the King's
 ##   hit (the game takes the press, not the hold).
 ##
+## - **Small / big** (wave 49, [method set_eye_scale]): the eye height only;
+##   the body's capsule, the poses and the reach stay the real ones.
+##
 ## Without OpenXR (a Mac, the tests) it is a desktop rig: WASD / ↑↓ walk,
 ## Q/E / ←→ turn, Space / F hit, mouse look (click to capture, Esc to
 ## release; never in the lobby, where the mouse points — [member
@@ -95,6 +98,8 @@ var _turn_flash := 0.0
 var _pitch := 0.0
 ## Physics ticks still to wait before the body moves (after a teleport).
 var _settle := 0
+## The eye height's scale ([method set_eye_scale]).
+var eye_scale := 1.0
 var _fall := 0.0
 var _ticks := 0
 var _stats := {"t": 0.0, "frames": 0, "snapped": 0, "long": 0, "dt_min": 1.0, "dt_max": 0.0, "ticks0": 0, "ticks2": 0}
@@ -117,7 +122,6 @@ func set_xr(on: bool) -> void:
 		camera.position = Vector3(0, EYE_HEIGHT, 0)
 		camera.rotation = Vector3.ZERO
 		_pitch = 0.0
-	left_hand.visible = on
 	right_hand.visible = on
 
 
@@ -164,6 +168,24 @@ func teleport(pos: Vector3, yaw: float) -> void:
 		# off screen, with no captured mouse there to look back up.
 		_pitch = 0.0
 		camera.rotation.x = 0.0
+
+
+## (wave 49) Scale the eye height (`small` / `big`; 1 is the player's own):
+## [member XROrigin3D.world_scale] on a headset, about the head, so the head
+## stays where it stands in plan however far it is from the origin; the
+## camera's height on the desktop rig. The caller eases it: this moves the
+## view, and never sideways.
+func set_eye_scale(s: float) -> void:
+	if is_equal_approx(s, eye_scale):
+		return
+	if xr_active:
+		var was := camera.position
+		var now := was * (s / eye_scale)
+		origin.global_position += origin.global_basis * Vector3(was.x - now.x, 0.0, was.z - now.z)
+		origin.world_scale = s
+	else:
+		camera.position.y = EYE_HEIGHT * s
+	eye_scale = s
 
 
 ## A haptic pulse on both controllers (`amplitude` 0 … 1, `seconds`) —

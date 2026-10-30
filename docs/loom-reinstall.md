@@ -129,6 +129,8 @@ interface Prop {
                                 //   "cabinet", "rack", "crt", …); drawing only, it collides as its plain shape;
                                 //   an unknown well-formed id draws plain
   neon?: string;                // (wave 47) a model's neon colour, "#rrggbb" (default: the model's)
+  from?: number;                // (wave 49) only there at this descent level and deeper, in the games alone; never solid
+  talk?: string;                // (wave 49) a talker id in `descent.json`, or "none"; absent: by model
   signals?: { won?: string; lost?: string; drawn?: string; hit?: string; fallen?: string; reached?: string; taken?: string };
                                 // the story signals a prop posts, keys checked per kind: a king's won / lost /
                                 //   drawn (the chess terminal) and hit / fallen (the server; defaults "chess won" /
@@ -176,6 +178,11 @@ Validation (`validateHouse`) returns `{ ok, problems: string[], house? }`
   on any other kind; a `label` on a heart or a pickup (an older game would
   draw it). An older server or bundle refuses both new kinds, so the
   server ships before a map that has them.
+- **`from`** (wave 49): an integer 1–4 on a `box` or `cylinder`. `propSolid`
+  is false whatever else it says, `solid: true` is refused, and no wall,
+  route, locate or terminal sees it: it exists only in a game whose walk runs
+  at that level or deeper. `talk` is a well-formed talker id or `"none"`; one
+  naming no talker in `descent.json` draws a warning in the map editor.
 - **Models** (wave 47): a `model` that is not a lowercase id
   (`PROP_MODEL_PATTERN`), a `neon` that is not `#rrggbb`, or either on a
   kind other than `box` / `cylinder`. An older server ignores both fields
@@ -459,7 +466,7 @@ tolerance: metres, and m² for orientations).
   `virus-disk`, `item: "virus"`); neither has a label or `signals`, and
   `house/test/show.test.ts` keeps the disk ≥ 2 m from every duck spot and
   clear of every trail on both maps. Edit it with the **map editor**
-  (`/reinstall/map`, which places, moves and edits both new kinds) or by hand.
+  (Run → House → 🗺 Map, which places, moves and edits both new kinds) or by hand.
 - Its rain variant: `house.shed.json` beside it (the file convention is
   `house.<variant>.json`) — the same map with The Internet in the shed
   (room `shed`) and no tent, the same terminal ids, duck spots and
@@ -608,6 +615,27 @@ stair, then `linkedSpots`); a map with a heart or a pickup also gets
 `PICKUP_SLACK_M`); and once, `constants.json` with every new constant.
 Queries are stored with their answers, so a port only reads and compares.
 A test fails when the committed goldens drift from the code.
+
+### 1.3b The descent — `descent.json` (wave 49)
+
+The words of the descent (contract `docs/loom-w49-contract.md`; rules
+`house/src/descent.ts`, schema `validateDescent`). A project file like
+`credits.json`: read live (the project's, else `LOOM_DESCENT`, else, with no
+project, the scenario's own), never journaled or snapshotted, always replaced
+by `sync-show`, linted by `loomcheck`. VR keeps a copy
+(`reinstall/vr/house/descent.json`, `pnpm house:sync`) for a server with none.
+
+A walk's **level** is the ducks its program found before it, capped at 4, or a
+level a director forced. Level 0 is the clean game. The level seeds a plan of
+**visions** (`descentPlan`, the session id its seed) and wakes **talkers**
+(`wakeTalkers`): props with a face that speak to a program within reach and
+offer up to four options. Nothing here touches the server's judgement: a
+vision never blocks a find or a hit. The one thing kept is what a program told
+a talker (`POST /api/spatial/told`), in memory, so a later visit can open
+differently (`openNode`).
+
+**Footsteps** are the same idea as §1.4's presence, for `audio.json`: see
+`house/src/footsteps.ts` and §2.
 
 ### 1.4 House lights — `lights.json` (wave 20)
 
@@ -760,6 +788,8 @@ calls; it can do nothing else.
 | `POST /api/mod/spatial/begin` | mod | `{guest, world: "vr" \| "web", device, station?, force?}` | 409 no scenario · 404 unknown guest · 400 bad world · 503 no map · **409 `not marked for reinstallation`** unless the guest is eligible — checked before `reinstallation begun` fires, so an unmarked guest never triggers the story; eligible = the story's header `reinstall: <cond>` held for the guest when it declares one (wave 18; the show: marked, corrupted, or after an ending, a party favour), else captured or restricted (wave 16); `force: true` (a director's override; no device sends it) skips the check · 200 `Assignment` (below). An active session for the same guest is ended (`leave {reason: "replaced"}`). With `station`, the assignment is parked for that station until it claims it, and an older assignment still parked there is ended (`replaced`). |
 | `GET /api/mod/spatial/station` | mod | `?id=vr-1&name=Headset 1&world=vr` | marks the station seen; `{assignment: Assignment \| null}` — the newest unclaimed assignment for it |
 | `GET /api/mod/spatial/stations` | mod | — | `{stations: [{id, name, world, online (seen < 5 s), busy: {session, guest, name} \| null}]}` |
+| `GET /api/mod/spatial/descent` | mod (never a host) | — | `{forced: number \| null}` (wave 49), §2.5 |
+| `POST /api/mod/spatial/descent` | mod (never a host) | `{level: 0..4 \| null}` | 400 `{error}` · 200 `{ok, forced}`. Forces the level of every **next** deal, mostly to test; null is by visits again. Memory only; a story reset clears it |
 | `GET /api/mod/spatial/candidates` | mod | — | `{players: [{id, name, captured, restricted, eligible, marked, favour?, location, avatar, reinstalled}], ended?}` — `eligible` = what `begin` lets in without `force` (the `reinstall:` line, else captured \|\| restricted); `marked` = eligible, not captured, not restricted (wave 18; after an ending every program reads `marked: false` and an eligible one `favour: true`, with a top-level `ended: true`); a duck run found after the night ended is written `after: true` to `spatial-runs.jsonl` and never reaches the recap's duck board; every guest/persona, captured first, then restricted (marked by the story or held by a director, not captured yet), then by name; `avatar` = the profile picture's avatar key or null |
 | `POST /api/mod/spatial/king` | mod / author | `{hp}` — an integer 0..max | 404 `{error: "no king"}` · 400 not an integer in range · 409 no scenario · 200 `{ok, king}`: a journaled `set` of the King's `health` path `by` the director (the hub's own count when the prop has no path); the stream gets a `king` frame with `by: null`. The story's 👑 `restore_the_king` does the same to full |
 | `POST /api/mod/spatial/end` | mod | `{session}` | `{ok}` |
@@ -769,6 +799,8 @@ calls; it can do nothing else.
 | `POST /api/spatial/moment` | session token (`x-loom-token`, or `token` in the body) | `{kind: "escape"}` · `{kind: "heart", prop}` · `{kind: "pickup", prop}` (wave 26) | One route for the three game moments, judged on the session's **last pose** (the game flushes a pose first), in this order: 401 / 410 as for poses · 400 `{error: "bad moment"}` (an unknown `kind`, a heart or pickup with no `prop`) · 409 `{error: "doors are closed"}` while the event is not open · 409 `{error: "this session has not started — send a pose first"}` (parked) · heart / pickup: 404 `{error: "no such prop"}` (no prop of that kind with that id). Then per kind. **escape**: 409 `{error: "not out", distance}` unless `voidDistance` ≥ `ESCAPE_M − ESCAPE_SLACK` · 409 `{error: "cooldown", retryMs}` within 20 s of this session's last · 200 `{ok, kind, lines, spawn, cooldownMs: 20000}` — the server re-seats the pose at the spawn (room, floor and presence follow; the terminals' ghost jumps back) and commits `simulation escape attempt`. **heart**: 409 `{error: "sealed"}` while the map's King stands · 409 `{error: "already"}` once this guest heard it tonight · 409 `{error: "not there"}` unless `heartReached` · 200 `{ok, kind, lines}` — commits `simulation heart reached {prop}`; the guest counts as having heard it only when `lines` is not empty (empty: he isn't awake yet, or a restart forgot; the game stays silent and asks on the next entry). **pickup**: 409 `{error: "already"}` once this guest took it · 409 `{error: "far", distance}` unless `pickupReach` with `PICKUP_SLACK_M` · 200 `{ok, kind, lines, item, prop}` — commits `simulation pickup taken {item, prop}`. Every commit is journaled `by` the session's `device`. `lines` (`[{from, text}]`, display text) are what that one commit said to this program, game-only beats included (`chat.ts` `momentLines`); they come back **only** in this answer, never on a stream, a phone, a booth or Run (`GAME_ONLY_BEATS`: *Escape Attempt*, *Heart In The Simulation*), so Trabolta can chastise before his reveal. A story that throws on the signal still answers 200 with empty `lines`. The route never answers `{error: "not found"}`: a game reads any other 404 body as an old server. Memory only, cleared by a story restart and lost on a process restart: the cooldown, who heard the heart, who took each pickup; the story's own guards (`program.sim_heart`, `carries_virus`) keep the heart and the virus once-only across one |
 | `POST /api/spatial/ready` | session token | `{}` | 401 / 410 as for poses · 200 `{ok}` (wave 33). The game's intro (the video, the tutorial) is over: the session's duck-run clock restarts now, **once** (a second call only refreshes the pose timeout), so a first-timer's run isn't timed through the intro. Commits nothing, so it is open while the doors are closed. An old server's 404 is ignored. |
 | `POST /api/spatial/prefs` | session token | `{turn: "snap" \| "smooth"}` | 401 / 410 as for poses · 400 `{error}` for no known key or a bad value · 200 `{ok, prefs}` (wave 33): the program's game settings, merged over what it had, dealt back on **every later assignment** (`prefs`) whatever the device. Kept in the state dir (`spatial-prefs.json`, guest → settings), across a restart **and** a story reset (they are the person's comfort, not the story's). Commits nothing. Since wave 33b no client posts it (VR's snap turn is gone, so there is no setting to keep); it stays for the additive-server rule and an older APK |
+| `POST /api/spatial/told` | session token | `{talker, mark}`, strings of 1–64 characters (wave 49) | 401 / 410 as for poses · 400 `{error}` · 200 `{ok}`. Remembers what this program told a talker (`told[guest][talker] = mark`, the latest wins), dealt back on every later assignment. Memory only: never journaled, forgotten by a story reset and a process restart. Commits nothing, so it is open while the doors are closed |
+| `GET /api/spatial/descent` | as `GET /api/spatial/house`: a session token, a mod token or an author session | — | 401 · `{script: DescentScript \| null}` (wave 49): the event's `descent.json`, §2.5. An old server's 404 means no words |
 | `POST /api/spatial/end` | session token | `{}` | `{ok}` |
 | `GET /api/spatial/stream` | mod (`?token=` / author session) or session token | `?name=Kitchen` | SSE, below |
 
@@ -1057,6 +1089,41 @@ The mic needs a secure context in a browser (https, or localhost): a LAN
 `http://<ip>:7000` setup gets no microphone on the tablets (`mic=insecure`),
 as with the camera. No `Permissions-Policy` header is sent, so top-level
 pages may ask; nothing works inside a frame (`x-frame-options: DENY`).
+
+### 2.5 The descent and the footsteps (wave 49)
+
+Contract: [`loom-w49-contract.md`](./loom-w49-contract.md) C1–C3. The rules
+are `@loom/house` `descent.ts` and `footsteps.ts`; the server deals, stores
+and streams. Nothing here reaches the journal, and no story changes.
+
+**The level.** Every `Assignment` carries `descent` and `told` (an old server:
+neither, and a game reads `reinstalled`). `descent` is
+`SpatialHub.descentFor(guest)` at the **deal**: a director's forced level, else
+`descentLevel(reinstalled)`, so the first walk is 0. It is fixed on the session:
+a later force, a resume, a station's poll or the walk's own find never move it.
+`told` is read live (talker id → the mark), so a resume carries it.
+
+**The words.** `descent.json` is read live like `credits.json`
+(`server/descent.ts` over `live-file.ts`): the project's file, else
+`LOOM_DESCENT`, else, with no project, the scenario's own. Cached 5 s; a file
+that fails `validateDescent` reads as none and is logged once (the first source
+with a file is the one in force, usable or not). `sync-show` / `sync-example`
+always replace the project's copy and refuse an unusable one; no reload is
+needed for it to show. `loomcheck` lints it.
+
+**The footsteps.** `SpatialHub` measures each session's speed from its poses over
+at least `FOOTSTEP_MEASURE_MS` (memory only). A game sends no pose while its
+player stands still, so a pose unchanged for `WALK_STILL_MS` (500 ms) reads as
+standing; an escape's teleport or a re-seat restarts the measure. On every flush
+it runs `walkersOf` over joined, unfound, un-held sessions (room = the presence
+room) and tells the runtime when `sameWalkers` is false, at most every
+`FOOTSTEPS_MIN_MS` (the trailing edge kept), at once for the last stop. The hub
+never imports `AudioHub`.
+
+| Route | Auth | Body / query | Result |
+|---|---|---|---|
+| `GET /api/mod/audio/walkers` | mod token (`x-loom-token` or `?token=`) or an author session, never a host | — | 403 `moderators only` · 403 `not from a booth` · 200 `text/event-stream`: `:ok`, then `walkers` events, each a `WalkersFrame {seq, at, walkers: Walker[]}`: one on connect, one on every change, one every `FOOTSTEPS_KEEP_MS` while anyone walks; `:ping` every 25 s. Every pushed frame takes a new `seq`. Sent `cache-control: no-cache, no-transform`, and `deploy/Caddyfile` exempts the path from its compression |
+| `POST /api/mod/audio/walkers/test` | mod, never a host | `{speaker}` | 400 no speaker · 404 `no such speaker` · 200 `{ok}`: a walker on that speaker alone at 0 dB, 1.4 m/s, for `FOOTSTEP_TEST_MS`, merged into the frames as id `test`. Memory only |
 
 ## 3. The web game — `reinstall/web/` (`loom-reinstall`)
 
@@ -1366,7 +1433,7 @@ before each post. Answers are read by their `error` string.
   floor in 8 s (`LINE_START_WAIT_MS`), so it never outlasts its caption.
   While a line plays the game's mic is held (§2.4).
 
-The **map** page (`/reinstall/map`): the house plan (SVG, one floor at a
+The **map** page (`/reinstall/map`, and in the editor as Run → House → 🗺 Map, `map/embed.tsx`): the house plan (SVG, one floor at a
 time), live players, the duck of each session, terminals with their view
 cones; an **editor** for directors, saving through
 `POST /api/mod/spatial/house` with `base` = the version it loaded (none
@@ -1498,6 +1565,67 @@ a malformed one change nothing.
 - Dev only: `?lightsDemo=1` on the Vite dev server feeds a synthetic
   frame (`demoLights`: a light per indoor room, the one you stand under
   pulsing).
+
+### The descent (wave 49)
+
+Contract: `docs/loom-w49-contract.md` C2 + C5; the rules both games share
+(the level, the seeded plan, who wakes, how a talk walks) are `@loom/house`
+`descent.ts`, the words `descent.json`, served live by `GET
+/api/spatial/descent`. The more often a program has been reinstalled, the
+less the simulation holds together. A first walk is level 0 and builds none
+of this: no director, no visions, no Hallway, no per-frame cost but a check.
+
+- **`game/descent.ts`** (pure): `Director` runs the walk's clock (from the
+  end of the intro, on `dt`, so a hidden tab stops it) over `descentPlan` +
+  `dueBeat`. A beat waits while an escape is under way, a talk is open, the
+  walk is held, a vision is running, the King is within `KING_HOLD_M` or the
+  player is in the Hallway; one `DESCENT_LATE_S` overdue is dropped. A vision
+  that can't be drawn is skipped and the rest keep their time. Every effect
+  goes through `DirectorHost`, so a whole walk is a node test. `gradeOf`,
+  `flickerAt` (at most 3 Hz), `aliceAt` and `FollowerSteps` are how a vision
+  moves, as numbers.
+- **The words.** `fetchDescent` at the start of a walk, never blocking it; a
+  failure (an old server, no file, a file that doesn't validate) is visions
+  with no words and nobody awake. `?descent=N` overrides the level on this
+  device; `Assignment.reinstalled` still drives the intro's skip and `visit`.
+- **`game/visions.ts`** draws them, built once at walk start and only shown
+  and hidden after that (`renderer.compile` at the start, so the first vision
+  doesn't hitch). The steady `descentLook` and `flicker`, `tint` and `dark` are
+  the fog's uniforms, the ambient (`HouseLamps.setGrade`), the neon
+  (`HouseScene.tuneNeon`) and the exposure (`Post.setExposure`): the same on
+  every tier, no recompile and **no new point lights**. `whiteduck` is a
+  `createDuck` re-dressed (never the real duck, never findable), `self` a
+  `createAvatar` going along `sampleTrail` of the route (once the trail
+  shows; before that, the way they are looking), `grin` three sprites, the
+  cat going first and the grin last. `dark` is the fog at about 3 m and two
+  eyes behind the player, for those who turn round. `small` / `big` scale the
+  eye height alone (`aliceAt`, capped under a ceiling): poses, physics and
+  reach stay real, and the voice link keeps listening from the real eye.
+- **Talking.** Each awake prop (`wakeTalkers`) has a face on `faceAnchor`,
+  drawn within `FACE_NEAR_M`, on whichever of its sides faces the player
+  (`faceSides`: it blinks and is there). `TALK_NEAR_M` opens a talk. The lines
+  are their own `LinePlayer` + device voice (never the story's: `Director.hush`
+  cuts them for any moment's lines), in `Talk.tsx`'s window with up to four
+  answers: a tap, a click or keys 1–4 (`talkKey`). Talking never pauses
+  walking, and `TALK_LEAVE_M` ends a talk. A `tell` posts `POST
+  /api/spatial/told`; a `do` starts a vision.
+- **The Hallway** (`game/hallway.ts`). `Director` sees the player within
+  `HALLWAY_DOOR_M` of the door, and `Game.pocket` takes over: a one-room map
+  through `buildPhysicsWorld`, `HallwayWalk` for the far door, the clock and
+  `HALLWAY_MAX_S`. **`Game.body` never moves**, so the pose pump, the voice
+  link and the cameras keep reading the door's room, and the find, the King,
+  the void, the heart and the pickups are off because they all stand behind
+  the same check. The house's floors, the trail, the duck and the ghosts are
+  hidden (never `house.root`: its hemisphere and sun would leave the light
+  count), and the pool's first light is lent to the pocket
+  (`HouseLamps.borrow`). `leaveHallway` puts them at the door, facing away
+  from it, and runs first on a remap and on any session end.
+- **It never stops a walk.** A find, a hit, the void, the heart and the disk
+  don't read any of this. An escape calls `Director.interrupt`, a find
+  `stopDescent`. Gerald's `found` line plays with the egg, never for a refused
+  find.
+
+The guests' play help never describes any of this.
 
 ## 4. The terminals — world view
 
@@ -1967,6 +2095,66 @@ No tier has SSAO, SSR, SSIL, SDFGI or volumetric fog. Comfort is unchanged.
 Unproven on hardware: whether Quest 3 holds 90 Hz on `medium` (per-pixel
 shading with four lights is the one new cost; `low` is the fallback) and
 on `high`.
+
+### The descent (wave 49)
+
+The contract is `docs/loom-w49-contract.md` C2 and C6; the rules are
+`@loom/house` `descent.ts`, ported literally to `house/house_descent.gd` and
+pinned by `test/golden/descent.json`. A walk's level is `descentOf(assignment)`
+(`descent`, else `reinstalled`, capped at 4), overridden on a headset by
+`--descent N` / `descent` in `station.json`, or the lobby's mirror combo
+(`AABBABABBAA`: offline, level 4). **Level 0 is the game unchanged**: nothing
+is built, fetched or touched.
+
+`game/descent.gd` is the runner over `descentPlan` + `dueBeat` on the walk's
+clock (from the intro's end), one vision at a time. A beat is held by an
+escape, a talk, a held or suspended walk, a running vision, the King within
+3 m, or the Hallway; one that can't be drawn is skipped. `descentLook` is on for
+the whole walk (fog, ambient, tint, the neon's period). Visions are unshaded
+meshes built once at the first deep walk, or the existing light: `flicker` dips
+the ambient, the pool and the neon (at most 3 Hz), `tint` eases a wrong colour
+into them, `dark` pulls a black fog in to about 3 m. The pool stays fixed; no
+vision adds a light, a shadow or a shader. Deeper than level 0 the neon's
+stutter is one soft dip, however often it comes: the 14 Hz shiver of
+`neonFlicker` stays on level 0 alone. `small` / `big` scale
+`XROrigin3D.world_scale` about the head (the camera's height on the desktop
+rig), eased over `ALICE_EASE_S`; poses, the body and reach stay the real ones.
+`self` needs the assignment's `avatar` picture, already fetched.
+
+Talkers: `wakeTalkers` picks the props, each with a face on `faceAnchor`,
+drawn within 8 m on the player's floor. `talkReach` opens a talk at `openNode`
+(with the assignment's `told`); the lines go through `Speech` with the prop's
+node as the anchor, then `game/talk_panel.gd` shows one row per option, near the
+prop, turned to the player, chosen with `LobbyPointer`. The beam shows only
+while a panel is open. A pull held since before the panel picks nothing. A
+press on a row is swallowed: it never hits the King; off the rows the trigger
+hits him as ever. `pickOption`'s `tell` posts `POST /api/spatial/told`, its
+`do` sets off a vision (now, or when the running one ends). Past `TALK_LEAVE_M`
+the talk ends, dropping only that prop's lines (`Speech.cancel`), and the talker
+stays quiet until the player has left and come back.
+
+The Hallway: `doorSpot` stands the door; within `HALLWAY_DOOR_M` the player is
+teleported to `game/hallway.gd`, a corridor off the map built once with its own
+floor and wall colliders, its one light following them and the house's light
+down to almost nothing. `_tick_play` returns early, the shape of
+`_tick_escape`: the pose at the door still goes out, voice and cams follow the
+door's room, and the void, the heart, pickups, the King and the find are off;
+the house, ghosts, lamps, trail and duck are hidden. The far door backs away at
+`HALLWAY_RETREAT` × the player's forward pace for `HALLWAY_RETREAT_S`, then
+stays. Reaching it, `HALLWAY_MAX_S`, a fall (it never should) or a find that
+was already out bring them back at the door they entered, facing away from it;
+a remap restores the house before it rebuilds; a session end goes to the lobby
+through the same close. `Game._catch_fall` plays no part: it watches only the
+lobby and the intro.
+
+The words: `fetch_descent()` at each walk (`GET /api/spatial/descent`, the
+session's token), never waited for; a 404, `{script: null}`, a script that fails
+`validateDescent` or no answer means the bundled `res://house/descent.json`
+(`pnpm house:sync`). `found` is said at the find. With neither, the visions play
+in silence and nobody talks. `--autopilot` ignores all of it and never goes
+through the door. Not proven on hardware: `world_scale` easing on the Quest 3
+(the view, the hands, the beam), its frame rate through a `dark` or the Hallway,
+and whether Horizon OS speaks the lines at all (captions carry them either way).
 
 ## 6. The story
 

@@ -229,36 +229,40 @@ Front of house: getting people in.
   is laid over the speakers in force, so a newer `audio.json` synced to
   the project still plays here, and the card says the list is this
   event's. **Save to project** writes it into the project's `audio.json`,
-  so it survives End → relaunch. A speaker save from the map page is
+  so it survives End → relaunch. A speaker save from the map is
   different: it holds the **whole** speaker config, and while it stands a
   newer synced `audio.json` does not play on this event (the card says
   so). When the project's file has other speakers than that save, Save to
   project asks first and then keeps the project's speakers, adding only
-  the list; to write the map page's speakers, use Save to project on the
-  map page's Audio panel. If someone saved the speakers since the card
+  the list; to write the map's speakers, use Save to project on the
+  map's Audio panel. If someone saved the speakers since the card
   read them, the tick is refused and the card reloads: tick it again.
 - **House map** — when the event has a house map, one button per map
   variant (*Trapped in the Internet*: **Tent** | **Shed**), the one
-  playing now highlighted. Press the other to switch every tablet,
+  playing now highlighted, and **🗺 Edit the map**, which opens the map
+  itself in Run → House. Press the other to switch every tablet,
   headset and terminal at once; it always asks first, and warns when this
   event's map edits would be dropped (✎ *edited on this event*: save them
-  to the project from the map page first). Same switch as the map page's
+  to the project from the map first). Same switch as the map's
   **Map:** buttons — see [the house map](39-house-map.md). A map with
   a King has his row too: his **one health bar** for every program
   (*n / 15*), updated every few seconds, *Kneeling* once it is at 0
   (his door open in both games). **Set…** types any value 0 to his
   maximum; **👑 Restore** puts him back to full. Both ask first, and
   are journaled under your name ([the server room](38-server-room.md)).
-  When the event has house lights placed (the map page's 💡 Lights tab)
+  When the event has house lights placed (the map's 💡 Lights tab)
   or the lights module has ever checked in, a **💡** row follows:
   *💡 lights module online · N fixtures* (amber *offline* when the house
   Mac's lights module stopped checking in, so light cues play nowhere;
   *never connected* when it hasn't since the server started), a
   **pairing … s** countdown while a director has opened Zigbee pairing
-  from the map page (just **pairing open** from a server that doesn't say
+  from the map (just **pairing open** from a server that doesn't say
   its time), and a count of problems (red) and warnings (amber),
   each listed when you hover. It refreshes every 15 seconds; placing a
-  light, pairing a bulb and testing a look all happen on the map page.
+  light, pairing a bulb and testing a look all happen on the map.
+  **Descent** forces how far gone the reinstallation games are on the next
+  walks, mostly to test: *by visits* is the show's own rule, 0 to 4 fixes
+  it. A walk under way keeps its level, and a story reset clears it.
 - **Look up a guest** — scan a guest's pass QR (or type their id) to
   open them in the Inspector.
 
@@ -289,7 +293,7 @@ no run yet, the Run page also offers *Go live with real guests* directly.)
 | **World** | the live state browser — a searchable variables table; **double-click any value to edit it live** |
 | **Director** | the night by **act** — the NOW card (NEXT, armed then fired), On hand, the running order — the glance column (Needs you, Watch, People, Cast, `# hosts`), and the Tools drawer: named events (with arguments), beats, broadcasts (below) |
 | **Mind** | the **Judging card** (below), then an agent-voiced character's mind — its arc, drives, brief, the prompts and both models' reasoning, and a control panel ([the mind debugger](44-mind-debugger.md)) |
-| **House** | the **house desk** (server runs): the house's own cue list — build cues of sounds, announcements, lights and story events, GO them (Space), and walk a test of every speaker, output, story sound, light and look ([the house desk](47-house-desk.md)) |
+| **House** | the **house desk** (server runs): the house's own cue list — build cues of sounds, announcements, lights and story events, GO them (Space), walk a test of every speaker, output, story sound, light and look ([the house desk](47-house-desk.md)), and edit [the house map](39-house-map.md) |
 | **Log** | the raw ledger, event by event — **filter to one participant**; export the run. The time column is story time (it stands still through a pause), on a server run as on a local one. Events from before this console opened (a reload, a late join) aren't listed: it says how many, and **⤓ Export run** pages the whole ledger off the server |
 
 ### The Judging card
