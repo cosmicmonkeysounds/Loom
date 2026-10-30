@@ -51,6 +51,9 @@ func _start_xr() -> bool:
 			_ask_refresh_rate()
 		xr_interface.user_presence_changed.connect(game.presence_changed)
 		xr_interface.session_focussed.connect(func() -> void: game.focus_changed(true))
+		# … and again on focus: asked only before it, the Quest 3 stayed at
+		# 72 Hz (2026-10-29).
+		xr_interface.session_focussed.connect(_ask_refresh_rate)
 		xr_interface.session_visible.connect(func() -> void: game.focus_changed(false))
 		xr_interface.session_stopping.connect(game.headset_gone)
 	return true
@@ -58,7 +61,7 @@ func _start_xr() -> bool:
 
 ## The display at [constant REFRESH_RATE] when the headset offers it.
 func _ask_refresh_rate() -> void:
-	if xr_interface.get_available_display_refresh_rates().has(REFRESH_RATE):
+	if xr_interface.get_available_display_refresh_rates().has(REFRESH_RATE) and not is_equal_approx(xr_interface.display_refresh_rate, REFRESH_RATE):
 		xr_interface.display_refresh_rate = REFRESH_RATE
 	_match_physics(xr_interface.display_refresh_rate)
 
