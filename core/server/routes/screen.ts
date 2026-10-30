@@ -773,9 +773,10 @@ export const SCREEN_NIGHT_VARS = {
 /** (wave 50) The story's cue that readies Clippy's dream: never a screen cue
  *  (no slide, no family), only the moment the takeover counts from. */
 export const DREAM_CUE = "dream_begin";
-/** (wave 50) The takeover with no word from the TV: this long after the cue,
- *  about where the beat reaches "…the Y2K BUG." on the show's voice. */
-export const DREAM_FALLBACK_MS = 31_000;
+/** (wave 50) The takeover with no word from the TV (muted, off): this long
+ *  after the cue. His word can only bring it sooner, so this is set past the
+ *  slowest voice that could reach the words (about 30 s on the show's). */
+export const DREAM_FALLBACK_MS = 42_000;
 /** (wave 50) From the TV starting that sentence (`bug=1`) to the words. Long
  *  enough that a wall's next poll (2 s) hears it first: every screen in the
  *  house goes at the same server instant, on his word. */

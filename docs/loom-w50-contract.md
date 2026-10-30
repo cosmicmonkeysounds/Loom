@@ -25,7 +25,8 @@ story names the bug.
 - The screen state's `dream {at}` is present while `Night.dream` is on and
   `Night.ended` is not. `at` is the takeover's server time, **ahead of time**,
   so a terminal readies its video first and every screen goes together.
-- `at` = the cue + `DREAM_FALLBACK_MS` (31 s) until the TV reports the sentence:
+- `at` = the cue + `DREAM_FALLBACK_MS` (42 s: past the slowest voice, since his
+  word can only bring it sooner) until the TV reports the sentence:
   when its voice starts a chunk matching `/\bY2K BUG\b/` it polls at once with
   `bug=1` (`RoomSpeech.namedBug`, carried 4 s), and `at` becomes the receive
   time + `DREAM_LEAD_MS` (3.2 s), which lands on the words and beats a wall's
@@ -129,6 +130,9 @@ is in the base bundle: a lazy chunk can be gone hours after boot.
 
 The source's full-field luminance was measured: at most 1 flash a second, never
 over 3 Hz.
+
+A Fully Kiosk tablet needs **Autoplay Videos** on (`docs/trapped/kiosk.md`): a
+WebView that refuses to play reads as a stall and lands on the 3 fps frames.
 
 ## C7 Shipping
 

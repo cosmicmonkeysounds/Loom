@@ -248,7 +248,7 @@ screen state's `night.language`). Help:
 `docs/help/authoring/55-language-filter.md`.
 
 **Clippy's dream** (wave 50, not shipped; `docs/loom-w50-contract.md`): when
-Trabolta says *"…the Y2K BUG."* (the TV reports it; 31 s after 🕚 without one)
+Trabolta says *"…the Y2K BUG."* (the TV reports it; 42 s after 🕚 without one)
 every terminal melts at one instant into an hour-long video, replacing the idle
 show until an ending, each at its own place in it. The clock floats on it; a
 line, a board and a walk are left alone. What outranks it comes through **data

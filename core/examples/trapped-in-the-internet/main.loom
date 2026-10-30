@@ -5201,7 +5201,7 @@ when y2k_clock:
     sound y2k_chime
     // Wave 50 (docs/loom-w50-contract.md): the glitch era. `dream_begin`
     // readies every terminal's video; it takes over on "…the Y2K BUG." in
-    // The Y2K Clock, when the TV says so (31 s on, with no word from the TV).
+    // The Y2K Clock, when the TV says so (42 s on, with no word from the TV).
     set Night.dream = true
     cue dream_begin
     // w18b (R4, O7): the sides join the founded factions; the count starts.
