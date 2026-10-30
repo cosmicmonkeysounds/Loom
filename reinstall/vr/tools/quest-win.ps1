@@ -18,6 +18,14 @@
     tools\quest-win.ps1 -Station vr-2 -Code PASS -Install -Launch    # build, sideload, start
     tools\quest-win.ps1 -InstallOnly -Station vr-2 -Serial 2G0Y...   # re-sideload the last build
     tools\quest-win.ps1 -Logs                                       # record the game's log
+    tools\quest-win.ps1 -TestServer -Install -Launch                # for tools/test-server.mjs
+
+  -TestServer builds station vr-test for the quick test server
+  (`node tools/test-server.mjs`, a scratch server on this computer): its
+  passcode from build\test-server.json, server http://127.0.0.1:<port> (the
+  headset reaches it over USB through `adb reverse`, set up on install and by
+  the server), and no intro. -NoIntro alone bakes `"intro": false` into any
+  station.
 
   -Install sideloads onto the one connected headset (-Serial picks one when
   several are plugged in; `adb devices` lists them). A headset holding a
@@ -52,7 +60,9 @@ param(
   [switch]$Replace,
   [switch]$Launch,
   [string]$Serial = "",
-  [switch]$Logs
+  [switch]$Logs,
+  [switch]$NoIntro,
+  [switch]$TestServer
 )
 
 $ErrorActionPreference = "Stop"
@@ -96,6 +106,23 @@ if (-not $Godot -or -not (Test-Path $Godot)) {
   Die "no Godot exe (pass -Godot, or set GODOT_PATH). Expected the 4.7 Windows build."
 }
 
+# -- the quick test server (tools/test-server.mjs shares build\test-server.json)
+$TestPort = 0
+if ($TestServer) {
+  $tsPath = Join-Path $ProjectRoot "build\test-server.json"
+  if (-not (Test-Path $tsPath)) {
+    & node (Join-Path $PSScriptRoot "test-server.mjs") --init
+    if (-not (Test-Path $tsPath)) { Die "could not make $tsPath (is node on PATH?)" }
+  }
+  $ts = Get-Content -Raw $tsPath | ConvertFrom-Json
+  $TestPort = [int]$ts.port
+  if (-not $Station) { $Station = "vr-test" }
+  if (-not $Name) { $Name = "Test Headset" }
+  $Code = $ts.mod
+  $Server = "http://127.0.0.1:$TestPort"
+  $NoIntro = $true
+}
+
 # -- validation (mirrors quest.sh) ------------------------------------------
 function Default-Name($s) { if ($s -match '^vr-([0-9]+)$') { "Headset $($Matches[1])" } else { $s } }
 
@@ -103,7 +130,7 @@ if ($Station) {
   if ($Station -notmatch '^[A-Za-z0-9][A-Za-z0-9_-]{0,31}$') { Die "bad station id '$Station' (e.g. vr-1)" }
   if (-not $Code -and -not $InstallOnly) { Die "-Station needs -Code (or LOOM_MOD_CODE): the mod passcode baked in" }
   if (-not $Name) { $Name = Default-Name $Station }
-  if ($Server -notmatch '^https://') {
+  if ($Server -notmatch '^https://' -and -not $TestServer) {
     Write-Warning "$Server is not HTTPS; Android refuses cleartext http, so this APK will not reach it"
   }
 }
@@ -136,6 +163,10 @@ function Install-Apk($apk) {
   if ($res -notmatch "Success") { Die "install failed: $($res.Trim())" }
   Say "  installed"
   Adb logcat -G 16M | Out-Null
+  if ($TestPort) {
+    Adb reverse "tcp:$TestPort" "tcp:$TestPort" | Out-Null
+    Say "  adb reverse tcp:$TestPort (the headset's 127.0.0.1:$TestPort is this computer)"
+  }
   if ($Launch) {
     Adb shell am start -n "$Package/com.godot.game.GodotAppLauncher" | Out-Null
     Say "  launched (wake a controller if the headset asks for one)"
@@ -199,8 +230,9 @@ Ensure-Vendors (Join-Path $Stage "addons")
 if ($Station) {
   $st = [ordered]@{ server = $Server; code = $Code; station = $Station; name = $Name }
   if ($Graphics) { $st["graphics"] = $Graphics }
+  if ($NoIntro) { $st["intro"] = $false }
   Write-Utf8NoBom (Join-Path $Stage "config\station.json") ($st | ConvertTo-Json)
-  $extra = ""; if ($Graphics) { $extra = " / $Graphics" }
+  $extra = ""; if ($Graphics) { $extra = " / $Graphics" }; if ($NoIntro) { $extra = "$extra / no intro" }
   Say "  baked: $Station / $Name / $Server$extra"
 }
 

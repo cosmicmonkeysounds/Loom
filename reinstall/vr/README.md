@@ -173,6 +173,18 @@ serve`, plus `LOOM_DB_WAIT=off` with no database): name it with
 first. Only a marked or captured program has a tile (`/api/mod/set
 {id, field: "captured", value: true}` makes one).
 
+**A quick test on the headset** (Windows). `node tools/test-server.mjs`
+starts a scratch server on this computer (`:7642`, dead database, fresh
+state, the show's story from disk), opens the doors, registers a few
+programs and captures one (the lobby's tile), and points the plugged-in
+headset's `127.0.0.1:7642` at it over USB (`adb reverse`). In another
+terminal, `tools\quest-win.ps1 -TestServer -Install -Launch` builds station
+`vr-test` with that server's passcode and no intro, sideloads and starts it.
+The passcodes live in the git-ignored `build/test-server.json`, so a built
+test APK keeps working with the next server. Unplugging the headset drops
+the reverse: run the server again (or `adb reverse tcp:7642 tcp:7642`).
+`-NoIntro` alone bakes `"intro": false` into any station's APK.
+
 **Run arguments from the editor.** *Debug → Customize Run Instances…* →
 *Main Run Args*, everything after `--` (the command-line flags below):
 `-- --offline`, `-- --server http://127.0.0.1:7641`, or a whole station
