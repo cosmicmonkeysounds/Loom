@@ -1,4 +1,4 @@
-//! The dream on a screen (wave 49): a place the page's one player
+//! The dream on a screen (wave 50): a place the page's one player
 //! (`player.ts`) plays in, and the hooks that say when. In the base bundle,
 //! never a lazy chunk: the takeover comes hours after boot, when a rebuilt
 //! server may no longer have this page's chunks.

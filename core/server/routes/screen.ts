@@ -762,7 +762,7 @@ export const SCREEN_NIGHT_VARS = {
   bath_least_s: "Night.bath_least_s",
   bath_toggler: "Night.bath_toggler",
   bath_toggles: "Night.bath_toggles",
-  // Wave 49: Clippy's dream, on from the Y2K bug until an ending or a 🌀.
+  // Wave 50: Clippy's dream, on from the Y2K bug until an ending or a 🌀.
   dream: "Night.dream",
   // Wave 48: the Language Report (G14), only while its slide is up.
   lang_flagged: "Night.lang_flagged",
@@ -770,13 +770,13 @@ export const SCREEN_NIGHT_VARS = {
   lang_curser: "Night.lang_curser",
   lang_curses: "Night.lang_curses",
 } as const;
-/** (wave 49) The story's cue that readies Clippy's dream: never a screen cue
+/** (wave 50) The story's cue that readies Clippy's dream: never a screen cue
  *  (no slide, no family), only the moment the takeover counts from. */
 export const DREAM_CUE = "dream_begin";
-/** (wave 49) The takeover with no word from the TV: this long after the cue,
+/** (wave 50) The takeover with no word from the TV: this long after the cue,
  *  about where the beat reaches "…the Y2K BUG." on the show's voice. */
 export const DREAM_FALLBACK_MS = 31_000;
-/** (wave 49) From the TV starting that sentence (`bug=1`) to the words. Long
+/** (wave 50) From the TV starting that sentence (`bug=1`) to the words. Long
  *  enough that a wall's next poll (2 s) hears it first: every screen in the
  *  house goes at the same server instant, on his word. */
 export const DREAM_LEAD_MS = 3200;
@@ -1072,7 +1072,7 @@ export interface ScreenDevice {
    *  (spoken, skipped or muted); −1 = none. Absent: no cursor yet, or a build
    *  too old to send it. */
   said?: number;
-  /** (wave 49) `bug=1`: the TV has started the sentence that names the Y2K
+  /** (wave 50) `bug=1`: the TV has started the sentence that names the Y2K
    *  bug (its own text says so). Kept only from a `view=tv` poller. */
   bug?: boolean;
   /** (wave 26, V1 phase 2) `sp=<seq>:<chunk>` / `sp=<seq>:d`: the line the
@@ -1240,11 +1240,11 @@ export interface ScreenState {
    *  `chunk` null = that line is done. Memory only; null when no TV reported
    *  in the last 6 s (`TV_SPEECH_FRESH_MS`). */
   tvSpeech?: { seq: number; chunk: number | null; at: number } | null;
-  /** (wave 49) Clippy's dream; null: off, or a story without it. */
+  /** (wave 50) Clippy's dream; null: off, or a story without it. */
   dream?: ScreenDream | null;
 }
 
-/** (wave 49) Clippy's dream while the story has it on. `at`: when the takeover
+/** (wave 50) Clippy's dream while the story has it on. `at`: when the takeover
  *  starts (server ms; 0 = before this boot), known ahead of time, so a
  *  terminal readies its video first and every screen goes together. */
 export interface ScreenDream {
@@ -1385,7 +1385,7 @@ export class ScreenWatch {
   private readonly truths = new Map<string, "true" | "lie" | "none">();
   private truthAt: { seq: number; at: number } | null = null;
   private resultSeq = 0;
-  /** (wave 49) When Clippy's dream takes over (0: history), from `dream_begin`
+  /** (wave 50) When Clippy's dream takes over (0: history), from `dream_begin`
    *  until the TV reaches the words; `dreamHeard`: it did. Memory only: a
    *  restart replays the cue as history, so the dream is simply on. */
   private dreamAt: number | null = null;
@@ -1551,7 +1551,7 @@ export class ScreenWatch {
     this.sync(sim);
   }
 
-  /** Clippy's dream now (wave 49): null unless `Night.dream` is on and no
+  /** Clippy's dream now (wave 50): null unless `Night.dream` is on and no
    *  ending has come. The story's var is what a restart keeps; with no cue
    *  seen (a story that sets it by hand) it is simply on. */
   dreamOf(sim: Sim | null): ScreenDream | null {
@@ -1576,7 +1576,7 @@ export class ScreenWatch {
     const { speech, bug, ...device } = who.device ?? {};
     const tv = who.view === "tv";
     if (tv && speech !== undefined) this.tvSpeech = { ...speech, at: this.now() };
-    // Wave 49: his word sets the takeover, once, and only ever sooner.
+    // Wave 50: his word sets the takeover, once, and only ever sooner.
     if (tv && bug === true && this.dreamAt !== null && !this.dreamHeard) {
       this.dreamHeard = true;
       this.dreamAt = Math.min(this.dreamAt, this.now() + DREAM_LEAD_MS);

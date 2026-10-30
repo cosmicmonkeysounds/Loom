@@ -18,7 +18,7 @@
 		file_server
 	}
 
-	# The house media (Clippy's dream, wave 49): a host folder, never in an
+	# The house media (Clippy's dream, wave 50): a host folder, never in an
 	# image, and never through the event server. file_server answers byte
 	# ranges, so a terminal seeks straight to its own place in the hour.
 	handle_path /media/* {

@@ -1706,7 +1706,7 @@ button.gear.holding::after { width: 100%; transition: width var(--hold-ms, 2000m
 .setup .patch-table tr.warn td { color: var(--danger); }
 .setup .patch-table tr.muted td { color: var(--phosphor-dim); }
 
-/* Clippy's dream (wave 49, dream/): where the idle show was, the video, each
+/* Clippy's dream (wave 50, dream/): where the idle show was, the video, each
    terminal at its own place in the hour. `dream-stage` is the page's one
    player, handed from view to view; parked (a pixel, invisible) with no view,
    since Safari stops decoding a detached video. */

@@ -30,7 +30,7 @@ type Seated = Extract<CasinoSession, { kind: "seated" }>;
 
 export function CasinoTerminal({ config, state, polled, takeover, onSetup }: { config: TerminalConfig; state: ScreenState | null; polled: boolean; takeover: boolean; onSetup: () => void }) {
   const [s, dispatch] = useReducer(reduce, INITIAL);
-  const dream = useDreamPhase(state) === "through"; // wave 49: never at a table
+  const dream = useDreamPhase(state) === "through"; // wave 50: never at a table
   const [camera, setCamera] = useState<CameraState>("starting");
   const [typedOpen, setTypedOpen] = useState(false);
   const seatedRef = useRef<Seated | null>(null);

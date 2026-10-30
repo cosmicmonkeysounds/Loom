@@ -710,7 +710,7 @@ export interface ScreenState {
    *  in the last 6 s, or an older server). Optional for hand-built states;
    *  `parseScreenState` always sets it. */
   tvSpeech?: TvSpeech | null;
-  /** (wave 49) Clippy's dream, while the story has it on: `at` is when the
+  /** (wave 50) Clippy's dream, while the story has it on: `at` is when the
    *  takeover starts (server ms; 0: long since). Null: off, or an older
    *  server. Optional for hand-built states. */
   dream?: { at: number } | null;

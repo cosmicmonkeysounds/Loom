@@ -303,7 +303,7 @@
 .tv2-wall-y2k-time { font-size: min(16vw, 22vh); line-height: 1; }
 .tv2-wall-y2k-date { font-size: min(7vw, 9vh); }
 .tv2-wall-y2k-label { margin-top: 0.6em; font-size: min(4vw, 4vh); letter-spacing: 0.4em; opacity: 0.7; }
-/* Wave 49: floating on Clippy's dream, top left, clear of the scan box. */
+/* Wave 50: floating on Clippy's dream, top left, clear of the scan box. */
 .tv2-wall-y2k-dream .tv2-wall-y2k-clock { left: 2vmin; right: auto; top: 2vmin; transform: none; padding: 0.3em 0.6em; text-align: left; background: rgba(0, 0, 0, 0.72); }
 .tv2-wall-y2k-dream .tv2-wall-y2k-time { font-size: min(6.4vw, 9vh); }
 .tv2-wall-y2k-dream .tv2-wall-y2k-date { font-size: min(3vw, 4vh); }

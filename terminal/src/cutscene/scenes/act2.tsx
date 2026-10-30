@@ -1258,7 +1258,7 @@ function Y2kTv(p: SceneProps) {
   const tone = LEVEL_TONE[level];
   const shake = level >= 3 && !reduced ? (level === 4 ? 0.18 : 0.06) : 0;
   const closed = y2kRaceClosed(p.night);
-  // Wave 49: from the Y2K bug Clippy's dream fills the screen behind this: the
+  // Wave 50: from the Y2K bug Clippy's dream fills the screen behind this: the
   // clock shrinks to its tray in the corner, and the popups are gone with the ads.
   const dream = dreamThrough(state, now);
   return (
@@ -1344,7 +1344,7 @@ function Y2kWall(p: SceneProps) {
   const clock = y2kClock(remaining);
   const now = liveNow(state, Date.now());
   const flash = chimeFlash(state.moments, p.at, now);
-  // Wave 49: the clock floats on Clippy's dream, out of the scan box's way.
+  // Wave 50: the clock floats on Clippy's dream, out of the scan box's way.
   const dream = dreamThrough(state, now);
   return (
     <Stage bg={dream ? "transparent" : level >= 3 ? "#2a0800" : "#000814"} className={`tv2 tv2-wall tv2-wall-y2k${dream ? " tv2-wall-y2k-dream" : ""}`}>

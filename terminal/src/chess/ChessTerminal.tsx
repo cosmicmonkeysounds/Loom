@@ -44,7 +44,7 @@ const CONFIRM_MS = 3_000;
 
 export function ChessTerminal({ config, state, polled, takeover, onSetup }: { config: TerminalConfig; state: ScreenState | null; polled: boolean; takeover: boolean; onSetup: () => void }) {
   const [s, dispatch] = useReducer(reduce, INITIAL);
-  const dream = useDreamPhase(state) === "through"; // wave 49: never under a game
+  const dream = useDreamPhase(state) === "through"; // wave 50: never under a game
   const king = state?.king ?? null;
   const kingRef = useRef<ScreenKing | null>(king);
   kingRef.current = king;

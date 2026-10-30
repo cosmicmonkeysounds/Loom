@@ -619,7 +619,7 @@ export interface EventRuntimeInit {
   deskFile?: string | null;
   /** Wave 44 (C5): the credits' fallback file (`LOOM_CREDITS`; null = none). */
   creditsFile?: string | null;
-  /** Wave 49: the house media folder (`LOOM_MEDIA_DIR`; null = none). */
+  /** Wave 50: the house media folder (`LOOM_MEDIA_DIR`; null = none). */
   mediaDir?: string | null;
   /** The desk's timers (tests inject; default `setTimeout`). */
   deskTimers?: DeskTimers;
@@ -869,7 +869,7 @@ export class EventRuntime {
   readonly spatial: SpatialHub;
   /** The wall terminals' camera feeds (wave 14): the latest frame per spot, memory only. */
   readonly cams: CamStore;
-  /** Clippy's dream on the games' terminals (wave 49). */
+  /** Clippy's dream on the games' terminals (wave 50). */
   readonly dreamFeed: DreamFeed;
   /** The voice link (wave 19): terminal mics ⇄ headsets, routed by pose, memory only. */
   readonly voice: VoiceRelay;
@@ -4174,7 +4174,7 @@ export class EventRuntime {
     return ids;
   }
 
-  /** (wave 49) The terminals the dream feeds to the games, while it runs and
+  /** (wave 50) The terminals the dream feeds to the games, while it runs and
    *  its frames are here: every spot on the map but the tent's. Null: not now. */
   private dreamSpots(): Set<string> | null {
     const dream = this.screens.dreamOf(this.sim);

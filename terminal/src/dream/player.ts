@@ -1,4 +1,4 @@
-//! The page's one dream player (wave 49). One `<video>` for the page's whole
+//! The page's one dream player (wave 50). One `<video>` for the page's whole
 //! life, armed when the story turns the dream on and handed from view to view
 //! (`hold`): a wall swapping its asleep screen for its awake one keeps its
 //! place and its buffer, and the mosh draws from the same element. It plays

@@ -3732,7 +3732,7 @@ INTERACTION language_report
   description: Any time after G1, between two awards. The host reads the night's Language Report off the story and the TV shows it: the program that cursed the most (the most words the Password Manager's filter caught in what they typed), how many words she censored out of every word the filter caught, the words she censored most, how many she will not repeat, her ⭐ and where she left the filter's strength. The TV then lets every censored word out at once. Press again to read it again with the newest numbers.
   while: Night.ceremony == true and Night.resurrected != true
 
-// Wave 49: the dream's switch, appended so no cue number moves. It rides
+// Wave 50: the dream's switch, appended so no cue number moves. It rides
 // Anytime: an aside, never on the running order.
 INTERACTION dream_toggle
   label: 🌀 Clippy's dream: on / off
@@ -5199,7 +5199,7 @@ when y2k_clock:
     set Night.screen = "y2k"
     set Night.terminals = "y2k"
     sound y2k_chime
-    // Wave 49 (docs/loom-w49-contract.md): the glitch era. `dream_begin`
+    // Wave 50 (docs/loom-w50-contract.md): the glitch era. `dream_begin`
     // readies every terminal's video; it takes over on "…the Y2K BUG." in
     // The Y2K Clock, when the TV says so (31 s on, with no word from the TV).
     set Night.dream = true
@@ -5212,7 +5212,7 @@ when y2k_clock:
   else:
     broadcast "🕚 Not yet: 🤖 Trabolta shares the next facts first (round 3 opens there). Nothing happens." to channel(hosts)
 
-// Wave 49: a director's hand on the dream. An ending ends it by itself.
+// Wave 50: a director's hand on the dream. An ending ends it by itself.
 when dream_toggle:
   if Night.clock == "--:--" or Night.ended == true:
     broadcast "🌀 Not now: the dream runs from 🕚 until an ending. Nothing happens." to channel(hosts)
@@ -6723,7 +6723,7 @@ set Night.ads_started = false
 // takeover) or "burst" (⚡); the bursts' count, cycle, timer, and last second.
 set Night.talk = "none"
 set Night.glitch_kind = "none"
-// Wave 49: Clippy's dream, on from the Y2K bug (🌀 turns it off and on).
+// Wave 50: Clippy's dream, on from the Y2K bug (🌀 turns it off and on).
 set Night.dream = false
 set Night.burst_n = 0
 set Night.burst_i = 0

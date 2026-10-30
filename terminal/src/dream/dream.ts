@@ -1,4 +1,4 @@
-//! Clippy's dream (wave 49, `docs/loom-w49-contract.md`), the pure parts. From
+//! Clippy's dream (wave 50, `docs/loom-w50-contract.md`), the pure parts. From
 //! the moment Trabolta names the Y2K bug the house is in a new glitch era:
 //! every terminal's idle show (its screensavers, ads and popups) gives way to
 //! the hour-long video, each terminal at its own place in it (`@loom/house`

@@ -161,7 +161,7 @@ export function Tv({
           starts.current.delete(id);
         }
         feed.chunk(id, i);
-        if (DREAM_BUG_LINE.test(text)) speech.namedBug(); // wave 49: on his word
+        if (DREAM_BUG_LINE.test(text)) speech.namedBug(); // wave 50: on his word
         setMood(moodOfText(text));
         setSpoken({ seq: id, index: i });
         setSpeaking(true);
@@ -299,7 +299,7 @@ export function Tv({
   // `here`. A TV with no spot never shows it (`linkedNow`, as the walls).
   const linked = usePresenceLatch(linkedNow({ view: "tv", spot: config.spot, here: state?.spot, anyone: inSimulation }));
   const showWorld = canDraw && linked && !attract;
-  // Wave 49: Clippy's dream fills his place on the TV; his face comes through
+  // Wave 50: Clippy's dream fills his place on the TV; his face comes through
   // it for a line, data moshed. `tv-attract` has its own, in the idle show.
   const dream = useDreamPhase(state) === "through" && !attract;
   const dreaming = dream && !speaking;

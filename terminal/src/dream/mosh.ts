@@ -1,4 +1,4 @@
-//! The data mosh (wave 49), pure: a datamosh is what a video does when its
+//! The data mosh (wave 50), pure: a datamosh is what a video does when its
 //! keyframes are lost, its old pixels dragged along by the new picture's
 //! motion in blocks. A browser can't read a page's pixels, so this one runs on
 //! a small canvas over the screen: most of it is see-through, and the live

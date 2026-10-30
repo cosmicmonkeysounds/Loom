@@ -118,7 +118,7 @@ const REINSTALL_DIST = process.env.LOOM_REINSTALL_DIST
   ? pathToFileURL(process.env.LOOM_REINSTALL_DIST.replace(/\/?$/, "/"))
   : new URL("../../reinstall/web/dist/", import.meta.url);
 
-// The house media (wave 49), a folder outside the images; unset: no `/media/`.
+// The house media (wave 50), a folder outside the images; unset: no `/media/`.
 const MEDIA_DIST = process.env.LOOM_MEDIA_DIR ? pathToFileURL(process.env.LOOM_MEDIA_DIR.replace(/\/?$/, "/")) : null;
 
 const CONTENT_TYPES: Record<string, string> = {
@@ -458,7 +458,7 @@ async function route(req: IncomingMessage, res: ServerResponse): Promise<void> {
     return;
   }
 
-  // --- the house media at `/media/` (wave 49: Clippy's dream) ---
+  // --- the house media at `/media/` (wave 50: Clippy's dream) ---
   // Behind Caddy its own file_server answers these first (a host folder,
   // never in an image); this is the path with no proxy (`pnpm dev`, LAN mode).
   if (method === "GET" && MEDIA_DIST !== null && path.startsWith("/media/")) {

@@ -1,4 +1,4 @@
-//! Clippy's dream (wave 49): where a terminal is in the hour-long video, for
+//! Clippy's dream (wave 50): where a terminal is in the hour-long video, for
 //! the terminal that plays it and for the server that hands the same moment
 //! to the reinstallation games as that terminal's feed. No state and no
 //! clock of its own: a spot's place is a pure function of the spot and the
@@ -8,7 +8,7 @@
 //! Each terminal runs the same hour from its own place in it (`dreamOffsetS`,
 //! a hash of its map spot, or its name when it has none), so no two screens
 //! in the house agree. The media is `scripts/ops/dream-media.sh`'s, outside
-//! git and the images: `docs/loom-w49-contract.md` C2.
+//! git and the images: `docs/loom-w50-contract.md` C2.
 
 /** The video's length (s). */
 export const DREAM_SECONDS = 3600;

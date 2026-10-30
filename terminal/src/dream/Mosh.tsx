@@ -1,4 +1,4 @@
-//! The data mosh on screen (wave 49): the small canvas over everything
+//! The data mosh on screen (wave 50): the small canvas over everything
 //! (`mosh.ts` plans and draws it, `stamp.ts` copies the scene). Mounted only
 //! while something is getting through the dream; it takes no taps. It keeps
 //! its own double buffer: a canvas drawing from itself makes the browser copy

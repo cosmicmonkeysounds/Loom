@@ -1,4 +1,4 @@
-//! Clippy's dream on the server (wave 49, docs/loom-w49-contract.md): the
+//! Clippy's dream on the server (wave 50, docs/loom-w50-contract.md): the
 //! screen state's `dream` block and when the takeover falls, the story's
 //! switch and its endings, and the games' feed down the camera routes.
 
@@ -26,7 +26,7 @@ afterAll(() => {
   for (const d of dirs) rmSync(d, { recursive: true, force: true });
 });
 const fresh = (): string => {
-  const d = mkdtempSync(join(tmpdir(), "loom-w49-"));
+  const d = mkdtempSync(join(tmpdir(), "loom-w50-"));
   dirs.push(d);
   return d;
 };

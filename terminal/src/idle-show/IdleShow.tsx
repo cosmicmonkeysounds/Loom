@@ -15,7 +15,7 @@
 //! most, no storms, no ad-like windows), then the flood. `quiet` (T3) makes
 //! it a dimmed backdrop behind the tent's scan kiosk.
 //!
-//! Wave 49: from the Y2K bug Clippy's dream replaces all of it (`dream/`):
+//! Wave 50: from the Y2K bug Clippy's dream replaces all of it (`dream/`):
 //! the show stops where it stands under the dream, every timer and sound
 //! with it, and the scan box, a line, the tent's card keep their places over
 //! it. It is here, not in the app, so it has the show's own place on every

@@ -85,7 +85,7 @@ services:
       LOOM_VAPID_SUBJECT: ${LOOM_VAPID_SUBJECT:-}
       # iPhone Home Screen push (K-31b): `on` to offer Add to Home Screen.
       LOOM_HOMESCREEN: ${LOOM_HOMESCREEN:-}
-      # The house media (wave 49, scripts/ops/dream-media.sh): the games'
+      # The house media (wave 50, scripts/ops/dream-media.sh): the games'
       # terminals read the dream's frames here. Blank = no dream in the games.
       LOOM_MEDIA_DIR: /media
       # The reinstallation games + terminals share one house map

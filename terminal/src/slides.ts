@@ -25,7 +25,7 @@
 //! press, or the burst's own sound) is no takeover but a `burst`: a short
 //! popup storm over whatever is up (the cutscene layer draws it), under the
 //! same live-only rules; the takeover shows its cue's own words (`text`).
-//! Wave 49: from the Y2K bug the bottom of this order is Clippy's dream
+//! Wave 50: from the Y2K bug the bottom of this order is Clippy's dream
 //! (`dream/dream.ts`), and the y2k slide lets it through (`dream` "through":
 //! it no longer covers the screen under it).
 //! A room terminal (wave 7, `room`: the server-room terminal) never shows a
@@ -131,7 +131,7 @@ export interface ScreenLayers {
   /** (wave 32) An ad burst playing now (a ⚡ in a talk scene, or its timer):
    *  a short popup storm over whatever is up, in place of the takeover. */
   burst: { seq: number; at: number; t: number; text: string } | null;
-  /** (wave 49) Clippy's dream: where it stands on this screen now. */
+  /** (wave 50) Clippy's dream: where it stands on this screen now. */
   dream: DreamPhase;
 }
 
@@ -392,7 +392,7 @@ export function screenLayers(state: ScreenState | null, nowMs: number, o: { pilo
  * overlay) ends a pilot and holds a game or a walk; `covered` (an overlay, a
  * slide or the glitch) pauses the idle show. The glitch (wave 26, T2) is
  * covered but never a takeover: a pilot, a chess game or a tent walk keeps
- * running under its 8 s. Wave 49: the y2k slide lets Clippy's dream through,
+ * running under its 8 s. Wave 50: the y2k slide lets Clippy's dream through,
  * so it covers nothing once the dream is up.
  */
 export function coverOf(l: Pick<ScreenLayers, "overlay" | "slide" | "glitch"> & Partial<Pick<ScreenLayers, "dream">>): { takeover: boolean; covered: boolean } {

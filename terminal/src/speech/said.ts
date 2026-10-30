@@ -32,13 +32,13 @@ export interface SpeechReport {
    *  sentence (`chunk`, from 0), or `chunk: null` once that line is done.
    *  Absent / null: nothing to report (left out of the poll). */
   sp?: { seq: number; chunk: number | null } | null;
-  /** (wave 49) The TV just started the sentence that names the Y2K bug. */
+  /** (wave 50) The TV just started the sentence that names the Y2K bug. */
   bug?: boolean;
 }
 
-/** (wave 49) The sentence that sets off Clippy's dream. */
+/** (wave 50) The sentence that sets off Clippy's dream. */
 export const DREAM_BUG_LINE = /\bY2K BUG\b/u;
-/** (wave 49) `bug=1` rides the polls this long (ms): a poll can fail, and a
+/** (wave 50) `bug=1` rides the polls this long (ms): a poll can fail, and a
  *  story restart must not find it still set. The server takes the first. */
 export const DREAM_BUG_MS = 4000;
 
@@ -140,7 +140,7 @@ export class RoomSpeech {
     return { talk: true, said: through === null ? before : Math.min(through, before), ...sp };
   }
 
-  /** (wave 49) The TV has started the sentence that names the Y2K bug. The
+  /** (wave 50) The TV has started the sentence that names the Y2K bug. The
    *  poll goes now, not up to a second late: the walls have seconds to hear it. */
   namedBug(now: number = Date.now()): void {
     this.bugUntil = now + DREAM_BUG_MS;

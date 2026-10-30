@@ -1,4 +1,4 @@
-//! A copy of what is on the screen for the mosh to drag (wave 49). A page
+//! A copy of what is on the screen for the mosh to drag (wave 50). A page
 //! can't read its own pixels, so this redraws the top layers small onto a
 //! canvas: boxes with a background, text, and any canvas or image in a scene.
 //! It is a ghost, never shown as it is: a few hundred pixels wide, taken a

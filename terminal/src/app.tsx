@@ -238,7 +238,7 @@ export function App() {
   useEffect(() => {
     if (view !== "reinstall") setReinstallBusy(false);
   }, [view]);
-  // Clippy's dream (wave 49): readied as soon as the story turns it on.
+  // Clippy's dream (wave 50): readied as soon as the story turns it on.
   useDreamArm(config, screenTargetOf(view ?? "auto"), screenState.state);
   const dreamReady = useDreamReady();
   // The cutscenes, on every screen that draws slides (wave 17).

@@ -37,7 +37,7 @@ export interface SlideVideoOpts {
 
 /** One slide: on the TV its first clip that plays, then the first of its
  *  PNGs that loads, else its text card. */
-export function SlideView({ slide, y2k, chart = null, chartShown, video = false, muted = false, dream = false }: { slide: { value: string; cue: string }; y2k: number | null; chart?: ScreenChart | null; chartShown?: number; /** (wave 49) Clippy's dream is up: the clock floats on it. */ dream?: boolean } & SlideVideoOpts) {
+export function SlideView({ slide, y2k, chart = null, chartShown, video = false, muted = false, dream = false }: { slide: { value: string; cue: string }; y2k: number | null; chart?: ScreenChart | null; chartShown?: number; /** (wave 50) Clippy's dream is up: the clock floats on it. */ dream?: boolean } & SlideVideoOpts) {
   const sources = slideSources(slide, import.meta.env.BASE_URL);
   const firstOk = () => sources.find((s) => !missing.has(s)) ?? null;
   const [src, setSrc] = useState<string | null>(firstOk);
@@ -431,7 +431,7 @@ export function LiveScreenLayer({ state, piloting, peek = false, room = false, s
   useDreamPhase(state); // re-decides on the takeover's two moments, not a second late
   const layers = screenLayers(state, at, { piloting, peek, room, slides, dreamReady });
   const bare = piloting || peek || room;
-  // Wave 49: what gets through the dream comes through it data moshed.
+  // Wave 50: what gets through the dream comes through it data moshed.
   const moment = useMomentUp();
   const speaking = useDreamSpeaking();
   const reduced = useReducedMotion();

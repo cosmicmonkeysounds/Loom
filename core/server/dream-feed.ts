@@ -1,5 +1,5 @@
-//! Clippy's dream in the reinstallation games (wave 49,
-//! `docs/loom-w49-contract.md` C4). Both games already hang a JPEG feed on
+//! Clippy's dream in the reinstallation games (wave 50,
+//! `docs/loom-w50-contract.md` C4). Both games already hang a JPEG feed on
 //! every terminal in the player's room (`spatial-cams.ts`,
 //! `GET /api/spatial/cams` + `/cam?spot=`), so the dream reaches them down
 //! the same two routes and neither game changes: a Quest APK from before this
