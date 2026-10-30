@@ -33,7 +33,7 @@ class FakeLaunchctl:
 
 
 def _ld(tmp_path: Path, runner: FakeLaunchctl) -> Launchd:
-    return Launchd(stagehand_dir=ROOT, agents_dir=tmp_path / "LaunchAgents", log_dir=tmp_path / "logs", uid=501, run=runner, uv="/opt/uv/bin/uv")
+    return Launchd(stagehand_dir=ROOT, agents_dir=tmp_path / "LaunchAgents", log_dir=tmp_path / "logs", uid=501, sleep=lambda s: None, run=runner, uv="/opt/uv/bin/uv")
 
 
 def test_each_module_is_its_own_job_with_its_own_log():
@@ -83,6 +83,30 @@ def test_restart_touches_one_job_only(tmp_path):
     assert runner.calls == [["launchctl", "kickstart", "-k", f"gui/501/{label_for('agents')}"]]
     with pytest.raises(ConfigError):
         _ld(tmp_path, FakeLaunchctl(fail={"kickstart"})).restart("show")
+
+
+def test_install_waits_for_a_running_copy_to_stop(tmp_path):
+    # `bootout` returns before the job is gone; a bootstrap until then is error 5.
+    class Stopping(FakeLaunchctl):
+        busy = 3
+
+        def __call__(self, argv):
+            done = super().__call__(argv)
+            if argv[1] == "bootstrap" and self.busy:
+                self.busy -= 1
+                done.returncode = 5
+            return done
+
+    runner = Stopping()
+    _ld(tmp_path, runner).install("show", HOUSE)
+    assert sum(c[1] == "bootstrap" for c in runner.calls) == 4
+
+
+def test_install_gives_up_on_a_job_that_never_loads(tmp_path):
+    runner = FakeLaunchctl(fail={"bootstrap"})
+    with pytest.raises(ConfigError, match="bootstrap failed"):
+        _ld(tmp_path, runner).install("show", HOUSE)
+    assert sum(c[1] == "bootstrap" for c in runner.calls) == 30
 
 
 def test_status_and_uninstall(tmp_path):

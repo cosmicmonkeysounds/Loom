@@ -6,8 +6,9 @@
 #   scripts/house-macbook/trabolta-reset.sh [--check] [--no-reset] [--no-restart]
 #                                           [--persist] [--unpersist] [--config FILE]
 #
-#   1. Ollama's launchctl environment: OLLAMA_NUM_PARALLEL = the worker's
-#      `concurrency` (wave 42) and OLLAMA_KEEP_ALIVE=-1. `launchctl setenv`
+#   1. Ollama's launchctl environment: OLLAMA_NUM_PARALLEL = the slots on
+#      Ollama (the worker's `concurrency`, wave 42; off a hosted voice, the
+#      standby's `capacity`, wave 52) and OLLAMA_KEEP_ALIVE=-1. `launchctl setenv`
 #      does not survive a reboot (2026-10-29: the MacBook rebooted mid-show-
 #      prep), so a changed value quits and reopens the Ollama app.
 #   2. The voice model is pulled, then loaded with the worker's own context
@@ -67,23 +68,28 @@ import sys, yaml
 c = yaml.safe_load(open(sys.argv[1])) or {}
 s, a = c.get("server") or {}, c.get("agents") or {}
 llm = a.get("llm") or {}
+# Every engine's slots make the worker's capacity (at most 16, the stream's
+# cap); Ollama's own numbers come from the first engine that is not hosted.
+engines = [(llm, a.get("concurrency") or 1)] + [(e, e.get("capacity") or 1) for e in a.get("overflow") or []]
+local, parallel = next(((e, n) for e, n in engines if e.get("api") != "anthropic"), (llm, 1))
 print(s.get("url") or "")
 print(s.get("event") or "")
-print(a.get("concurrency") or 1)
-print(llm.get("model") or "gpt-oss:20b")
-print(llm.get("num_ctx") or 32768)
+print(min(16, sum(n for _, n in engines)))
+print(parallel)
+print(local.get("model") or "gpt-oss:20b")
+print(local.get("num_ctx") or 32768)
 print((a.get("characters") or [""])[0].split("/")[-1].split(".")[0].capitalize() or "Trabolta")
 PY
   )
 }
-{ read -r SERVER_URL; read -r EVENT; read -r CONC; read -r MODEL; read -r NUM_CTX; read -r CHARACTER; } < <(read_cfg)
+{ read -r SERVER_URL; read -r EVENT; read -r CONC; read -r PARALLEL; read -r MODEL; read -r NUM_CTX; read -r CHARACTER; } < <(read_cfg)
 # The moderator code stays inside this process: never echoed, never on argv.
 MOD_CODE="$(cd "$ROOT/stagehand" && "$UV" run --quiet python -c 'import sys,yaml;print((yaml.safe_load(open(sys.argv[1])).get("server") or {}).get("mod_passcode") or "")' "$CONFIG")"
 printf 'Trabolta reset · %s · concurrency %s · model %s (ctx %s)%s\n' "${SERVER_URL:-?}" "$CONC" "$MODEL" "$NUM_CTX" "$([ $check = 1 ] && echo ' · CHECK ONLY')"
 
 # -- 1. Ollama's environment ------------------------------------------------------------
 step "1. Ollama's environment (launchctl)"
-want_parallel="$CONC"
+want_parallel="$PARALLEL"
 cur_parallel="$($LAUNCHCTL getenv OLLAMA_NUM_PARALLEL || true)"
 cur_keep="$($LAUNCHCTL getenv OLLAMA_KEEP_ALIVE || true)"
 changed=0

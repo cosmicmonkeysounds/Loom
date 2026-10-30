@@ -152,6 +152,33 @@ VPS event server ◄── HTTPS (SSE GET /api/agent/stream + POSTs) ── stag
    (§6). To go back: comment the block out again and restart. Run → Mind
    shows `engine <name>` on each thought an overflow engine served.
 
+7. **(Wave 52) Claude as his voice, Ollama standing by.** The reference is
+   `stagehand/docs/agents.md`, "Claude as the voice". Every line and his
+   whole prompt leave the house, and the show needs the internet anyway for
+   the VPS. Once, for the SDK and the key (with the key on the clipboard):
+
+   ```bash
+   (cd stagehand && uv sync --extra anthropic)
+   mkdir -p ~/.config/loom && (umask 077; pbpaste | tr -d '[:space:]' > ~/.config/loom/anthropic.key)
+   ```
+
+   In `laptop.yaml`, use the commented Claude block from
+   `agents.example.yaml`, and give the `orchestrator:` nothing of its own for
+   the endpoint (it stays on this machine's Ollama). Then:
+
+   ```bash
+   cd stagehand
+   uv run stagehand check --config laptop.yaml --only agents   # engines, `key set`, leaves the house
+   uv run stagehand launchd install --job agents --config laptop.yaml   # once: the plist gains the extra
+   ../scripts/house-macbook/trabolta-reset.sh                  # Ollama at the standby's slots, Run → Mind → Reset
+   ```
+
+   Run → Mind shows `engine macbook` on each thought Ollama served: a few
+   after a refusal are normal, a run of them is an outage (the log says why,
+   `~/Library/Logs/stagehand/agents.log`). **To go back to Ollama alone:**
+   `cp stagehand/laptop.ollama.yaml stagehand/laptop.yaml`, then
+   `scripts/house-macbook/trabolta-reset.sh`.
+
    **Brief mode** (wave 42b, off by default): `voice.brief_at: 6` in
    `laptop.yaml` asks for at most two short sentences when 6 or more lines
    wait for him (never a talk scene, never a guest at his heart). Measured

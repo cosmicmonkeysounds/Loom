@@ -84,7 +84,8 @@ stagehand/
 ```bash
 cd stagehand
 uv sync                                            # once; makes .venv
-uv run pytest                                      # 2922 passed + 4 skipped, ~90 s, no hardware, no network
+uv run --extra anthropic pytest                    # 2997 passed + 4 skipped, ~90 s, no hardware, no network
+                                                   # (without the extra the SDK's few tests skip)
 uv run pytest tests/test_trapped_house.py -q       # after any story or rig change
 uv run stagehand modules
 uv run stagehand check --config trapped.desktop.yaml --only show,lights,audio
@@ -108,7 +109,7 @@ module docstrings that explain the why).
 
 | Machine | Jobs | Config | Supervisor | Runbook |
 |---|---|---|---|---|
-| John's MacBook (macOS, M3 Max 48 GB) | `agents` + Ollama `gpt-oss:20b`; `audio` only as the fallback | `laptop.yaml`; `trapped.macbook.yaml` | `stagehand launchd` | `scripts/house-macbook/trabolta.md`; `audio.md` (fallback) |
+| John's MacBook (macOS, M3 Max 48 GB) | `agents` on Claude Haiku, Ollama `gpt-oss:20b` standing by (wave 52); `audio` only as the fallback | `laptop.yaml`; `trapped.macbook.yaml` | `stagehand launchd` | `scripts/house-macbook/trabolta.md`; `audio.md` (fallback) |
 | John's Desktop (Windows) | `show`, `lights`, `audio` + the MOTU 828x, no ADAT expander (the living room on Main L/R, outs 1–2, + the sub on Analog Out 1, out 3: the ASIO order; Chrome's sound, the TV's Trabolta, through VoiceMeeter and `audio.tap` into input 3) (+ Mosquitto, Zigbee2MQTT with Hue / ZL1 bulbs, the WLED controller, the TV kiosk) | `trapped.desktop.yaml` | `stagehand tasks` | `scripts/house-desktop/README.md` |
 
 - **`extends:`** (`config.py`): a file in the same folder; mappings merge
@@ -334,6 +335,16 @@ module docstrings that explain the why).
   `brief_applies` (no stage, no heart, lean only), caps `max_tokens` at
   `brief_max_tokens` and `reminder` adds `BRIEF_NOTE`. Tests:
   `tests/test_engines.py`, `tests/test_brief.py`.
+- **Claude as the voice** (wave 52, `docs/agents.md` "Claude as the
+  voice"). `api: anthropic` in `llm.py`: `anthropic_request` and
+  `anthropic_completion` are pure, `complete_anthropic` takes the client as
+  an argument and is the only caller of the SDK, an optional extra imported
+  inside the call (the Desktop never installs it, and `test_windows_import`
+  must keep passing). A refusal is `LlmRefused`: `EngineCall.complete` moves
+  the line and does not `mark_down`. `config.parse_agents` keeps the
+  orchestrator on Ollama off a hosted voice, and `letter_model` gives a
+  letter `LETTER_TIMEOUT_S` over a voice line's short timeout. Tests:
+  `tests/test_llm_anthropic.py`.
 - **The DM guards** (wave 42c, `docs/agents.md` "The guards" 0, 2, 3, 3b,
   4). A private line (never a stage line: `voice.dm_check` is None there)
   gets `guards.DmCheck` (the guest's line, at the heart or not, the cap,
@@ -429,6 +440,9 @@ module docstrings that explain the why).
   persona, a phase card or a fallback.
 - **An absent `mind_mode` is classic.** The show runs `mind_mode: new`;
   an older YAML silently keeps the two-model mind.
+- **`launchd install` over a running job** waits for it to stop
+  (`BOOTSTRAP_TRIES`): `bootout` returns first, and a bootstrap before the old
+  copy has gone fails with error 5, leaving nothing running.
 - **`check` exit codes matter to scripts**: `preflight.ps1`,
   `start-stagehand.ps1` and `scripts/accept/*.sh` read them.
 - **The house mix is not the install trim** (wave 40). audio.json's

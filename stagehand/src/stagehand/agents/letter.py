@@ -52,6 +52,8 @@ LETTER_ATTEMPTS = 2
 #: A letter is ~400 tokens and gpt-oss's reasoning counts against the cap:
 #: the voice's 800 (sized for one line) would cut it off.
 LETTER_MAX_TOKENS = 3000
+#: (wave 52) The least a letter is given to finish, in seconds.
+LETTER_TIMEOUT_S = 60.0
 
 
 
@@ -59,8 +61,10 @@ LETTER_MAX_TOKENS = 3000
 def letter_model(model: LlmConfig) -> LlmConfig:
     """The voice model with room for a whole letter. Its own reasoning
     effort: on the MacBook `medium` took ~45 s a letter against `low`'s
-    ~18 s and wrote no better (2026-10-29, three scratch drafts each)."""
-    return replace(model, max_tokens=max(model.max_tokens, LETTER_MAX_TOKENS))
+    ~18 s and wrote no better (2026-10-29, three scratch drafts each). And
+    time for one: a voice line's short hosted timeout (wave 52) would cut a
+    long letter, and a letter has no other engine to move to."""
+    return replace(model, max_tokens=max(model.max_tokens, LETTER_MAX_TOKENS), timeout_s=max(model.timeout_s, LETTER_TIMEOUT_S))
 
 # DRAFT w41: the letter brief (the show text the user signs off).
 LETTER_BRIEF = """=== TONIGHT YOU WRITE A LETTER ===

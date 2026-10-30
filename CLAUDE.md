@@ -162,7 +162,7 @@ are in `TECH.md`.
 | Machine | Runs |
 |---|---|
 | VPS (`app.mapsandducks.com`) | The event server, Postgres, Caddy |
-| John's MacBook (macOS, M3 Max 48 GB) | **Trabolta**: Ollama `gpt-oss:20b` + stagehand `agents` (`stagehand/laptop.yaml`, local); `predeploy` / `ship` / `sync-show` / `showbackup`; a director's Run console. The audio router's fallback host only (`trapped.macbook.yaml`) |
+| John's MacBook (macOS, M3 Max 48 GB) | **Trabolta**: stagehand `agents` (`stagehand/laptop.yaml`, local) on Claude Haiku, with Ollama `gpt-oss:20b` as its standby (wave 52); `predeploy` / `ship` / `sync-show` / `showbackup`; a director's Run console. The audio router's fallback host only (`trapped.macbook.yaml`) |
 | John's Desktop (Windows) | **The audio and the lights** (decided 2026-10-27): the audio router (stagehand `audio`) on the MOTU 828x's own outs (no ADAT expander since wave 31), with the living room on Main L/R (outs 1–2) plus the sub on Analog Out 1 (out 3) (wave 38; the 828x's Windows ASIO channel order since wave 46) and the soundtrack's MP3s in `stagehand/media/music/`; Zigbee2MQTT on the CC2652P stick with the Philips Hue and ThirdReality ZL1 bulbs, each paired under its `lights.json` name (no Zigbee groups, scenes or WLED presets: every `lights_*` cue is a `lights.json` look); the living room's WLED (ESP32) strip over Wi-Fi (`wled/living`); Mosquitto (anonymous on 127.0.0.1:1883, password-only `props` on the LAN at :1884); stagehand `show` + `lights` + `audio` as Task Scheduler tasks (`trapped.desktop.yaml`); the living-room TV over HDMI (Chrome kiosk, spot `desktop-tv`), its sound through VoiceMeeter (the PC has no line out: Chrome's output is VoiceMeeter Input, VoiceMeeter Potato runs at sign-in with its VAIO strip on B1 only) and the router's `audio.tap` into the 828x's input 3 (wave 46), which the router plays on every speaker as Trabolta's channel (the TV's own speakers off; input 3 mixed nowhere in CueMix). Runbook: `scripts/house-desktop/README.md` |
 | Steph's laptop | The server-room terminal in Chrome (`…&spot=server-room&door=serial&camera=user`) + the Grand Central M4 over USB (door + patch bay); webcam, monitor, mouse, keyboard |
 | John's old laptop | The tent: `/terminal/?code=<mod>&spot=tent&announce=1`, the reinstall wizard and web game. Needs WebGL2 |
@@ -275,7 +275,22 @@ their real room cameras, with spurts of it down the same routes, so no APK. The 
 never in git or an image (`scripts/ops/dream-media.sh`; already on the VPS).
 🌀 turns it off and on. Help: `docs/help/play/19-house-workings.md`.
 
+**Claude as his voice** (wave 52, on the MacBook, no release needed;
+`stagehand/docs/agents.md`, "Claude as the voice"): Claude Haiku 5.5
+(`api: anthropic`, 16 slots) speaks every line, rules on filings and writes
+the letters; Ollama `gpt-oss:20b` stands by for an outage or a refused line, on
+a line-by-line failover. Guests' lines and his whole prompt go to Anthropic:
+the user decided that on 2026-10-30. The key is
+`~/.config/loom/anthropic.key` (never a YAML or a plist); the SDK is an
+optional extra, so the Desktop never installs it. 50 bots waited 1.9 s at the
+median (99 s on the GPU) at 190 replies a minute, and a line costs about
+$0.0006. To go back: `cp stagehand/laptop.ollama.yaml stagehand/laptop.yaml`,
+then `scripts/house-macbook/trabolta-reset.sh`.
+
 ### Release status
+
+Wave 52 (master, 2026-10-30) changes only the MacBook's `agents` job, so the VPS
+stays on its release below; it is live on that worker.
 
 The VPS runs **`w51`** (master `a033840b`, shipped 2026-10-30; rollback
 `w50`): the ghosts as glitchy swarms of their profile pictures, VR's right

@@ -27,7 +27,9 @@ to hand it. That function:
     (`Slots.mark_down`: its slots are skipped) and retries the call
     **once** on another engine that is up, taking a free slot there or
     waiting for one at the front of its lane. A second failure raises,
-    and the voice says the persona's fallback;
+    and the voice says the persona's fallback. A refusal (`LlmRefused`,
+    wave 52) is about this prompt, not the engine: the same retry, but
+    the engine stays up for every other line;
   - records the engine and the model it went out as (`llm.SERVED_BY`,
     `SERVED_MODEL`) so the thought says who served it.
 
@@ -44,7 +46,7 @@ from dataclasses import fields, replace
 from typing import Any
 
 from .config import AgentsConfig, OverflowEngine
-from .llm import SERVED_BY, SERVED_MODEL, WARM_TOKENS, Completion, LlmConfig, LlmError, LlmTruncated
+from .llm import SERVED_BY, SERVED_MODEL, WARM_TOKENS, Completion, LlmConfig, LlmError, LlmRefused, LlmTruncated
 from .slots import NORMAL, PRIMARY, Hold, Slots
 
 log = logging.getLogger("stagehand.agents.engines")
@@ -140,12 +142,15 @@ class EngineCall:
             except LlmTruncated:
                 raise  # the model answered; the budget ran out — not the engine's fault
             except LlmError as err:
-                self.engines.slots.mark_down(engine)
+                outcome = "stays up"
+                if not isinstance(err, LlmRefused):
+                    self.engines.slots.mark_down(engine)
+                    outcome = f"marked down {self.engines.slots.down_s:.0f} s"
                 if self.primary_only or self.retried or not self.engines.slots.up(exclude=(engine,)):
-                    log.warning("%s: engine %s failed (%s); marked down %.0f s", self.who or "a call", engine, err, self.engines.slots.down_s)
+                    log.warning("%s: engine %s failed (%s); %s", self.who or "a call", engine, err, outcome)
                     raise
                 self.retried = True
-                log.warning("%s: engine %s failed (%s); marked down %.0f s, retrying once on another engine", self.who or "a call", engine, err, self.engines.slots.down_s)
+                log.warning("%s: engine %s failed (%s); %s, retrying once on another engine", self.who or "a call", engine, err, outcome)
                 try:
                     await self.engines.slots.switch(self.hold, exclude=(engine,))
                 except LookupError:
