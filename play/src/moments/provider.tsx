@@ -441,12 +441,12 @@ function useMomentsEngine(input: MomentsInput): Engine {
       sorted.now = sorted.now.filter((m) => !echoes.has(m.key));
       dispatch({ type: "read", keys: [...echoes] });
     }
-    // Wave 47: a guest looking at Mission. A house alert waits a beat (the
-    // view with the new objective can land just after the line), then one
-    // that says what Mission says is read, straight to the bin, and the
-    // title bar blinks instead; the rest arrive as ever.
+    // Wave 47: a guest looking at Mission. A house alert or a new quest
+    // waits a beat (the view with the new objective can land just after the
+    // line), then one that says what Mission says is read, straight to the
+    // bin, and the title bar blinks instead; the rest arrive as ever.
     if (role === "guest" && input.missionEcho !== undefined && !backlog) {
-      const hold = sorted.now.filter((m) => isHouseAlert(m) && m.severity !== "big");
+      const hold = sorted.now.filter((m) => echoable(m));
       if (hold.length > 0) {
         sorted.now = sorted.now.filter((m) => !hold.includes(m));
         for (const m of hold) if (m.seq !== null) mem.pending.add(m.seq);
@@ -934,14 +934,15 @@ function useMomentsEngine(input: MomentsInput): Engine {
   // Wave 47: a house banner up when the guest opens Mission (or the NOW
   // objective it echoes lands under it) is read: Mission says it now.
   const echoStickyKey = surfaces.sticky?.moment.key ?? null;
+  const echoBalloonKey = surfaces.balloon?.moment.key ?? null;
   useEffect(() => {
-    const q = surfaces.sticky;
     const judge = input.missionEcho;
-    if (q === null || judge === undefined || !isHouseAlert(q.moment) || !judge(q.moment)) return;
-    markSeen(q.moment.key);
-    readMany([q.moment.key]);
+    if (judge === undefined) return;
+    const done = [surfaces.sticky, surfaces.balloon].filter((q): q is Queued => q !== null && echoable(q.moment) && judge(q.moment)).map((q) => q.moment.key);
+    for (const k of done) markSeen(k);
+    readMany(done);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [echoStickyKey, input.missionEchoKey]);
+  }, [echoStickyKey, echoBalloonKey, input.missionEchoKey]);
 
   // --- Notifications ---------------------------------------------------------------
   const groups = useMemo(
@@ -1166,6 +1167,12 @@ export function useStickyMoment(): { key: string | null; count: number; keys: re
   const joined = (e?.surfaces.stickyKeys ?? []).join("\u0000");
   const read = e?.readMany;
   return useMemo(() => ({ key, count, keys: joined === "" ? [] : joined.split("\u0000"), read: read ?? (() => {}) }), [key, count, joined, read]);
+}
+
+/** Wave 47: a moment a guest on Mission may already be reading there (a
+ *  house alert, a new quest; never a big, a card or their own objective). */
+function echoable(m: Moment): boolean {
+  return m.severity !== "big" && (isHouseAlert(m) || m.kind === "quest");
 }
 
 /** Wave 47: what the phone's Back does with a moment on screen. A big and

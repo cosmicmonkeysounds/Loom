@@ -24,6 +24,10 @@ describe("a house banner that says what Mission says (wave 47)", () => {
   it.each(pairs)("%s echoes “%s” in the same beat", (text, title) => {
     expect(echoesMission({ text, at }, { title, since: at - 2_000 })).toBe(true);
   });
+  it("a new quest's balloon echoes its objective too", () => {
+    expect(echoesMission({ text: "New quest: Computer Bingo\nMingle and find a program for every square. The centre square matters.", at }, { title: "Computer Bingo: find a program for each square", since: at })).toBe(true);
+    expect(echoesMission({ text: "New quest: The Truth Scavenger Hunt · Round 1\nThere are five facts to find.", at }, { title: "The Truth Scavenger Hunt: find three facts", since: at })).toBe(true);
+  });
   it("one with news of its own stays a banner", () => {
     expect(echoesMission({ text: "📥 TRUTHER DOWNLOAD received. Check your messages.", at }, { title: "Round 2: one hour to find three facts", since: at })).toBe(false);
     expect(echoesMission({ text: "⏰ BINGO! Winamp called it. Back to the Desktop to hear the line.", at }, { title: "The Bingo results: cheer for the winners", since: at })).toBe(false);
@@ -38,6 +42,8 @@ describe("a house banner that says what Mission says (wave 47)", () => {
     expect(app).toMatch(/<NowBar\s+news=\{missionNews\}/u);
     const provider = readFileSync(new URL("../src/moments/provider.tsx", import.meta.url), "utf8");
     expect(provider).toMatch(/window\.setTimeout\(\(\) => \{\s*for \(const m of hold\)/u);
+    // A new quest too ("New quest: Computer Bingo" over Mission's Computer Bingo).
+    expect(provider).toMatch(/return m\.severity !== "big" && \(isHouseAlert\(m\) \|\| m\.kind === "quest"\);/u);
   });
 });
 
