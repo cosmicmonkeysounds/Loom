@@ -588,7 +588,7 @@ with `released: true` while you walk to Gerald.
 ```
 
 On 2026-10-30 (wave 49, branch `oct31-w49/vr`, Godot 4.7.1) it reports
-1236 checks in `test/game.gd`, 296 in `test/descent.gd` and `quest.sh` 42, all
+1236 checks in `test/game.gd`, 299 in `test/descent.gd` and `quest.sh` 42, all
 passing.
 
 The runner refreshes the import, compiles every script and loads every

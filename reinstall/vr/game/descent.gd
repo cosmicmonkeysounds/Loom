@@ -543,7 +543,7 @@ func _step_behind() -> void:
 func _place_behind() -> void:
 	var c := game.player.camera
 	var y := deg_to_rad(game.player.head_yaw())
-	_behind.global_position = c.global_position + Vector3(sin(y), -1.0, cos(y)) * BEHIND_M
+	_behind.global_position = c.global_position + Vector3(sin(y), 0.0, cos(y)) * BEHIND_M
 
 
 ## End the running vision: what it drew goes; the eases go back on their own.

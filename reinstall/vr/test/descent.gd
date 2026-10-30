@@ -176,6 +176,7 @@ func _test_port_constants() -> void:
 func _test_port_script() -> void:
 	var words: Variant = HouseDescent.bundled()
 	_check(words is Dictionary and (words as Dictionary)["talkers"].size() >= 20, "script: the bundled copy loads and validates")
+	_check(FileAccess.get_file_as_string("res://export_presets.cfg").contains("house/*.json"), "script: the Quest preset ships it")
 	var v := HouseDescent.validate_descent(_read_json("res://house/descent.json"))
 	_check(v["ok"] and v["warnings"].is_empty(), "script: no problems, no warnings (%s)" % [v])
 	_check(HouseDescent.parse_descent(null) == null and HouseDescent.parse_descent({"version": 2}) == null, "script: junk reads as none")
@@ -709,6 +710,8 @@ func _test_visions() -> void:
 	_check(link.found_calls == claims2 + 1, "find: a vision never blocks it")
 	link.found_answered.emit(true, {"ok": true, "released": true})
 	_check(game.state() == GameFlow.State.FOUND and d.vision == "" and not d.running, "find: the vision ends with the walk")
+	game.speech.tick(0.0)
+	_check(HouseDescent.bundled()["found"]["4"].has(game.speech.caption_text().replace("Ada", "{name}")), "find: Gerald's line for the level (%s)" % game.speech.caption_text())
 	_frames(game, int(2.0 * 72))
 	_check(d.dark_level() == 0.0, "find: its dark eases away on the found screen")
 	link.session_over.emit("test")
@@ -1272,6 +1275,13 @@ func _test_hallway_timeout() -> void:
 		t += 0.1
 	_check(not game.hallway.active() and _near(t, HouseDescent.HALLWAY_MAX_S, 0.3), "timeout: nobody is in there longer than 70 s (%.1f)" % t)
 	_check(_same(game.builder.to_house(game.player.feet()), feet) and game.builder.visible, "timeout: back at the door")
+	link.session_over.emit("test")
+	# A body through the floor (it never should) is out at once, too.
+	var at2: Array = _at_the_door(game, house, "h-2b")
+	_go_through(game, at2[1])
+	game.player.global_position = Hallway.SPOT - Vector3(0, Hallway.FELL_BELOW + 0.5, 0)
+	game._process(DT)
+	_check(not game.hallway.active() and game.builder.visible, "timeout: a fall out of the pocket brings them back")
 	link.session_over.emit("test")
 	await _end(main)
 
