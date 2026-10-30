@@ -69,6 +69,17 @@ async function spyOnShell(page: Page): Promise<() => Promise<string[]>> {
 const TEXT_FIELD = '.inspect input:not([type=color]):not([type=checkbox]):not([type=number])'
 const firstRoomInput = (panel: Locator) => panel.locator(TEXT_FIELD).first()
 
+/** Selects the room itself: rooms are full of props, lights and speakers, so
+ *  try spots until the inspector says it's a room. */
+async function pickRoom(page: Page, room: Locator): Promise<void> {
+  const box = (await room.boundingBox())!
+  for (const [fx, fy] of [[0.5, 0.5], [0.75, 0.75], [0.25, 0.75], [0.75, 0.25], [0.25, 0.25], [0.5, 0.85], [0.85, 0.5], [0.15, 0.5], [0.5, 0.15]] as const) {
+    await room.click({ position: { x: box.width * fx, y: box.height * fy }, force: true })
+    if ((await page.locator('.inspect h3').first().innerText()).includes('Room')) return
+  }
+  throw new Error('no free spot in that room')
+}
+
 test('the map editor is a view of Run → House', async ({ browser }) => {
   test.setTimeout(240_000)
   const probe = await pwRequest.newContext({ baseURL: BASE })
@@ -148,11 +159,12 @@ test('the map editor is a view of Run → House', async ({ browser }) => {
 
   await test.step('something selected, typing in its field never deletes it', async () => {
     await edit.check()
-    await rooms.nth(2).click({ position: { x: 5, y: 5 }, force: true })
+    await pickRoom(page, rooms.nth(2))
     const field = firstRoomInput(panel)
     await field.click()
     const before = await field.inputValue()
-    await field.press('End')
+    // `End` doesn't move a text caret on a Mac.
+    await field.evaluate((el: HTMLInputElement) => el.setSelectionRange(el.value.length, el.value.length))
     await page.keyboard.type('xy')
     await page.keyboard.press('Backspace')
     await page.keyboard.press('Delete')
@@ -169,15 +181,10 @@ test('the map editor is a view of Run → House', async ({ browser }) => {
 
   await test.step('the map takes its keys off the plan, and they stop there', async () => {
     await page.locator('svg.plan').click({ position: { x: 4, y: 4 } })
-    await rooms.nth(2).click({ position: { x: 5, y: 5 }, force: true })
-    // A prop goes at once and ⌘Z brings it back; a room asks first (dismissed).
-    const prop = (await page.locator('.inspect').first().innerText()).includes('Prop')
+    await pickRoom(page, rooms.nth(2))
+    // A room asks first (dismissed).
     await page.keyboard.press('Delete')
-    if (prop) {
-      await expect(save).toBeEnabled()
-      await page.keyboard.press('Meta+z')
-      await expect(save).toBeDisabled()
-    } else expect(nativeDialogs.length).toBe(1)
+    expect(nativeDialogs.length).toBe(1)
     await expect(rooms).toHaveCount(roomCount)
     await page.keyboard.press('Escape')
     await page.keyboard.press('r')
@@ -188,7 +195,7 @@ test('the map editor is a view of Run → House', async ({ browser }) => {
   })
 
   await test.step('an edit, ⌘Z and ⌘⇧Z are the map’s own', async () => {
-    await rooms.nth(2).click({ position: { x: 5, y: 5 }, force: true })
+    await pickRoom(page, rooms.nth(2))
     const field = firstRoomInput(panel)
     await field.click()
     const was = await field.inputValue()
@@ -240,16 +247,16 @@ test('the map editor is a view of Run → House', async ({ browser }) => {
     await expect(page.getByTestId('house-view-map')).toHaveAttribute('aria-selected', 'true')
     await save.click()
     await expect(page.getByText('moderator passcode')).toHaveCount(0)
+    // The button is off while the save is in flight too: read the map itself.
+    await expect.poll(async () => JSON.stringify(await (await api.get(`/e/${event.id}/api/spatial/house`)).json()), { timeout: 10_000 }).toContain(' w49')
     await expect(save).toBeDisabled({ timeout: 10_000 })
-    const served = await (await api.get(`/e/${event.id}/api/spatial/house`)).json()
-    expect(JSON.stringify(served)).toContain(' w49')
   })
 
   await test.step('a story restart leaves it working', async () => {
     const r = await api.post(`/e/${event.id}/api/mod/reset`, { data: {} })
     expect(r.ok(), await r.text()).toBeTruthy()
     await page.locator('svg.plan').click({ position: { x: 4, y: 4 } })
-    await rooms.nth(2).click({ position: { x: 5, y: 5 }, force: true })
+    await pickRoom(page, rooms.nth(2))
     const field = firstRoomInput(panel)
     await field.fill(`${await field.inputValue()} again`)
     await field.press('Tab')
@@ -257,7 +264,7 @@ test('the map editor is a view of Run → House', async ({ browser }) => {
     await save.click()
     await expect(save).toBeDisabled({ timeout: 10_000 })
     await expect(page.getByText('moderator passcode')).toHaveCount(0)
-    expect(JSON.stringify(await (await api.get(`/e/${event.id}/api/spatial/house`)).json())).toContain(' again')
+    await expect.poll(async () => JSON.stringify(await (await api.get(`/e/${event.id}/api/spatial/house`)).json()), { timeout: 10_000 }).toContain(' again')
   })
 
   await test.step('the 3D preview is its own lazy chunk', async () => {
@@ -279,14 +286,16 @@ test('the map editor is a view of Run → House', async ({ browser }) => {
     await expect(tab.locator('.map-page')).toBeVisible({ timeout: 20_000 })
     expect(tab.url()).not.toContain('code=')
     await tab.locator('.map-toolbar label.checkbox input[type=checkbox]').first().check()
-    await tab.locator('svg.plan polygon.room').nth(2).click({ position: { x: 5, y: 5 }, force: true })
+    await pickRoom(tab, tab.locator('svg.plan polygon.room').nth(2))
     const field = tab.locator(TEXT_FIELD).first()
     const was = await field.inputValue()
     await field.fill(`${was}!`)
     await field.press('Tab')
     await tab.locator('.map-toolbar').getByRole('button', { name: /Save/ }).first().click()
     await expect(tab.getByText('moderator passcode')).toHaveCount(0)
-    await expect(tab.locator('.map-toolbar').getByRole('button', { name: /Save/ }).first()).toBeDisabled({ timeout: 10_000 })
+    // Two tabs of long polls on a plain HTTP/1.1 scratch stack fill the
+    // browser's six sockets, so a save may wait for a poll to come back (≤ 30 s).
+    await expect(tab.locator('.map-toolbar').getByRole('button', { name: /Save/ }).first()).toBeDisabled({ timeout: 40_000 })
     expect(tabErrors).toEqual([])
     await tab.close()
   })
