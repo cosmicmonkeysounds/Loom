@@ -38,9 +38,10 @@ import {
   bathTime,
   LANG,
   LANG_FIT,
+  LANG_FIT_START,
   LANG_WORD_MAX,
   langEvery,
-  langFitNext,
+  langFitStep,
   langStampCues,
   langTileAt,
   langWallSize,
@@ -117,7 +118,7 @@ describe("tv3 timelines — the awards", () => {
     expect(langStampCues(0)).toEqual([]);
   });
 
-  it("the Language Report's wall (wave 48): words whole up to 18 characters, a size by weight, a fit that shrinks to a floor", () => {
+  it("the Language Report's wall (wave 48): words whole up to 18 characters, a size by weight, the largest fit", () => {
     expect(langWord(" password ")).toBe("password");
     expect(langWord("x".repeat(LANG_WORD_MAX))).toBe("x".repeat(LANG_WORD_MAX));
     expect(langWord("x".repeat(LANG_WORD_MAX + 1))).toBe(`${"x".repeat(LANG_WORD_MAX - 1)}…`);
@@ -128,12 +129,28 @@ describe("tv3 timelines — the awards", () => {
     expect(langWallSize(FAKE_FLAGGED_WORDS.slice(0, 30), 0)).toBe("m");
     expect(langWallSize(FAKE_FLAGGED_WORDS.slice(0, 60), 1)).toBe("s");
     expect(langWallSize(Array.from({ length: 60 }, () => "x".repeat(40)), 1)).toBe("s");
-    expect(langFitNext(1, false)).toBe(1);
-    expect(langFitNext(1, true)).toBe(0.88);
-    let k = 1;
-    for (let i = 0; i < 40; i++) k = langFitNext(k, true);
-    expect(k).toBe(LANG_FIT.min);
-    expect(langFitNext(LANG_FIT.min, true)).toBe(LANG_FIT.min);
+    // The fit: the largest scale that fits, near enough, in a few tries; a wall that never fits settles at the floor.
+    const fitFor = (limit: number) => {
+      let f = LANG_FIT_START;
+      let tries = 0;
+      while (!f.done && tries < 20) {
+        f = langFitStep(f, f.k > limit);
+        tries++;
+      }
+      return { f, tries };
+    };
+    for (const limit of [0.55, 0.83, 1, 1.21, 1.27]) {
+      const { f, tries } = fitFor(limit);
+      expect(f.done, `${limit}`).toBe(true);
+      expect(f.k, `${limit}`).toBeLessThanOrEqual(limit);
+      expect(f.k, `${limit}`).toBeGreaterThan(limit - LANG_FIT.near - 0.001);
+      expect(tries, `${limit}`).toBeLessThanOrEqual(7);
+    }
+    expect(fitFor(0.1).f.k).toBe(LANG_FIT.min);
+    expect(fitFor(9).f.k).toBeGreaterThan(LANG_FIT.max - LANG_FIT.near - 0.001);
+    expect(fitFor(9).f.k).toBeLessThanOrEqual(LANG_FIT.max);
+    const settled = fitFor(1).f;
+    expect(langFitStep(settled, true)).toBe(settled);
   });
 
   it("reads an award off its slide value, and makes one up for a value it doesn't know", () => {

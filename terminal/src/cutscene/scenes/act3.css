@@ -329,8 +329,8 @@
 .tv3-bath-value { flex: 0 0 auto; color: #ffd23f; }
 
 /* The Language Report (wave 48): the award's room gone dark, two cards, then a wall of
-   stamped tiles. The wall's font is its size class (`langWallSize`) times `--lang-k`, which
-   the scene shrinks until the wall fits (60 words on the TV or a portrait wall). No flex gap. */
+   stamped tiles. The wall's font is its size class (`langWallSize`) times `--lang-k`, the
+   largest scale that fits (`langFitStep`: 60 words on the TV or a portrait wall). No flex gap. */
 .tv3-lang-emblem { top: 3%; }
 .tv3-lang-kind { top: 16%; color: #ffcf5a; }
 .tv3-lang-title { top: 20%; font-size: min(7vmin, 7vw); }
@@ -362,15 +362,15 @@
   font-family: var(--mono);
   font-size: calc(var(--lang-base) * var(--lang-k, 1));
 }
-.tv3-lang-wall.xl { --lang-base: min(7vmin, 8vw); }
-.tv3-lang-wall.l { --lang-base: min(5vmin, 6vw); }
+.tv3-lang-wall.xl { --lang-base: min(6vmin, 7vw); }
+.tv3-lang-wall.l { --lang-base: min(4.6vmin, 5.4vw); }
 .tv3-lang-wall.m { --lang-base: min(3.8vmin, 4.6vw); }
 .tv3-lang-wall.s { --lang-base: min(3vmin, 3.6vw); }
 .tv3-lang-tile {
   position: relative;
   overflow: hidden;
   margin: 0.12em 0.14em;
-  padding: 0.04em 0.4em 0.42em;
+  padding: 0.04em 0.4em 0.5em;
   background: #f1ecdf;
   color: #111;
   line-height: 1.05;
@@ -383,11 +383,11 @@
 .tv3-lang-stamp {
   position: absolute;
   right: 0.3em;
-  bottom: 0.07em;
+  bottom: 0.1em;
   padding: 0.06em 0.25em 0.02em;
   font-family: Tahoma, "MS Sans Serif", sans-serif;
   font-weight: bold;
-  font-size: 0.28em;
+  font-size: 0.3em;
   line-height: 1;
   letter-spacing: 0.08em;
   color: #c8141a;

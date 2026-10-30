@@ -112,9 +112,9 @@ export function langWord(w: string): string {
 export type LangWallSize = "xl" | "l" | "m" | "s";
 
 /**
- * (wave 48) The wall's starting tile size for these words (the scene then
- * shrinks it until it fits the screen it is on: `langFitNext`). Weighs each
- * tile by its characters plus its padding, the "+ n more" tile as one more.
+ * (wave 48) The wall's tile size for these words, before the scene fits it
+ * to the screen it is on (`langFitStep`). Weighs each tile by its characters
+ * plus its padding, the "+ n more" tile as one more.
  */
 export function langWallSize(words: readonly string[], more: number): LangWallSize {
   const weight = words.reduce((sum, w) => sum + Array.from(langWord(w)).length + 3, 0) + (more > 0 ? 10 : 0);
@@ -124,13 +124,31 @@ export function langWallSize(words: readonly string[], more: number): LangWallSi
   return "s";
 }
 
-/** (wave 48) How far the wall may shrink to fit (`--lang-k`), a step at a time. */
-export const LANG_FIT = { min: 0.4, step: 0.88 } as const;
+/** (wave 48) How far the wall may shrink or grow (`--lang-k`), and how close the fit gets. */
+export const LANG_FIT = { min: 0.4, max: 1.3, near: 0.03 } as const;
 
-/** (wave 48) The wall's next scale: smaller while it overflows, down to `LANG_FIT.min`; else as it is. */
-export function langFitNext(k: number, overflows: boolean): number {
-  if (!overflows || k <= LANG_FIT.min) return k;
-  return Math.max(LANG_FIT.min, Math.round(k * LANG_FIT.step * 1000) / 1000);
+/** (wave 48) A fit in progress: the scale known to fit (`lo`), the one known not to (`hi`), the next to try. */
+export interface LangFit {
+  lo: number;
+  hi: number;
+  k: number;
+  done: boolean;
+}
+
+/** (wave 48) Where every fit starts: the size class as it is. */
+export const LANG_FIT_START: LangFit = { lo: LANG_FIT.min, hi: LANG_FIT.max, k: 1, done: false };
+
+/**
+ * (wave 48) The wall measured at `f.k`: the next scale to try, halving the
+ * gap, until the largest that fits is within `LANG_FIT.near` (about six
+ * tries). Overflowing even at `min`, it settles there.
+ */
+export function langFitStep(f: LangFit, overflows: boolean): LangFit {
+  if (f.done) return f;
+  const lo = overflows ? f.lo : f.k;
+  const hi = overflows ? f.k : f.hi;
+  if (hi - lo <= LANG_FIT.near) return { lo, hi, k: lo, done: true };
+  return { lo, hi, k: Math.round(((lo + hi) / 2) * 1000) / 1000, done: false };
 }
 
 /** The staff awards' ids (wave 21): the ones a player part takes. */

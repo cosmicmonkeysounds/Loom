@@ -58,7 +58,7 @@ import {
   type StormMessage,
 } from "../kit/index.ts";
 import { AwardEmblem, BinaryRain, ChatWindow, Curtains, DiscoBall, EqBars, FloatLayer, Heart, Lasers, Motorcycle, Notepad, RainCanvas, SpotCones, Sunburst, Trophy } from "../kit/tv3-parts.tsx";
-import { ASSESSMENT_MS, AWARDS, AWARD_CONFETTI, HAND_JIVE, LANG, TRUTH_TXT, awardConfettiAt, awardOf, awardValue, bathTime, bobStateOf, brokenYear, chatAt, handJivePhase, karaokeAt, langFitNext, langStampCues, langTileAt, langWallSize, langWord, notepadAt, sinceMoment, spinAngle, tallyOf, vortexAt, wrapLines, type BobState, type ChatLine } from "../kit/tv3-time.ts";
+import { ASSESSMENT_MS, AWARDS, AWARD_CONFETTI, HAND_JIVE, LANG, LANG_FIT_START, TRUTH_TXT, awardConfettiAt, awardOf, awardValue, bathTime, bobStateOf, brokenYear, chatAt, handJivePhase, karaokeAt, langFitStep, langStampCues, langTileAt, langWallSize, langWord, notepadAt, sinceMoment, spinAngle, tallyOf, vortexAt, wrapLines, type BobState, type ChatLine } from "../kit/tv3-time.ts";
 
 // --- small shared helpers ---------------------------------------------------------------------
 
@@ -1441,9 +1441,9 @@ function BathroomScene({ t, value, night, sfx, reduced, target }: SceneProps) {
 // The numbers and words are the story's (`night.language`, read when G14 was
 // pressed). Nobody flagged: one line at 2800. Flagged but none censored: the
 // wall's place says so. No report (an older server): the title and its line.
-// The wall starts at a size for its words (`langWallSize`), then shrinks
-// until it fits the screen it is on (`langFitNext`): 60 words fit the TV and
-// a portrait wall alike.
+// The wall starts at a size for its words (`langWallSize`), then takes the
+// largest scale that fits the screen it is on (`langFitStep`): 60 words fit
+// the TV and a portrait wall alike, and a few words stand big.
 
 /** The Language Report's own copy (DRAFT w48). */
 export const LANG_COPY = {
@@ -1492,16 +1492,17 @@ function whoSize(who: string): string {
 }
 
 /**
- * Shrinks a box's content (`--lang-k`) until it fits the box: on mount, on a
- * resize, when the fonts land, when `sig` changes. Each step re-renders
- * before the paint, so the wall is never seen overflowing.
+ * Fits a box's content to the box (`--lang-k`, the largest scale that fits:
+ * `langFitStep`): on mount, on a resize, when the fonts land, when `sig`
+ * changes. Each try re-renders before the paint, so the wall is never seen
+ * overflowing or mid-fit.
  */
 function useFitScale(sig: string): [RefObject<HTMLDivElement>, number] {
   const ref = useRef<HTMLDivElement>(null);
   const [bump, setBump] = useState(0);
-  const [fit, setFit] = useState({ k: 1, key: "" });
+  const [fit, setFit] = useState({ key: "", f: LANG_FIT_START });
   const key = `${sig}#${bump}`;
-  const k = fit.key === key ? fit.k : 1;
+  const f = fit.key === key ? fit.f : LANG_FIT_START;
   useEffect(() => {
     let live = true;
     const on = () => {
@@ -1516,12 +1517,11 @@ function useFitScale(sig: string): [RefObject<HTMLDivElement>, number] {
   }, []);
   useLayoutEffect(() => {
     const el = ref.current;
-    if (el === null || el.clientHeight === 0) return;
+    if (f.done || el === null || el.clientHeight === 0) return;
     const over = el.scrollHeight > el.clientHeight + 1 || el.scrollWidth > el.clientWidth + 1;
-    const next = langFitNext(k, over);
-    if (fit.key !== key || next !== fit.k) setFit({ k: next, key });
-  }, [key, k]);
-  return [ref, k];
+    setFit({ key, f: langFitStep(f, over) });
+  }, [key, f]);
+  return [ref, f.k];
 }
 
 /** One censored word: it lands under a black bar that wipes off, then its stamp (reduced: they fade in). */
@@ -1542,7 +1542,7 @@ function LangTile({ word, t, at, reduced, lit }: { word: string; t: number; at: 
     <span className={cls} style={{ opacity: progress(t, at, 80) }}>
       {word}
       {t >= at && wiped < 1 && <span className="tv3-lang-wipe" style={{ transform: `scaleX(${(1 - wiped).toFixed(3)})` }} />}
-      <span className="tv3-lang-stamp" style={land >= 1 ? undefined : { opacity: clamp01(land * 2), transform: `rotate(-6deg) scale(${lerp(1.9, 1, ease.outBack(land)).toFixed(3)})` }}>
+      <span className="tv3-lang-stamp" style={land >= 1 ? undefined : { opacity: clamp01(land * 2), transform: `rotate(-6deg) scale(${lerp(1.4, 1, ease.outBack(land)).toFixed(3)})` }}>
         {LANG_COPY.stamp}
       </span>
     </span>
@@ -1551,8 +1551,8 @@ function LangTile({ word, t, at, reduced, lit }: { word: string; t: number; at: 
 
 // One pop from the lower corners when the name lands (the cannons only, no
 // fall from the top): every piece is gone by 6500, before the wall's first tile.
-export const LANG_POP_TV = confettiEmitters(LANG.curser, 500, 0.6, 181).slice(0, 2);
-export const LANG_POP_WALL = confettiEmitters(LANG.curser, 500, 0.3, 181).slice(0, 2);
+export const LANG_POP_TV = confettiEmitters(LANG.curser, 500, 1, 181).slice(0, 2);
+export const LANG_POP_WALL = confettiEmitters(LANG.curser, 500, 0.5, 181).slice(0, 2);
 
 function LanguageScene({ t, value, night, sfx, reduced, target }: SceneProps) {
   const lite = target === "wall";
