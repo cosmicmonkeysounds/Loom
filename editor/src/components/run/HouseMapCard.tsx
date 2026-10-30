@@ -1,5 +1,5 @@
-//! The House map card on the Run page (wave 5 E9): the tent ⇄ shed switch
-//! without a moderator-passcode device on `/reinstall/map`. One button per
+//! The House map card on the Run page (wave 5 E9): the tent ⇄ shed switch,
+//! and since wave 49 **🗺 Edit the map** (Run → House → 🗺 Map). One button per
 //! whole-map variant (`GET /api/mod/spatial/variants`), the playing one
 //! highlighted, an invalid one disabled with its problems as the tooltip.
 //! A switch always asks first — it moves every tablet, headset and wall
@@ -21,6 +21,10 @@
 //! … s* while Zigbee joining is open, and the problems / warnings counts.
 //! Placing fixtures, looks and *Pair new device* live in the map editor's
 //! 💡 Lights tab. Rules + wire parsing in pure `lib/lights-status.ts`.
+//!
+//! Wave 49 (C7): the **descent's select** (`DescentRow`), a director forcing
+//! the level of the next deals, mostly to test (`GET` / `POST
+//! /api/mod/spatial/descent`). An older server's 404 hides it.
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import clsx from 'clsx'
@@ -43,6 +47,8 @@ import {
   type PairClock,
 } from '@/lib/lights-status'
 import { canSwitchTo, freshTarget, switchBase, switchConfirm, variantLabel, variantTitle, type MapVariant, type MapVariantsResponse } from '@/lib/map-variants'
+import { descentChoices, descentLevelOf, descentValue } from '@/lib/house-map-view'
+import { openHouseMap } from '@/lib/open-house-map'
 
 /** How often the card re-reads the King (a hit in the tent shows within it). */
 const KING_POLL_MS = 4000
@@ -107,6 +113,31 @@ function useLights(eventId: string | null): { status: LightsStatus | null; deadl
     }
   }, [eventId, pairing])
   return shown
+}
+
+/** The forced descent, re-read every `LIGHTS_POLL_MS` (a story reset clears it). `undefined`: hide
+ *  the select (nothing read yet, or an older server's 404). */
+function useDescent(eventId: string | null): [number | null | undefined, (forced: number | null) => void] {
+  const [forced, setForced] = useState<number | null | undefined>(undefined)
+  useEffect(() => {
+    if (eventId === null) return
+    let cancelled = false
+    const read = async () => {
+      try {
+        const f = await mapApi.descent(eventId)
+        if (!cancelled) setForced(f)
+      } catch (e) {
+        if (!cancelled && e instanceof ApiError && e.status === 404) setForced(undefined)
+      }
+    }
+    void read()
+    const t = setInterval(() => void read(), LIGHTS_POLL_MS)
+    return () => {
+      cancelled = true
+      clearInterval(t)
+    }
+  }, [eventId])
+  return [forced, setForced]
 }
 
 /** A 1 s clock while `on` (the pairing countdown). */
@@ -217,9 +248,48 @@ function KingRow({ eventId, king, onKing }: { eventId: string; king: KingView; o
   )
 }
 
+/** DRAFT w49. */
+export function DescentRow({ eventId, forced, onForced }: { eventId: string; forced: number | null; onForced: (f: number | null) => void }) {
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const pick = async (value: string) => {
+    setBusy(true)
+    setError(null)
+    try {
+      onForced(await mapApi.setDescent(eventId, descentLevelOf(value)))
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-zinc-800 pt-2 text-xs" data-testid="run-house-descent">
+      <label className="flex items-center gap-2 text-zinc-300" title="How far gone the game is on the next walks. By visits is the show’s rule: each walk a program takes goes one deeper. A walk under way keeps its level.">
+        Descent:
+        <select
+          value={descentValue(forced)}
+          disabled={busy}
+          onChange={(e) => void pick(e.target.value)}
+          className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-0.5 text-[11px] text-zinc-300 outline-none focus:border-indigo-500"
+          data-testid="run-house-descent-select"
+        >
+          {descentChoices().map((c) => (
+            <option key={c.value} value={c.value}>
+              {c.label}
+            </option>
+          ))}
+        </select>
+      </label>
+      {error && <span className="text-[11px] text-red-400">{error}</span>}
+    </div>
+  )
+}
+
 export function HouseMapCard() {
   const eventId = useCockpit((s) => s.run?.eventId ?? null)
   const [king, setKingView] = useKing(eventId)
+  const [descent, setDescent] = useDescent(eventId)
   const lights = useLights(eventId)
   const showLights = lightsShown(lights.status)
   const [data, setData] = useState<MapVariantsResponse | null>(null)
@@ -321,12 +391,16 @@ export function HouseMapCard() {
             ✎ edited on this event
           </span>
         )}
-        <button type="button" className="ml-auto text-[11px] text-zinc-500 hover:text-zinc-200" onClick={reload} title="Reload the variant list">
+        <button type="button" className="ml-auto rounded border border-zinc-700 px-2 py-0.5 text-[11px] text-zinc-200 hover:bg-zinc-800" onClick={openHouseMap} data-testid="run-house-map-edit">
+          🗺 Edit the map
+        </button>
+        <button type="button" className="text-[11px] text-zinc-500 hover:text-zinc-200" onClick={reload} title="Reload the variant list">
           ↻
         </button>
       </div>
       {king !== null && <KingRow eventId={eventId} king={king} onKing={setKingView} />}
       {showLights && <LightsRow status={lights.status!} deadline={lights.deadline} />}
+      {descent !== undefined && <DescentRow eventId={eventId} forced={descent} onForced={setDescent} />}
       {variants.length === 1 && <p className="text-[11px] text-zinc-600">This event has one map — add a house.&lt;variant&gt;.json to the project for a second.</p>}
       {note && <p className="text-[11px] text-zinc-400" data-testid="run-house-map-note">{note}</p>}
       {error && <p className="text-[11px] text-red-400" data-testid="run-house-map-error">{error}</p>}

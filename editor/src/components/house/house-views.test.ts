@@ -58,12 +58,13 @@ beforeEach(() => {
 })
 
 describe('the House views', () => {
-  it('switches between Desk, Cue designer, Setup and Mixer, flagging a setup problem', () => {
+  it('switches between Desk, Cue designer, Setup, Mixer and Map, flagging a setup problem', () => {
     const html = render()
     expect(html).toContain('data-testid="house-view-desk"')
     expect(html).toContain('🎨 Cue designer')
-    expect([...html.matchAll(/data-testid="house-view-([a-z]+)"/gu)].map((m) => m[1])).toEqual(['desk', 'designer', 'setup', 'mixer'])
+    expect([...html.matchAll(/data-testid="house-view-([a-z]+)"/gu)].map((m) => m[1])).toEqual(['desk', 'designer', 'setup', 'mixer', 'map'])
     expect(html).toContain('🎚 Mixer')
+    expect(html).toContain('🗺 Map')
     expect(html).not.toContain('house-mixer')
     expect(html).toContain('data-testid="house-cues"')
     // The fixture's story sound has no file: Setup carries a ✗.

@@ -110,6 +110,6 @@ export function switchConfirm(to: MapVariant, r: MapVariantsResponse): { title: 
   const lines = [
     `Every tablet, headset and wall terminal switches to ${name} now. Programs mid-game keep playing from where they stand; anyone standing where ${name} has no floor goes back to its start, and a duck whose spot is not on it is dealt a new one.`,
   ]
-  if (r.edited) lines.push(`This event's map has edits that are not in the project — the switch drops them. To keep them, Save to project on the map page (/reinstall/map) first.`)
+  if (r.edited) lines.push(`This event's map has edits that are not in the project — the switch drops them. To keep them, Save to project in Run → House → 🗺 Map first.`)
   return { title: `Switch the house map to ${name}?`, body: lines.join('\n\n') }
 }

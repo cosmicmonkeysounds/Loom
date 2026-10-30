@@ -11,6 +11,7 @@ import type { AgentControl, AgentMindSummary, AgentThought, GuestView, PrimeView
 import type { ScreenTerminals } from '@/lib/terminals'
 import type { RecapWire } from '@/components/cockpit/award-suggest'
 import type { MapVariantsResponse, SwitchVariantResult } from '@/lib/map-variants'
+import { descentFromWire } from '@/lib/house-map-view'
 import { kingFromScreen, kingFromWire, type KingView } from '@/lib/king'
 import { audioStatusOf, routerOf, type AudioStatus, type AudioStopAnswer } from '@/lib/house-audio'
 import { lightsStatusOf, type LightsStatus } from '@/lib/lights-status'
@@ -735,6 +736,19 @@ export const mapApi = {
   async setKing(eventId: string, hp: number): Promise<KingView | null> {
     const r = await req<{ king?: unknown }>('POST', `/e/${eventId}/api/mod/spatial/king`, { hp })
     return kingFromWire(r.king)
+  },
+  /** Trade the run's moderator code for a token: the embedded map editor
+   *  speaks the same token routes as `/reinstall/map`. */
+  async login(eventId: string, passcode: string): Promise<string> {
+    return (await req<{ token: string }>('POST', `/e/${eventId}/api/mod/login`, { passcode })).token
+  },
+  /** The descent level a director forced (wave 49, C3.3). Throws a 404 on an older server. */
+  async descent(eventId: string): Promise<number | null> {
+    return descentFromWire(await req<unknown>('GET', `/e/${eventId}/api/mod/spatial/descent`))
+  },
+  /** Force the level of the next deals, or null for by visits. */
+  async setDescent(eventId: string, level: number | null): Promise<number | null> {
+    return descentFromWire(await req<unknown>('POST', `/e/${eventId}/api/mod/spatial/descent`, { level }))
   },
 }
 
