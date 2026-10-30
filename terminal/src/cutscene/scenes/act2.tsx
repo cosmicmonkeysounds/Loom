@@ -1265,7 +1265,7 @@ function Y2kTv(p: SceneProps) {
     <Stage bg={dream ? "transparent" : "#000"} fit className={`tv2${dream ? " tv2-y2k-dream" : ""}`} style={{ ["--tv2-tone" as string]: tone } as CSSProperties}>
       {!dream && <Grid t={t} reduced={reduced} speed={0.4 + level * 0.35} color={`${tone}55`} bg={level >= 3 ? "radial-gradient(ellipse at 50% 45%, #2a0a00 0%, #050000 75%)" : "radial-gradient(ellipse at 50% 40%, #071a33 0%, #01040a 75%)"} />}
       <Shake t={t} amount={shake} seed={44} reduced={reduced} className="kit-fill">
-        <Win98Window title="Date/Time Properties" icon="computer" x={dream ? 80 : 50} y={dream ? 76 : 46} center width={dream ? "27em" : "50em"} open={eased(t, 0, 380, ease.outCubic)} reduced={reduced} className="tv2-y2k-win" tone={level >= 4 ? "red" : "navy"} status={level >= 5 ? "Time zone: unknown. Year: unknown." : `Time zone: (GMT-04:00) Atlantic Time · ${remaining === null ? "" : `${Math.floor(remaining / 60)}:${String(secs).padStart(2, "0")} to midnight`}`}>
+        <Win98Window title="Date/Time Properties" icon="computer" x={dream ? 80 : 50} y={dream ? 22 : 46} center width={dream ? "27em" : "50em"} open={eased(t, 0, 380, ease.outCubic)} reduced={reduced} className="tv2-y2k-win" tone={level >= 4 ? "red" : "navy"} status={level >= 5 ? "Time zone: unknown. Year: unknown." : `Time zone: (GMT-04:00) Atlantic Time · ${remaining === null ? "" : `${Math.floor(remaining / 60)}:${String(secs).padStart(2, "0")} to midnight`}`}>
           {!dream && <div className="tv2-y2k-body">
             <div className="tv2-y2k-cal" style={{ opacity: progress(t, 600, 400) }}>
               <div className="tv2-y2k-cal-head">December {year}</div>

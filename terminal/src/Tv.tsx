@@ -38,6 +38,7 @@ import { setSoundMuted } from "./sound/bus.ts";
 import { onSceneFace } from "./cutscene/face-bus.ts";
 import { emitSpeech, setSpeechLive } from "./cutscene/speech-bus.ts";
 import { DreamView, useDreamPhase } from "./dream/DreamView.tsx";
+import { dreamYields } from "./dream/dream.ts";
 import { setDreamSpeaking } from "./dream/player.ts";
 import { serverNow } from "./cutscene/clock.ts";
 import { DREAM_BUG_LINE, type RoomSpeech } from "./speech/said.ts";
@@ -302,11 +303,11 @@ export function Tv({
   // Wave 50: Clippy's dream fills his place on the TV; his face comes through
   // it for a line, data moshed. `tv-attract` has its own, in the idle show.
   const dream = useDreamPhase(state) === "through" && !attract;
-  const dreaming = dream && !speaking;
+  const yields = dream && dreamYields(state?.dream?.at ?? 0, serverNow(state), speaking);
   useEffect(() => {
-    setDreamSpeaking(dream && speaking);
+    setDreamSpeaking(yields);
     return () => setDreamSpeaking(false);
-  }, [dream, speaking]);
+  }, [yields]);
   // A long spoken line's caption pieces, cut once per line.
   const captionPieces = useMemo(
     () => (caption === null || caption.mode !== "speak" || caption.text.length <= CAPTION_CHUNK_OVER ? [] : captionChunks(caption.text)),
@@ -315,9 +316,9 @@ export function Tv({
   return (
     <div className={`terminal tv${showWorld ? " with-world" : ""}`} data-muted={String(muted)} data-speaking={String(speaking)}>
       <section className="tv-face">
-        <Face mood={mood} speaking={speaking} handle={face} paused={attract || dreaming} />
+        <Face mood={mood} speaking={speaking} handle={face} paused={attract || (dream && !yields)} />
         {showsNameplate(state) && <div className="nameplate">{config.character.toUpperCase()}</div>}
-        {dream && <DreamView active={dreaming} />}
+        {dream && <DreamView active={!yields} />}
       </section>
       {showWorld && <section className="tv-world">{worldSlot(world)}</section>}
       {caption !== null && !attract && (

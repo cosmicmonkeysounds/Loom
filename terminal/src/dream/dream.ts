@@ -40,6 +40,15 @@ export function dreamSrc(target: "tv" | "wall"): string {
   return `${DREAM_MEDIA}/dream-${target === "tv" ? 720 : 480}.mp4`;
 }
 
+/** After the takeover the dream holds this long on the TV, whoever is talking:
+ *  he is mid-line when it falls, and a takeover must not snap back to his face. */
+export const DREAM_HOLD_MS = 12_000;
+
+/** Does the dream step aside for his face on the TV? Only for a line after the takeover. */
+export function dreamYields(at: number, serverNow: number, speaking: boolean): boolean {
+  return speaking && serverNow >= at + DREAM_TAKE_MS + DREAM_HOLD_MS;
+}
+
 /** What this terminal's place in the hour is keyed on: its map spot (the
  *  server's feed to the games uses the same), else its name. */
 export function dreamKeyOf(c: { spot: string; name: string }): string {

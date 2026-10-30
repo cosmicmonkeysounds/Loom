@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DREAM_TAKE_MS, dreamKeyOf, dreamPhase, dreamSrc, moshMode, type MoshAsk } from "../src/dream/dream.ts";
+import { DREAM_HOLD_MS, DREAM_TAKE_MS, dreamKeyOf, dreamPhase, dreamSrc, dreamYields, moshMode, type MoshAsk } from "../src/dream/dream.ts";
 import { DREAM_FRESH, DREAM_FRAME_TRIES, DREAM_VIDEO_TRIES, dreamHealthAfter, type DreamEvent, type DreamHealth } from "../src/dream/player.ts";
 import { DREAM_BUG_LINE, DREAM_BUG_MS, RoomSpeech, speechQuery } from "../src/speech/said.ts";
 import { splitSentences } from "../src/speech/split.ts";
@@ -27,6 +27,21 @@ describe("dreamPhase", () => {
   });
   it("never leaves armed on a terminal with no picture: it keeps its idle show", () => {
     expect(dreamPhase(on, 99_000, false)).toBe("armed");
+  });
+});
+
+describe("his face on the TV", () => {
+  it("holds the dream through the line he is on when it falls: no snap back", () => {
+    const at = 10_000;
+    expect(dreamYields(at, at + DREAM_TAKE_MS + 1, true)).toBe(false);
+    expect(dreamYields(at, at + DREAM_TAKE_MS + DREAM_HOLD_MS - 1, true)).toBe(false);
+  });
+  it("comes through for a later line, and only while he speaks", () => {
+    const at = 10_000;
+    expect(dreamYields(at, at + DREAM_TAKE_MS + DREAM_HOLD_MS, true)).toBe(true);
+    expect(dreamYields(at, at + DREAM_TAKE_MS + DREAM_HOLD_MS, false)).toBe(false);
+    expect(dreamYields(0, 1, true)).toBe(false);
+    expect(dreamYields(0, 60_000, true)).toBe(true);
   });
 });
 

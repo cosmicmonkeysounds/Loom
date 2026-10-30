@@ -1712,9 +1712,13 @@ button.gear.holding::after { width: 100%; transition: width var(--hold-ms, 2000m
    since Safari stops decoding a detached video. */
 .dream-view { position: absolute; inset: 0; z-index: 6; overflow: hidden; background: #000; }
 .dream-view[data-active="false"] { visibility: hidden; }
+/* On the TV: over his face, under his caption. */
+.tv-face .dream-view { z-index: 3; }
 .dream-stage { position: absolute; inset: 0; }
 .dream-stage.dream-parked { position: fixed; inset: auto; left: 0; top: 0; width: 2px; height: 2px; opacity: 0; pointer-events: none; overflow: hidden; }
 .dream-video, .dream-frame { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+/* The clock floating on the dream takes no taps: the scan box under it does. */
+body[data-dream-clock] .cutscene-stage[data-scene="y2k"], body[data-dream-clock] .y2k-slide { pointer-events: none; }
 /* The y2k slide's card, where no scene draws it: the clock on the dream. */
 .y2k-slide[data-dream] { background: transparent; align-items: flex-start; justify-content: flex-start; padding: 2vmin; }
 /* What gets through it (`mosh.ts`): over everything, taking no taps. */

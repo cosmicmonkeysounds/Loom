@@ -435,6 +435,13 @@ export function LiveScreenLayer({ state, piloting, peek = false, room = false, s
   const moment = useMomentUp();
   const speaking = useDreamSpeaking();
   const reduced = useReducedMotion();
+  // The clock only floats on the dream now: a tap belongs to what is under it
+  // (the scan box in plain view), not to a slide that isn't covering it.
+  const seeThrough = layers.dream === "through" && layers.slide?.value === "y2k";
+  useEffect(() => {
+    document.body.toggleAttribute("data-dream-clock", seeThrough);
+    return () => document.body.removeAttribute("data-dream-clock");
+  }, [seeThrough]);
   const mosh = moshMode({ phase: layers.dream, overlay: layers.overlay, slide: layers.slide?.value ?? null, glitch: layers.glitch !== null, burst: layers.burst !== null, moment, announcing, speaking, busy: bare, reduced });
   return (
     <>
