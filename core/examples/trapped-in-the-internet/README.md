@@ -496,8 +496,10 @@ Every performer hook ignores a press outside its phase, except **🛡 Send to
 the Internet** and **✅ Mark as reinstalled**, which work on any program at
 any time (a second 🛡 on a program already in the Internet only says so).
 Since wave 18 the card offers 🛡 only on a marked program and ✅ only on a
-captured one (`while:`); anywhere else they wait under *All buttons…* (the
-patch-bay alarm's capture is 🛡 from there).
+captured one (`while:`). 🛡 is on every card's face while the patch-bay
+alarm is on, and on every uncaptured program's card once the Bingo round is
+over (`Night.bingo_done` or `Night.first_reinstall_done`): from the first
+reinstallation on, an Antivirus can always send anyone to the Internet.
 
 **Marked for reinstallation (wave 18, Q30: a mark doesn't hinder).** No
 host verdict captures on the spot. 🎯 named on the Bingo card, 🤷 a guess,

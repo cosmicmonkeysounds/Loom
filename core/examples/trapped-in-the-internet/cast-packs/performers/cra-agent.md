@@ -52,6 +52,7 @@ iPhone scanner is verified (OP-04).
 | a **marked** program (the Wanted board, below) | **🙋 I'll get them** · **Hand it back** · **🙋 Take over** (a claim quiet for 10 min) | the program on the poster |
 | **after your scan** of a marked program | **🛡 Send to the Internet**: one tap on the *CORRUPTION DETECTED* screen (from a card's 📡 Scan again it arms first: tap, tap again) | the program you just found |
 | the alarm trips at the patch bay | **🛡** on their card (while the alarm is on it is on every card's face; tap twice) | whoever is at the cables |
+| **after the Bingo round** (the first reinstallation) | **🛡** on any program's card, marked or not (on every card's face from then on; tap twice) | anyone you judge needs reinstalling |
 | **any time** | **✅ Mark as reinstalled** (on a captured program's card) | someone in the Internet whose game won't finish |
 | **any time** | **🩹 Unmark: not going to the Internet** (on a marked program's card; **🩹 Not them…** on the confrontation screen) | a host's mis-tap, or mercy |
 | any time | **👁 Put on the watchlist** | doubt +25 |

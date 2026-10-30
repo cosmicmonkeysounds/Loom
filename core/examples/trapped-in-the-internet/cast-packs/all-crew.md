@@ -43,7 +43,8 @@ keep the radio away from them. The TV and the tent laptop never send sound.
   everything intact (N-10, OP-19).
 - **Buttons do nothing out of phase.** That is normal. If a button you need
   "does nothing", radio a host or the director instead of pressing it
-  again. Only 🛡 Send to the Internet (on a marked program's card), ✅ Mark
+  again. Only 🛡 Send to the Internet (on a marked program's card; on anyone's
+  after the Bingo round), ✅ Mark
   as reinstalled (on a captured one's), 🩹 Unmark, 🎀, 🤝, 👁, 🪙 Pay /
   Charge and ♟ work at any time; the verdict buttons do nothing out of
   phase. 🛡, ✅ and 👁 are the Antivirus' own: no host's or Clippy's booth
