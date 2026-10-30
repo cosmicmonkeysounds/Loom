@@ -631,9 +631,9 @@ export function partsOf(id: string, w: number, h: number, d: number): ModelPart[
       box("trim", 0, h - mantel / 2, -0.02, w + 0.02, mantel, d + 0.04);
       box("dark", 0, fh / 2 + 0.03, front - 0.002, w * 0.64, fh, 0.006);
       for (const s of [-1, 1]) box("wood", s * w * 0.1, 0.09, front - 0.01, w * 0.26, 0.05, 0.05);
-      box("flame", -w * 0.08, 0.2, front - 0.008, w * 0.1, fh * 0.42, 0.004);
-      box("flame", w * 0.08, 0.17, front - 0.008, w * 0.08, fh * 0.32, 0.004);
-      box("alert", 0, 0.14, front - 0.01, w * 0.2, fh * 0.14, 0.004);
+      box("flame", -w * 0.08, 0.03 + fh * 0.27, front - 0.008, w * 0.1, fh * 0.42, 0.004);
+      box("flame", w * 0.08, 0.03 + fh * 0.2, front - 0.008, w * 0.08, fh * 0.32, 0.004);
+      box("alert", 0, 0.03 + fh * 0.1, front - 0.01, w * 0.2, fh * 0.14, 0.004);
       box("neon", 0, h - mantel - 0.012, front - 0.002, w - 0.06, N, 0.006);
       break;
     }
@@ -692,16 +692,17 @@ export function partsOf(id: string, w: number, h: number, d: number): ModelPart[
     }
     case "mixing": {
       const top = 0.05;
+      const face = h - 0.024;
       const n = Math.max(4, Math.floor(w / 0.11));
       const cw = (w - 0.08) / n;
-      for (const s of [-1, 1]) box("dark", s * (w / 2 - 0.05), (h - top) / 2, 0, 0.06, h - top, d - 0.06);
-      box("body", 0, h - top / 2, 0, w, top, d);
+      for (const s of [-1, 1]) box("dark", s * (w / 2 - 0.05), (face - top) / 2, 0, 0.06, face - top, d - 0.06);
+      box("body", 0, face - top / 2, 0, w, top, d);
       for (let i = 0; i < n; i++) {
         const x = -w / 2 + 0.04 + cw * (i + 0.5);
-        box("dark", x, h + 0.002, 0, cw - 0.012, 0.004, d - 0.06);
-        box("trim", x, h + 0.008, -d * (0.1 + ((i * 5) % 4) * 0.08), cw * 0.5, 0.012, 0.03);
-        for (let k = 0; k < 3; k++) cyl("trim", "y", x, h + 0.012, d * (0.1 + k * 0.1), 0.02, 0.02, 0.02);
-        box(i % 6 === 4 ? "alert" : "neon", x, h + 0.006, d * 0.42, cw * 0.4, 0.004, 0.012);
+        box("dark", x, face + 0.002, 0, cw - 0.012, 0.004, d - 0.06);
+        box("trim", x, face + 0.008, -d * (0.1 + ((i * 5) % 4) * 0.08), cw * 0.5, 0.012, 0.03);
+        for (let k = 0; k < 3; k++) cyl("trim", "y", x, face + 0.012, d * (0.1 + k * 0.1), 0.02, 0.02, 0.02);
+        box(i % 6 === 4 ? "alert" : "neon", x, face + 0.006, d * 0.42, cw * 0.4, 0.004, 0.012);
       }
       break;
     }
@@ -718,26 +719,27 @@ export function partsOf(id: string, w: number, h: number, d: number): ModelPart[
       break;
     }
     case "amp": {
-      box("body", 0, h / 2, 0, w, h, d);
-      box("trim", 0, h * 0.42, front - 0.002, w - 0.04, h * 0.66, 0.004);
-      box("dark", 0, h * 0.42, front - 0.006, w - 0.07, h * 0.6, 0.004);
-      box("dark", 0, h * 0.87, front - 0.002, w - 0.04, h * 0.18, 0.004);
-      for (let i = 0; i < 5; i++) cyl("trim", "z", -w * 0.34 + i * w * 0.14, h * 0.87, front - 0.012, 0.03, 0.03, 0.02);
-      cyl("alert", "z", w * 0.38, h * 0.87, front - 0.008, 0.024, 0.024, 0.01);
-      box("trim", 0, h + 0.012, 0, w * 0.3, 0.024, 0.03);
-      box("neon", 0, h * 0.05, front - 0.002, w * 0.6, 0.008, 0.004);
+      const top = h - 0.024;
+      box("body", 0, top / 2, 0, w, top, d);
+      box("trim", 0, top * 0.42, front - 0.002, w - 0.04, top * 0.66, 0.004);
+      box("dark", 0, top * 0.42, front - 0.006, w - 0.07, top * 0.6, 0.004);
+      box("dark", 0, top * 0.87, front - 0.002, w - 0.04, top * 0.18, 0.004);
+      for (let i = 0; i < 5; i++) cyl("trim", "z", -w * 0.34 + i * w * 0.14, top * 0.87, front - 0.012, 0.03, 0.03, 0.02);
+      cyl("alert", "z", w * 0.38, top * 0.87, front - 0.008, 0.024, 0.024, 0.01);
+      box("trim", 0, h - 0.012, 0, w * 0.3, 0.024, 0.03);
+      box("neon", 0, top * 0.05, front - 0.002, w * 0.6, 0.008, 0.004);
       break;
     }
     case "turntable": {
       const r = Math.min(w, d) * 0.84;
-      box("body", 0, h * 0.42, 0, w, h * 0.84, d);
-      box("trim", 0, h * 0.88, 0, w, h * 0.08, d);
-      cyl("trim", "y", -w * 0.1, h * 0.95, 0, r, h * 0.1, r);
-      cyl("dark", "y", -w * 0.1, h, 0, r * 0.94, h * 0.06, r * 0.94);
-      cyl("alert", "y", -w * 0.1, h * 1.04, 0, r * 0.3, 0.004, r * 0.3);
-      cyl("trim", "y", w * 0.36, h * 1, -d * 0.34, 0.03, h * 0.3, 0.03);
-      box("trim", w * 0.2, h * 1.12, -d * 0.1, 0.012, 0.012, d * 0.5);
-      box("neon", w * 0.34, h * 0.42, front - 0.002, w * 0.2, 0.008, 0.004);
+      box("body", 0, h * 0.3, 0, w, h * 0.6, d);
+      box("trim", 0, h * 0.64, 0, w, h * 0.08, d);
+      cyl("trim", "y", -w * 0.1, h * 0.72, 0, r, h * 0.08, r);
+      cyl("dark", "y", -w * 0.1, h * 0.78, 0, r * 0.94, h * 0.04, r * 0.94);
+      cyl("alert", "y", -w * 0.1, h * 0.81, 0, r * 0.3, h * 0.02, r * 0.3);
+      cyl("trim", "y", w * 0.36, h * 0.82, -d * 0.34, 0.03, h * 0.36, 0.03);
+      box("trim", w * 0.2, h * 0.94, -d * 0.1, 0.012, h * 0.08, d * 0.5);
+      box("neon", w * 0.34, h * 0.3, front - 0.002, w * 0.2, 0.008, 0.004);
       break;
     }
     case "piano": {
@@ -877,9 +879,9 @@ export function partsOf(id: string, w: number, h: number, d: number): ModelPart[
     }
     case "hole": {
       const r = Math.min(w, d);
-      cyl("neon", "y", 0, 0.004, 0, r, 0.006, r);
-      cyl("body", "y", 0, 0.008, 0, r * 0.97, 0.006, r * 0.97);
-      cyl("dark", "y", 0, 0.012, 0, r * 0.86, 0.006, r * 0.86);
+      cyl("neon", "y", 0, h * 0.2, 0, r, h * 0.4, r);
+      cyl("body", "y", 0, h * 0.5, 0, r * 0.97, h * 0.4, r * 0.97);
+      cyl("dark", "y", 0, h * 0.8, 0, r * 0.86, h * 0.4, r * 0.86);
       break;
     }
     case "card": {
@@ -890,7 +892,7 @@ export function partsOf(id: string, w: number, h: number, d: number): ModelPart[
         box("alert", s * w * 0.32, h - 0.2 - (s < 0 ? 0 : bh * 0.72), front + d * 0.25 - 0.002, w * 0.12, w * 0.12, 0.004);
       }
       box("alert", 0, h - bh / 2 - 0.1, front + d * 0.25 - 0.002, w * 0.3, bh * 0.3, 0.004);
-      cyl("body", "y", 0, h - 0.06, 0, 0.16, 0.12, 0.16);
+      cyl("body", "y", 0, h - 0.06, 0, Math.min(0.16, d + 0.08), 0.12, Math.min(0.16, d + 0.08));
       box("trim", w / 2 + 0.015, h / 2, 0, 0.02, h, 0.02);
       box("neon", w / 2 + 0.015, h - 0.04, 0, 0.04, 0.08, 0.04);
       break;
