@@ -265,14 +265,17 @@ Adobe Acrobat's 🫘 from another booth, and the server refuses them
 (*not your button …*). Radio the performer instead (at the show, an
 Antivirus: they hunt from the Wanted board).
 
-**🛡 Send to the Internet** is a host's too (at the show). It is on a
-scanned program's card when the story offers it: a marked program's,
-every program's while the patch-bay alarm is on, and every program's
-once the Bingo round is over. It sits under *Marks or captures …: tap
-twice*, even when the card's other buttons fill the face: the first
-tap arms it, the second sends them to the Internet. A marked program's
-poster on the Wanted board then reads *CAUGHT BY* you; a host earns no
-⭐ for it.
+**🛡 Send to the Internet** is a host's too (at the show). Scan a
+marked program's pass in person and your booth opens *CORRUPTION
+DETECTED*, as an Antivirus' does: one big **🛡 SEND TO THE INTERNET**
+(one tap, after a moment), **Not now**, or **🩹 Not them…**. On any
+other card the story offers it on (every program's while the patch-bay
+alarm is on, and every program's once the Bingo round is over) it sits
+under *Marks or captures …: tap twice*, even when the card's other
+buttons fill the face: the first tap arms it, the second sends them to
+the Internet. Walk them through the Tube to the tent. A marked
+program's poster on the Wanted board reads *CAUGHT BY* you; a host
+earns no ⭐ for it.
 
 ## Not in the app
 
