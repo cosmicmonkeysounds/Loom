@@ -4,8 +4,8 @@
 //! guarded door, a terminal snapped onto its room's nearest wall, and the
 //! terminal provisioning link's enums. Every op returns a changed copy.
 
-import { HEART_SIGNAL, MODEL_KINDS, PICKUP_SIGNAL, PROP_MODELS, PROP_SIGNAL_KEYS, cloneData, propModel, distanceToSegment, pointInPoly, roomAt, roomById, roomElevation, wrapYaw, yawToward } from "@loom/house";
-import type { HouseMap, ModelGroup, Prop, PropKind, PropModel, Vec2 } from "@loom/house";
+import { DESCENT_MAX, HEART_SIGNAL, MODEL_KINDS, PICKUP_SIGNAL, PROP_MODELS, PROP_SIGNAL_KEYS, cloneData, propModel, distanceToSegment, pointInPoly, roomAt, roomById, roomElevation, talkerFor, wrapYaw, yawToward } from "@loom/house";
+import type { DescentScript, HouseMap, ModelGroup, Prop, PropKind, PropModel, Vec2 } from "@loom/house";
 import { round } from "./doors.ts";
 import { moveTo, positionOf, setYaw, yawOf, type Selection } from "./edit.ts";
 import { uniqueId } from "./ids.ts";
@@ -94,7 +94,7 @@ export function placingLabel(placing: string): string {
 }
 
 /** The model picker's groups, in order. */
-export const MODEL_GROUP_LABELS: Record<ModelGroup, string> = { structure: "Structure", computer: "Computer", office: "Office" };
+export const MODEL_GROUP_LABELS: Record<ModelGroup, string> = { structure: "Structure", computer: "Computer", office: "Office", home: "Home", studio: "Studio", strange: "Strange" };
 
 export function modelGroups(): { group: ModelGroup; label: string; models: PropModel[] }[] {
   return (Object.keys(MODEL_GROUP_LABELS) as ModelGroup[]).map((group) => ({ group, label: MODEL_GROUP_LABELS[group], models: PROP_MODELS.filter((m) => m.group === group) }));
@@ -115,6 +115,19 @@ export function addModelProp(house: HouseMap, modelId: string, floor: string, at
   return { house: next, id };
 }
 
+/** (wave 49) The inspector's Appears select: Always, or from a descent level. DRAFT w49 (UI copy). */
+export const APPEARS_OPTIONS: readonly { value: number | null; label: string }[] = [
+  { value: null, label: "Always" },
+  ...Array.from({ length: DESCENT_MAX }, (_, i) => ({ value: i + 1, label: `From level ${i + 1} (walk ${i + 2})` })),
+];
+
+/** The talker a prop has by its model alone, or null (`talkerFor` without its `talk`). */
+export function talkerByModel(script: DescentScript | null, prop: Prop): string | null {
+  if (script === null) return null;
+  const { talk: _talk, ...plain } = prop;
+  return talkerFor(script, plain)?.id ?? null;
+}
+
 /** Whether a prop of this kind can carry a model. */
 export function takesModel(kind: PropKind): boolean {
   return MODEL_KINDS.includes(kind);
@@ -123,7 +136,7 @@ export function takesModel(kind: PropKind): boolean {
 /** The fields the inspector edits (`undefined` clears an optional one).
  *  `signal` is a heart's `signals.reached` / a pickup's `signals.taken`
  *  (`undefined` or blank: the kind's default). */
-export type PropPatch = Partial<Pick<Prop, "kind" | "size" | "color" | "label" | "solid" | "hp" | "item" | "model" | "neon">> & { signal?: string };
+export type PropPatch = Partial<Pick<Prop, "kind" | "size" | "color" | "label" | "solid" | "hp" | "item" | "model" | "neon" | "from" | "talk">> & { signal?: string };
 
 /** The story signal a heart or a pickup posts (its own, else the default) — what the inspector shows. */
 export function momentSignalOf(p: Prop): { key: "reached" | "taken"; own: string | undefined; fallback: string } | null {
@@ -137,7 +150,8 @@ export function momentSignalOf(p: Prop): { key: "reached" | "taken"; own: string
  * what it lacks; a King made something else loses hp / health / armed and
  * the doors it guarded. A heart or a pickup never keeps a label; a pickup
  * always has an item (`DEFAULT_PICKUP_ITEM`) and nothing else does. The
- * `signals` keys a kind doesn't take are dropped on a kind change.
+ * `signals` keys a kind doesn't take are dropped on a kind change. A prop
+ * given `from` (wave 49: only there that deep) stops being solid.
  */
 export function patchProp(house: HouseMap, id: string, patch: PropPatch): HouseMap {
   if (!house.props.some((p) => p.id === id)) return house;
@@ -146,12 +160,14 @@ export function patchProp(house: HouseMap, id: string, patch: PropPatch): HouseM
   const wasKing = p.kind === "king";
   const { signal, ...fields } = patch;
   Object.assign(p, fields);
-  for (const k of ["color", "label", "solid", "hp", "item", "model", "neon"] as const) if (k in fields && (fields[k] === undefined || fields[k] === "")) delete p[k];
-  // A model (and its neon) is drawn on a box or a cylinder only.
+  for (const k of ["color", "label", "solid", "hp", "item", "model", "neon", "from", "talk"] as const) if (k in fields && (fields[k] === undefined || fields[k] === "")) delete p[k];
+  // A model (and its neon) is drawn on a box or a cylinder only; so is what only the far gone see.
   if (!takesModel(p.kind)) {
     delete p.model;
     delete p.neon;
+    delete p.from;
   }
+  if (p.from !== undefined) delete p.solid;
   if (p.size.some((v) => !(v > 0))) return house;
   if (p.kind === "king" && !wasKing) {
     const d = propDefaults("king");

@@ -17,7 +17,7 @@ does not apply here.
 |---|---|---|---|
 | `show:` | `show/` | the mod feed's `sim` directives → MQTT / OSC (`cuemap.py`); MQTT topics → `/api/mod/signal` / `beat` / `set` (`sensormap.py`); the lights catch-up | John's Desktop (Windows) |
 | `agents:` | `agents/` | the agent worker: holds `GET /api/agent/stream`, answers requests, judges filings, writes the after-show letters (`letter.py`, wave 41), records thoughts, takes `control` frames | John's MacBook |
-| `audio:` | `audio/` | the speaker router: `audio.json` on one `sounddevice` stream (duplex: the TV's input routed, every input metered), numpy mixer with priority ducking (the inputs' sidechains, announcements, takeover tracks) and per-output trims, the soundtrack (music beds per scene, `soundtrack.py`), streamed long files, announcements, tests, stops, the house desk's plays, the report, placeholders, the synthesized SFX library (`audio/sfx/`) | John's Desktop (since 2026-10-27); the MacBook is the fallback (output-only) |
+| `audio:` | `audio/` | the speaker router: `audio.json` on one `sounddevice` stream (duplex: the TV's input routed, every input metered), numpy mixer with priority ducking (the inputs' sidechains, announcements, takeover tracks) and per-output trims, the soundtrack (music beds per scene, `soundtrack.py`), the games' footsteps (`footsteps.py`, wave 49), streamed long files, announcements, tests, stops, the house desk's plays, the report, placeholders, the synthesized SFX library (`audio/sfx/`) | John's Desktop (since 2026-10-27); the MacBook is the fallback (output-only) |
 | `lights:` | `lights/` | `lights.json` looks (every bulb by name, the WLED strip, every `lights_*` / `heart_*` look; no Zigbee groups, scenes or WLED presets) → Zigbee2MQTT / WLED, safety clamp, identify / test / pair, device list, catch-up (the heart look and `night.lights`), presence pulses for the reinstallation games and the `shown` report (wave 39) | the Desktop |
 | `alexa:` | `alexa/` | the standalone announcement player. **Retired for the show** (wave 18b); the code and its `Announcer` stay (the router reuses the announcer and the voice lock) | none |
 
@@ -67,7 +67,8 @@ stagehand/
                                    stream (a file decoded + resampled by a worker into a ring buffer),
                                    soundtrack (playlists, scenes, beds, the `Director`), mp3len (VBR MP3s
                                    with no length header, for `check`), mix (wave 40: the house
-                                   mix's levels → the mixer's gain table, effectiveDb's mirror)
+                                   mix's levels → the mixer's gain table, effectiveDb's mirror),
+                                   footsteps (wave 49: FootstepBank, Walkers, stepPaceS's mirror)
     audio/sfx/                     the SFX library: dsp (synthesis toolkit), spec + registry (`SFX`), render,
                                    cli, inspect (PNGs), one module per category (sirens, dings, telephony,
                                    digital, retro, party, story, ambient)
@@ -82,7 +83,7 @@ stagehand/
 ```bash
 cd stagehand
 uv sync                                            # once; makes .venv
-uv run pytest                                      # 2499 passed + 4 skipped, ~80 s, no hardware, no network
+uv run pytest                                      # 2922 passed + 4 skipped, ~90 s, no hardware, no network
 uv run pytest tests/test_trapped_house.py -q       # after any story or rig change
 uv run stagehand modules
 uv run stagehand check --config trapped.desktop.yaml --only show,lights,audio
@@ -161,6 +162,26 @@ module docstrings that explain the why).
   MQTT stats gain `mix` (for `stagehand music status`), the report does
   not. Tests: `tests/test_audio_desk.py`, `tests/test_audio_router.py`,
   `tests/test_audio_mix.py`, `tests/test_audio_mixer_wire.py`.
+  **The footsteps** (wave 49, `../docs/loom-w49-contract.md` C4):
+  `_walkers_loop` holds `GET /api/mod/audio/walkers` with `run_stream`
+  (`walkers` events, each `{seq, at, walkers: [{id, speed, surface, to:
+  [{speaker, db, muffled}]}]}`, with `:ping`s, sent on connect, on change
+  and every 2 s while anyone walks) and `_walkers_clock` ticks `Walkers`
+  every `WALKERS_TICK_S` on the control side, never in the callback. A step
+  is `Mixer.play` on the sfx bus, `strip="steps"`, `fade_in_s=0` (a take
+  starts on zero; the 5 ms default eats the heel's first peak); gains are
+  the frame's `db` through `output_gains` (trims stay `set_trim`'s).
+  `run_stream(stop_on=(404,))` returns on an older server's 404 (only with
+  a token in hand: a failed login is no such answer), so the loop stops
+  until a restart, logged once. `FootstepBank` is built off the loop
+  (`to_thread`) when the first walker comes, so a new
+  `footstep_<surface>_<n>.wav` needs a router restart. `play_sounds: false`
+  opens no stream. `STEP_VOICES` keeps a crowd off `MAX_VOICES`, `STEP_GAP_S`
+  keeps steps from landing as one thump (six heels in one tick hit the
+  limiter, which takes the music down with them). Stop house sounds and a
+  story restart `clear()` the walkers until the next frame. The health's
+  `walkers` (the MQTT stats, the log line) is the count; the report does not
+  carry it. Tests: `tests/test_audio_footsteps.py`.
 - **The server room** is not stagehand's: the Grand Central M4 on Steph's
   laptop reads the door and the patch bay, and the terminal page posts
   `door_sensor_*` and `patch_changed {combo}` (wave 22,
@@ -183,7 +204,9 @@ module docstrings that explain the why).
   and `house-lights/`, and a test fails until you re-copy after a house
   change. `audio/mix.py` mirrors `core/src/house-mixer.ts` `effectiveDb`
   (wave 40): `tests/fixtures/house-mixer.json` is a byte-for-byte copy of
-  `core/test/fixtures/house-mixer.json`.
+  `core/test/fixtures/house-mixer.json`. `audio/footsteps.py` mirrors
+  `@loom/house` `stepPaceS` and its constants (wave 49):
+  `tests/test_audio_footsteps.py` reads them out of `house/src/footsteps.ts`.
 - **One pronunciation table, three copies** (wave 26, V3).
   `src/stagehand/pronounce.json` is byte for byte
   `terminal/src/speech/pronounce.json` (and `reinstall/vr/config/`),
@@ -409,7 +432,8 @@ module docstrings that explain the why).
 - **The house mix is not the install trim** (wave 40). audio.json's
   speaker `gain` stays the trim (`set_trim`); the mix (`set_mix`) rides on
   top, per strip (`music`, `tracks` = a `soundtrack.yaml` `tracks:` entry,
-  `sfx`, `announce` incl. the chime; `test` is never mixed) and per input
+  `sfx`, `steps` = the games' footsteps, `announce` incl. the chime; `test`
+  is never mixed) and per input
   (× its routes). A role muted at `master` or `src:in:<role>` ducks
   nothing; a room or speaker mute leaves the ducking alone. A takeover track or an
   announcement takes over / ducks the beds only on the outputs where the

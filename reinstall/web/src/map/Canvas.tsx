@@ -57,6 +57,7 @@ import {
 import { placingLabel, snapTerminalToWall, takesModel, WALL_SNAP, YAW_STEP } from "./props.ts";
 import { addRoom, addStair, moveStair, rectFrom } from "./structure.ts";
 import type { EditMode, Placing, Tool } from "./tools.ts";
+import { keyOrigin } from "./unlock.ts";
 import { yardOf, yardsOn } from "./yards.ts";
 
 type ViewBox = [number, number, number, number];
@@ -151,7 +152,8 @@ export function Canvas({ house, floor, edit, tool, snapStep, sel, players, onSel
   // Space held = pan with the left button.
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
-      if (e.code === "Space" && !(e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement)) space.current = true;
+      const on = keyOrigin(e);
+      if (e.code === "Space" && !(on instanceof HTMLInputElement || on instanceof HTMLTextAreaElement)) space.current = true;
     };
     const up = (e: KeyboardEvent) => {
       if (e.code === "Space") space.current = false;
@@ -470,7 +472,7 @@ export function Canvas({ house, floor, edit, tool, snapStep, sel, players, onSel
           return (
             <g
               key={p.id}
-              className={`prop ${p.kind}${on ? " selected" : ""}`}
+              className={`prop ${p.kind}${p.from !== undefined ? " from" : ""}${on ? " selected" : ""}`}
               onPointerDown={(e) => pick(e, ps, { kind: "move", sel: ps, base: house, grab: toPlan(e), origin: [p.pos[0], p.pos[2]] })}
             >
               {p.kind === "cylinder" ? (
@@ -482,6 +484,12 @@ export function Canvas({ house, floor, edit, tool, snapStep, sel, players, onSel
                 // Wave 47: a model reads by its neon outline and its name.
                 <text x={p.pos[0]} y={p.pos[2]} fontSize={Math.max(0.07, Math.min(0.16, Math.min(p.size[0], p.size[2]) * 0.6, p.size[0] / Math.max(1, model.label.length) * 1.6))} textAnchor="middle" dominantBaseline="middle" fill="#333" pointerEvents="none">
                   {model.label}
+                </text>
+              )}
+              {p.from !== undefined && (
+                // Wave 49: there only at this descent level and deeper, and never solid.
+                <text x={p.pos[0]} y={p.pos[2] + Math.min(p.size[2] / 2, 0.3)} className="prop-from">
+                  ↓{p.from}
                 </text>
               )}
               {p.kind === "king" && (

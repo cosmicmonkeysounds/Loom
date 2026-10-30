@@ -18,7 +18,7 @@ A level is `(db, mute)` under a key:
 
 What a source plays on a speaker is the sum of the five that apply (absent =
 0 dB); any mute, or any level at the floor (−60 dB), silences it. The
-**sources**: the router's four strips (`music`, `tracks`, `sfx`,
+**sources**: the router's five strips (`music`, `tracks`, `sfx`, `steps`,
 `announce`; speaker tests are never mixed) and each input as `in:<role>`
 (else `in:<ch>`).
 
@@ -42,7 +42,7 @@ MIX_DB_MAX = 10.0
 MIX_DB_STEP = 0.5
 MIX_LEVELS_MAX = 256
 #: The router's strips that the mix moves, in the mixer's order.
-MIX_BUS_SOURCES = ("music", "tracks", "sfx", "announce")
+MIX_BUS_SOURCES = ("music", "tracks", "sfx", "steps", "announce")
 MIX_ID_RE = re.compile(r"^[A-Za-z0-9_.-]{1,64}$")
 
 #: (db, mute)

@@ -101,6 +101,8 @@ import { Attract } from "./Attract.tsx";
 import { IdleShow } from "./idle-show/IdleShow.tsx";
 import { ScanBox } from "./idle-show/ScanBox.tsx";
 import { IdentifyOverlay, LiveScreenLayer } from "./ScreenLayer.tsx";
+import { useDreamArm, useDreamPhase, useDreamReady } from "./dream/DreamView.tsx";
+import { dreamKeyOf } from "./dream/dream.ts";
 import { Tv } from "./Tv.tsx";
 import type { ReinstallTerminalProps } from "./reinstall/ReinstallTerminal.tsx";
 import { PeekClock, canPeek, coverOf, screenLayers } from "./slides.ts";
@@ -236,6 +238,12 @@ export function App() {
   useEffect(() => {
     if (view !== "reinstall") setReinstallBusy(false);
   }, [view]);
+  // Clippy's dream (wave 50): readied as soon as the story turns it on.
+  useDreamArm(config, screenTargetOf(view ?? "auto"), screenState.state);
+  const dreamReady = useDreamReady();
+  // On the takeover's moments, not the next poll: `covered` must flip with
+  // them, or a wall shows what is under the idle show for up to 2 s.
+  useDreamPhase(screenState.state);
   // The cutscenes, on every screen that draws slides (wave 17).
   const slides = view !== undefined && drawsSlides(view, room);
   useEffect(() => {
@@ -462,7 +470,7 @@ export function App() {
   // overlay or the glitch over the idle show pauses it (no popup dings under
   // a scene). The glitch (wave 26, T2) is covered, never a takeover: a pilot,
   // a chess game or a tent walk keeps running under its 8 s.
-  const { takeover, covered } = coverOf(screenLayers(screenState.state, Date.now(), { piloting, peek, room: bare, slides: !station }));
+  const { takeover, covered } = coverOf(screenLayers(screenState.state, Date.now(), { piloting, peek, room: bare, slides: !station, dreamReady }));
   // The heart terminal: the server room's own room terminal, or any with a door sensor.
   const heartTerminal = isHeartTerminal(room, config.door);
   // Keyed, so it keeps its place (and the glitch, a scene, the flicker keep
@@ -474,7 +482,7 @@ export function App() {
       {heartTerminal && <DoorOverlay doorOpen={doorOpen} stage={screenState.state?.night.heart_stage ?? null} />}
       {/* A sensor fault is never on a guest's screen (D29: the sensor is the door): ⚙ and Run → Terminals show it. */}
       {/* A slide's .mp4 plays on the TV only (N-04a); the tablets keep the PNG. */}
-      <LiveScreenLayer state={screenState.state} piloting={piloting} peek={peek} room={bare} slides={!station} onSlideTap={peekable && !station ? onSlideTap : undefined} video={config.view === "tv"} cutscenes={drawsSlides(config.view, room)} gear={<Gear onOpen={openSetup} label="Set up this terminal" className="mirror-gear" />} />
+      <LiveScreenLayer state={screenState.state} piloting={piloting} peek={peek} room={bare} slides={!station} onSlideTap={peekable && !station ? onSlideTap : undefined} video={config.view === "tv"} cutscenes={drawsSlides(config.view, room)} announcing={announcement !== null} target={screenTargetOf(config.view)} dreamKey={dreamKeyOf(config)} gear={<Gear onOpen={openSetup} label="Set up this terminal" className="mirror-gear" />} />
       <IdentifyOverlay state={screenState.state} name={config.name} spot={config.spot} view={config.view} />
       <MicCue />
       {announcement !== null && (

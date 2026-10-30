@@ -16,7 +16,7 @@ import { judge, LIVE_OVERRIDE, realGuests } from "../../../core/scripts/live-gua
 import { cueRows } from "../../../core/src/cue-sheet.ts";
 import type { Args } from "./args.ts";
 import { flagOn, flagStr, listFlag, watchSeconds } from "./args.ts";
-import { agentChecks, agentsBeforeDoorsCheck, audioCheck, beforeDoors, KEY_SPOTS, healthCheck, joinBaseCheck, judgeCheck, lightsCheck, metricsCheck, peopleChecks, runCheck, screenChecks, stationsCheck, terminalChecks, terminalVerdict } from "./checks.ts";
+import { agentChecks, agentsBeforeDoorsCheck, audioCheck, beforeDoors, KEY_SPOTS, DREAM_PROBE, dreamMediaCheck, healthCheck, joinBaseCheck, judgeCheck, lightsCheck, metricsCheck, peopleChecks, runCheck, screenChecks, stationsCheck, terminalChecks, terminalVerdict } from "./checks.ts";
 import type { ShowClient } from "./client.ts";
 import { ShowError } from "./client.ts";
 import { desktopChecks, macbookChecks, MACHINES, type Machine, type Probe, ROUTER_HOSTS, type RouterHost, serverroomChecks, spotFocus, tentChecks } from "./local.ts";
@@ -100,6 +100,11 @@ export async function serverChecks(ctx: Ctx): Promise<Check[]> {
   } catch (e) {
     out.push(healthCheck(null, null, e instanceof Error ? e.message : String(e)));
     return out;
+  }
+  try {
+    out.push(dreamMediaCheck((await c.raw("GET", DREAM_PROBE)).status));
+  } catch {
+    out.push(dreamMediaCheck(null));
   }
   if (c.code === "") {
     out.push({ name: "Moderator code", level: "warn", detail: "LOOM_MOD_CODE is not set: only the health check ran", read: "env LOOM_MOD_CODE" });

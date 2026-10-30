@@ -78,8 +78,17 @@ import {
   doorGap,
   PROP_MODELS,
   partsOf,
+  DESCENT_MAX,
+  descentLook,
+  descentPlan,
+  doorSpot,
+  faceAnchor,
+  openNode,
+  pickOption,
+  talkReach,
+  wakeTalkers,
 } from "../src/index.ts";
-import type { HouseMap, Prop, Room, Vec2, Vec3 } from "../src/index.ts";
+import type { DescentScript, HouseMap, Prop, Room, Vec2, Vec3 } from "../src/index.ts";
 
 export const ROOT = join(import.meta.dirname, "..");
 export const FIXTURES = join(ROOT, "test", "fixtures");
@@ -88,6 +97,8 @@ export const GOLDEN = join(ROOT, "test", "golden");
 export const SHOW_HOUSE = join(ROOT, "..", "core", "examples", "trapped-in-the-internet", "house.json");
 /** Its rain variant (the Internet in the shed, not the tent) — not a golden; checked by the show + route suites. */
 export const SHOW_SHED_HOUSE = join(ROOT, "..", "core", "examples", "trapped-in-the-internet", "house.shed.json");
+/** (wave 49) The show's descent script; the Godot project keeps a copy, its fallback. */
+export const SHOW_DESCENT = join(ROOT, "..", "core", "examples", "trapped-in-the-internet", "descent.json");
 /**
  * The show's map as it stood before the real floor plan (wave 2: two floors,
  * the tent; `two-floor.shed.json` is its shed variant), frozen as the suites'
@@ -98,6 +109,7 @@ export const TWO_FLOOR_HOUSE = join(ROOT, "test", "maps", "two-floor.json");
 export const TWO_FLOOR_SHED_HOUSE = join(ROOT, "test", "maps", "two-floor.shed.json");
 /** The Godot project's copies (`pnpm --filter @loom/house sync`). */
 export const VR_HOUSE = join(ROOT, "..", "reinstall", "vr", "house", "house.json");
+export const VR_DESCENT = join(ROOT, "..", "reinstall", "vr", "house", "descent.json");
 export const VR_GOLDEN = join(ROOT, "..", "reinstall", "vr", "test", "golden");
 
 /** Parse + validate a map file; throws with the problems when invalid. */
@@ -386,8 +398,50 @@ export function goldenFiles(): Map<string, string> {
   }
   files.set("constants.json", `${JSON.stringify(constantsGolden(), null, 2)}\n`);
   files.set("models.json", jsonLines(modelsGolden()));
+  files.set("descent.json", jsonLines(descentGolden()));
   return files;
 }
+
+/** (wave 49) `descent.json`: what the descent's pure rules answer on the show
+ *  map with the show's script: each level's look, seeded plans and who wakes;
+ *  `talkReach`, `faceAnchor` and `doorSpot` queries; every talker's opening
+ *  node for no marks and for each `opens` entry. One JSON value per line. */
+export function descentGolden(): unknown[] {
+  const house = loadHouse(SHOW_HOUSE);
+  const script = JSON.parse(readFileSync(SHOW_DESCENT, "utf8")) as DescentScript;
+  const out: unknown[] = [];
+  for (let level = 0; level <= DESCENT_MAX; level++) out.push({ look: level, ...descentLook(level) });
+  for (const seed of ["s-0a1b2c", "s-ffffff", "s-c0ffee"]) {
+    for (let level = 0; level <= DESCENT_MAX; level++) {
+      const plan = descentPlan(seed, level);
+      out.push({ plan: seed, level, count: plan.length, head: plan.slice(0, 12) });
+      out.push({ wake: seed, level, awake: wakeTalkers(house, script, level, seed) });
+    }
+  }
+  for (const prop of house.props.filter((p) => p.model !== undefined)) {
+    const a = faceAnchor(prop);
+    out.push({ face: prop.id, pos: round3(a.pos), yaw: a.yaw });
+    const feet: Vec3 = [prop.pos[0] + 1.2, prop.pos[1], prop.pos[2]];
+    out.push({ reach: prop.id, feet, near: talkReach(house, feet, prop), far: talkReach(house, [prop.pos[0] + 3.2, prop.pos[1], prop.pos[2]], prop) });
+  }
+  for (const room of house.rooms) {
+    const [x0, z0, x1, z1] = polyBounds(room.poly);
+    const feet: Vec3 = round3([(x0 + x1) / 2, heightAt(house, [(x0 + x1) / 2, (z0 + z1) / 2], roomElevationOf(house, room)) ?? 0, (z0 + z1) / 2]);
+    for (const yaw of [0, 90, -135]) {
+      const d = doorSpot(house, feet, yaw);
+      out.push({ door: room.id, feet, yaw, at: d === null ? null : { pos: round3(d.pos), yaw: d.yaw } });
+    }
+  }
+  for (const t of script.talkers) {
+    out.push({ open: t.id, none: openNode(t, null), each: (t.opens ?? []).map((o) => openNode(t, o.told ?? {})) });
+    for (const [name, node] of Object.entries(t.nodes)) {
+      (node.options ?? []).forEach((_, i) => out.push({ pick: t.id, node: name, i, ...pickOption(t, name, i)! }));
+    }
+  }
+  return out;
+}
+
+const roomElevationOf = (house: HouseMap, room: Room): number => house.floors.find((f) => f.id === room.floor)?.elevation ?? 0;
 
 /** (wave 47) `models.json`: every model's parts (`partsOf`) at its own
  *  size, stretched and squashed, each part `{role, shape, axis, c, s}` with

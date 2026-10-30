@@ -37,3 +37,4 @@ export { spaceGroup, applySpace } from "./space.ts";
 export { labelPoint, trailPoints, wallBoxes, wallKindThickness } from "./layout.ts";
 export type { TrailPoint, WallBox } from "./layout.ts";
 export { PALETTE, BAR_CELLS_MAX, hasDom } from "./textures.ts";
+export { Bin, merge } from "./dispose.ts";

@@ -17,8 +17,8 @@
 //! as, and where); and the problem list (`validateAudio` read back to the
 //! speaker it names).
 
-import { AUDIO_CHIME_SOUND, AUDIO_EVERYWHERE, AUDIO_GAIN_MAX, AUDIO_GAIN_MIN, AUDIO_INPUT_KINDS, AUDIO_MAX_CHANNELS, AUDIO_RESERVED_ROLES, AUDIO_ROLE_PATTERN, cloneData, defaultAudio, foldTarget, pointInPoly, distanceToBoundary, resolveTargets, roomAt, roomById, roomElevation, validateAudio, wrapYaw, yawToward } from "@loom/house";
-import type { AudioConfig, AudioCue, AudioInputKind, AudioSpeaker, HouseMap, LightsConfig, Room, Vec2 } from "@loom/house";
+import { AUDIO_CHIME_SOUND, AUDIO_EVERYWHERE, AUDIO_GAIN_MAX, AUDIO_GAIN_MIN, AUDIO_INPUT_KINDS, AUDIO_MAX_CHANNELS, AUDIO_RESERVED_ROLES, AUDIO_ROLE_PATTERN, FOOTSTEP_REACH_M, FOOTSTEP_REACH_MAX, FOOTSTEP_REACH_MIN, cloneData, defaultAudio, foldTarget, pointInPoly, distanceToBoundary, resolveTargets, roomAt, roomById, roomElevation, validateAudio, wrapYaw, yawToward } from "@loom/house";
+import type { AudioConfig, AudioCue, AudioInputKind, AudioSpeaker, FootstepsConfig, HouseMap, LightsConfig, Room, Vec2 } from "@loom/house";
 import type { Problem } from "./check.ts";
 import { rebaseField, type History } from "./history.ts";
 import { rectSideOf, round } from "./doors.ts";
@@ -783,6 +783,27 @@ export function audioProblemList(audio: AudioConfig, house: HouseMap): { errors:
   if (free.length === 1) warnings.push(item("warning")(`output ${free[0]} has no speaker`));
   else if (free.length > 1) warnings.push(item("warning")(`outputs ${free.join(", ")} have no speaker`));
   return { errors: v.problems.map(item("error")), warnings };
+}
+
+/**
+ * (wave 49) The 👣 Footsteps block: what is left at its default is left out
+ * of the file, and a block with nothing in it is no block.
+ */
+export function setFootsteps(audio: AudioConfig, patch: { enabled?: boolean; reach?: number | null; gain?: number | null }): AudioConfig {
+  const was = audio.footsteps ?? {};
+  const next: FootstepsConfig = { ...was };
+  if (patch.enabled === true) delete next.enabled;
+  else if (patch.enabled === false) next.enabled = false;
+  if (patch.reach !== undefined) {
+    if (patch.reach === null || patch.reach === FOOTSTEP_REACH_M) delete next.reach;
+    else next.reach = Math.max(FOOTSTEP_REACH_MIN, Math.min(FOOTSTEP_REACH_MAX, patch.reach));
+  }
+  if (patch.gain !== undefined) {
+    if (patch.gain === null || patch.gain === 0) delete next.gain;
+    else next.gain = Math.max(AUDIO_GAIN_MIN, Math.min(AUDIO_GAIN_MAX, patch.gain));
+  }
+  const { footsteps: _, ...rest } = audio;
+  return Object.keys(next).length === 0 ? rest : { ...rest, footsteps: next };
 }
 
 /** The Download JSON button's file. */

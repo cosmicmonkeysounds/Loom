@@ -9,9 +9,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import { DEFAULT_SPOT_FOV, DUCK_MAX_RISE, floorById, modelBodyColor, modelNeonColor, propModel, propSolid, roomById, voiceOn } from "@loom/house";
+import { DEFAULT_SPOT_FOV, DUCK_MAX_RISE, floorById, modelBodyColor, modelNeonColor, propModel, propSolid, roomById, TALK_NONE, voiceOn } from "@loom/house";
 import { LIGHT_KINDS, LIGHT_SAFETY_MIN } from "@loom/house";
-import type { AudioConfig, Compass, HouseMap, LightKind, LightsConfig, PropKind, Vec3 } from "@loom/house";
+import type { DescentScript, AudioConfig, Compass, HouseMap, LightKind, LightsConfig, PropKind, Vec3 } from "@loom/house";
 import { addLight, addLightZone, capsText, defaultLightY, deviceChoices, dimSet, heightBand, LIGHT_HEIGHT, LIGHT_SWATCHES, lightById, lightIdError, lightsDropped, lightZonesOf, moveLight, moveLightToRoom, patchLight, removeLight, removeLightConfirm, renameLight, safetyOffText, setLightDevice, setLightHeight, setLightZoneMember, swatchSet, testable, withLightsText } from "./lights.ts";
 import type { LightTestTarget, Z2mDevice } from "./lights-api.ts";
 import { addSpeaker, addZone, outputLabel, outputUsers, patchSpeaker, removeSpeaker, renameSpeaker, rotateSpeaker, setSpeakerHeight, setSpeakerYaw, setZoneMember, moveSpeaker, speakerById, speakersDropped, toggleSpeakerOutput, withSpeakersText, zonesOf } from "./audio.ts";
@@ -19,7 +19,7 @@ import type { StoryLocation } from "./check.ts";
 import { DOOR_WIDTH, openEdge, patchDoor, resolveDoor } from "./doors.ts";
 import { addDuckSpot, addTerminal, moveTo, patchRoom, patchTerminal, positionOf, provisionLink, removeThing, setHeight, setYaw, yawOf, type Selection } from "./edit.ts";
 import { metres, rectOf } from "./plan.ts";
-import { guardableDoors, guardedBy, isRoomlessView, modelGroups, momentSignalOf, onFloor, patchProp, PROP_KINDS, takesModel, rotateBy, setGuard, snapTerminalToWall, TERMINAL_VIEW_HINTS, TERMINAL_VIEWS, YAW_STEP, type TerminalViewName } from "./props.ts";
+import { APPEARS_OPTIONS, guardableDoors, guardedBy, isRoomlessView, modelGroups, momentSignalOf, onFloor, patchProp, PROP_KINDS, takesModel, talkerByModel, rotateBy, setGuard, snapTerminalToWall, TERMINAL_VIEW_HINTS, TERMINAL_VIEWS, YAW_STEP, type TerminalViewName } from "./props.ts";
 import { cascadeOf, cascadeText, deleteRoomText, deletesWith, patchFloor, patchStair, removeFloor, removeRoom, renameRoom, setRoomRect, stairCandidates } from "./structure.ts";
 import { fillYard, patchYard, yardClash, yardOf } from "./yards.ts";
 import { commitPending, isStep, parseNum } from "./tools.ts";
@@ -138,6 +138,10 @@ export interface InspectorProps {
   devices?: readonly Z2mDevice[];
   /** Identify a light, show it a colour, or play a look (stagehand's lights module). */
   onLightTest?: (target: LightTestTarget) => void;
+  /** (wave 49) The event's `descent.json` (null: none, or not known yet). */
+  descent?: DescentScript | null;
+  /** (wave 49) A program's steps on a speaker alone (the router synthesises them). */
+  onStepsTest?: (speaker: string) => void;
 }
 
 export function Inspector(props: InspectorProps) {
@@ -423,7 +427,7 @@ function TerminalInspector({ house, edit, commit, onNotice, origin, copy, copied
   );
 }
 
-function PropInspector({ house, edit, commit, id, posFields, yawField, floorButton, remove }: InspectorProps & PartsProps & { floorButton: ReactNode }) {
+function PropInspector({ house, edit, commit, id, posFields, yawField, floorButton, remove, descent = null }: InspectorProps & PartsProps & { floorButton: ReactNode }) {
   const p = house.props.find((x) => x.id === id);
   if (p === undefined) return null;
   const roomName = roomById(house, p.room)?.label ?? p.room;
@@ -457,7 +461,7 @@ function PropInspector({ house, edit, commit, id, posFields, yawField, floorButt
           <input className="w98-input" type="color" value={p.color ?? (takesModel(p.kind) && p.model !== undefined ? modelBodyColor(p) : "#999999")} disabled={!edit} onChange={(e) => commit(patchProp(house, p.id, { color: e.target.value }))} />
         </label>
         <label className="radio checkbox">
-          <input type="checkbox" checked={propSolid(p)} disabled={!edit} onChange={(e) => {
+          <input type="checkbox" checked={propSolid(p)} disabled={!edit || p.from !== undefined} onChange={(e) => {
               // The kind's default (box / cylinder / king collide) is left unwritten.
               const byDefault = propSolid({ ...p, solid: undefined });
               commit(patchProp(house, p.id, { solid: e.target.checked === byDefault ? undefined : e.target.checked }));
@@ -497,6 +501,44 @@ function PropInspector({ house, edit, commit, id, posFields, yawField, floorButt
             <button className="w98-button small" title="Back to the model's own body colour (its clean white)" onClick={() => commit(patchProp(house, p.id, { color: undefined }))}>
               ↺ colour
             </button>
+          )}
+        </div>
+      )}
+      {takesModel(p.kind) && (
+        // Wave 49: the descent. DRAFT w49 (UI copy).
+        <div className="num-row">
+          <label className="field">
+            appears
+            <select
+              className="w98-input"
+              value={p.from ?? ""}
+              disabled={!edit}
+              title="Only for a program reinstalled this often. Nothing else ever draws it, it never collides, and it clears solid."
+              onChange={(e) => commit(patchProp(house, p.id, { from: e.target.value === "" ? undefined : Number(e.target.value) }))}
+            >
+              {APPEARS_OPTIONS.map((o) => (
+                <option key={o.label} value={o.value ?? ""}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          {descent !== null ? (
+            <label className="field">
+              talks
+              <select className="w98-input" value={p.talk ?? ""} disabled={!edit} onChange={(e) => commit(patchProp(house, p.id, { talk: e.target.value === "" ? undefined : e.target.value }))}>
+                <option value="">by model{talkerByModel(descent, p) !== null ? ` (${talkerByModel(descent, p)})` : ": nobody"}</option>
+                {p.talk !== undefined && p.talk !== TALK_NONE && !descent.talkers.some((t) => t.id === p.talk) && <option value={p.talk}>{p.talk} (no such talker)</option>}
+                {descent.talkers.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.id}
+                  </option>
+                ))}
+                <option value={TALK_NONE}>never</option>
+              </select>
+            </label>
+          ) : (
+            <CommitText label={`talks (a talker id, or ${TALK_NONE})`} value={p.talk ?? ""} disabled={!edit} placeholder="by model" onCommit={(v) => commit(patchProp(house, p.id, { talk: v.trim() === "" ? undefined : v.trim() }))} />
           )}
         </div>
       )}
@@ -754,7 +796,7 @@ function FloorInspector({ house, edit, commit, onSelect, onNotice, id, audio = n
   );
 }
 
-function SpeakerInspector({ house, edit, onSelect, onNotice, id, audio = null, savedAudio = null, commitAudio, onTest }: InspectorProps & { id: string }) {
+function SpeakerInspector({ house, edit, onSelect, onNotice, id, audio = null, savedAudio = null, commitAudio, onTest, onStepsTest }: InspectorProps & { id: string }) {
   const s = audio === null ? undefined : speakerById(audio, id);
   if (audio === null || s === undefined || commitAudio === undefined) return null;
   const commit = commitAudio;
@@ -844,6 +886,10 @@ function SpeakerInspector({ house, edit, onSelect, onNotice, id, audio = null, s
       <div className="button-row">
         <button className="w98-button" disabled={onTest === undefined || !saved} onClick={() => onTest?.({ speaker: id })} title={saved ? "The router plays a short tone and says its name on this speaker" : "Save the speakers first — the router only knows saved ones"}>
           🔈 Test{saved ? "" : " (save first)"}
+        </button>
+        {/* DRAFT w49 (UI copy) */}
+        <button className="w98-button" disabled={onStepsTest === undefined || !saved} onClick={() => onStepsTest?.(id)} title={saved ? "A program's steps on this speaker alone, for a few seconds" : "Save the speakers first — the router only knows saved ones"}>
+          👣 Test
         </button>
         {edit && (
           <button

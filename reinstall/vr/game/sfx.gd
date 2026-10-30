@@ -48,7 +48,7 @@ const FANFARE_AFTER := 0.65
 ## The hum's level (quiet: under the mic's gate).
 const HUM_DB := -30.0
 ## Every one-shot this node knows.
-const SOUNDS := ["quack", "fanfare", "buzz", "thud", "scare", "pickup", "chime"]
+const SOUNDS := ["quack", "fanfare", "buzz", "thud", "scare", "pickup", "chime", "step", "growl"]
 
 ## Every one-shot played, oldest first (the tests read it).
 var log: Array[String] = []
@@ -101,6 +101,18 @@ func play(sound: String, volume := 1.0) -> float:
 	p.stream = stream_of(sound)
 	p.volume_db = linear_to_db(clampf(volume, 0.0001, 1.0))
 	p.play()
+	return _played(sound)
+
+
+## (wave 49) Play one-shot `sound` from `emitter` (panned from where it
+## stands, no distance roll-off); returns its length (ms).
+func play_at(emitter: AudioStreamPlayer3D, sound: String, volume := 1.0, pitch := 1.0) -> float:
+	if not sound in SOUNDS or emitter == null or not emitter.is_inside_tree():
+		return 0.0
+	emitter.stream = stream_of(sound)
+	emitter.pitch_scale = pitch
+	emitter.volume_db = linear_to_db(clampf(volume, 0.0001, 1.0))
+	emitter.play()
 	return _played(sound)
 
 
@@ -223,6 +235,8 @@ static func samples_of(sound: String) -> PackedFloat32Array:
 		"scare": out = _scare()
 		"pickup": out = _pickup()
 		"chime": out = _chime()
+		"step": out = _step()
+		"growl": out = _growl()
 		"hum": out = _hum_loop()
 	for i in out.size():
 		out[i] = clampf(out[i] * GAME_LEVEL, -1.0, 1.0)
@@ -419,6 +433,32 @@ static func _chime() -> PackedFloat32Array:
 	var out := _buffer(0.7)
 	_tone(out, 0.0, 659.25, 0.45, 0.16, "sine")
 	_tone(out, 0.12, 987.77, 0.58, 0.14, "sine")
+	return out
+
+
+## (wave 49) One footstep: a soft low thump and a scuff (the `follower`).
+static func _step() -> PackedFloat32Array:
+	var out := _buffer(0.17)
+	var ph := 0.0
+	for i in int(0.13 * RATE):
+		var t := float(i) / RATE
+		ph += _exp(100.0, 55.0, t, 0.13) / RATE
+		out[i] += _wave("sine", ph) * _exp(0.55, 0.0001, t, 0.13)
+	_noise(out, 0.0, 0.08, 0.1, 21)
+	return out
+
+
+## (wave 49) Something large, somewhere behind (the `dark`): two low
+## detuned saws and their octave, swelling and dying away, shaken at 2.5 Hz.
+static func _growl() -> PackedFloat32Array:
+	var out := _buffer(1.8)
+	for f: float in [46.0, 48.7, 92.5]:
+		var p := 0.0
+		for i in out.size():
+			var t := float(i) / RATE
+			p += f / RATE
+			var env := _exp(0.0001, 0.2, t, 0.45) if t < 0.45 else _exp(0.2, 0.0001, t - 0.45, 1.35)
+			out[i] += _wave("saw", p) * env * (0.7 + 0.3 * sin(TAU * 2.5 * t))
 	return out
 
 

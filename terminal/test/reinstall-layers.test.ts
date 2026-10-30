@@ -91,7 +91,7 @@ describe("a walk on the tent laptop", () => {
   it("the app layers the tent with no slides (wave 26, T3)", () => {
     const app = readFileSync(new URL("../src/app.tsx", import.meta.url), "utf8");
     expect(app).toMatch(/const station = config\.view === "reinstall";/u);
-    expect(app).toMatch(/screenLayers\(screenState\.state, Date\.now\(\), \{ piloting, peek, room: bare, slides: !station \}\)/u);
+    expect(app).toMatch(/screenLayers\(screenState\.state, Date\.now\(\), \{ piloting, peek, room: bare, slides: !station, dreamReady \}\)/u);
     expect(app).toMatch(/<LiveScreenLayer [^\n]*slides=\{!station\}/u);
   });
 });

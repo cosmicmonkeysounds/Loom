@@ -8,7 +8,7 @@
 ##   godot --path . -- --server http://10.0.0.2:7000 --code 4821 \
 ##         --station vr-1 --name "Headset 1" [--guest g-3f9a1c] [--offline]
 ##         [--autopilot [--hit-king]] [--voice false] [--mic false] [--trail-delay 0]
-##         [--intro false] [--graphics low|medium|high]
+##         [--intro false] [--graphics low|medium|high] [--descent 0..4]
 ##
 ## `voice` (default on) is the voice link (wave 19): the terminals heard in
 ## the house, this headset heard on them; `mic` (default on) off = listen only.
@@ -24,6 +24,10 @@
 ## `graphics` (wave 39, default `medium`) is the picture's tier
 ## ([HouseLights]): `low` (2 real house lights), `medium` (4) or `high` (5,
 ## plus glow and 2× MSAA). Anything else reads as `medium`.
+##
+## `descent` (wave 49, unset by default) forces every walk on this headset to
+## that level of the descent ([HouseDescent]): rehearsals and tests. Unset:
+## the assignment's own level.
 ##
 ## `--autopilot` (dev / CI only) walks the trail to the duck by itself and
 ## quits when the session is over — see [Autopilot]. With `--hit-king` it
@@ -59,6 +63,7 @@ const KEYS := {
 	"trail_delay": TYPE_FLOAT,
 	"intro": TYPE_BOOL,
 	"graphics": TYPE_STRING,
+	"descent": TYPE_INT,
 }
 
 
@@ -100,6 +105,12 @@ static func merge(base: Dictionary, overlay: Dictionary) -> Dictionary:
 				out[k] = float(v)
 			elif v is String and (v as String).strip_edges().is_valid_float() and float(v) >= 0.0:
 				out[k] = float(v)
+		elif KEYS[k] == TYPE_INT:
+			# A whole number (or a string that is one), never negative; else ignored.
+			if (v is float or v is int) and float(v) >= 0.0 and float(v) == floor(float(v)):
+				out[k] = int(v)
+			elif v is String and (v as String).strip_edges().is_valid_int() and int(v) >= 0:
+				out[k] = int(v)
 		elif k == "graphics":
 			# Only a tier; anything else keeps what was there.
 			if v is String and HouseLights.TIERS.has((v as String).strip_edges().to_lower()):
@@ -139,6 +150,10 @@ static func parse_args(args: PackedStringArray) -> Dictionary:
 			if not (value is String and (value as String).is_valid_float()) or float(value) < 0.0:
 				continue
 			value = float(value)
+		elif KEYS[key] == TYPE_INT:
+			if not (value is String and (value as String).is_valid_int()) or int(value) < 0:
+				continue
+			value = int(value)
 		out[key] = value
 	return out
 

@@ -85,6 +85,9 @@ services:
       LOOM_VAPID_SUBJECT: ${LOOM_VAPID_SUBJECT:-}
       # iPhone Home Screen push (K-31b): `on` to offer Add to Home Screen.
       LOOM_HOMESCREEN: ${LOOM_HOMESCREEN:-}
+      # The house media (wave 50, scripts/ops/dream-media.sh): the games'
+      # terminals read the dream's frames here. Blank = no dream in the games.
+      LOOM_MEDIA_DIR: /media
       # The reinstallation games + terminals share one house map
       # (docs/loom-reinstall.md §1.3). It belongs to the project: its
       # house.json (+ house.<variant>.json) are project files, snapshotted
@@ -125,6 +128,7 @@ services:
       # LOOM_PRIME_PASS: ...
     volumes:
       - loom-state:/data
+      - ${LOOM_MEDIA_HOST_DIR:-../loom-media}:/media:ro
       # With LOOM_HOUSE above: your own house maps, read-only (a directory,
       # so a `cp` over house.json is seen — a single-file mount keeps the old inode).
       # - ./show-map:/config:ro   (scripts/ops/ship.sh never deletes it)
@@ -184,6 +188,7 @@ services:
     volumes:
       - caddy-data:/data
       - caddy-config:/config
+      - ${LOOM_MEDIA_HOST_DIR:-../loom-media}:/srv/media:ro
     depends_on:
       - loom
 

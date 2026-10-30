@@ -9,10 +9,15 @@
 //! the house's own hemisphere + sun dim toward a night floor
 //! (`ambientFactor`); without one the house looks as it always did.
 //!
+//! Wave 49 (the descent): `setGrade` is a program's own light going wrong (the
+//! ambient held down, a colour mixed in, on top of the real frame), and
+//! `borrow` lends the pool's first light to the Hallway, the rest off and the
+//! bulbs hidden, so the pool's size (and every compiled material) stays as it is.
+//!
 //! Everything hangs under the game's space group, in house metres.
 
 import { AdditiveBlending, CanvasTexture, Color, Group, Mesh, MeshBasicMaterial, PointLight, SphereGeometry, Sprite, SpriteMaterial } from "three";
-import type { Light, Object3D } from "three";
+import type { HemisphereLight, Light, Object3D } from "three";
 import type { GameLight, GameLights, HouseMap, Vec3 } from "@loom/house";
 import { ambientFactor, animationClock, easeToward, lampFloors, lampLevel, pickLamps } from "./house-lights.ts";
 
@@ -64,9 +69,16 @@ export class HouseLamps {
   private floors = new Map<string, string | null>();
   private clock = new Map<string, number>();
   private house: HouseMap;
-  /** The house scene's own ambient lights and their built intensities. */
-  private ambient: Array<{ light: Light; base: number }> = [];
+  /** The house scene's own ambient lights as they were built. */
+  private ambient: Array<{ light: Light; base: number; color: Color; ground: Color | null }> = [];
   private dim = 1;
+  /** (wave 49) × the ambient, and the colour mixed into every light. */
+  private graded = 1;
+  private readonly tint = new Color();
+  private tintBy = 0;
+  private tinted = false;
+  /** (wave 49) The Hallway's one light, while it has the pool. */
+  private lent: { pos: Vec3; color: string; intensity: number } | null = null;
 
   constructor(house: HouseMap, poolSize: number) {
     this.house = house;
@@ -102,9 +114,12 @@ export class HouseLamps {
     this.ambient = [];
     for (const name of ["house:hemi", "house:sun"]) {
       const l = sceneRoot.getObjectByName(name) as Light | undefined;
-      if (l !== undefined && (l as { isLight?: boolean }).isLight === true) this.ambient.push({ light: l, base: l.intensity });
+      if (l !== undefined && (l as { isLight?: boolean }).isLight === true) {
+        const ground = (l as Partial<HemisphereLight>).groundColor;
+        this.ambient.push({ light: l, base: l.intensity, color: l.color.clone(), ground: ground?.clone() ?? null });
+      }
     }
-    for (const a of this.ambient) a.light.intensity = a.base * this.dim;
+    for (const a of this.ambient) a.light.intensity = a.base * this.dim * this.graded;
     this.floors = this.frame === null ? new Map() : lampFloors(house, this.frame.lights);
   }
 
@@ -168,10 +183,28 @@ export class HouseLamps {
     }
   }
 
+  /** (wave 49) The descent's hold on the light: × the ambient, `tint` mixed in by `by`. */
+  setGrade(ambient: number, tint: Color, by: number): void {
+    this.graded = ambient;
+    this.tint.copy(tint);
+    this.tintBy = by;
+  }
+
+  /** (wave 49) Lend the pool to one light the caller drives (null: take it back). */
+  borrow(light: { pos: Vec3; color: string; intensity: number } | null): void {
+    this.lent = light;
+  }
+
   /** Every frame: the bulbs' brightness (the breathing), the point lights, the ambient. */
   update(nowS: number, dt: number): void {
     const level = new Map<string, number>();
+    const lent = this.lent;
     for (const [id, b] of this.bulbs) {
+      b.mesh.visible = lent === null;
+      if (lent !== null) {
+        b.glow.visible = false;
+        continue;
+      }
       const since = this.clock.get(id);
       const lv = lampLevel(b.light, since === undefined ? 0 : nowS - since);
       level.set(id, lv);
@@ -190,10 +223,26 @@ export class HouseLamps {
     }
     for (let i = 0; i < this.pool.length; i++) {
       const id = this.assigned[i] ?? null;
-      this.pool[i]!.intensity = id === null ? 0 : LAMP_CANDELA * (level.get(id) ?? 0);
+      const l = this.pool[i]!;
+      l.intensity = id === null || lent !== null ? 0 : LAMP_CANDELA * (level.get(id) ?? 0);
+      const b = id === null ? undefined : this.bulbs.get(id);
+      if (this.tintBy > 0 && b !== undefined) l.color.copy(b.color).lerp(this.tint, this.tintBy);
+    }
+    if (lent !== null && this.pool.length > 0) {
+      const l = this.pool[0]!;
+      l.position.set(lent.pos[0], lent.pos[1], lent.pos[2]);
+      l.color.set(lent.color);
+      l.intensity = lent.intensity;
     }
     this.dim = easeToward(this.dim, ambientFactor(this.frame), dt);
-    for (const a of this.ambient) a.light.intensity = a.base * this.dim;
+    for (const a of this.ambient) a.light.intensity = a.base * this.dim * this.graded;
+    if (this.tintBy > 0 || this.tinted) {
+      this.tinted = this.tintBy > 0;
+      for (const a of this.ambient) {
+        a.light.color.copy(a.color).lerp(this.tint, this.tintBy);
+        if (a.ground !== null) (a.light as HemisphereLight).groundColor.copy(a.ground).lerp(this.tint, this.tintBy);
+      }
+    }
   }
 
   private dropBulb(b: Bulb): void {

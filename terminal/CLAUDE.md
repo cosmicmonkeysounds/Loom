@@ -11,7 +11,7 @@ the show's device setup is [`../docs/trapped/kiosk.md`](../docs/trapped/kiosk.md
 ```bash
 pnpm --filter loom-terminal dev        # Vite :5175, proxies /api + /e to LOOM_SERVER (default http://localhost:7000)
 pnpm --filter loom-terminal build      # dist/ (base /terminal/)
-pnpm --filter loom-terminal test       # vitest run: 1231 tests, 96 files (test/**/*.test.ts)
+pnpm --filter loom-terminal test       # vitest run: 1277 tests, 97 files (test/**/*.test.ts)
 pnpm --filter loom-terminal typecheck  # tsc --noEmit
 pnpm --filter loom-terminal exec vitest run test/door-bridge.test.ts   # one file
 ```
@@ -44,9 +44,10 @@ play app's own `useChatStream` (imported as source) and narrows it to
 | `src/config.ts` | `TerminalConfig`, `VIEWS` / `VIEW_INFO`, URL hints (`hintsFromSearch`, `withoutSecrets`), `provision` / `connect`, `roomOf`, `tvRoomOf` |
 | `src/Setup.tsx`, `src/setup-map.ts` | the two-step setup (passcode, tap a map terminal); `followMap` / `followVoice` re-read the map entry on boot; `linkConfig` (a `?code=` link: `urlConfig` + `withViewDefaults`, so a spot-only TV link speaks at 0.92) |
 | `src/screen.ts` | the screen-state poll + its types (`ScreenState`, `night`, `room`, `king`, `results`, `moments`, `spot`); `voice=`/`room=` + `after=` + `talk=`/`said=`; `useScreenState` paces with `PollPacer` and exposes `pollNow` |
-| `src/health.ts` | the heartbeat keys (`deviceQuery`): `ver audio vis fs ann mic bat` + door `door dlv dft dwn` + bay `pb pbc pbx pft` |
+| `src/health.ts` | the heartbeat keys (`deviceQuery`): `ver audio vis fs ann mic bat` + door `door dlv dft dwn` + bay `pb pbc pbx pft`; wave 50's `bug` rides `speechQuery` |
 | `src/slides.ts`, `src/ScreenLayer.tsx` | the screen layer: overlay > slide > attract > base, holds, `PeekClock`, slide copy, the live Y2K clock and Trust Chart, TV mp4 slides, the glitch (`glitchLayer`, `GlitchTakeover`, `coverOf`) and the ad burst (wave 32: `burstLayer`, `isBurst`; `burst-flash.tsx` where no cutscene layer draws it) |
 | `src/Attract.tsx`, `src/attract.ts` | the asleep screen (the idle show full screen); Mystify's pure parts |
+| `src/dream/` | Clippy's dream (wave 50): `dream.ts` (pure: the phase, `moshMode`, `dreamYields`), `player.ts` (the page's one video, its health and fallback), `DreamView.tsx` (the hooks + where it plays), `mosh.ts` (pure: a cycle's plan, `drawMosh`), `stamp.ts` (the scene's copy), `Mosh.tsx` (the canvas) |
 | `src/idle-show/` | the idle show: `schedule.ts` (seeded segments; `PATTERN`, `CALM_PATTERN`), `pools.ts` (by `Night.phase`; `calm`), `field.ts` (popup lives and places, `popupCap`, `calmPace`), `ads.ts` + `art.tsx`, `popups.ts`, `storm.ts`, `gags.ts`, `savers/`, `ScanBox.tsx` + `scan-copy.ts` |
 | `src/cutscene/` | `SceneDef` (`types.ts`), `pick.ts` (which scene plays, `MomentQueue`), `clock.ts` (server time), `CutsceneLayer.tsx`, `registry.ts`, `kit/` (Win98 blocks, typewriter, particles…), `scenes/{act1,act2,act3,moments,house,heart,credits}.tsx` (+ `scenes/language.tsx`, G14's breach, listed in act3's), `kit/lang-breach.ts` + `kit/lang-breach-draw.ts` (wave 48b: the breach's timeline and its canvas), `access-bus.ts` (the app's event base + token for a scene that fetches), `credits-fetch.ts` + `credits-roll.ts` (wave 44), `speech-bus.ts` + `voice-clock.ts` + `voice-scenes.ts` (the TV's voice-timed scenes), `preview.tsx` (`?preview=`) |
 | `src/sound/` | `bus.ts` (master, effects, voices buses; `soundPlayingUntil`), `library.ts` (30 synthesised `SFX_NAMES`), `sfx()` |
@@ -262,6 +263,35 @@ none censored: the summary and its line, no breach. Copy `LANG_COPY`,
 - `?preview=language&lang=none|kept|one|dozen|unsaid|bars|hundreds|max|tie|w48|old`
   (`fake.ts` `fakeLanguage`; the default is a 120-word night); `&t=` freezes
   a frame, `&play=1` runs it.
+
+## Clippy's dream (wave 50, `docs/loom-w50-contract.md`)
+
+From the moment Trabolta names the Y2K bug (`ScreenState.dream {at}`, known
+ahead of time, so every screen goes at one server instant) the dream replaces
+the idle show on every screen, each terminal at its own place in the hour
+(`@loom/house` `dreamPositionS`, keyed on `dreamKeyOf`: the spot the server's
+feed to the games uses too). `screenLayers` carries `dream` (`off` · `armed` ·
+`take` · `through`; `dreamReady` from the player); a terminal with no picture
+stays `armed`, on its old idle show.
+
+- **Where it plays.** `IdleShow` renders `DreamView` over itself and stops, so
+  the scan box, the tent's card and a line keep their places. `Tv.tsx`, chess
+  and casino (idle half only) mount their own. `coverOf` lets the y2k slide
+  through; `Y2kTv` / `Y2kWall` draw transparent with `dreamThrough`, and
+  `data-dream-clock` on the body takes the stage out of the taps' way.
+- **The player** is a module singleton in the base bundle (never a lazy chunk:
+  it starts hours after boot), armed by `useDreamArm`, handed between views by
+  `hold` and kept playing for the mosh by `keep`. It pauses after 20 s with no
+  view. Health is the pure `dreamHealthAfter`: video → frames → failed.
+- **The mosh** (`Mosh`, `LiveScreenLayer`) mounts only while `moshMode` says
+  something is getting through: an overlay, a moment, a slide but `y2k`, the
+  glitch, a burst, the banner (`announcing`), his face after `DREAM_HOLD_MS`.
+  Never a blackout; never on a screen in use (`bare`) but for an overlay.
+- **His word.** `Tv.tsx` calls `RoomSpeech.namedBug` when a chunk matches
+  `DREAM_BUG_LINE`: `bug=1` on an immediate poll, carried 4 s. If the beat's
+  sentence changes, change the regex (`core/test/w50-dream.test.ts` pins it).
+- `?preview=dream&what=banner|slide|take|plain[&target=tv][&key=<spot>]` on the
+  real media. `test/dream.test.ts`, `test/dream-mosh.test.ts`.
 
 ## The idle show
 

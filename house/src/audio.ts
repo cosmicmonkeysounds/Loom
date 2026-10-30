@@ -18,6 +18,7 @@
 
 import { fnv1a32 } from "./duck.ts";
 import { distanceToBoundary, pointInPoly } from "./geometry.ts";
+import { footstepsProblems, type FootstepsConfig } from "./footsteps.ts";
 import type { HouseMap } from "./types.ts";
 
 /** The project file's name. */
@@ -135,6 +136,9 @@ export interface AudioConfig {
   /** Speakers / zones the TV's voice should also reach (documents the
    *  interface mixer's fan-out today). */
   voice?: { tv?: string[] };
+  /** (wave 49) A program in the games is heard walking on the speakers near
+   *  it (`footsteps.ts`). Absent: on, with the defaults. */
+  footsteps?: FootstepsConfig;
 }
 
 export interface AudioValidation {
@@ -238,6 +242,7 @@ export function validateAudio(audio: unknown, house?: HouseMap | null): AudioVal
   }
   if (audio["version"] !== 1) problems.push("version must be 1");
   if (audio["note"] !== undefined && !isStr(audio["note"])) problems.push("note must be a string");
+  problems.push(...footstepsProblems(audio["footsteps"]));
 
   // The device: everything else is counted against it.
   const device = audio["device"];

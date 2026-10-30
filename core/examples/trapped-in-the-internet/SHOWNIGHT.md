@@ -207,7 +207,7 @@ code, the King at 15, the show clock set to 7:00 PM), and a pause afterwards
 cannot take it back.
 
 1. **Weather call.** Gusts over 30–40 km/h or steady rain → the shed. Switch
-   at `/reinstall/map` (*Map: Tent | Shed*, signed in with the mod code).
+   on the Run page's House map card (*Tent | Shed*), or at `/reinstall/map` on a phone, signed in with the mod code.
 2. **⏸ Pause** the preview (Run, or a host's More → Night →
    *⏸ Pause the show*).
 3. A **plain** sync, with no `--replace-*`:
@@ -409,6 +409,14 @@ Radio call words: INTRO · BEANS · LATE · IN · DOOR OPEN / DOOR SHUT ·
 A / B / WRONG · ALARM · LIGHTS · HOLD · ARRIVAL · **ALL STOP**. Say the call
 word, where, who.
 
+**Clippy's dream** (wave 50). On *"…the Y2K BUG."*, about 30 s after 🕚, every
+terminal melts into the dream by itself, until an ending. Nothing to press. If a
+terminal stays on its old screen it couldn't reach the video (`pnpm showctl
+doctor`, *Clippy's dream*); the show goes on. 🌀 **Clippy's dream: on / off**
+(Anytime) puts every screen back: use it if the house wifi struggles, or
+before something on the TV must read clean (truth.txt, say). A blackout stays
+black, and a guest on a line, a board or a walk is never disturbed.
+
 ## 7. Emergencies and fixes
 
 **911** for fire, injury or someone unresponsive. The house manager calls
@@ -441,7 +449,7 @@ stays at or under 3 Hz; no open flames; VR is played seated with a spotter.
 | House internet down | Guests turn Wi-Fi off and use cellular. Keep firing cues from Run on a phone hotspot. Stagehand catches the lights up once it reconnects. |
 | Server restarted | Nothing to press. Everything reconnects; the server answers 503 `starting` until the events are back. Reinstallation walks end (rescan in the tent). |
 | VPS dead | Start the warm standby, restore the newest 10-minute backup from the MacBook (`~/LoomBackups`), repoint DNS. |
-| Rain or wind | Switch to the shed at `/reinstall/map` (*Map: Tent \| Shed*). |
+| Rain or wind | Switch to the shed on the Run page's House map card (*Tent \| Shed*), or at `/reinstall/map` on a phone. |
 | A terminal silent, or red ⛶ | Its Wi-Fi, power, is the page open? Relaunch Chrome with `--kiosk` (TV, laptops) or touch the tablet once. A terminal that loops or loses its camera: hold ⚙ 2 s → View `mirror` (`docs/trapped/kiosk.md` → *The mirror fallback*). |
 | The TV silent after a reboot | Click once into the TV page; `M` unmutes. |
 | Server Door terminal dead | The director fires ♟ `chess_won` naming the winner (it gives the door code). |

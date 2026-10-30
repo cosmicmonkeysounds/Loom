@@ -2,18 +2,25 @@
 ## controller (A = A / X, B = B / Y) plays offline (the bundled house, the
 ## duck picked here) and starts the captured offline program, so a headset
 ## can be tried without a server. A pause longer than [constant GAP] starts
-## the sequence over.
+## the sequence over. Its mirror, A A B B A B A B B A A (wave 49), does the
+## same at the descent's deepest level.
 class_name TestCombo
 extends RefCounted
 
 const SEQUENCE := "BBAABABAABB"
+const MIRROR := "AABBABABBAA"
 ## The longest pause between two presses (s).
 const GAP := 1.5
 
+var _sequence := SEQUENCE
 var _typed := ""
 var _since := 0.0
 var _a_was := false
 var _b_was := false
+
+
+func _init(sequence := SEQUENCE) -> void:
+	_sequence = sequence
 
 
 ## One frame: whether A and B are held now. True on the frame the combo
@@ -34,9 +41,9 @@ func feed(a_down: bool, b_down: bool, delta: float) -> bool:
 	_since = 0.0
 	_typed += key
 	# Keep the longest tail that could still become the sequence.
-	while not SEQUENCE.begins_with(_typed):
+	while not _sequence.begins_with(_typed):
 		_typed = _typed.substr(1)
-	if _typed == SEQUENCE:
+	if _typed == _sequence:
 		_typed = ""
 		return true
 	return false

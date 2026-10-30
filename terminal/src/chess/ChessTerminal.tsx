@@ -30,6 +30,7 @@ import type { ScreenKing, ScreenState } from "../screen.ts";
 import { useIdleTimeout } from "../idle.ts";
 import { Scanner, cameraProblem, type CameraState } from "../scanner.tsx";
 import { Gear, TypedFallback } from "../controls.tsx";
+import { DreamView, useDreamPhase } from "../dream/DreamView.tsx";
 import { SCAN_COPY } from "../idle-show/scan-copy.ts";
 import { sfx } from "../sound/bus.ts";
 import { Tutorial } from "./Tutorial.tsx";
@@ -43,6 +44,7 @@ const CONFIRM_MS = 3_000;
 
 export function ChessTerminal({ config, state, polled, takeover, onSetup }: { config: TerminalConfig; state: ScreenState | null; polled: boolean; takeover: boolean; onSetup: () => void }) {
   const [s, dispatch] = useReducer(reduce, INITIAL);
+  const dream = useDreamPhase(state) === "through"; // wave 50: never under a game
   const king = state?.king ?? null;
   const kingRef = useRef<ScreenKing | null>(king);
   kingRef.current = king;
@@ -224,6 +226,7 @@ export function ChessTerminal({ config, state, polled, takeover, onSetup }: { co
       {s.kind === "attract" || s.kind === "checking" ? (
         <main className="chess-attract">
           <section className="king-card">
+            {dream && <DreamView />}
             <div className="king-glyph" aria-hidden="true">
               ♚
             </div>

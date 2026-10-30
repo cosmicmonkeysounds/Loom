@@ -74,6 +74,10 @@
 //! project's), so an edit made in the project lasts until the next sync.
 //! It is not snapshotted: the server reads the project's copy live
 //! (`server/credits.ts`), so no reload is needed for it to show.
+//!
+//! The example's `descent.json` (wave 49, the words of the reinstallation
+//! games' descent) goes exactly like `credits.json`: always replaced, read
+//! live (`server/descent.ts`), no reload needed.
 
 import { randomUUID } from "node:crypto";
 import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
@@ -81,8 +85,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { Pool } from "pg";
-import { scenarioCreditsFile, scenarioDir, scenarioFactsFile, scenarioFiles, scenarioMapFiles } from "../examples/load.ts";
+import { scenarioCreditsFile, scenarioDescentFile, scenarioDir, scenarioFactsFile, scenarioFiles, scenarioMapFiles } from "../examples/load.ts";
 import { CREDITS_FILE, parseCredits } from "../src/credits.ts";
+import { DESCENT_FILE, parseDescentText } from "../server/descent.ts";
 import { isMapFile, mapProblems, mapSummary, planMapSync, type MapFiles, type MapSyncMode } from "../server/house-maps.ts";
 import { FACTS_FILE, factsProblems } from "../server/facts.ts";
 import { AUDIO_FILE, audioProblems } from "../server/audio.ts";
@@ -435,13 +440,20 @@ export async function main(args: readonly string[]): Promise<number> {
       if (file === null) throw new Error(`the example's ${CREDITS_FILE} can't be used — nothing synced:\n  ${problems.join("\n  ")}`);
       for (const p of problems) process.stderr.write(`⚠️  ${CREDITS_FILE}: ${p}\n`);
     }
-    const pushed = [...files, ...plan.put.map((path) => ({ path, source: exampleMaps[path]! })), ...(facts !== null ? [facts] : []), ...(credits !== null ? [credits] : []), ...(audioPlan.put && audio !== null ? [{ path: AUDIO_FILE, source: audio }] : []), ...(lightsPlan.put && lights !== null ? [{ path: LIGHTS_FILE, source: lights }] : []), ...(deskPlan.put && desk !== null ? [{ path: DESK_FILE, source: desk }] : [])];
+    // Wave 49: the descent's words, likewise.
+    const descent = scenarioDescentFile(example);
+    if (descent !== null) {
+      const { file, problems, warnings } = parseDescentText(descent.source);
+      if (file === null) throw new Error(`the example's ${DESCENT_FILE} can't be used — nothing synced:\n  ${problems.join("\n  ")}`);
+      for (const w of warnings) process.stderr.write(`⚠️  ${DESCENT_FILE}: ${w}\n`);
+    }
+    const pushed = [...files, ...plan.put.map((path) => ({ path, source: exampleMaps[path]! })), ...(facts !== null ? [facts] : []), ...(credits !== null ? [credits] : []), ...(descent !== null ? [descent] : []), ...(audioPlan.put && audio !== null ? [{ path: AUDIO_FILE, source: audio }] : []), ...(lightsPlan.put && lights !== null ? [{ path: LIGHTS_FILE, source: lights }] : []), ...(deskPlan.put && desk !== null ? [{ path: DESK_FILE, source: desk }] : [])];
 
     // Files: upsert every example file by path, drop the rest.
     const client = await pool.connect();
     try {
       await client.query("begin");
-      const keep = [...files.map((f) => f.path), ...Object.keys(maps), ...(facts !== null ? [FACTS_FILE] : []), ...(credits !== null ? [CREDITS_FILE] : []), ...(audio !== null ? [AUDIO_FILE] : []), ...(lights !== null ? [LIGHTS_FILE] : []), ...(desk !== null ? [DESK_FILE] : [])];
+      const keep = [...files.map((f) => f.path), ...Object.keys(maps), ...(facts !== null ? [FACTS_FILE] : []), ...(credits !== null ? [CREDITS_FILE] : []), ...(descent !== null ? [DESCENT_FILE] : []), ...(audio !== null ? [AUDIO_FILE] : []), ...(lights !== null ? [LIGHTS_FILE] : []), ...(desk !== null ? [DESK_FILE] : [])];
       await client.query(`delete from project_file where project_id = $1 and not (path = any($2::text[]))`, [project.id, keep]);
       for (const f of pushed) {
         const r = await client.query(
@@ -468,6 +480,7 @@ export async function main(args: readonly string[]): Promise<number> {
     );
     process.stdout.write(facts !== null ? `✓ ${FACTS_FILE}: the example's (${facts.source.length} bytes)\n` : `✓ ${FACTS_FILE}: none in the example\n`);
     process.stdout.write(credits !== null ? `✓ ${CREDITS_FILE}: the example's (read live: no reload needed)\n` : `✓ ${CREDITS_FILE}: none in the example\n`);
+    process.stdout.write(descent !== null ? `✓ ${DESCENT_FILE}: the example's (read live: no reload needed)\n` : `✓ ${DESCENT_FILE}: none in the example\n`);
     process.stdout.write(audio === null ? `✓ ${AUDIO_FILE}: none\n` : `✓ ${AUDIO_FILE}: ${audioPlan.put ? "the example's" : "the project's own"}\n`);
     process.stdout.write(lights === null ? `✓ ${LIGHTS_FILE}: none\n` : `✓ ${LIGHTS_FILE}: ${lightsPlan.put ? "the example's" : "the project's own"}\n`);
     process.stdout.write(desk === null ? `✓ ${DESK_FILE}: none\n` : `✓ ${DESK_FILE}: ${deskPlan.put ? "the example's" : "the project's own"}\n`);

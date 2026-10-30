@@ -26,7 +26,7 @@ The show, *Trapped in the Internet* (Oct 31 2026), is the Loom project in
 | `server/registry.ts` | `EventRegistry`: one `EventRuntime` per event, rehydrated at boot |
 | `server/views.ts`, `chat.ts` | pure projections: `GuestView` / `PrimeView` / `ModView`, and SimEvent → channel messages. The editor imports both (`@loom/core/views`, `@loom/core/chat`) |
 | `server/routes/` | route modules split out of the runtime: `host.ts` (the host allowlist), `screen.ts` (the terminals' screen state + heartbeat), `claims.ts`, `crews.ts`, `sides.ts`, `cards.ts`, `recap.ts`, `mod-log.ts`, `metrics.ts`, `press-lines.ts`, and the OCT31 item files `k12.ts` (print sheet), `k13.ts` (check-in), `k31.ts` / `k31b.ts` (push), `n02.ts` (re-pair, release), `rejoin.ts` (wave 23: badges, invitations re-entering, ask a host, per-part cast cards) |
-| `server/` hubs | transport-free, clock-injected classes: `agents.ts` (`AgentHub`), `spatial.ts` (`SpatialHub`), `spatial-voice.ts`, `spatial-cams.ts`, `wallet.ts` (`WalletBook`), `facts.ts` (`FactsBook`), `push.ts` (`PushHub`), `audio.ts`, `lights.ts`, `lights-shown.ts` (wave 39: the lights estimate + the games' `lights` frame feed), `desk.ts` (`DeskHub`, wave 25: the house desk's runs, playhead, check marks; pure model `src/house-desk.ts`), `collab.ts` (`CollabHub`, Yjs) |
+| `server/` hubs | transport-free, clock-injected classes: `agents.ts` (`AgentHub`), `spatial.ts` (`SpatialHub`), `spatial-voice.ts`, `spatial-cams.ts`, `wallet.ts` (`WalletBook`), `facts.ts` (`FactsBook`), `push.ts` (`PushHub`), `audio.ts`, `lights.ts`, `lights-shown.ts` (wave 39: the lights estimate + the games' `lights` frame feed), `desk.ts` (`DeskHub`, wave 25: the house desk's runs, playhead, check marks; pure model `src/house-desk.ts`), `collab.ts` (`CollabHub`, Yjs), `live-file.ts` (`LiveFileSource`: a project file read live; `credits.ts`, `descent.ts`) |
 | `server/` control plane | `config.ts` (env), `boot.ts`, `db/` (`queries.ts`: access is `getProjectFor` / `listProjectsFor`), `auth-server.ts` (BetterAuth), `projects.ts`, `events-api.ts`, `collab-api.ts`, `mail.ts`, `migrate.ts` |
 | `server/store.ts` | the per-event state dir: journal, codes, sessions, meta (scenario source + phase), project snapshots |
 | `scripts/` | `titi-facts.ts`, `loomcheck.ts`, `show-page.ts`, `sync-example.ts`, `live-guard.ts` |
@@ -77,7 +77,12 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   lights' presence pulses, the module's `shown` report and the server's
   lights estimate (wave 39), the house mixer's music commands, the
   router's meters packet and a panel's watch lease (wave 40: the mix
-  itself is in the state dir), and
+  itself is in the state dir), each session's measured speed, the walkers
+  and the test walker, what a program told a talker (`told`) and the
+  forced descent level (wave 49; a story reset forgets the last two), when
+  Clippy's dream takes over and whether the TV has named the bug
+  (`ScreenWatch` `dreamAt` / `dreamHeard`, wave 50: a restart replays the cue
+  as history and the dream is simply on), and
   most hub timers live in memory and are lost on a process restart.
   Document a new one the same way.
 - **Server changes are additive.** Old clients (terminals on old
@@ -359,6 +364,49 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   `extras.language`). Tests:
   `test/w48-language-filter.test.ts`, `test/w48-filter-server.test.ts`,
   `test/trapped-w48-language.test.ts`.
+- **The descent and the footsteps** (wave 49,
+  [`docs/loom-w49-contract.md`](../docs/loom-w49-contract.md) C3;
+  [`docs/loom-reinstall.md`](../docs/loom-reinstall.md) §2.5). The rules
+  are `@loom/house` `descent.ts` and `footsteps.ts`. **Footsteps:** a
+  session measures its speed in `pose()` over at least
+  `FOOTSTEP_MEASURE_MS` (two walking windows averaged, or the pace wobbles
+  with the network's jitter); a game sends no pose while its player stands
+  still, so a flush reads a pose unchanged for `WALK_STILL_MS` as standing,
+  and `standStill` zeroes the window at a teleport (an escape, a re-seat).
+  `flush` runs `stepWalkers` over joined, unfound, un-held sessions (room =
+  the presence room), reading the audio config only while someone moves,
+  and calls `onWalkers` at most every `FOOTSTEPS_MIN_MS` (a held-back change
+  still differs on a later tick), at once for the last stop; `active` holds
+  until the walkers are empty. The hub never imports `AudioHub`: the runtime
+  wires `audio` / `onWalkers` to `AudioHub.config` / `setWalkers`. `GET
+  /api/mod/audio/walkers` (`openWalkersStream`) sends a frame on connect, on
+  every change and every `FOOTSTEPS_KEEP_MS` while anyone walks (`:ping`
+  otherwise); every pushed frame takes a new seq. Its path ends in neither
+  `/events` nor `/stream`, so it says `no-transform` and the Caddyfile
+  exempts it: gzip would sit on the frames, and the router's `httpx` asks
+  for gzip. **The script:** `DescentSource` (`descent.ts`, over
+  `live-file.ts`, shared with `CreditsSource`), `GET /api/spatial/descent`
+  (a session or a moderator token); `sync-show` always replaces the
+  project's `descent.json`; `loomcheck` lints it. **The level** is dealt
+  once, in `begin`, onto the session: a force, a resume, a station's poll
+  or the walk's own find never move it. `told` on the assignment is read
+  live, so a resume carries what this walk told. Nothing here is journaled
+  and no story changes. `POST /api/spatial/told` is open while the doors
+  are closed. The walkers routes and `/api/mod/spatial/descent` are never
+  on the host allowlist. Tests: `test/w49-footsteps.test.ts`,
+  `test/w49-descent.test.ts`.
+- **Clippy's dream** (wave 50,
+  [`docs/loom-w50-contract.md`](../docs/loom-w50-contract.md)). `Night.dream`
+  (`SCREEN_NIGHT_VARS.dream`) is on from `y2k_clock`; `cue dream_begin` (the
+  `DREAM_CUE`, never a screen family) arms `ScreenState.dream {at}`: the cue +
+  `DREAM_FALLBACK_MS`, or a TV's `bug=1` + `DREAM_LEAD_MS`, once, only sooner.
+  `ScreenWatch.dreamOf` is the one reader. While it runs the games' feeds
+  stay the real cameras and `DreamFeed` (`dream-feed.ts`, frames off
+  `LOOM_MEDIA_DIR`, `dreamSpurting`, pure) breaks through them in spurts on
+  `/api/spatial/cams` and `/cam`, so the games need no code. The media is
+  never in git or an image: `scripts/ops/dream-media.sh`; Caddy serves
+  `/media/`, and `server.ts` does only with no proxy. Tests:
+  `test/w50-dream.test.ts`.
 - **Hub files have one owner at a time.** `event-runtime.ts`,
   `views.ts`, `chat.ts` and `sim.ts` are touched by almost every
   feature; when several agents work in parallel, give each of these to
@@ -449,8 +497,8 @@ regenerates `generated/questions.loom`, `codex/9-facts.loom`,
 `generated/print-stacks.md` and the marked blocks in `trabolta.mind.md`
 and `DESIGN.md`. Never hand-edit the generated files.
 
-The VPS (`app.mapsandducks.com`) runs release `w40` (master through
-wave 40; rollback `w39`; the root `CLAUDE.md` has the release status). Release and sync
+The VPS (`app.mapsandducks.com`) runs release `w50` (master through
+wave 50; rollback `w45`; the root `CLAUDE.md` has the release status). Release and sync
 procedure: `scripts/ops/` and
 [`docs/loom-docker-deploy.md`](../docs/loom-docker-deploy.md).
 Show-night diagnostics from any machine: `pnpm showctl`

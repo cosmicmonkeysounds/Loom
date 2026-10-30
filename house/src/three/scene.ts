@@ -58,6 +58,7 @@ import {
   HAZE_OPACITY,
   HAZE_TILE_M,
   NEON_COVE,
+  NEON_FLICKER_S,
   NEON_GAIN,
   NEON_SKIRT,
   NEON_STRIP_AT,
@@ -120,6 +121,9 @@ export interface HouseSceneOptions {
   /** (wave 26, R7) `pickup` props as spinning disks (default false: only the
    *  games draw them — never the terminals or the map editor's preview). */
   pickups?: boolean;
+  /** (wave 49) The descent level to draw: a prop with `from` above it is left
+   *  out. Default 0: only the games pass one (`DESCENT_MAX` draws them all). */
+  descent?: number;
   /** (wave 47) The games' look: glossy props, neon strips along every wall,
    *  flickering unfogged neon and the haze sheets (`setHaze`) — default
    *  false: the terminals' world view and the map editor stay plain. A
@@ -157,6 +161,10 @@ export interface HouseScene {
   /** (wave 47, `neon: true`) Show this many haze sheets per floor (0: none,
    *  1: the floor's, 2: the ceiling's too). */
   setHaze(layers: number): void;
+  /** (wave 49, `neon: true`) The descent's hold on the neon: it stutters
+   *  `pace` times as often (each stutter no faster), at `level` of its
+   *  brightness. Default 1 and 1. */
+  tuneNeon(pace: number, level: number): void;
   /**
    * Show King `id`'s shared state (the server's `KingState`): his bar at
    * `hp / max`, kneeling while `fallen`, and the leaf of every door he
@@ -434,6 +442,8 @@ export function buildHouseScene(house: HouseMap, opts: HouseSceneOptions = {}): 
     const room = roomById(house, prop.room);
     const group = roomFloor(prop.room);
     if (!room || !group) continue;
+    // (wave 49) What only a program this far gone sees.
+    if ((prop.from ?? 0) > (opts.descent ?? 0)) continue;
     const place = (g: BufferGeometry) => g.rotateY((prop.yaw ?? 0) * DEG).translate(prop.pos[0], prop.pos[1], prop.pos[2]);
     const [w, h, d] = prop.size;
     if (prop.kind === "heart") {
@@ -468,7 +478,7 @@ export function buildHouseScene(house: HouseMap, opts: HouseSceneOptions = {}): 
       for (const part of modelParts(prop)!) {
         const g = place(partGeometry(part));
         if (part.role === "neon") pushGlow(room.floor, paint(g, glow));
-        else if (part.role === "screen" || part.role === "alert") pushGlow(room.floor, paint(g, ROLE_COLORS[part.role]));
+        else if (part.role === "screen" || part.role === "alert" || part.role === "flame") pushGlow(room.floor, paint(g, ROLE_COLORS[part.role]));
         else push(propGeoms, room.floor, paint(g, part.role === "body" ? body : ROLE_COLORS[part.role]));
       }
     } else if (prop.kind === "box") {
@@ -708,6 +718,8 @@ export function buildHouseScene(house: HouseMap, opts: HouseSceneOptions = {}): 
   }
 
   let time = 0;
+  let neonPace = 1;
+  let neonLevel = 1;
   let disposed = false;
   const eye = new Vector3();
   const at = new Vector3();
@@ -727,6 +739,10 @@ export function buildHouseScene(house: HouseMap, opts: HouseSceneOptions = {}): 
       haze.forEach((meshes, layer) => {
         for (const m of meshes) m.visible = layer < layers;
       });
+    },
+    tuneNeon(pace: number, level: number) {
+      neonPace = pace;
+      neonLevel = level;
     },
     showKing(id: string, king: { hp: number; max: number; fallen: boolean }, open = king.fallen) {
       if (disposed || !kingFallen.has(id)) return;
@@ -799,7 +815,7 @@ export function buildHouseScene(house: HouseMap, opts: HouseSceneOptions = {}): 
       const base = haloTex ? 0.7 : 0.22;
       term.glowMat.opacity = base + 0.1 * Math.sin(time * 2.2) + 0.03 * Math.sin(time * 31);
       if (neon) {
-        mats.glow.color.setScalar(neonFlicker(time));
+        mats.glow.color.setScalar(neonFlicker(time % (NEON_FLICKER_S / neonPace)) * neonLevel);
         hazeTex.forEach((t, layer) => {
           const [dx, dz] = HAZE_DRIFT[layer]!;
           t.offset.set(((time * dx) / HAZE_TILE_M) % 1, ((time * dz) / HAZE_TILE_M) % 1);

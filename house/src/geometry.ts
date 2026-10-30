@@ -89,6 +89,8 @@ export function styleOf(house: HouseMap): { fence: number; wallThickness: number
 
 /** Whether a prop collides: `solid`, else true for box / cylinder / king. */
 export function propSolid(prop: Prop): boolean {
+  // (wave 49) A prop that exists only for some programs never blocks anyone.
+  if (prop.from !== undefined) return false;
   return prop.solid ?? (prop.kind === "box" || prop.kind === "cylinder" || prop.kind === "king");
 }
 

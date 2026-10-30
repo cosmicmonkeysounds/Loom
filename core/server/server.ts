@@ -17,6 +17,7 @@
 //! Env: LOOM_PORT, LOOM_HOST, LOOM_EVENT_PASS, LOOM_MOD_PASS,
 //! LOOM_PRIME_PASS (any passcode left unset is auto-generated and printed
 //! at boot), LOOM_STATE_DIR (where restart-recovery state is kept),
+//! LOOM_MEDIA_DIR (the house media: Clippy's dream),
 //! LOOM_APP_DIST, LOOM_TERMINAL_DIST, LOOM_REINSTALL_DIST (the built web
 //! reinstallation game, served at `/reinstall/`), LOOM_HOUSE (the fallback
 //! house map for the reinstallation games; default: the example's
@@ -116,6 +117,9 @@ const TERMINAL_DIST = process.env.LOOM_TERMINAL_DIST
 const REINSTALL_DIST = process.env.LOOM_REINSTALL_DIST
   ? pathToFileURL(process.env.LOOM_REINSTALL_DIST.replace(/\/?$/, "/"))
   : new URL("../../reinstall/web/dist/", import.meta.url);
+
+// The house media (wave 50), a folder outside the images; unset: no `/media/`.
+const MEDIA_DIST = process.env.LOOM_MEDIA_DIR ? pathToFileURL(process.env.LOOM_MEDIA_DIR.replace(/\/?$/, "/")) : null;
 
 const CONTENT_TYPES: Record<string, string> = {
   ".html": "text/html; charset=utf-8",
@@ -451,6 +455,15 @@ async function route(req: IncomingMessage, res: ServerResponse): Promise<void> {
         `<h1>Loom event server</h1><p>The participant app isn't built yet. Run ` +
         `<code>pnpm --filter loom-play build</code> (or <code>cd ../play && pnpm dev</code> for live dev on :5174).</p>`,
     );
+    return;
+  }
+
+  // --- the house media at `/media/` (wave 50: Clippy's dream) ---
+  // Behind Caddy its own file_server answers these first (a host folder,
+  // never in an image); this is the path with no proxy (`pnpm dev`, LAN mode).
+  if (method === "GET" && MEDIA_DIST !== null && path.startsWith("/media/")) {
+    if (serveAppFile(path.slice("/media".length), res, MEDIA_DIST, HTML_CSP, false, req.headers.range)) return;
+    sendJson(res, 404, { error: "no such media" });
     return;
   }
 
