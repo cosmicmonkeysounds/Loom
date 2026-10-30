@@ -94,17 +94,16 @@ def test_a_dead_bulb_goes_dark_and_comes_back_with_its_newest_state():
     assert not p.is_dark("a") and c.sent[-1][2] == {"brightness": 78} and c.dark == [("a", True), ("a", False)]
 
 
-def test_z2m_saying_offline_darkens_a_bulb_and_online_frees_it_at_once():
+def test_z2m_saying_online_frees_a_dark_bulb_at_once():
     c = Clock()
     p = c.pacer()
-    p.availability("a", False)
+    for i in range(FAILS_TO_DARK):
+        _send(p, "a", {"brightness": i})
+        c.t += ACK_MS
+        p.tick()
     assert p.is_dark("a")
-    _send(p, "a", {"brightness": 1})  # the first probe
-    p.acked("a")
-    assert not p.is_dark("a")
-    p.availability("a", False)
     _send(p, "a", {"brightness": 2})
-    p.availability("a", True)
+    p.came_back("a")
     assert not p.is_dark("a") and c.sent[-1][2] == {"brightness": 2}
 
 
@@ -189,13 +188,15 @@ async def test_pace_false_is_the_kill_switch():
 
 
 @_async
-async def test_availability_and_the_echo_reach_the_pacer_and_a_dark_bulb_skips_its_pulse():
+async def test_a_stale_offline_never_holds_a_cue_back():
+    """After a restart Z2M says offline for bulbs that are fine (the drill)."""
     timer = FakeTimer()
     lights = _paced(timer)
     lights.on_mqtt(f"{Z2M}/server_room_rgb/availability", b'{"state":"offline"}')
-    assert lights.pacer.dark() == ["server_room_rgb"] and lights.stats()["dark"] == ["server_room_rgb"]
-    lights.on_mqtt(f"{Z2M}/server_room_rgb/availability", b'{"state":"online"}')
-    assert lights.pacer.dark() == []
+    assert lights.pacer.dark() == [] and lights.stats()["dark"] == []
+    lights.play("heart_wake")
+    await timer.advance(100)
+    assert len(_sets(lights, "server_room_rgb")) == 1
     lights.on_mqtt(f"{Z2M}/bridge/availability", b'{"state":"offline"}')  # never a bulb
     assert "bridge" not in lights.pacer.slots
 
@@ -214,6 +215,7 @@ def _watched(timer: FakeTimer, mod=None, ran: Ran | None = None) -> tuple[HouseL
     lights = _paced(timer, z2m_task="Loom\\zigbee2mqtt")
     lights.mod = mod
     lights.run_cmd = ran = ran or Ran()
+    lights.z2m_end_wait_s = 0
     return lights, ran
 
 

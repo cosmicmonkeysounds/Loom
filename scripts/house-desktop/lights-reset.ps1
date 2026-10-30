@@ -96,7 +96,9 @@ if ($Reset) {
     }
     Write-Step 'Zigbee2MQTT'
     schtasks /End /TN $Z2mTask | Out-Null
-    Start-Sleep -Seconds 2
+    # /End returns before Z2M is gone, and a second copy can't open the COM port.
+    $gone = (Get-Date).AddSeconds(10)
+    while ((Test-Port '127.0.0.1' 8080) -and ((Get-Date) -lt $gone)) { Start-Sleep -Seconds 1 }
     schtasks /Run /TN $Z2mTask | Out-Null
     $ms = Wait-Z2m 60
     if ($ms -ge 0) { Write-Ok ('back, answering in ' + $ms + ' ms') } else { Write-Bad 'not back after 60 s: see C:\zigbee2mqtt\data\log, and is the stick on its COM port? (.\zigbee2mqtt.ps1 -Check)' }

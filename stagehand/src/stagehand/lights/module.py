@@ -144,6 +144,9 @@ PACER_TICK_MS = 250
 #: A restart gets this long to bring Z2M back before the watch judges it again.
 Z2M_RESTART_GRACE_MS = 120_000
 Z2M_RESTART_TIMEOUT_S = 20
+#: `schtasks /End` returns before the process is gone, and a second copy can't
+#: open the COM port.
+Z2M_END_WAIT_S = 5.0
 
 
 def build_lights(section: Any, base_dir: str) -> "HouseLights":
@@ -301,6 +304,7 @@ class HouseLights:
         # Zigbee flow control: the bulbs' slots, and the watch on Z2M itself.
         self.pacer = Pacer(self.publish, self.timer.now, on_dark=self._bulb_dark)
         self.run_cmd = run_hidden
+        self.z2m_end_wait_s = Z2M_END_WAIT_S
         self._z2m_lost = False
         self._z2m_heard = self.timer.now()
         self.z2m_restarts = 0
@@ -910,9 +914,8 @@ class HouseLights:
             if len(parts) == 1:
                 self.pacer.acked(parts[0])
             elif len(parts) == 2 and parts[1] == "availability" and parts[0] != "bridge":
-                online = bridge_online(raw)
-                if online is not None:
-                    self.pacer.availability(parts[0], online)
+                if bridge_online(raw):  # never the reverse: a restarting Z2M says offline for bulbs that are fine
+                    self.pacer.came_back(parts[0])
             return
         try:
             doc = json.loads(raw.decode("utf-8"))
@@ -1011,6 +1014,7 @@ class HouseLights:
         self.pacer.reset()
         try:
             await asyncio.to_thread(self.run_cmd, ["schtasks", "/End", "/TN", task])
+            await asyncio.sleep(self.z2m_end_wait_s)
             res = await asyncio.to_thread(self.run_cmd, ["schtasks", "/Run", "/TN", task])
         except (OSError, subprocess.SubprocessError) as err:
             log.error("restarting %s failed (%s)", task, err)
