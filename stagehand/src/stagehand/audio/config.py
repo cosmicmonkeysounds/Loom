@@ -19,6 +19,10 @@ Shape (`audio.example.yaml` carries a commented copy):
                                    # cabled there (no line out on the house PC):
                                    # {device: "VoiceMeeter Output", host_api: mme, ch: 3,
                                    #  channels: 2, gain_db: 0} — audio/tap.py
+      tidal: null                  # wave 52: the TIDAL app's sound, for `tidal:` playlists:
+                                   # {device: "VoiceMeeter Aux Output", host_api: mme,
+                                   #  output: "VoiceMeeter Aux Input", port: 9333, gain_db: 0}
+                                   # — audio/tidal.py; absent: they play their files
       blocksize: 512
       latency: high                # low | high | seconds
       master_db: 0
@@ -79,6 +83,8 @@ from ..show.config import MqttConfig
 from .mixer import DUCKED, RESERVED_SOURCES, TAKEOVER, Sidechain
 from .soundtrack import Soundtrack, load_soundtrack
 from .tap import TapConfig
+from .tidal import PORT as TIDAL_PORT
+from .tidal import TidalConfig
 
 DEFAULT_CACHE = user_cache("stagehand-audio")  # ~/Library/Caches/… ; %LOCALAPPDATA%\stagehand\… on Windows
 #: With no `priority:` an announcement ducks as the show's does (C4's
@@ -101,6 +107,8 @@ class AudioConfig:
     rate: int | None = None
     #: A software input (wave 46, `tap.py`): Chrome through VoiceMeeter into input 3.
     tap: TapConfig | None = None
+    #: The TIDAL app as a source for the soundtrack (wave 52, `tidal.py`).
+    tidal: TidalConfig | None = None
     blocksize: int = 512
     latency: str | float = "high"
     master_db: float = 0.0
@@ -275,6 +283,38 @@ def _tap(doc: dict) -> TapConfig | None:
     )
 
 
+def _tidal(doc: dict) -> TidalConfig | None:
+    raw = doc.get("tidal")
+    if raw is None:
+        return None
+    known = ("device", "host_api", "output", "port", "gain_db")
+    if not isinstance(raw, dict):
+        raise ConfigError(f"audio.tidal: a mapping {{{', '.join(known)}}}")
+    extra = sorted(set(raw) - set(known))
+    if extra:
+        raise ConfigError(f"audio.tidal.{extra[0]}: unknown ({', '.join(known)})")
+    device = raw.get("device")
+    if not isinstance(device, str) or not device.strip():
+        raise ConfigError("audio.tidal.device: a part of the capture device's name (e.g. VoiceMeeter Aux Output)")
+    host_api = raw.get("host_api")
+    if host_api is not None:
+        from .engine import HOST_APIS
+
+        if not isinstance(host_api, str) or host_api.lower() not in HOST_APIS:
+            raise ConfigError(f"audio.tidal.host_api: {' | '.join(HOST_APIS)} (got {host_api!r})")
+        host_api = host_api.lower()
+    output = raw.get("output", TidalConfig.output)
+    if not isinstance(output, str) or not output.strip():
+        raise ConfigError("audio.tidal.output: a part of the name in TIDAL's Sound output menu")
+    return TidalConfig(
+        device=device.strip(),
+        host_api=host_api,
+        output=output.strip(),
+        port=int(_num(raw, "port", TIDAL_PORT, 1024, 65535, "audio.tidal.")),
+        gain_db=_num(raw, "gain_db", 0.0, -60, 24, "audio.tidal."),
+    )
+
+
 def _soundtrack(doc: dict, base_dir: str) -> Soundtrack | None:
     path = _path(doc, "soundtrack", base_dir, must_exist=True)
     return load_soundtrack(path) if path is not None else None
@@ -341,6 +381,7 @@ def parse_audio_section(doc: Any, base_dir: str = ".") -> AudioConfig:
         host_api=host_api,
         rate=rate,
         tap=_tap(doc),
+        tidal=_tidal(doc),
         blocksize=blocksize,
         latency=latency,
         master_db=_num(doc, "master_db", 0.0, -60, 12),

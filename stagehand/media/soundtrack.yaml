@@ -2,20 +2,19 @@
 # played by the audio router (stagehand/src/stagehand/audio/soundtrack.py)
 # on the `music` bus, under every story sound and announcement.
 #
-# WHERE THE FILES GO. Paths here are relative to this folder
-# (stagehand/media/). Drop the tracks into these folders on the router
-# machine (John's Desktop; the MacBook in the fallback). They are
-# git-ignored, like media/sounds/: the music is copyrighted and lives only
-# on the machine that plays it.
+# WHERE THE MUSIC COMES FROM (wave 52). The acts and the ending are John's
+# TIDAL playlists, played by the TIDAL app on the router machine and heard
+# through VoiceMeeter (audio/tidal.py; scripts/house-desktop/README.md 3.7).
+# Custom songs stay MP3s, in two places: a story `sound X` (tracks: below) goes
+# in media/sounds/ (dance_song.mp3, hand_jive.mp3, ...), and a whole scene of
+# them is a folder playlist, like ceremony. Paths here are relative to this
+# folder (stagehand/media/). The folders are git-ignored, like media/sounds/:
+# the music is copyrighted and lives only on the machine that plays it.
 #
-#   media/music/doors/        while the guests arrive (Power On)
-#   media/music/act-1/        the first act (from the call to the Desktop)
-#   media/music/malware/      the Ad Hijack (the second hunt)
-#   media/music/act-2/        from the five-minute warning
-#   media/music/act-3/        from the Y2K clock
-#   media/music/final/        the final reveal
+#   media/music/act-1/, act-2/, act-3/, afterparty/
+#                             each TIDAL playlist's fallback, played only when
+#                             the app can't (no app, no internet): optional
 #   media/music/ceremony/     the awards ceremony
-#   media/music/afterparty/   the resurrection, and on to the end of the night
 #   media/library/ambient/    the synthesized ambient loops
 #                             (`uv run stagehand sounds library` writes them)
 #
@@ -62,25 +61,25 @@ crossfade_s: 3          # between two tracks of one playlist
 scene_fade_s: 2.5       # a bed that leaves or joins on a scene change
 
 playlists:
-  doors:      { dir: music/doors }
-  act_1:      { dir: music/act-1 }
-  malware:    { dir: music/malware }
-  act_2:      { dir: music/act-2 }
-  act_3:      { dir: music/act-3 }
-  final:      { dir: music/final }
+  # John's TIDAL playlists (wave 52). The id is the end of the playlist's share
+  # link, so renaming one in TIDAL changes nothing here. `dir` is the fallback,
+  # played only when the app can't; `shuffle: false` plays TIDAL's own order.
+  act_1:      { tidal: 34e328b7-92a7-4bcc-9603-ff296a8fd201, dir: music/act-1, shuffle: false }   # TITI - Act 1
+  act_2:      { tidal: 65394c9d-3e29-4f4e-9855-b510ef27dea4, dir: music/act-2, shuffle: false }   # TITI - Act 2
+  act_3:      { tidal: 4aad11ad-a63f-45e3-ae78-f915bd2d00b3, dir: music/act-3, shuffle: false }   # TITI - Act 3
+  afterparty: { tidal: 0ed6d67f-c800-483d-98f0-058404867b48, dir: music/afterparty, shuffle: false }   # TITI - Rave / Ending
   ceremony:   { dir: music/ceremony }
-  afterparty: { dir: music/afterparty }
   fan_closet: { files: [library/ambient/dryer-tumble.wav], loop: true, level_db: -14 }
 
 scenes:
-  doors:
-    - { to: everywhere, play: doors }
+  doors:                # the same bed as act_1: it plays on through the call
+    - { to: everywhere, play: act_1 }
     - { to: The Fan Closet, play: fan_closet }
   act_1:
     - { to: everywhere, play: act_1 }
     - { to: The Fan Closet, play: fan_closet }
   malware:              # the Ad Hijack: ad_jingle (a track) takes over first
-    - { to: everywhere, play: malware }
+    - { to: everywhere, play: act_2 }
     - { to: The Fan Closet, play: fan_closet }
   act_2:
     - { to: everywhere, play: act_2 }
@@ -89,7 +88,7 @@ scenes:
     - { to: everywhere, play: act_3 }
     - { to: The Fan Closet, play: fan_closet }
   final:
-    - { to: everywhere, play: final }
+    - { to: everywhere, play: act_3 }
     - { to: The Fan Closet, play: fan_closet }
   ceremony:             # ceremony_bed (a track) takes the living room over while it plays
     - { to: everywhere, play: ceremony }
