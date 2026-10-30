@@ -87,7 +87,7 @@ export function Taskbar({
   }, [open]);
   const connWord = conn === "live" ? "live" : conn === "reconnecting" ? "reconnecting…" : conn === "offline" ? "offline" : undefined;
   return (
-    <nav className="taskbar" aria-label="Taskbar">
+    <nav className={`taskbar${open ? " start-open" : ""}`} aria-label="Taskbar">
       <button
         ref={startBtn}
         type="button"

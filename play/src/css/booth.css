@@ -314,6 +314,11 @@
 /* The pop-out (the moments lane's `popout.tsx`) floats just above the dock,
    no scrim; this zero-height anchor marks the place. */
 .booth-popout-anchor { position: relative; flex: 0 0 auto; height: 0; }
+/* Wave 48b: an open Start menu comes up over a booth pop-out (and its
+   catch-all with it, so a tap outside closes the menu first). Without
+   this, a flood of 🔑 pop-outs keeps the menu, and the filter's strength
+   in it, out of reach. */
+.booth-frame .taskbar.start-open { z-index: calc(var(--z-popout) + 2); }
 
 /* A booth window in alarm: the maroon caption (the Wanted board, a confrontation). */
 .booth-layer-win.alarm > .w95-titlebar { background: var(--maroon); }
