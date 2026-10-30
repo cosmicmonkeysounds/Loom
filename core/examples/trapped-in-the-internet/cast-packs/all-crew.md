@@ -47,9 +47,10 @@ keep the radio away from them. The TV and the tent laptop never send sound.
   after the Bingo round), ✅ Mark
   as reinstalled (on a captured one's), 🩹 Unmark, 🎀, 🤝, 👁, 🪙 Pay /
   Charge and ♟ work at any time; the verdict buttons do nothing out of
-  phase. 🛡, ✅ and 👁 are the Antivirus' own: no host's or Clippy's booth
-  has them, so a host radios an Antivirus. 🩹 sits on a marked program's
-  card.
+  phase. ✅ and 👁 are the Antivirus' own: no host's or Clippy's booth
+  has them, so a host radios an Antivirus. 🛡 is the Antivirus' and the
+  hosts' (never Clippy's): a host may send a program to the Internet
+  too. 🩹 sits on a marked program's card.
 - **Marked, not captured (wave 18, Q30: a mark doesn't hinder).** A host's
   verdict (🎯 named on the Bingo card, 🤷 a guess, 🙅 a refused truth, 🎩 a
   Dare, 🏓 a missed cup, 🍎 a failed bob, a late arrival) **marks** a

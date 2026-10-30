@@ -223,7 +223,7 @@ No test reads the codex paths.
 | `beats/review.loom` | Wave 18b (R8): `The Night In Review` (public, before every ceremony), its shared beats `Who You Were`, `The Report On Everyone`, `Everyone Else`, `The Rest Of The Report`, `Goals Met Tonight`, `The Goals Report`, `What You Did`, `What We Did` (also reached by Trabolta Recounts and Purgatory), and the private `Your File`. | ending lane |
 | `codex/85-ties.loom` | Wave 18b (R9): the 16 Connections ties and `Program Briefing`, which deals them (and The DSL Line to Jeeves) at clearance. | ending lane |
 | `beats/finale.loom` | `Final Reveal`, `Bobbing For Truth`, `The Bag Of Truth`, `Final Assessment`, `Truth Txt`, `The Verdict`, `Song Ending`, `Grok Prom`, `Pickup Line`, `Sad Confession`, `Relationship Advice`, `Advice Helped`, `Advice Thwarted`, `The Hand Jive`. | D |
-| `cast/kit.loom` | TRAITs `Prop(beat)`, `Person`, `Host is Person`, `Enforcer is Person` (owned `beat Clearance(program)`; scan routing; `send to the internet`, `mark as reinstalled`, `accuse`). | B |
+| `cast/kit.loom` | TRAITs `Prop(beat)`, `Person`, `Host is Person` (`send to the internet` without ⭐, wave 47), `Enforcer is Person` (owned `beat Clearance(program)`; scan routing; `send to the internet`, `mark as reinstalled`, `accuse`). | B |
 | `cast/hosts.loom` | `Clippy`, `Task Manager`, `Adobe Acrobat`, `Recycling Bin` (all `is Host`) with booth readouts. | B |
 | `cast/antivirus.loom` | `Norton Anti-Virus`, `McAfee Anti-Virus`, `Password Manager`, `CRA Agent Software` (all `is Enforcer`). | B |
 | `cast/staff.loom` | `Installation Wizard` (Julia Tufts's **voice**, `playable: false`, no booth — the tent tablet script, wave 4 U8), `Sandy` (playable: false), `Truther Download` (playable: false). | B |
@@ -766,7 +766,7 @@ watcher/rule, **S** = server hard-code.
 | start_the_bingo | D | — | rule |
 | bingo_time | D (the 20-min watcher only alerts) | — | rule |
 | introduce_trabolta | D | — | rule + Trabolta hook |
-| first_reinstallation | W (Enforcer `send to the internet` during bingo_results; fired **unbound**) | — | rule |
+| first_reinstallation | W (Enforcer or Host `send to the internet` during bingo_results; fired **unbound**) | — | rule |
 | start_the_hunt | D | — | rule |
 | hunt_time_up | W (15 min) or D | — | rule |
 | first_moment_of_truth | D | — | rule |
