@@ -294,28 +294,39 @@ export interface ScreenNight {
 }
 
 /** (wave 48) The Language Report (G14), as the story read it (the server's
- *  `ScreenLanguage`, `docs/loom-w48-contract.md` C4). `curser` may be a tie
- *  ("A and B"), null for nobody; `words` are the censored words, unique,
- *  lower case, first censored first, at most `LANGUAGE_WORDS_MAX`; `more`
- *  counts the unique censored words past them. */
+ *  `ScreenLanguage`, `docs/loom-w48-contract.md` C4, reshaped by wave 48b's
+ *  C12). `curser` may be a tie ("A and B"), null for nobody; `words` are
+ *  the censored words, each once, never a slur, most censored first, at most
+ *  `LANGUAGE_WORDS_MAX`, with `counts` (times each was censored) in the same
+ *  order; `more` counts the unique censored words past them; `unsaid` the
+ *  slurs censored (the TV draws a redaction bar for each, never a word);
+ *  `level` the filter's strength now and `stars` the Password Manager's ⭐
+ *  (null from a wave 48 server, which sends neither). */
 export interface ScreenLanguage {
   flagged: number;
   censored: number;
   curser: string | null;
   curses: number;
   words: string[];
+  counts: number[];
   more: number;
+  unsaid: number;
+  level: number | null;
+  stars: number | null;
 }
 
-/** (wave 48) The most censored words the slide carries (C4). */
-export const LANGUAGE_WORDS_MAX = 60;
+/** (wave 48b) The most censored words the slide carries (C12). */
+export const LANGUAGE_WORDS_MAX = 400;
 
 /**
  * (wave 48) The report off the wire. Malformed (not an object, or no
  * `flagged` count) reads null, as if absent. A bad number reads 0; censored
  * words are flagged words, so `flagged` is at least `censored`; `words`
- * keeps the non-blank strings, trimmed, the first `LANGUAGE_WORDS_MAX`
- * (any past them count into `more`).
+ * keeps the non-blank strings, trimmed, each with its count (wave 48b: no
+ * `counts`, or a bad one, is 1: a wave 48 server sends none), most censored
+ * first (a stable sort, so equal counts keep the server's order), the
+ * first `LANGUAGE_WORDS_MAX` (any past them count into `more`). No `unsaid`
+ * reads 0; no `level` (0–100) or `stars` reads null.
  */
 export function languageOf(raw: unknown): ScreenLanguage | null {
   if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return null;
@@ -323,15 +334,24 @@ export function languageOf(raw: unknown): ScreenLanguage | null {
   if (typeof r["flagged"] !== "number" || !Number.isFinite(r["flagged"])) return null;
   const n = (v: unknown): number => (typeof v === "number" && Number.isFinite(v) && v > 0 ? Math.floor(v) : 0);
   const who = (v: unknown): string | null => (typeof v === "string" && v.trim() !== "" && v.trim().toLowerCase() !== "none" ? v.trim() : null);
-  const all = Array.isArray(r["words"]) ? r["words"].flatMap((w) => (typeof w === "string" && w.trim() !== "" ? [w.trim()] : [])) : [];
+  const counts = Array.isArray(r["counts"]) ? (r["counts"] as unknown[]) : [];
+  const all = (Array.isArray(r["words"]) ? (r["words"] as unknown[]) : [])
+    .flatMap((w, i) => (typeof w === "string" && w.trim() !== "" ? [{ word: w.trim(), count: Math.max(1, n(counts[i])), i }] : []))
+    .sort((a, b) => b.count - a.count || a.i - b.i);
+  const kept = all.slice(0, LANGUAGE_WORDS_MAX);
   const censored = n(r["censored"]);
+  const level = r["level"];
   return {
     flagged: Math.max(n(r["flagged"]), censored),
     censored,
     curser: who(r["curser"]),
     curses: n(r["curses"]),
-    words: all.slice(0, LANGUAGE_WORDS_MAX),
+    words: kept.map((k) => k.word),
+    counts: kept.map((k) => k.count),
     more: n(r["more"]) + Math.max(0, all.length - LANGUAGE_WORDS_MAX),
+    unsaid: n(r["unsaid"]),
+    level: typeof level === "number" && Number.isFinite(level) ? Math.max(0, Math.min(100, Math.round(level))) : null,
+    stars: typeof r["stars"] === "number" && Number.isFinite(r["stars"]) ? n(r["stars"]) : null,
   };
 }
 

@@ -3,7 +3,7 @@
 //! has a plausible late-night value; override what a scene needs.
 
 import { creditsView, type CreditsFile, type CreditsView } from "../../../core/src/credits.ts";
-import { EMPTY_NIGHT, type ResultOutcome, type ScreenBathroom, type ScreenLanguage, type ResultRow, type RulingStamp, type ScreenChart, type ScreenKing, type ScreenMoment, type ScreenNight, type ScreenResultQuestion, type ScreenResults, type ScreenState, type ScreenTarget } from "../screen.ts";
+import { EMPTY_NIGHT, languageOf, type ResultOutcome, type ScreenBathroom, type ScreenLanguage, type ResultRow, type RulingStamp, type ScreenChart, type ScreenKing, type ScreenMoment, type ScreenNight, type ScreenResultQuestion, type ScreenResults, type ScreenState, type ScreenTarget } from "../screen.ts";
 
 export interface FakeOpts {
   now?: number;
@@ -166,14 +166,69 @@ export const FAKE_FLAGGED_WORDS: readonly string[] = [
   "lmao", "darn", "bloody", "frick", "album", "crappy", "assessment", "trespass", "picasso", "bypass", "superstition", "hassle", "grasshopper", "shell", "wtf", "dang", "rump",
 ];
 
-/** (wave 48) A made-up Language Report for `?preview=language` (`lang=none`: nothing flagged;
- *  `tie`: a tie for the most; `long`: 60 words and more; `kept`: flagged, none censored). */
+/** (wave 48b) Strong words a real night censors at a low strength (never a slur: those are only ever a count). */
+export const FAKE_STRONG_WORDS: readonly string[] = ["shit", "fuck", "fucking", "bullshit", "asshole", "bastard", "dick", "piss", "shitty", "motherfucker", "pissed", "wanker", "bollocks", "bugger", "arse", "hell", "fart", "poop", "boobs", "turd"];
+
+/** (wave 48b) More buried and mild words, and the endings guests give them, for the hundreds. */
+const FAKE_MORE: readonly string[] = [
+  "passwords", "hellooo", "checking", "buttons", "classes", "titles", "documents", "document", "hellfire", "shellshock", "scunthorpe", "matchbox", "cocktails", "assassin",
+  "bassoon", "carcass", "chassis", "cuckoo", "deadass", "glassware", "grass", "hashtag", "hitchcock", "jackass", "lass", "mass", "morass", "pass", "passenger",
+  "passion", "passive", "sass", "stitches", "tithe", "titmouse", "toucan", "tuttifrutti", "badass", "bassist", "brassiere", "butterscotch", "buttress", "rebutton",
+  "scuttlebutt", "shuttlecock", "weathercock", "woodcock", "hancock", "babcock", "dickhead", "dickering", "crapshoot", "craps", "crapper", "damnation", "damned",
+  "goddamn", "heckler", "hecking", "hellish", "helluva", "othellos", "seashell", "nutshell", "eggshell", "bombshell", "hellraiser", "turdle", "saturdays", "crumpet",
+  "rumpus", "trumpets", "frumpily", "rumple", "grumpily", "titter", "titular", "constitute", "institute", "repetition", "petite", "appetite", "titanium", "entitled",
+  "bumble", "bumper", "bumpkin", "bumpy", "bums", "darned", "darnit", "dangit", "frickin", "fricking", "friggin", "fartlek", "farted", "poopy", "nincompoops", "pooped",
+  "bloodied", "buggered", "bollocking", "arsed", "arses", "boob", "turds", "pissing", "shits", "fucks", "fucker", "fucked", "assholes", "bastards", "dicks", "wtff",
+  "omfg", "lmfao", "fml", "stfu", "heckity", "hellohello", "passw0rd", "p@ssword", "h3llo", "ch3ck", "butt0n", "cl@ss", "sh!t", "f*ck", "d@mn", "cr@p", "a$$",
+];
+
+/** (wave 48b) Every made-up censored word, unique, at least 400 of them: the lists above, then their plurals and -y's. */
+export const FAKE_CENSORED_WORDS: readonly string[] = (() => {
+  const base = [...FAKE_STRONG_WORDS.slice(0, 6), ...FAKE_FLAGGED_WORDS, ...FAKE_STRONG_WORDS.slice(6), ...FAKE_MORE];
+  const out: string[] = [];
+  const seen = new Set<string>();
+  const add = (w: string) => {
+    if (!seen.has(w)) {
+      seen.add(w);
+      out.push(w);
+    }
+  };
+  base.forEach(add);
+  const takes = { s: /[a-rt-z]$/u, y: /[a-rt-xz]$/u, ed: /[a-ce-rt-xz]$/u } as const;
+  for (const end of ["s", "y", "ed"] as const) for (const w of base) if (out.length < 460 && takes[end].test(w)) add(`${w}${end}`);
+  return out;
+})();
+
+/** (wave 48b) Times each of `n` words was censored, most first: a long tail of ones under a few favourites. */
+export function fakeCounts(n: number, top = 40): number[] {
+  return Array.from({ length: n }, (_, i) => Math.max(1, Math.round(top / (i + 1) ** 0.9)));
+}
+
+/**
+ * (wave 48) A made-up Language Report for `?preview=language` (wave 48b's shape). `lang=`:
+ * `none` nothing flagged · `kept` flagged, none censored · `one` one word · `dozen` 12 words ·
+ * `unsaid` a dozen and 4 unsaid (bars) · `bars` only unsaid words, at strength 0 ·
+ * `hundreds` 180 words and 7 unsaid · `max` 400 words, 62 more and 9 unsaid · `tie` a tie for
+ * the most · `w48` a wave 48 server's report (≤ 60 words, no counts, strength or ⭐) through
+ * `languageOf`. Anything else (the default): a typical night, 120 words and 3 unsaid.
+ */
 export function fakeLanguage(kind: string | null): ScreenLanguage {
-  if (kind === "none") return { flagged: 0, censored: 0, curser: null, curses: 0, words: [], more: 0 };
-  if (kind === "kept") return { flagged: 27, censored: 0, curser: "Excel", curses: 12, words: [], more: 0 };
-  if (kind === "tie") return { flagged: 31, censored: 6, curser: "Winamp and MS Paint", curses: 9, words: ["password", "hello", "button", "darn", "heck", "trumpet"], more: 0 };
-  if (kind === "long") return { flagged: 212, censored: 118, curser: "Netscape Navigator", curses: 41, words: FAKE_FLAGGED_WORDS.slice(0, 60), more: FAKE_FLAGGED_WORDS.length - 60 };
-  return { flagged: 96, censored: 23, curser: "Netscape Navigator", curses: 17, words: FAKE_FLAGGED_WORDS.slice(0, 14), more: 0 };
+  const words = (n: number) => FAKE_CENSORED_WORDS.slice(0, n);
+  const report = (o: Partial<ScreenLanguage> & { n?: number; top?: number }): ScreenLanguage => {
+    const n = o.n ?? 0;
+    return { flagged: 0, censored: 0, curser: null, curses: 0, words: words(n), counts: fakeCounts(n, o.top), more: 0, unsaid: 0, level: 100, stars: 0, ...o };
+  };
+  if (kind === "none") return report({ flagged: 0 });
+  if (kind === "kept") return report({ flagged: 27, curser: "Excel", curses: 12, level: 100, stars: 0 });
+  if (kind === "one") return report({ flagged: 3, censored: 1, curser: "Winamp", curses: 3, words: ["heck"], counts: [1], level: 100, stars: 6 });
+  if (kind === "dozen") return report({ n: 12, top: 9, flagged: 61, censored: 34, curser: "Netscape Navigator", curses: 17, level: 60, stars: 41 });
+  if (kind === "unsaid") return report({ n: 12, top: 9, flagged: 70, censored: 40, unsaid: 4, curser: "Netscape Navigator", curses: 19, level: 25, stars: 96 });
+  if (kind === "bars") return report({ flagged: 6, censored: 6, unsaid: 6, curser: "RealPlayer", curses: 6, level: 0, stars: 72 });
+  if (kind === "hundreds") return report({ n: 180, flagged: 702, censored: 455, unsaid: 7, curser: "Netscape Navigator", curses: 88, level: 50, stars: 212 });
+  if (kind === "max") return report({ n: 400, top: 60, flagged: 2_416, censored: 1_380, more: 62, unsaid: 9, curser: "Netscape Navigator", curses: 233, level: 100, stars: 388 });
+  if (kind === "tie") return report({ flagged: 31, censored: 6, curser: "Winamp and MS Paint", curses: 9, words: ["password", "hello", "button", "darn", "heck", "trumpet"], counts: [3, 2, 1, 1, 1, 1], level: 90, stars: 14 });
+  if (kind === "w48") return languageOf({ flagged: 212, censored: 118, curser: "Netscape Navigator", curses: 41, words: FAKE_FLAGGED_WORDS.slice(0, 60), more: FAKE_FLAGGED_WORDS.length - 60 })!;
+  return report({ n: 120, flagged: 388, censored: 236, unsaid: 3, curser: "Netscape Navigator", curses: 61, level: 75, stars: 140 });
 }
 
 /** A made-up `CreditsView` with `programs` of the fake programs (cycled, numbered past the list). */
