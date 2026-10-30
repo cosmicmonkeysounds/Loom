@@ -38,7 +38,9 @@ modules' headers with `//`. Wave 44 turned `push.ts`, `crawl.ts` and `rejoin.ts`
 (−2.26 kB) and added the credits roll's eager slot: 146.95 kB. Wave 47
 (the Back, the stage's tray, the Mission echoes) brought it to 148.65 kB:
 0.35 kB of headroom, so the next eager addition needs a trim first. Wave
-48b (all booth chunk) measures 148.64 kB.
+48b (all booth chunk) measures 148.64 kB. Wave 53 added `phone-voice.ts` and
+turned the headers of `alerts.ts`, `cutscene.tsx`, `chrome/keyboard.ts` and
+`rooms/order.ts` into `//`: 147.63 kB.
 
 ## How a session works
 
@@ -457,6 +459,34 @@ Everything is booth chunk only, in `booth/filter/`:
 - **The 🔑 Filter tile** (`booth/mission-model.ts` `FILTER_ROOM`): the
   censor's Mission home always has it beside Wanted (*n to judge*), since on
   a phone the tray fits two items and 🔔 + 🚨 push its 🔑 out.
+
+### Wave 53: everyone uploads, the phone's voice
+
+Contract `docs/loom-w53-contract.md`.
+
+- **A booth on rails** (`booth/upload.tsx`). `useBoothRails` posts `/api/prime/arrive`
+  while `PrimeView.arrive` holds (a failed report is tried on the next view) and
+  reads `PrimeView.cutscene` through the guests' `useCutscene`. While it shows,
+  `PerformerApp` mounts `BoothUploadStage` in place of the whole booth, so no
+  moments, pop-outs, push or polls run. It is the guests' `CutsceneStage` over
+  `boothStaged` (`personalStream` of `@<character>`, no readouts) with
+  `boothDecision` (the oldest of `view.choices`, `POST /api/prime/choose`) and
+  `corner` in place of `onPass` (*Not you?*, two taps). **Fail-open:** only the
+  server's `cutscene` holds a booth; an unsent report never does. Embedded panes
+  never report and never go on rails. A booth's stream viewer is its character,
+  so `crawl.ts` reads `@<id>` in the personal stream too. Rows addressed
+  `@<Character>` land in Readouts after the stage. `letterCardState` stays away
+  once `PrimeLetter.asked`.
+- **The phone's voice** (`phone-voice.ts`, eager: its header is `//`). The
+  stream's `announce` frame (`CHAT_FRAMES`, `onAnnounce`) goes through
+  `phoneAnnounce(host, n)` in both sessions: words if `host.storage` says on, not
+  embedded, not older than `ANNOUNCE_STALE_MS`; `stop` cuts it. `Poll` with
+  `voice: true` calls `setPhoneVoice` before `onAnswer`; `usePhoneVoice` is the
+  switch, `voiceStartItem` its row in all three Start menus. It must fire straight
+  through: **`speak()` has to run inside the tap** (iOS), so a lazy import or a
+  `confirm` here would silently break it. `usePhoneVoice` primes a reloaded page
+  on its next tap. No voice picking: `lang` en-US, the device's own voice.
+- Tests: `test/w53-booth-upload.test.tsx`, `test/w53-phone-voice.test.tsx`.
 
 ### Host windows (wave 25; the contract is `docs/loom-house-desk.md` §6.2)
 

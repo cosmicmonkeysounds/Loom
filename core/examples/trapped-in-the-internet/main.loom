@@ -20,6 +20,7 @@ watch: Microsoft Excel, OpenOffice, MS Paint
 watch: Kernel.door_code as Door code, Kernel.combo_a as Combo A, Kernel.combo_b as Combo B
 watch: Night.king_hp as King HP, program.codex.the_door_code as Have the door code, while Night.ended != true
 watch: Night.present as Present programs, while Night.final_round == true and Night.ended != true
+watch: Kernel.staff_uploaded as Staff uploaded, while Kernel.staff_uploaded < 8
 countdown: Night.bingo_end as Bingo ends, while Night.bingo_on == true, for guests
 countdown: Night.hunt_end as Hunt 1 ends, while Night.hunt_on == true, for guests
 countdown: Night.filing_close as Filings close, while Night.filing_open == true, for guests
@@ -32,6 +33,7 @@ countdown: Night.dance_at as Dance lights
 wanted: program.marked as program.marked_for by program.escort_by, for Antivirus
 reinstall: program.marked == true or program.corrupted == true or Night.ended == true
 lock: program.corrupted == true and Night.banish != true and Night.ended != true
+arrival: self.arrived != true and Night.ended != true
 archive: The Uploader when program.cleared == true and program.featured == "none" and Night.ended != true
 archive: Norton Anti-Virus when program.cleared == true and program.marked != true and program.corrupted != true
 archive: McAfee Anti-Virus when program.cleared == true and program.marked != true and program.corrupted != true
@@ -2714,6 +2716,12 @@ ROLE Program
       else:
         set program.video = "ok"
         Task Manager: Noted. You may appear in the video.
+    // Wave 53 (C4): the upload's voice card. The choice is the phone's own
+    // (⊞ Start changes it), so the story keeps nothing. DRAFT w53
+    else if choice == "Yes, say them out loud":
+      Task Manager: Noted. This phone speaks when the house speaks. START turns it off.
+    else if choice == "No, keep it quiet":
+      Task Manager: Noted. This phone stays quiet. START turns it on.
     else if Night.poll == "advice" and program.advice == "none" and (choice == "Help him" or choice == "Thwart him"):
       if choice == "Help him":
         set Night.help_votes += 1
@@ -3741,6 +3749,17 @@ INTERACTION dream_toggle
   sequence: false
   description: The dream starts by itself on "…the Y2K BUG." and runs until an ending. Press it to put every terminal and the games' terminals back on their usual screens (the house wifi can't carry it, or a scene must read clean), and again to bring it back.
   while: Night.clock != "--:--" and Night.ended != true
+
+// Wave 53: everyone uploads (TRAIT Staff, cast/kit.loom); this is the way
+// past it for a phone that can't finish, appended so no cue number moves.
+// It rides Anytime: an aside, never on the running order. DRAFT w53
+INTERACTION wave_staff_through
+  label: ⏭ Wave the staff through their upload
+  who: admin
+  act: Anytime
+  sequence: false
+  description: Every part still in its upload, or not signed in yet, goes straight to its booth: Clippy, the four Antivirus and the three hosts. For a phone that can't finish it (a dead phone, a part taken over mid-show, a booth a guest is waiting on). Nothing they had left to answer is asked again.
+  while: Kernel.staff_uploaded < 8 and Night.ended != true
 
 // Performer buttons (on every guest card). Every hook guards its phase
 // and ignores a wrong-phase press — except `send to the internet` and

@@ -167,7 +167,7 @@ While you type, the bar steps aside with the taskbar.
     fire. Pausing stops the story clock on every phone and booth;
     nothing is lost.
   - **📣 Announce**: a line to every phone (it posts in the 📜 Chat log and lands in every Recycle Bin). Turn **🔔
-    Alert** on to make every phone chime, buzz and pop it up.
+    Alert** on to make every phone chime, buzz and pop it up. Phones that turned their voice on also say it out loud.
   - **🚨 Alert level**: how loud the story's moments are on every guest's
     phone — **Balloon** (a tip by the taskbar that times out), **Sticky**
     (a banner until tapped), **Dialog** (a full-screen box with OK, one

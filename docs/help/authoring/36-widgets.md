@@ -46,6 +46,11 @@ show poll "Ready?" to group(Antivirus) with options: "Yes | No | Never"
   rest of the line, `with` clause included, into text. `loomcheck`
   warns on an unbalanced quote and on an unquoted `question:`.
 
+- **`voice: true`** on a `poll` is the phone's own opt-in: its first option
+  turns on the phone's voice for house announcements, any other turns it off,
+  in the tap that answers it. The story hears the answer like any poll and
+  keeps nothing, since ⊞ Start can change it.
+
 - **`moment: major`** (or `minor`) makes the card a **moment**: besides
   docking in its room it interrupts the guest at the story's alert level
   ([Live shows](live-shows.md)). **`moment: big`** takes the whole screen

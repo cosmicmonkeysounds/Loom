@@ -6,6 +6,7 @@
 //! The stream reopens itself after a refusal (`openChatFeed`) — a proxy's
 //! 502 while the server restarts closes an `EventSource` for good.
 
+import type { AnnounceNotice } from "./phone-voice.ts";
 import { useEffect, useRef, useState } from "react";
 import type { ChatMessage } from "./types.ts";
 import type { AgentWaitNotice } from "./agent-wait.ts";
@@ -100,7 +101,7 @@ export interface FeedSource {
 const CLOSED = 2;
 
 /** The frames the chat stream carries. */
-export const CHAT_FRAMES = ["snapshot", "response", "lifecycle", "typing", "agentWait", "history", "message", "messageExpired", "messageModerated"] as const;
+export const CHAT_FRAMES = ["snapshot", "response", "lifecycle", "typing", "agentWait", "announce", "history", "message", "messageExpired", "messageModerated"] as const;
 export type ChatFrame = (typeof CHAT_FRAMES)[number];
 
 export const REOPEN_MS = 1000;
@@ -285,6 +286,8 @@ export interface ChatStreamHandlers {
   /** Every `history` frame, first: the waits start over (the server
    *  re-sends the open ones after it). */
   onWaitsReset?: () => void;
+  /** Wave 53: a house announcement for this phone to say (`phone-voice.ts`). */
+  onAnnounce?: (n: AnnounceNotice) => void;
   /** The full thread history just (re)loaded — the baseline for "new". */
   onHistory?: (messages: ChatMessage[]) => void;
   /** A live `message` frame (never the history), before it is applied —
@@ -327,6 +330,9 @@ export function chatFrameHandler(handlers: () => ChatStreamHandlers, ops: ChatMa
         return;
       case "agentWait":
         handlers().onAgentWait?.(d as AgentWaitNotice);
+        return;
+      case "announce":
+        handlers().onAnnounce?.(d as AnnounceNotice);
         return;
       case "history": {
         const list = d as ChatMessage[];

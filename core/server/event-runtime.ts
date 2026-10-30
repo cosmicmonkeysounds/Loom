@@ -22,7 +22,7 @@ import { ESCAPE_COOLDOWN_MS, VOICE_MAX_BYTES, kingSignal, lightStateDoes, lightS
 import { asNumber, truthy } from "../src/runtime/expr.ts";
 import { Sim, type SimEvent } from "../src/runtime/sim/index.ts";
 import { foldCode, namedEvents, type SimModel } from "../src/runtime/sim/model.ts";
-import { allSnapshotFlags, awardOnly, boothChannels, callsCue, playerHiddenRooms, cueState, guestCardView, interactionActors, interactionSubjectOnly, isCaller, guestFlags, guestView, isLocked, modView, staffRoomChannels, notePress, pressMovedArm, pressRefusal, pressRefused, primeView, scanRefused, rosterRow, staffRoomIds, themeOf, titleOf, type AgentMindSummary, type GuestView, type ModPresence, type ModView, type PrimeView, type RuntimePhase } from "./views.ts";
+import { allSnapshotFlags, arrivalDue, awardOnly, boothChannels, callsCue, playerHiddenRooms, cueState, guestCardView, interactionActors, interactionSubjectOnly, isCaller, guestFlags, guestView, isLocked, modView, staffRoomChannels, notePress, pressMovedArm, pressRefusal, pressRefused, primeView, scanRefused, rosterRow, staffRoomIds, themeOf, titleOf, type AgentMindSummary, type GuestView, type ModPresence, type ModView, type PrimeView, type RuntimePhase } from "./views.ts";
 import { passOk, type Passcodes } from "./auth.ts";
 import { SessionStore } from "./session.ts";
 import { Store, type AgentWait, type AgentWaits, type Mutation } from "./store.ts";
@@ -96,7 +96,7 @@ import { LIGHTS_FILE, LightsHub, handleLightsGet, handleLightsPost, lightsProble
 import { GameLightsFeed, LightsEstimate, buildGameLights } from "./lights-shown.ts";
 import { DESK_BY, DESK_FILE, DeskHub, deskHouseOf, deskLightFixtures, deskProblems, deskRefsOf, deskSeen, handleDeskGet, handleDeskPost, lookMsOf, type DeskContext, type DeskTimers } from "./desk.ts";
 import { DESK_SPEECH_GRACE_MS } from "../src/house-desk.ts";
-import { ScreenWatch, speechWatchOf, handleScreenGet, handleScreenTerminalsGet, handleScreenVoicePost, screenKingOf, screenTerminals } from "./routes/screen.ts";
+import { ANNOUNCE_VERB, ScreenWatch, announceTextOf, speechWatchOf, spokenAnnounce, handleScreenGet, handleScreenTerminalsGet, handleScreenVoicePost, screenKingOf, screenTerminals } from "./routes/screen.ts";
 import { handleScreenIdentifyPost } from "./routes/screen.ts";
 import { CAM_BODY_LIMIT, CamStore, parseCamUpload } from "./spatial-cams.ts";
 import { DreamFeed } from "./dream-feed.ts";
@@ -313,10 +313,15 @@ function visibleToPrime(m: ChatMessage, c: Client, isAgent: (character: string) 
   if (m.channel.startsWith("dm:")) {
     // Their own character's threads, public lines, and the performer's own
     // conversation with an agent-voiced character (audience `@<Character>`).
-    return m.channel === `dm:${c.id}` || m.audience === "all" || m.audience.includes(`@${c.id}`);
+    // Wave 53: Task Manager's lines to another part on rails are that part's.
+    if (m.audience === "all" || m.audience.includes(`@${c.id}`)) return true;
+    return m.channel === `dm:${c.id}` && !m.audience.some((a) => a.startsWith("@"));
   }
   return true;
 }
+
+/** Wave 53 (C1): the event a booth's arrival fires for its own part. */
+export const BOOTH_ARRIVED = "booth_arrived";
 
 /** The longest unlock code `/api/guest/codex/redeem` journals (fix round):
  *  a printed code or a puzzle answer is a few words at most. */
@@ -1558,7 +1563,7 @@ export class EventRuntime {
       // Wave 32 (C5): a host booth's talk panel (never a player's).
       ...(host ? { talk: this.talkViewNow() } : {}),
       // Wave 41 (C3): this part's inbox for Trabolta's letter.
-      letter: { email: this.letters.get(`p:${character}`)?.email ?? null, from: this.lettersMailer?.from ?? null },
+      letter: { email: this.letters.get(`p:${character}`)?.email ?? null, from: this.lettersMailer?.from ?? null, ...(this.boothInboxAsked(character) ? { asked: true as const } : {}) },
       // Wave 48 (C2): the censor's flagged lines, on its own booth only.
       ...(this.sim !== null && this.sim.model.censor === character ? { filter: this.filterView() } : {}),
     };
@@ -2194,6 +2199,20 @@ export class EventRuntime {
    */
   /** Returns the chat messages this batch appended (not those of a pick it
    *  drew: `runPicks` commits its own), for a press's card lines (C1). */
+  /** Wave 53 (C5): the `announce` frame to every phone on a stream: words to
+   *  say, or `stop`. Live only and never journaled: a phone that missed it
+   *  never hears it, and the app says it only if its owner opted in. */
+  private phoneAnnounce(frame: { text: string; at: number } | { stop: true }): void {
+    for (const c of this.clients) if (c.role !== "mod") sseSend(c.res, "announce", frame);
+  }
+
+  /** Wave 53: did this part answer the upload's inbox card? (The story's
+   *  `inbox` slot, `given` or `skipped`; the address is never in the story.) */
+  private boothInboxAsked(character: string): boolean {
+    const v = this.sim?.world.peek(`${character}.inbox`);
+    return v !== undefined && v !== null && v.kind === "string" && (v.value === "given" || v.value === "skipped");
+  }
+
   private fanout(events: SimEvent[], via?: string): ChatMessage[] {
     if (this.agents.judging.length > 0) this.dropMootRulings();
     for (const [menu, channel] of menuChannelsFor(events, this.lastSpeakers)) this.menuChannels.set(menu, channel);
@@ -2208,6 +2227,11 @@ export class EventRuntime {
       }
       if (e.type === "choicePrompted" && e.person !== null) {
         this.decisionChannels.set(e.person, decisionChannelFor(events, e.person));
+      }
+      // Wave 53 (C5): what the house speakers say, each phone that opted in says too.
+      if (e.type === "directive" && e.verb === ANNOUNCE_VERB) {
+        const text = announceTextOf(e.args);
+        if (text !== null) this.phoneAnnounce({ text, at: Date.now() });
       }
       // Mods (the editor's Run mode) also get the raw sim feed, so the
       // story-graph overlay lights beats up as they fire and a future
@@ -5397,6 +5421,9 @@ export class EventRuntime {
     this.pairing.clear();
     this.rejoin.clear();
     this.personaOwners.clear();
+    // Wave 53: a guest's id dies with the run, a part's name does not, and
+    // seqs start over: `10:Clippy` must not answer the new run's card 10.
+    this.answeredWidgets.clear();
     this.caller = null; // C8: the caller claim is memory only, cut by every restart
     // Operator play-as sessions follow the sessions they stand in for: a
     // guest's dies with every restart, a booth's only when the show goes live.
@@ -6305,6 +6332,8 @@ export class EventRuntime {
         const link = project === null ? null : { writeFile: (file: string, text: string) => project.writeFile(file, text), saveSnapshot: () => project.saveSnapshot(this.dataSnapshot(this.projectMaps ?? {})) };
         if (await handleAudioPost(this.audio, this.audioContext(), path, body, res, link, by)) {
           this.noteDeskAudio(path, res, by);
+          // Wave 53 (C5): 🔇 + the announcement cuts the phones too.
+          if (path === "/api/mod/audio/stop" && body["announce"] === true && res.statusCode === 200) this.phoneAnnounce({ stop: true });
           return true;
         }
       }
@@ -7326,6 +7355,40 @@ export class EventRuntime {
         handlePrimeLetter(this.letters, character, body, res);
         return true;
       }
+      case "/api/prime/arrive": {
+        // Wave 53 (C1): a booth reports in while the story's `arrival:`
+        // header holds for its part. `booth_arrived` fires with the character
+        // as subject AND actor (its own hooks alone hear it), once the story
+        // has a sim, doors open or not: the crew arrives before the guests.
+        const token = tokenOf(req, body);
+        const character = this.characterOf(token);
+        if (!character || !this.canScan(token)) {
+          sendJson(res, 403, { error: "no performer capability — sign in" });
+          return true;
+        }
+        if (this.sim === null) {
+          sendJson(res, 409, { error: "doors are closed" });
+          return true;
+        }
+        if (arrivalDue(this.sim, character)) this.fanout(this.commit("signal", BOOTH_ARRIVED, character, {}, character));
+        sendJson(res, 200, { ok: true });
+        return true;
+      }
+      case "/api/prime/choose": {
+        // Wave 53 (C2): a part on rails answers its menu, doors open or not.
+        const token = tokenOf(req, body);
+        const character = this.characterOf(token);
+        if (!character || !this.canScan(token)) {
+          sendJson(res, 403, { error: "no performer capability — sign in" });
+          return true;
+        }
+        if (this.sim?.cutsceneFor(character) !== true) {
+          sendJson(res, 409, { error: "no choice", options: null });
+          return true;
+        }
+        this.chooseFor(character, body, res);
+        return true;
+      }
       case "/api/prime/widget": {
         // A performer answered a card the story showed their character
         // (`show <kind> … to <Character>`): the named event `<kind> answered`
@@ -7337,7 +7400,8 @@ export class EventRuntime {
           sendJson(res, 403, { error: "no performer capability — sign in" });
           return true;
         }
-        if (!open) {
+        // Wave 53 (C2): a part on rails finishes its upload before the doors.
+        if (!open && this.sim?.cutsceneFor(character) !== true) {
           sendJson(res, 409, { error: "doors are closed" });
           return true;
         }
@@ -8222,6 +8286,9 @@ export class EventRuntime {
         const before = this.chat.all().length;
         this.fanout(this.commit("broadcast", scope, cue));
         const stored = this.chat.all().slice(before);
+        // Wave 53 (C5): a line to everyone is an announcement a phone may say.
+        const spoken = scope === "all" || scope === "everyone" ? spokenAnnounce(cue) : "";
+        if (spoken !== "") this.phoneAnnounce({ text: spoken, at: Date.now() });
         sendJson(res, 200, { ok: true, reached: stored.reduce((n, m) => n + (m.audience === "all" ? -1 : m.audience.length), 0) });
         return true;
       }

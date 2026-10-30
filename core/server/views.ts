@@ -2215,8 +2215,10 @@ export interface PrimeView {
   filter?: FilterView;
   /** Wave 41 (C3): this part's inbox for Trabolta's letter (`email` on
    *  file or null) and the From line it would come from (null: mail is off).
-   *  Absent from an old server and from the bare sim projection. */
-  letter?: { email: string | null; from: string | null };
+   *  Wave 53: `asked` = the part answered the upload's inbox card, so the
+   *  booth's own ask stays away. Absent from an old server and from the bare
+   *  sim projection. */
+  letter?: { email: string | null; from: string | null; asked?: true };
   /** The story clock (ms, `Sim.elapsed()`) when this view was built — the
    *  "now" a client measures a message's `ts` against (e.g. only banner an
    *  alert it missed if it is under 10 minutes old). */
@@ -2224,6 +2226,16 @@ export interface PrimeView {
   /** The show clock (wave 13 K2: `Clock.set_to` / `Clock.set_at`, see
    *  `src/show-clock.ts`), runtime-filled; absent when the story set none. */
   showClock?: ShowClock;
+  /** Wave 53 (C1): the story's `arrival:` header holds for this part: the
+   *  booth reports `POST /api/prime/arrive`. Absent otherwise. */
+  arrive?: true;
+  /** Wave 53 (C2): the part stands in a `cutscene: true` location: the booth
+   *  goes on rails, like a guest's `cutscene`. Absent otherwise. */
+  cutscene?: true;
+  /** Wave 53 (C2): on rails, where it stands, and the menus waiting on it
+   *  (oldest first; `POST /api/prime/choose`). Absent off rails. */
+  location?: string;
+  choices?: Array<{ id: number; beat: string; options: string[] }>;
   faction: string | null;
   guests: PrimeGuest[];
   /** Every authored channel — performers run every room. */
@@ -2428,7 +2440,23 @@ export function primeView(sim: Sim | null, character: string, agentsOnline?: Rea
     player,
     ...boothMission(sim, objectives),
     ...(stats.length > 0 ? { stats } : {}),
+    ...boothRails(sim, character),
   };
+}
+
+/** Wave 53 (C1): does the story's `arrival:` header hold for this part? */
+export function arrivalDue(sim: Sim, character: string): boolean {
+  const cond = sim.model.arrival;
+  return cond !== null && sim.holds(cond, character, character);
+}
+
+/** Wave 53 (C2): a part on rails, `GuestView.cutscene`'s twin. */
+function boothRails(sim: Sim, character: string): Pick<PrimeView, "arrive" | "cutscene" | "location" | "choices"> {
+  const arrive = arrivalDue(sim, character) ? { arrive: true as const } : {};
+  const location = sim.locationOf(character);
+  if (location === null || !sim.cutsceneFor(character)) return arrive;
+  const choices = sim.pendingChoicesFor(character);
+  return { ...arrive, cutscene: true, location, ...(choices.length > 0 ? { choices } : {}) };
 }
 
 /** `PrimeView.mission` (wave 21, C4): the first live objective and its

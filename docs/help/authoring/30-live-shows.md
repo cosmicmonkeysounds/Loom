@@ -346,6 +346,19 @@ archive: The Uploader when program.cleared == true
   captured guests yourself. *Trapped in the Internet* opens it to everyone
   once `Night.ended` is true: a party favour (runs after the end never
   count on the duck board).
+- **`arrival: <condition>`** (wave 53), read per character with `self`
+  bound. While it holds a performer's booth reports in, once, as `booth_arrived`
+  (`when booth_arrived for program:`, the part's own hooks alone hear it), doors
+  open or not. Pair it with the rail: a character bound as the subject while it
+  stands in a `cutscene: true` location is **on rails** like a guest, so a
+  beat's lines, its menus and its cards reach its booth, which shows only the
+  arrival stage. `move self to <Place>` stands a character there and `move` off
+  takes it away. A character has no room to fill and wakes no hooks by moving.
+  A line in a character's hook that plays off rails is public stage voice, so
+  guard it by where the part stands. A guest's card answer reaches every
+  character's hook too: open each hook on a slot only your parts have.
+  *Trapped in the Internet* plays its whole upload this way
+  (`TRAIT Staff`, `cast/kit.loom`).
 - **`lock: <condition>`** (wave 26), read per guest like `reinstall:`,
   **locks** a guest's phone while it holds for them. The phone shows a
   lock screen: the current objective, a read-only copy of the

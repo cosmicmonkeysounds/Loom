@@ -176,6 +176,9 @@ function headerLints(docs: ReadonlyArray<[string, Doc]>, model: SimModel, push: 
       } else if (line.key === "lock") {
         // Wave 26 (C2): an error — a broken `lock:` never locks a phone.
         if (!exprOk(line.value)) push(uri, range, true, Code.L1216HeaderLineInvalid, `\`lock: ${line.value.trim()}\` is no expression — no phone is ever locked (write a condition on the guest, e.g. \`lock: program.corrupted == true\`)`);
+      } else if (line.key === "arrival") {
+        // Wave 53: a broken \`arrival:\` sends no booth through its arrival.
+        if (!exprOk(line.value)) push(uri, range, true, Code.L1216HeaderLineInvalid, `\`arrival: ${line.value.trim()}\` is no expression — no booth ever arrives (write a condition on the part, e.g. \`arrival: self.arrived != true\`)`);
       }
     }
   }

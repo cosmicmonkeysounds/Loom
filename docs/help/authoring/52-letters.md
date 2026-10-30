@@ -32,8 +32,10 @@ The address goes to the event's letters list on the server. It is never
 in the story, the log or a backup of the journal. Restarting the story
 clears the guests' addresses, and going live clears the performers' too.
 
-Performers are asked in their booth: a small *A letter from …* card on
-the booth's home lets each part leave an address, change it or remove it.
+Performers are asked in their own upload, like a guest. A small *A letter
+from …* card on the booth's home then shows the address on file, and lets
+them change or remove it. In a story with no upload for its parts, that
+card is where they're asked.
 
 ## Writing and sending
 

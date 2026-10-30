@@ -197,7 +197,8 @@ export function createCrawl(opts?: CrawlOptions): Crawl {
     if (m.ambient || m.parentSeq != null || m.hidden) return null;
     if (open === PERSONAL_STREAM) {
       // `personalStream`'s own filter (session/channels.ts).
-      if (me === null || !Array.isArray(m.audience) || !m.audience.includes(me.id)) return null;
+      // (Wave 53: a booth on rails reads the rows addressed `@<Character>`.)
+      if (me === null || !Array.isArray(m.audience) || !(m.audience.includes(me.id) || m.audience.includes(`@${me.id}`))) return null;
       return PINNED_ROOMS.has(m.channel) ? null : PERSONAL_STREAM;
     }
     return m.channel === open ? open : null;

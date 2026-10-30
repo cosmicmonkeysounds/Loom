@@ -112,3 +112,6 @@ CHARACTER Kernel
   // themselves; one = that part's name, more = the Director's quick-fire).
   _undo_n: 0 to 99 = 0
   _undo_by: text? = none
+  // Wave 53: how many parts are through their upload (the staff door, or a
+  // director's ⏭). Secret, so it never reaches Trabolta's worker.
+  staff_uploaded: 0 to 99 = 0

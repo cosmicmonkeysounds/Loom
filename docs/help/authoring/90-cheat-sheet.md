@@ -159,6 +159,7 @@ openers end with `:` and indent their body.
 | `reinstall: <cond>` (header) | who may enter the reinstallation games, read per guest |
 | `lock: program.corrupted == true` (header) | locks a guest's phone while it holds for them: a lock screen with the objective, the pass and the `restricted: allow` buttons; every story-changing guest route answers `403 locked`, never journaled ([live shows](live-shows.md)) |
 | `archive: The Uploader when program.cleared == true` (header, repeatable) | moves a guest's finished thread under *Other rooms* |
+| `arrival: self.arrived != true` (header) | a booth reports in as `booth_arrived` while it holds for its part; a character in a `cutscene: true` location is on rails, and its booth is the stage ([live shows](live-shows.md)) |
 | `majority: Night.present / 2 + 1` (header) | what a side needs, shown on the Sides screen's doors (lint `L1216` for a bad `wanted:` / `reinstall:` / `archive:`, an error for a `lock:` that is no expression) |
 | `founding: <condition>` (header) | faction mode: programs found factions that race like the sides, one faction at a time; `majority_faction()` / `faction_of(who)` / `faction_name(id)` / `faction_founder(id)` read the race (lint `L1220`) |
 | `badge: program.afk as 🚻 Bathroom Mode[, while …]` (header) | a glyph beside their name on every people list while it is true (never a secret: lint `L1219`) |

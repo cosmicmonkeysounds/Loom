@@ -602,6 +602,11 @@ export interface SimModel {
    *  per guest like `reinstall:` (the first non-empty line wins); null = no
    *  phone is ever locked. */
   lock: string | null;
+  /** Header `arrival: <cond>` (wave 53) — a performer's booth is due its
+   *  arrival while this holds for the part (`self`): the booth reports
+   *  `booth_arrived` and the part's own hook takes it from there. Evaluated
+   *  per character; the first non-empty line wins; null = no booth arrives. */
+  arrival: string | null;
   /** Header `archive: <channel or CHARACTER> when <cond>` lines (wave 18,
    *  C11), every file's, in order — rooms done for a guest once the
    *  condition holds for them (the phone tucks them away). */
@@ -727,6 +732,7 @@ export function compileModel(bundle: Bundle): SimModel {
     wanted: null,
     reinstall: null,
     lock: null,
+    arrival: null,
     archive: [],
     badges: [],
     stats: [],
@@ -780,6 +786,8 @@ export function compileModel(bundle: Bundle): SimModel {
         if (model.reinstall === null && line.value.trim() !== "") model.reinstall = line.value.trim();
       } else if (line.key === "lock") {
         if (model.lock === null && line.value.trim() !== "") model.lock = line.value.trim();
+      } else if (line.key === "arrival") {
+        if (model.arrival === null && line.value.trim() !== "") model.arrival = line.value.trim();
       } else if (line.key === "archive") {
         archiveRaw.push(line.value);
       } else if (line.key === "badge") {

@@ -1,6 +1,7 @@
-//! Wave 41 (C3): a performer's opt-in to Jean Trabolta's letter. Performers
-//! are never uploaded, so the booth asks them itself (no story line): a
-//! small card on the booth's home, below the NOW card, never over a scan.
+//! Wave 41 (C3): a performer's opt-in to Jean Trabolta's letter: a small
+//! card on the booth's home, below the NOW card, never over a scan. Since
+//! wave 53 the upload asks first (`PrimeLetter.asked`), so this is where the
+//! address is changed, and the ask for a story with no upload for its parts.
 //! It shows until the performer sends an address or taps *No thanks* (kept
 //! per event + character in the host's storage, every read and write
 //! guarded); with one on file it folds to `✔ <address>` and Change /

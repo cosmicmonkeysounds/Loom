@@ -1,25 +1,25 @@
-//! Alerts that actually land (K-06 / N-07). An alert is a `!` broadcast
-//! (`ChatMessage.alert`) or, in a booth, an unsolicited readout (the late
-//! list, a private warning). Wave 13: the moments layer
-//! (`moments/provider.tsx`) turns them into moments on the interrupt ladder
-//! and settles the mark this hook persists; `useAlerts` keeps the mark, the
-//! audio unlock and the quiet feedback toast (`raise`).
-//!
-//! Three things a phone does to alerts, and what this module does back:
-//! - **The screen goes off.** The SSE stream drops; on wake it reconnects
-//!   and the server replays `history`. The mark of the last alert seen is
-//!   therefore *kept* across re-histories (and persisted per session, so an
-//!   iOS tab the OS discarded still knows); the moments layer replays what
-//!   is above it from the last 10 story-minutes. Older ones are skipped: a
-//!   re-login must not replay every alarm of the night.
-//! - **Audio needs a gesture.** One shared `AudioContext`, created and
-//!   unlocked on the first tap (iOS stays silent for a context made later,
-//!   outside a gesture), resumed before every chime.
-//! - **A hidden page can't sound.** A moment that lands while the page is
-//!   hidden is missed and replays (and chimes) when it becomes visible; the
-//!   toast's auto-dismiss only counts visible time.
-//!
-//! Pure helpers first (unit-tested in `test/alerts.test.ts`), then the hook.
+// Alerts that actually land (K-06 / N-07). An alert is a `!` broadcast
+// (`ChatMessage.alert`) or, in a booth, an unsolicited readout (the late
+// list, a private warning). Wave 13: the moments layer
+// (`moments/provider.tsx`) turns them into moments on the interrupt ladder
+// and settles the mark this hook persists; `useAlerts` keeps the mark, the
+// audio unlock and the quiet feedback toast (`raise`).
+//
+// Three things a phone does to alerts, and what this module does back:
+// - **The screen goes off.** The SSE stream drops; on wake it reconnects
+//   and the server replays `history`. The mark of the last alert seen is
+//   therefore *kept* across re-histories (and persisted per session, so an
+//   iOS tab the OS discarded still knows); the moments layer replays what
+//   is above it from the last 10 story-minutes. Older ones are skipped: a
+//   re-login must not replay every alarm of the night.
+// - **Audio needs a gesture.** One shared `AudioContext`, created and
+//   unlocked on the first tap (iOS stays silent for a context made later,
+//   outside a gesture), resumed before every chime.
+// - **A hidden page can't sound.** A moment that lands while the page is
+//   hidden is missed and replays (and chimes) when it becomes visible; the
+//   toast's auto-dismiss only counts visible time.
+//
+// Pure helpers first (unit-tested in `test/alerts.test.ts`), then the hook.
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { SessionStorage } from "./host.ts";

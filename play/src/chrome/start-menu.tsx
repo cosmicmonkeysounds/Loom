@@ -26,6 +26,14 @@ export interface StartItem {
   arm?: boolean;
 }
 
+/** Wave 53 (C4): the phone's voice switch, for every Start menu (null: none
+ *  to offer). Fires straight through, so the phone speaks inside the tap. */
+export function voiceStartItem(voice: { on: boolean; toggle: () => void } | null): StartItem | null {
+  if (voice === null) return null;
+  // DRAFT w53
+  return { id: "voice", icon: voice.on ? "🔊" : "🔇", label: voice.on ? "Announcements out loud (tap to stop)" : "Say announcements out loud", onClick: voice.toggle };
+}
+
 /** The Start menu's next state after a tap on `item` while `asking` holds
  *  the item awaiting its confirmation (pure — `test/start-menu.test.tsx`):
  *  an item with a `confirm` asks first; a second tap on the same item fires

@@ -3,7 +3,7 @@ title: Performer station
 section: Performers
 order: 7
 role: performer
-keywords: performer, booth, player, players, mission, score, points, stat, notes, team, people, new mission, your game is on, pop-out, popout, later, waiting, wanted, wanted board, claim, i'll get them, hand it back, take over, confrontation, corruption detected, captured, caught by, door queue, at the door, player select, tiles, picker, still missing, they're here, cue bar, your cue, call it, clippy, chat log, chats, now, objective, checklist, to-do, tick, alert, chime, late, keep screen on, push, notifications, get alerts, iphone, home screen, release, re-sign, loaner, lost phone, file a fact, filed fact, judge, judging, verdict, confidence, override, review, hosts, character, sign in, scanner, scan, camera, next guest, close, back, one tap, readout, readouts, admin, moderator, capture, hide, guest card, card, face, all buttons, not on offer, facts, guests, messages, who's here, restricted, marked, pinned, pin, quest log, codex, wallet, approve, deny, audit, approval, transfer, arm, tap twice, tap again to fire, near miss, not your button, start, taskbar, balloon, sticky
+keywords: upload, uploading, your upload, staff door, not you, performer, booth, player, players, mission, score, points, stat, notes, team, people, new mission, your game is on, pop-out, popout, later, waiting, wanted, wanted board, claim, i'll get them, hand it back, take over, confrontation, corruption detected, captured, caught by, door queue, at the door, player select, tiles, picker, still missing, they're here, cue bar, your cue, call it, clippy, chat log, chats, now, objective, checklist, to-do, tick, alert, chime, late, keep screen on, push, notifications, get alerts, iphone, home screen, release, re-sign, loaner, lost phone, file a fact, filed fact, judge, judging, verdict, confidence, override, review, hosts, character, sign in, scanner, scan, camera, next guest, close, back, one tap, readout, readouts, admin, moderator, capture, hide, guest card, card, face, all buttons, not on offer, facts, guests, messages, who's here, restricted, marked, pinned, pin, quest log, codex, wallet, approve, deny, audit, approval, transfer, arm, tap twice, tap again to fire, near miss, not your button, start, taskbar, balloon, sticky
 ---
 
 The performer station is the same app, recomposed for the booth: your
@@ -53,6 +53,20 @@ live) — sign in again with your passcode or your cast card."* A phone that wak
 in the night gets back every readout, every guest's message, your cast
 thread and every card still waiting; only the busy rooms are cut to
 their last few hundred lines.
+
+## Your upload
+
+Everyone uploads, you too. The first time you sign in, your booth is nothing
+but the same dark stage the guests get: the security check, Task Manager's
+form, the deposit box, the Terms of Service, then three questions (video,
+your phone's voice, your inbox). Nobody scans you in: you leave by the staff
+door, and **Continue** opens your booth. It takes a couple of minutes, so **do
+it before the doors open**. If your part changes phones it does not ask again.
+
+Tapped the wrong part? **Not you?** at the top, tapped twice, signs you out.
+Phone died halfway, or a guest is waiting on you? A host or the director can
+press **⏭ Wave the staff through their upload**, and you go straight to your
+booth.
 
 ## Playing a part
 

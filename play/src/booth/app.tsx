@@ -51,6 +51,9 @@ import { GuestCard, type CardSeed } from "./card.tsx";
 import { GuestsSheet } from "./guests.tsx";
 import { AlertsSheet, KnowsSheet, PowersSheet, StartHeader, boothPill, boothStartItems, playerStartItems, type BoothSheet } from "./header.tsx";
 import { PrimeLogin } from "./login.tsx";
+import { usePhoneVoice } from "../phone-voice.ts";
+import { voiceStartItem } from "../chrome/start-menu.tsx";
+import { BoothUploadStage, useBoothRails } from "./upload.tsx";
 import { backFor, boothFoldable, boothHost, boothSidebar, closeTo, closedGate, guestsWaiting, keepsCardGuest, soonest, viewPaused, type Layer } from "./model.ts";
 import { boothMine, boothMomentFeed } from "./moments-feed.ts";
 import { PeopleSheet } from "./people.tsx";
@@ -237,9 +240,15 @@ export function PerformerApp({ onLeave }: { onLeave: () => void }) {
   // readouts about them inside the hold (the card showed them) and lets
   // every other booth readout through; a pop-out about them waits (§2.2 rule 7).
   const cardGuest = useRef<string | null>(null);
+  // Wave 53 (C2): while the part is on rails the booth is its upload's stage.
+  const cut = useBoothRails(s);
+  const signOut = () => {
+    s.leave();
+    onLeave();
+  };
   return (
     <PopOutScope session={s.auth?.token ?? null} cardGuest={() => cardGuest.current}>
-      <BoothApp onLeave={onLeave} s={s} cardGuest={cardGuest} />
+      {cut.showing ? <BoothUploadStage s={s} over={cut.over} onContinue={cut.leave} onLeave={signOut} /> : <BoothApp onLeave={onLeave} s={s} cardGuest={cardGuest} />}
     </PopOutScope>
   );
 }
@@ -262,6 +271,7 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
   // title bar (the driver plays the chime), not a pop-out over the card.
   const [missionNews, setMissionNews] = useState<{ id: string; title: string } | null>(null);
   const wake = useWakeLock(host.storage);
+  const voice = usePhoneVoice();
   // Wave 48 (C5): the censor's flagged lines, shared by the pop-out, the tray and the window.
   const filter = useFilter(s, host.storage);
   // The just-closed pass, ignored for a moment: kept for the sign-in, not
@@ -762,6 +772,7 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
   };
   // Wave 48b (C13): the censor's dial, only here (she has to find it).
   const filterItem = filter.view !== null ? filterStartItem(() => setLayer({ kind: "strength" })) : null;
+  const voiceItem = voiceStartItem(voice);
   const start = player
     ? playerStartItems({
         character,
@@ -769,6 +780,7 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
         embedded: host.embedded,
         credits: creditsStartItem(s.view?.night?.credits, () => credits.set(Date.now())),
         filter: filterItem,
+        voice: voiceItem,
         onHelp: () => setHelp(true),
         onSheet: setSheet,
         onPeople: () => setPeopleOpen(true),
@@ -786,6 +798,7 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
     wake,
     embedded: host.embedded,
     filter: filterItem,
+    voice: voiceItem,
     onHelp: () => setHelp(true),
     onSheet: setSheet,
     onSignOut: () => {

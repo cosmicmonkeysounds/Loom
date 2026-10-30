@@ -461,6 +461,7 @@ describe("Trapped in the Internet — compile", () => {
       _pressed_by: "none", // wave 21: who pressed the game button being settled
       _undo_n: "0", // wave 26 (B2): who pressed ↩ Not a Bingo
       _undo_by: "none",
+      staff_uploaded: "0", // wave 53: parts through their upload
     });
   });
 

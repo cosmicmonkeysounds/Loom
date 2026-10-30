@@ -86,8 +86,9 @@ describe("wave 41: the optional inbox card (C1, C2)", () => {
     const nothing = sim.choose("g1", 1); // I have nothing to leave: no deposit card
     const kinds = widgets(nothing).map((w) => w.widget);
     // Wave 44 (C1): the video card comes just before it.
-    expect(kinds).toEqual(["poll", "email", "pass"]);
-    const card = widgets(nothing)[1]!;
+    // Wave 53 (C4): so does the voice card, after it.
+    expect(kinds).toEqual(["poll", "poll", "email", "pass"]);
+    const card = widgets(nothing)[2]!;
     expect(card.params).toEqual({ button: "Send me the letter", skip: "No thanks", placeholder: "you@example.com" });
     expect(card.audience).toEqual(["g1"]);
     const given = sim.signal("email answered", "g1", { given: true, card: 3 });

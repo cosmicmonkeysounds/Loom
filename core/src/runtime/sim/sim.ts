@@ -2298,6 +2298,10 @@ export class Sim {
             this.setLocation(p, l);
             this.record({ type: "arrived", person: p, location: l, from: prior });
             this.fire({ verb: "arrive", subject: p, scanner: null, filter: l });
+          } else if (this.model.characters.has(p)) {
+            // Wave 53: a character has no room to fill and no hooks to wake;
+            // it only stands somewhere, so a cutscene can put it on rails.
+            this.world.set(`${p}.location`, vString(l));
           }
         }
         break;
@@ -2878,10 +2882,18 @@ export class Sim {
     this.world.setCollection("Persons", vList([...this.persons.keys()].map(vString)));
   }
 
+  /** Wave 53: a character bound as the subject while it stands in a
+   *  `cutscene: true` location is on rails like a guest: a beat's lines, its
+   *  menus and its cards reach that character's booth. Off rails a character
+   *  is never a subject, so nothing else about a line's audience changes. */
+  private onRails(id: string): boolean {
+    return this.model.characters.has(id) && this.cutsceneFor(id);
+  }
+
   private subjectAudience(bindings: Bindings): string[] {
     for (const name of this.subjectNames) {
       const id = bindings.get(name);
-      if (id !== undefined && this.persons.has(id)) return [id];
+      if (id !== undefined && (this.persons.has(id) || this.onRails(id))) return [id];
     }
     const self = bindings.get("self");
     return self !== undefined && this.persons.has(self) ? [self] : [];

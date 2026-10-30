@@ -334,7 +334,7 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   replaces the project's `credits.json` (like `facts.json`); `loomcheck`
   lints it. `GET /api/mod/video[?format=csv]` (`routes/video.ts`,
   directors only, never on the host allowlist) reads every guest's `video`
-  slot. Tests: `test/w44-credits.test.ts`, `test/w44-server.test.ts`,
+  slot, and since wave 53 every part that declares it (`staff: true`). Tests: `test/w44-credits.test.ts`, `test/w44-server.test.ts`,
   `test/trapped-w44.test.ts`.
 - **The censor's filter** (wave 48,
   [`docs/loom-w48-contract.md`](../docs/loom-w48-contract.md)). The
@@ -407,6 +407,28 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   never in git or an image: `scripts/ops/dream-media.sh`; Caddy serves
   `/media/`, and `server.ts` does only with no proxy. Tests:
   `test/w50-dream.test.ts`.
+- **A part on rails** (wave 53,
+  [`docs/loom-w53-contract.md`](../docs/loom-w53-contract.md)). Performers are
+  never Persons, but a character bound as the subject (never `self` alone) while
+  it stands in a `cutscene: true` location is addressed like one
+  (`Sim.subjectAudience`, `onRails`): a beat's lines, menus and cards reach its
+  booth, `@<Character>` (`audienceOf`, in `dialogue` and `chose` too). `Sim.move`
+  takes a character: `<id>.location` only, no occupants, visits or hooks. Header
+  `arrival: <cond>` (`model.arrival`, `views.ts` `arrivalDue`, read per part with
+  `self`) puts `PrimeView.arrive`; `POST /api/prime/arrive` commits
+  `signal("booth_arrived", character, {}, character)` and needs a sim, not open
+  doors. `PrimeView.cutscene` / `location` / `choices` are the guest's twins.
+  `POST /api/prime/choose` and `/api/prime/widget` work on rails with the doors
+  closed. A row in `dm:X` addressed `@Y` is Y's (`visibleToPrime`). `restart`
+  clears `answeredWidgets`: a part's name outlives a run and seqs start over. A
+  guest's card answer reaches every character's hook: open a staff hook on a slot
+  only parts have. Tests: `test/trapped-w53-staff-upload.test.ts`,
+  `test/w53-server.test.ts`.
+- **The phones' announce frame** (wave 53, C5). SSE `announce`, every guest and
+  booth stream, never a mod's: `{text, at}` for each live `do announce` (`fanout`)
+  and each `/api/mod/broadcast` to everyone (`spokenAnnounce`: no alert mark, no
+  emoji), `{stop: true}` on `/api/mod/audio/stop {announce: true}`. Memory only:
+  a phone that missed one never hears it. Whether a phone speaks is the phone's.
 - **Hub files have one owner at a time.** `event-runtime.ts`,
   `views.ts`, `chat.ts` and `sim.ts` are touched by almost every
   feature; when several agents work in parallel, give each of these to

@@ -7,6 +7,12 @@
 // app shows nothing but this stream until an Antivirus scans them in) —
 // and to nobody else: the story's `start:` beat is `Power On`.
 //
+// Wave 53: everyone uploads. Clippy, the Antivirus and the hosts run these
+// same beats, in their own booths, with `program` bound to the character
+// (`TRAIT Staff`, cast/kit.loom). A character is `program.staff`; it has no
+// Truthcoin, no pass and nobody to scan it in, and it leaves by Staff Door.
+// Inside these beats write nothing that needs a Person.
+//
 // The CAPTCHA is a real one on the phone (`show captcha …`): pick the
 // traffic lights, VERIFY. Solving it proves you are a human, and humans
 // are not permitted — so the first correct answer is INCORRECT and the
@@ -111,26 +117,54 @@ Task Manager: To complete the installation you must leave one thing behind. Plac
 The Uploader: By uploading you agree that Jean Trabolta, Sole Owner and Founder of Maps and Ducks, may make all of your decisions. You agree.
 unlock The Optical Drive for program
 unlock The Terms Of Service for program
-set program.score = 100
-Task Manager: 100 Truthcoin credited. I am also the bank. Keep track. I will.
+// Wave 53: staff earn ⭐, never Truthcoin (their `score` is their ⭐). DRAFT w53
+if program.staff == true:
+  Task Manager: Staff are not paid in Truthcoin. Noted. Fine.
+else:
+  set program.score = 100
+  Task Manager: 100 Truthcoin credited. I am also the bank. Keep track. I will.
 set program.uploaded = true
-// Wave 18 (Q26): every Antivirus booth hears the door queue.
-fire waiting_at_the_door for program
-Task Manager: Installation complete. Find me in the house, or message me here, for help with the app. I am always running. That is the whole job.
-Task Manager: Antivirus, confirm.
+if program.staff == true:
+  Task Manager: Installation complete. Your booth is ready. I am always running. That is the whole job.
+else:
+  // Wave 18 (Q26): every Antivirus booth hears the door queue.
+  fire waiting_at_the_door for program
+  Task Manager: Installation complete. Find me in the house, or message me here, for help with the app. I am always running. That is the whole job.
+  Task Manager: Antivirus, confirm.
 // Wave 44 (C1): the video question, a card that never holds the upload up:
 // unanswered, video of them may be used (an opt-out). main.loom's `when poll
 // answered` keeps it in the secret `video`; ⊞ Start changes it later. DRAFT w44
-Task Manager: A real question, for your human self. The house is being filmed tonight, and afterwards the humans who run it may share some of the video. If you would rather not be in it, say so here. You can change it any time from START.
+if program.staff == true:
+  // DRAFT w53: a booth's START has no 🎥.
+  Task Manager: A real question, for your human self. The house is being filmed tonight, and afterwards the humans who run it may share some of the video. If you would rather not be in it, say so here. Tell a director if you change your mind.
+else:
+  Task Manager: A real question, for your human self. The house is being filmed tonight, and afterwards the humans who run it may share some of the video. If you would rather not be in it, say so here. You can change it any time from START.
 // Wave 47: `optional`: after the upload it never sits on Mission (Start has 🎥).
 show poll "🎥 May video of you from tonight be used?" to program with options: "Yes, use video of me | No, leave me out", optional: true
+// Wave 53 (C4), DRAFT w53: the phone's own opt-in. `voice: true` is the card
+// the app reads: the first option turns the phone's voice on, in the tap
+// that answers it (a phone only speaks after a tap), the second leaves it off.
+Task Manager: One setting. The house makes announcements. This phone can say them out loud as well, if you want it to. You can change this any time from START.
+show poll "🔊 Say the house announcements out loud on this phone?" to program with options: "Yes, say them out loud | No, keep it quiet", optional: true, voice: true
 // Wave 41 (C1, C2), DRAFT w41: optional. Skipping it costs nothing.
 Task Manager: One more form. Optional. When the night is over, Jean Trabolta writes to every program he installed. A letter, to your human inbox. Leave the address or do not.
 show email "Your human inbox, for Jean Trabolta's letter. Optional." to program with button: "Send me the letter", skip: "No thanks", placeholder: "you@example.com"
 // A deposited program gets the pass with its typed record (main.loom); the
 // stage's My pass button has it meanwhile, so nothing waits on the card.
-if program.left_behind != "deposited":
+if program.left_behind != "deposited" and program.staff != true:
   show pass "Hold this up. An Antivirus will scan you in. Until then you are nowhere." to program
+
+// Wave 53: the end of a staff upload, off the inbox card (the last one the
+// stage docks; TRAIT Staff). Nobody scans the scanners: the door is theirs.
+// Every line comes before the move: off rails a line reaches nobody's booth.
+// The booth keeps the stage until Continue. DRAFT w53
+== Staff Door
+  setting: The Optical Drive
+  cast: The Uploader
+
+The Uploader: Staff door, {program.name}. Nobody scans the scanners. Go to work.
+set Kernel.staff_uploaded += 1
+move program to The Desktop
 
 // The door. A program waits in the Optical Drive — still on rails — until an
 // Antivirus scans their pass (`TRAIT Enforcer` in cast/kit.loom:

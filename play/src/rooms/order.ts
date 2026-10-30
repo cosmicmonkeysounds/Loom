@@ -1,21 +1,21 @@
-//! The room list's order (wave 13: a fixed order that stops jumping). The
-//! sessions pass `roomOrder` as `ThreadsOptions.order`; `presence.ts`
-//! re-exports it; the booth reuses it and `foldRooms` (never a copy).
-//!
-//! Rooms sort into fixed tiers, and inside a tier they keep a stable order
-//! (the session's `order` key, then the name) — a new line never lifts a
-//! room past its neighbours. A room only moves when its tier changes: you
-//! walk into it, it starts asking you something, a badge appears.
-//!
-//!   0  pinned — Quest Log, Codex, Wallet (their own fixed order)
-//!   1  staff rooms (a booth's `# hosts`, `# quarantine`)
-//!   2  the room you stand in
-//!   3  rooms that ask (a decision, a card waiting on you)
-//!   4  agent-voiced DMs (Trabolta)
-//!   5  the lobby (the one announcement home)
-//!   6  other DMs with a badge
-//!   7  rooms with someone in them, or something unread
-//!   8  everything else — folded into "Other rooms (n)"
+// The room list's order (wave 13: a fixed order that stops jumping). The
+// sessions pass `roomOrder` as `ThreadsOptions.order`; `presence.ts`
+// re-exports it; the booth reuses it and `foldRooms` (never a copy).
+//
+// Rooms sort into fixed tiers, and inside a tier they keep a stable order
+// (the session's `order` key, then the name) — a new line never lifts a
+// room past its neighbours. A room only moves when its tier changes: you
+// walk into it, it starts asking you something, a badge appears.
+//
+//   0  pinned — Quest Log, Codex, Wallet (their own fixed order)
+//   1  staff rooms (a booth's `# hosts`, `# quarantine`)
+//   2  the room you stand in
+//   3  rooms that ask (a decision, a card waiting on you)
+//   4  agent-voiced DMs (Trabolta)
+//   5  the lobby (the one announcement home)
+//   6  other DMs with a badge
+//   7  rooms with someone in them, or something unread
+//   8  everything else — folded into "Other rooms (n)"
 
 import type { Channel } from "../types.ts";
 

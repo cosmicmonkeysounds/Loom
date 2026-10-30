@@ -2,7 +2,7 @@
 title: Notifications & big moments
 section: Guest Guide
 order: 3.5
-keywords: notifications, chat log hidden, announcements, checked in, recycle bin, bin, bell, alert, alerts, pop-up, popup, balloon, banner, sticky, dialog, blue screen, glitch, big moment, full screen, achievement, collect, cheer, house news, virus detected, quarantined, missed, clear all, delete, access is denied, full of beans, in use, take me there, go there, buttons, chime, push, get alerts, locked, keep screen on, iphone, home screen, takeover, flashing, go to the living room
+keywords: read aloud, out loud, speak, say, voice, text to speech, say announcements out loud, quiet, notifications, chat log hidden, announcements, checked in, recycle bin, bin, bell, alert, alerts, pop-up, popup, balloon, banner, sticky, dialog, blue screen, glitch, big moment, full screen, achievement, collect, cheer, house news, virus detected, quarantined, missed, clear all, delete, access is denied, full of beans, in use, take me there, go there, buttons, chime, push, get alerts, locked, keep screen on, iphone, home screen, takeover, flashing, go to the living room
 ---
 
 The story interrupts you when it matters, and **every interruption has a
@@ -100,6 +100,18 @@ there: if it shows **Get alerts on your iPhone**, tap Share → **Add to Home
 Screen**, open the party from the new icon (you'll still be you) and tap 🔔
 there; if it says **Your iPhone can't get alerts**, keep the app open with
 the screen on.
+
+## Hearing the announcements on your phone
+
+Your phone can say the house's announcements out loud. It's your choice: the
+upload asks once, and **Start → Say announcements out loud** turns it on any
+time. The phone says so when it's on, so you know you can hear it. The same
+item in Start, **Announcements out loud (tap to stop)**, turns it off again,
+and on, as often as you like.
+
+If you reload the app, tap anywhere once so the phone may speak again. A phone
+with its screen off may stay quiet, and what it missed is in the bin. Check the
+phone's volume if you hear nothing.
 
 ## The takeover
 
