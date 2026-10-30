@@ -785,6 +785,8 @@ calls; it can do nothing else.
 | `POST /api/mod/spatial/begin` | mod | `{guest, world: "vr" \| "web", device, station?, force?}` | 409 no scenario · 404 unknown guest · 400 bad world · 503 no map · **409 `not marked for reinstallation`** unless the guest is eligible — checked before `reinstallation begun` fires, so an unmarked guest never triggers the story; eligible = the story's header `reinstall: <cond>` held for the guest when it declares one (wave 18; the show: marked, corrupted, or after an ending, a party favour), else captured or restricted (wave 16); `force: true` (a director's override; no device sends it) skips the check · 200 `Assignment` (below). An active session for the same guest is ended (`leave {reason: "replaced"}`). With `station`, the assignment is parked for that station until it claims it, and an older assignment still parked there is ended (`replaced`). |
 | `GET /api/mod/spatial/station` | mod | `?id=vr-1&name=Headset 1&world=vr` | marks the station seen; `{assignment: Assignment \| null}` — the newest unclaimed assignment for it |
 | `GET /api/mod/spatial/stations` | mod | — | `{stations: [{id, name, world, online (seen < 5 s), busy: {session, guest, name} \| null}]}` |
+| `GET /api/mod/spatial/descent` | mod (never a host) | — | `{forced: number \| null}` (wave 49), §2.5 |
+| `POST /api/mod/spatial/descent` | mod (never a host) | `{level: 0..4 \| null}` | 400 `{error}` · 200 `{ok, forced}`. Forces the level of every **next** deal, mostly to test; null is by visits again. Memory only; a story reset clears it |
 | `GET /api/mod/spatial/candidates` | mod | — | `{players: [{id, name, captured, restricted, eligible, marked, favour?, location, avatar, reinstalled}], ended?}` — `eligible` = what `begin` lets in without `force` (the `reinstall:` line, else captured \|\| restricted); `marked` = eligible, not captured, not restricted (wave 18; after an ending every program reads `marked: false` and an eligible one `favour: true`, with a top-level `ended: true`); a duck run found after the night ended is written `after: true` to `spatial-runs.jsonl` and never reaches the recap's duck board; every guest/persona, captured first, then restricted (marked by the story or held by a director, not captured yet), then by name; `avatar` = the profile picture's avatar key or null |
 | `POST /api/mod/spatial/king` | mod / author | `{hp}` — an integer 0..max | 404 `{error: "no king"}` · 400 not an integer in range · 409 no scenario · 200 `{ok, king}`: a journaled `set` of the King's `health` path `by` the director (the hub's own count when the prop has no path); the stream gets a `king` frame with `by: null`. The story's 👑 `restore_the_king` does the same to full |
 | `POST /api/mod/spatial/end` | mod | `{session}` | `{ok}` |
@@ -794,6 +796,8 @@ calls; it can do nothing else.
 | `POST /api/spatial/moment` | session token (`x-loom-token`, or `token` in the body) | `{kind: "escape"}` · `{kind: "heart", prop}` · `{kind: "pickup", prop}` (wave 26) | One route for the three game moments, judged on the session's **last pose** (the game flushes a pose first), in this order: 401 / 410 as for poses · 400 `{error: "bad moment"}` (an unknown `kind`, a heart or pickup with no `prop`) · 409 `{error: "doors are closed"}` while the event is not open · 409 `{error: "this session has not started — send a pose first"}` (parked) · heart / pickup: 404 `{error: "no such prop"}` (no prop of that kind with that id). Then per kind. **escape**: 409 `{error: "not out", distance}` unless `voidDistance` ≥ `ESCAPE_M − ESCAPE_SLACK` · 409 `{error: "cooldown", retryMs}` within 20 s of this session's last · 200 `{ok, kind, lines, spawn, cooldownMs: 20000}` — the server re-seats the pose at the spawn (room, floor and presence follow; the terminals' ghost jumps back) and commits `simulation escape attempt`. **heart**: 409 `{error: "sealed"}` while the map's King stands · 409 `{error: "already"}` once this guest heard it tonight · 409 `{error: "not there"}` unless `heartReached` · 200 `{ok, kind, lines}` — commits `simulation heart reached {prop}`; the guest counts as having heard it only when `lines` is not empty (empty: he isn't awake yet, or a restart forgot; the game stays silent and asks on the next entry). **pickup**: 409 `{error: "already"}` once this guest took it · 409 `{error: "far", distance}` unless `pickupReach` with `PICKUP_SLACK_M` · 200 `{ok, kind, lines, item, prop}` — commits `simulation pickup taken {item, prop}`. Every commit is journaled `by` the session's `device`. `lines` (`[{from, text}]`, display text) are what that one commit said to this program, game-only beats included (`chat.ts` `momentLines`); they come back **only** in this answer, never on a stream, a phone, a booth or Run (`GAME_ONLY_BEATS`: *Escape Attempt*, *Heart In The Simulation*), so Trabolta can chastise before his reveal. A story that throws on the signal still answers 200 with empty `lines`. The route never answers `{error: "not found"}`: a game reads any other 404 body as an old server. Memory only, cleared by a story restart and lost on a process restart: the cooldown, who heard the heart, who took each pickup; the story's own guards (`program.sim_heart`, `carries_virus`) keep the heart and the virus once-only across one |
 | `POST /api/spatial/ready` | session token | `{}` | 401 / 410 as for poses · 200 `{ok}` (wave 33). The game's intro (the video, the tutorial) is over: the session's duck-run clock restarts now, **once** (a second call only refreshes the pose timeout), so a first-timer's run isn't timed through the intro. Commits nothing, so it is open while the doors are closed. An old server's 404 is ignored. |
 | `POST /api/spatial/prefs` | session token | `{turn: "snap" \| "smooth"}` | 401 / 410 as for poses · 400 `{error}` for no known key or a bad value · 200 `{ok, prefs}` (wave 33): the program's game settings, merged over what it had, dealt back on **every later assignment** (`prefs`) whatever the device. Kept in the state dir (`spatial-prefs.json`, guest → settings), across a restart **and** a story reset (they are the person's comfort, not the story's). Commits nothing. Since wave 33b no client posts it (VR's snap turn is gone, so there is no setting to keep); it stays for the additive-server rule and an older APK |
+| `POST /api/spatial/told` | session token | `{talker, mark}`, strings of 1–64 characters (wave 49) | 401 / 410 as for poses · 400 `{error}` · 200 `{ok}`. Remembers what this program told a talker (`told[guest][talker] = mark`, the latest wins), dealt back on every later assignment. Memory only: never journaled, forgotten by a story reset and a process restart. Commits nothing, so it is open while the doors are closed |
+| `GET /api/spatial/descent` | as `GET /api/spatial/house`: a session token, a mod token or an author session | — | 401 · `{script: DescentScript \| null}` (wave 49): the event's `descent.json`, §2.5. An old server's 404 means no words |
 | `POST /api/spatial/end` | session token | `{}` | `{ok}` |
 | `GET /api/spatial/stream` | mod (`?token=` / author session) or session token | `?name=Kitchen` | SSE, below |
 
@@ -1082,6 +1086,41 @@ The mic needs a secure context in a browser (https, or localhost): a LAN
 `http://<ip>:7000` setup gets no microphone on the tablets (`mic=insecure`),
 as with the camera. No `Permissions-Policy` header is sent, so top-level
 pages may ask; nothing works inside a frame (`x-frame-options: DENY`).
+
+### 2.5 The descent and the footsteps (wave 49)
+
+Contract: [`loom-w49-contract.md`](./loom-w49-contract.md) C1–C3. The rules
+are `@loom/house` `descent.ts` and `footsteps.ts`; the server deals, stores
+and streams. Nothing here reaches the journal, and no story changes.
+
+**The level.** Every `Assignment` carries `descent` and `told` (an old server:
+neither, and a game reads `reinstalled`). `descent` is
+`SpatialHub.descentFor(guest)` at the **deal**: a director's forced level, else
+`descentLevel(reinstalled)`, so the first walk is 0. It is fixed on the session:
+a later force, a resume, a station's poll or the walk's own find never move it.
+`told` is read live (talker id → the mark), so a resume carries it.
+
+**The words.** `descent.json` is read live like `credits.json`
+(`server/descent.ts` over `live-file.ts`): the project's file, else
+`LOOM_DESCENT`, else, with no project, the scenario's own. Cached 5 s; a file
+that fails `validateDescent` reads as none and is logged once (the first source
+with a file is the one in force, usable or not). `sync-show` / `sync-example`
+always replace the project's copy and refuse an unusable one; no reload is
+needed for it to show. `loomcheck` lints it.
+
+**The footsteps.** `SpatialHub` measures each session's speed from its poses over
+at least `FOOTSTEP_MEASURE_MS` (memory only). A game sends no pose while its
+player stands still, so a pose unchanged for `WALK_STILL_MS` (500 ms) reads as
+standing; an escape's teleport or a re-seat restarts the measure. On every flush
+it runs `walkersOf` over joined, unfound, un-held sessions (room = the presence
+room) and tells the runtime when `sameWalkers` is false, at most every
+`FOOTSTEPS_MIN_MS` (the trailing edge kept), at once for the last stop. The hub
+never imports `AudioHub`.
+
+| Route | Auth | Body / query | Result |
+|---|---|---|---|
+| `GET /api/mod/audio/walkers` | mod token (`x-loom-token` or `?token=`) or an author session, never a host | — | 403 `moderators only` · 403 `not from a booth` · 200 `text/event-stream`: `:ok`, then `walkers` events, each a `WalkersFrame {seq, at, walkers: Walker[]}`: one on connect, one on every change, one every `FOOTSTEPS_KEEP_MS` while anyone walks; `:ping` every 25 s. Every pushed frame takes a new `seq`. Sent `cache-control: no-cache, no-transform`, and `deploy/Caddyfile` exempts the path from its compression |
+| `POST /api/mod/audio/walkers/test` | mod, never a host | `{speaker}` | 400 no speaker · 404 `no such speaker` · 200 `{ok}`: a walker on that speaker alone at 0 dB, 1.4 m/s, for `FOOTSTEP_TEST_MS`, merged into the frames as id `test`. Memory only |
 
 ## 3. The web game — `reinstall/web/` (`loom-reinstall`)
 

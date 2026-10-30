@@ -674,7 +674,8 @@ story, so a server that predates them must be shipped **first** (§5¾
 *Deploy order*). `scripts/accept/k01.sh` (needs `LOOM_MOD_CODE`) checks the
 three front doors, that `/api/mod/codes` hands out the `LOOM_BASE_URL`
 origin, and that the SSE feed's 25 s pings arrive on time and uncompressed
-(the Caddyfile compresses everything *except* `*/events` and `*/stream`).
+(the Caddyfile compresses everything *except* `*/events`, `*/stream` and
+`*/audio/walkers`).
 
 **Load test** (OCT31 K-32, on a **rehearsal** event — it adds 45 bot
 personas and refuses an event with real guests):

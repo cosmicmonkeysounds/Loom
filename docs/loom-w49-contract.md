@@ -152,8 +152,11 @@ Files: `core/server/spatial.ts`, `core/server/audio.ts`,
 - `AudioHub.setWalkers(walkers)` bumps a seq and tells its stream subscribers.
 - `GET /api/mod/audio/walkers`: a server-sent stream of `walkers` events, each a
   `WalkersFrame`. One on connect; on every change; and every
-  `FOOTSTEPS_KEEP_MS` while anyone walks. A mod token (query or header, as
-  `/events`); never on the host allowlist.
+  `FOOTSTEPS_KEEP_MS` while anyone walks (a quiet house: `:ping` every 25 s).
+  Every pushed frame takes a new `seq`, a keepalive's too; the frame on connect
+  repeats the last. A mod token (query or header, as `/events`); never on the
+  host allowlist. The path ends in neither `/events` nor `/stream`, so it says
+  `no-transform` and `deploy/Caddyfile` exempts it: gzip would sit on the frames.
 - `POST /api/mod/audio/walkers/test {speaker}` → `{ok}`: a walker on that
   speaker alone at 0 dB, 1.4 m/s, for `FOOTSTEP_TEST_MS`, merged into the frames
   as id `test`. 404 for an unknown speaker. Memory only.
@@ -164,15 +167,16 @@ Files: `core/server/spatial.ts`, `core/server/audio.ts`,
   `descent.json`, else `LOOM_DESCENT`, else with no project the scenario's own;
   cached 5 s; an invalid file reads as none, logged once. Reuse or generalise
   `credits.ts` if that is cleaner.
-- `GET /api/spatial/descent` (a session token, as `/api/spatial/house`) →
-  `{script: DescentScript | null}`.
+- `GET /api/spatial/descent` (a session or a moderator token or an author
+  session, as `/api/spatial/house`) → `{script: DescentScript | null}`.
 - `sync-show` / `sync-example` always replace the project's `descent.json`
   (like `credits.json`). `loomcheck` lints it with `validateDescent`.
 
 ### C3.3 The level and what was told
 
 - `assignmentOf` carries `descent` (`SpatialHub.descentFor(guest)`: the forced
-  level, else `descentLevel(reinstalled)`) and `told`.
+  level, else `descentLevel(reinstalled)`, taken once at the deal and kept on
+  the session, so a resume reads the level its walk was dealt) and `told`.
 - `POST /api/spatial/told {talker, mark}` (a session token) → `{ok}`: remembers
   `told[guest][talker] = mark` (both strings ≤ 64). Never journaled; a story
   reset forgets it.

@@ -81,6 +81,15 @@
 //!   → `{ok, watch}` (wave 40): the router's live meters while a panel
 //!   watches (clamped, lists cut, stamped with the server's clock). The
 //!   router's own: never on the host allowlist.
+//! - `GET /api/mod/audio/walkers` (wave 49, `docs/loom-w49-contract.md`
+//!   C3.1) → the footsteps' server-sent stream of `walkers` events, each a
+//!   `WalkersFrame`: one on connect, one on every change, one every
+//!   `FOOTSTEPS_KEEP_MS` while anyone walks (a quiet house: `:ping`
+//!   comments). The stream itself is `EventRuntime.openWalkersStream`; the
+//!   frames are here (`setWalkers`, `onWalkers`). `POST
+//!   /api/mod/audio/walkers/test {speaker}` → `{ok}`: a walker on that
+//!   speaker alone for `FOOTSTEP_TEST_MS`, as id `test`. Memory only, both.
+//!   Never on the host allowlist.
 //!
 //! Transport-light: `AudioHub` takes an injected clock and store; the
 //! handlers take the runtime's context.
@@ -88,7 +97,7 @@
 import { readFileSync, statSync } from "node:fs";
 import type { IncomingMessage, ServerResponse } from "node:http";
 
-import { AUDIO_FILE, audioHash, defaultAudio, validateAudio, type AudioConfig, type HouseMap } from "@loom/house";
+import { AUDIO_FILE, FOOTSTEP_TEST_MS, FOOTSTEPS_KEEP_MS, audioHash, defaultAudio, validateAudio, type AudioConfig, type HouseMap, type Walker, type WalkersFrame } from "@loom/house";
 
 import {
   MIX_CHANGES_MAX,
@@ -536,6 +545,25 @@ export function storyLocations(model: SimModel | null): string[] {
   return model === null ? [] : [...model.locations.keys()];
 }
 
+/** (wave 49) The test walker's id in a `WalkersFrame`, and its pace (m/s). */
+export const WALKER_TEST_ID = "test";
+export const WALKER_TEST_MPS = 1.4;
+
+/** (wave 49) Timers, injectable for tests. */
+export interface WalkerTimers {
+  set(fn: () => void, ms: number): unknown;
+  clear(handle: unknown): void;
+}
+
+const REAL_WALKER_TIMERS: WalkerTimers = {
+  set: (fn, ms) => {
+    const h = setTimeout(fn, ms);
+    (h as { unref?: () => void }).unref?.();
+    return h;
+  },
+  clear: (h) => clearTimeout(h as ReturnType<typeof setTimeout>),
+};
+
 export interface AudioHubInit {
   store: Store;
   /** The project's `audio.json` text as the row snapshotted it: null = the
@@ -544,6 +572,8 @@ export interface AudioHubInit {
   /** `LOOM_AUDIO`: the LAN fallback file. */
   envFile?: string | null;
   now?: () => number;
+  /** (wave 49) The walkers stream's keepalive and the test's end. */
+  walkerTimers?: WalkerTimers;
 }
 
 /** `audio` with its tablets list set to exactly `list` (wave 18b): an
@@ -604,10 +634,19 @@ export class AudioHub {
   /** (wave 40) A mixer panel is open until then (server ms): each mixer GET
    *  extends it by `MIX_WATCH_MS`. */
   private watchUntil: number | null = null;
+  /** (wave 49) The programs heard walking, the test walker and the stream's
+   *  subscribers. Memory only. `walkerSeq` counts the frames pushed. */
+  private walkerList: Walker[] = [];
+  private walkerTest: { walker: Walker; until: number } | null = null;
+  private walkerSeq = 0;
+  private readonly walkerSubs = new Set<(frame: WalkersFrame) => void>();
+  private walkerTimer: unknown = null;
+  private readonly walkerTimers: WalkerTimers;
 
   constructor(init: AudioHubInit) {
     this.store = init.store;
     this.now = init.now ?? Date.now;
+    this.walkerTimers = init.walkerTimers ?? REAL_WALKER_TIMERS;
     this.envFile = init.envFile ?? null;
     this.projectText = init.projectText !== undefined ? init.projectText : init.store.loadAudio();
     if (init.projectText !== undefined) init.store.saveAudio(init.projectText);
@@ -717,11 +756,19 @@ export class AudioHub {
 
   /** The config in force, its version (content hash) and where it is from. */
   current(): { audio: AudioConfig; version: string; source: AudioSource } {
+    const { audio, source } = this.inForce();
+    return { audio, version: audioHash(audio), source };
+  }
+
+  /** The config in force, unhashed: the spatial hub reads it 10 times a
+   *  second while anyone walks (wave 49). */
+  config(): AudioConfig {
+    return this.inForce().audio;
+  }
+
+  private inForce(): { audio: AudioConfig; source: AudioSource } {
     const list = this.announceList;
-    const pick = (base: AudioConfig, source: AudioSource) => {
-      const audio = list === null ? base : withAnnounceTerminals(base, list);
-      return { audio, version: audioHash(audio), source };
-    };
+    const pick = (base: AudioConfig, source: AudioSource) => ({ audio: list === null ? base : withAnnounceTerminals(base, list), source });
     if (this.director !== null) return pick(this.director, "director");
     const project = this.projectAudio();
     if (project !== null) return pick(project, "project");
@@ -903,6 +950,74 @@ export class AudioHub {
   onAck(listener: (ack: AudioAck) => void): () => void {
     this.ackListeners.add(listener);
     return () => this.ackListeners.delete(listener);
+  }
+
+  // -- footsteps (wave 49, C3.1) --------------------------------------------
+
+  /** Who is heard walking now (the spatial hub's `onWalkers`). */
+  setWalkers(walkers: readonly Walker[]): void {
+    this.walkerList = [...walkers];
+    this.pushWalkers();
+  }
+
+  /** A walker on this speaker alone for `FOOTSTEP_TEST_MS`, merged into the
+   *  frames as `WALKER_TEST_ID`. A new test takes the running one's place. */
+  testWalker(speaker: string): void {
+    const walker: Walker = { id: WALKER_TEST_ID, speed: WALKER_TEST_MPS, surface: "floor", to: [{ speaker, db: 0, muffled: false }] };
+    this.walkerTest = { walker, until: this.now() + FOOTSTEP_TEST_MS };
+    this.pushWalkers();
+  }
+
+  /** The frame as it stands now (the test walker gone once it is over). */
+  walkersFrame(): WalkersFrame {
+    const now = this.now();
+    if (this.walkerTest !== null && now >= this.walkerTest.until) this.walkerTest = null;
+    return { seq: this.walkerSeq, at: now, walkers: this.walkerTest === null ? [...this.walkerList] : [...this.walkerList, this.walkerTest.walker] };
+  }
+
+  /** Subscribe to the frames; the listener gets the current one at once. */
+  onWalkers(listener: (frame: WalkersFrame) => void): () => void {
+    listener(this.walkersFrame());
+    this.walkerSubs.add(listener);
+    this.armWalkers();
+    return () => {
+      this.walkerSubs.delete(listener);
+      this.armWalkers();
+    };
+  }
+
+  /** Drop every subscriber (the runtime's dispose). */
+  endWalkers(): void {
+    this.walkerSubs.clear();
+    this.armWalkers();
+  }
+
+  /** Stream subscribers right now (tests). */
+  get walkerListeners(): number {
+    return this.walkerSubs.size;
+  }
+
+  /** Every frame pushed takes a new seq, a keepalive's too: a router may drop
+   *  what it has seen, and a steady walk changes nothing for seconds. */
+  private pushWalkers(): void {
+    this.walkerSeq += 1;
+    const frame = this.walkersFrame();
+    for (const listener of [...this.walkerSubs]) listener(frame);
+    this.armWalkers();
+  }
+
+  /** While anyone walks and anyone listens: the next keepalive, or the test
+   *  walker's end if that comes first. */
+  private armWalkers(): void {
+    if (this.walkerTimer !== null) this.walkerTimers.clear(this.walkerTimer);
+    this.walkerTimer = null;
+    if (this.walkerSubs.size === 0 || this.walkersFrame().walkers.length === 0) return;
+    const test = this.walkerTest;
+    const ms = test === null ? FOOTSTEPS_KEEP_MS : Math.min(FOOTSTEPS_KEEP_MS, Math.max(0, test.until - this.now()));
+    this.walkerTimer = this.walkerTimers.set(() => {
+      this.walkerTimer = null;
+      this.pushWalkers();
+    }, ms);
   }
 
   /** The hub's clock (server epoch ms). */
@@ -1172,6 +1287,20 @@ export async function handleAudioPost(hub: AudioHub, ctx: AudioContext, path: st
         process.stdout.write(`  📢 audio: ${by} set the tablets that say the announcements: ${r.terminals.join(", ") || "none"}\n`);
         sendJson(res, 200, { ok: true, version: r.version, terminals: r.terminals });
       }
+      return true;
+    }
+    case "/api/mod/audio/walkers/test": {
+      const id = body["speaker"];
+      if (id === undefined) {
+        sendJson(res, 400, { error: "a walker test needs a speaker" });
+        return true;
+      }
+      if (typeof id !== "string" || !hub.config().speakers.some((s) => s.id === id)) {
+        sendJson(res, 404, { error: "no such speaker" });
+        return true;
+      }
+      hub.testWalker(id);
+      sendJson(res, 200, { ok: true });
       return true;
     }
     case "/api/mod/audio/test": {

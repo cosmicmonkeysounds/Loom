@@ -24,13 +24,14 @@
 	#   /events, /e/:id/events                    (guest / booth / mod feeds)
 	#   /api/agent/stream, /api/spatial/stream    (+ /e/:id/ forms)
 	#   /api/projects/:id/collab/stream           (co-editing)
+	#   /e/:id/api/mod/audio/walkers              (the router's footsteps)
 	# and every proxied write is flushed at once (`flush_interval -1`).
 	# While loom restarts (a release, a rollback, a crash restart) Caddy
 	# holds each request and re-dials every 250 ms for up to 60 s instead of
 	# answering 502: an EventSource that gets a 502 closes for good, so a
 	# phone open through a restart would never hear the show again. A dial
 	# that never connected is safe to retry for every method.
-	@compressible not path */events */stream
+	@compressible not path */events */stream */audio/walkers
 	handle {
 		encode @compressible gzip zstd
 		reverse_proxy loom:7000 {
