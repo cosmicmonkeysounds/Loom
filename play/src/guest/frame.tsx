@@ -15,7 +15,7 @@ import { Icon, IconTitle } from "../chrome/icons.tsx";
 import { useNowMoment } from "../moments/provider.tsx";
 import type { LiveCard } from "../moments/model.ts";
 import { cardGlyph, trayCards } from "../stream/settled.ts";
-import { supersededCards, type WidgetResult } from "../widgets.tsx";
+import { optionalCard, supersededCards, type WidgetResult } from "../widgets.tsx";
 import { usePlayHost } from "../host.ts";
 import type { Push } from "../push.ts";
 import { iosPushCopy, PushRow } from "../push-card.tsx";
@@ -68,7 +68,7 @@ export function liveCardsOf(list: readonly Channel[], answered: ReadonlyMap<numb
   for (const c of list) {
     if (c.kind === "codex" || c.kind === "quests" || c.kind === "wallet") continue;
     const roots = c.messages.filter((m) => m.parentSeq == null);
-    for (const m of trayCards(roots, answered, supersededCards(roots))) out.push({ glyph: cardGlyph(m.widget!), channel: c.id, seq: m.seq });
+    for (const m of trayCards(roots, answered, supersededCards(roots))) out.push({ glyph: cardGlyph(m.widget!), channel: c.id, seq: m.seq, ...(optionalCard(m.widget!) ? { optional: true as const } : {}) });
   }
   return out;
 }

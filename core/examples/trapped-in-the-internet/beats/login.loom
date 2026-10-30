@@ -122,7 +122,8 @@ Task Manager: Antivirus, confirm.
 // unanswered, video of them may be used (an opt-out). main.loom's `when poll
 // answered` keeps it in the secret `video`; ⊞ Start changes it later. DRAFT w44
 Task Manager: A real question, for your human self. The house is being filmed tonight, and afterwards the humans who run it may share some of the video. If you would rather not be in it, say so here. You can change it any time from START.
-show poll "🎥 May video of you from tonight be used?" to program with options: "Yes, use video of me | No, leave me out"
+// Wave 47: `optional`: after the upload it never sits on Mission (Start has 🎥).
+show poll "🎥 May video of you from tonight be used?" to program with options: "Yes, use video of me | No, leave me out", optional: true
 // Wave 41 (C1, C2), DRAFT w41: optional. Skipping it costs nothing.
 Task Manager: One more form. Optional. When the night is over, Jean Trabolta writes to every program he installed. A letter, to your human inbox. Leave the address or do not.
 show email "Your human inbox, for Jean Trabolta's letter. Optional." to program with button: "Send me the letter", skip: "No thanks", placeholder: "you@example.com"

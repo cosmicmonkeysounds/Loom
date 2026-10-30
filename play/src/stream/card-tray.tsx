@@ -15,7 +15,7 @@
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { usePlayHost } from "../host.ts";
 import type { ChatMessage } from "../types.ts";
-import { WIDGETS, WidgetHost } from "../widgets.tsx";
+import { WIDGETS, WidgetHost, optionalCard } from "../widgets.tsx";
 import type { WidgetHook } from "./bubble.tsx";
 import { trayCaption } from "./settled.ts";
 
@@ -83,6 +83,7 @@ export function CardTray({
   shut = 0,
   onOpenChange,
   lead = "newest",
+  foldOptional = false,
 }: {
   /** The room's live cards, oldest first (`trayCards`). */
   cards: readonly ChatMessage[];
@@ -99,13 +100,18 @@ export function CardTray({
   onOpenChange?: (open: boolean) => void;
   /** Wave 47: which card leads with no receipt asking (the stage: the oldest). */
   lead?: "newest" | "oldest";
+  /** Wave 47 (a room): an optional card (`optionalCard`: asked once where it
+   *  was dealt) waits folded unless a receipt or Mission asks for it, so it
+   *  never takes the room's conversation over. */
+  foldOptional?: boolean;
 }) {
   const host = usePlayHost();
   const seen = trayShown(host.crawl);
   // The newest card leads; a receipt's tap jumps to its card and opens it.
   const index = trayIndex(cards, focus, lead);
   const card = cards[index];
-  const [open, setOpen] = useState(() => card !== undefined && !seen.has(trayCardKey(card)) && (!crowded || focus !== null));
+  const quiet = card !== undefined && foldOptional && card.widget !== undefined && optionalCard(card.widget);
+  const [open, setOpen] = useState(() => card !== undefined && !seen.has(trayCardKey(card)) && (!crowded || focus !== null) && (!quiet || focus !== null));
   useEffect(() => {
     if (focus !== null) setOpen(true);
   }, [focus]);
@@ -134,7 +140,7 @@ export function CardTray({
   // A new card (not a re-deal of one you've seen) opens the tray again.
   const key = card !== undefined ? trayCardKey(card) : null;
   useEffect(() => {
-    if (key !== null && !seen.has(key) && !composing && !crowded) setOpen(true);
+    if (key !== null && !seen.has(key) && !composing && !crowded && !quiet) setOpen(true);
     // `composing` is read, not watched: typing never re-opens it.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key, seen, crowded]);

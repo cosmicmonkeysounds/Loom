@@ -270,7 +270,7 @@ export function GuestApp({ onLeave, badgeLink = null }: { onLeave: () => void; b
   const arm = useArmButtons();
   const archived = ext.archived;
   const chats = useMemo(
-    () => chatSections(t.list, { now: st?.clock ?? 0, cardRooms: new Set(cards.map((c) => c.channel)), ...(archived !== undefined ? { archived: new Set(archived) } : {}), lobbyHidden: noLobby }),
+    () => chatSections(t.list, { now: st?.clock ?? 0, cardRooms: new Set(cards.filter((c) => c.optional !== true).map((c) => c.channel)), ...(archived !== undefined ? { archived: new Set(archived) } : {}), lobbyHidden: noLobby }),
     [t.list, st?.clock, cards, archived, noLobby],
   );
   // Mission's "!" on the taskbar: the NOW objective changed since Mission
@@ -677,7 +677,9 @@ export function GuestApp({ onLeave, badgeLink = null }: { onLeave: () => void; b
   const act = (i: Interaction) => void s.act(i.id, i.label).catch(() => {});
   const renderButton = objectiveButton({ interactions, arm, onPass: () => nav.go({ to: "pass" }), onScan: () => nav.go({ to: "scan" }), onAct: act });
   const codexRoom = t.list.find((c) => c.id === CODEX_ROOM);
-  const missionInput = { view: st, list: t.list, cards, decision: s.decision, codexUnseen: codexRoom !== undefined && codexUnseen(host.storage, meId, codexRoom.messages) };
+  // Wave 47: an optional card (the upload's video question, the inbox) was
+  // asked where it was dealt; Mission never carries it all night.
+  const missionInput = { view: st, list: t.list, cards: cards.filter((c) => c.optional !== true), decision: s.decision, codexUnseen: codexRoom !== undefined && codexUnseen(host.storage, meId, codexRoom.messages) };
   const here = st.location !== null ? t.list.find((c) => c.id === `loc:${st.location}`) : undefined;
   const peopleHere = (here?.people ?? []).filter((p) => p.id !== meId).length;
   // Start → Factions (wave 18b): offered while you may found one too.

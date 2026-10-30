@@ -594,6 +594,13 @@ export function supersededCards(messages: Iterable<ChatMessage>): Set<number> {
 }
 
 /** A one-line description of a card, for previews and performer feeds. */
+/** Wave 47: a card the story marks `optional: true` (or an email card with a
+ *  `skip:`): asked once where it is dealt, then never on Mission and folded
+ *  in its room's tray until asked for. */
+export function optionalCard(card: Pick<WidgetCard, "kind" | "params">): boolean {
+  return card.params["optional"] === "true" || (card.kind === "email" && card.params["skip"] !== undefined);
+}
+
 export function widgetLabel(card: WidgetCard): string {
   const def = WIDGETS[card.kind];
   if (def === undefined) return `🧩 ${card.kind}${card.text ? ` — ${card.text}` : ""}`;
