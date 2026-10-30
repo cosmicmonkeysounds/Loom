@@ -722,14 +722,19 @@ describe("the routes (C3.1)", () => {
     const test = await st.until((f) => f.walkers.length === 1);
     expect(test.walkers).toEqual([{ id: WALKER_TEST_ID, speed: WALKER_TEST_MPS, surface: "floor", to: [{ speaker: "hall", db: 0, muffled: false }] }]);
     await st.until((f) => f.walkers.length === 0 && f.seq > test.seq, FOOTSTEP_TEST_MS + 1000);
-    // The real clock: one keepalive on the way, and the end on time.
+    // The real clock: a keepalive on the way, and the end on time. A timer that
+    // fires a millisecond early sends the walker once more and ends it a
+    // millisecond later, so the frames before the end are at least two.
     const rows = st.frames.slice(1);
-    expect(rows.map((r) => r.frame.walkers.length)).toEqual([1, 1, 0]);
+    const counts = rows.map((r) => r.frame.walkers.length);
+    expect(counts.at(-1)).toBe(0);
+    expect(counts.slice(0, -1).every((n) => n === 1)).toBe(true);
+    expect(counts.length).toBeGreaterThanOrEqual(3);
     const ms = (i: number) => rows[i]!.at - rows[0]!.at;
     expect(ms(1)).toBeGreaterThanOrEqual(FOOTSTEPS_KEEP_MS - 50);
     expect(ms(1)).toBeLessThan(FOOTSTEPS_KEEP_MS + 500);
-    expect(ms(2)).toBeGreaterThanOrEqual(FOOTSTEP_TEST_MS - 50);
-    expect(ms(2)).toBeLessThan(FOOTSTEP_TEST_MS + 500);
+    expect(ms(rows.length - 1)).toBeGreaterThanOrEqual(FOOTSTEP_TEST_MS - 50);
+    expect(ms(rows.length - 1)).toBeLessThan(FOOTSTEP_TEST_MS + 500);
     st.close();
     rt.dispose();
     await s.stop();
