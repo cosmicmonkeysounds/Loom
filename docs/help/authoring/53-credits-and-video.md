@@ -70,8 +70,9 @@ The answer goes into the guest's secret `video` slot (`"ok"` / `"out"`),
 and two guest buttons in ⊞ Start change it all night. The card never
 holds the upload up: a guest who never answers has not opted out.
 
-**Run → 🎥 Video consent** lists every program, the opted-out first with
-their pictures, and **⬇ Download CSV** saves `video-consent.csv`
+**Run → 🎥 Video consent** lists every program and, since wave 53, every
+staff part that did its upload (a part changes its mind through a director),
+the opted-out first with their pictures, and **⬇ Download CSV** saves `video-consent.csv`
 (`program,video,id`). Download it **before End**: End stops the event.
 
 ## Help Me

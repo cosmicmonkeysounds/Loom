@@ -287,6 +287,20 @@ median (99 s on the GPU) at 190 replies a minute, and a line costs about
 $0.0006. To go back: `cp stagehand/laptop.ollama.yaml stagehand/laptop.yaml`,
 then `scripts/house-macbook/trabolta-reset.sh`.
 
+**Everyone uploads, and the phones speak** (wave 53, branch
+`oct31-w53/everyone-uploads`, not merged, not shipped;
+`docs/loom-w53-contract.md`, show text `DRAFT w53` on `SIGNOFF-w53.md`): Clippy,
+the Antivirus and the hosts run the guests' own Login, Upload and Upload Deposit
+beats on their characters (`TRAIT Staff`): a character bound as the subject in a
+`cutscene: true` location is on rails, so its booth is the arrival stage. They
+are still never Persons. They get no Truthcoin, pass or door scan, and leave by
+the staff door. It works before the doors open, so the crew does it first; ⏭
+Wave the staff through their upload is the way past it. A 🔊 card in the upload,
+or ⊞ Start, turns on the phone's own voice for what the house speakers say and a
+host's 📣 (the `announce` stream frame, `play/src/phone-voice.ts`). Not proven on
+a real phone: run `SIGNOFF-w53.md` §3 first. Help:
+`docs/help/play/07-performers.md`, `16-notifications.md`.
+
 ### Release status
 
 Wave 52 (master, 2026-10-30) changes only the MacBook's `agents` job, so the VPS
