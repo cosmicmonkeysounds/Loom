@@ -11,8 +11,8 @@
 //! it in the second person. A terminal with no spot follows the most recently
 //! active player over the shoulder.
 //!
-//! The players are billboards (a body in their colour under a Win98 tile with
-//! their picture, a name tag), clipped against each column's nearest wall;
+//! The players are billboards (their picture cut into a glitchy swarm,
+//! `swarm.ts`, under a name tag), clipped against each column's nearest wall;
 //! their golden ducks bob; the King stands with his shared bar (greyed when
 //! he kneels). A small top-down inset shows the busiest floor. A find shows
 //! the celebration banner (GERALD CAN'T HELP for a find the story kept); a
@@ -22,7 +22,7 @@
 //! stopped while the page is hidden.
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { roomById, type Vec3 } from "@loom/house";
+import { fnv1a32, roomById, type Vec3 } from "@loom/house";
 import { avatarUrl, type WorldPlayer } from "../world/state.ts";
 import { useWorld, type WorldStore } from "../world/stream.ts";
 import { celebrationHeadline, chooseFloor, fitTransform, guestColor, holdFloor, kingOnFloor, planFloor, rosterTellsToasts, rosterToasts, statusLine, toScreen, type FloorHold, type PlanFloor } from "./plan.ts";
@@ -43,6 +43,7 @@ import {
   type RayCamera,
   type RayWall,
 } from "./raycast.ts";
+import { drawSwarm, swarmPieces } from "./swarm.ts";
 import "./raycast.css";
 import { noteWorldShowing } from "../cutscene/world-bus.ts";
 
@@ -246,7 +247,6 @@ export function RaycastView({ store, spotId, size }: { store: WorldStore; spotId
         ctx.restore();
         return pr.depth < (zbuf[Math.max(0, Math.min(iw - 1, Math.round(pr.x)))] ?? Infinity);
       };
-      const fog = (depth: number) => Math.max(0.35, Math.exp(-depth / 18));
       for (const p of list) {
         if (p.floor !== cam.floor) continue;
         const s = sample(p);
@@ -260,14 +260,7 @@ export function RaycastView({ store, spotId, size }: { store: WorldStore; spotId
           depth: body.depth,
           draw: () => {
             const seen = clipTo(head, () => {
-              ctx.globalAlpha = fog(body.depth) < 0.6 ? 0.85 : 1;
-              ctx.fillStyle = colour;
-              const bw = body.x1 - body.x0;
-              ctx.fillRect(body.x0 + bw * 0.1, body.y0, bw * 0.8, body.y1 - body.y0);
-              ctx.fillStyle = "rgba(0,0,0,0.35)";
-              ctx.fillRect(body.x0 + bw * 0.1, body.y0 + (body.y1 - body.y0) * 0.55, bw * 0.8, 1);
-              drawTile(ctx, head, img, colour);
-              ctx.globalAlpha = 1;
+              drawSwarm(ctx, head, body, img, colour, swarmPieces(fnv1a32(p.session) % 1000, t, body.depth));
             });
             if (seen) tags.push({ x: head.x, y: head.y0, text: p.name.toUpperCase(), colour });
           },
@@ -368,45 +361,6 @@ export function RaycastView({ store, spotId, size }: { store: WorldStore; spotId
 }
 
 // --- drawing (internal pixels) ------------------------------------------------
-
-/** A Win98 tile: grey bevel, the picture (else a disc in the guest's colour). */
-function drawTile(ctx: Ctx, pr: Projected, img: HTMLImageElement | null, colour: string): void {
-  const x = pr.x0;
-  const y = pr.y0;
-  const s = Math.max(1, pr.x1 - pr.x0);
-  const h = Math.max(1, pr.y1 - pr.y0);
-  const b = Math.max(1, s * 0.08);
-  ctx.fillStyle = "#c0c0c0";
-  ctx.fillRect(x, y, s, h);
-  ctx.fillStyle = "#fff";
-  ctx.fillRect(x, y, s, b);
-  ctx.fillRect(x, y, b, h);
-  ctx.fillStyle = "#404040";
-  ctx.fillRect(x, y + h - b, s, b);
-  ctx.fillRect(x + s - b, y, b, h);
-  const ix = x + b * 1.5;
-  const iy = y + b * 1.5;
-  const iw = s - b * 3;
-  const ih = h - b * 3;
-  if (iw <= 0 || ih <= 0) return;
-  if (img !== null && img.complete && img.naturalWidth > 0) {
-    ctx.fillStyle = "#fff";
-    ctx.fillRect(ix, iy, iw, ih);
-    const k = Math.min(iw / img.naturalWidth, ih / img.naturalHeight);
-    const dw = img.naturalWidth * k;
-    const dh = img.naturalHeight * k;
-    try {
-      ctx.drawImage(img, ix + (iw - dw) / 2, iy + (ih - dh) / 2, dw, dh);
-    } catch {
-      /* a broken image: the grey tile stays */
-    }
-  } else {
-    ctx.fillStyle = colour;
-    ctx.beginPath();
-    ctx.arc(ix + iw / 2, iy + ih / 2, Math.min(iw, ih) * 0.38, 0, Math.PI * 2);
-    ctx.fill();
-  }
-}
 
 function drawDuck(ctx: Ctx, pr: Projected, t: number): void {
   const w = pr.x1 - pr.x0;
