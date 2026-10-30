@@ -90,7 +90,7 @@ const CSS = `
 .loom-print-tray button { border: 1px solid #d4d4d8; border-radius: 4px; background: #f4f4f5; padding: 1px 6px; font-size: 11px; cursor: pointer; }
 @media print {
   @page { size: letter; margin: 0.25in; }
-  html, body { background: #fff !important; height: auto !important; overflow: visible !important; }
+  html, body { margin: 0 !important; background: #fff !important; height: auto !important; overflow: visible !important; }
   body > *:not(.loom-print) { display: none !important; }
   .loom-print { position: static; overflow: visible; background: #fff; }
   .loom-print-bar, .loom-print-tray, .loom-print-card .note, .loom-print-card .skip, .loom-print-card .unlock { display: none !important; }
