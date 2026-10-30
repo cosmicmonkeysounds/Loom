@@ -86,16 +86,20 @@ the dream                         where the idle show was
 
 Both games already hang a JPEG feed on every terminal in the player's room, so
 the dream reaches them down `GET /api/spatial/cams` + `/cam?spot=` and **neither
-game changes; a Quest APK from before this wave shows it.** While it runs
-(`DreamFeed`, `dream-feed.ts`):
+game changes; a Quest APK from before this wave shows it.**
 
-- `cams` lists every spot on the map but the tent's, camera or none, under the
-  usual room filter.
-- `cam?spot=` answers that spot's moment of the hour (`dreamFrameIndex`: what
-  the real wall shows), with `x-cam-at` moving per frame.
-- The room's real camera breaks through for 3 s in every 24 s, on each
-  terminal's own beat, where it has a fresh frame: the game's window into the
-  real house is a feature the Y2K hour needs.
+The games' terminals stay windows on the real rooms: that is what they are for.
+The dream **breaks through them in spurts** (`DreamFeed`, `dream-feed.ts`,
+`dreamSpurting`, pure): each terminal's time is cut into 15 s slots on its own
+clock, half of them hold one spurt of 3–6 s at a random place, so about one
+every 30 s and 15 % of the time, never in step and never a metronome.
+
+- `cam?spot=` in a spurt answers that spot's moment of the hour
+  (`dreamFrameIndex`: what the real wall shows), with `x-cam-at` moving per
+  frame; between spurts its usual camera frame.
+- `cams` lists the real cameras as ever, plus, for the length of a spurt, any
+  terminal with none (never the tent's), under the usual room filter. Between
+  spurts such a terminal keeps its usual screen in the game.
 
 ## C5 The data mosh
 
