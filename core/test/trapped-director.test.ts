@@ -92,14 +92,14 @@ const countdowns = (sim: Sim) => boardFor(sim).countdowns.map((c) => c.label);
 describe("Trapped in the Internet — wave 10 (the Director page's acts and board)", () => {
   it("every admin cue has an act", () => {
     const rows = rowsOf(Sim.fromSources(SRC));
-    expect(rows).toHaveLength(79); // wave 45: 🚻 G13 appended last, rejoining G; wave 44: 🎬 G12 appended last, rejoining G; wave 32: ⚡ ad_burst appended to Anytime; wave 26: the games' three moments appended to Anytime; wave 11: 👑 and 🔧 appended to Anytime; wave 18b: −☎️ −🪅; wave 20: 🚪 closed / trust + 🕊 autoend appended to E; wave 21: the three staff awards in G, before G11; wave 22: 🔌 Trust the patch bay appended to E
+    expect(rows).toHaveLength(80); // wave 48: 🔑 G14 appended last, rejoining G; wave 45: 🚻 G13 appended last, rejoining G; wave 44: 🎬 G12 appended last, rejoining G; wave 32: ⚡ ad_burst appended to Anytime; wave 26: the games' three moments appended to Anytime; wave 11: 👑 and 🔧 appended to Anytime; wave 18b: −☎️ −🪅; wave 20: 🚪 closed / trust + 🕊 autoend appended to E; wave 21: the three staff awards in G, before G11; wave 22: 🔌 Trust the patch bay appended to E
     for (const r of rows) expect(r.act, r.id).not.toBe(null);
     // `act:` rides admin cues only — never a performer's or a guest's button.
     const others = (modView(Sim.fromSources(SRC), "open", "x").interactions ?? []).filter((i) => i.who !== "admin");
     for (const i of others) expect(i.act, i.id).toBeUndefined();
   });
 
-  it("the act split is B10 C5 D8 E17 Anytime10 F12 G17 with 44 spine and 35 asides", () => {
+  it("the act split is B10 C5 D8 E17 Anytime10 F12 G18 with 44 spine and 36 asides", () => {
     const acts = cueActs(rowsOf(Sim.fromSources(SRC)));
     const shape = (a: CueAct) => [a.code ?? a.title, a.rows.length, a.spine.length, a.asides.length];
     expect(acts.map(shape)).toEqual([
@@ -109,10 +109,10 @@ describe("Trapped in the Internet — wave 10 (the Director page's acts and boar
       ["E", 17, 2, 15], // wave 20: three door / heart asides appended (no cue number moved); w20b: 🕊 talked_down joins the spine (NEXT while a stand-down waits); wave 22: 🔌 Trust the patch bay
       ["Anytime", 10, 0, 10], // wave 26: the games' three moments (escape, heart, pickup); wave 32: ⚡ ad_burst
       ["F", 12, 12, 0],
-      ["G", 17, 14, 3], // wave 21: G10a–c before G11; wave 44: 🎬 G12, an aside; wave 45: 🚻 G13, an aside
+      ["G", 18, 14, 4], // wave 21: G10a–c before G11; wave 44: 🎬 G12, an aside; wave 45: 🚻 G13, an aside; wave 48: 🔑 G14, an aside
     ]);
     expect(acts.reduce((s, a) => s + a.spine.length, 0)).toBe(44);
-    expect(acts.reduce((s, a) => s + a.asides.length, 0)).toBe(35);
+    expect(acts.reduce((s, a) => s + a.asides.length, 0)).toBe(36);
     // The two `act: Anytime` lines are one act (💡, the reinstallation cues,
     // and wave 11's 👑 / 🔧, appended last so no cue number moved).
     const anytime = acts.find((a) => a.state === "anytime")!;
