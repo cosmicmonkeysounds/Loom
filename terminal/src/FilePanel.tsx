@@ -25,6 +25,7 @@ export function FilePanel({
   character,
   onClose,
   onActivity,
+  plain = false,
 }: {
   config: TerminalConfig;
   pilot: Pilot;
@@ -33,6 +34,8 @@ export function FilePanel({
   onClose: () => void;
   /** Someone is using the panel (a camera read — taps and keys reach the leash on their own). */
   onActivity?: () => void;
+  /** The CRT (wave 52b): no icon, and no code to type with no keyboard. */
+  plain?: boolean;
 }) {
   const [fresher, setFresher] = useState<CodexEntry[] | null>(null);
   const [given, setGiven] = useState<ReadonlySet<string>>(() => new Set());
@@ -104,14 +107,14 @@ export function FilePanel({
   return (
     <div className="file-panel" role="dialog" aria-label={`give ${character} a file`}>
       <div className="file-head">
-        <span>📎 GIVE {who} A FILE</span>
-        <button type="button" className="link" onClick={onClose}>
+        <span>{plain ? "" : "📎 "}GIVE {who} A FILE</span>
+        <button type="button" className="link" data-pad data-pad-aside data-pad-back onClick={onClose}>
           BACK TO THE LINE
         </button>
       </div>
       {note !== null && <div className={`file-note ${note.kind}`}>{note.text}</div>}
       <div className="file-list">
-        {first.length === 0 && <div className="small">your Codex is empty — type a code or scan a file's QR below</div>}
+        {first.length === 0 && <div className="small">{plain ? "NO FILES YET — SCAN A FILE'S QR" : "your Codex is empty — type a code or scan a file's QR below"}</div>}
         {first.map((e) => {
           const no = refusalOf(e, character);
           return (
@@ -123,7 +126,7 @@ export function FilePanel({
               {no !== null ? (
                 <span className="file-kept small">{no.toUpperCase()}</span>
               ) : (
-                <button type="button" className="file-give" disabled={busy !== null || given.has(e.id)} onClick={() => void give(e)}>
+                <button type="button" className="file-give" data-pad disabled={busy !== null || given.has(e.id)} onClick={() => void give(e)}>
                   {given.has(e.id) ? "GIVEN" : busy === e.id ? "…" : "GIVE"}
                 </button>
               )}
@@ -142,7 +145,7 @@ export function FilePanel({
         <button type="submit" disabled={busy !== null || code.trim() === ""}>
           UNLOCK
         </button>
-        <button type="button" className="link" onClick={() => setScanning((v) => !v)}>
+        <button type="button" className="link" data-pad onClick={() => setScanning((v) => !v)}>
           {scanning ? "STOP CAMERA" : "SCAN A FILE'S QR"}
         </button>
       </form>

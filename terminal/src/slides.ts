@@ -137,6 +137,11 @@ export interface ScreenLayers {
 
 export const NO_LAYERS: ScreenLayers = { overlay: null, slide: null, corner: null, y2k: null, flicker: null, chart: null, chartShown: 0, glitch: null, burst: null, dream: "off" };
 
+/** The CRT (wave 52b): overlays still reach it; no glitch, ad burst, flicker or dream ever does. */
+export function plainLayers(l: ScreenLayers): ScreenLayers {
+  return { ...l, glitch: null, burst: null, flicker: null, dream: "off" };
+}
+
 /**
  * The glitch takeover at server `serverNow` (wave 26, T2), or null. Only a
  * live one: its cue's `at` > 0 (history folds to 0), younger than

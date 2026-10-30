@@ -13,6 +13,7 @@
 //! `getUserMedia` needs a secure context (`https://` or `localhost`).
 
 import { useEffect, useState, useSyncExternalStore } from "react";
+import { browserDevices, openDevice, type DeviceList } from "./devices.ts";
 
 export type Facing = "user" | "environment";
 export type CameraState = "starting" | "live" | "insecure" | "denied" | "none" | "error";
@@ -28,16 +29,20 @@ export function cameraStateOfError(e: unknown): CameraState {
 export interface CameraEnv {
   secure: boolean;
   getUserMedia: ((c: MediaStreamConstraints) => Promise<MediaStream>) | null;
+  /** The devices by name (wave 52, `prefer`); absent: only the default. */
+  devices?: DeviceList;
 }
 
 function browserEnv(): CameraEnv {
   const secure = typeof window !== "undefined" && window.isSecureContext;
   const md = typeof navigator !== "undefined" ? navigator.mediaDevices : undefined;
-  return { secure, getUserMedia: typeof md?.getUserMedia === "function" ? (c) => md.getUserMedia(c) : null };
+  return { secure, getUserMedia: typeof md?.getUserMedia === "function" ? (c) => md.getUserMedia(c) : null, devices: browserDevices };
 }
 
-export function constraintsFor(facing: Facing): MediaStreamConstraints {
-  return { video: { facingMode: facing, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false };
+/** `deviceId`: that exact camera (wave 52); null: whichever faces `facing`. */
+export function constraintsFor(facing: Facing, deviceId: string | null = null): MediaStreamConstraints {
+  const size = { width: { ideal: 1280 }, height: { ideal: 720 } };
+  return { video: deviceId === null ? { facingMode: facing, ...size } : { deviceId: { exact: deviceId }, ...size }, audio: false };
 }
 
 export interface CameraSnapshot {
@@ -52,8 +57,14 @@ export class CameraHub {
   private holders = 0;
   private opening: Promise<MediaStream | null> | null = null;
   private listeners = new Set<() => void>();
+  private webcam = "";
 
   constructor(private readonly env: () => CameraEnv = browserEnv) {}
+
+  /** Open the camera named this (wave 52: part of its name; "" = the default). Takes effect on the next open. */
+  prefer(label: string): void {
+    this.webcam = label;
+  }
 
   subscribe = (fn: () => void): (() => void) => {
     this.listeners.add(fn);
@@ -94,7 +105,8 @@ export class CameraHub {
       this.set({ state: env.secure ? "none" : "insecure" });
       return Promise.resolve(null);
     }
-    const p = env.getUserMedia(constraintsFor(facing)).then(
+    const getUserMedia = env.getUserMedia;
+    const p = openDevice({ kind: "videoinput", label: this.webcam, list: env.devices ?? null, open: (id) => getUserMedia(constraintsFor(facing, id)) }).then(
       (stream) => {
         if (this.opening !== p) {
           // Released (or the facing changed) while it opened.

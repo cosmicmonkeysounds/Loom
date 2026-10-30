@@ -12,7 +12,8 @@
 //! - **A new menu** flashes in as it opens (its numbers may have shifted),
 //!   and lights nothing under a resting pointer until the pointer moves.
 //! - **The door open**: CLOSE THE DOOR above the greyed options, never over them.
-//! - **The ⟦BACK⟧ menu** of a heart to heart is a bar under the composer (Esc picks it).
+//! - **The ⟦BACK⟧ menu** of a heart to heart is a bar under the composer (Esc
+//!   picks it, or B on a GameCube controller; never A: wave 52).
 
 import "./heart.css";
 import { useEffect, useRef, useState } from "react";
@@ -27,6 +28,8 @@ export function ChoicePanel({
   voiceBusy = false,
   sceneEndsAt = 0,
   onSkip,
+  pad = false,
+  hold = false,
 }: {
   menu: HeartMenu;
   /** The door, as the panel reads it (`doorOpenNow`). */
@@ -43,6 +46,10 @@ export function ChoicePanel({
   /** Skip his voice to the end (a click or Space while it waits on him); undefined: no skip
    *  can act (the room's voice is talking), so no hint shows and Space is left alone. */
   onSkip?: () => void;
+  /** A GameCube controller drives this terminal (wave 52): its words, not the keyboard's. */
+  pad?: boolean;
+  /** He can't be cut off (wave 52b, the CRT): no answers on screen until he's done. */
+  hold?: boolean;
 }) {
   const model = panelModel(menu, doorOpen)!;
   const [sending, setSending] = useState<number | null>(null);
@@ -52,7 +59,7 @@ export function ChoicePanel({
   const dock = useRef<{ id: number; at: number; skipped: number; opened: boolean }>({ id: -1, at: 0, skipped: 0, opened: false });
   if (dock.current.id !== menu.id) dock.current = { id: menu.id, at: Date.now(), skipped: 0, opened: false };
   const now = Date.now();
-  const gate = panelGate({ sinceDock: panelSince(dock.current.at, dock.current.skipped, now), voiceBusy, sceneLeft: Math.max(0, sceneEndsAt - now), wasOpen: dock.current.opened });
+  const gate = panelGate({ sinceDock: panelSince(dock.current.at, dock.current.skipped, now), voiceBusy, sceneLeft: Math.max(0, sceneEndsAt - now), wasOpen: dock.current.opened, hold });
   if (gate.open) dock.current.opened = true;
   const open = gate.open;
   // Look again when the answer can change by itself (the settle, the cap, a scene's end).
@@ -151,15 +158,16 @@ export function ChoicePanel({
     return (
       <div className="heart-back" data-menu={menu.id}>
         <span className="heart-back-note">TALKING FREELY</span>
-        <button type="button" className="heart-back-btn" disabled={model.greyed || sending !== null} onClick={() => pick(0)} title={o.raw}>
+        <button type="button" className="heart-back-btn" data-pad-back disabled={model.greyed || sending !== null} onClick={() => pick(0)} title={o.raw}>
           {o.tag !== null && <span className="heart-tag">{o.tag}</span>}
           {o.text}
-          <span className="heart-back-key">ESC</span>
+          <span className="heart-back-key">{pad ? "B" : "ESC"}</span>
         </button>
       </div>
     );
   }
 
+  if (hold && !open) return null;
   const state = !open ? " waiting" : "";
   return (
     <div
@@ -170,6 +178,7 @@ export function ChoicePanel({
       data-menu={menu.id}
       data-open={String(open)}
       data-wait={gate.wait ?? undefined}
+      data-pad-skip={!open && gate.wait === "voice" && onSkip !== undefined ? "" : undefined}
       onPointerMove={() => open && fresh && setFresh(false)}
       onClick={() => {
         if (!open && gate.wait === "voice") skip();
@@ -185,7 +194,7 @@ export function ChoicePanel({
               <i />
               <i />
             </span>
-            {gate.wait === "voice" && onSkip !== undefined && <span className="heart-head-skip">{numberKeys ? "SPACE / CLICK TO SKIP" : "TAP TO SKIP"}</span>}
+            {gate.wait === "voice" && onSkip !== undefined && <span className="heart-head-skip">{pad ? "PRESS A TO SKIP" : numberKeys ? "SPACE / CLICK TO SKIP" : "TAP TO SKIP"}</span>}
           </span>
         )}
       </div>
@@ -197,15 +206,26 @@ export function ChoicePanel({
               <button
                 type="button"
                 className={`heart-option${sending === o.index ? " sending" : ""}`}
+                data-pad
                 disabled={!open || model.greyed || (sending !== null && sending !== o.index)}
                 tabIndex={open ? undefined : -1}
                 onClick={() => pick(o.index)}
                 onMouseEnter={onActivity}
                 aria-label={o.raw}
               >
-                <span className="heart-num">{optionKey(o.index) ?? "·"}</span>
-                {o.tag !== null && <span className="heart-tag">{o.tag}</span>}
-                <span className="heart-text">{o.text}</span>
+                {hold ? (
+                  // One line, cut with a "…": a button can't do that to its own text.
+                  <span className="heart-row">
+                    {o.tag !== null && <span className="heart-tag">{o.tag}</span>}
+                    {o.text}
+                  </span>
+                ) : (
+                  <>
+                    <span className="heart-num">{optionKey(o.index) ?? "·"}</span>
+                    {o.tag !== null && <span className="heart-tag">{o.tag}</span>}
+                    <span className="heart-text">{o.text}</span>
+                  </>
+                )}
               </button>
             </li>
           ))}

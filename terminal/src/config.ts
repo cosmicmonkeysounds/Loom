@@ -65,6 +65,14 @@
 //!
 //!   /terminal/?code=<mod passcode>&spot=server-room&door=serial
 //!
+//! Wave 52: the server room has no mouse or keyboard on the night. A USB
+//! webcam is its camera and microphone (`&webcam=C310`, part of its name), a
+//! GameCube controller drives it (`&pad=1`) and spoken answers run through
+//! whisper.cpp on the laptop (`&whisper=1`). Its screen is an old 4:3 CRT
+//! (`&crt=1`, wave 52b: `crt/`):
+//!
+//!   /terminal/?code=<mod passcode>&spot=server-room&door=serial&camera=user&webcam=C310&pad=1&whisper=1&crt=1
+//!
 //! The mod passcode resolves (via `/api/resolve-code`) to the event and is
 //! traded for a **moderator token** (`/api/mod/login`) — that is what lets
 //! a terminal pilot a scanned guest through `/api/mod/impersonate`, and
@@ -161,6 +169,19 @@ export interface TerminalConfig {
    *  on by default (only a board whose `hello` says it has a bay is read);
    *  `&bay=0` / ⚙ turns it off. */
   bay: boolean;
+  /** The USB webcam this terminal sees and hears through (wave 52,
+   *  `devices.ts`): a piece of its name ("C310"), for the scanner, the camera
+   *  feed and the microphone. "" = the browser's default devices. */
+  webcam: string;
+  /** A GameCube controller drives this terminal (wave 52, `gamepad/`). */
+  pad: boolean;
+  /** Spoken answers through whisper.cpp on this computer (wave 52,
+   *  `whisper/`): the composer listens instead of taking typing. */
+  whisper: boolean;
+  /** This screen is an old 4:3 CRT (wave 52b, `crt/`): big plain text and a
+   *  waveform for the face, the pipes for the idle show, no sound effects,
+   *  glitches or dream, and nothing cuts him off. */
+  crt: boolean;
   /** Set up by tapping a terminal of the event's house map: at boot the
    *  name / view / room follow that map entry (`setup-map.ts` `followMap`).
    *  A manual view / room in ⚙'s advanced section clears it. */
@@ -270,6 +291,10 @@ export function defaultConfig(partial: Partial<TerminalConfig> & Pick<TerminalCo
     door: "off",
     keys: true,
     bay: true,
+    webcam: "",
+    pad: false,
+    whisper: false,
+    crt: false,
     ...partial,
   };
 }
@@ -285,7 +310,7 @@ export function loadConfig(storage: Pick<Storage, "getItem"> = localStorage): Te
     const room = typeof c.room === "string" ? c.room : "";
     // `v` was an earlier wave 18b draft's marker: dropped, never trusted.
     const { v: _version, announceMode, ...stored } = c;
-    const loaded = defaultConfig({ ...stored, eventId: c.eventId, token: c.token, spot, view, room, speed: speedOf(c.speed), pause: pauseOf(c.pause), engine: voiceChoiceOf(c.engine), announce: storedAnnounce(c.announce, announceMode), camFeed: c.camFeed !== false, voices: c.voices !== false, voiceLink: c.voiceLink !== false, fullscreen: c.fullscreen !== false, fromMap: c.fromMap === true, door: doorConfigOf(c.door), keys: c.keys !== false, bay: c.bay !== false });
+    const loaded = defaultConfig({ ...stored, eventId: c.eventId, token: c.token, spot, view, room, speed: speedOf(c.speed), pause: pauseOf(c.pause), engine: voiceChoiceOf(c.engine), announce: storedAnnounce(c.announce, announceMode), camFeed: c.camFeed !== false, voices: c.voices !== false, voiceLink: c.voiceLink !== false, fullscreen: c.fullscreen !== false, fromMap: c.fromMap === true, door: doorConfigOf(c.door), keys: c.keys !== false, bay: c.bay !== false, webcam: typeof c.webcam === "string" ? c.webcam : "", pad: c.pad === true, whisper: c.whisper === true, crt: c.crt === true });
     if (typeof c.mic === "boolean") loaded.mic = c.mic;
     else delete loaded.mic;
     return loaded;
@@ -329,7 +354,7 @@ export function withViewDefaults(c: TerminalConfig): TerminalConfig {
   return c.view === "tv" && c.speed === 1 ? { ...c, speed: TV_SPEED } : c;
 }
 
-/** Provisioning hints riding on the URL (`?code=&name=&character=&camera=&engine=&spot=&view=&room=&announce=&cam=&mic=&voices=&door=&keys=&bay=&pause=`). */
+/** Provisioning hints riding on the URL (`?code=&name=&character=&camera=&engine=&spot=&view=&room=&announce=&cam=&mic=&voices=&door=&keys=&bay=&pause=&webcam=&pad=&whisper=&crt=`). */
 export interface UrlHints {
   code: string;
   name: string | null;
@@ -355,6 +380,14 @@ export interface UrlHints {
   bay?: boolean | null;
   /** (wave 26) `pause=<0–3>`: the pause multiplier (null = not given: 1). */
   pause?: number | null;
+  /** (wave 52) `webcam=<part of its name>` (null = not given: the default devices). */
+  webcam?: string | null;
+  /** (wave 52) `pad=0` / `1`: a GameCube controller (null = not given: no). */
+  pad?: boolean | null;
+  /** (wave 52) `whisper=0` / `1`: spoken answers (null = not given: no). */
+  whisper?: boolean | null;
+  /** (wave 52b) `crt=0` / `1`: an old 4:3 CRT (null = not given: no). */
+  crt?: boolean | null;
 }
 
 /** A URL on/off switch: true / false, null = not given or unreadable. */
@@ -385,6 +418,10 @@ export function hintsFromSearch(search: string): UrlHints {
     keys: flagOf(p.get("keys")),
     bay: flagOf(p.get("bay")),
     pause: pauseHint(p.get("pause")),
+    webcam: p.get("webcam")?.trim() || null,
+    pad: flagOf(p.get("pad")),
+    whisper: flagOf(p.get("whisper")),
+    crt: flagOf(p.get("crt")),
   };
 }
 
@@ -407,6 +444,10 @@ export function withoutSecrets(search: string): string {
   p.delete("keys");
   p.delete("bay");
   p.delete("pause");
+  p.delete("webcam");
+  p.delete("pad");
+  p.delete("whisper");
+  p.delete("crt");
   const s = p.toString();
   return s === "" ? "" : `?${s}`;
 }
@@ -435,6 +476,10 @@ export async function provision(code: string, hints: Omit<UrlHints, "code">): Pr
     keys: hints.keys ?? true,
     bay: hints.bay ?? true,
     pause: hints.pause ?? 1,
+    webcam: hints.webcam ?? "",
+    pad: hints.pad ?? false,
+    whisper: hints.whisper ?? false,
+    crt: hints.crt ?? false,
   });
   if (typeof hints.mic === "boolean") given.mic = hints.mic;
   return withViewDefaults(given);

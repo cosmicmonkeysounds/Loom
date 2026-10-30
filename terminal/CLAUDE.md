@@ -58,6 +58,10 @@ play app's own `useChatStream` (imported as source) and narrows it to
 | `src/pilot.ts`, `src/chat.tsx`, `src/controls.tsx`, `src/idle.ts` | impersonate / say / end; `terminal opened` / `closed` (`VisitLatch`); a room terminal checks for a locked pass first (`refusesLockedPass`, `passLocked`); the thread + composer; the 2 s ⚙ hold; the leash (30 s, files 120 s, heart 180 s); wave 42b: the guest's place in his line (`pilotWait` over play's `useAgentWait`, `chat.tsx` `WaitLine` + `waitCells`: an amber system line with the phone's `DRAFT w42` words and a ten-block bar where the typing row goes, its estimate counting down; `answering` is the typing row; a queued line holds the leash; the waits are the piloted guest's only and clear on every `history` frame; `test/w42-wait.test.ts`) |
 | `src/files.ts`, `src/FilePanel.tsx` | 📎 GIVE HIM A FILE: share / redeem as the piloted guest |
 | `src/heart/` | `heart.ts` (the heart menu = newest `choices` entry on `dm:<character>` whose beat starts `heart `; tags; when the composer shows; wave 27: `panelGate` + `panelSince` (the panel waits on his voice and his scenes, and settles again after a skip), `panelPlace` (a ⟦BACK⟧ menu with no composer still draws its bar), `optionKey`, `layerOfCue` (scene timing only; wave 29: no header, card or test shows a layer number), `echoOf` (re-exported from core's `pick-echo.ts`), `composerBlocked` (also held at the heart until his first word, `heartWaitingFirstWord`), `threadFor`, `pilotEndWait`), `pending-pick.ts` (a pick shown at once until the server's line), `ChoicePanel.tsx`, `DoorOverlay.tsx`, `DoorSetup.tsx`, `PatchSetup.tsx` |
+| `src/devices.ts` | wave 52: which camera and microphone a stream opens, by part of its name (`config.webcam`) |
+| `src/gamepad/` | wave 52: the GameCube controller: `pad.ts` (pure: `GC`, `frameOf`, `PadMachine`, `movedTo`), `PadNav.tsx` (the loop, over `data-pad` / `data-pad-aside` / `data-pad-skip` / `data-pad-back`), `RigSetup.tsx` (⚙) |
+| `src/crt/` | wave 52b: the server room's CRT: `CrtStage.tsx` (the 640 × 480 stage, the pipes), `Wave.tsx` (his voice, on the face's handle), `legend.ts` + `Legend.tsx` (the button guide), `cards.ts` (the heart's scenes as text, pinned to `scenes/heart.tsx`), `prompt.ts` (when it asks for a pass, the keyboard's keys), `Keyboard.tsx`, `crt.css` |
+| `src/whisper/` | wave 52: spoken answers: `speech.ts` (pure: `wavOf`, `EndOfSpeech`, `cleanText`, `parrotLine`, `VOICE_COPY`, DRAFT w52), `listen.ts` (the mic → whisper.cpp), `VoiceComposer.tsx` (lazy; the composer when `config.whisper`) |
 | `src/serial/` | the M4 bridge: `door-protocol.ts` (JSON lines, pure), `door-bridge.ts` + `patch-bridge.ts` (decisions, pure), `door-serial.ts` (Web Serial + `door=sim`, lazy), `door-status.ts` (store + heartbeat keys), `use-door.ts` (hook) |
 | `src/world/` | spatial SSE + house map → `WorldStore`; `presence.ts` (linked by room: `linkedNow`, `linkedPane`, `usePresenceLatch`); `director.ts` (mount / follow / orbit, three-free), `minimap.ts`, `WorldView.tsx` (three.js, lazy) |
 | `src/raycast/` | the no-WebGL2 Canvas 2D raycaster (lazy, never imports three); `swarm.ts`: its ghosts, a small Canvas 2D swarm |
@@ -400,7 +404,7 @@ drain during a poll in flight polls again right after it.
 ## Provisioning keys
 
 `?code= name= character= camera= engine= spot= view= room= announce= cam=
-mic= voices= door= keys= bay= pause=` (`UrlHints`). A new key needs three edits in
+mic= voices= door= keys= bay= pause= webcam= pad= whisper= crt=` (`UrlHints`). A new key needs three edits in
 `config.ts`: `UrlHints`, `hintsFromSearch`, and `withoutSecrets` (which
 scrubs the bar), plus `provision`'s defaults. `name` / `view` / `room` on a
 link override the map and stop `fromMap`; the setup-by-map path leaves
@@ -427,6 +431,53 @@ them out.
   `hardware/server-room-m4/test/fixtures/lines.jsonl` and the terminal's
   own `test/fixtures/door-lines.jsonl`. A protocol change touches the
   firmware, both fixtures, `door-protocol.ts` and its test together.
+
+## No mouse or keyboard (wave 52)
+
+The server room runs on a USB webcam, a GameCube controller (Mayflash adapter
+in PC mode), whisper.cpp on the laptop and an old 4:3 CRT:
+`&webcam=C310&pad=1&whisper=1&crt=1`.
+Keep `keys` true: it means the program can answer freely, and `false` ends
+the line at *not yet* and *leave*.
+
+- **The controller walks the DOM.** `PadNav` lights `[data-pad]` elements in
+  page order, and A clicks the lit one, so a new button joins by taking the
+  attribute. `data-pad-aside` is reachable but never lit by itself (the file
+  strip). A clicks `[data-pad-skip]` first (his voice). B clicks the first
+  `[data-pad-back]`, and only B goes back: the ⟦BACK⟧ bar is deliberately not
+  `data-pad`. Y clicks `[data-pad-y]`, a held Start `[data-pad-hold]`. Something
+  that wants the raw controller (the keyboard) takes it with `grabPad`.
+  DISCONNECT and ⚙ stay out of it: there's no way out of the terminal from the
+  controller.
+- **The adapter's map is measured, not standard** (`mapping` is empty): `GC`
+  in `pad.ts`, from a real controller, 2026-10-30. Chrome shows four pads,
+  one per port, so `frameOf` merges them.
+- **Thread.** `Thread` stands on the newest line (`pin`), through a new line,
+  a reveal or a menu docking under it (the ResizeObserver). On a touch screen
+  only someone scrolling up stops it (`followAfter`); a render landing before
+  the scroll event must not undo that (`look`). The CRT can't scroll at all.
+- **Spoken answers.** `VoiceComposer` replaces `Composer`. Each listen has a
+  `turn`, and B moves it on, so a late transcript is dropped. Whisper stays on
+  127.0.0.1: an https page may fetch it once the site has Chrome's device-
+  access grant, and CORS is whisper-server's own `*`.
+- **Local tests.** Vite against a scratch server, `door=sim`:
+  `LOOM_SERVER=http://127.0.0.1:7391 pnpm --filter loom-terminal dev`. Vite's
+  watcher misses rapid writes in the OneDrive folder on Steph's laptop: if a
+  change doesn't show, restart it. A hidden browser pane runs no
+  `requestAnimationFrame`, so `PadNav` stops there.
+- **The CRT (`crt`).** Laid out in the stage's own 640 × 480 pixels, never `vw`
+  or `vh` (`CrtStage` stretches the stage, so those would count twice). No
+  line under 3 px, no glow, no dim text, 26 px at the smallest, nothing outside
+  the 7% margin. `Terminal` renders its own tree and swaps `Face` for `Wave`;
+  all the session logic above it is shared. `plainLayers` keeps the glitch,
+  burst, flicker and dream off it, `cutscenes` is off (`cards.ts` instead) and
+  effects are at volume 0. `hold` keeps the answers away while he speaks
+  (`panelGate`), and `busy` does the same for the spoken composer, so nothing
+  cuts him off. `Typed` types his lines to the end of the sentence he's on.
+  Door shut: the pipes, the scanner hidden behind them. Door open, or any
+  controller press: `promptUp`, the camera shown (`.crt-scan.shown`), until a
+  minute after it shuts. The story asks the first guest; `speaksPrompt` asks
+  the rest, in the story's words (`PASS_LINE`).
 
 ## Conventions and gotchas
 

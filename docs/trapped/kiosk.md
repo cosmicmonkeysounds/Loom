@@ -257,23 +257,76 @@ The script runs Chrome with its own profile (`%LOCALAPPDATA%\loom-tv`) and
 
 ## The server room — Steph's laptop
 
-Trabolta's heart. Steph's laptop, lid closed, drives a **monitor** with a
-**mouse**, a **keyboard** and a **webcam** facing the program, and the
-**Grand Central M4** on its USB reads the **door sensor** and the
-**patch bay** ([`hardware/server-room-m4/`](../../hardware/server-room-m4/README.md)).
+Trabolta's heart. Steph's laptop, lid closed, drives an **old 4:3 CRT**
+(HDMI → component, through a MACROSILICON converter) with a **USB webcam**
+(Logi C310) facing the program, which is both its camera and its
+microphone, and a **GameCube controller** through a Mayflash adapter in PC
+mode: no mouse or keyboard on the night. The **Grand Central M4** on its
+USB reads the **door sensor** and the **patch bay**
+([`hardware/server-room-m4/`](../../hardware/server-room-m4/README.md)).
 The page reads the board over **Web Serial**: desktop Chrome (89+) or Edge
 on https only. Nothing from stagehand runs here.
 
 The map's `server-room` spot is in the Server Room (`house.json` and
 `house.shed.json`: room `server-room`, pos `[3.9, -1.3, 26]`, yaw 0) with
 `view: "face"` and `speaks: true`, so the link needs only the spot plus the
-board and camera keys:
+board, camera, controller and voice keys:
 
 ```
-/terminal/?code=<mod>&spot=server-room&door=serial&camera=user
+/terminal/?code=<mod>&spot=server-room&door=serial&camera=user&webcam=C310&pad=1&whisper=1&crt=1
 ```
 
-(`&keys=0` only for a mouse-only rig.)
+`webcam` is part of the device's name, for the camera and the microphone
+both, because Windows' default microphone moves. A first-time setup by
+tapping the map turns the door on by itself, but not the other two keys.
+
+| On the controller | Does |
+|---|---|
+| Left stick, D-pad | Up and down the answers |
+| A | Picks the lit answer |
+| B | Back: drops what was said, then leaves talking freely. Never out of the terminal |
+| Y | Gives him a file, when the guide offers it |
+| Start, held | The virtual keyboard, while it asks for a pass |
+
+X, Z, L, R and the C stick do nothing, and DISCONNECT and ⚙ aren't on the
+screen. A guest's line ends on its leash. The bottom line of the screen
+always says which buttons work right now.
+
+**The CRT (`&crt=1`).** A 640 × 480 stage of big plain text, stretched to
+fill whatever the laptop sends, so the picture keeps its shape even on a
+widescreen signal (the converter squeezes any signal to fill the tube). Use a
+real 4:3 mode anyway: with the CRT as the only display in Windows, set it to
+**640 × 480** (Settings → System → Display). The converter accepts it, and
+nothing is thrown away on the way down, so it should be the sharpest picture.
+The tube loses about 6% off every edge, so nothing sits outside a 7% margin.
+
+- His words type out as he speaks, under a waveform of his voice. There is no
+  face, and nothing skips him: no button does anything until he has finished,
+  including while he says a spoken answer back.
+- The conversation has no scrolling: it stands on the newest line.
+- With the door shut it plays the pipes and nothing else: no ads, windows,
+  glitches, dream or sound effects. The scanner keeps reading passes behind
+  them.
+- When the door opens the pipes go, his voice comes up, and it asks for a pass
+  with the camera's picture to aim by: **SHOW ME YOUR PASS**. The story says
+  so to the first guest; every later one hears his same line from the terminal.
+  Any press on the controller also wakes it, in case the door sensor is down.
+  It stays up a minute after the door shuts, then goes back to the pipes.
+- If the camera won't read a pass, hold **Start**: a virtual keyboard takes a
+  program name (or a pass id), the same lookup as the typed field on every
+  other terminal. Stick and A to type, B to delete, DONE to connect.
+- The heart's scenes are plain text cards, with their usual words and timing.
+  Blackouts, alarms and announcements still reach it.
+
+⟦SPEAK FREELY⟧ opens **SPEAK TO HIM**: it listens until they stop (or A),
+whisper.cpp writes it down, he says it back and asks, and YES sends it. Speech
+stays on this laptop: `127.0.0.1:8178`, never the server. Install once, then
+it starts with the terminal:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\server-room\install-whisper.ps1
+powershell -ExecutionPolicy Bypass -File scripts\server-room\start-whisper.ps1
+```
 
 ### First launch: grants and calibration
 
@@ -293,9 +346,12 @@ open -na "Google Chrome" --args --user-data-dir="$HOME/.loom-terminal" \
   "https://app.mapsandducks.com/terminal/?code=<mod>&spot=server-room&door=serial&camera=user"
 ```
 
-1. Allow the camera.
+1. Allow the camera, the microphone and, when Chrome asks, access to apps on
+   this device (that's whisper; ⚙'s *no mouse or keyboard* section asks).
 2. Hold ⚙ 2 s → *advanced* → *door sensor* → **Connect door sensor** →
-   pick the Grand Central in Chrome's list.
+   pick the Grand Central in Chrome's list. A terminal that shows no door
+   after this was saved with the sensor off: check the select says *the door
+   sensor*, and Save.
 3. **Calibrate: door shut** (door shut, 2 s), open the door, **Calibrate:
    door open**. The thresholds are stored on the laptop and in the board's
    flash and re-sent on every connect. **Always calibrate again after a
@@ -319,6 +375,7 @@ caffeinate -dims open -na "Google Chrome" --args --user-data-dir="$HOME/.loom-te
 
 ```powershell
 # Windows
+powershell -ExecutionPolicy Bypass -File scripts\server-room\start-whisper.ps1
 & "C:\Program Files\Google\Chrome\Application\chrome.exe" --user-data-dir="$env:LOCALAPPDATA\loom-terminal" `
   --kiosk --autoplay-policy=no-user-gesture-required --no-first-run "https://app.mapsandducks.com/terminal/"
 ```

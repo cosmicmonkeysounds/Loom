@@ -16,6 +16,7 @@ import { DEFAULT_TV_ROOM, VIEWS, VIEW_INFO, announceChoiceValue, announceFromCho
 import { feedStatusText, feedWanted, useFeedStatus } from "./camfeed.ts";
 import { micBox, voiceRoles } from "./voice/roles.ts";
 import { DoorSetup } from "./heart/DoorSetup.tsx";
+import { RigSetup } from "./gamepad/RigSetup.tsx";
 import { PatchSetup } from "./heart/PatchSetup.tsx";
 import { voiceStatus, voiceStatusText } from "./voice/status.ts";
 import { fetchCharacters } from "./pilot.ts";
@@ -24,7 +25,7 @@ import { ringChime } from "./announce.ts";
 import { CHARACTER_VOICE, rankVoices } from "./speech/pick-voice.ts";
 import { bundledHouse, fetchHouse, type HouseInfo } from "./world/stream.ts";
 import { hasWebGL2 } from "./webgl.ts";
-import { UNPLACED, applyPick, groupTerminals, onlineBadge, withManual, type Heartbeat, type MapPick } from "./setup-map.ts";
+import { UNPLACED, applyPick, groupTerminals, onlineBadge, setupDoor, withManual, type Heartbeat, type MapPick } from "./setup-map.ts";
 
 /**
  * (wave 26, V2) A finished setup's pace: a tablet set up for the first time
@@ -126,6 +127,11 @@ export function Setup({
   const [voicesOn, setVoicesOn] = useState(current?.voices ?? true);
   const [fullscreen, setFullscreen] = useState(current?.fullscreen ?? true);
   const [door, setDoor] = useState<DoorConfig>(current?.door ?? "off");
+  const [doorTouched, setDoorTouched] = useState(false);
+  const [webcam, setWebcam] = useState(current?.webcam ?? "");
+  const [pad, setPad] = useState(current?.pad ?? false);
+  const [whisper, setWhisper] = useState(current?.whisper ?? false);
+  const [crt, setCrt] = useState(current?.crt ?? false);
   const [keys, setKeys] = useState(current?.keys ?? true);
   const [bay, setBay] = useState(current?.bay ?? true);
   // A manual screen type / room ("" = the map's). A terminal not set up from
@@ -212,14 +218,14 @@ export function Setup({
       const base: TerminalConfig = sameEvent ? { ...current, token: access.token, title: access.title || current.title } : defaultConfig({ ...access, character: pickCharacter(null, cast) });
       const kept = await savedCharacter(character, base.character, async () => cast);
       const voiceFields = mic === undefined ? { voices: voicesOn } : { voices: voicesOn, mic };
-      const picked = applyPick({ ...base, character: kept, camera, engine, announce, camFeed, ...voiceFields, fullscreen, door, keys, bay, serverVoice: serverVoice.trim(), browserVoice, speed, pause }, pick);
+      const picked = applyPick({ ...base, character: kept, camera, engine, announce, camFeed, ...voiceFields, fullscreen, door, keys, bay, webcam: webcam.trim(), pad, whisper, crt, serverVoice: serverVoice.trim(), browserVoice, speed, pause }, pick);
       if (mic === undefined) delete picked.mic;
       const next = picked;
       const own = manualTouched || (current !== null && current.spot === pick.spot);
       const done = own ? withManual(next, pick, { view: viewOverride, room: roomOverride }) : next;
       // A tablet set up for the first time as the TV speaks at its pace (wave
       // 26, V2), unless a pace was chosen here; one already set up keeps its own.
-      onDone(setupPace(done, { first: current === null, speedTouched }));
+      onDone(setupPace(setupDoor(done, { first: current === null, touched: doorTouched }), { first: current === null, speedTouched }));
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -444,7 +450,8 @@ export function Setup({
                 <input type="checkbox" checked={fullscreen} onChange={(e) => setFullscreen(e.target.checked)} />
                 full screen <span className="muted">(asked again on every tap; off for a laptop that needs Esc)</span>
               </label>
-              <DoorSetup door={door} onDoor={setDoor} keys={keys} onKeys={setKeys} saved={current?.door ?? null} />
+              <DoorSetup door={door} onDoor={(d) => { setDoorTouched(true); setDoor(d); }} keys={keys} onKeys={setKeys} saved={current?.door ?? null} />
+              <RigSetup webcam={webcam} onWebcam={setWebcam} pad={pad} onPad={setPad} whisper={whisper} onWhisper={setWhisper} crt={crt} onCrt={setCrt} />
               {door !== "off" && <PatchSetup bay={bay} onBay={setBay} running={current !== null && current.door !== "off" && current.door === door && current.bay === bay} />}
               {current !== null && feedWanted(current) && <div className={`small ${feed.kind === "stopped" ? "warn" : "muted"}`}>{feedStatusText(feed)}</div>}
               {current !== null && (voiceRoles(current).mic || voiceRoles(current).voices) && <div className={`small ${voice.link === "stopped" || voice.mic === "denied" || voice.mic === "insecure" ? "warn" : "muted"}`}>{voice.link === "off" ? "voice link: starts once this terminal is set up" : `before ⚙ opened — ${voiceStatusText(voice)}`}</div>}

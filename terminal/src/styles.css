@@ -1728,3 +1728,11 @@ body[data-dream-clock] .cutscene-stage[data-scene="y2k"], body[data-dream-clock]
 /* The chess and casino terminals: on the idle half, never on a board or a table. */
 .king-card, .casino-marquee { position: relative; }
 .king-card > .dream-view ~ *, .casino-marquee > .dream-view ~ * { position: relative; z-index: 7; text-shadow: 0 0 0.3em #000, 0 0 0.1em #000; }
+
+/* The GameCube controller's lit choice (wave 52, gamepad/PadNav.tsx). */
+[data-pad-focus] {
+  outline: 2px solid var(--amber);
+  outline-offset: -2px;
+  background: var(--phosphor-faint);
+  color: var(--white);
+}

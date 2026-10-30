@@ -69,21 +69,30 @@
 //! has played.
 
 import { Component, Fragment, Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState, type ComponentType, type MutableRefObject, type ReactNode } from "react";
-import { Composer, Thread } from "./chat.tsx";
+import { Composer, TYPE_CPS, Thread, Typed } from "./chat.tsx";
+import { bannerOf, cardOf, type CrtCard } from "./crt/cards.ts";
+import { CrtPipes, CrtStage } from "./crt/CrtStage.tsx";
+import { CrtLegend } from "./crt/Legend.tsx";
+import { CrtKeyboard } from "./crt/Keyboard.tsx";
+import { legendFor, type VoiceStepKind } from "./crt/legend.ts";
+import { PASS_LINE, PROMPT_SPEAK_MS, promptAfterDoor, promptAfterPress, promptUp, speaksPrompt } from "./crt/prompt.ts";
+import { Wave } from "./crt/Wave.tsx";
+import { PadNav } from "./gamepad/PadNav.tsx";
+import { mic } from "./voice/mic.ts";
 import { adoptCharacter, baseOf, castCheckKey, characterProblem, dropConfig, hintsFromSearch, loadConfig, provision, roomOf, saveConfig, spotProblem, tvRoomOf, withoutSecrets, type TerminalConfig } from "./config.ts";
 import { Setup } from "./Setup.tsx";
 import { followMap, followVoice, linkConfig } from "./setup-map.ts";
 import { useCamFeed } from "./camfeed.ts";
 import { useVoiceLink } from "./voice/hook.ts";
 import { MicCue } from "./voice/MicCue.tsx";
-import { useCameraLive, type Facing } from "./camera.ts";
+import { camera, useCameraLive, type Facing } from "./camera.ts";
 import { Face, type FaceHandle } from "./face/Face.tsx";
 import { moodOfText, type Mood } from "./face/mood.ts";
 import { lineLeash, talkWaitsOnDoor, useIdleTimeout } from "./idle.ts";
 import { FilePanel } from "./FilePanel.tsx";
 import { LOCKED_PASS_NOTICE, VISIT_OPEN_FALLBACK_MS, VisitLatch, beginPilot, characterIdOf, passLocked, refusesLockedPass, closeVisit, endPilot, fetchCharacters, openVisit, recoverVisit, tokenAlive, usePilotSession, type Line, type Pilot } from "./pilot.ts";
 import { parseScan } from "./scan.ts";
-import { Gear, TypedFallback } from "./controls.tsx";
+import { pickByName, Gear, TypedFallback } from "./controls.tsx";
 import { Scanner, type CameraState, cameraProblem } from "./scanner.tsx";
 import { SpeechQueue, audioUnlocked, gapsFor, unlock, voiceEngines, voiceFloor, voiceNote, type EngineKind } from "./speech/engine.ts";
 import { useAnnouncements } from "./announce.ts";
@@ -94,7 +103,7 @@ import { fullScreenSim, hasWebGL2 } from "./webgl.ts";
 import { linkedNow, linkedPane, usePresenceLatch } from "./world/presence.ts";
 import { screenWake } from "./kiosk.ts";
 import { kioskFullscreen } from "./fullscreen.ts";
-import { setSoundMuted, setSoundView, sfx } from "./sound/bus.ts";
+import { setSoundMuted, setSoundView, setSoundVolume, sfx } from "./sound/bus.ts";
 import { drawsSlides, loadCutscenes, screenTargetOf, silentView } from "./cutscene/load.ts";
 import { attractOf, useScreenState, watchWhileAsleep, type ScreenState } from "./screen.ts";
 import { Attract } from "./Attract.tsx";
@@ -105,7 +114,7 @@ import { useDreamArm, useDreamPhase, useDreamReady } from "./dream/DreamView.tsx
 import { dreamKeyOf } from "./dream/dream.ts";
 import { Tv } from "./Tv.tsx";
 import type { ReinstallTerminalProps } from "./reinstall/ReinstallTerminal.tsx";
-import { PeekClock, canPeek, coverOf, screenLayers } from "./slides.ts";
+import { PeekClock, canPeek, coverOf, plainLayers, screenLayers } from "./slides.ts";
 import { api, withTimeout } from "@loom/play/client.ts";
 import { serverNow } from "./cutscene/clock.ts";
 import { onSceneFace } from "./cutscene/face-bus.ts";
@@ -115,7 +124,7 @@ import { useDoorStatus } from "./serial/door-status.ts";
 import { doorOpenNow } from "./serial/door-bridge.ts";
 import { ChoicePanel } from "./heart/ChoicePanel.tsx";
 import { DoorOverlay } from "./heart/DoorOverlay.tsx";
-import { CHOOSE_TIMEOUT_MS, chooseBody, chooseErrorText, composerBlocked, composerShown, emptyThreadText, heartMenuOf, heartSceneLeft, heartTouched, isHeartTerminal, menusOf, panelPlace, pilotEndOf, pilotEndWait, sceneHoldsPanel, threadFor, type HeartMenu } from "./heart/heart.ts";
+import { CHOOSE_TIMEOUT_MS, chooseBody, chooseErrorText, composerBlocked, composerShown, emptyThreadText, heartMenuOf, heartSceneLeft, heartSceneMs, heartTouched, isHeartTerminal, menusOf, panelPlace, pilotEndOf, pilotEndWait, sceneHoldsPanel, threadFor, type HeartMenu } from "./heart/heart.ts";
 import { pendingPickOf, unansweredPicks, withPendingPicks, type PendingPick } from "./heart/pending-pick.ts";
 import { LinePlayer, cursorAfterGap, cursorWhileAsleep, planVoice, showsNameplate, type TvLine } from "./tv.ts";
 import { RoomSpeech } from "./speech/said.ts";
@@ -144,6 +153,9 @@ export function App() {
   // event and the token here. Set while rendering, so a scene that mounts
   // in this same commit already has it (its effects run before ours).
   setSceneAccess(config === null ? null : { base: baseOf(config), token: config.token });
+  // (wave 52) The webcam to open, while rendering: the scanner's effect runs before ours.
+  camera.prefer(config?.webcam ?? "");
+  mic.prefer(config?.webcam ?? "");
   const [screen, setScreen] = useState<Screen>(() => (loadConfig() ? { kind: "attract" } : { kind: "setup", notice: null }));
   const [awake, setAwake] = useState(() => audioUnlocked());
   // The tent laptop (`view=reinstall`) has a walk or the wizard on screen.
@@ -239,7 +251,7 @@ export function App() {
     if (view !== "reinstall") setReinstallBusy(false);
   }, [view]);
   // Clippy's dream (wave 50): readied as soon as the story turns it on.
-  useDreamArm(config, screenTargetOf(view ?? "auto"), screenState.state);
+  useDreamArm(config?.crt === true ? null : config, screenTargetOf(view ?? "auto"), screenState.state);
   const dreamReady = useDreamReady();
   // On the takeover's moments, not the next poll: `covered` must flip with
   // them, or a wall shows what is under the idle show for up to 2 s.
@@ -368,7 +380,9 @@ export function App() {
   }, [fullscreen]);
   // The effects' level follows the view (the TV's are quieter); the mirror
   // fallback stays silent (X5).
-  useEffect(() => setSoundView(config?.view), [config?.view]);
+  // The CRT makes no effects of its own (wave 52b): his voice is all it says.
+  const crt = config?.crt === true;
+  useEffect(() => (crt ? setSoundVolume(0) : setSoundView(config?.view)), [config?.view, crt]);
   const silent = config !== null && silentView(config.view);
   useEffect(() => {
     if (!silent) return;
@@ -470,7 +484,9 @@ export function App() {
   // overlay or the glitch over the idle show pauses it (no popup dings under
   // a scene). The glitch (wave 26, T2) is covered, never a takeover: a pilot,
   // a chess game or a tent walk keeps running under its 8 s.
-  const { takeover, covered } = coverOf(screenLayers(screenState.state, Date.now(), { piloting, peek, room: bare, slides: !station, dreamReady }));
+  const drawnLayers = screenLayers(screenState.state, Date.now(), { piloting, peek, room: bare, slides: !station, dreamReady });
+  const { takeover, covered } = coverOf(config.crt ? plainLayers(drawnLayers) : drawnLayers);
+  const staged = (n: ReactNode) => (config.crt ? <CrtStage>{n}</CrtStage> : n);
   // The heart terminal: the server room's own room terminal, or any with a door sensor.
   const heartTerminal = isHeartTerminal(room, config.door);
   // Keyed, so it keeps its place (and the glitch, a scene, the flicker keep
@@ -482,7 +498,7 @@ export function App() {
       {heartTerminal && <DoorOverlay doorOpen={doorOpen} stage={screenState.state?.night.heart_stage ?? null} />}
       {/* A sensor fault is never on a guest's screen (D29: the sensor is the door): ⚙ and Run → Terminals show it. */}
       {/* A slide's .mp4 plays on the TV only (N-04a); the tablets keep the PNG. */}
-      <LiveScreenLayer state={screenState.state} piloting={piloting} peek={peek} room={bare} slides={!station} onSlideTap={peekable && !station ? onSlideTap : undefined} video={config.view === "tv"} cutscenes={drawsSlides(config.view, room)} announcing={announcement !== null} target={screenTargetOf(config.view)} dreamKey={dreamKeyOf(config)} gear={<Gear onOpen={openSetup} label="Set up this terminal" className="mirror-gear" />} />
+      <LiveScreenLayer state={screenState.state} piloting={piloting} peek={peek} room={bare} slides={!station} onSlideTap={peekable && !station ? onSlideTap : undefined} video={config.view === "tv"} cutscenes={drawsSlides(config.view, room) && !config.crt} plain={config.crt} announcing={announcement !== null} target={screenTargetOf(config.view)} dreamKey={dreamKeyOf(config)} gear={<Gear onOpen={openSetup} label="Set up this terminal" className="mirror-gear" />} />
       <IdentifyOverlay state={screenState.state} name={config.name} spot={config.spot} view={config.view} />
       <MicCue />
       {announcement !== null && (
@@ -495,7 +511,12 @@ export function App() {
       )}
     </Fragment>
   );
-  const attractScreen = (
+  const attractScreen = config.crt ? (
+    <div className="terminal crt attract">
+      <CrtPipes active={!covered} />
+      <Gear onOpen={openSetup} label="Set up this terminal" className="mirror-gear" />
+    </div>
+  ) : (
     <Attract
       name={config.name}
       state={screenState.state}
@@ -515,7 +536,8 @@ export function App() {
     />
   );
 
-  const wakeOverlay = !awake && (
+  // The CRT has nothing to touch: the kiosk's autoplay flag, or the controller's first press.
+  const wakeOverlay = !awake && !config.crt && (
     <button className="wake" onClick={wake}>
       <span className="wake-title">TOUCH TO WAKE</span>
       <span className="wake-sub">this terminal needs one touch before it may speak</span>
@@ -604,16 +626,16 @@ export function App() {
         </>
       );
     }
-    return (
+    return staged(
       <>
         {attractScreen}
         {wakeOverlay}
         {layer}
-      </>
+      </>,
     );
   }
 
-  return (
+  return staged(
     <>
       <Terminal
         config={config}
@@ -631,10 +653,11 @@ export function App() {
         covered={covered}
         onSetup={openSetup}
         onGone={onGone}
+        onWake={awake ? undefined : wake}
       />
       {wakeOverlay}
       {layer}
-    </>
+    </>,
   );
 }
 
@@ -642,6 +665,8 @@ export function App() {
 
 /** After the world view failed to load (or draw), try again this much later (ms). */
 const WORLD_RETRY_MS = 30_000;
+/** The spoken composer's chunk (wave 52); a failed load leaves the choices working. */
+const VoiceComposer = lazy(retryable(() => import("./whisper/VoiceComposer.tsx")));
 /** A mirror reloads the page at most this often (ms). */
 const RELOAD_GAP_MS = 5 * 60_000;
 const RELOAD_KEY = "loom-terminal:world-reload";
@@ -845,6 +870,7 @@ function Terminal({
   covered,
   onSetup,
   onGone,
+  onWake,
 }: {
   config: TerminalConfig;
   screen: Screen;
@@ -872,6 +898,8 @@ function Terminal({
   covered: boolean;
   onSetup: () => void;
   onGone: (g: Gone) => void;
+  /** Sound is still locked: the controller's first press may unlock it. */
+  onWake?: () => void;
 }) {
   const pilot = screen.kind === "piloting" ? screen.pilot : null;
   const session = usePilotSession(config, pilot);
@@ -881,6 +909,12 @@ function Terminal({
   const [flash, setFlash] = useState<string | null>(null);
   const [camera, setCamera] = useState<CameraState>("starting");
   const [typedOpen, setTypedOpen] = useState(false);
+  // The CRT's button guide (wave 52b): where the composer stands.
+  const [voiceStep, setVoiceStep] = useState<VoiceStepKind>("ready");
+  // When the CRT stops asking for a pass (local ms), and its keyboard.
+  const [promptUntil, setPromptUntil] = useState(0);
+  const [typing, setTyping] = useState(false);
+
   const [engineUsed, setEngineUsed] = useState<EngineKind | null>(null);
   const [latched, setLatched] = useState(false);
   const face = useRef<FaceHandle | null>(null);
@@ -1214,6 +1248,19 @@ function Terminal({
     setSpeaking(false);
   }, [queue, roomBusy]);
 
+  // Wave 52: what the spoken composer has him say back. No line's reveal rides on these ids.
+  const sayBackId = useRef(-1);
+  const sayBack = useCallback(
+    (text: string) => {
+      const chunks = splitSentences(text);
+      if (chunks.length === 0) return;
+      const id = sayBackId.current--;
+      chunkText.current.set(id, chunks);
+      queue.say({ id, chunks });
+    },
+    [queue],
+  );
+
   // Mood follows the situation when nothing is being said.
   useEffect(() => {
     if (speaking) return;
@@ -1307,8 +1354,145 @@ function Terminal({
   const sceneEndsAt = sceneLeft > 0 ? Date.now() + sceneLeft : 0;
   const showComposer = composerShown({ keys: config.keys, menu, blocked: pilot !== null && composerBlocked({ cue: roomCue, since: pilotSince.current, now, stage: state?.night?.heart_stage ?? null, heart: heartTerminal, menu: menu !== null }) });
 
+  // The CRT asks for a pass from the moment the door opens (wave 52b).
+  useEffect(() => {
+    if (config.crt) setPromptUntil((u) => promptAfterDoor(u, doorOpen, Date.now()));
+  }, [config.crt, doorOpen]);
+  const heartStage = state?.night?.heart_stage ?? null;
+  const prompting = config.crt && promptUp({ attract: screen.kind === "attract", until: promptUntil, now: Date.now(), typing, stage: heartStage });
+  // Look again when the minute is up; a line opening ends the prompt and the keyboard.
+  useEffect(() => {
+    if (!Number.isFinite(promptUntil)) return;
+    const left = promptUntil - Date.now();
+    if (left <= 0) return;
+    const t = window.setTimeout(() => setPromptUntil((u) => u), left + 50);
+    const again = window.setTimeout(() => cardTick((n) => n + 1), left + 60);
+    return () => {
+      window.clearTimeout(t);
+      window.clearTimeout(again);
+    };
+  }, [promptUntil]);
+  useEffect(() => {
+    if (screen.kind === "attract") return;
+    setTyping(false);
+    setPromptUntil(0);
+  }, [screen.kind]);
+  // He asks for the pass himself, past the story's one telling (the first guest's).
+  const passAsked = useRef(false);
+  useEffect(() => {
+    if (!prompting) passAsked.current = false;
+  }, [prompting]);
+  useEffect(() => {
+    if (roomLine !== null && /show it your pass/iu.test(roomLine.text)) passAsked.current = true;
+  }, [roomLine]);
+  useEffect(() => {
+    if (!speaksPrompt({ up: prompting, typing, said: passAsked.current, voiceBusy, stage: heartStage })) return;
+    const t = window.setTimeout(() => {
+      passAsked.current = true;
+      sayBack(PASS_LINE);
+    }, PROMPT_SPEAK_MS);
+    return () => window.clearTimeout(t);
+  }, [prompting, typing, voiceBusy, heartStage, sayBack]);
+
+  // The CRT's text cards count their own time while a room scene is up.
+  const [, cardTick] = useState(0);
+  const sceneCue = config.crt && roomCue !== null && heartSceneMs(roomCue.value) !== null ? roomCue : null;
+  useEffect(() => {
+    if (sceneCue === null || serverNow(state) - sceneCue.at > (heartSceneMs(sceneCue.value) ?? 0)) return;
+    const t = window.setInterval(() => cardTick((n) => n + 1), 250);
+    return () => window.clearInterval(t);
+  }, [sceneCue?.at, sceneCue?.value]);
+
   const online = pilot !== null ? session.online : castOnline;
   const status = online === null ? "" : online ? `${config.character.toUpperCase()} ONLINE` : `${config.character.toUpperCase()} AWAY — REPLIES WHEN BACK`;
+
+  if (config.crt) {
+    const sceneAge = sceneCue === null ? 0 : serverNow(state) - sceneCue.at;
+    const card = sceneCue === null ? null : cardOf(sceneCue.value, sceneAge);
+    const banner = sceneCue === null ? null : bannerOf(sceneCue.value, sceneAge);
+    const line = screen.kind === "piloting" && pilot !== null;
+    const speakingHere = showComposer && config.whisper;
+    const asking = prompting && !typing && !roomBusy;
+    const legend = legendFor({
+      who: config.character.toUpperCase(),
+      speaking: voiceBusy,
+      files: filesOpen,
+      voice: speakingHere ? voiceStep : null,
+      talking: menu !== null && showComposer,
+      menu: menu !== null && !showComposer,
+      greyed: menu !== null && doorOpen === true,
+      canGive: room !== null,
+      scene: card !== null,
+      prompt: asking,
+      typing,
+      warning,
+    });
+    return (
+      <div className={`terminal crt ${screen.kind}${warning !== null ? " warning" : ""}`} data-leash={remaining ?? undefined} data-busy={pilot !== null ? String(busy) : undefined}>
+        {idle && !prompting ? (
+          <CrtPipes active={!covered} />
+        ) : (
+          <div className="crt-safe">
+            <header className="crt-top">
+              <span className={`crt-name${banner !== null ? " banner" : ""}`}>{banner ?? config.character.toUpperCase()}</span>
+              <Wave handle={face} />
+            </header>
+            <main className="crt-main">
+              {screen.kind === "connecting" && <div className="crt-room">CONNECTING…</div>}
+              {screen.kind === "attract" && !asking && !typing && <div className="crt-room">{roomLine !== null && <div><Typed key={roomLine.seq} text={roomLine.text} cut={roomLine.text.length} cps={TYPE_CPS * config.speed} /></div>}</div>}
+              {asking && (
+                <div className="crt-prompt">
+                  <div className="crt-prompt-ask">SHOW ME YOUR PASS</div>
+                  <div className="crt-note">the camera, under the screen</div>
+                </div>
+              )}
+              {typing && (
+                <CrtKeyboard
+                  onClose={() => setTyping(false)}
+                  onActivity={() => setPromptUntil((u) => promptAfterPress(u, Date.now()))}
+                  onDone={(name) => void pickByName(config, name, (id) => void connect(id), setFlash)}
+                />
+              )}
+              {line && filesOpen && <FilePanel config={config} pilot={pilot} view={session.view} character={characterIdOf(config.character, session.view)} onClose={() => setFilesOpen(false)} onActivity={touch} plain />}
+              {line && !filesOpen && (
+                <>
+                  <Thread lines={withPendingPicks(thread.lines, pendingPicks, pilot.name, session.lines)} revealed={revealed} typing={session.typing} wait={session.wait} character={config.character} guestName={pilot.name} earlier={thread.earlier} empty={emptyThreadText({ character: config.character, keys: config.keys, heart: heartTerminal, stage: state?.night?.heart_stage ?? null, waited: now - pilotSince.current })} typeCps={TYPE_CPS * config.speed} />
+                  {panelPlace(menu, showComposer) === "main" && menu !== null && <ChoicePanel menu={menu} doorOpen={doorOpen} numberKeys={true} onActivity={touch} onPick={(i) => choose(menu, i)} voiceBusy={voiceBusy} sceneEndsAt={sceneEndsAt} pad={config.pad} hold />}
+                  {speakingHere && (
+                    <WorldBoundary fallback={null} onError={() => {}}>
+                      <Suspense fallback={null}>
+                        <VoiceComposer onSend={(t) => session.say(t)} disabled={!session.ready} onInput={touch} onListen={() => {}} onSay={sayBack} busy={voiceBusy} onStep={setVoiceStep} />
+                      </Suspense>
+                    </WorldBoundary>
+                  )}
+                  {panelPlace(menu, showComposer) === "under" && menu !== null && <ChoicePanel menu={menu} doorOpen={doorOpen} numberKeys={false} onActivity={touch} onPick={(i) => choose(menu, i)} sceneEndsAt={sceneEndsAt} pad={config.pad} />}
+                </>
+              )}
+            </main>
+            {(line || asking || typing) && <CrtLegend legend={legend} onGive={() => setFilesOpen(true)} onHold={() => setTyping(true)} />}
+          </div>
+        )}
+        {card !== null && <CrtCardView card={card} />}
+        {/* The pipes hide the scanner, not stop it: a held-up pass still connects. */}
+        {screen.kind === "attract" && (
+          <div className={`crt-scan${asking ? " shown" : ""}`} aria-hidden="true">
+            <Scanner facing={config.camera} active={!takeover && !roomBusy} onCode={onCode} onState={setCamera} />
+          </div>
+        )}
+        {pilot === null && <Gear onOpen={onSetup} label="Set up this terminal" />}
+        {flash !== null && <div className="flash">{flash}</div>}
+        {config.pad && (
+          <PadNav
+            onActivity={() => {
+              touch();
+              onWake?.();
+              if (screen.kind === "attract") setPromptUntil((u) => promptAfterPress(u, Date.now()));
+            }}
+          />
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className={`terminal ${screen.kind}${warning !== null ? " warning" : ""}`} data-leash={remaining ?? undefined} data-busy={pilot !== null ? String(busy) : undefined}>
@@ -1359,16 +1543,16 @@ function Terminal({
             <>
               {room !== null && (
                 <div className="file-strip">
-                  <button type="button" className="file-open" onClick={() => setFilesOpen(true)}>
+                  <button type="button" className="file-open" data-pad data-pad-aside onClick={() => setFilesOpen(true)}>
                     📎 GIVE HIM A FILE
                   </button>
                 </div>
               )}
               <Thread lines={withPendingPicks(thread.lines, pendingPicks, pilot.name, session.lines)} revealed={revealed} typing={session.typing} wait={session.wait} character={config.character} guestName={pilot.name} earlier={thread.earlier} empty={emptyThreadText({ character: config.character, keys: config.keys, heart: heartTerminal, stage: state?.night?.heart_stage ?? null, waited: now - pilotSince.current })} />
               {panelPlace(menu, showComposer) === "main" && menu !== null && (
-                <ChoicePanel menu={menu} doorOpen={doorOpen} numberKeys={true} onActivity={touch} onPick={(i) => choose(menu, i)} voiceBusy={voiceBusy} sceneEndsAt={sceneEndsAt} onSkip={roomBusy ? undefined : skipVoice} />
+                <ChoicePanel menu={menu} doorOpen={doorOpen} numberKeys={true} onActivity={touch} onPick={(i) => choose(menu, i)} voiceBusy={voiceBusy} sceneEndsAt={sceneEndsAt} onSkip={roomBusy ? undefined : skipVoice} pad={config.pad} />
               )}
-              {showComposer && (
+              {showComposer && !config.whisper && (
                 <Composer
                   onSend={async (t) => {
                     touch();
@@ -1379,7 +1563,14 @@ function Terminal({
                   placeholder={session.ready ? `say something to ${config.character}` : "connecting…"}
                 />
               )}
-              {panelPlace(menu, showComposer) === "under" && menu !== null && <ChoicePanel menu={menu} doorOpen={doorOpen} numberKeys={false} onActivity={touch} onPick={(i) => choose(menu, i)} sceneEndsAt={sceneEndsAt} />}
+              {showComposer && config.whisper && (
+                <WorldBoundary fallback={null} onError={() => {}}>
+                  <Suspense fallback={null}>
+                    <VoiceComposer onSend={(t) => session.say(t)} disabled={!session.ready} onInput={touch} onListen={skipVoice} onSay={sayBack} />
+                  </Suspense>
+                </WorldBoundary>
+              )}
+              {panelPlace(menu, showComposer) === "under" && menu !== null && <ChoicePanel menu={menu} doorOpen={doorOpen} numberKeys={false} onActivity={touch} onPick={(i) => choose(menu, i)} sceneEndsAt={sceneEndsAt} pad={config.pad} />}
             </>
           )}
         </section>
@@ -1414,6 +1605,24 @@ function Terminal({
       {flash !== null && <div className="flash">{flash}</div>}
       {warning !== null && pilot !== null && <div className="leash">{filesOpen ? "STILL THERE? " : ""}DISCONNECTING IN {warning} — TOUCH TO STAY</div>}
       <div className="scanlines" aria-hidden="true" />
+      {config.pad && <PadNav onActivity={touch} />}
+    </div>
+  );
+}
+
+/** A room scene on the CRT: its words, full screen (`crt/cards.ts`). */
+function CrtCardView({ card }: { card: CrtCard }) {
+  return (
+    <div className="crt-card" role="status">
+      {card.big !== undefined && <div className="crt-big">{card.big}</div>}
+      {card.lines !== undefined && <pre>{card.lines.join("\n")}</pre>}
+      {card.sub !== undefined && <div className="crt-sub">{card.sub}</div>}
+      {card.bar !== undefined && (
+        <div className="crt-bar">
+          <i style={{ width: `${Math.round(card.bar * 100)}%` }} />
+        </div>
+      )}
+      {card.note !== undefined && <div className="crt-note">{card.note}</div>}
     </div>
   );
 }

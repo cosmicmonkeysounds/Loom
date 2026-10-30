@@ -19,6 +19,7 @@
 
 import { useSyncExternalStore } from "react";
 import { cameraStateOfError, type CameraEnv, type CameraState } from "../camera.ts";
+import { browserDevices, openDevice } from "../devices.ts";
 
 export type MicState = CameraState;
 
@@ -26,6 +27,12 @@ export const MIC_CONSTRAINTS: MediaStreamConstraints = {
   audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
   video: false,
 };
+
+/** `deviceId`: that exact microphone (wave 52); null: the system's default. */
+export function micConstraints(deviceId: string | null): MediaStreamConstraints {
+  if (deviceId === null) return MIC_CONSTRAINTS;
+  return { audio: { ...(MIC_CONSTRAINTS.audio as MediaTrackConstraints), deviceId: { exact: deviceId } }, video: false };
+}
 
 export interface MicSnapshot {
   state: MicState;
@@ -35,7 +42,7 @@ export interface MicSnapshot {
 function browserEnv(): CameraEnv {
   const secure = typeof window !== "undefined" && window.isSecureContext;
   const md = typeof navigator !== "undefined" ? navigator.mediaDevices : undefined;
-  return { secure, getUserMedia: typeof md?.getUserMedia === "function" ? (c) => md.getUserMedia(c) : null };
+  return { secure, getUserMedia: typeof md?.getUserMedia === "function" ? (c) => md.getUserMedia(c) : null, devices: browserDevices };
 }
 
 /** Ref-counted owner of the one microphone stream. */
@@ -44,8 +51,14 @@ export class MicHub {
   private holders = 0;
   private opening: Promise<MediaStream | null> | null = null;
   private listeners = new Set<() => void>();
+  private webcam = "";
 
   constructor(private readonly env: () => CameraEnv = browserEnv) {}
+
+  /** Open the microphone named this (wave 52: part of its name; "" = the default). Takes effect on the next open. */
+  prefer(label: string): void {
+    this.webcam = label;
+  }
 
   subscribe = (fn: () => void): (() => void) => {
     this.listeners.add(fn);
@@ -83,7 +96,8 @@ export class MicHub {
       this.set({ state: env.secure ? "none" : "insecure" });
       return Promise.resolve(null);
     }
-    const p = env.getUserMedia(MIC_CONSTRAINTS).then(
+    const getUserMedia = env.getUserMedia;
+    const p = openDevice({ kind: "audioinput", label: this.webcam, list: env.devices ?? null, open: (id) => getUserMedia(micConstraints(id)) }).then(
       (stream) => {
         if (this.opening !== p) {
           stream.getTracks().forEach((t) => t.stop());
