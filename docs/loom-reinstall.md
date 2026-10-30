@@ -2092,6 +2092,66 @@ Unproven on hardware: whether Quest 3 holds 90 Hz on `medium` (per-pixel
 shading with four lights is the one new cost; `low` is the fallback) and
 on `high`.
 
+### The descent (wave 49)
+
+The contract is `docs/loom-w49-contract.md` C2 and C6; the rules are
+`@loom/house` `descent.ts`, ported literally to `house/house_descent.gd` and
+pinned by `test/golden/descent.json`. A walk's level is `descentOf(assignment)`
+(`descent`, else `reinstalled`, capped at 4), overridden on a headset by
+`--descent N` / `descent` in `station.json`, or the lobby's mirror combo
+(`AABBABABBAA`: offline, level 4). **Level 0 is the game unchanged**: nothing
+is built, fetched or touched.
+
+`game/descent.gd` is the runner over `descentPlan` + `dueBeat` on the walk's
+clock (from the intro's end), one vision at a time. A beat is held by an
+escape, a talk, a held or suspended walk, a running vision, the King within
+3 m, or the Hallway; one that can't be drawn is skipped. `descentLook` is on for
+the whole walk (fog, ambient, tint, the neon's period). Visions are unshaded
+meshes built once at the first deep walk, or the existing light: `flicker` dips
+the ambient, the pool and the neon (at most 3 Hz), `tint` eases a wrong colour
+into them, `dark` pulls a black fog in to about 3 m. The pool stays fixed; no
+vision adds a light, a shadow or a shader. Deeper than level 0 the neon's
+stutter is one soft dip, however often it comes: the 14 Hz shiver of
+`neonFlicker` stays on level 0 alone. `small` / `big` scale
+`XROrigin3D.world_scale` about the head (the camera's height on the desktop
+rig), eased over `ALICE_EASE_S`; poses, the body and reach stay the real ones.
+`self` needs the assignment's `avatar` picture, already fetched.
+
+Talkers: `wakeTalkers` picks the props, each with a face on `faceAnchor`,
+drawn within 8 m on the player's floor. `talkReach` opens a talk at `openNode`
+(with the assignment's `told`); the lines go through `Speech` with the prop's
+node as the anchor, then `game/talk_panel.gd` shows one row per option, near the
+prop, turned to the player, chosen with `LobbyPointer`. The beam shows only
+while a panel is open. A pull held since before the panel picks nothing. A
+press on a row is swallowed: it never hits the King; off the rows the trigger
+hits him as ever. `pickOption`'s `tell` posts `POST /api/spatial/told`, its
+`do` sets off a vision (now, or when the running one ends). Past `TALK_LEAVE_M`
+the talk ends, dropping only that prop's lines (`Speech.cancel`), and the talker
+stays quiet until the player has left and come back.
+
+The Hallway: `doorSpot` stands the door; within `HALLWAY_DOOR_M` the player is
+teleported to `game/hallway.gd`, a corridor off the map built once with its own
+floor and wall colliders, its one light following them and the house's light
+down to almost nothing. `_tick_play` returns early, the shape of
+`_tick_escape`: the pose at the door still goes out, voice and cams follow the
+door's room, and the void, the heart, pickups, the King and the find are off;
+the house, ghosts, lamps, trail and duck are hidden. The far door backs away at
+`HALLWAY_RETREAT` × the player's forward pace for `HALLWAY_RETREAT_S`, then
+stays. Reaching it, `HALLWAY_MAX_S`, a fall (it never should) or a find that
+was already out bring them back at the door they entered, facing away from it;
+a remap restores the house before it rebuilds; a session end goes to the lobby
+through the same close. `Game._catch_fall` plays no part: it watches only the
+lobby and the intro.
+
+The words: `fetch_descent()` at each walk (`GET /api/spatial/descent`, the
+session's token), never waited for; a 404, `{script: null}`, a script that fails
+`validateDescent` or no answer means the bundled `res://house/descent.json`
+(`pnpm house:sync`). `found` is said at the find. With neither, the visions play
+in silence and nobody talks. `--autopilot` ignores all of it and never goes
+through the door. Not proven on hardware: `world_scale` easing on the Quest 3
+(the view, the hands, the beam), its frame rate through a `dark` or the Hallway,
+and whether Horizon OS speaks the lines at all (captions carry them either way).
+
 ## 6. The story
 
 The goose is now the **golden duck** (`INTERACTION the golden duck`,

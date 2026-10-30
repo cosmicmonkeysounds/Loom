@@ -55,6 +55,20 @@ func answer_moment(kind: String, result: String, data := {}) -> void:
 	moment_answered.emit(kind, result, data)
 
 
+## (wave 49) [method fetch_descent] calls, and `[talker, mark]` per [method post_told].
+var descent_fetches := 0
+var told_posts: Array = []
+
+
+func fetch_descent() -> void:
+	descent_fetches += 1
+	super()
+
+
+func post_told(talker: String, mark: String) -> void:
+	told_posts.append([talker, mark])
+
+
 ## The camera feeds' root ("" = none, the default: the game asks nothing).
 var cams_base := ""
 

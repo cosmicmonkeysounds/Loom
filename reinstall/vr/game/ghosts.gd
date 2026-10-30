@@ -161,6 +161,62 @@ func _show_picture(node: Node3D, tex: Texture2D) -> void:
 	pic.pixel_size = PICTURE_SIZE / float(maxi(1, maxi(tex.get_width(), tex.get_height())))
 
 
+## (wave 49) The picture of avatar key `key`, once it is here (asked for
+## otherwise); null when there is none, or not yet.
+func picture_for(key: Variant) -> Texture2D:
+	var url: String = str(url_of.call(str(key))) if key is String and str(key) != "" else ""
+	if url == "" or avatars == null:
+		return null
+	var tex := avatars.texture(url)
+	if tex == null:
+		avatars.fetch(url)
+	return tex
+
+
+## (wave 49, the `self` vision) A pale ghost in `body` and `visor` (materials
+## that fade; [Descent]'s), wearing a picture ([method set_pale_picture]).
+static func make_pale(body: Material, visor: Material) -> Node3D:
+	var root := Node3D.new()
+	var cap := CapsuleMesh.new()
+	cap.radius = 0.22
+	cap.height = 1.55
+	cap.radial_segments = 10
+	cap.rings = 2
+	var mi := MeshInstance3D.new()
+	mi.mesh = cap
+	mi.material_override = body
+	mi.position.y = 0.8
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	root.add_child(mi)
+	var vb := BoxMesh.new()
+	vb.size = Vector3(0.2, 0.06, 0.04)
+	var v := MeshInstance3D.new()
+	v.name = "Visor"
+	v.mesh = vb
+	v.material_override = visor
+	v.position = Vector3(0, 1.45, -0.2)
+	v.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	root.add_child(v)
+	var pic := Sprite3D.new()
+	pic.name = "Picture"
+	pic.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	pic.shaded = false
+	pic.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	pic.position.y = PICTURE_Y
+	root.add_child(pic)
+	return root
+
+
+static func set_pale_picture(root: Node3D, tex: Texture2D) -> void:
+	var pic := root.get_node("Picture") as Sprite3D
+	pic.texture = tex
+	pic.pixel_size = PICTURE_SIZE / float(maxi(1, maxi(tex.get_width(), tex.get_height())))
+
+
+static func set_pale_alpha(root: Node3D, a: float) -> void:
+	(root.get_node("Picture") as Sprite3D).modulate.a = a
+
+
 ## The URL a ghost's picture is (or would be) from ("" = none).
 func picture_url(session: String) -> String:
 	return str(_ghosts[session]["url"]) if _ghosts.has(session) else ""
