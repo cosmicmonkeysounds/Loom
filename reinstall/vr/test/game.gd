@@ -40,6 +40,7 @@ func _run() -> void:
 	_test_wave26_props()
 	_test_wave47_look()
 	_test_test_combo()
+	_test_floor_underside()
 	_test_avatar_decode()
 	_test_config()
 	_test_config_setup()
@@ -332,6 +333,46 @@ func _golden_wave26(name: String, house: Dictionary) -> void:
 				if prop.is_empty() or HouseMoment.pickup_reach(house, q["p"], prop) != bool(q["reach"]) or HouseMoment.pickup_reach(house, q["p"], prop, HouseMoment.PICKUP_SLACK_M) != bool(q["slack"]):
 					mismatches.append("pickup %s at %s: golden %s / %s" % [q["pickup"], JSON.stringify(q["p"]), q["reach"], q["slack"]])
 		_report("golden %s.moments" % name, mismatches, want.size())
+
+
+## An upper floor has an underside (in its Ceilings), cut by the stair
+## holes like the floor: from the backyard nobody sees up into the bedroom.
+func _test_floor_underside() -> void:
+	var house: Dictionary = _read_json("res://house/house.json")
+	var b := HouseBuilder.new()
+	b.build(house)
+	var top_y := 0.0
+	for fl: Dictionary in house["floors"]:
+		if str(fl["id"]) == "top":
+			top_y = float(fl["elevation"])
+	var under_y := top_y - HouseBuilder.UNDERSIDE_GAP
+	var ceil := b.part("Floor_top/Ceilings") as MeshInstance3D
+	var faces: PackedVector3Array = ceil.mesh.get_faces() if ceil != null else PackedVector3Array()
+	# The backyard under the Graphics Card's overhang, and the upstairs stair's middle.
+	var yard := Vector2(-4.0, 22.0)
+	var r: Array = []
+	for st: Dictionary in house["stairs"]:
+		if str(st["id"]) == "upstairs":
+			r = st["rect"]
+	var hole := Vector2((float(r[0]) + float(r[2])) / 2.0, (float(r[1]) + float(r[3])) / 2.0)
+	var covers := func(at: Vector2) -> bool:
+		for i in range(0, faces.size(), 3):
+			var a := faces[i]
+			if absf(a.y - under_y) > 1e-4:
+				continue
+			var hit: Variant = Geometry3D.ray_intersects_triangle(Vector3(at.x, 1.6, at.y), Vector3.UP, faces[i], faces[i + 1], faces[i + 2])
+			if hit != null:
+				return true
+		return false
+	_check(covers.call(yard), "underside: the top floor is closed from below over the backyard")
+	_check(not covers.call(hole), "underside: the stair's hole stays open")
+	var lowest := b.part("Floor_basement/Ceilings") as MeshInstance3D
+	var low_faces := lowest.mesh.get_faces() if lowest != null else PackedVector3Array()
+	var low_under := false
+	for v: Vector3 in low_faces:
+		low_under = low_under or absf(v.y - (-2.7 - HouseBuilder.UNDERSIDE_GAP)) < 1e-4
+	_check(not low_under, "underside: the lowest floor has none")
+	b.free()
 
 
 ## The lobby's test-level combo (B B A A B A B A A B B, A / X and B / Y).

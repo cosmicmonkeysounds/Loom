@@ -18,7 +18,7 @@ code and that file disagree, fix one of them in the same change.
 ## Commands
 
 ```bash
-pnpm --filter @loom/house test        # vitest: 495 passed + 4 skipped, 22 files
+pnpm --filter @loom/house test        # vitest: 496 passed + 4 skipped, 22 files
 pnpm --filter @loom/house typecheck
 pnpm --filter @loom/house goldens     # regenerate test/golden/ after a deliberate geometry/route/king change
 pnpm --filter @loom/house sync        # copy the show's house.json, goldens and voice vectors into reinstall/vr/

@@ -62,6 +62,8 @@ const CAM_BEZEL := 0.015
 const TERMINAL_SCALE := 3.0
 ## Floor colliders are this thick (below the surface).
 const SLAB := 0.2
+## How far under a floor its underside sits (just under, so no slit).
+const UNDERSIDE_GAP := 0.01
 ## How far the outside ground reaches past the house.
 const GROUND_MARGIN := 30.0
 
@@ -354,16 +356,14 @@ static func _box(st: SurfaceTool, lo: Vector3, hi: Vector3, tile: float) -> void
 
 func _build_floors() -> void:
 	var tools := {}
+	var lowest := INF
+	for fl: Dictionary in house.get("floors", []):
+		lowest = minf(lowest, float(fl["elevation"]))
 	for plane: Dictionary in HouseGeometry.build_floors(house):
 		var y: float = plane["y"]
 		var is_floor: bool = plane["kind"] == "floor"
 		var mat: Material = HouseLook.floor_for(plane["color"], plane["outdoor"]) if is_floor else HouseLook.ceiling()
-		var key := "%s|%d" % [plane["floor"], mat.get_instance_id()]
-		if not tools.has(key):
-			var s := SurfaceTool.new()
-			s.begin(Mesh.PRIMITIVE_TRIANGLES)
-			tools[key] = [s, mat, "Floor" if is_floor else "Ceilings", str(plane["floor"])]
-		var st: SurfaceTool = tools[key][0]
+		var st := _floor_tool(tools, plane, mat, "Floor" if is_floor else "Ceilings")
 		if is_floor:
 			for cell: Array in HouseGeometry.cells(plane["poly"], plane["holes"]):
 				var x0: float = cell[0]
@@ -387,9 +387,35 @@ func _build_floors() -> void:
 			for p: Vector3 in q:
 				uvs.append(Vector2(p.x, p.z) / (1.0 if is_floor else 4.0))
 			add_quad(st, q, uvs)
+		# A floor over another floor has an underside (in its own ceilings),
+		# so where it overhangs the open air (the backyard) nobody sees up
+		# into its rooms from below.
+		if is_floor and y > lowest + 0.01:
+			var under := _floor_tool(tools, plane, HouseLook.ceiling(), "Ceilings")
+			for cell: Array in HouseGeometry.cells(plane["poly"], plane["holes"], false):
+				var x0: float = cell[0]
+				var z0: float = cell[1]
+				var x1: float = cell[2]
+				var z1: float = cell[3]
+				var yu := y - UNDERSIDE_GAP
+				var q := [Vector3(x0, yu, z0), Vector3(x1, yu, z0), Vector3(x1, yu, z1), Vector3(x0, yu, z1)]
+				var uvs: Array = []
+				for p: Vector3 in q:
+					uvs.append(Vector2(p.x, p.z) / 4.0)
+				add_quad(under, q, uvs)
 	for key: String in tools:
 		var t: Array = tools[key]
 		_mesh(t[0], t[1], t[2], _floor_node(t[3]))
+
+
+## Floor `plane`'s merged SurfaceTool for `mat` (made the first time).
+static func _floor_tool(tools: Dictionary, plane: Dictionary, mat: Material, node_name: String) -> SurfaceTool:
+	var key := "%s|%d" % [plane["floor"], mat.get_instance_id()]
+	if not tools.has(key):
+		var s := SurfaceTool.new()
+		s.begin(Mesh.PRIMITIVE_TRIANGLES)
+		tools[key] = [s, mat, node_name, str(plane["floor"])]
+	return tools[key][0]
 
 
 ## The band between a ceiling and the floor above round each stair's hole

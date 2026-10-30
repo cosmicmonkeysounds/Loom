@@ -3,7 +3,7 @@
 // tests read the scene graph.
 
 import { describe, expect, it } from "vitest";
-import { BufferGeometry, DoubleSide, Group, InstancedMesh, LineSegments, Matrix4, Mesh, MeshLambertMaterial, Object3D, Vector3 } from "three";
+import { BufferGeometry, DoubleSide, Raycaster, Group, InstancedMesh, LineSegments, Matrix4, Mesh, MeshLambertMaterial, Object3D, Vector3 } from "three";
 import type { Material } from "three";
 import { buildRamps, buildWalls, doorGap, forward, outsideGround, pointInPoly, pointInPolyStrict, roomById, route, stairWells, toSpace } from "../src/index.ts";
 import type { SpaceTransform, Vec3 } from "../src/index.ts";
@@ -21,6 +21,7 @@ import {
   hasDom,
   KING_KNEEL,
   planeGeometry,
+  UNDERSIDE_GAP,
   rampGeometry,
   spaceGroup,
   DUCK_FLIGHT,
@@ -222,6 +223,22 @@ describe("buildHouseScene (the show's map, headless)", () => {
     expect(buildHouseScene(show, { labels: false, terminalScale: 0 }).terminals.get(show.terminals[0]!.id)!.scale.x).toBe(1);
     plain.dispose();
     big.dispose();
+  });
+
+  it("an upper floor has an underside: from the backyard nobody sees up into the bedroom", () => {
+    const scene = buildHouseScene(show, { labels: false });
+    scene.root.updateMatrixWorld(true);
+    // The backyard under the Graphics Card's overhang, looking straight up.
+    const ray = new Raycaster(new Vector3(-4, 1.6, 22), new Vector3(0, 1, 0));
+    const hit = ray.intersectObject(scene.root, true).find((h) => (h.object as Mesh).isMesh);
+    expect(hit?.object.name).toBe("ceilings:top");
+    expect(hit?.point.y).toBeCloseTo(2.8 - UNDERSIDE_GAP, 5);
+    // Over the stair the hole stays open: the ray reaches the top floor's own ceiling.
+    const [x0, z0, x1, z1] = show.stairs.find((st) => st.id === "upstairs")!.rect;
+    const up = new Raycaster(new Vector3((x0 + x1) / 2, 1.6, (z0 + z1) / 2), new Vector3(0, 1, 0));
+    const first = up.intersectObject(scene.root, true).find((h) => (h.object as Mesh).isMesh && h.object.name.startsWith("ceilings"));
+    expect(first?.point.y).toBeGreaterThan(5);
+    scene.dispose();
   });
 
   it("options drop parts; update animates without throwing", () => {
