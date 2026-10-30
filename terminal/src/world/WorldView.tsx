@@ -3,8 +3,8 @@
 //! renders it, with every player in the simulation as a ghost (interpolated
 //! ~120 ms behind, name tag over the head) and each session's golden duck
 //! (it lays its egg and flies on `found` — never for a find the story kept:
-//! "GERALD CAN'T HELP", Gerald stays put). Ghosts wear the guest's profile
-//! picture; the King shows the shared bar and kneels at 0, his door open
+//! "GERALD CAN'T HELP", Gerald stays put). Ghosts are swarms of the guest's
+//! profile picture; the King shows the shared bar and kneels at 0, his door open
 //! (`HouseScene.showKing`). The indicator trail is the player's, not the
 //! audience's — it is not drawn here.
 //!

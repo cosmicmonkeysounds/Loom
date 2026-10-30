@@ -206,14 +206,14 @@ When the event runs a **simulation** — a virtual copy of the house (see
 [The simulation](reinstallation.md)) — the terminals can become windows
 into it. While a program is walking the virtual copy of a terminal's
 room, that terminal can show it, seen from exactly where the tablet
-hangs: a ghost with their name over it and their profile picture for a
-head. Scan your pass and the face comes back: the line is yours.
+hangs: a ghost with their name over it, their profile picture torn into
+a swarm. Scan your pass and the face comes back: the line is yours.
 
 It works the other way too. Players walking that room can see a small
 live picture of the real room on the wall where the terminal hangs, and
 the terminal's **microphone** carries the room's voices to them (and
 theirs back out of its speaker). A screen set to **shadow** shows its own
-camera with the players drawn into it as dark, glowing ghosts. The
+camera with the players drawn into it as glowing, glitching swarms. The
 reinstallation station is never a window: it sends no picture and no
 sound.
 

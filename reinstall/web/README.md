@@ -187,7 +187,7 @@ never above the URL's `quality` cap. On the dev server, `?lightsDemo=1`
 feeds a synthetic lights frame (a light per room) for a check without the
 lights module.
 
-Other players are ghosts wearing their profile picture as a head
+Other players are ghosts, a glitchy swarm of their own profile picture
 (`PlayerState.avatar` → `/e/<id>/api/avatar/<key>`, `@loom/house/three`
 `createAvatar`); an `avatar` frame swaps it live.
 

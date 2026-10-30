@@ -27,9 +27,10 @@ export { createPickup, PICKUP_HOVER, PICKUP_BOB, PICKUP_SPIN, PICKUP_GLOW } from
 export type { Pickup } from "./pickup.ts";
 export { createTrail, chevronGeometry, TRAIL_STEP, TRAIL_LIFT } from "./trail.ts";
 export type { Trail, TrailOptions } from "./trail.ts";
-export { createAvatar, avatarColor, AVATAR_HEIGHT, PICTURE_SIZE } from "./avatar.ts";
+export { createAvatar, avatarColor, AVATAR_HEIGHT } from "./avatar.ts";
 export type { Avatar, AvatarOptions } from "./avatar.ts";
-export { loadPicture, PICTURE_PX } from "./picture.ts";
+export { loadPicture, shardsOf, PICTURE_PX } from "./picture.ts";
+export { swarmLayout, swarmRadiusAt, SwarmTrail, SWARM_FACE_GRID, SWARM_FACE_SIZE, SWARM_SHARDS, SWARM_TRAIL } from "./swarm.ts";
 export { PoseBuffer, lerpYaw } from "./pose.ts";
 export type { PoseBufferOptions } from "./pose.ts";
 export { spaceGroup, applySpace } from "./space.ts";

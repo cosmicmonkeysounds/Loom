@@ -7,7 +7,7 @@
 //! save re-deals it), plus the shared King (`hello.king` and every `king`
 //! frame: his one bar for the whole night, kneeling at 0) and each ghost's
 //! profile picture key (`PlayerState.avatar`, an `avatar` frame when it
-//! changes; a server that sends neither keeps the plain capsule and a King
+//! changes; a server that sends neither leaves the ghost static and a King
 //! who just stands).
 //!
 //! A find that released nobody while the story keeps the program captured

@@ -3,8 +3,8 @@
 // tests read the scene graph.
 
 import { describe, expect, it } from "vitest";
-import { BufferGeometry, DoubleSide, Raycaster, Group, InstancedMesh, LineSegments, Matrix4, Mesh, MeshLambertMaterial, Object3D, Vector3 } from "three";
-import type { Material } from "three";
+import { BufferGeometry, DoubleSide, Raycaster, Group, InstancedBufferGeometry, InstancedMesh, LineSegments, Matrix4, Mesh, MeshLambertMaterial, Object3D, Vector3 } from "three";
+import type { Color, Material, ShaderMaterial } from "three";
 import { buildRamps, buildWalls, doorGap, forward, outsideGround, pointInPoly, pointInPolyStrict, roomById, route, stairWells, toSpace } from "../src/index.ts";
 import type { SpaceTransform, Vec3 } from "../src/index.ts";
 import {
@@ -28,7 +28,9 @@ import {
   FEED_H,
   FEED_W,
   GAME_TERMINAL_SCALE,
+  SWARM_SHARDS,
 } from "../src/three/index.ts";
+import type { Avatar } from "../src/three/index.ts";
 import { buildFloors } from "../src/index.ts";
 import { fixture, loadHouse, SHOW_HOUSE } from "./golden.ts";
 
@@ -40,6 +42,13 @@ function meshes(root: Object3D): Mesh[] {
     if ((o as Mesh).isMesh) out.push(o as Mesh);
   });
   return out;
+}
+
+/** A ghost's swarm mesh, with the uniforms these tests read. */
+function swarmOf(a: Avatar) {
+  return a.object.getObjectByName("avatar:body") as unknown as Mesh<BufferGeometry, ShaderMaterial> & {
+    material: { uniforms: { uLook: { value: Vector3 }; uTrail: { value: Vector3[] }; uPresent: { value: number }; uFlip: { value: number }; uTime: { value: number }; uTint: { value: Color } } };
+  };
 }
 
 function geometries(root: Object3D): Set<BufferGeometry> {
@@ -422,10 +431,8 @@ describe("createAvatar", () => {
     expect(a.tag).toBeNull(); // no DOM, no name tag
     a.setPose([2, -2.7, 3], 90, 20);
     a.update(0.1);
-    a.object.updateMatrixWorld(true);
     expect(a.object.position.toArray()).toEqual([2, -2.7, 3]);
-    const visor = a.object.getObjectByName("avatar:visor")!;
-    const f = new Vector3(0, 0, -1).transformDirection(visor.matrixWorld);
+    const f = swarmOf(a).material.uniforms.uLook.value;
     const want = forward(90, 20);
     expect(f.x).toBeCloseTo(want[0]);
     expect(f.y).toBeCloseTo(want[1]);
@@ -437,11 +444,48 @@ describe("createAvatar", () => {
     expect(freed).toBe(geoms.size);
   });
 
-  it("without a DOM a picture is asked for but never drawn: the plain capsule, nothing thrown", async () => {
+  it("the swarm drags behind a walk, and a capsule is never drawn", () => {
+    const a = createAvatar("Winamp", "g-abc123");
+    a.setPose([0, 0, 0], 0);
+    a.update(0.016);
+    for (let i = 1; i <= 40; i++) {
+      a.setPose([i * 0.03, 0, 0], 0);
+      a.update(0.016);
+    }
+    const trail = swarmOf(a).material.uniforms.uTrail.value;
+    expect(trail[0]!.x).toBe(0);
+    expect(trail[trail.length - 1]!.x).toBeLessThan(-0.3);
+    const meshes: string[] = [];
+    a.object.traverse((o) => {
+      if ((o as Mesh).isMesh) meshes.push(o.name);
+    });
+    expect(meshes).toEqual(["avatar:body"]);
+    expect(swarmOf(a).geometry).toBeInstanceOf(InstancedBufferGeometry);
+    expect((swarmOf(a).geometry as InstancedBufferGeometry).instanceCount).toBe(SWARM_SHARDS);
+    a.dispose();
+  });
+
+  it("drops shards and flips the picture for the shadow view", () => {
+    const a = createAvatar("Winamp", "g-abc123");
+    a.setPresence(0.6);
+    a.setMirrored(true);
+    expect(swarmOf(a).material.uniforms.uPresent.value).toBe(0.6);
+    expect(swarmOf(a).material.uniforms.uFlip.value).toBe(-1);
+    a.dispose();
+  });
+
+  it("the clock wraps, so its floats stay fine all night", () => {
+    const a = createAvatar("Winamp", "g-abc123");
+    for (let i = 0; i < 9; i++) a.update(1000);
+    expect(swarmOf(a).material.uniforms.uTime.value).toBeLessThan(3600);
+    a.dispose();
+  });
+
+  it("without a DOM a picture is asked for but never worn: a swarm of static, nothing thrown", async () => {
     const a = createAvatar("Excel", "g-1", { picture: "/e/ev/api/avatar/0123456789abcdef" });
     expect(a.picture).toBe("/e/ev/api/avatar/0123456789abcdef");
     await new Promise((r) => setTimeout(r, 0));
-    expect(a.object.getObjectByName("avatar:picture")).toBeUndefined();
+    expect(a.wearing).toBe(false);
     expect(a.object.getObjectByName("avatar:body")).toBeDefined();
     a.setPicture(null);
     expect(a.picture).toBeNull();
@@ -455,8 +499,7 @@ describe("createAvatar", () => {
 
   it("tints by seed, stably", () => {
     const tint = (seed: string) => {
-      const body = createAvatar("x", seed).object.getObjectByName("avatar:body") as Mesh<BufferGeometry, MeshLambertMaterial>;
-      return body.material.color.getHex();
+      return swarmOf(createAvatar("x", seed)).material.uniforms.uTint.value.getHex();
     };
     expect(tint("g-1")).toBe(tint("g-1"));
     expect(tint("g-1")).not.toBe(tint("g-2"));

@@ -5,19 +5,20 @@
 //! `shadow.ts`), so a program walking the virtual house shows up where it
 //! would stand in this real room. The room's shadow dimension.
 //!
-//! Its own minimal scene: no walls, no floors, only ghosts — dark translucent
-//! silhouettes with a cyan / violet glow (a CSS drop-shadow over the canvas'
-//! alpha), a flicker and the scanlines, wearing the guest's picture and
-//! name tag like the world view's. Only players on this terminal's floor and
+//! Its own minimal scene: no walls, no floors, only ghosts — the world view's
+//! swarm of the guest's own picture and its name tag, with a cyan / violet
+//! glow (a CSS drop-shadow over the canvas' alpha), shards dropping out on a
+//! flicker, and the scanlines. Only players on this terminal's floor and
 //! roughly in front of it show. A selfie camera is mirrored, and the ghost
-//! canvas with it (the tags are flipped back so they still read).
+//! canvas with it (the tags and the pictures are flipped back so they still
+//! read).
 //!
 //! No camera (or no spot, or no WebGL) → `onUnavailable`, and the caller
 //! shows the world view instead. Same frame cap / pixel ratio / hidden-page
 //! pause / context release as the world view.
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Color, Mesh, MeshLambertMaterial, PerspectiveCamera, Scene, Sprite, WebGLRenderer, type Material, type SpriteMaterial } from "three";
+import { PerspectiveCamera, Scene, Sprite, WebGLRenderer, type SpriteMaterial } from "three";
 import { createAvatar, type Avatar } from "@loom/house/three";
 import { fnv1a32 } from "@loom/house";
 import { useCamera, type Facing } from "../camera.ts";
@@ -27,32 +28,10 @@ import { flicker, inShadow, mirroredFor, shadowCamera, spotFloor } from "./shado
 
 const FRAME_MS = 1000 / 24;
 const MAX_PIXEL_RATIO = 1.25;
-const SHADOW_BODY = new Color(0x07040f);
-const RIMS = [new Color(0x40e8ff), new Color(0xa060ff)];
 
 interface Ghost {
   avatar: Avatar;
   seed: number;
-  /** Materials whose opacity flickers. */
-  mats: Material[];
-}
-
-/** Turn a world-view ghost into a shadow: a dark body glowing cyan or violet. */
-function shade(avatar: Avatar, seed: number): Material[] {
-  const rim = RIMS[seed % RIMS.length]!;
-  const mats: Material[] = [];
-  avatar.object.traverse((o) => {
-    if (!(o instanceof Mesh)) return;
-    const m = o.material as Material;
-    if (m instanceof MeshLambertMaterial) {
-      m.color.copy(SHADOW_BODY);
-      m.emissive.copy(rim).multiplyScalar(0.18);
-    } else if ("color" in m && (m as unknown as { color: Color }).color instanceof Color) {
-      (m as unknown as { color: Color }).color.copy(rim);
-    }
-    mats.push(m);
-  });
-  return mats;
 }
 
 /** A mirrored canvas mirrors the tags too: flip their textures back. */
@@ -154,8 +133,8 @@ export function ShadowView({ store, spotId, facing, onUnavailable }: { store: Wo
         let g = ghosts.get(p.session);
         if (!g) {
           const avatar = createAvatar(p.name, p.guest, { picture });
-          const seed = fnv1a32(p.session);
-          g = { avatar, seed, mats: shade(avatar, seed) };
+          avatar.setMirrored(mirrored);
+          g = { avatar, seed: fnv1a32(p.session) };
           scene.add(avatar.object);
           ghosts.set(p.session, g);
         } else g.avatar.setPicture(picture);
@@ -166,8 +145,7 @@ export function ShadowView({ store, spotId, facing, onUnavailable }: { store: Wo
         count++;
         g.avatar.setPose(at.p, at.yaw, at.pitch);
         g.avatar.update(dt);
-        const o = flicker(t, g.seed % 97);
-        for (const m of g.mats) m.opacity = o;
+        g.avatar.setPresence(flicker(t, g.seed % 97));
         unmirrorTag(g.avatar.tag, mirrored);
       }
       renderer.render(scene, camera);

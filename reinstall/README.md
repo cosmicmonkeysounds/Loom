@@ -107,9 +107,11 @@ side is Help → *Running the server room*.
 
 **Ghosts wear profile pictures.** Every player on the stream carries
 `avatar`, the guest's avatar key; the web game, the terminals and VR
-draw the event's `/api/avatar/<key>` as the ghost's head (a Win98 tile)
-and in its name tag. No picture, or one that won't load, is the plain
-tinted capsule.
+cut the event's `/api/avatar/<key>` into a glitchy swarm that holds to the
+body's capsule (the collider, never drawn) and tears into a face that
+stares at you; the terminals show the same swarm, over their camera in the
+shadow view. No picture, or one that won't load, is the same swarm as
+static in the ghost's tint.
 
 ### The voice link (wave 19)
 

@@ -21,8 +21,9 @@
 //! `king` frames and the map GET), drawn only over his head (wave 26, R3:
 //! no King bar on the HUD): ⚔ / Space asks the server for this
 //! visit's one hit; at 0 he kneels and his door opens for everyone. An old
-//! server sends no King state: then he just stands, with no ⚔. Ghosts wear
-//! the guest's profile picture (`/api/avatar/<key>`, the `avatar` frame).
+//! server sends no King state: then he just stands, with no ⚔. Ghosts are
+//! swarms of the guest's profile picture (`/api/avatar/<key>`, the `avatar`
+//! frame).
 //!
 //! The moments (wave 26, C6, `moments.ts`): out through an exterior door onto
 //! the outside ground and `ESCAPE_M` into the void, a jump scare, the escape

@@ -18,7 +18,7 @@ code and that file disagree, fix one of them in the same change.
 ## Commands
 
 ```bash
-pnpm --filter @loom/house test        # vitest: 496 passed + 4 skipped, 22 files
+pnpm --filter @loom/house test        # vitest: 510 passed + 4 skipped, 23 files
 pnpm --filter @loom/house typecheck
 pnpm --filter @loom/house goldens     # regenerate test/golden/ after a deliberate geometry/route/king change
 pnpm --filter @loom/house sync        # copy the show's house.json, goldens and voice vectors into reinstall/vr/
@@ -37,7 +37,7 @@ show's `house.json`, or to `geometry.ts` / `route.ts` / `locate.ts` /
 | Entry | Contents |
 |---|---|
 | `@loom/house` (`src/index.ts`) | `types.ts` (schema v1 + wire types), `clone.ts`, `validate.ts` (`validateHouse`, `TERMINAL_VIEWS`, `guardWarnings`), `geometry.ts` (`buildWalls` normative, `buildFloors`, `buildRamps`, `doorGap`, `propSolid`), `locate.ts` (`locate`, `heightAt`, `standable`, `solidPropAt`), `route.ts` (`route`, `sampleTrail`), `frames.ts` (`toSpace`, `DEFAULT_SPOT_FOV`, `horizontalFov`), `duck.ts` (`pickDuckSpot`, FNV-1a), `king.ts` (`kingReach`, `withFallenKings`, `kingStateOf`), `escape.ts`, `presence.ts`, `moment.ts` (wave 26, below), `audio.ts`, `lights.ts`, `look-edit.ts` (wave 30: the looks builder's pure ops, shared by the map editor and the editor's Cue designer), `look-preview.ts` (`previewAt`, `previewLength`, `lampCss`: a look played on screen), `look-templates.ts` (`lookFromTemplate`, `lookFloor`), `voice.ts` (`hearsTerminals` / `hearsPlayers`: same room only) |
-| `@loom/house/three` (`src/three/`) | the three.js scene: `buildHouseScene`, `createDuck`, `createTrail`, `createKing`, `createHeart`, `createPickup`, `createAvatar`, `loadPicture`, `PoseBuffer`, `spaceGroup`. Peer dependency `three` (optional for the root entry) |
+| `@loom/house/three` (`src/three/`) | the three.js scene: `buildHouseScene`, `createDuck`, `createTrail`, `createKing`, `createHeart`, `createPickup`, `createAvatar` (the ghost's swarm: `swarm.ts`), `loadPicture`, `shardsOf`, `PoseBuffer`, `spaceGroup`. Peer dependency `three` (optional for the root entry) |
 | `@loom/house/voice-on` | `voiceOn(house, spot)` alone, so the terminal's main bundle avoids the codec |
 
 ## Wave 26 API (contract `docs/loom-w26-contract.md` C5)
@@ -164,6 +164,15 @@ buildHouseScene(house, { neon?: boolean }); HouseScene.setHaze(layers); houseAtm
 - GDScript port: `reinstall/vr/house/house_models.gd`, diffed against
   `test/golden/models.json` (`goldens` writes it; change both together).
 
+## The swarm (wave 51)
+
+`three/swarm.ts` is a ghost: the layout and `SwarmTrail` are pure, the rest is
+GLSL. `reinstall/vr/game/swarm.gd` + `swarm.gdshader` are its port, not a
+golden: `test/swarm.test.ts` pins two shards (as `vr/test/game.gd` does) and
+compares the constants and every number in both vertex shaders, so a change
+to one fails until the other has it. Neither vitest nor headless Godot
+compiles a shader: render it (`--rendering-method mobile`, not `--headless`).
+
 ## Test layout
 
 | Path | What |
@@ -171,6 +180,7 @@ buildHouseScene(house, { neon?: boolean }); HouseScene.setHaze(layers); houseAtm
 | `test/fixtures/*.json` | small maps (`two-rooms`, `l-room`, `hole`, `stair`, `yard`, `tie`, `props`, `three-floors`) + `audio-*`, `lights-*` (shared with stagehand's Python tests) + `voice-mulaw.json` (μ-law vectors, copied to VR) |
 | `test/golden/<map>.{walls,routes,locate,escape,presence}.json` | the GDScript port's reference; `models.json` every model's parts (wave 47); `show.king.json` / `show.fallen.json` for the King, `show.moments.json` for the heart and the disk, `constants.json` for the wave 26 constants |
 | `test/maps/` | frozen older show maps (`two-floor*`, `three-floor*`) for tests that pin mechanics, so a show-map edit never breaks them |
+| `test/swarm.test.ts` | the swarm's layout and trail, and the Godot port kept in step |
 | `test/show.test.ts` | the real show maps (`house.json` + `house.shed.json`) validate and route; the heart's placement and the disk's distance from the duck spots and the trails |
 
 ## Conventions and gotchas

@@ -4,15 +4,16 @@
 ## bodies capped at [constant MAX_BYTES], one request per URL in flight,
 ## every picture cached by URL for as long as the app runs, and a failure
 ## (an error, a 404, a picture Godot can't decode) remembered and not
-## retried for the rest of the visit — that ghost just stays a capsule. A
+## retried for the rest of the visit — that ghost just stays static. A
 ## new visit forgets the failures ([method forget_failures]), so a picture
 ## that timed out once (the server's upstream fetch, a slow VPS) is asked
 ## for again then, never in a loop.
 ##
 ## Decoded by magic bytes ([method decode]): PNG, JPEG, WebP, SVG (rendered
 ## near 256 px). GIF and AVIF have no Godot decoder: they fail. Each picture
-## becomes a Win98-bevelled square tile ([method tile_of]) with mipmaps, so
-## it doesn't shimmer at a distance.
+## becomes a Win98-bevelled square tile ([method tile_of], the lobby's) and
+## the bare square the ghost's swarm is cut from ([method bare_of]), both
+## with mipmaps, so they don't shimmer at a distance.
 class_name AvatarCache
 extends Node
 
@@ -39,6 +40,7 @@ const SVG_UNITS := {"": 1.0, "px": 1.0, "pt": 4.0 / 3.0, "pc": 16.0, "mm": 96.0 
 var requester: Callable
 
 var _textures := {}
+var _bares := {}
 var _failed := {}
 var _in_flight := {}
 var _queue: Array[String] = []
@@ -58,6 +60,11 @@ func _ready() -> void:
 ## The picture for `url`, or null (not fetched yet, or failed).
 func texture(url: String) -> Texture2D:
 	return _textures.get(url)
+
+
+## The bare picture for `url`, for the swarm, or null.
+func bare(url: String) -> Texture2D:
+	return _bares.get(url)
 
 
 func has_failed(url: String) -> bool:
@@ -114,6 +121,7 @@ func _landed(url: String, ok: bool, headers: PackedStringArray, body: PackedByte
 	else:
 		var tex := ImageTexture.create_from_image(tile_of(img))
 		_textures[url] = tex
+		_bares[url] = ImageTexture.create_from_image(bare_of(img))
 		loaded.emit(url, tex)
 	_pump()
 
@@ -208,7 +216,21 @@ static func svg_side(b: PackedByteArray) -> float:
 	return side
 
 
-## The ghost's head: the picture fitted (aspect kept) into a white square
+## The ghost's swarm: the picture alone, cut to its middle square,
+## [constant TILE] px, mipmapped. A transparent picture stays transparent.
+static func bare_of(src: Image) -> Image:
+	var img := src.duplicate() as Image
+	if img.is_compressed():
+		img.decompress()
+	img.convert(Image.FORMAT_RGBA8)
+	var side := mini(img.get_width(), img.get_height())
+	var out := img.get_region(Rect2i((img.get_width() - side) / 2, (img.get_height() - side) / 2, side, side))
+	out.resize(TILE, TILE, Image.INTERPOLATE_BILINEAR)
+	out.generate_mipmaps()
+	return out
+
+
+## The lobby's tile: the picture fitted (aspect kept) into a white square
 ## with a Win98 bevel (white top / left, grey and black bottom / right),
 ## [constant TILE] px, mipmapped.
 static func tile_of(src: Image) -> Image:
