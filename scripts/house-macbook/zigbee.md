@@ -212,7 +212,7 @@ but a look.
 
 ## 8. Place it and test it
 
-The map editor (`/reinstall/map`, Run → House map → 🗺) → **💡 Light**
+The map editor (Run → House → 🗺 Map) → **💡 Light**
 tool → click in the Server Room (y ≈ −0.6 m, the basement ceiling: the
 house frame is absolute) → the inspector's **device** picker shows
 `server_room_rgb` from Z2M's list → caps fill in → **Save** → **💡

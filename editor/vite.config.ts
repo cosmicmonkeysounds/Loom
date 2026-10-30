@@ -48,7 +48,9 @@ export default defineConfig({
       '@loom/core/credits': path.resolve(__dirname, '../core/src/credits.ts'),
       '@loom/core': path.resolve(__dirname, '../core/src/index.ts'),
       // The house model (wave 30): the Cue designer edits, plans and
-      // previews `lights.json` looks with the server's own rules.
+      // previews `lights.json` looks with the server's own rules. `/three`
+      // is the embedded map's 3D preview (its own lazy chunk, wave 49).
+      '@loom/house/three': path.resolve(__dirname, '../house/src/three/index.ts'),
       '@loom/house': path.resolve(__dirname, '../house/src/index.ts'),
       // Bank compiler as TypeScript source — the desktop app compiles
       // .loombank artifacts in the webview and hands bytes to the host.
@@ -56,6 +58,11 @@ export default defineConfig({
       // The participant app as TypeScript source — Run → Players embeds the
       // real guest / performer app (one per pane) instead of a look-alike.
       '@loom/play/embed': path.resolve(__dirname, '../play/src/embed.tsx'),
+      // The rest of play by path, for the embedded map's `client.ts` and our
+      // own `lazy-chunk.tsx`.
+      '@loom/play': path.resolve(__dirname, '../play/src'),
+      // The real house map editor (wave 49), loaded lazily by Run → House → 🗺 Map.
+      '@loom/reinstall/map': path.resolve(__dirname, '../reinstall/web/src/map/embed.tsx'),
       '@': path.resolve(__dirname, './src'),
       // The browser has no `node:crypto`; `@loom/core/chat` reaches it
       // through the server's wallet + identity modules (the claim HMAC,

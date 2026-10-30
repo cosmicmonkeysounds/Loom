@@ -613,7 +613,7 @@ export async function postVoice(
     const res = await fetcher(`${base}/api/spatial/voice?seq=${seq}`, {
       method: "POST",
       headers: { "content-type": "application/octet-stream", "x-loom-token": token },
-      body: bytes,
+      body: bytes as BodyInit,
       cache: "no-store",
     });
     const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;

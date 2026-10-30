@@ -7,7 +7,7 @@ editor. MIT.
 
 | Folder | What | Stack |
 |---|---|---|
-| `web/` (`loom-reinstall`) | the web game, the wizard flow and the map editor at `/reinstall/map` | Vite + React 18 + three.js, in the pnpm workspace; served by the event server at `/reinstall/` |
+| `web/` (`loom-reinstall`) | the web game, the wizard flow and the map editor (at `/reinstall/map`, and in Loom Edit as Run → House → 🗺 Map) | Vite + React 18 + three.js, in the pnpm workspace; served by the event server at `/reinstall/` |
 | `vr/` | the Quest 3 game | Godot 4.7 OpenXR (GDScript only). **Not** in the pnpm workspace or the Docker image |
 
 Human overviews: [`README.md`](./README.md), [`web/README.md`](./web/README.md),
@@ -44,7 +44,7 @@ reveal, and `--trail-delay 0` turns it off for a hand-driven dev run).
 | `web/src/app.tsx`, `flow.tsx`, `flow-state.ts`, `program.ts`, `wizard.tsx`, `IntroVideo.tsx` | the standalone device's screens; the choose / video / play / send flow (mounted by the tent terminal too); what the wizard says about a program; the intro video (wave 33) |
 | `web/src/config.ts`, `api.ts`, `spatial.ts`, `kiosk.ts` | provisioning (`?code= name= role= camera= arrows= voice= intro= quality=`), the spatial routes and stream, the 2 s holds |
 | `web/src/game/` | `engine.ts` (three.js), `Play.tsx` + `joystick.tsx`, and pure `physics.ts` (with the outside ground), `input.ts`, `pump.ts` (10 Hz latest-only poses), `hud.ts` (with the path reveal and `kingInView`), `fight.ts` (the King), `trail.ts`, `leash.ts`; wave 26: `moments.ts` (the void, the heart, the disk: when to post and what each answer means), `lines.ts` (`LinePlayer`: in-game captions + the device voice), `Scare.tsx` (the jump scare); wave 33 `tutorial.ts` (the training's steps, the skip rule); wave 39 `quality.ts` (the tiers, `auto`'s frame-time rule, the cap and the remembered setting; pure), `house-lights.ts` (the lights frame's bulbs: levels, the pulse, the point lights' pick, the ambient's dim; pure), `lamps.ts` (their three.js half) and `post.ts` (bloom + the grade, a lazy chunk); `cams.ts`, `voice.ts`, `audio.ts` |
-| `web/src/map/` | the editor: `MapApp.tsx`, `Canvas.tsx`, `Toolbar.tsx`, `Inspector.tsx`, `Panels.tsx`, `Preview3D.tsx`, `ProjectBar.tsx`, and pure `plan.ts`, `edit.ts`, `doors.ts`, `yards.ts`, `structure.ts`, `props.ts`, `history.ts`, `check.ts`, `project.ts`; speakers `audio*.ts` + `AudioPanel.tsx` (wave 38: an input's *Ducks as* role and its reach, `setInputRole` / `setInputReach` / `inputReachSpeakers`; renaming or removing a speaker or zone rewrites every input's reach too); lights `lights*.ts` + `LightsPanel.tsx` (wave 39: the Presence block, `setLightPresence`) |
+| `web/src/map/` | the editor: `MapEditor.tsx` (the editor, needing neither `Setup` nor the game), `MapApp.tsx` (the page: `Setup`, `?code=`), `embed.tsx` + `embed-css.ts` (wave 49: the embed for Loom Edit, a shadow root), `Canvas.tsx`, `Toolbar.tsx`, `Inspector.tsx`, `Panels.tsx`, `Preview3D.tsx`, `ProjectBar.tsx`, and pure `plan.ts`, `edit.ts`, `doors.ts`, `yards.ts`, `structure.ts`, `props.ts`, `history.ts`, `check.ts`, `project.ts`; speakers `audio*.ts` + `AudioPanel.tsx` (wave 38: an input's *Ducks as* role and its reach, `setInputRole` / `setInputReach` / `inputReachSpeakers`; renaming or removing a speaker or zone rewrites every input's reach too); lights `lights*.ts` + `LightsPanel.tsx` (wave 39: the Presence block, `setLightPresence`) |
 | `vr/house/*.gd` | literal GDScript ports of `@loom/house` (walls, locate + presence, route, frames, duck, the King, and wave 26's `house_escape.gd` + `house_moment.gd`), diffed against `test/golden/`; `house_builder.gd` also draws the heart and the disk; wave 39 `house_lights.gd` (`gameLightsOf` / `pulseFactor` ported, the pool pick, the night ambient, the graphics tiers) and `house_lamps.gd` (the real house's bulbs, the fixed `OmniLight3D` pool, the ambient) |
 | `vr/net/` | `server_link.gd` (the autoload: config, polling, begin / pose / found / hit / moment, wave 33 `mark_ready`, the stream), `cam_feeds.gd` (the presence room's feeds), `voice_link.gd` (with `hold_for`, TEST MIC, ASK AGAIN) + `voice_codec.gd`, `avatar_cache.gd`, `config.gd` (with `trail_delay`, wave 33 `intro`, wave 39 `graphics` and the build stamp); the stream's `lights` frame → `LinkBase.lights_changed` / `lights` (wave 39) |
 | `vr/game/`, `vr/player/` | the state machine (`game.gd`: the path reveal, the void, the heart, the disk, the intro), wave 33's intro (`intro_flow.gd`: the video → tutorial steps and the skip rule, pure; `intro_space.gd`: the cinema, the practice floor, the tutorial panel), the lobby (PICK YOUR PROGRAM tiles, SET UP THIS HEADSET, the MICROPHONE box with the build stamp), the duck, trail, ghosts, HUD; wave 26 `sfx.gd` (synthesised sounds on the `Sfx` bus) and `speech.gd` (captions + `tts_speak`); the XR rig and pointer |
@@ -134,6 +134,20 @@ presence rooms and `moment`), `spatial-cams.ts`, `spatial-voice.ts` and the
   `reinstall-*` tests too.
 - **Pure first.** Physics, input, the pump, the HUD, the trail and every
   map edit are pure and node-tested; keep new logic that way.
+- **The map runs embedded** (wave 49, C7). Loom Edit mounts `MapEditor` in a
+  shadow root in its own React 19 page, so map code answers to that too. At
+  the window `e.target` is the shadow host: read a key's target through
+  `keyOrigin` (`unlock.ts`), and a new key the map answers to goes in
+  `mapAnswersKey`, or it also fires the host's shortcut. Never bring `app.tsx`,
+  `flow.tsx` or the three.js game into `MapEditor`'s static imports
+  (`test/map-embed.test.ts` walks them): the 3D preview stays a lazy import,
+  and CSS goes through `embed.tsx` (`?inline`), not a stylesheet import in
+  `MapEditor.tsx`. `editor/tsconfig.app.json` typechecks these sources, and is
+  stricter than ours (no parameter properties, no unused imports or
+  parameters). `@font-face` doesn't apply in a shadow root: the embed puts
+  VT323 on the document. A link out of the page (`Toolbar`'s ✕) is hidden when
+  `embedded`. `MapEditor`'s `connections` prop: long polls on its own page,
+  short polls embedded, none while the host keeps it off screen.
 - **The house lights and quality** (wave 39). The web game's point-light
   pool is sized by the quality tier and changes only with it (a light-count
   change recompiles every material); the post-processing stays a lazy
@@ -195,6 +209,7 @@ presence rooms and `moment`), `spatial-cams.ts`, `spatial-voice.ts` and the
 
 ## Pointers
 
+- The map editor in Loom Edit: `docs/loom-w49-contract.md` C7, `editor/CLAUDE.md`.
 - The map editor walkthrough: `docs/help/authoring/39-house-map.md`
   (test-pinned by `web/test/help-docs.test.ts` and `lights-help.test.ts`).
 - The player's guide: `docs/help/play/11-reinstallation.md`.

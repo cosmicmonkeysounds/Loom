@@ -44,6 +44,9 @@ export interface ReinstallConfig {
   /** (wave 39) The graphics cap (`quality=low|medium|high|auto`): the game's
    *  setting picks under it and `auto` adapts under it. Missing = no cap. */
   quality?: QualityChoice;
+  /** (wave 49) The server's address when it isn't this page's (the map embedded
+   *  in an editor built with `VITE_LOOM_API`). Missing = same origin. */
+  apiBase?: string;
 }
 
 export const CONFIG_KEY = "loom.reinstall";
@@ -196,6 +199,6 @@ export async function provision(code: string, hints: Omit<UrlHints, "code">): Pr
 }
 
 /** The event-scoped API base for a configured device. */
-export function baseOf(c: Pick<ReinstallConfig, "eventId">): string {
-  return `/e/${encodeURIComponent(c.eventId)}`;
+export function baseOf(c: Pick<ReinstallConfig, "eventId" | "apiBase">): string {
+  return `${c.apiBase ?? ""}/e/${encodeURIComponent(c.eventId)}`;
 }

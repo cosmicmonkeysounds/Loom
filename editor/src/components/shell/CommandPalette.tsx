@@ -9,6 +9,7 @@ import { useHelp } from '@/store/help'
 import { lspWorkspaceSync, uriFor } from '@/lib/lsp-client'
 import { navigateToLocation } from '@/lib/lsp-nav'
 import { useLspIndexGen } from '@/lib/lsp-index'
+import { openHouseMap } from '@/lib/open-house-map'
 
 type Mode = 'files' | 'commands' | 'symbols' | 'wsymbols'
 
@@ -157,6 +158,7 @@ export function CommandPalette() {
         hint: '⌘⇧Z',
         run: () => void useEditJournal.getState().redo(),
       },
+      { id: 'open-house-map', label: 'Open the house map', run: () => openHouseMap() },
       { id: 'toggle-rail', label: 'View: Toggle Left Rail', hint: '⌘B', run: () => useMode.getState().toggleRail() },
       { id: 'toggle-tray', label: 'View: Toggle Properties Tray', hint: '⌘⌥B', run: () => useMode.getState().toggleTray() },
       {

@@ -26,7 +26,7 @@ Rules for every link:
 - **Spot only.** Never add `&view=`, `&name=` or `&room=`: a link that
   names its own view or room keeps it and stops following the map (the
   tent would be called *Terminal* and ignore the shed variant).
-- Get the link from the map editor (`/reinstall/map`: the Terminals tab
+- Get the link from the map editor (Run → House → 🗺 Map: the Terminals tab
   or a terminal's inspector gives a spot-only link without the passcode;
   add `&code=<mod>`), from `pnpm showctl preflight <machine>` (`macbook`,
   `desktop`, `serverroom`, `tent`), or type `?code=<mod>&spot=<id>` by
@@ -72,7 +72,7 @@ fallback). Since wave 38 Trabolta's TV voice plays there too (the
 Desktop's line out is cabled into the 828x), and the TV page's own
 accents are silent. Nothing on a tablet
 plays a story sound. The house speakers are set up in the project file
-`audio.json` (the map editor's 🔊 Audio tab at `/reinstall/map`); the
+`audio.json` (the map editor's 🔊 Audio tab, Run → House → 🗺 Map); the
 contract is [`room-audio.md`](./room-audio.md) §11.
 
 **Saying the announcements on a device** is an option, off unless asked

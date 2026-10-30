@@ -14,14 +14,8 @@
 //! swatches a fixture is tested with; the problem list; the save plans.
 
 import {
-  LIGHT_COLOR_STEP_MIN_MS,
   LIGHT_KINDS,
-  LIGHT_LOOP_MIN_PERIOD_MS,
-  LIGHT_MAX_REPEAT,
-  LIGHT_MAX_STEPS,
-  LIGHT_RESTORE_MS,
   LIGHT_SAFETY_MIN,
-  LIGHT_STEP_MIN_MS,
   LIGHTS_EVERYWHERE,
   LIGHT_PRESENCE_RADIUS_M,
   LIGHT_PRESENCE_RADIUS_MAX,
@@ -32,7 +26,6 @@ import {
   distanceToBoundary,
   floorById,
   foldTarget,
-  isLightLookName,
   lookTargets,
   pointInPoly,
   resolveLightTargets,
@@ -42,7 +35,7 @@ import {
   safetyMin,
   validateLights,
 } from "@loom/house";
-import type { HouseMap, LightCaps, LightFixture, LightKind, LightLook, LightPresence, LightPresenceEffect, LightPresenceSettings, LightState, LightStep, LightsConfig, Room, Vec2 } from "@loom/house";
+import type { HouseMap, LightCaps, LightFixture, LightKind, LightLook, LightPresence, LightPresenceEffect, LightPresenceSettings, LightState, LightsConfig, Room, Vec2 } from "@loom/house";
 import type { Problem } from "./check.ts";
 import { rectSideOf, round } from "./doors.ts";
 import { rebaseField, type History } from "./history.ts";

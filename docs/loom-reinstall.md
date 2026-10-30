@@ -466,7 +466,7 @@ tolerance: metres, and m² for orientations).
   `virus-disk`, `item: "virus"`); neither has a label or `signals`, and
   `house/test/show.test.ts` keeps the disk ≥ 2 m from every duck spot and
   clear of every trail on both maps. Edit it with the **map editor**
-  (`/reinstall/map`, which places, moves and edits both new kinds) or by hand.
+  (Run → House → 🗺 Map, which places, moves and edits both new kinds) or by hand.
 - Its rain variant: `house.shed.json` beside it (the file convention is
   `house.<variant>.json`) — the same map with The Internet in the shed
   (room `shed`) and no tent, the same terminal ids, duck spots and
@@ -1430,7 +1430,7 @@ before each post. Answers are read by their `error` string.
   floor in 8 s (`LINE_START_WAIT_MS`), so it never outlasts its caption.
   While a line plays the game's mic is held (§2.4).
 
-The **map** page (`/reinstall/map`): the house plan (SVG, one floor at a
+The **map** page (`/reinstall/map`, and in the editor as Run → House → 🗺 Map, `map/embed.tsx`): the house plan (SVG, one floor at a
 time), live players, the duck of each session, terminals with their view
 cones; an **editor** for directors, saving through
 `POST /api/mod/spatial/house` with `base` = the version it loaded (none

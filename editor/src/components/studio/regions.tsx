@@ -14,6 +14,7 @@ import { Sidebar } from '@/components/files/Sidebar'
 import { Editor } from '@/components/editor/Editor'
 import { Tabs } from '@/components/editor/Tabs'
 import { Breadcrumbs } from '@/components/editor/Breadcrumbs'
+import { HouseMapBanner } from '@/components/editor/HouseMapBanner'
 import { BeatStrip } from '@/components/graph/BeatStrip'
 import { EditingRail } from '@/components/graph/EditingRail'
 import { StoryGraphPanel } from '@/components/graph/StoryGraphPanel'
@@ -36,6 +37,7 @@ function EditorStack() {
     <div className="h-full w-full flex flex-col bg-zinc-950">
       <Tabs />
       <Breadcrumbs />
+      <HouseMapBanner />
       <div className="flex-1 min-h-0">
         <Editor />
       </div>

@@ -51,7 +51,7 @@ const TABS: TabSpec[] = [
   { id: CockpitTab.World, label: 'World', hint: 'The world state — factions and every live variable, global and per-person', operatorOnly: true },
   { id: CockpitTab.Director, label: 'Director', hint: 'The running order by act, the night at a glance, and event / beat / broadcast tools', operatorOnly: true },
   { id: CockpitTab.Mind, label: 'Mind', hint: 'An agent-voiced character’s mind: the prompts, both models’ reasoning, the arc, and a control panel', operatorOnly: true },
-  { id: CockpitTab.House, label: 'House', hint: 'The house desk: build and GO house cues (sounds, lights, story events), and test every speaker and light', operatorOnly: true },
+  { id: CockpitTab.House, label: 'House', hint: 'The house desk: build and GO house cues (sounds, lights, story events), test every speaker and light, and edit the house map', operatorOnly: true },
   { id: CockpitTab.Log, label: 'Log', hint: 'The raw ledger, event by event — filter to one participant, export the run' },
 ]
 

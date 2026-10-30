@@ -227,6 +227,9 @@ stream sends a `duck {session, duck}` frame; either one re-routes the trail.
 
 ## The house map — `/reinstall/map`
 
+Directors reach it in Loom Edit as Run → House → 🗺 Map: the same editor
+(`src/map/MapEditor.tsx`) in a shadow root (`src/map/embed.tsx`).
+
 The plan of one floor at a time (tabs), north up, 1 user unit = 1 m. It
 shows:
 
