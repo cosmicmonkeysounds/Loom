@@ -501,8 +501,8 @@ export function gradeOf(look: DescentLook, run: Pick<VisionRun, "kind" | "n" | "
     const e = envelope(run.s, run.length, 1.6, 2);
     g.dark = e;
     g.fog = look.fog + (DARK_DENSITY / HAZE_FOG_DENSITY - look.fog) * e;
-    g.ambient = look.ambient * (1 - 0.72 * e);
-    g.exposure = 1 - 0.3 * e;
+    g.ambient = look.ambient * (1 - 0.45 * e);
+    g.exposure = 1 - 0.15 * e;
     g.neon = 1 - 0.93 * e;
   }
   return g;
@@ -512,18 +512,35 @@ export function gradeOf(look: DescentLook, run: Pick<VisionRun, "kind" | "n" | "
 export const POCKET_GRADE: Grade = { fog: 0.13 / HAZE_FOG_DENSITY, ambient: 0, exposure: 1, neon: 0, tint: "#000000", tintBy: 0, dark: 1 };
 
 /**
- * Where a face goes on a prop: `faceAnchor`, or the first other side a
- * program can stand in front of (a plant in a corner faces the room).
+ * The sides of a prop a face can be on: `faceAnchor` on its front, and on
+ * every other side a program can stand at (a plant in a corner never faces
+ * the wall). Always at least its front.
  */
-export function faceSpot(house: HouseMap, prop: Prop): { pos: Vec3; yaw: number } {
+export function faceSides(house: HouseMap, prop: Prop): DoorAt[] {
   const yaw = prop.yaw ?? 0;
+  const out: DoorAt[] = [];
   for (const turn of [0, 180, 90, -90]) {
     const [w, h, d] = prop.size;
     const a = faceAnchor({ ...prop, yaw: yaw + turn, size: turn % 180 === 0 ? [w, h, d] : [d, h, w] });
     const r = (a.yaw * Math.PI) / 180;
-    if (standable(house, [a.pos[0] - Math.sin(r) * 0.5, prop.pos[1], a.pos[2] - Math.cos(r) * 0.5])) return a;
+    if (standable(house, [a.pos[0] - Math.sin(r) * 0.5, prop.pos[1], a.pos[2] - Math.cos(r) * 0.5])) out.push(a);
   }
-  return faceAnchor(prop);
+  return out.length > 0 ? out : [faceAnchor(prop)];
+}
+
+/** Which of `sides` faces a program at `at`: the one it is most in front of. */
+export function nearestSide(sides: readonly DoorAt[], at: Vec3): number {
+  let best = 0;
+  let score = Number.NEGATIVE_INFINITY;
+  sides.forEach((side, i) => {
+    const r = (side.yaw * Math.PI) / 180;
+    const facing = -Math.sin(r) * (at[0] - side.pos[0]) - Math.cos(r) * (at[2] - side.pos[2]);
+    if (facing > score) {
+      score = facing;
+      best = i;
+    }
+  });
+  return best;
 }
 
 /** The way ahead of a body, walked for real: what it can reach in a line. */

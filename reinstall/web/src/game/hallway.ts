@@ -130,7 +130,7 @@ export function createDoor(): Door {
   const spill = new PlaneGeometry(w * 0.84, 1.15).rotateX(-Math.PI / 2).translate(0, 0.012, -d / 2 - 0.575);
   const colors = new Float32Array(spill.getAttribute("position").count * 3);
   const pos = spill.getAttribute("position");
-  for (let i = 0; i < pos.count; i++) colors[i * 3] = pos.getZ(i) > -0.3 ? 0.9 : 0;
+  for (let i = 0; i < pos.count; i++) colors[i * 3] = pos.getZ(i) > -0.3 ? 0.55 : 0;
   spill.setAttribute("color", new BufferAttribute(colors, 3));
   const glow = bin.add(new MeshBasicMaterial({ vertexColors: true, blending: AdditiveBlending, transparent: true, depthWrite: false, fog: false }));
   bin.add(spill);
@@ -167,7 +167,7 @@ function wallTexture(): CanvasTexture | null {
   g.fillRect(0, 150, 1024, 5);
   // A door nobody opens.
   const [x, w, top] = [430, 150, 28];
-  g.fillStyle = "#c9c6bf";
+  g.fillStyle = "#6f6c67";
   g.fillRect(x - 10, top - 10, w + 20, 256 - top + 10);
   g.fillStyle = "#121116";
   g.fillRect(x, top, w, 256 - top);

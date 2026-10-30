@@ -11,7 +11,8 @@
 //!   came attached to (`createAvatar` for the program's own pale copy),
 //!   the door, and two eyes in the dark.
 //! - **The faces**: two eyes that follow the player and a mouth on each awake
-//!   prop, opening as you come within `FACE_NEAR_M`.
+//!   prop, opening as you come within `FACE_NEAR_M`. Walk round the prop and
+//!   it blinks, and when it opens its eyes it is on this side.
 //!
 //! Everything is built once at walk start and only shown and hidden after
 //! that; a talker's face shares its geometry and materials. No new point
@@ -26,7 +27,7 @@ import type { DescentLook, HouseMap, Vec3, VisionKind } from "@loom/house";
 import { Bin, createAvatar, createDuck, hasDom } from "@loom/house/three";
 import type { Avatar, Duck, HouseScene } from "@loom/house/three";
 import type { Sfx } from "./audio.ts";
-import { aliceAt, CEILING_GAP_M, envelope, faceSpot, FollowerSteps, gradeOf, POCKET_GRADE, smooth, wayAhead, type AwakeTalker, type DoorAt, type Grade, type VisionRun, type WayAhead } from "./descent.ts";
+import { aliceAt, CEILING_GAP_M, envelope, faceSides, FollowerSteps, gradeOf, nearestSide, POCKET_GRADE, smooth, wayAhead, type AwakeTalker, type DoorAt, type Grade, type VisionRun, type WayAhead } from "./descent.ts";
 import { createDoor, type Door } from "./hallway.ts";
 import { relativeBearing } from "./hud.ts";
 import type { HouseLamps } from "./lamps.ts";
@@ -38,10 +39,14 @@ const DEG = Math.PI / 180;
 export const FACE_NEAR_M = 8;
 /** Its eyes finish opening over this much of the approach (m). */
 const FACE_OPEN_M = 1.6;
+/** A blink (s). */
+const BLINK_S = 0.16;
 
 /** The pale duck turns up this far off (m), this far at the least, and walks off at half a walk. */
 const WHITE_AHEAD_M = 6;
 const WHITE_LEAST_M = 3;
+/** Where to look for it: never far outside the view. */
+const IN_VIEW: readonly number[] = [0, 20, -20, 35, -35];
 const WADDLE: MoveInput = { move: [0, 0.5], turn: 0, look: 0, run: false };
 /** …until it stops and looks back at them (s). */
 const WHITE_STOPS_S = 3.1;
@@ -53,7 +58,7 @@ const GRIN_AHEAD_M = 2.5;
 const GRIN_LEAST_M = 1.2;
 
 /** The program's copy walks this much of the way ahead of them (m), starting this far off. */
-const SELF_NEAR_M = 6;
+const SELF_NEAR_M = 5;
 const SELF_WALK_M = 4.5;
 const SELF_STEP_M = 0.25;
 /** How long it walks, turns, and when it is suddenly gone (s). */
@@ -98,8 +103,9 @@ export interface VisionsOptions {
 interface Face {
   prop: AwakeTalker["prop"];
   object: Group;
-  at: Vec3;
-  yaw: number;
+  /** The sides it can be on; `side` is where it is. */
+  sides: DoorAt[];
+  side: number;
   radius: number;
   lids: Group[];
   pupils: Mesh[];
@@ -226,7 +232,8 @@ function fadeAll(object: Object3D, v: number): void {
   });
 }
 
-/** Gerald with the gold let out of him: Lambert still, but bloodless, with red pinprick eyes. */
+/** Gerald with the gold let out of him: bloodless, red pinprick eyes, and the
+ *  haze does not touch him. */
 function dressPale(duck: Duck): void {
   duck.object.scale.setScalar(WHITE_SCALE);
   duck.object.traverse((o) => {
@@ -237,13 +244,14 @@ function dressPale(duck: Duck): void {
     const m = (o as Mesh).material as MeshLambertMaterial | undefined;
     if (m === undefined) return;
     m.transparent = true;
+    m.fog = false;
     if (o.name === "duck:eyes") m.color.set("#e8001c");
     else if (o.name === "duck:bill") {
       m.color.set("#8d857a");
-      m.emissive?.set("#120e0c");
+      m.emissive?.set("#2a2522");
     } else {
       m.color.set("#e9e7e1");
-      m.emissive?.set("#22262e");
+      m.emissive?.set("#6c7078");
     }
     m.needsUpdate = true;
   });
@@ -255,10 +263,12 @@ function dressSelf(avatar: Avatar): void {
     if (o.name === "avatar:ring") o.visible = false;
     const m = (o as Mesh).material as MeshLambertMaterial | undefined;
     if (m === undefined) return;
+    m.fog = false;
+    m.needsUpdate = true;
     if (o.name === "avatar:body") {
       m.color.set("#e9eef2");
-      m.emissive?.set("#3d454e");
-      m.userData["full"] = 0.8;
+      m.emissive?.set("#6c747e");
+      m.userData["full"] = 0.85;
     }
     if (o.name === "avatar:visor") m.color.set("#050508");
   });
@@ -380,7 +390,8 @@ export class Visions {
   }
 
   private buildFace(a: AwakeTalker, map: HouseMap): Face {
-    const spot = faceSpot(map, a.prop);
+    const sides = faceSides(map, a.prop);
+    const spot = sides[0]!;
     const [w, h] = a.prop.size;
     const r = Math.max(0.045, Math.min(0.1, Math.min(w, h) * 0.17));
     const object = new Group();
@@ -407,7 +418,7 @@ export class Visions {
     const teeth = new Mesh(this.strip, this.white);
     object.add(mouth, teeth);
     this.object.add(object);
-    return { prop: a.prop, object, at: spot.pos, yaw: spot.yaw, radius: r, lids, pupils, mouth, teeth, t: fnvish(a.prop.id), blinkIn: 2, blinkFor: 0 };
+    return { prop: a.prop, object, sides, side: 0, radius: r, lids, pupils, mouth, teeth, t: fnvish(a.prop.id), blinkIn: 2, blinkFor: 0 };
   }
 
   /** The prop whose mouth is moving (null: none). */
@@ -462,7 +473,7 @@ export class Visions {
   }
 
   private showPale(v: VisionView): boolean {
-    const way = wayAhead(v.world, v.body, WHITE_AHEAD_M, WHITE_LEAST_M);
+    const way = wayAhead(v.world, v.body, WHITE_AHEAD_M, WHITE_LEAST_M, IN_VIEW);
     if (way === null) return false;
     this.paleBody = { p: way.end, yaw: way.yaw, pitch: 0, vy: 0 };
     this.paleS = 0;
@@ -477,7 +488,7 @@ export class Visions {
   private showGrin(v: VisionView): boolean {
     const g = this.grin;
     if (g === null) return false;
-    const way = wayAhead(v.world, v.body, GRIN_AHEAD_M, GRIN_LEAST_M);
+    const way = wayAhead(v.world, v.body, GRIN_AHEAD_M, GRIN_LEAST_M, IN_VIEW);
     if (way === null) return false;
     g.object.position.set(way.end[0], way.end[1] + EYE_HEIGHT, way.end[2]);
     g.object.visible = true;
@@ -488,7 +499,7 @@ export class Visions {
     // Before the trail shows, it goes the way they are looking, never the way to Gerald.
     let way: Vec3[] | null = v.route !== null && pathLength(v.route) >= SELF_NEAR_M + 1 ? v.route : null;
     if (way === null) {
-      const ahead: WayAhead | null = wayAhead(v.world, v.body, SELF_NEAR_M + SELF_WALK_M, SELF_NEAR_M);
+      const ahead: WayAhead | null = wayAhead(v.world, v.body, SELF_NEAR_M + SELF_WALK_M, SELF_NEAR_M, IN_VIEW);
       way = ahead?.points ?? null;
     }
     if (way === null) return false;
@@ -693,23 +704,35 @@ export class Visions {
     const eye = eyeOf(v.body);
     const floor = floorOf(v.map, v.body.p[1]);
     for (const f of this.faces) {
-      const d = Math.hypot(f.at[0] - eye[0], f.at[2] - eye[2]);
+      const d = Math.hypot(f.prop.pos[0] - eye[0], f.prop.pos[2] - eye[2]);
       const show = !hidden && d < FACE_NEAR_M && floorOf(v.map, f.prop.pos[1]) === floor;
       f.object.visible = show;
       if (!show) continue;
       f.t += dt;
       f.blinkIn -= dt;
       if (f.blinkIn <= 0) {
-        f.blinkFor = 0.15;
+        f.blinkFor = BLINK_S;
         f.blinkIn = 1.8 + ((f.t * 7.3) % 3.4);
       }
       if (f.blinkFor > 0) f.blinkFor -= dt;
+      // Walked round it: it shuts its eyes, and opens them on this side.
+      const best = nearestSide(f.sides, eye);
+      if (best !== f.side) {
+        if (f.blinkFor <= 0) f.blinkFor = BLINK_S;
+        else if (f.blinkFor < BLINK_S / 2) {
+          f.side = best;
+          const s = f.sides[best]!;
+          f.object.position.set(s.pos[0], s.pos[1], s.pos[2]);
+          f.object.rotation.y = s.yaw * DEG;
+        }
+      }
       const lid = Math.max(0.06, smooth((FACE_NEAR_M - d) / FACE_OPEN_M) * (f.blinkFor > 0 ? 0.08 : 1));
       // The player in the face's own frame: both eyes on them, always.
-      const r = f.yaw * DEG;
-      const vx = eye[0] - f.at[0];
-      const vy = eye[1] - f.at[1];
-      const vz = eye[2] - f.at[2];
+      const at = f.sides[f.side]!;
+      const r = at.yaw * DEG;
+      const vx = eye[0] - at.pos[0];
+      const vy = eye[1] - at.pos[1];
+      const vz = eye[2] - at.pos[2];
       const lx = vx * Math.cos(r) - vz * Math.sin(r);
       const lz = vx * Math.sin(r) + vz * Math.cos(r);
       const len = Math.hypot(lx, vy, lz) || 1;

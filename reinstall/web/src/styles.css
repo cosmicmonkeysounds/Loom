@@ -425,8 +425,9 @@ code { font-family: var(--pixel); font-size: 1.15em; background: rgba(255, 255, 
 /* Touch: above the stick zones, never over the thumbs. */
 .talk-window.over-sticks { bottom: calc(min(46vh, 300px) + 12px); }
 .talk-window p { margin: 0; font-size: clamp(18px, 2.4vw, 24px); line-height: 1.25; color: var(--ink); }
-.talk-options { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; pointer-events: auto; }
-.talk-option { display: flex; align-items: center; gap: 0.6em; min-height: 40px; padding: 0.3em 0.7em; text-align: left; font-size: clamp(16px, 2vw, 20px); }
+.talk-options { display: grid; grid-template-columns: 1fr; gap: 4px; margin-top: 8px; pointer-events: auto; }
+@media (min-width: 640px) { .talk-options { grid-template-columns: 1fr 1fr; } }
+.talk-option { display: flex; align-items: center; justify-content: flex-start; gap: 0.6em; min-height: 40px; padding: 0.3em 0.7em; text-align: left; font-size: clamp(15px, 1.8vw, 18px); }
 .talk-option kbd { flex: none; min-width: 1.5em; font-family: inherit; font-weight: bold; text-align: center; color: var(--navy); }
 .found-line { font-style: italic; }
 .hud-top > .spacer { flex: 1; }

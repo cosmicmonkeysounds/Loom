@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { ALICE_BIG, ALICE_EASE_S, ALICE_SMALL, DESCENT_LATE_S, HALLWAY_DOOR_M, TALK_LEAVE_M, VISION_S, descentLook, descentPlan, parseDescent, validateHouse } from "@loom/house";
 import type { DescentScript, HouseMap, Prop, Vec3, VisionKind } from "@loom/house";
-import { aliceAt, atDoor, Director, envelope, faceSpot, flickerAt, FollowerSteps, foundLine, gradeOf, KING_HOLD_M, talkKey, TALK_AGAIN_S, TALK_LINGER_S, TALK_PATIENCE_S, visionLine, wayAhead, WRONG_TINTS, type DirectorHost, type WalkNow } from "../src/game/descent.ts";
+import { aliceAt, atDoor, Director, envelope, faceSides, flickerAt, FollowerSteps, foundLine, gradeOf, KING_HOLD_M, nearestSide, talkKey, TALK_AGAIN_S, TALK_LINGER_S, TALK_PATIENCE_S, visionLine, wayAhead, WRONG_TINTS, type DirectorHost, type WalkNow } from "../src/game/descent.ts";
 import { buildPhysicsWorld } from "../src/game/physics.ts";
 import { TWO_ROOMS, SHOW } from "./houses.ts";
 import showScript from "../../../core/examples/trapped-in-the-internet/descent.json";
@@ -465,11 +465,20 @@ describe("where a vision stands", () => {
   it("a face goes on a side a program can stand at", () => {
     const h = SHOW();
     const plant = h.props.find((p) => p.id === "plant")!;
-    const spot = faceSpot(h, plant);
-    expect(spot.pos[1]).toBeCloseTo(plant.pos[1] + plant.size[1] * 0.68);
-    expect(spot.yaw).not.toBe(plant.yaw ?? 0); // its front is against the wall
+    const sides = faceSides(h, plant);
+    expect(sides[0]!.pos[1]).toBeCloseTo(plant.pos[1] + plant.size[1] * 0.68);
+    expect(sides.map((s) => s.yaw)).not.toContain(plant.yaw ?? 0); // its front is against the wall
     const stove = h.props.find((p) => p.id === "stove")!;
-    expect(faceSpot(h, stove).yaw).toBe(0);
+    expect(faceSides(h, stove)[0]!.yaw).toBe(0);
+  });
+
+  it("it turns up on the side the player has walked round to", () => {
+    const h = house();
+    const stove = h.props[0]!;
+    const sides = faceSides(h, stove);
+    expect(sides.length).toBeGreaterThanOrEqual(3);
+    expect(sides[nearestSide(sides, [3, 1.6, 0.5])]!.yaw).toBe(0); // north of it: its front
+    expect(Math.abs(sides[nearestSide(sides, [3, 1.6, 2.9])]!.yaw)).toBe(180); // south of it: behind it
   });
 
   it("the show's awake props all get a face, whatever the seed", () => {
@@ -477,7 +486,7 @@ describe("where a vision stands", () => {
     const d = setup(4, h).d;
     d.setScript(script as DescentScript);
     expect(d.awake.length).toBe(5);
-    for (const a of d.awake) expect(Number.isFinite(faceSpot(h, a.prop).pos[0])).toBe(true);
+    for (const a of d.awake) expect(faceSides(h, a.prop).length).toBeGreaterThan(0);
   });
 });
 
