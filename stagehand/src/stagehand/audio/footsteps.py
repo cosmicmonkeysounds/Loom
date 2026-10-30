@@ -272,7 +272,6 @@ class FootstepBank:
 
     def __init__(self, sounds_dir: str | Path, rate: int, *, seed: int = SEED, takes: int = TAKES, decode: Callable[[Path], tuple[np.ndarray, int]] = decode_file) -> None:
         self.rate = rate
-        self.seed = seed
         # Its own SoundBank: a take with no file is not a missing sound.
         self._files = SoundBank(sounds_dir, rate, decode)
         self._decode = decode
