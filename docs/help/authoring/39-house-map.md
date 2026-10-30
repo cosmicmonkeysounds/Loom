@@ -76,6 +76,22 @@ out is plenty; 5 cm is close enough.
   device: one bulb is one device), **Delete** removes it. See *The house
   lights* below.
 
+- **+ model** — pick a model, then click inside a room: a **wall
+  panel**, a pillar, a cabinet, a shelf, a counter or a neon tube; a
+  server rack, a mainframe, a PC tower, a CRT, a workstation, a video
+  wall, a printer, a cable run, an error dialog or a security camera; a
+  desk, a table, a filing cabinet, an office chair, a water cooler, a
+  plastic plant or a recycle bin. Each one lands at its own size in a
+  clean white with its own neon; the plan draws it outlined in that
+  neon with its name. Turn it with the round handle or **R** / **⇧R**
+  (a wall panel stands along the way it faces, so turn it 90° to run it
+  north–south), set its size in the inspector to stretch it (a long
+  wall, a tall rack), and pick another **model**, **colour** or
+  **neon** there (↺ puts the model's own back). A model is only how the
+  games and the 3D preview draw it: it is solid as its box (or its
+  circle, for the round ones), and an older game draws the plain box.
+  Any box or cylinder can take a model.
+
 Doors, wall terminals, speakers and lights follow a room you move or
 resize (deleting a room deletes its speakers and lights; the confirm says
 how many). Everything

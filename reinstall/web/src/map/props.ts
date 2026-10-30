@@ -4,8 +4,8 @@
 //! guarded door, a terminal snapped onto its room's nearest wall, and the
 //! terminal provisioning link's enums. Every op returns a changed copy.
 
-import { HEART_SIGNAL, PICKUP_SIGNAL, PROP_SIGNAL_KEYS, cloneData, distanceToSegment, pointInPoly, roomAt, roomById, roomElevation, wrapYaw, yawToward } from "@loom/house";
-import type { HouseMap, Prop, PropKind, Vec2 } from "@loom/house";
+import { HEART_SIGNAL, MODEL_KINDS, PICKUP_SIGNAL, PROP_MODELS, PROP_SIGNAL_KEYS, cloneData, propModel, distanceToSegment, pointInPoly, roomAt, roomById, roomElevation, wrapYaw, yawToward } from "@loom/house";
+import type { HouseMap, ModelGroup, Prop, PropKind, PropModel, Vec2 } from "@loom/house";
 import { round } from "./doors.ts";
 import { moveTo, positionOf, setYaw, yawOf, type Selection } from "./edit.ts";
 import { uniqueId } from "./ids.ts";
@@ -75,10 +75,55 @@ export function addProp(house: HouseMap, kind: PropKind, floor: string, at: Vec2
   return { house: next, id };
 }
 
+/** (wave 47) A model armed for the next click: `model:<id>` (`Placing`). */
+export type ModelPlacing = `model:${string}`;
+export const MODEL_PLACING_PREFIX = "model:";
+
+export function modelPlacing(id: string): ModelPlacing {
+  return `model:${id}`;
+}
+
+/** The model a placing names, or null (a plain kind, a speaker, a light, an unknown model). */
+export function placingModel(placing: string | null): PropModel | null {
+  return placing !== null && placing.startsWith(MODEL_PLACING_PREFIX) ? propModel(placing.slice(MODEL_PLACING_PREFIX.length)) : null;
+}
+
+/** What the plan's hint calls a placing ("box", "Server rack"). */
+export function placingLabel(placing: string): string {
+  return placingModel(placing)?.label ?? placing;
+}
+
+/** The model picker's groups, in order. */
+export const MODEL_GROUP_LABELS: Record<ModelGroup, string> = { structure: "Structure", computer: "Computer", office: "Office" };
+
+export function modelGroups(): { group: ModelGroup; label: string; models: PropModel[] }[] {
+  return (Object.keys(MODEL_GROUP_LABELS) as ModelGroup[]).map((group) => ({ group, label: MODEL_GROUP_LABELS[group], models: PROP_MODELS.filter((m) => m.group === group) }));
+}
+
+/**
+ * (wave 47) Place a new prop drawn as model `modelId` at a plan point on
+ * `floor`: the model's kind and size, no colour (the model's clean white),
+ * facing north. Null when the point is in no room or the model is unknown.
+ */
+export function addModelProp(house: HouseMap, modelId: string, floor: string, at: Vec2): { house: HouseMap; id: string } | null {
+  const m = propModel(modelId);
+  const room = roomAt(house, at, floor);
+  if (m === null || room === null) return null;
+  const next = cloneData(house);
+  const id = uniqueId(m.id, next.props.map((p) => p.id));
+  next.props.push({ id, room: room.id, kind: m.kind, model: m.id, pos: [round(at[0]), roomElevation(next, room), round(at[1])], size: [...m.size] });
+  return { house: next, id };
+}
+
+/** Whether a prop of this kind can carry a model. */
+export function takesModel(kind: PropKind): boolean {
+  return MODEL_KINDS.includes(kind);
+}
+
 /** The fields the inspector edits (`undefined` clears an optional one).
  *  `signal` is a heart's `signals.reached` / a pickup's `signals.taken`
  *  (`undefined` or blank: the kind's default). */
-export type PropPatch = Partial<Pick<Prop, "kind" | "size" | "color" | "label" | "solid" | "hp" | "item">> & { signal?: string };
+export type PropPatch = Partial<Pick<Prop, "kind" | "size" | "color" | "label" | "solid" | "hp" | "item" | "model" | "neon">> & { signal?: string };
 
 /** The story signal a heart or a pickup posts (its own, else the default) — what the inspector shows. */
 export function momentSignalOf(p: Prop): { key: "reached" | "taken"; own: string | undefined; fallback: string } | null {
@@ -101,7 +146,12 @@ export function patchProp(house: HouseMap, id: string, patch: PropPatch): HouseM
   const wasKing = p.kind === "king";
   const { signal, ...fields } = patch;
   Object.assign(p, fields);
-  for (const k of ["color", "label", "solid", "hp", "item"] as const) if (k in fields && fields[k] === undefined) delete p[k];
+  for (const k of ["color", "label", "solid", "hp", "item", "model", "neon"] as const) if (k in fields && (fields[k] === undefined || fields[k] === "")) delete p[k];
+  // A model (and its neon) is drawn on a box or a cylinder only.
+  if (!takesModel(p.kind)) {
+    delete p.model;
+    delete p.neon;
+  }
   if (p.size.some((v) => !(v > 0))) return house;
   if (p.kind === "king" && !wasKing) {
     const d = propDefaults("king");
