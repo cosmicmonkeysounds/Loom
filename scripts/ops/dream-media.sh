@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Clippy's dream (wave 49): the hour-long video, made fit to stream, and put
+# Clippy's dream (wave 50): the hour-long video, made fit to stream, and put
 # on the VPS. It lives outside git and outside the Docker images: Caddy serves
-# ~/loom-media at /media/ (docs/loom-w49-contract.md C2).
+# ~/loom-media at /media/ (docs/loom-w50-contract.md C2).
 #
 #   scripts/ops/dream-media.sh encode <source.mp4>   # write ~/loom-media/dream
 #   scripts/ops/dream-media.sh check                 # is the local set whole?
