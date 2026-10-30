@@ -36,18 +36,7 @@ import {
   vortexAt,
   wrapLines,
   bathTime,
-  LANG,
-  LANG_FIT,
-  LANG_FIT_START,
-  LANG_WORD_MAX,
-  langEvery,
-  langFitStep,
-  langStampCues,
-  langTileAt,
-  langWallSize,
-  langWord,
 } from "../src/cutscene/kit/tv3-time.ts";
-import { FAKE_FLAGGED_WORDS } from "../src/cutscene/fake.ts";
 
 const SHOW = join(__dirname, "../../core/examples/trapped-in-the-internet");
 const FINALE = readFileSync(join(SHOW, "beats/finale.loom"), "utf8");
@@ -88,66 +77,8 @@ describe("tv3 timelines — the awards", () => {
     expect(awardOf("award_bathroom")).toMatchObject({ title: "The Bathroom Report", kind: "Bonus award", emblem: "roll" });
   });
 
-  it("the Language Report's timeline (wave 48): tiles 70–260 ms apart, all in by ~11 s, a stamp sound at most every 240 ms", () => {
+  it("names the Language Report (wave 48; its breach is `lang-breach.test.ts`)", () => {
     expect(awardOf("award_language")).toMatchObject({ title: "The Language Report", kind: "Bonus award", emblem: "key" });
-    expect(LANG.kind).toBeLessThan(LANG.title);
-    expect(LANG.title).toBeLessThan(LANG.curser);
-    expect(LANG.curser).toBeLessThan(LANG.censored);
-    expect(LANG.censored).toBeLessThan(LANG.wall);
-    expect(langEvery(0)).toBe(260);
-    expect(langEvery(1)).toBe(260);
-    expect(langEvery(5)).toBe(260);
-    expect(langEvery(30)).toBe(140);
-    expect(langEvery(60)).toBe(70);
-    expect(langEvery(200)).toBe(70);
-    expect(langTileAt(0, 60)).toBe(LANG.wall);
-    expect(langTileAt(59, 60)).toBe(LANG.wall + 59 * 70);
-    // "+ n more" (tile n) a beat after the last word.
-    expect(langTileAt(60, 60)).toBe(LANG.wall + 60 * 70 + 300);
-    expect(langTileAt(60, 60)).toBeLessThan(11_500);
-    for (const n of [1, 3, 14, 37, 60]) {
-      const cues = langStampCues(n);
-      expect(cues[0], `${n}`).toBe(LANG.wall + LANG.wipe);
-      expect(cues[cues.length - 1], `${n}`).toBe(langTileAt(n - 1, n) + LANG.wipe);
-      for (let i = 1; i < cues.length - 1; i++) expect(cues[i]! - cues[i - 1]!, `${n} #${i}`).toBeGreaterThanOrEqual(240);
-      expect(cues.length).toBeLessThanOrEqual(Math.min(n, 20));
-    }
-    expect(langStampCues(0)).toEqual([]);
-  });
-
-  it("the Language Report's wall (wave 48): words whole up to 18 characters, a size by weight, the largest fit", () => {
-    expect(langWord(" password ")).toBe("password");
-    expect(langWord("x".repeat(LANG_WORD_MAX))).toBe("x".repeat(LANG_WORD_MAX));
-    expect(langWord("x".repeat(LANG_WORD_MAX + 1))).toBe(`${"x".repeat(LANG_WORD_MAX - 1)}…`);
-    expect(Array.from(langWord("🤬".repeat(30)))).toHaveLength(LANG_WORD_MAX);
-    expect(langWallSize([], 0)).toBe("xl");
-    expect(langWallSize(["password", "hello", "heck"], 0)).toBe("xl");
-    expect(langWallSize(FAKE_FLAGGED_WORDS.slice(0, 14), 0)).toBe("l");
-    expect(langWallSize(FAKE_FLAGGED_WORDS.slice(0, 30), 0)).toBe("m");
-    expect(langWallSize(FAKE_FLAGGED_WORDS.slice(0, 60), 1)).toBe("s");
-    expect(langWallSize(Array.from({ length: 60 }, () => "x".repeat(40)), 1)).toBe("s");
-    // The fit: the largest scale that fits, near enough, in a few tries; a wall that never fits settles at the floor.
-    const fitFor = (limit: number) => {
-      let f = LANG_FIT_START;
-      let tries = 0;
-      while (!f.done && tries < 20) {
-        f = langFitStep(f, f.k > limit);
-        tries++;
-      }
-      return { f, tries };
-    };
-    for (const limit of [0.55, 0.83, 1, 1.21, 1.27]) {
-      const { f, tries } = fitFor(limit);
-      expect(f.done, `${limit}`).toBe(true);
-      expect(f.k, `${limit}`).toBeLessThanOrEqual(limit);
-      expect(f.k, `${limit}`).toBeGreaterThan(limit - LANG_FIT.near - 0.001);
-      expect(tries, `${limit}`).toBeLessThanOrEqual(7);
-    }
-    expect(fitFor(0.1).f.k).toBe(LANG_FIT.min);
-    expect(fitFor(9).f.k).toBeGreaterThan(LANG_FIT.max - LANG_FIT.near - 0.001);
-    expect(fitFor(9).f.k).toBeLessThanOrEqual(LANG_FIT.max);
-    const settled = fitFor(1).f;
-    expect(langFitStep(settled, true)).toBe(settled);
   });
 
   it("reads an award off its slide value, and makes one up for a value it doesn't know", () => {

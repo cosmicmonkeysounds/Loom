@@ -1,0 +1,90 @@
+/* The Language Report (wave 48; the breach, wave 48b): the award's room gone dark, a DOS
+   window that can't hold the censored log, the heap of words (a canvas over the window),
+   the deadpan notes, the scissors, then the held summary. Chrome 87: no flex gap (margins),
+   no filter or blur anywhere (the walls rasterise in software). The window's place is
+   `BREACH_WIN` (`kit/lang-breach.ts`), set inline. */
+.tv3-lang-emblem { top: 3%; }
+.tv3-lang-kind { top: 16%; color: #ffcf5a; }
+.tv3-lang-title { top: 20%; font-size: min(7vmin, 7vw); }
+
+.tv3-lb-void { background: radial-gradient(ellipse at 50% 55%, #2a0b3a 0%, #0c0216 58%, #000 100%); pointer-events: none; will-change: opacity; }
+
+/* The log's window: the shake and the switch-off on the wrapper, the kit's pop on the window. */
+.tv3-lb-win { position: absolute; transform-origin: 50% 50%; will-change: transform, opacity; }
+.tv3-lb-win .kit-win { font-size: clamp(14px, 2.3vmin, 30px); }
+.kit-win-body.tv3-lb-body { position: relative; padding: 0; background: #000; overflow: hidden; }
+.tv3-lb-log { image-rendering: auto; }
+.tv3-lb-status { display: flex; justify-content: space-between; align-items: baseline; font-family: var(--mono); font-size: 1.15em; white-space: nowrap; overflow: hidden; }
+.tv3-lb-status > span { margin-right: 1em; }
+.tv3-lb-status > span:last-child { margin-right: 0; }
+.tv3-lb-over { color: #c8141a; }
+
+.tv3-lb-tide { pointer-events: none; transform-origin: 50% 55%; will-change: transform; }
+
+.tv3-lb-note { position: absolute; will-change: transform, opacity; }
+.tv3-lb-note .kit-win { font-size: clamp(13px, 1.9vmin, 26px); }
+.tv3-lb-ask { position: absolute; transform: translate(-50%, -50%); }
+.tv3-lb-ask .kit-win { font-size: clamp(16px, 3vmin, 38px); }
+.tv3-lb-ask .kit-dialog-text { font-weight: bold; }
+
+/* The cut: a dashed line ahead of the scissors, nothing behind them. */
+.tv3-lb-cutline { position: absolute; top: 50%; right: 0; height: 0; border-top: 0.45vmin dashed rgba(255, 255, 255, 0.85); }
+.tv3-lb-scissors { position: absolute; top: 50%; width: 18vmin; height: 10vmin; margin: -5vmin 0 0 -7.3vmin; overflow: visible; will-change: transform; }
+.tv3-lb-snipped { position: absolute; left: 0; right: 0; top: 50%; margin-top: -9vmin; text-align: center; font-size: 18vmin; line-height: 1; color: #fff; }
+
+/* The summary: up to four cards, two to a row on a landscape screen, then the closed log. */
+.tv3-lb-sum { position: absolute; left: 5%; right: 5%; top: 31%; display: flex; flex-wrap: wrap; justify-content: center; align-content: flex-start; font-family: var(--mono); }
+.tv3-lb-card {
+  width: 43%;
+  min-height: 21vmin;
+  margin: 0 1% 3vmin;
+  padding: 1.6vmin 2vmin 2vmin;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  background: rgba(0, 0, 0, 0.62);
+  border: 0.3vmin solid #4a4128;
+  line-height: 1.05;
+  will-change: transform, opacity;
+}
+.tv3-lb-label { font-size: min(3vmin, 3.4vw); letter-spacing: 0.16em; text-transform: uppercase; color: #ffcf5a; }
+.tv3-lb-who { max-width: 100%; margin: 0.16em 0; font-size: min(6.4vmin, 6.4vw); color: #fff; overflow-wrap: break-word; word-break: break-word; }
+.tv3-lb-who.long { font-size: min(4.4vmin, 4.6vw); }
+.tv3-lb-who.longer { font-size: min(3.2vmin, 3.4vw); }
+.tv3-lb-sub { font-size: min(3.4vmin, 3.6vw); color: #ffd23f; }
+.tv3-lb-frac, .tv3-lb-value { margin: 0.16em 0; font-size: min(6.4vmin, 6.4vw); color: #fff; white-space: nowrap; }
+.tv3-lb-c { display: inline-block; color: #ffd23f; text-shadow: 0 0 0.2em rgba(255, 210, 63, 0.55); }
+.tv3-lb-bar { position: relative; display: block; width: 80%; height: 1.8vmin; margin-top: 0.6vmin; background: #ece6d6; border: 0.25vmin solid #ece6d6; overflow: hidden; }
+.tv3-lb-bar span { position: absolute; left: 0; top: 0; bottom: 0; width: 100%; background: #050505; transform-origin: left center; will-change: transform; }
+.tv3-lb-slider { position: relative; display: block; width: 78%; height: 1vmin; margin: 1.2vmin 0 1.1vmin; background: #2a2618; border: 0.2vmin solid #8a7a48; }
+.tv3-lb-knob { position: absolute; top: 50%; width: 2vmin; height: 3.2vmin; margin: -1.6vmin 0 0 -1vmin; background: #c0c0c0; border: 0.25vmin solid; border-color: #fff #404040 #404040 #fff; }
+.tv3-lb-chip { position: absolute; left: 4%; right: 4%; bottom: 7%; display: flex; flex-wrap: wrap; justify-content: center; font-family: var(--mono); font-size: min(3.4vmin, 3.6vw); color: #c8c0a0; will-change: opacity; }
+.tv3-lb-chip > span { margin: 0 0.8em; }
+.tv3-lb-chip-log { color: #fff; }
+.tv3-lb-chip-ok { color: #7dffa8; }
+.tv3-lb-line { position: absolute; left: 6%; right: 6%; bottom: 9%; text-align: center; font-family: var(--mono); font-size: min(5vmin, 5.6vw); line-height: 1.1; color: #ffe8c0; will-change: opacity; }
+.tv3-lb-none { position: absolute; left: 6%; right: 6%; top: 44%; text-align: center; font-family: var(--mono); font-size: min(7vmin, 7.4vw); line-height: 1.1; color: #fff; text-shadow: 0 0 0.25em rgba(255, 210, 63, 0.4); will-change: opacity; }
+
+/* A portrait wall tablet: the cards in a column, the words carry more of the height. */
+@media (orientation: portrait) {
+  .tv3-lang-kind { top: 13%; font-size: 4.6vw; }
+  .tv3-lang-title { top: 16.5%; font-size: 8.4vw; }
+  .tv3-lb-win .kit-win { font-size: clamp(14px, 3.2vw, 30px); }
+  .tv3-lb-note .kit-win { font-size: clamp(13px, 2.8vw, 26px); }
+  .tv3-lb-ask .kit-win { font-size: clamp(16px, 4.6vw, 38px); }
+  .tv3-lb-sum { top: 24%; left: 4%; right: 4%; }
+  .tv3-lb-card { width: 92%; min-height: 0; margin: 0 0 2vmin; padding: 1.6vmin 2vmin; }
+  .tv3-lb-label { font-size: 3.8vw; }
+  .tv3-lb-who { font-size: 7.4vw; }
+  .tv3-lb-who.long { font-size: 5.2vw; }
+  .tv3-lb-who.longer { font-size: 4vw; }
+  .tv3-lb-sub { font-size: 4.2vw; }
+  .tv3-lb-frac, .tv3-lb-value { font-size: 7.6vw; }
+  .tv3-lb-bar { height: 2.2vw; }
+  .tv3-lb-chip { bottom: 4%; font-size: 4vw; }
+  .tv3-lb-none { top: 40%; font-size: 8.4vw; }
+  .tv3-lb-line { bottom: 8%; font-size: 6vw; }
+  .tv3-lb-scissors { width: 26vmin; height: 14vmin; margin: -7vmin 0 0 -10.6vmin; }
+}

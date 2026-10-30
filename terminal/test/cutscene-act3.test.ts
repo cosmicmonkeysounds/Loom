@@ -11,9 +11,10 @@ import { HISTORY_T } from "../src/cutscene/clock.ts";
 import { fakeState } from "../src/cutscene/fake.ts";
 import { componentFor } from "../src/cutscene/pick.ts";
 import { previewBeats } from "../src/cutscene/preview.tsx";
-import { ADVICE_CHAT, CEREMONY_ROLL, LANG_COPY, LANG_POP_TV, LANG_POP_WALL, SCENES as ACT3, bathRows, languagePlan } from "../src/cutscene/scenes/act3.tsx";
-import { fakeLanguage, FAKE_FLAGGED_WORDS } from "../src/cutscene/fake.ts";
-import { LANG, langTileAt } from "../src/cutscene/kit/tv3-time.ts";
+import { ADVICE_CHAT, CEREMONY_ROLL, SCENES as ACT3, bathRows } from "../src/cutscene/scenes/act3.tsx";
+import { LANG_COPY, LANG_SUMMARY_PLAIN, langPop, languagePlan } from "../src/cutscene/scenes/language.tsx";
+import { fakeLanguage, FAKE_CENSORED_WORDS, FAKE_FLAGGED_WORDS } from "../src/cutscene/fake.ts";
+import { BREACH, BREACH_NOTES, breachTimes, noteAt, noteLife } from "../src/cutscene/kit/lang-breach.ts";
 import { LANGUAGE_WORDS_MAX, nightOf, type ScreenBathroom, type ScreenLanguage } from "../src/screen.ts";
 import { SCENES as MOMENTS, OVER_WORLD_MS, finderName } from "../src/cutscene/scenes/moments.tsx";
 import { noteWorldShowing, worldCelebratesFinds } from "../src/cutscene/world-bus.ts";
@@ -177,146 +178,177 @@ describe("every tv3 scene draws", () => {
     expect(nightOf({ bathroom: { goers: 2, most: "none", total_s: -4, least: " Notepad " } }).bathroom).toEqual({ goers: 2, never: 0, total_s: 0, most: null, most_s: 0, least: "Notepad", least_s: 0, toggler: null, toggles: 0 });
   });
 
-  it("the Language Report (wave 48) has its own scene, ahead of the award row, with the story's numbers and every word", () => {
+  it("the Language Report (wave 48) has its own scene, ahead of the award row; held, it is the summary", () => {
     const i = ACT3.findIndex((d) => d.id === "language");
     expect(i).toBeGreaterThanOrEqual(0);
     expect(i).toBeLessThan(ACT3.findIndex((d) => d.id === "award"));
     const def = ACT3[i]!;
     expect(def.ms).toBe("hold");
     expect(def.when).toEqual([{ slide: "award_language" }]);
-    const language: ScreenLanguage = { flagged: 41, censored: 23, curser: "Calculator", curses: 17, words: ["password", "hello", "trumpet"], more: 4 };
+    const language: ScreenLanguage = { flagged: 41, censored: 23, curser: "Calculator", curses: 17, words: ["password", "hello", "trumpet"], counts: [5, 2, 1], more: 4, unsaid: 2, level: 35, stars: 61 };
     for (const target of ["tv", "wall"] as const)
       for (const reduced of [false, true]) {
         const html = draw(def, target, HISTORY_T, { value: "award_language", night: { language }, reduced });
         const at = `${target}${reduced ? " reduced" : ""}`;
         expect(html, at).toContain("THE LANGUAGE REPORT");
         expect(html, at).toContain("BONUS SECTION");
-        expect(html, at).toContain("Cursed the most");
+        expect(html, at).toContain(LANG_COPY.curser);
         expect(html, at).toContain("Calculator");
         expect(html, at).toContain("17 flagged words");
         expect(html, at).toMatch(/>23<\/span> of 41 words/u);
-        // Each word whole (the reveal), each with its stamp, then the rest counted.
-        for (const w of language.words) expect(html, at).toContain(`>${w}<span class="tv3-lang-stamp"`);
-        expect(html.split(`>${LANG_COPY.stamp}</span>`).length - 1, at).toBe(3);
-        expect(html, at).toContain("+ 4 more");
-        expect(html, at).not.toContain("tv3-lang-wipe");
+        expect(html, at).toContain(LANG_COPY.level);
+        expect(html, at).toContain(">35%<");
+        expect(html, at).toContain("Strong words only");
+        expect(html, at).toMatch(/⭐ <span class="[^"]*tv3-lb-c"[^>]*>61<\/span>/u);
+        // The closed log: every censored word, the "+ n more", the unsaid; the most censored; contained.
+        expect(html, at).toContain("9 lines");
+        expect(html, at).toContain("“password” ×5");
+        expect(html, at).toContain(LANG_COPY.contained);
+        // Long past the breach: no window, no heap, no notes, no scissors.
+        for (const gone of ["tv3-lb-win", "tv3-lb-tide", "tv3-lb-note", "tv3-lb-ask", "tv3-lb-scissors"]) expect(html, `${at} ${gone}`).not.toContain(gone);
         expect(html, at).not.toContain("Netscape Navigator");
       }
     // An older server (no report): the title and its line, never a blank.
     const old = draw(def, "tv", 12_000, { value: "award_language", night: { language: null } });
     expect(old).toContain("THE LANGUAGE REPORT");
     expect(old).toContain("The filter heard every word.");
-    expect(old).not.toContain("tv3-lang-tile");
+    expect(old).not.toContain("tv3-lb-card");
+    expect(old).not.toContain("tv3-lb-win");
   });
 
-  it("the Language Report plays a beat at a time: the name, the share, then the tiles, each wiped clean then stamped", () => {
+  it("the Language Report's breach plays beat by beat: the window, the heap, the notes, the ask, the scissors, the summary", () => {
     const def = ACT3.find((d) => d.id === "language")!;
-    const language = fakeLanguage(null);
-    const n = language.words.length;
-    const at = (t: number, reduced = false) => draw(def, "tv", t, { value: "award_language", night: { language }, reduced });
-    const hiddenCards = (html: string) => html.match(/class="tv3-lang-card" style="opacity:0/gu)?.length ?? 0;
-    // Before its beat, each piece is in the page but unseen (the wall is laid out from the start, so it is fitted once).
-    const early = at(LANG.curser - 1);
-    expect(early).toContain("Netscape Navigator");
-    expect(hiddenCards(early)).toBe(2);
-    expect(early.match(/class="tv3-lang-tile" style="opacity:0"/gu)?.length).toBe(n);
-    expect(hiddenCards(at(LANG.curser + 200))).toBe(1);
-    expect(hiddenCards(at(LANG.censored - 1))).toBe(1);
-    expect(hiddenCards(at(LANG.censored + 500))).toBe(0);
-    expect(at(LANG.wall - 1).match(/class="tv3-lang-tile" style="opacity:0"/gu)?.length).toBe(n);
-    // The first tile lands under its black bar; by the next ones' turn the bar has wiped off it.
-    const first = at(langTileAt(0, n) + 100);
-    expect(first.match(/tv3-lang-wipe/gu)?.length).toBe(1);
-    expect(first.match(/class="tv3-lang-tile" style="opacity:0"/gu)?.length).toBe(n - 1);
-    const later = at(langTileAt(5, n) + 10);
-    expect(later.match(/tv3-lang-wipe/gu)?.length).toBeLessThanOrEqual(2);
-    expect(later.match(/class="tv3-lang-tile" style="opacity:0"/gu)?.length).toBe(n - 6);
-    // All in, the hold: no bar left, one tile catching the light, and it moves on.
-    const held = at(langTileAt(n, n) + 2000);
-    expect(held).not.toContain("tv3-lang-wipe");
-    expect(held.match(/tv3-lang-tile lit/gu)?.length).toBe(1);
-    expect(at(langTileAt(n, n) + 2000 + 700)).not.toBe(held);
-    // Reduced motion: no bar, no glint; the tiles fade in.
-    const calm = at(langTileAt(0, n) + 100, true);
-    expect(calm).not.toContain("tv3-lang-wipe");
-    expect(at(HISTORY_T, true)).not.toContain(" lit");
+    const language = fakeLanguage("dozen");
+    const tm = breachTimes(languagePlan(language).lines.length);
+    const at = (t: number, target: SceneTarget = "tv", reduced = false) => draw(def, target, t, { value: "award_language", night: { language }, reduced });
+    expect(at(BREACH.cmd - 1)).not.toContain("tv3-lb-win");
+    expect(at(BREACH.cmd + 500)).toContain(LANG_COPY.window);
+    expect(at(tm.flow - 1)).not.toContain("tv3-lb-tide");
+    expect(at(tm.flow + 100)).toContain("tv3-lb-tide");
+    // The status bar counts up; the buffer overflows at the leak.
+    expect(at(tm.leak - 1)).not.toContain(LANG_COPY.status.overflow);
+    expect(at(tm.leak + 10)).toContain(LANG_COPY.status.overflow);
+    // Each note pops up at its time and is OK'd away after its life; a wall shows fewer, reduced motion fewer still.
+    for (const n of BREACH_NOTES) {
+      const t0 = noteAt(n, tm);
+      const text = LANG_COPY.notes[n.id].text;
+      expect(at(t0 - 1), n.id).not.toContain(text);
+      expect(at(t0 + 400), n.id).toContain(text);
+      expect(at(t0 + noteLife(tm)), n.id).not.toContain(text);
+      expect(at(t0 + 400, "wall").includes(text), `${n.id} wall`).toBe(n.lite);
+      expect(at(t0 + 400, "tv", true).includes(text), `${n.id} reduced`).toBe(n.calm);
+    }
+    // Abort, Retry, Censor? — ✂ Censor sinks — the scissors cross — the summary.
+    expect(at(tm.ask - 1)).not.toContain(LANG_COPY.ask.text);
+    expect(at(tm.ask + 400)).toContain(LANG_COPY.ask.text);
+    expect(at(tm.press - 1)).not.toContain("kit-btn-pressed");
+    expect(at(tm.press + 10)).toContain("kit-btn-pressed");
+    expect(at(tm.press + 10)).toContain("tv3-lb-cutline");
+    expect(at(tm.snap + 300)).toContain("tv3-lb-scissors");
+    expect(at(tm.snap + 300, "tv", true)).not.toContain("tv3-lb-scissors");
+    expect(at(tm.snap + 300, "tv", true)).toContain("tv3-lb-snipped");
+    expect(at(tm.cut + 10)).not.toContain("tv3-lb-tide");
+    expect(at(tm.summary - 1)).not.toContain("tv3-lb-card");
+    expect(at(tm.summary + 2000)).toContain("tv3-lb-card");
+    // The buffer's 1 Hz blink is steady under reduced motion.
+    expect(at(tm.leak + 600)).toMatch(/tv3-lb-over" style="opacity:0.25/u);
+    expect(at(tm.leak + 600, "tv", true)).not.toMatch(/tv3-lb-over" style=/u);
   });
 
-  it("the Language Report's quiet nights: nothing flagged is one line; flagged, none censored says so", () => {
+  it("the Language Report's quiet nights: nothing flagged is one line; flagged, none censored is the summary and its line, no breach", () => {
     const def = ACT3.find((d) => d.id === "language")!;
     for (const target of ["tv", "wall"] as const) {
       const none = draw(def, target, HISTORY_T, { value: "award_language", night: { language: fakeLanguage("none") } });
       expect(none).toContain(LANG_COPY.none);
-      expect(none).not.toContain("Cursed the most");
-      expect(none).not.toContain("tv3-lang-card");
-      expect(none).not.toContain("tv3-lang-tile");
-      const kept = draw(def, target, HISTORY_T, { value: "award_language", night: { language: fakeLanguage("kept") } });
-      expect(kept).toContain("Excel");
-      expect(kept).toContain("12 flagged words");
-      expect(kept).toMatch(/>0<\/span> of 27 words/u);
-      expect(kept).toContain(LANG_COPY.noneCensored);
-      expect(kept).not.toContain("tv3-lang-tile");
+      expect(none).not.toContain(LANG_COPY.curser);
+      expect(none).not.toContain("tv3-lb-card");
+      expect(none).not.toContain("tv3-lb-win");
+      for (const t of [5000, 12_000, HISTORY_T]) {
+        const kept = draw(def, target, t, { value: "award_language", night: { language: fakeLanguage("kept") } });
+        expect(kept, `${t}`).not.toContain("tv3-lb-win");
+        expect(kept, `${t}`).not.toContain("tv3-lb-tide");
+        expect(kept, `${t}`).toContain("Excel");
+        expect(kept, `${t}`).toContain("12 flagged words");
+        expect(kept, `${t}`).toMatch(/>0<\/span> of 27 words/u);
+        expect(kept, `${t}`).toContain(LANG_COPY.noneCensored);
+        expect(kept, `${t}`).not.toContain(LANG_COPY.contained);
+      }
     }
-    expect(languagePlan(fakeLanguage("none"))).toEqual({ none: LANG_COPY.none, curser: null, censored: null, tiles: [], more: null, line: null });
+    expect(languagePlan(fakeLanguage("none"))).toMatchObject({ none: LANG_COPY.none, curser: null, censored: null, lines: [] });
     // Nobody at the party to name (they all left): the share stands alone.
-    const solo = languagePlan({ ...fakeLanguage(null), curser: null });
+    const solo = languagePlan({ ...fakeLanguage("dozen"), curser: null });
     expect(solo.curser).toBeNull();
-    expect(solo.censored).toMatchObject({ c: 23, f: 96, of: " of 96 words" });
-    expect(draw(def, "tv", HISTORY_T, { value: "award_language", night: { language: { ...fakeLanguage(null), curser: null } } })).toContain("tv3-lang-stats solo");
+    expect(solo.censored).toMatchObject({ c: 34, f: 61, of: " of 61 words" });
     // One word: no plural.
-    expect(languagePlan({ flagged: 1, censored: 1, curser: "Excel", curses: 1, words: ["heck"], more: 0 })).toMatchObject({ curser: { count: "1 flagged word" }, censored: { of: " of 1 word", share: 1 } });
+    expect(languagePlan({ ...fakeLanguage("one"), flagged: 1, curses: 1 })).toMatchObject({ curser: { count: "1 flagged word" }, censored: { of: " of 1 word", share: 1 }, total: 1 });
+    // A wave 48 server: two cards (no strength, no ⭐), no ×n in the log.
+    const w48 = languagePlan(fakeLanguage("w48"));
+    expect(w48.level).toBeNull();
+    expect(w48.stars).toBeNull();
+    expect(w48.counts).toBe(false);
+    expect(w48.top).toBeNull();
+    const held = draw(def, "tv", HISTORY_T, { value: "award_language", night: { language: fakeLanguage("w48") } });
+    expect(held).not.toContain(LANG_COPY.level);
+    expect(held).not.toContain(LANG_COPY.stars);
+    expect(held.match(/class="tv3-lb-card"/gu)?.length).toBe(2);
   });
 
   it("the Language Report's tie is one name on one card, and a long tie steps the name down", () => {
     const def = ACT3.find((d) => d.id === "language")!;
     const tie = draw(def, "tv", HISTORY_T, { value: "award_language", night: { language: fakeLanguage("tie") } });
-    expect(tie).toContain('<span class="tv3-lang-who">Winamp and MS Paint</span>');
+    expect(tie).toContain('<span class="tv3-lb-who">Winamp and MS Paint</span>');
     expect(tie).toContain("9 flagged words");
     const many = "Winamp, Excel, MS Paint, Minesweeper, Netscape Navigator and RealPlayer";
     const long = draw(def, "wall", HISTORY_T, { value: "award_language", night: { language: { ...fakeLanguage("tie"), curser: many } } });
-    expect(long).toContain(`<span class="tv3-lang-who longer">${many}</span>`);
-    expect(draw(def, "tv", HISTORY_T, { value: "award_language", night: { language: { ...fakeLanguage("tie"), curser: "Netscape Navigator and Encarta 95" } } })).toContain('class="tv3-lang-who long"');
+    expect(long).toContain(`<span class="tv3-lb-who longer">${many}</span>`);
+    expect(draw(def, "tv", HISTORY_T, { value: "award_language", night: { language: { ...fakeLanguage("tie"), curser: "Netscape Navigator and Encarta 95" } } })).toContain('class="tv3-lb-who long"');
   });
 
-  it("the Language Report's long night: 60 tiles on the smallest wall, + n more, on the TV and a wall", () => {
-    const def = ACT3.find((d) => d.id === "language")!;
-    const language = fakeLanguage("long");
+  it("the Language Report's long night: 400 words, + n more and the unsaid on the closed log", () => {
+    const language = fakeLanguage("max");
     expect(language.words).toHaveLength(LANGUAGE_WORDS_MAX);
     expect(new Set(FAKE_FLAGGED_WORDS).size).toBe(FAKE_FLAGGED_WORDS.length);
-    for (const target of ["tv", "wall"] as const) {
-      const html = draw(def, target, HISTORY_T, { value: "award_language", night: { language } });
-      expect(html).toContain('class="tv3-lang-wall s"');
-      expect(html.match(/class="tv3-lang-tile( lit)?"/gu)?.length).toBe(60);
-      expect(html).toContain(`+ ${language.more} more`);
-      // The wall starts unscaled; the fit (a layout effect) shrinks it on a real screen.
-      expect(html).toContain("--lang-k:1.000");
-    }
-    // A pathological word is clipped on its tile, never run off it.
-    const plan = languagePlan({ ...language, words: ["fuuuuuuuuuuuuuuuuuuuuuuudge", ...language.words.slice(1)] });
-    expect(plan.tiles[0]).toBe("fuuuuuuuuuuuuuuuu…");
+    expect(new Set(FAKE_CENSORED_WORDS).size).toBe(FAKE_CENSORED_WORDS.length);
+    expect(FAKE_CENSORED_WORDS.length).toBeGreaterThanOrEqual(LANGUAGE_WORDS_MAX);
+    const plan = languagePlan(language);
+    expect(plan.lines).toHaveLength(400 + 9 + 1);
+    expect(plan.lines[plan.lines.length - 1]).toEqual({ kind: "more", text: "+ 62 more", heat: 0, size: 1.2 });
+    expect(plan.total).toBe(471);
+    const def = ACT3.find((d) => d.id === "language")!;
+    expect(draw(def, "wall", HISTORY_T, { value: "award_language", night: { language } })).toContain("471 lines");
+    // A pathological word is clipped in the log and the heap, never run off them.
+    expect(languagePlan({ ...language, words: ["fuuuuuuuuuuuuuuuuuuuuuuudge", ...language.words.slice(1)] }).lines[0]).toMatchObject({ kind: "word", text: "fuuuuuuuuuuuuuuuu…" });
   });
 
-  it("the Language Report's one pop is the corner cannons only, landed before the wall's first tile", () => {
-    for (const pop of [LANG_POP_TV, LANG_POP_WALL]) {
+  it("the Language Report's one pop is the corner cannons only, when the summary lands", () => {
+    for (const lite of [false, true]) {
+      const pop = langPop(LANG_SUMMARY_PLAIN, lite);
       expect(pop).toHaveLength(2);
       for (const e of pop) {
         expect(e.y).toBeGreaterThan(1);
-        expect(e.start).toBe(LANG.curser);
-        expect(e.end + e.life).toBeLessThan(LANG.wall);
+        expect(e.start).toBe(LANG_SUMMARY_PLAIN);
       }
     }
   });
 
-  it("the Language Report off the wire: clamped, trimmed, capped at 60 words; a malformed block reads as absent", () => {
+  it("the Language Report off the wire: wave 48b's shape, and a wave 48 server's; a malformed block reads as absent", () => {
     expect(nightOf({}).language).toBeUndefined();
     for (const bad of [null, "x", 3, [], {}, { flagged: "3" }, { flagged: Number.NaN }, { censored: 4, words: ["heck"] }]) expect(nightOf({ language: bad }).language, JSON.stringify(bad)).toBeUndefined();
-    expect(nightOf({ language: { flagged: 5, censored: 2, curser: " Winamp and Excel ", curses: 3, words: ["password", "hello"], more: 0 } }).language).toEqual({ flagged: 5, censored: 2, curser: "Winamp and Excel", curses: 3, words: ["password", "hello"], more: 0 });
-    expect(nightOf({ language: { flagged: -2, censored: 4.7, curser: "none", curses: Number.NaN, words: ["  password ", 3, "", null, "hello"], more: -1 } }).language).toEqual({ flagged: 4, censored: 4, curser: null, curses: 0, words: ["password", "hello"], more: 0 });
-    expect(nightOf({ language: { flagged: 9, words: "password" } }).language).toEqual({ flagged: 9, censored: 0, curser: null, curses: 0, words: [], more: 0 });
-    const seventy = Array.from({ length: 70 }, (_, k) => `word${k}`);
-    const capped = nightOf({ language: { flagged: 200, censored: 90, curser: "Excel", curses: 20, words: seventy, more: 5 } }).language!;
-    expect(capped.words).toEqual(seventy.slice(0, 60));
-    expect(capped.more).toBe(15);
+    // Wave 48b: counts beside the words, the unsaid, the strength, the ⭐.
+    expect(nightOf({ language: { flagged: 50, censored: 20, curser: " Winamp and Excel ", curses: 30, words: ["password", "hello"], counts: [7, 3], more: 0, unsaid: 2, level: 35, stars: 44 } }).language).toEqual({ flagged: 50, censored: 20, curser: "Winamp and Excel", curses: 30, words: ["password", "hello"], counts: [7, 3], more: 0, unsaid: 2, level: 35, stars: 44 });
+    // A wave 48 server (no counts, unsaid, level or stars): 1 each, 0, null, null; the order kept.
+    expect(nightOf({ language: { flagged: 5, censored: 2, curser: "Excel", curses: 3, words: ["password", "hello"], more: 0 } }).language).toEqual({ flagged: 5, censored: 2, curser: "Excel", curses: 3, words: ["password", "hello"], counts: [1, 1], more: 0, unsaid: 0, level: null, stars: null });
+    // Clamped and trimmed; a bad count is 1; most censored first, ties in the server's order; the strength 0–100.
+    expect(nightOf({ language: { flagged: -2, censored: 4.7, curser: "none", curses: Number.NaN, words: ["  password ", 3, "", null, "hello", "heck"], counts: [1, 9, 9, 9, 4, "x"], more: -1, unsaid: -3, level: 140, stars: -5 } }).language).toEqual({ flagged: 4, censored: 4, curser: null, curses: 0, words: ["hello", "password", "heck"], counts: [4, 1, 1], more: 0, unsaid: 0, level: 100, stars: 0 });
+    expect(nightOf({ language: { flagged: 9, words: "password", counts: "7", level: "35" } }).language).toEqual({ flagged: 9, censored: 0, curser: null, curses: 0, words: [], counts: [], more: 0, unsaid: 0, level: null, stars: null });
+    // At most 400 words (the most censored), the rest counted into `more`.
+    const many = Array.from({ length: 430 }, (_, k) => `word${k}`);
+    const capped = nightOf({ language: { flagged: 900, censored: 600, curser: "Excel", curses: 20, words: many, counts: many.map((_, k) => (k === 420 ? 50 : 1)), more: 5 } }).language!;
+    expect(capped.words).toHaveLength(400);
+    expect(capped.words[0]).toBe("word420");
+    expect(capped.counts[0]).toBe(50);
+    expect(capped.words[1]).toBe("word0");
+    expect(capped.more).toBe(35);
   });
 
   it("the three staff awards (wave 21) play the same take, TV and walls, from the staff file", () => {

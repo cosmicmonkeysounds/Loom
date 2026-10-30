@@ -328,74 +328,6 @@
 .tv3-bath-who { flex: 1 1 auto; min-width: 0; color: #fff; overflow-wrap: break-word; }
 .tv3-bath-value { flex: 0 0 auto; color: #ffd23f; }
 
-/* The Language Report (wave 48): the award's room gone dark, two cards, then a wall of
-   stamped tiles. The wall's font is its size class (`langWallSize`) times `--lang-k`, the
-   largest scale that fits (`langFitStep`: 60 words on the TV or a portrait wall). No flex gap. */
-.tv3-lang-emblem { top: 3%; }
-.tv3-lang-kind { top: 16%; color: #ffcf5a; }
-.tv3-lang-title { top: 20%; font-size: min(7vmin, 7vw); }
-.tv3-lang-stats { position: absolute; left: 3%; right: 3%; top: 30%; display: flex; justify-content: center; align-items: stretch; font-family: var(--mono); }
-.tv3-lang-card { flex: 1 1 0; min-width: 0; max-width: 46%; margin: 0 1%; padding: 0.8vmin 2vmin 1vmin; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; background: rgba(0, 0, 0, 0.6); border: 0.3vmin solid #4a4128; line-height: 1.05; will-change: transform, opacity; }
-.tv3-lang-label { font-size: min(2.6vmin, 3.2vw); letter-spacing: 0.16em; text-transform: uppercase; color: #ffcf5a; }
-.tv3-lang-who { max-width: 100%; margin: 0.12em 0; font-size: min(5.4vmin, 5.6vw); color: #fff; overflow-wrap: break-word; word-break: break-word; }
-.tv3-lang-who.long { font-size: min(3.8vmin, 4.2vw); }
-.tv3-lang-who.longer { font-size: min(2.8vmin, 3.2vw); }
-.tv3-lang-sub { font-size: min(3vmin, 3.4vw); color: #ffd23f; }
-.tv3-lang-frac { margin: 0.12em 0; font-size: min(5.4vmin, 5.6vw); color: #fff; white-space: nowrap; }
-.tv3-lang-c { display: inline-block; color: #ffd23f; text-shadow: 0 0 0.2em rgba(255, 210, 63, 0.55); }
-.tv3-lang-bar { position: relative; display: block; width: 80%; height: 1.8vmin; margin-top: 0.6vmin; background: #ece6d6; border: 0.25vmin solid #ece6d6; overflow: hidden; }
-.tv3-lang-bar span { position: absolute; left: 0; top: 0; bottom: 0; width: 100%; background: #050505; transform-origin: left center; will-change: transform; }
-.tv3-lang-none, .tv3-lang-line { position: absolute; left: 6%; right: 6%; text-align: center; font-family: var(--mono); line-height: 1.1; will-change: transform, opacity; }
-.tv3-lang-none { top: 44%; font-size: min(7vmin, 7.4vw); color: #fff; text-shadow: 0 0 0.25em rgba(255, 210, 63, 0.4); }
-.tv3-lang-line { top: 62%; font-size: min(5vmin, 5.6vw); color: #ffe8c0; }
-.tv3-lang-wall {
-  position: absolute;
-  left: 3%;
-  right: 3%;
-  top: 47%;
-  bottom: 3%;
-  overflow: hidden;
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  align-content: center;
-  font-family: var(--mono);
-  font-size: calc(var(--lang-base) * var(--lang-k, 1));
-}
-.tv3-lang-wall.xl { --lang-base: min(6vmin, 7vw); }
-.tv3-lang-wall.l { --lang-base: min(4.6vmin, 5.4vw); }
-.tv3-lang-wall.m { --lang-base: min(3.8vmin, 4.6vw); }
-.tv3-lang-wall.s { --lang-base: min(3vmin, 3.6vw); }
-.tv3-lang-tile {
-  position: relative;
-  overflow: hidden;
-  margin: 0.12em 0.14em;
-  padding: 0.04em 0.4em 0.5em;
-  background: #f1ecdf;
-  color: #111;
-  line-height: 1.05;
-  white-space: nowrap;
-  box-shadow: 0 0.06em 0 rgba(0, 0, 0, 0.6);
-  will-change: transform, opacity;
-}
-.tv3-lang-tile.lit { background: #fff8de; box-shadow: 0 0 0.4em rgba(255, 210, 63, 0.85); }
-.tv3-lang-wipe { position: absolute; left: 0; right: 0; top: 0; bottom: 0; background: #050505; transform-origin: right center; }
-.tv3-lang-stamp {
-  position: absolute;
-  right: 0.3em;
-  bottom: 0.1em;
-  padding: 0.06em 0.25em 0.02em;
-  font-family: Tahoma, "MS Sans Serif", sans-serif;
-  font-weight: bold;
-  font-size: 0.3em;
-  line-height: 1;
-  letter-spacing: 0.08em;
-  color: #c8141a;
-  border: 0.12em solid #c8141a;
-  transform: rotate(-6deg);
-}
-.tv3-lang-more { background: transparent; color: #ffcf5a; border: 0.08em dashed #ffcf5a; padding-bottom: 0.04em; box-shadow: none; }
-
 /* --- the resurrection --------------------------------------------------------------------------------------------------- */
 .tv3-res-safe { display: flex; align-items: center; justify-content: center; padding: 0 6%; text-align: center; font-family: var(--mono); font-size: min(7vmin, 8vw); color: #ff9a1a; }
 .tv3-res-dawn { background: linear-gradient(180deg, #1a1440 0%, #a04a60 55%, #ffb070 100%); overflow: hidden; }
@@ -415,22 +347,6 @@
   .tv3-bath-rows { top: 48%; left: 4%; right: 4%; gap: 1vmin; }
   .tv3-bath-row { flex-wrap: wrap; row-gap: 0.4vmin; padding: 0.6vmin 1.6vmin; font-size: 4vw; }
   .tv3-bath-label { flex-basis: 100%; }
-  .tv3-lang-kind { top: 13%; }
-  .tv3-lang-title { top: 16.5%; font-size: 8.4vw; }
-  .tv3-lang-stats { top: 23%; left: 4%; right: 4%; flex-direction: column; align-items: center; }
-  .tv3-lang-card { flex: 0 0 auto; width: 92%; max-width: none; margin: 0 0 1.2vmin; padding: 0.8vmin 2vmin; }
-  .tv3-lang-label { font-size: 3.4vw; }
-  .tv3-lang-who { font-size: 6.4vw; }
-  .tv3-lang-who.long { font-size: 4.6vw; }
-  .tv3-lang-who.longer { font-size: 3.6vw; }
-  .tv3-lang-sub { font-size: 3.8vw; }
-  .tv3-lang-frac { font-size: 6.4vw; }
-  .tv3-lang-bar { height: 2.2vw; }
-  .tv3-lang-none { top: 40%; font-size: 8.4vw; }
-  .tv3-lang-line { top: 52%; font-size: 6.4vw; }
-  .tv3-lang-wall { top: 46%; left: 3%; right: 3%; }
-  .tv3-lang-stats.solo + .tv3-lang-wall { top: 36%; }
-  .tv3-lang-stats.solo + .tv3-lang-line { top: 40%; }
   .tv3-banish-text, .tv3-rave-title, .tv3-helped-title, .tv3-res-title { font-size: 12vw; }
 }
 
