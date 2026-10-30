@@ -1042,10 +1042,10 @@ export class EventRuntime {
     this.factsFile = init.factsFile ?? defaultFactsFile(this.houseFile);
     // Wave 44 (C5): the project's credits.json, else LOOM_CREDITS, else (no
     // project) the scenario's own beside its house map.
-    const readCredits = this.project?.readFile;
+    const readProject = this.project?.readFile;
     const creditsEnv = init.creditsFile !== undefined ? init.creditsFile : (process.env.LOOM_CREDITS ?? null);
     this.credits = new CreditsSource({
-      project: readCredits !== undefined && this.project !== null ? () => readCredits.call(this.project, CREDITS_FILE) : null,
+      project: readProject !== undefined && this.project !== null ? () => readProject.call(this.project, CREDITS_FILE) : null,
       envFile: creditsEnv,
       scenarioFile: join(dirname(this.houseFile), CREDITS_FILE),
       ...(init.now !== undefined ? { now: init.now } : {}),
@@ -1053,7 +1053,7 @@ export class EventRuntime {
     // Wave 49 (C3.2): the descent's words, found the same way.
     const descentEnv = init.descentFile !== undefined ? init.descentFile : (process.env.LOOM_DESCENT ?? null);
     this.descent = new DescentSource({
-      project: readCredits !== undefined && this.project !== null ? () => readCredits.call(this.project, DESCENT_FILE) : null,
+      project: readProject !== undefined && this.project !== null ? () => readProject.call(this.project, DESCENT_FILE) : null,
       envFile: descentEnv,
       scenarioFile: join(dirname(this.houseFile), DESCENT_FILE),
       ...(init.now !== undefined ? { now: init.now } : {}),

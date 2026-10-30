@@ -309,10 +309,10 @@ describe("SpatialHub: the footsteps (C3.1)", () => {
   it("walks on after a stop at its true speed, not a window that spans the stop", () => {
     const r = rig();
     const a = r.begin("ann");
-    let x = r.walk(a.token, 1, 1.4, 500, 1);
+    const x = r.walk(a.token, 1, 1.4, 500, 1);
     for (let i = 0; i < WALK_STILL_MS / 100 + 3; i++) r.tick(null, null);
     expect(r.last()).toEqual([]);
-    x = r.walk(a.token, x, 1.4, 400, 1);
+    r.walk(a.token, x, 1.4, 400, 1);
     expect(r.last()![0]!.speed).toBe(1.5);
   });
 
