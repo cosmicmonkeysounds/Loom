@@ -272,7 +272,8 @@ export function buildHouseScene(house: HouseMap, opts: HouseSceneOptions = {}): 
     ceiling: bin.add(new MeshBasicMaterial(textured(ceilingTex, PALETTE.night))),
     prop: bin.add(
       neon
-        ? new MeshPhongMaterial({ vertexColors: true, flatShading: true, shininess: 70, specular: new Color(0x3a3f48) })
+        ? // A touch under full white, so clean white plastic doesn't bloom.
+          new MeshPhongMaterial({ vertexColors: true, flatShading: true, color: new Color(0.78, 0.8, 0.84), shininess: 70, specular: new Color(0x3a3f48) })
         : new MeshLambertMaterial({ vertexColors: true, flatShading: true }),
     ),
     // Neon, screens and alarms: unlit, in a model's own colours (painted
@@ -434,7 +435,7 @@ export function buildHouseScene(house: HouseMap, opts: HouseSceneOptions = {}): 
       for (const part of modelParts(prop)!) {
         const g = place(partGeometry(part));
         if (part.role === "neon") pushGlow(room.floor, paint(g, glow));
-        else if (part.role === "screen" || part.role === "alert") pushGlow(room.floor, paint(g, new Color(ROLE_COLORS[part.role]).multiplyScalar(neon ? 1.4 : 1)));
+        else if (part.role === "screen" || part.role === "alert") pushGlow(room.floor, paint(g, ROLE_COLORS[part.role]));
         else push(propGeoms, room.floor, paint(g, part.role === "body" ? body : ROLE_COLORS[part.role]));
       }
     } else if (prop.kind === "box") {

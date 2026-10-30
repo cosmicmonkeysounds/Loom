@@ -26,7 +26,7 @@ export const PART_ROLES: readonly PartRole[] = ["body", "trim", "dark", "neon", 
 export const ROLE_COLORS: Readonly<Record<Exclude<PartRole, "body" | "neon">, string>> = {
   trim: "#c3ccd6",
   dark: "#101318",
-  screen: "#d8f6ff",
+  screen: "#7fd4ff",
   glass: "#9fd6f2",
   leaf: "#26c46a",
   alert: "#ff2a4a",
@@ -449,7 +449,7 @@ export const NEON_GAIN = 2.2;
  *  `HAZE_TILE_M` and drifting `HAZE_DRIFT` m/s (x, z) each; a game draws
  *  none on `low`, the floor one on `medium`, both on `high`. */
 export const HAZE_AT: readonly [number, number] = [0.3, 0.35];
-export const HAZE_OPACITY: readonly [number, number] = [0.11, 0.07];
+export const HAZE_OPACITY: readonly [number, number] = [0.2, 0.12];
 export const HAZE_TILE_M = 4;
 export const HAZE_DRIFT: readonly [readonly [number, number], readonly [number, number]] = [
   [0.03, 0.012],
@@ -458,7 +458,7 @@ export const HAZE_DRIFT: readonly [readonly [number, number], readonly [number, 
 export const HAZE_COLOR = "#9a8cff";
 /** The games' fog: the colour (the background too) and an exponential density per metre. */
 export const HAZE_FOG = "#15123a";
-export const HAZE_FOG_DENSITY = 0.055;
+export const HAZE_FOG_DENSITY = 0.07;
 
 /** The neon's brightness at `t` s (0 … 1): steady, but every
  *  `NEON_FLICKER_S` it stutters for a third of a second. */

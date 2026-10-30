@@ -22,7 +22,7 @@ vi.mock("../src/api.ts", async (orig) => ({
 // A remap rebuilds the scene: a stub one (no canvas here).
 vi.mock("@loom/house/three", async (orig) => ({
   ...(await orig<object>()),
-  buildHouseScene: () => ({ root: { removeFromParent: () => {} }, dispose: () => {}, walls: [], kings: new Map(), showKing: () => {}, setPickupTaken: () => false }),
+  buildHouseScene: () => ({ root: { removeFromParent: () => {} }, dispose: () => {}, walls: [], kings: new Map(), showKing: () => {}, setPickupTaken: () => false, setHaze: () => {} }),
   applySpace: () => {},
 }));
 const worlds = vi.hoisted(() => ({ built: [] as unknown[] }));
@@ -247,7 +247,7 @@ describe("the shared bar — everyone's hits, the kneel, the restore", () => {
   it("a remap with the King down keeps a player on his spot there, as the server does; standing, back to the start", () => {
     const swap = (king: KingState, incoming?: KingState | null) => {
       const { g, said } = game(king, [prop.pos[0], prop.pos[1], prop.pos[2]]);
-      Object.assign(g, { root: { add: () => {} }, distHistory: [], mapVersion: "v1", taken: new Set<string>(), lamps: { bindHouse: () => {} } });
+      Object.assign(g, { root: { add: () => {} }, distHistory: [], mapVersion: "v1", taken: new Set<string>(), lamps: { bindHouse: () => {} }, settings: { haze: 0 } });
       Object.assign((g as unknown as { house: object }).house, { root: { removeFromParent: () => {} }, dispose: () => {} });
       (g as unknown as { swapMap(h: unknown, v: string, k?: KingState | null): void }).swapMap(THREE_FLOOR(), "v2", incoming);
       return { g, said };

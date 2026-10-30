@@ -771,12 +771,14 @@ describe("wave 47: models, neon and haze", () => {
   };
 
   it("draws a model's glowing parts on their own unlit mesh, plain scenes included", () => {
-    const plain = buildHouseScene(show, {});
+    const bare = loadHouse(SHOW_HOUSE);
+    for (const p of bare.props) delete p.model;
+    const plain = buildHouseScene(bare, {});
     const glowBefore = plain.root.getObjectByName("glow:main");
     const scene = buildHouseScene(withModels(), {});
     const glow = meshes(scene.root).filter((m) => m.name.startsWith("glow:"));
     expect(glow.length).toBeGreaterThan(0);
-    // The plain show map (no models) has no glow mesh unless neon is on.
+    // A map with no models has no glow mesh unless neon is on.
     expect(glowBefore).toBeUndefined();
     plain.dispose();
     scene.dispose();

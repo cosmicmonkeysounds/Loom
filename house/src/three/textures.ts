@@ -8,7 +8,7 @@
 //! pixels, cheap on a tablet. Wall / floor UVs are in metres (see
 //! `projectUvs` in `scene.ts`), so a 64-px tile is one metre.
 
-import { CanvasTexture, NearestFilter, RepeatWrapping, SRGBColorSpace } from "three";
+import { CanvasTexture, NearestFilter, NoColorSpace, RepeatWrapping, SRGBColorSpace } from "three";
 
 /** The plain colours used when a texture can't be drawn (and as tints). */
 export const PALETTE = {
@@ -507,7 +507,7 @@ export function titleBarTexture(
 /** (wave 47) The games' haze: soft seamless white wisps on black (drawn
  *  additive, so black is clear), every blob drawn at its wrapped copies too. */
 export function hazeTexture(seed = 47): CanvasTexture | null {
-  return drawTexture(
+  const tex = drawTexture(
     256,
     256,
     (g, w, h) => {
@@ -519,7 +519,7 @@ export function hazeTexture(seed = 47): CanvasTexture | null {
         const x = rand() * w;
         const y = rand() * h;
         const r = 18 + rand() * 62;
-        const a = 0.05 + rand() * 0.12;
+        const a = 0.18 + rand() * 0.3;
         for (const dx of [-w, 0, w]) {
           for (const dy of [-h, 0, h]) {
             const grad = g.createRadialGradient(x + dx, y + dy, 0, x + dx, y + dy, r);
@@ -533,4 +533,7 @@ export function hazeTexture(seed = 47): CanvasTexture | null {
     },
     { nearest: false },
   );
+  // A mask, not a picture: kept linear, so the wisps aren't darkened.
+  if (tex) tex.colorSpace = NoColorSpace;
+  return tex;
 }

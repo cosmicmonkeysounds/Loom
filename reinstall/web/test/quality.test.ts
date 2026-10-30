@@ -17,9 +17,9 @@ function run(q: AutoQuality, t: number, ms: number, forMs: number): [number, Qua
 
 describe("the tiers", () => {
   it("grow from low to high as the contract's table says", () => {
-    expect(TIERS.low).toMatchObject({ pointLights: 2, bloom: "off", post: false, msaa: 0, pixelRatio: 1 });
-    expect(TIERS.medium).toMatchObject({ pointLights: 4, bloom: "half", post: true, film: true, chroma: false, msaa: 0, pixelRatio: 1 });
-    expect(TIERS.high).toMatchObject({ pointLights: 8, bloom: "full", post: true, film: true, chroma: true, msaa: 4, pixelRatio: 1.5 });
+    expect(TIERS.low).toMatchObject({ pointLights: 2, bloom: "off", post: false, msaa: 0, pixelRatio: 1, haze: 0 });
+    expect(TIERS.medium).toMatchObject({ pointLights: 4, bloom: "half", post: true, film: true, chroma: false, msaa: 0, pixelRatio: 1, haze: 1 });
+    expect(TIERS.high).toMatchObject({ pointLights: 8, bloom: "full", post: true, film: true, chroma: true, msaa: 4, pixelRatio: 1.5, haze: 2 });
   });
 
   it("caps the pixel ratio by the device's, and drops low's under pressure", () => {
