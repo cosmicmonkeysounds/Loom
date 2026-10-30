@@ -23,10 +23,12 @@
 //! touches the story: it is kept in the event's state dir, never
 //! journaled, and outlives a server or router restart.
 //!
-//! The **sources**: the four buses the router plays (`music`, the
+//! The **sources**: the five buses the router plays (`music`, the
 //! soundtrack's playlists; `tracks`, the featured songs a story `sound`
-//! plays; `sfx`, every other story or desk sound; `announce`, the house
-//! announcements) and each input the router routes (`in:<role>`, e.g.
+//! plays; `sfx`, every other story or desk sound; `steps`, the programs'
+//! footsteps in the real house, wave 49, on the sfx bus and ducked like it;
+//! `announce`, the house announcements) and each input the router routes
+//! (`in:<role>`, e.g.
 //! `in:trabolta`, the TV). An input with a role but no route (Clippy's mic,
 //! mixed in CueMix) is shown as a meter only. Speaker tests never go
 //! through the mix, so a muted room can still be walked.
@@ -45,12 +47,13 @@ export const MIX_CHANGES_MAX = 64;
 /** A room, speaker or source id inside a key. */
 export const MIX_ID_RE = /^[A-Za-z0-9_.-]{1,64}$/u;
 /** The router's buses, in the mixer's order. */
-export const MIX_BUS_SOURCES = ["music", "tracks", "sfx", "announce"] as const;
+export const MIX_BUS_SOURCES = ["music", "tracks", "sfx", "steps", "announce"] as const;
 export type MixBusSource = (typeof MIX_BUS_SOURCES)[number];
 export const MIX_BUS_LABELS: Record<MixBusSource, string> = {
   music: "Music",
   tracks: "Featured tracks",
   sfx: "Sound effects",
+  steps: "Footsteps",
   announce: "Announcements",
 };
 /** A mixer view keeps the panel's meters live this long after its last GET (ms). */
@@ -245,7 +248,7 @@ export interface MixerAudioShape {
 }
 
 export interface MixerSource {
-  /** `music` | `tracks` | `sfx` | `announce` | `in:<role or ch>`. */
+  /** `music` | `tracks` | `sfx` | `steps` | `announce` | `in:<role or ch>`. */
   id: string;
   label: string;
   kind: "bus" | "input";
