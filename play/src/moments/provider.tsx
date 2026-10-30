@@ -1112,6 +1112,23 @@ export function useStickyMoment(): { key: string | null; count: number; keys: re
   return useMemo(() => ({ key, count, keys: joined === "" ? [] : joined.split("\u0000"), read: read ?? (() => {}) }), [key, count, joined, read]);
 }
 
+/** Wave 47: what the phone's Back does with a moment on screen. A big and
+ *  the takeover keep their keys inside (no Escape, no tap-away), so Back
+ *  does nothing there (`swallow`), never moving the view under them; a
+ *  dialog or a blue screen closes as its ✕ would (`dismiss`). */
+export function useBackMoment(): { kind: "swallow" | "dismiss" | null; dismiss: () => void } {
+  const e = useContext(EngineContext);
+  const big = e?.surfaces.big ?? null;
+  const modal = e?.surfaces.modal ?? null;
+  const takeover = e?.takeover ?? null;
+  const dismiss = e?.dismiss;
+  return useMemo(() => {
+    if (big !== null || takeover !== null) return { kind: "swallow" as const, dismiss: () => {} };
+    if (modal !== null) return { kind: "dismiss" as const, dismiss: () => dismiss?.(modal) };
+    return { kind: null, dismiss: () => {} };
+  }, [big, modal, takeover, dismiss]);
+}
+
 /** Is a big moment on screen now (it covers everything: a sheet under it steps aside)? */
 export function useBigOnScreen(): boolean {
   const e = useContext(EngineContext);

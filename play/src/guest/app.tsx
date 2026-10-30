@@ -38,7 +38,7 @@ import { LinkLanding, landingLink } from "../guest-scan.tsx";
 import type { GuestScan } from "../guest-scan-sheet.tsx";
 import { LazyScanSheet as ScanSheet } from "../guest-scan-sheet-lazy.tsx";
 import { LazyScanDone, loadScanDone, settled } from "../scan-done-lazy.tsx";
-import { BellButton, MomentsLayer, MomentsProvider, type MomentsInput } from "../moments/provider.tsx";
+import { BellButton, MomentsLayer, MomentsProvider, useBackMoment, type MomentsInput } from "../moments/provider.tsx";
 import { GuestRegister, PictureChanger } from "./register.tsx";
 import { FullPass } from "../chrome/pass.tsx";
 import { PeopleSheet } from "./sheets.tsx";
@@ -52,7 +52,7 @@ import { actLine, missionLine, titleFallback } from "../chrome/title-bar.tsx";
 import { useArmButtons } from "../arm.ts";
 import { AlertsBalloon, AlertsSheet, BalanceTray, GuestStartHeader, MeButton, NowBar, guestStartItems, guestTaskbarButtons, liveCardsOf, objectiveButton, pushOffered, startSidesOf, useStartWake, whereLine } from "./frame.tsx";
 import { lobbyNav, type ExitContext, type Nav } from "../moments/exits.ts";
-import { pressedWindow, questRootsOf, useGuestNav, type GuestWindow } from "./nav.ts";
+import { guestBackStep, pressedWindow, questRootsOf, useGuestNav, type GuestOpen, type GuestWindow } from "./nav.ts";
 import { LazyMission } from "./mission-lazy.tsx";
 import { ChatsWindow } from "./chats.tsx";
 import { LazyMeSheet as MeSheet } from "./me-lazy.tsx";
@@ -145,6 +145,21 @@ export function FrameLayout({ className, frameRef, head, taskbar, typing, childr
   );
 }
 
+
+/** Wave 47: the phone's Back, inside the moments provider (it reads the
+ *  moment on screen: a big keeps Back, a dialog closes). Mounted at the same
+ *  place in every branch, so its one history entry carries across them. */
+function GuestBack({ enabled, open, onStep }: { enabled: boolean; open: Omit<GuestOpen, "moment">; onStep: (step: Exclude<ReturnType<typeof guestBackStep>, "moment" | null>) => void }) {
+  const m = useBackMoment();
+  const all: GuestOpen = { ...open, moment: m.kind };
+  useSystemBack(enabled, guestBackStep(all) !== null, () => {
+    const step = guestBackStep(all);
+    if (step === "moment") {
+      if (m.kind === "dismiss") m.dismiss();
+    } else if (step !== null) onStep(step);
+  });
+  return null;
+}
 
 export function GuestApp({ onLeave, badgeLink = null }: { onLeave: () => void; badgeLink?: string | null }) {
   const host = usePlayHost();
@@ -265,13 +280,6 @@ export function GuestApp({ onLeave, badgeLink = null }: { onLeave: () => void; b
   useEffect(() => {
     if (onMission && nowId !== seenNow) setSeenNow(nowId);
   }, [onMission, nowId, seenNow]);
-  // The phone's own Back steps back inside the app (NM-F9), when it owns the page.
-  useSystemBack(host.ownsPage && signedIn, nav.overlay !== null || credits.open !== null || t.activeId !== null || nav.window !== "mission", () => {
-    if (nav.overlay !== null) nav.setOverlay(null);
-    else if (credits.open !== null) credits.set(null);
-    else if (t.activeId !== null) nav.back();
-    else nav.go({ to: "mission" });
-  });
   // A crew room that left the view (dissolved, or the guest left it) while
   // open: back to Chats with a word, never a dead room titled with its raw
   // id (A3).
@@ -449,13 +457,48 @@ export function GuestApp({ onLeave, badgeLink = null }: { onLeave: () => void; b
     glitch: st.night?.glitch,
     takeover: "full",
   };
-  // Both branches below return through `framed`, so the provider is the same
-  // element at the root: React keeps the one engine (its queue and holds)
-  // when the cutscene hands over to the app.
+  // The phone's own Back steps back inside the app (NM-F9; wave 47: every
+  // sheet, a moment, the stage and the lock screen too), when it owns the page.
+  const sheetOpen = walletSheet !== null || s.scanDone !== null || help || people !== null || sharing !== null || alertsOpen || picturing || sidesWhich !== null || inviting;
+  const closeSheet = () => {
+    if (walletSheet !== null) setWalletSheet(null);
+    else if (s.scanDone !== null) s.clearScan();
+    else if (help) setHelp(false);
+    else if (people !== null) setPeople(null);
+    else if (sharing !== null) setSharing(null);
+    else if (alertsOpen) setAlertsOpen(false);
+    else if (picturing) setPicturing(false);
+    else if (sidesWhich !== null) setSidesWhich(null);
+    else if (inviting) setInviting(false);
+  };
+  const backOpen = {
+    sheet: sheetOpen,
+    overlay: nav.overlay !== null,
+    credits: credits.open !== null,
+    rails: cut.showing || s.locked,
+    room: t.activeId !== null,
+    window: nav.window !== "mission",
+  };
+  const backStep = (step: Exclude<ReturnType<typeof guestBackStep>, "moment" | null>) => {
+    if (step === "sheet") closeSheet();
+    else if (step === "overlay") nav.setOverlay(null);
+    else if (step === "credits") credits.set(null);
+    else if (step === "room") {
+      if (t.activeThreadRoot !== null) t.closeThread();
+      else nav.back();
+    } else if (step === "window") nav.go({ to: "mission" });
+    // "rails": the stage and the lock screen have nothing behind them.
+  };
+  // Every branch below returns through `framed`, so the provider is the same
+  // element at the root: React keeps the one engine (its queue and holds),
+  // and the Back's one history entry, when the cutscene hands over to the app.
   const framed = (body: ReactElement) => (
     <KnownNamesProvider value={names}>
       <SidesContext.Provider value={{ view: st, calls: s.sides }}>
-        <MomentsProvider {...moments}>{body}</MomentsProvider>
+        <MomentsProvider {...moments}>
+          <GuestBack enabled={host.ownsPage} open={backOpen} onStep={backStep} />
+          {body}
+        </MomentsProvider>
       </SidesContext.Provider>
     </KnownNamesProvider>
   );

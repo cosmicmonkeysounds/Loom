@@ -117,9 +117,46 @@ export { WantedBoard } from "./wanted/board.tsx";
 
 /** The room a performer lands in wide: Readouts (wave 18, G2: the house's
  *  broadcast feed is the far-away Chat log, never a default room). */
+/** What is open over the booth's home, for the phone's Back (wave 47). */
+export interface BoothOpen {
+  layer: unknown;
+  sheet: unknown;
+  people: unknown;
+  help: boolean;
+  credits?: boolean;
+  /** A floating pop-out on screen: `later` when it offers Later. */
+  popout?: "later" | "stays" | null;
+  /** A player's 👥 People list. */
+  peopleOpen?: boolean;
+  /** A room open over the window (a phone: it covers the home). */
+  room?: boolean;
+  /** A window other than home on screen (a player's Chats, a host's Chats or Desk). */
+  window?: boolean;
+}
+
 /** Is something open over the booth's home that the phone's Back should close? */
-export function boothAway(open: { layer: unknown; sheet: unknown; people: unknown; help: boolean; credits?: boolean }): boolean {
-  return open.layer !== null || open.sheet !== null || open.people !== null || open.help || open.credits === true;
+export function boothAway(open: BoothOpen): boolean {
+  return boothBackStep(open) !== null;
+}
+
+/**
+ * What one press of the phone's Back closes (wave 47): the top thing first
+ * (the credits, a layer, a sheet, a list, a floating pop-out), then the room
+ * over the window, then a window that is not home. Never past home: there
+ * Back is the browser's again. Before wave 47 a room or Chats was not
+ * "away", so Back there left the app mid-show.
+ */
+export function boothBackStep(open: BoothOpen): "credits" | "layer" | "peopleOpen" | "sheet" | "people" | "help" | "popout" | "room" | "window" | null {
+  if (open.credits === true) return "credits";
+  if (open.layer !== null) return "layer";
+  if (open.peopleOpen === true) return "peopleOpen";
+  if (open.sheet !== null) return "sheet";
+  if (open.people !== null) return "people";
+  if (open.help) return "help";
+  if (open.popout != null) return "popout";
+  if (open.room === true) return "room";
+  if (open.window === true) return "window";
+  return null;
 }
 
 export function boothHome(list: Channel[]): string | null {
@@ -335,13 +372,57 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
   // face (the scanner, a card, PLAYER SELECT).
   const credits = useCredits(s.view?.night?.credits?.roll, s.view?.clock);
   const creditsFace = layer?.kind === "scan" || layer?.kind === "card" || layer?.kind === "pick";
-  useSystemBack(host.ownsPage && signedIn, boothAway({ layer, sheet, people: people ?? (peopleOpen ? true : null), help, credits: credits.open !== null }), () => {
-    if (credits.open !== null && !creditsFace) credits.set(null);
-    else if (layer !== null) setLayer((l) => closeTo(l));
-    else if (peopleOpen) setPeopleOpen(false);
-    else if (sheet !== null) setSheet(null);
-    else if (people !== null) setPeople(null);
-    else if (help) setHelp(false);
+  // Wave 47: a room on a phone, a window that isn't home and a floating
+  // pop-out are "away" too, so Back steps back inside the app (a room →
+  // its window → home) and never leaves it mid-show.
+  const player1 = s.auth !== null && isPlayer(s.view) && !boothHost(s.auth, s.view) && !s.auth.admin;
+  const hostWins1 = !player1 && s.auth !== null && isHostBooth(s);
+  const floating = rung.current !== null && !rung.quieted && rung.activeDock === null ? (rung.current.noLater === true ? "stays" : "later") : null;
+  const backOpen: BoothOpen = {
+    layer,
+    sheet,
+    people,
+    help,
+    credits: credits.open !== null && !creditsFace,
+    peopleOpen,
+    popout: floating,
+    room: !wide && activeId !== null,
+    window: (player1 && pwin !== "mission") || (hostWins1 && hwin !== "show"),
+  };
+  useSystemBack(host.ownsPage && signedIn, boothAway(backOpen), () => {
+    switch (boothBackStep(backOpen)) {
+      case "credits":
+        credits.set(null);
+        return;
+      case "layer":
+        setLayer((l) => closeTo(l));
+        return;
+      case "peopleOpen":
+        setPeopleOpen(false);
+        return;
+      case "sheet":
+        setSheet(null);
+        return;
+      case "people":
+        setPeople(null);
+        return;
+      case "help":
+        setHelp(false);
+        return;
+      case "popout":
+        // Back is Later (it waits in 🔔 Waiting); one with no Later stays.
+        if (floating === "later" && rung.current !== null) rung.defer(rung.current.key);
+        return;
+      case "room":
+        t.back();
+        return;
+      case "window":
+        if (player1) setPwin("mission");
+        else setHwin("show");
+        return;
+      default:
+        return;
+    }
   });
   if (!s.auth) return host.embedded ? <SessionEnded notice={s.notice} /> : <PrimeLogin session={s} />;
   const admin = s.auth.admin;

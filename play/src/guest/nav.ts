@@ -86,6 +86,40 @@ export function planGo(nav: Nav, ctx: GoContext): GoPlan {
   }
 }
 
+/** What is open on the guest's phone, for its own Back (wave 47). */
+export interface GuestOpen {
+  /** A moment on screen: `swallow` (a big, the takeover) or `dismiss` (a dialog). */
+  moment: "swallow" | "dismiss" | null;
+  /** A sheet over everything (a wallet sheet, Help, People, a share picker…), topmost first. */
+  sheet: boolean;
+  overlay: boolean;
+  credits: boolean;
+  /** The arrival stage or the lock screen: on rails, nothing behind it to step back to. */
+  rails: boolean;
+  room: boolean;
+  /** A window other than Mission. */
+  window: boolean;
+}
+
+/**
+ * What one press of the phone's Back does (wave 47; pure, `test/w47-back.test.ts`).
+ * A moment first: a big keeps Back (it never moves the view under it, so ✕ /
+ * OK lands where the guest was); a dialog closes. Then a sheet, the overlay,
+ * the credits; on the stage or the lock screen nothing (never leaving the
+ * app mid-arrival or mid-capture); then the room, then the window → Mission.
+ * Null at home: Back is the browser's again.
+ */
+export function guestBackStep(o: GuestOpen): "moment" | "sheet" | "overlay" | "credits" | "rails" | "room" | "window" | null {
+  if (o.moment !== null) return "moment";
+  if (o.sheet) return "sheet";
+  if (o.overlay) return "overlay";
+  if (o.credits) return "credits";
+  if (o.rails) return "rails";
+  if (o.room) return "room";
+  if (o.window) return "window";
+  return null;
+}
+
 /** Overlays keep the room under them; everything else replaces it. */
 export function keepsRoom(plan: GoPlan): boolean {
   return plan.overlay !== undefined || plan.act !== undefined;
