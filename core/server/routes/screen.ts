@@ -382,6 +382,20 @@ export const MAX_ANNOUNCE_TEXT = 300;
 /** How many recent announcements the state carries (`announces`). */
 export const ANNOUNCE_RING = 3;
 
+/**
+ * What a phone says of a typed announcement (wave 53, a host's 📣): no alert
+ * mark, no emoji (a phone reads their names out), capped like the speakers'.
+ * Empty: nothing to say.
+ */
+export function spokenAnnounce(raw: string): string {
+  return raw
+    .replace(/^[!~]+/u, "")
+    .replace(/[\p{Extended_Pictographic}\u{1F1E6}-\u{1F1FF}\u{FE0F}\u{200D}]/gu, "")
+    .replace(/\s+/gu, " ")
+    .trim()
+    .slice(0, MAX_ANNOUNCE_TEXT);
+}
+
 export interface ScreenAnnounce {
   /** Bumps on every announcement the fold sees (history included). */
   seq: number;

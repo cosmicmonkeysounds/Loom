@@ -25,6 +25,8 @@ export interface VideoConsentRow {
   avatar: string | null;
   /** `<id>.featured` when not "none". */
   featured?: string;
+  /** Wave 53: a performer's part, asked at its own upload. */
+  staff?: true;
 }
 
 export interface VideoConsentView {
@@ -38,7 +40,8 @@ const text = (sim: Sim, path: string): string | null => {
   return display(v).replace(/^"|"$/gu, "");
 };
 
-/** Every guest but a director's persona, by name. */
+/** Every guest but a director's persona, then every part that declares the
+ *  slot (the story's staff, wave 53), by name. */
 export function videoConsentView(sim: Sim, opts: { isPersona: (id: string) => boolean; avatarOf: (name: string) => string | null }): VideoConsentView {
   const rows: VideoConsentRow[] = [];
   const counts = { ok: 0, out: 0, unasked: 0 };
@@ -49,6 +52,13 @@ export function videoConsentView(sim: Sim, opts: { isPersona: (id: string) => bo
     counts[video] += 1;
     const featured = text(sim, `${p.id}.featured`);
     rows.push({ id: p.id, name: p.name, video, avatar: opts.avatarOf(p.name), ...(featured !== null && featured !== "none" && featured !== "" ? { featured } : {}) });
+  }
+  for (const c of sim.model.characters.values()) {
+    const raw = text(sim, `${c.id}.${VIDEO_SLOT}`);
+    if (raw === null) continue;
+    const video: VideoAnswer = raw === "ok" || raw === "out" ? raw : "unasked";
+    counts[video] += 1;
+    rows.push({ id: c.id, name: c.id, video, avatar: opts.avatarOf(c.id), staff: true });
   }
   rows.sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
   return { rows, counts };

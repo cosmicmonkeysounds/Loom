@@ -627,7 +627,8 @@ export function composeGuestMessages(sim: Sim, events: readonly SimEvent[], opts
         if (e.audience.length > 0) {
           // A character addressing you → that character's DM thread.
           for (const p of e.audience) lastSpeaker.set(p, e.speaker);
-          out.push({ ...dmChannel(e.speaker), from: e.speaker, kind: "line", text: e.text, ts, audience: [...e.audience], parentSeq: null, beat: e.beat, ...delivery });
+          // (Wave 53: a character on rails hears it in its booth, `@<Character>`.)
+          out.push({ ...dmChannel(e.speaker), from: e.speaker, kind: "line", text: e.text, ts, audience: e.audience.map((p) => audienceOf(sim, p)), parentSeq: null, beat: e.beat, ...delivery });
         } else {
           // Un-addressed scripted speech (no participant bound — e.g. the
           // NARRATOR of an entry beat) is stage voice: it plays in the
@@ -740,7 +741,7 @@ export function composeGuestMessages(sim: Sim, events: readonly SimEvent[], opts
           kind: "line",
           text: echo.text,
           ts,
-          audience: [e.person],
+          audience: [audienceOf(sim, e.person)],
           parentSeq: null,
           pick: true,
           ...(echo.action ? { act: true as const } : {}),

@@ -19,6 +19,105 @@
 // `playable: false` keeps a prop off the sign-in pickers: nobody *is*
 // the Router.
 
+// ── Staff (wave 53) ─────────────────────────────────────────────────
+// Everyone uploads. A booth's first sign-in (the header's `arrival:` line,
+// `booth_arrived`) stands the part in the Optical Drive, a `cutscene: true`
+// location, so the booth goes on rails like a guest's phone, and plays the
+// same Login, Upload and Upload Deposit beats with `program` bound to the
+// character. The slots below mirror ROLE Program's: those beats read them.
+// A card's answer reaches these hooks alone (`/api/prime/widget`: the part
+// is subject and actor), but a GUEST's answer reaches every character's
+// hook, so each one opens on `program.staff == true`. A line in a hook only
+// reaches the booth on rails, so every one is guarded by where it stands.
+// Everything here is `private`: it never reaches Trabolta's worker.
+TRAIT Staff
+  staff: bool = true
+  arrived: bool = false
+  uploaded: bool = false
+  captchas: 0 to 10 = 0
+  featured: text? = none
+  human_problem: text? = none
+  human_problem_text: text? = none
+  left_behind: text? = none
+  left_behind_text: text? = none
+  inbox: text? = none
+  video: text? = none
+  doubt: 0 to 100 = 0
+  // One `private:` per part: two traits can't both say it, so a player's
+  // `covert` and `caught` (TRAIT Player) are listed here. Every player is staff.
+  private: staff, arrived, uploaded, captchas, featured, human_problem, human_problem_text, left_behind, left_behind_text, inbox, video, doubt, covert, caught
+
+  when booth_arrived for program:
+    if program.staff == true and self.arrived != true:
+      set self.arrived = true
+      set self.name = self
+      move self to The Optical Drive
+      -> Login
+
+  when captcha answered for program:
+    if program.staff == true and self.uploaded != true:
+      set self.captchas += 1
+      if passed and self.captchas == 1:
+        -> Login Incorrect
+      else:
+        -> Upload
+
+  // The two write-ins (main.loom's `when answer answered` for a guest). The
+  // deposit's is answered after `uploaded`: the beat runs on past its card.
+  when answer answered for program:
+    if program.staff == true:
+      if self.human_problem == "other" and self.human_problem_text == "none":
+        set self.human_problem_text = text
+        if self.location == "The Optical Drive":
+          Task Manager: Noted. Filed under other. It is not your concern now.
+          -> Upload Deposit
+      else if self.left_behind == "deposited" and self.left_behind_text == "none":
+        set self.left_behind_text = text
+        if self.location == "The Optical Drive":
+          Task Manager: Logged. It is not your concern. Fine.
+
+  when poll answered for program:
+    if program.staff == true:
+      if choice == "No, leave me out":
+        set self.video = "out"
+        if self.location == "The Optical Drive":
+          Task Manager: Noted. No video of you will be used.
+      else if choice == "Yes, use video of me":
+        set self.video = "ok"
+        if self.location == "The Optical Drive":
+          Task Manager: Noted. You may appear in the video.
+      else if self.location == "The Optical Drive":
+        if index == 0:
+          Task Manager: Noted. This phone speaks when the house speaks. START turns it off.
+        else:
+          Task Manager: Noted. This phone stays quiet. START turns it on.
+
+  // The last card the stage docks, so the staff door opens here.
+  when email answered for program:
+    if program.staff == true and self.inbox == "none":
+      if given:
+        set self.inbox = "given"
+      else:
+        set self.inbox = "skipped"
+      if self.location == "The Optical Drive":
+        if given:
+          Task Manager: Inbox on file. He will write when it is over. He always does what he says. Mostly.
+        else:
+          Task Manager: No inbox. Noted. Not flagged.
+        -> Staff Door
+
+  // ⏭ A director's way out, for a phone that can't finish (DRAFT w53): every
+  // part still on rails or not yet signed in is through, and a menu or a
+  // card left open on a stage is left behind (the guards above keep a late
+  // answer quiet). The booth keeps the stage until Continue.
+  when wave_staff_through:
+    if self.arrived != true or self.location == "The Optical Drive":
+      set self.arrived = true
+      set self.uploaded = true
+      set Kernel.staff_uploaded += 1
+      if self.location == "The Optical Drive":
+        move self to The Desktop
+
 TRAIT Prop(beat)
   playable: false
   when scanned by program:
@@ -31,7 +130,7 @@ TRAIT Person
 // at the Desktop; otherwise each greeter greets in their own voice (every
 // greeter owns `beat Greet(program)`, cast/hosts.loom). Wave 21: Clippy is
 // a Greeter and a Player, no longer a Host.
-TRAIT Greeter is Person
+TRAIT Greeter is Person, Staff
   when scanned by program:
     if Night.summons_open == true and program.cleared:
       fire checked_in for program with at: The Desktop
@@ -136,7 +235,6 @@ TRAIT Player
   covert: 0 to 99 = 0
   caught: 0 to 99 = 0
   defected: text? = none
-  private: covert, caught
 
   when self.covert >= (self.caught + 1) * 3:
     set self.caught += 1
@@ -163,7 +261,7 @@ TRAIT Player
     if Night.award_winner == self:
       reply !!🏆 You won {Night.award_title}! Come up to the TV for your trophy.
 
-TRAIT Enforcer is Person, Player
+TRAIT Enforcer is Person, Player, Staff
   captures: 0 to 99 = 0
   faction: Antivirus
 
