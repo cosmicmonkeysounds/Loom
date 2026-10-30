@@ -448,7 +448,7 @@
 .filter-tier-75 { background: var(--filter-tier-75); color: var(--ink); }
 .filter-tier-90 { background: var(--filter-tier-90); color: var(--ink); }
 .filter-tier-100 { background: var(--filter-tier-100); color: var(--ink); box-shadow: inset 0 -2px 0 var(--dim-ink); }
-.filter-chip { display: inline-block; padding: 0 4px; border-radius: var(--radius); font: 700 13px/1.5 var(--ui-font); letter-spacing: 0.02em; white-space: nowrap; }
+.filter-chip, .popout-chip { display: inline-block; padding: 0 4px; border-radius: var(--radius); font: 700 13px/1.5 var(--ui-font); letter-spacing: 0.02em; white-space: nowrap; }
 
 /* The ⭐ game: a line's worth, the heat meter (a hot-to-cool strip a grey
    cover slides back over as it cools), what ✂ pays, the ⭐ tonight. */
@@ -463,9 +463,10 @@
 .filter-heat {
   position: relative; flex: 1 1 auto; min-width: 48px; height: 14px; overflow: hidden;
   background: linear-gradient(90deg, var(--filter-tier-75), var(--filter-tier-50) 45%, var(--filter-tier-25) 70%, var(--bad));
-  box-shadow: var(--sunken);
 }
-.filter-heat-cover { position: absolute; inset: 0; background: var(--face); transform-origin: 100% 50%; will-change: transform; }
+/* The cooled part is an empty white track; the bevel sits over both. */
+.filter-heat-cover { position: absolute; inset: 0; background: var(--white); transform-origin: 100% 50%; will-change: transform; }
+.filter-heat::after { content: ""; position: absolute; inset: 0; box-shadow: var(--sunken); pointer-events: none; }
 .filter-cool { flex: 0 0 auto; color: var(--dim-ink); font: 12px var(--ui-font); white-space: nowrap; }
 .filter-pay { display: block; font: 700 12px var(--ui-font); opacity: 0.85; }
 .popout-btn .filter-pay { font-size: 13px; }
