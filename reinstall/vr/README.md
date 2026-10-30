@@ -195,6 +195,13 @@ test APK keeps working with the next server. Unplugging the headset drops
 the reverse: run the server again (or `adb reverse tcp:7642 tcp:7642`).
 `-NoIntro` alone bakes `"intro": false` into any station's APK.
 
+**The test level, with no server at all.** In the lobby, press **B B A A
+B A B A A B B** on either controller (X counts as A, Y as B; at most 1.5 s
+between presses). The headset plays offline for this run (the bundled
+house, the duck picked here) as the captured *Offline Program*
+(`game/test_combo.gd`, [method Game.start_test_level]). It works on every
+build, a station's too.
+
 **Run arguments from the editor.** *Debug → Customize Run Instances…* →
 *Main Run Args*, everything after `--` (the command-line flags below):
 `-- --offline`, `-- --server http://127.0.0.1:7641`, or a whole station
@@ -530,7 +537,7 @@ with `released: true` while you walk to Gerald.
 ```
 
 On 2026-10-28 (wave 39, branch `oct31-w39/vr`, Godot 4.7.1) it reports
-1237 checks and `quest.sh` 42, all passing.
+1236 checks and `quest.sh` 42, all passing.
 
 The runner refreshes the import, compiles every script and loads every
 scene, then runs `test/game.gd` headless with `--offline`:

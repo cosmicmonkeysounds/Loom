@@ -1,0 +1,50 @@
+## The lobby's test-level combo: B B A A B A B A A B B on either
+## controller (A = A / X, B = B / Y) plays offline (the bundled house, the
+## duck picked here) and starts the captured offline program, so a headset
+## can be tried without a server. A pause longer than [constant GAP] starts
+## the sequence over.
+class_name TestCombo
+extends RefCounted
+
+const SEQUENCE := "BBAABABAABB"
+## The longest pause between two presses (s).
+const GAP := 1.5
+
+var _typed := ""
+var _since := 0.0
+var _a_was := false
+var _b_was := false
+
+
+## One frame: whether A and B are held now. True on the frame the combo
+## completes.
+func feed(a_down: bool, b_down: bool, delta: float) -> bool:
+	_since += delta
+	var key := ""
+	if a_down and not _a_was:
+		key = "A"
+	elif b_down and not _b_was:
+		key = "B"
+	_a_was = a_down
+	_b_was = b_down
+	if key == "":
+		return false
+	if _since > GAP:
+		_typed = ""
+	_since = 0.0
+	_typed += key
+	# Keep the longest tail that could still become the sequence.
+	while not SEQUENCE.begins_with(_typed):
+		_typed = _typed.substr(1)
+	if _typed == SEQUENCE:
+		_typed = ""
+		return true
+	return false
+
+
+## Whether A (A / X) or B (B / Y) is held on either hand.
+static func held(hands: Array, button: String) -> bool:
+	for h: XRController3D in hands:
+		if h != null and h.is_button_pressed(button):
+			return true
+	return false

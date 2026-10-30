@@ -39,6 +39,7 @@ func _run() -> void:
 	_test_king_rules()
 	_test_wave26_props()
 	_test_wave47_look()
+	_test_test_combo()
 	_test_avatar_decode()
 	_test_config()
 	_test_config_setup()
@@ -331,6 +332,43 @@ func _golden_wave26(name: String, house: Dictionary) -> void:
 				if prop.is_empty() or HouseMoment.pickup_reach(house, q["p"], prop) != bool(q["reach"]) or HouseMoment.pickup_reach(house, q["p"], prop, HouseMoment.PICKUP_SLACK_M) != bool(q["slack"]):
 					mismatches.append("pickup %s at %s: golden %s / %s" % [q["pickup"], JSON.stringify(q["p"]), q["reach"], q["slack"]])
 		_report("golden %s.moments" % name, mismatches, want.size())
+
+
+## The lobby's test-level combo (B B A A B A B A A B B, A / X and B / Y).
+func _test_test_combo() -> void:
+	var c := TestCombo.new()
+	var hit := false
+	for k: String in TestCombo.SEQUENCE:
+		hit = _press(c, k, 0.3)
+	_check(hit, "combo: B B A A B A B A A B B fires")
+	_check(not _press(c, "B", 0.3), "combo: it starts over after firing")
+	c = TestCombo.new()
+	var bad := false
+	for k: String in "BBAABABAAB":
+		bad = _press(c, k, 0.3) or bad
+	_check(not bad, "combo: one press short does not fire")
+	c = TestCombo.new()
+	var slow := false
+	for i in TestCombo.SEQUENCE.length():
+		slow = _press(c, TestCombo.SEQUENCE[i], 2.0 if i == 5 else 0.3) or slow
+	_check(not slow, "combo: a pause longer than GAP starts it over")
+	c = TestCombo.new()
+	var late := false
+	for k: String in "BB" + TestCombo.SEQUENCE:
+		late = _press(c, k, 0.3) or late
+	_check(late, "combo: extra presses before it still let it fire")
+	c = TestCombo.new()
+	var held := false
+	for i in 20:
+		held = c.feed(false, true, 0.05) or held
+	_check(not held, "combo: holding B counts once")
+
+
+## Press `key` ("A" / "B") `after` seconds on, then release it.
+func _press(c: TestCombo, key: String, after: float) -> bool:
+	var hit := c.feed(key == "A", key == "B", after)
+	c.feed(false, false, 0.0)
+	return hit
 
 
 ## Every merged mesh named `node_name` (one per floor, and the builder's own).
@@ -2168,6 +2206,8 @@ func _test_main_and_game() -> void:
 	for i in 70:
 		game._process(1.0 / 60.0)
 	_check(link.begun == ["g-bbbbbb"] and game.lobby.view() == "pick", "game: hold right again on START begins it (%s)" % [link.begun])
+	game.start_test_level()
+	_check(link.offline_chosen == 1 and link.begun.back() == "g-000001", "game: the test-level combo plays offline as the captured offline program (%s)" % [link.begun])
 	player.right_stick = Vector2.ZERO
 	game._process(1.0 / 60.0)
 

@@ -188,6 +188,8 @@ var _played_for := 0.0
 var _reveal_after := HouseRoute.PATH_REVEAL_MS / 1000.0
 var trail_revealed := false
 var _cand_in := 0.0
+## B B A A B A B A A B B in the lobby: the offline test level ([TestCombo]).
+var _combo := TestCombo.new()
 ## Seconds to Gerald's next quack look ([method Sfx.quack_plan]).
 var _quack_in := Sfx.QUACK_FIRST
 ## Seconds to the found screen's fanfare (< 0: none due).
@@ -1033,6 +1035,14 @@ func _catch_fall() -> void:
 var falls := 0
 
 
+## The test level: play offline (the bundled house) as the captured
+## offline program, no server needed ([TestCombo]).
+func start_test_level() -> void:
+	link.play_offline()
+	lobby.flash("Test level (offline)…", 3.0)
+	link.begin("g-000001")
+
+
 func _tick_lobby(delta: float) -> void:
 	# (wave 40) While a resume is offered the lobby shows its own card (YES /
 	# NO), so the normal pointer + stick path drives it; a program begin
@@ -1044,6 +1054,10 @@ func _tick_lobby(delta: float) -> void:
 	var r := player.right_stick
 	var stick := Vector2(l.x if absf(l.x) >= absf(r.x) else r.x, l.y if absf(l.y) >= absf(r.y) else r.y)
 	var chosen := lobby.tick(stick, delta)
+	var hands := [player.left_hand, player.right_hand]
+	if _combo.feed(TestCombo.held(hands, "ax_button"), TestCombo.held(hands, "by_button"), delta):
+		start_test_level()
+		return
 	if not chosen.is_empty():
 		lobby.flash("Starting %s…" % chosen.get("name", chosen.get("id", "")), 3.0)
 		link.begin(str(chosen["id"]))
