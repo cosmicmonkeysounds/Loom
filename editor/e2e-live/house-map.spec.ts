@@ -291,33 +291,17 @@ test('the map editor is a view of Run → House', async ({ browser }) => {
     await tab.close()
   })
 
-  await test.step('the descent select: hidden on a 404, then working', async () => {
+  await test.step('the descent select reads and forces the real level', async () => {
+    const url = `/e/${event.id}/api/mod/spatial/descent`
+    const forced = async () => ((await (await api.get(url)).json()) as { forced: number | null }).forced
     await page.getByRole('tab', { name: 'Run', exact: true }).click()
     await expect(page.getByTestId('run-house-map-edit')).toBeVisible()
-    await page.waitForTimeout(500)
-    const old = await api.get(`/e/${event.id}/api/mod/spatial/descent`)
-    if (old.status() === 404) await expect(page.getByTestId('run-house-descent')).toHaveCount(0)
-    const posts: string[] = []
-    let forced: number | null = null
-    await page.route('**/api/mod/spatial/descent', async (route) => {
-      if (route.request().method() === 'POST') {
-        posts.push(route.request().postData() ?? '')
-        forced = (JSON.parse(route.request().postData() ?? '{}') as { level: number | null }).level
-      }
-      await route.fulfill({ json: { ok: true, forced } })
-    })
-    await page.goto(`${BASE}${EDIT}?project=${pid}`)
-    await expect(page.getByTestId('mode-bar')).toBeVisible({ timeout: 30_000 })
-    await page.getByTestId('mode-run').click()
-    await page.getByRole('tab', { name: 'Run', exact: true }).click()
     const select = page.getByTestId('run-house-descent-select')
     await expect(select).toHaveValue('')
     await select.selectOption('3')
-    await expect(select).toHaveValue('3')
+    await expect.poll(forced).toBe(3)
     await select.selectOption('')
-    await expect(select).toHaveValue('')
-    expect(posts).toEqual(['{"level":3}', '{"level":null}'])
-    await page.unroute('**/api/mod/spatial/descent')
+    await expect.poll(forced).toBeNull()
   })
 
   await test.step('with no run it says to start a rehearsal', async () => {
