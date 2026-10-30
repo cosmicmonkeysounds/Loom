@@ -250,7 +250,8 @@ describe("C2: back to where the scan started", () => {
   it("every layer's close and the phone's Back go through closeTo", () => {
     const app = src("booth/app.tsx");
     expect(app).toContain("const closeLayer = () => setLayer((l) => closeTo(l));");
-    expect(app).toContain("if (layer !== null) setLayer((l) => closeTo(l));");
+    // Wave 47: the phone's Back walks `boothBackStep`; its layer step is closeTo.
+    expect(app).toMatch(/case "layer":\s*setLayer\(\(l\) => closeTo\(l\)\);/u);
     expect(app).not.toMatch(/onClose=\{\(\) => setLayer\(null\)\}/u);
     expect(app).not.toMatch(/onLater=\{\(\) => setLayer\(null\)\}/u);
     // openScan / openCard read the layer they open over.
