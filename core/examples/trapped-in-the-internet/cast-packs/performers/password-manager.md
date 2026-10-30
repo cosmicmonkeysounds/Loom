@@ -1,7 +1,8 @@
 # Password Manager (Francine)
 
 > Antivirus · door scans · notices wrong codes · **keeper of the clubs**
-> (faction joins land in your booth) · decides what gets left out.
+> (faction joins land in your booth) · **the filter**: every guest line
+> with a swear in it comes to you, and you decide what gets left out.
 
 ## Card
 
@@ -54,6 +55,7 @@ iPhone scanner is verified (OP-04).
 | **any time** | **✅ Mark as reinstalled** (on a captured program's card) | someone in the Internet whose game won't finish |
 | **any time** | **🩹 Unmark: not going to the Internet** (on a marked program's card; **🩹 Not them…** on the confrontation screen) | a host's mis-tap, or mercy |
 | any time | **👁 Put on the watchlist** | doubt +25 |
+| a **🔑 LANGUAGE** pop-up, or the tray's **🔑 n** list | **✂ Censor** (two taps) · **Let it go** | the program who typed the line |
 | at the door | **🙋 I've got them** | an arrival waiting at the Optical Drive |
 | the summons (⏳ → 🚨) | nothing to scan: programs check themselves in with the Desktop's QR. **📍 They're here** on your *Still missing* list only for a dead or lost phone | |
 | any time, until 📄 | **♟ They beat the machine** | only when the door terminal could not report it and you **saw** "checkmate" on it |
@@ -92,6 +94,27 @@ shows **CAUGHT BY** for a minute, then leaves the board.
 your voice (*"That is not a password I recognise… Unsubstantiated claims are
 removed."*) and your booth shows *🔑 X entered a wrong code.* Find them and
 needle them in person.
+
+**✂ The filter (wave 48).** Every line any guest types (a room, a DM to
+Trabolta or to one of you, a private thread, the wall terminals) that holds
+a swear comes to your booth. Mild ones too, and **inside other words**:
+*password* is caught for "ass", *hello* for "hell", *check* for "heck",
+*button* for "butt", *Saturday* for "turd". You will get a lot. One pops up
+at a time as **🔑 LANGUAGE**: who, where they typed it, the line with the
+swear lit. The rest wait behind the **🔑 n** counter on your tray, which
+opens the whole list.
+
+- **✂ Censor** (tap, tap again): the swear is starred out of that line on
+  every phone, the TV and the walls (*p\*\*\*word*), and the program is
+  **marked for reinstallation** (*censored: password*): their poster lands
+  on every Antivirus' Wanted board. Already marked or in the Internet: it is
+  still censored and counted, no second mark. Your booth says which.
+- **Let it go**: off your list, on your phone only. Nobody is told.
+
+It all counts at the ceremony: **G14 🔑 The Language Report** reads who
+cursed the most, how many words you censored out of every word the filter
+caught, and every word you censored, aloud and on the TV. After the ending
+you can still censor (it counts for the report) but nobody is marked.
 
 **The clubs (from the 🕚 Y2K clock).** Your Quest Log: *Patrol: the clubs* (from
 Task Manager). Unlimited Power and The Way Out become joinable: programs walk
@@ -169,9 +192,10 @@ The house deals the programs files about **who they are connected to** (Codex �
 - **The hour:** patrol; collect wrong-code offenders; run your private rooms.
 - **⏳ → 🚨:** the programs check themselves in with the Desktop's QR; your NOW card's *Still missing* list is who hasn't (📍 only for a dead phone). After 🚨 the late marks land on the Wanted board.
 - **🗜:** zip everyone out of the Internet (the tent, or the shed on a rain night).
-- **🔑 Moderating:** your booth is a player's and has no moderator powers.
-  When a message is inappropriate or off topic, tell a director: they hide it
-  from Run, and it vanishes from every phone.
+- **✂ The filter, all night:** censor what you deem fit (above). Censoring
+  stars out the swear; to remove a whole message (off topic, or worse than a
+  swear), tell a director: they hide it from Run, and it vanishes from every
+  phone.
 - **🕚 Y2K → the end:** watch the club joins. A majority (more than half of all
   guest programs still here, any faction: a side or one a program founded)
   gives its members the server-room door code. Anyone with the code belongs in the room; police the
