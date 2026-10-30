@@ -12,12 +12,17 @@
 //! **Keys.** `MapEditor` listens on the window, ahead of the host page, and
 //! takes a key only while `active()` says the map is what's showing, and only
 //! one that landed in the map or on nothing at all (`document.body`). What
-//! it answers to stops there; the same keys stop at this shadow host when they
-//! come from a field in the map, whose own handlers run first, so a ⌘Z in an
-//! inspector field is that field's undo and never the host's. Everything
-//! else (⌘1, ⌘P…) passes through.
+//! it answers to stops there; the same keys, and anything typed, stop at this
+//! shadow host when they come from a field in the map, whose own handlers run
+//! first, so a ⌘Z in an inspector field is that field's undo and never the
+//! host's. The host's other shortcuts (⌘1, ⌘P…) pass through.
+//!
+//! **Connections.** On screen it polls without holding a socket; off screen
+//! (`shown` false: a host keeping it mounted for its draft) it holds nothing.
+//! The host page has long-lived streams of its own, and HTTP/1.1 gives an
+//! origin six.
 
-import { useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import fontCss from "@fontsource/vt323/index.css?inline";
 import { defaultConfig } from "../config.ts";
@@ -27,7 +32,7 @@ import { mapPaneCss } from "./embed-css.ts";
 import lightsCss from "./lights.css?inline";
 import { MapEditor } from "./MapEditor.tsx";
 import { projectBarExtras } from "./ProjectBar.tsx";
-import { mapAnswersKey } from "./unlock.ts";
+import { isTyping, keyOrigin, mapAnswersKey } from "./unlock.ts";
 
 export interface MapEmbedProps {
   eventId: string;
@@ -35,8 +40,10 @@ export interface MapEmbedProps {
   token: string;
   /** The event's title. */
   title: string;
-  /** Is the map what the host is showing now? False: it takes no keys. Default: yes. */
-  active?: () => boolean;
+  /** Is the map on screen? False: it takes no keys and holds no connections. Default: yes. */
+  shown?: boolean;
+  /** Something over the map (a dialog) has the keys for now. */
+  keysOff?: () => boolean;
   /** The server's address when it isn't this page's. */
   apiBase?: string;
   /** The event server's origin, for the links the map hands out. */
@@ -64,11 +71,11 @@ function isNode(t: EventTarget | null): t is Node {
   return typeof Node !== "undefined" && t instanceof Node;
 }
 
-export function MapEmbed({ eventId, token, title, active, apiBase, linkOrigin, onRevoked, className }: MapEmbedProps) {
+export function MapEmbed({ eventId, token, title, shown = true, keysOff, apiBase, linkOrigin, onRevoked, className }: MapEmbedProps) {
   const hostEl = useRef<HTMLDivElement>(null);
   const reactRoot = useRef<{ root: Root; frame: HTMLElement } | null>(null);
-  const latest = useRef({ active, onRevoked });
-  latest.current = { active, onRevoked };
+  const latest = useRef({ keysOff, onRevoked });
+  latest.current = { keysOff, onRevoked };
 
   useEffect(() => {
     const el = hostEl.current;
@@ -86,7 +93,8 @@ export function MapEmbed({ eventId, token, title, active, apiBase, linkOrigin, o
     const root = createRoot(frame);
     reactRoot.current = { root, frame };
     const stop = (e: KeyboardEvent) => {
-      if (mapAnswersKey(e)) e.stopPropagation();
+      const typed = isTyping(keyOrigin(e)) && !e.metaKey && !e.ctrlKey;
+      if (typed || mapAnswersKey(e)) e.stopPropagation();
     };
     el.addEventListener("keydown", stop);
     return () => {
@@ -97,17 +105,26 @@ export function MapEmbed({ eventId, token, title, active, apiBase, linkOrigin, o
     };
   }, []);
 
+  // Stable, or the editor's stream reopens at every render.
+  const revoked = useCallback(() => latest.current.onRevoked?.(), []);
+
   const config = useMemo(() => defaultConfig({ eventId, token, title, name: "Run → House", ...(apiBase !== undefined ? { apiBase } : {}) }), [eventId, token, title, apiBase]);
 
   useEffect(() => {
     const r = reactRoot.current;
     if (r === null) return;
     const keysFor = (origin: EventTarget | null) => {
-      if (latest.current.active?.() === false) return false;
+      if (!shown || latest.current.keysOff?.() === true) return false;
       return origin === document.body || origin === document.documentElement || (isNode(origin) && r.frame.contains(origin));
     };
-    r.root.render(<MapEditor key={config.eventId} config={config} unlocked keysFor={keysFor} toolbarExtras={projectBarExtras} onRevoked={() => latest.current.onRevoked?.()} {...(linkOrigin !== undefined ? { linkOrigin } : {})} />);
-  }, [config, linkOrigin]);
+    r.root.render(<MapEditor key={config.eventId} config={config} unlocked keysFor={keysFor} connections={shown ? "short" : "off"} toolbarExtras={projectBarExtras} onRevoked={revoked} {...(linkOrigin !== undefined ? { linkOrigin } : {})} />);
+  }, [config, linkOrigin, shown, revoked]);
+
+  // Coming on screen, the keys come here: the tab that brought it stays focused
+  // otherwise, and its keys would be the host's (⌘Z, the story's undo).
+  useEffect(() => {
+    if (shown) reactRoot.current?.frame.focus({ preventScroll: true });
+  }, [shown]);
 
   return <div ref={hostEl} className={className} />;
 }

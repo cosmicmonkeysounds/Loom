@@ -61,7 +61,7 @@ describe("the stylesheet in a pane", () => {
 
   it("sizes to the pane, not the window", () => {
     const css = mapPaneCss(real);
-    expect(css).toContain("@container map (max-width: 860px)");
+    expect(css).toContain("@container map (max-width: 640px)");
     expect(css).toContain("grid-template-rows: 58cqh auto");
     expect(css).toContain("clamp(15px, 1.6cqw, 18px)");
     expect(css).toContain("container: map / size");
@@ -73,7 +73,7 @@ describe("the stylesheet in a pane", () => {
     const css = mapPaneCss(":root{--a:1}*{margin:0}html,body,#root{height:100%;margin:0}body{color:red;font-size:1.6vw}@media (width<=860px){.m{height:58vh}}@media (prefers-reduced-motion:reduce){.m{color:red}}");
     expect(css).toContain(":host{--a:1}");
     expect(css).toContain("*{margin:0}.map-frame {color:red;font-size:1.6cqw}");
-    expect(css).toContain("@container map (width<=860px){.m{height:58cqh}}");
+    expect(css).toContain("@container map (width<=640px){.m{height:58cqh}}");
     expect(css).toContain("@media (prefers-reduced-motion:reduce)");
   });
 });

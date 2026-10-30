@@ -102,9 +102,19 @@ export interface MapEditorProps {
   keysFor?: (origin: EventTarget | null) => boolean;
   /** The event server's origin, for the links the map hands out. Default: this page's. */
   linkOrigin?: string;
+  /** How it keeps up with the server. `long`: long polls, on its own page.
+   *  `short`: embedded and on screen, polls that hold no socket, so the host
+   *  page isn't starved of HTTP/1.1's six. `off`: embedded and off screen,
+   *  nothing until it's back. */
+  connections?: Connections;
 }
 
-export function MapEditor({ config, onRevoked, toolbarExtras, unlocked = false, keysFor, linkOrigin }: MapEditorProps) {
+export type Connections = "long" | "short" | "off";
+
+/** The poll's pacing on each footing. */
+const POLLS = { long: {}, short: { wait: 0, idleMs: 3000 } } as const;
+
+export function MapEditor({ config, onRevoked, toolbarExtras, unlocked = false, keysFor, linkOrigin, connections = "long" }: MapEditorProps) {
   const base = baseOf(config);
   const [loaded, setLoaded] = useState<LoadedHouse | null>(null);
   const [saved, setSaved] = useState<HouseMap | null>(null);
@@ -341,9 +351,11 @@ export function MapEditor({ config, onRevoked, toolbarExtras, unlocked = false, 
 
   // The lights config: one GET, then a long poll (a save elsewhere, a test, a pairing, new devices).
   useEffect(() => {
+    if (connections === "off") return;
     let stop = false;
     const ctrl = new AbortController();
     void runLightsPoll({
+      ...POLLS[connections],
       fetch: (q) => fetchLights(base, config.token, { ...q, signal: ctrl.signal }),
       onView: (v) => adoptLights(v),
       onMissing: () => {
@@ -362,13 +374,15 @@ export function MapEditor({ config, onRevoked, toolbarExtras, unlocked = false, 
       stop = true;
       ctrl.abort();
     };
-  }, [base, config.token, adoptLights]);
+  }, [base, config.token, adoptLights, connections]);
 
   // The speaker config: one GET, then a long poll (a save elsewhere, a test).
   useEffect(() => {
+    if (connections === "off") return;
     let stop = false;
     const ctrl = new AbortController();
     void runAudioPoll({
+      ...POLLS[connections],
       fetch: (q) => fetchAudio(base, config.token, { ...q, signal: ctrl.signal }),
       onView: (v) => adoptAudio(v),
       onMissing: () => {
@@ -387,10 +401,11 @@ export function MapEditor({ config, onRevoked, toolbarExtras, unlocked = false, 
       stop = true;
       ctrl.abort();
     };
-  }, [base, config.token, adoptAudio]);
+  }, [base, config.token, adoptAudio, connections]);
 
   // The live players, and the map changing under us.
   useEffect(() => {
+    if (connections === "off") return;
     const s = openSpatialStream(streamUrl(base, config.token, `Map · ${config.name}`), {
       onFrame: (f) => {
         setPlayers((p) => applyFrame(p, f));
@@ -408,7 +423,7 @@ export function MapEditor({ config, onRevoked, toolbarExtras, unlocked = false, 
       onDead: () => void tokenAlive(config).then((ok) => !ok && onRevoked()),
     }, { probe: streamProbe(base, config.token) });
     return () => s.close();
-  }, [base, config, load, onRevoked]);
+  }, [base, config, load, onRevoked, connections]);
 
   const validation = useMemo(() => (draft === null ? null : validateHouse(draft)), [draft]);
   // The walk check needs a valid map (`route` assumes one); it is the heavy part, so only on a changed valid map.
@@ -1034,6 +1049,7 @@ export function MapEditor({ config, onRevoked, toolbarExtras, unlocked = false, 
         canRedo={history.future.length > 0}
         view3d={view3d}
         onView3d={setView3d}
+        embedded={keysFor !== undefined}
         extras={toolbarExtras?.(ctx)}
         onFloor={(id) => {
           setFloor(id);
