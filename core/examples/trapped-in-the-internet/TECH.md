@@ -26,7 +26,7 @@ or any codex code. `<mod>` below stands for the moderator passcode.
 | Machine | Runs | Setup runbook |
 |---|---|---|
 | **John's MacBook** (macOS, M3 Max, 48 GB) | **Trabolta**: Ollama with `gpt-oss:20b` + stagehand `agents` (his voice and mind; `stagehand/laptop.yaml`, `mind_mode: new`, launchd). `scripts/ops/predeploy.sh`, `ship.sh`, `pnpm sync-show`, `scripts/ops/showbackup.sh` (launchd, every 10 min 19:00–03:00). A director's Run console in Chrome. **Only as the fallback**: the sound router (`stagehand/trapped.macbook.yaml`). | [`scripts/house-macbook/trabolta.md`](../../../scripts/house-macbook/trabolta.md) (Trabolta); [`scripts/house-macbook/`](../../../scripts/house-macbook) (`audio.md`: the router fallback) |
-| **John's Desktop** (Windows) | **Sound**: stagehand **`audio`**, the speaker router, on the **MOTU 828x**'s own outs (no ADAT expander; USB 2, ASIO, duplex; announcements in the SAPI voice): every story sound, the announcements, the house **soundtrack** (wave 38: the music per act from `stagehand/media/music/`, the SFX library in `media/library/`) and **Trabolta's TV voice on every speaker** (Chrome's output → the Desktop's line out → the 828x's Analog In 1; the music ducks under him and under Clippy's mic). **Lights**: **Zigbee2MQTT** on the CC2652P stick (a COM port, `adapter: zstack`) with the **Philips Hue** and **ThirdReality ZL1** bulbs; the living room's **WLED** strip on its ESP32 controller (Wi-Fi, MQTT); stagehand **`lights`** (`lights.json`: every bulb, the strip, the story's `lights_*` and `heart_*` looks). stagehand **`show`** (Trabolta's room cuts and the flicker bulb by bulb, sensors back, and the `do announce` relay). **Mosquitto**, the house broker: anonymous on `127.0.0.1:1883`, password-only user `props` on the LAN at `:1884`. The living-room **TV** over HDMI (Chrome kiosk, spot `desktop-tv`). Each stagehand job is a Task Scheduler task (`stagehand/trapped.desktop.yaml`). | [`scripts/house-desktop/README.md`](../../../scripts/house-desktop/README.md) |
+| **John's Desktop** (Windows) | **Sound**: stagehand **`audio`**, the speaker router, on the **MOTU 828x**'s own outs (no ADAT expander; USB 2, ASIO, duplex; announcements in the SAPI voice): every story sound, the announcements, the house **soundtrack** (wave 38: the music per act from `stagehand/media/music/`, the SFX library in `media/library/`) and **Trabolta's TV voice on every speaker** (Chrome's output → VoiceMeeter Input → the router's `audio.tap` sums VoiceMeeter's output into the 828x's input 3, wave 46: the Desktop has no line out; the music ducks under him and under Clippy's mic). **Lights**: **Zigbee2MQTT** on the CC2652P stick (a COM port, `adapter: zstack`) with the **Philips Hue** and **ThirdReality ZL1** bulbs; the living room's **WLED** strip on its ESP32 controller (Wi-Fi, MQTT); stagehand **`lights`** (`lights.json`: every bulb, the strip, the story's `lights_*` and `heart_*` looks). stagehand **`show`** (Trabolta's room cuts and the flicker bulb by bulb, sensors back, and the `do announce` relay). **Mosquitto**, the house broker: anonymous on `127.0.0.1:1883`, password-only user `props` on the LAN at `:1884`. The living-room **TV** over HDMI (Chrome kiosk, spot `desktop-tv`). Each stagehand job is a Task Scheduler task (`stagehand/trapped.desktop.yaml`). | [`scripts/house-desktop/README.md`](../../../scripts/house-desktop/README.md) |
 | **Steph's laptop** (the server room) | Chrome kiosk on the server-room terminal: Trabolta's face, the heart talk, a webcam that scans passes, a monitor, mouse and keyboard. The **Grand Central M4** on USB, read over Web Serial: the door sensor and the patch bay. Nothing from stagehand runs here. | [`hardware/server-room-m4/README.md`](../../../hardware/server-room-m4/README.md); [`docs/trapped/kiosk.md`](../../../docs/trapped/kiosk.md) |
 | **John's old laptop** (the tent) | Chrome kiosk on spot `tent`: the terminal, the reinstallation wizard and the web game in one. Speaks house announcements itself (`&announce=1`); no voice link (`voice: false` on the map). Needs **WebGL2** for *Play here*; without it the tent can only send a program to a headset. | [`docs/trapped/kiosk.md`](../../../docs/trapped/kiosk.md) (the tent laptop) |
 
@@ -42,8 +42,8 @@ The event server itself runs on the VPS at `app.mapsandducks.com`
 | Server Door tablet | `view=chess` beside the real keypad: the King's chess game, awake all night. A checkmate gives the door code. | `/terminal/?code=<mod>&spot=server-room-door` |
 | Casino tablet | `view=casino` in the upstairs bedroom (spot `graphics-card`): Truthcoin bets, rolled by the server. | `/terminal/?code=<mod>&spot=graphics-card` |
 | Quest 3 headset(s) | The VR reinstallation in the tent, played seated with a spotter. Picks its program in the headset; asks for the microphone in the lobby. | `reinstall/vr/tools/quest.sh`, `reinstall/vr/README.md` |
-| MOTU 828x (no ADAT expander) | The house speakers: every story `sound X`, every announcement, the soundtrack and the TV's sound. On the Desktop over USB 2 with MOTU's Windows driver (ASIO). Its own outs: Analog 1–8 (ch 1–8), Main L/R (9–10) and Phones L/R (11–12), not mirrored in CueMix. Since wave 38 the living room is Main L/R plus the sub on Analog 1; Analog 2 is spare. Inputs: Mic/Gtr 1 = Clippy's wireless (mixed in CueMix to the living room; the router meters it), rear Analog In 1 (input 3) = the TV (routed by the router, in no CueMix mix). Both optical ports stay on ADAT with nothing plugged in, so it reports the 32 in / 30 out `audio.json` expects. | `scripts/house-desktop/README.md` §3; the map editor's 🔊 Audio tab. Fallback on the MacBook: `scripts/house-macbook/audio.md` |
-| House speakers | Placed on the map editor's 🔊 Audio tab. 6 are placed (wave 38): the living room L/R on 9–10 and its subwoofer on 1 (its own speaker `living-sub` and trim), the kitchen L/R on 3–4, the Optical Drive on 8; the rest of `audio.json`'s 12 outputs have no speaker yet. The Fan Closet's speaker is placed later (then its cell ticked on the TV row of the routes matrix). | Run → House → 🗺 Map → 🔊 |
+| MOTU 828x (no ADAT expander) | The house speakers: every story `sound X`, every announcement, the soundtrack and the TV's sound. On the Desktop over USB 2 with MOTU's Windows driver (ASIO). Its own outs, in the ASIO driver's order (wave 46): Main L/R (1–2), Analog 1–8 (3–10), S/PDIF (11–12) and Phones L/R (13–14), not mirrored in CueMix; the router opens 10 in / 14 out. Since wave 38 the living room is Main L/R plus the sub on Analog 1 (out 3); Analog 2 (out 4) is spare. Inputs: Mic/Gtr 1 = Clippy's wireless (mixed in CueMix to the living room; the router meters it), input 3 (Analog In 1, nothing plugged in) = the TV, summed in from VoiceMeeter by `audio.tap` (routed by the router, in no CueMix mix). Both optical ports stay on ADAT with nothing plugged in, so it reports the 32 in / 30 out `audio.json` expects. | `scripts/house-desktop/README.md` §3; the map editor's 🔊 Audio tab. Fallback on the MacBook: `scripts/house-macbook/audio.md` |
+| House speakers | Placed on the map editor's 🔊 Audio tab. 6 are placed (wave 38): the living room L/R on 1–2 and its subwoofer on 3 (its own speaker `living-sub` and trim), the kitchen L/R on 5–6, the Optical Drive on 10; the rest of `audio.json`'s 14 outputs have no speaker yet. The Fan Closet's speaker is placed later (then its cell ticked on the TV row of the routes matrix). | Run → House → 🗺 Map → 🔊 |
 | Zigbee 3.0 USB dongle (TI CC2652P + CP2102N, 20 dBm, Z-Stack 3.x.0 preloaded) | The Zigbee coordinator, on a USB 2.0 extension cable on the Desktop. Touchlink-capable (resets Hue bulbs). | `scripts/house-desktop/README.md` §4 |
 | Philips Hue bulbs | House Zigbee bulbs, joined to Zigbee2MQTT directly (no Hue Bridge). A Hue bulb resets by Touchlink, its serial number, a Hue dimmer or the Hue app, never by flicking its switch. Each gets its `lights.json` friendly name and `power_on_behavior: on`. 9 bought; with the ZL1s, 18 placed in `lights.json` (the names and rooms: `scripts/house-desktop/README.md` §5.4), the rest spares. | `scripts/house-desktop/README.md` §5; the map editor's 💡 Lights tab |
 | ThirdReality Smart Color Bulb ZL1 (Z2M `3RCB01057Z`) | House Zigbee bulbs (colour, colour temperature, dim). Resets by power-cycling until it blinks. 12 bought; which physical bulb (Hue or ZL1) gets which name doesn't matter. | `scripts/house-desktop/README.md` §5 |
@@ -74,7 +74,7 @@ ESP32's rules in `stagehand/trapped.house.yaml` stay in the file, unused.
    ops scripts           show, lights ── Mosquitto :1883 (loopback)          │ USB (Web Serial)
                          Zigbee2MQTT ─USB─ CC2652P ~~Zigbee~~ Hue + ZL1 bulbs, the RGB bulb
                          TV kiosk ─HDMI─▶ TV (picture) Mosquitto :1884 (LAN, user props)
-                            └─ line out ─▶ 828x Analog In 1 (Trabolta's voice)
+                            └─ VoiceMeeter ─audio.tap─▶ 828x input 3 (Trabolta's voice)
                                                             ▲ MQTT over Wi-Fi
                                               WLED ESP32 controller ── RGB LED strip
 ```
@@ -99,10 +99,11 @@ MacBook's router dials the Desktop's `:1884` like the WLED controller.)
   MacBook over Thunderbolt in the fallback), the M4 to Steph's laptop.
 - **Wi-Fi:** the WLED controller, to the Desktop's broker.
 - **HDMI:** the Desktop to the living-room TV, the picture only. The TV
-  page's sound (Trabolta's voice) goes from Chrome to the Desktop's line out
-  (Windows' Volume mixer sets Chrome's output), cabled into the 828x's rear
-  Analog In 1 (input 3); the router plays it on every speaker but the sub
-  and ducks the music under it. The TV's own volume stays down, or he plays
+  page's sound (Trabolta's voice) goes from Chrome to VoiceMeeter Input
+  (Windows' Volume mixer sets Chrome's output; the Desktop has no line out,
+  so no cable since wave 46); the router's `audio.tap` sums VoiceMeeter's
+  output into the 828x's input 3, plays it on every speaker but the sub and
+  ducks the music under it. VoiceMeeter must be running. The TV's own volume stays down, or he plays
   twice. In the router fallback Chrome goes back to HDMI (the MacBook's
   router is output-only).
 - **Audio in:** Clippy's wireless receiver into the 828x's Mic/Gtr 1, mixed
@@ -249,7 +250,8 @@ These wait on the user or on a device check.
 
 Device checks still to do: the 828x under ASIO on the Desktop (README
 §3.3, then every speaker's 🔈 Test; `K-20.sh` is the macOS walk), the
-duplex stream with the TV's line out on Analog In 1 (Trabolta once on the
+duplex stream with the TV through VoiceMeeter on input 3 (proven with a tone
+on 2026-10-30; Trabolta once on the
 house speakers, the music ducking under him and under Clippy's mic,
 Clippy's threshold set at rehearsal; README §3.5–§3.6), that the TV page's
 device voice follows Chrome's per-app output, the sub, each Hue

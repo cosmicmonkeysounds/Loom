@@ -165,7 +165,7 @@ describe("house mixer: a scope's strips", () => {
     mix: { seq: 3, levels },
     sources: mixerSources(audio),
     rooms: mixerRooms(audio),
-    meters: { at: 0, outputs: { "1": -30, "9": -12, "10": -18, "3": -40 }, inputs: { "1": -25, "3": -9 }, sources: {}, buses: { music: { "9": -14, "3": -41 } } },
+    meters: { at: 0, outputs: { "3": -30, "1": -12, "2": -18, "5": -40 }, inputs: { "1": -25, "3": -9 }, sources: {}, buses: { music: { "1": -14, "5": -41 } } },
     music: null,
     router: { online: true, lastSeen: 0, name: "desk" },
     now: 0,

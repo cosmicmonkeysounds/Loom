@@ -10,7 +10,7 @@
          │
          ▼
     this module ── ONE sounddevice stream on the interface (the MOTU 828x on its
-                   │  own outs: audio.json 10 in / 12 out, device.expect 32 / 30)
+                   │  own outs: audio.json 10 in / 14 out, device.expect 32 / 30)
                    ├─ voices: `sound X` → sounds_dir/X.wav → its speakers' outputs
                    ├─ announcements: chime + `say` → audio.json `announce.to`
                    ├─ tests: a 1.5 s tone + the spoken label on one speaker / output
@@ -155,6 +155,7 @@ from .routing import (
 )
 from .sounds import EXTENSIONS, SoundBank, identify_label, identify_tone, placeholders_in, sound_lengths
 from .soundtrack import OFF, Director, scene_of_cue
+from .tap import Tap, TapConfig, find_device
 
 log = logging.getLogger("stagehand.audio")
 
@@ -355,10 +356,15 @@ class AudioRouter:
         decode=None,
         music_streams=None,
         music_rng=None,
+        tap_stream_factory=None,
+        tap_query=None,
     ) -> None:
         self.cfg = cfg
         self._query = query
         self._stream_factory = stream_factory
+        # The tap's capture stream and device list (wave 46): fakes in the tests.
+        self._tap_stream_factory = tap_stream_factory
+        self._tap_query = tap_query
         # The machine's own voice (`say` on the Mac, SAPI on Windows: cfg.voice_engine).
         self.render_say = render_say or renderer(cfg.voice_engine)
         self.speak_direct = speak_direct or speaker(cfg.voice_engine)
@@ -472,6 +478,11 @@ class AudioRouter:
             f"sounds   : {'the router plays `sound X` (OSC sound cues skipped)' if cfg.play_sounds else 'not here: play_sounds is false (another cue player)'} — {cfg.sounds_dir}",
             f"announce : {'the router (chime + ' + cfg.voice_engine + ' ' + (cfg.say_voice or 'default') + ')' if cfg.announce else 'not here (the alexa player)'}",
             f"matrix   : {'on' if cfg.passthrough else 'off'}" + (f", {len(doc.routes)} route(s)" if doc else ""),
+            *(
+                [f"tap      : {cfg.tap.device!r}" + (f" on {cfg.tap.host_api.upper()}" if cfg.tap.host_api else "") + f" summed into input {cfg.tap.ch} ({cfg.tap.gain_db:+.0f} dB)"]
+                if cfg.tap is not None
+                else []
+            ),
             f"config   : the server's audio.json (long-poll {cfg.poll_wait:.0f}s)" + (f"; local {cfg.config_file}" if cfg.config_file else "") + f"; cache {cfg.cache_dir}",
             f"desk     : plays the house desk's sound / say steps; acks + health (every {cfg.health_s:g}s) to {REPORT_PATH}",
             f"mixer    : the server's live mix (cached in {MIX_CACHE}); music commands; meters every {METERS_EVERY_S:g}s to {METERS_PATH} while a panel watches",
@@ -556,7 +567,28 @@ class AudioRouter:
             self.story_sounds = [str(x) for x in answer.get("sounds") or [] if isinstance(x, str)]
 
     def preflight(self) -> list[str]:
-        """`stagehand check`: the device against the local / cached audio.json."""
+        """`stagehand check`: the device against the local / cached audio.json
+        (and the tap's capture device, wave 46)."""
+        return self._preflight_device() + self._preflight_tap()
+
+    def _preflight_tap(self) -> list[str]:
+        tap = self.cfg.tap
+        if tap is None:
+            return []
+        try:
+            if self._tap_query is not None:
+                devices, apis = self._tap_query()
+            else:
+                import sounddevice as sd
+
+                devices, apis = list(sd.query_devices()), list(sd.query_hostapis())
+            index = find_device(tap, devices, apis)
+        except Exception as err:  # noqa: BLE001 — ValueError (none / several), no PortAudio
+            return [f"audio: {err}"]
+        print(f"audio tap: {devices[index]['name']} → input {tap.ch}")
+        return []
+
+    def _preflight_device(self) -> list[str]:
         doc = self._check_doc()
         if doc is None:
             name = with_host_api(device_name(self.cfg.device), self.cfg.host_api)
@@ -837,13 +869,26 @@ class AudioRouter:
     def engine_running(self) -> bool:
         return self.engine is not None and self.engine.running
 
+    def _tap_factory(self, cfg: TapConfig | None):
+        if cfg is None:
+            return None
+        return lambda rate: Tap(cfg, rate, factory=self._tap_stream_factory, query=self._tap_query)
+
+    def tap_state(self) -> str | None:
+        engine = self.engine
+        if self.cfg.tap is None or engine is None:
+            return None
+        if engine.tap is not None:
+            return engine.tap.stats()
+        return f"{self.cfg.tap.device} NOT OPEN ({engine.tap_error or 'no stream'})"
+
     def ensure_engine(self) -> bool:
         """Open the stream for the current config (reopen on a device change)."""
         doc = self.doc
         if doc is None:
             return False
         cfg = self.cfg
-        signature = (self._device(doc), doc.inputs, doc.outputs, cfg.rate or doc.rate, cfg.passthrough)
+        signature = (self._device(doc), doc.inputs, doc.outputs, cfg.rate or doc.rate, cfg.passthrough, cfg.tap)
         if signature[0] is None and not self._blank_device_logged:
             self._blank_device_logged = True
             log.warning("audio.json names no device (device.name is blank) and the YAML sets no `device:` — using the default output")
@@ -867,6 +912,7 @@ class AudioRouter:
                 query=self._query,
                 stream_factory=self._stream_factory,
                 expect=doc.expect,
+                tap=self._tap_factory(cfg.tap),
             )
             self._signature = signature
         try:
@@ -1832,6 +1878,8 @@ class AudioRouter:
             "mix": {"seq": self.mix_seq, "levels": mix_wire(self.mix_levels)},
             # Wave 49: how many programs are heard walking now.
             "walkers": self.walkers.count,
+            # Wave 46: the software input (VoiceMeeter → input 3), or None.
+            "tap": self.tap_state(),
         }
 
     def sound_lengths(self) -> dict[str, int]:
@@ -1876,6 +1924,7 @@ class AudioRouter:
                 + (f" | {len(h['placeholders'])} placeholder(s)" if h["placeholders"] else "")
                 + (f" | underruns {h['underruns']}" if h["underruns"] else "")
                 + (f" | {h['walkers']} walking" if h["walkers"] else "")
+                + (f" | tap {h['tap']}" if h.get("tap") else "")
                 + (f" | ducking: {', '.join(f'{k} {v:.0%}' for k, v in h['sources'].items() if v > 0)}" if any(v > 0 for v in h["sources"].values()) else "")
                 + (f" | music {h['music']['scene'] or '—'}: " + (", ".join(f"{b['playlist']} {b['track'] or '—'}" for b in h["music"]["beds"]) or "no bed") if h.get("music") else ""),
                 f" | no file: {', '.join(h['missing'])}" if h["missing"] else "",

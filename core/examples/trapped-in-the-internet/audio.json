@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "note": "Wave 38 (2026-10-28): the MOTU 828x on John's Desktop (ASIO), no ADAT expander: 48 kHz, internal clock. Our channels are the device's own (no map): Analog 1-8 (the line outs on the back) are 1-8, Main L/R 9-10 (the living room since wave 38) and Phones L/R 11-12 (each from its own front headphone jack, NOT mirrored in CueMix, else they shift); S/PDIF 13-14 and the ADAT banks stay unused but keep the optical ports on ADAT so the device keeps its 32 in / 30 out (stagehand check catches a moved layout via device.expect). The living room is Main L/R plus the subwoofer on Analog 1 (its own speaker and trim). Inputs: Mic/Gtr 1-2, Analog 3-10. Clippy's wireless mic (input 1) stays mixed in CueMix (hardware); the router only meters it (role clippy) to duck the music. The TV's sound (Chrome on the Desktop) comes in on Analog 1 in (input 3, role trabolta): the router routes it to every speaker but the sub and ducks the music under it. Only the living room, the kitchen and the mud room (The Optical Drive, so every arrival hears the modem) have speakers yet; place the rest with the map editor's Speaker tool, tick its cell on the TV row of the matrix, Test each one (ASIO's order may differ from Core Audio's), then Save to project.",
+  "note": "Wave 46 (2026-10-30): the MOTU 828x on John's Desktop (ASIO), no ADAT expander: 48 kHz, internal clock. Our channels are the ASIO driver's own (no map), in the order MOTU's Windows driver names them: Main Out L/R 1-2 (the living room), Analog 1-8 (the line outs on the back) 3-10, S/PDIF 11-12, Phones L/R 13-14 (NOT mirrored in CueMix, else they shift); the ADAT banks 15-30 stay unused but keep the optical ports on ADAT so the device keeps its 32 in / 30 out (stagehand check catches a moved layout via device.expect). The living room is Main L/R plus the subwoofer on Analog 1 (out 3, its own speaker and trim). Inputs: Mic/Gtr 1-2, Analog 1-8 in at 3-10 (then S/PDIF, ADAT, Return, Reverb, unused). Clippy's wireless mic (input 1) stays mixed in CueMix (hardware); the router only meters it (role clippy) to duck the music. The TV's sound (Chrome on the Desktop) is input 3 (role trabolta): no cable since wave 46, Chrome plays into VoiceMeeter and the router's audio.tap sums VoiceMeeter's output into input 3; the router routes it to every speaker but the sub and ducks the music under it. Only the living room, the kitchen and the mud room (The Optical Drive, so every arrival hears the modem) have speakers yet; place the rest with the map editor's Speaker tool, tick its cell on the TV row of the matrix, Test each one, then Save to project.",
   "device": {
     "name": "828x",
     "inputs": 10,
-    "outputs": 12,
+    "outputs": 14,
     "rate": 48000,
     "expect": {
       "inputs": 32,
@@ -28,7 +28,7 @@
     },
     {
       "ch": 3,
-      "label": "Analog 1 in — the TV (Trabolta)",
+      "label": "Analog 1 in — the TV (Trabolta): VoiceMeeter through audio.tap",
       "kind": "line",
       "role": "trabolta",
       "reach": [
@@ -74,50 +74,58 @@
   "outputs": [
     {
       "ch": 1,
-      "label": "Analog 1 — Living sub"
-    },
-    {
-      "ch": 2,
-      "label": "Analog 2 — spare"
-    },
-    {
-      "ch": 3,
-      "label": "Analog 3 — Kitchen L"
-    },
-    {
-      "ch": 4,
-      "label": "Analog 4 — Kitchen R"
-    },
-    {
-      "ch": 5,
-      "label": "Analog 5 — Hall (The Tube)"
-    },
-    {
-      "ch": 6,
-      "label": "Analog 6 — Steam Room"
-    },
-    {
-      "ch": 7,
-      "label": "Analog 7 — CPU"
-    },
-    {
-      "ch": 8,
-      "label": "Analog 8 — Optical Drive"
-    },
-    {
-      "ch": 9,
       "label": "Main L — Living L"
     },
     {
-      "ch": 10,
+      "ch": 2,
       "label": "Main R — Living R"
     },
     {
+      "ch": 3,
+      "label": "Analog 1 — Living sub"
+    },
+    {
+      "ch": 4,
+      "label": "Analog 2 — spare"
+    },
+    {
+      "ch": 5,
+      "label": "Analog 3 — Kitchen L"
+    },
+    {
+      "ch": 6,
+      "label": "Analog 4 — Kitchen R"
+    },
+    {
+      "ch": 7,
+      "label": "Analog 5 — Hall (The Tube)"
+    },
+    {
+      "ch": 8,
+      "label": "Analog 6 — Steam Room"
+    },
+    {
+      "ch": 9,
+      "label": "Analog 7 — CPU"
+    },
+    {
+      "ch": 10,
+      "label": "Analog 8 — Optical Drive"
+    },
+    {
       "ch": 11,
-      "label": "Phones L (front headphone jack)"
+      "label": "S/PDIF L — unused"
     },
     {
       "ch": 12,
+      "label": "S/PDIF R — unused"
+    },
+    {
+      "ch": 13,
+      "label": "Phones L (front headphone jack)"
+    },
+    {
+      "ch": 14,
       "label": "Phones R (front headphone jack)"
     }
   ],
@@ -134,7 +142,7 @@
       },
       "yaw": 90,
       "out": [
-        9
+        1
       ]
     },
     {
@@ -149,7 +157,7 @@
       },
       "yaw": 90,
       "out": [
-        10
+        2
       ]
     },
     {
@@ -164,7 +172,7 @@
       },
       "yaw": 90,
       "out": [
-        1
+        3
       ]
     },
     {
@@ -179,7 +187,7 @@
       },
       "yaw": 180,
       "out": [
-        3
+        5
       ]
     },
     {
@@ -194,7 +202,7 @@
       },
       "yaw": 180,
       "out": [
-        4
+        6
       ]
     },
     {
@@ -209,7 +217,7 @@
       },
       "yaw": 180,
       "out": [
-        8
+        10
       ]
     }
   ],
@@ -228,10 +236,10 @@
     {
       "in": 3,
       "out": [
-        3,
-        4,
-        8,
-        9,
+        1,
+        2,
+        5,
+        6,
         10
       ]
     }

@@ -707,33 +707,35 @@ def test_the_router_speaks_with_the_macs_own_voice():
 
 def test_the_audio_json_is_the_828x_on_its_own_outs():
     """Wave 31: no ADAT expander. Our channel numbers are the 828x's own —
-    Analog 1–8, Main L/R 9–10, Phones L/R 11–12 out (each from a front
-    headphone jack); Mic/Gtr 1–2 + Analog 3–10 in. The device must still
+    in the order MOTU's Windows ASIO driver names them (wave 46): Main L/R
+    1–2, Analog 1–8 3–10, S/PDIF 11–12, Phones L/R 13–14 out; Mic/Gtr 1–2 +
+    Analog 3–10 in. The device must still
     report 32 / 30 (`device.expect`: the optical ports left on ADAT), and no
     tablet says the announcements by itself (`announce.terminals` empty).
-    Wave 38 (C1.2): the living room is on Main L/R (9, 10) plus a sub on
-    Analog 1, one zone; the TV (Trabolta) comes in on Analog 1 in (input 3)
+    Wave 38 (C1.2): the living room is on Main L/R (1, 2) plus a sub on
+    Analog 1 (out 3), one zone; the TV (Trabolta) comes in on Analog 1 in (input 3)
     and is routed everywhere but the sub; Clippy's wireless (Mic/Gtr 1)
     stays in CueMix and is only metered, ducking the living room."""
     audio = json.loads(AUDIO_JSON.read_text(encoding="utf-8"))
     dev = audio["device"]
-    assert (dev["name"], dev["inputs"], dev["outputs"], dev["rate"], dev["expect"]) == ("828x", 10, 12, 48000, {"inputs": 32, "outputs": 30})
+    assert (dev["name"], dev["inputs"], dev["outputs"], dev["rate"], dev["expect"]) == ("828x", 10, 14, 48000, {"inputs": 32, "outputs": 30})
     assert [c["ch"] for c in audio["inputs"]] == list(range(1, 11))
-    assert [c["ch"] for c in audio["outputs"]] == list(range(1, 13))
+    assert [c["ch"] for c in audio["outputs"]] == list(range(1, 15))
     assert "ADAT" not in json.dumps(audio["outputs"]) + json.dumps(audio["inputs"])
     labels = [c["label"] for c in audio["outputs"]]
-    assert labels[0] == "Analog 1 — Living sub" and labels[1] == "Analog 2 — spare"
-    assert [lab.split(" — ")[-1].split(" (")[0] for lab in labels[2:8]] == ["Kitchen L", "Kitchen R", "Hall", "Steam Room", "CPU", "Optical Drive"]
-    assert labels[8:10] == ["Main L — Living L", "Main R — Living R"]
-    assert [lab.split(" (")[0] for lab in labels[10:]] == ["Phones L", "Phones R"]
+    assert labels[:2] == ["Main L — Living L", "Main R — Living R"]
+    assert labels[2] == "Analog 1 — Living sub" and labels[3] == "Analog 2 — spare"
+    assert [lab.split(" — ")[-1].split(" (")[0] for lab in labels[4:10]] == ["Kitchen L", "Kitchen R", "Hall", "Steam Room", "CPU", "Optical Drive"]
+    assert [lab.split(" — ")[0] for lab in labels[10:12]] == ["S/PDIF L", "S/PDIF R"]
+    assert [lab.split(" (")[0] for lab in labels[12:]] == ["Phones L", "Phones R"]
     speakers = {s["id"]: s for s in audio["speakers"]}
     assert {sid: s["out"] for sid, s in speakers.items()} == {
-        "living-l": [9],
-        "living-r": [10],
-        "living-sub": [1],
-        "kitchen-l": [3],
-        "kitchen-r": [4],
-        "optical-drive": [8],
+        "living-l": [1],
+        "living-r": [2],
+        "living-sub": [3],
+        "kitchen-l": [5],
+        "kitchen-r": [6],
+        "optical-drive": [10],
     }
     assert speakers["living-sub"]["room"] == "desktop" == speakers["living-l"]["room"] == speakers["living-r"]["room"]
     assert [(z["id"], z["speakers"]) for z in audio["zones"]] == [("living", ["living-l", "living-r", "living-sub"])]
@@ -741,7 +743,7 @@ def test_the_audio_json_is_the_828x_on_its_own_outs():
     assert roles == {1: ("clippy", ["living"]), 3: ("trabolta", ["everywhere"])}  # Trabolta ducks every speaker, the sub too
     assert "CueMix" in audio["inputs"][0]["label"] and "TV" in audio["inputs"][2]["label"]
     # The TV everywhere but the sub (a new speaker needs its cell ticked on this row).
-    assert audio["routes"] == [{"in": 3, "out": [3, 4, 8, 9, 10]}]
+    assert audio["routes"] == [{"in": 3, "out": [1, 2, 5, 6, 10]}]
     assert audio["announce"] == {"to": ["everywhere"], "chime": True, "terminals": []}
     assert audio["voice"]["tv"] == ["everywhere"]
     assert "QLab" not in json.dumps(audio)
@@ -750,7 +752,7 @@ def test_the_audio_json_is_the_828x_on_its_own_outs():
 
     house = json.loads((STORY / "house.json").read_text(encoding="utf-8"))
     specs, notes = sidechain_sources(parse_audio(audio), house)
-    assert {s.name: s.reach for s in specs} == {"clippy": (1, 9, 10), "trabolta": (1, 3, 4, 8, 9, 10)} and notes == []
+    assert {s.name: s.reach for s in specs} == {"clippy": (1, 2, 3), "trabolta": (1, 2, 3, 5, 6, 10)} and notes == []
 
 
 # -- the soundtrack against the story (wave 38, C5) -----------------------------------------

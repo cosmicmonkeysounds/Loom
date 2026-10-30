@@ -15,6 +15,10 @@ Shape (`audio.example.yaml` carries a commented copy):
       host_api: null               # Windows: asio (the MOTU: one N-channel device;
                                    # sets SD_ENABLE_ASIO) | wasapi | wdm-ks | directsound | mme
       rate: null                   # override the rate (default: audio.json / the device's)
+      tap: null                    # wave 46: a capture device summed into an input, as if
+                                   # cabled there (no line out on the house PC):
+                                   # {device: "VoiceMeeter Output", host_api: mme, ch: 3,
+                                   #  channels: 2, gain_db: 0} — audio/tap.py
       blocksize: 512
       latency: high                # low | high | seconds
       master_db: 0
@@ -74,6 +78,7 @@ from ..paths import user_cache
 from ..show.config import MqttConfig
 from .mixer import DUCKED, RESERVED_SOURCES, TAKEOVER, Sidechain
 from .soundtrack import Soundtrack, load_soundtrack
+from .tap import TapConfig
 
 DEFAULT_CACHE = user_cache("stagehand-audio")  # ~/Library/Caches/… ; %LOCALAPPDATA%\stagehand\… on Windows
 #: With no `priority:` an announcement ducks as the show's does (C4's
@@ -94,6 +99,8 @@ class AudioConfig:
     #: on the Windows house PC; None (the Mac: Core Audio is the only one).
     host_api: str | None = None
     rate: int | None = None
+    #: A software input (wave 46, `tap.py`): Chrome through VoiceMeeter into input 3.
+    tap: TapConfig | None = None
     blocksize: int = 512
     latency: str | float = "high"
     master_db: float = 0.0
@@ -240,6 +247,34 @@ def _sidechain(doc: dict) -> Sidechain:
     )
 
 
+def _tap(doc: dict) -> TapConfig | None:
+    raw = doc.get("tap")
+    if raw is None:
+        return None
+    if not isinstance(raw, dict):
+        raise ConfigError("audio.tap: a mapping {device, host_api?, ch?, channels?, gain_db?}")
+    extra = sorted(set(raw) - {"device", "host_api", "ch", "channels", "gain_db"})
+    if extra:
+        raise ConfigError(f"audio.tap.{extra[0]}: unknown (device, host_api, ch, channels, gain_db)")
+    device = raw.get("device")
+    if not isinstance(device, str) or not device.strip():
+        raise ConfigError("audio.tap.device: a part of the capture device's name (e.g. VoiceMeeter Output)")
+    host_api = raw.get("host_api")
+    if host_api is not None:
+        from .engine import HOST_APIS
+
+        if not isinstance(host_api, str) or host_api.lower() not in HOST_APIS:
+            raise ConfigError(f"audio.tap.host_api: {' | '.join(HOST_APIS)} (got {host_api!r})")
+        host_api = host_api.lower()
+    return TapConfig(
+        device=device.strip(),
+        host_api=host_api,
+        ch=int(_num(raw, "ch", 3, 1, 64, "audio.tap.")),
+        channels=int(_num(raw, "channels", 2, 1, 8, "audio.tap.")),
+        gain_db=_num(raw, "gain_db", 0.0, -60, 24, "audio.tap."),
+    )
+
+
 def _soundtrack(doc: dict, base_dir: str) -> Soundtrack | None:
     path = _path(doc, "soundtrack", base_dir, must_exist=True)
     return load_soundtrack(path) if path is not None else None
@@ -305,6 +340,7 @@ def parse_audio_section(doc: Any, base_dir: str = ".") -> AudioConfig:
         device=_str(doc, "device", None),
         host_api=host_api,
         rate=rate,
+        tap=_tap(doc),
         blocksize=blocksize,
         latency=latency,
         master_db=_num(doc, "master_db", 0.0, -60, 12),

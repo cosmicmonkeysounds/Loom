@@ -18,6 +18,12 @@ or stalled, an open that raised — re-initialises PortAudio first
 `sounddevice` is reached through injectable `query` / `stream_factory` /
 `reinit` arguments, so the tests drive the callback with numpy buffers and
 no card.
+
+A **tap** (wave 46, `tap.py`) is a second, capture-only stream (a virtual
+cable such as VoiceMeeter) summed into one input channel of the duplex
+block before the mixer sees it: the house PC's stand-in for a cable into
+the interface. It opens after the main stream; a tap that fails to open is
+logged and the router plays on without it.
 """
 
 from __future__ import annotations
@@ -180,6 +186,7 @@ class Engine:
         stream_factory: Callable | None = None,
         reinit: Callable[[], None] | None = None,
         expect: tuple[int, int] | None = None,
+        tap: Callable[[int], Any] | None = None,
     ) -> None:
         self.device = device_name(device)
         #: `device.expect`: compared on every open (the router updates it).
@@ -206,6 +213,11 @@ class Engine:
         self.info: DeviceInfo | None = None
         self.xruns = 0
         self.errors = 0
+        #: `tap(rate)` → a `tap.Tap` (opened here), or None.
+        self._tap_factory = tap
+        self.tap: Any = None
+        self.tap_error: str | None = None
+        self._scratch: np.ndarray | None = None
 
     def describe(self) -> str:
         if self.info is None:
@@ -275,12 +287,36 @@ class Engine:
         stream.start()
         self.stream = stream
         log.info("audio stream open: %s", self.describe())
+        self._open_tap(rate, n_in)
         return mixer
+
+    def _open_tap(self, rate: int, n_in: int) -> None:
+        if self._tap_factory is None:
+            return
+        if n_in < 1:
+            self.tap_error = "the tap needs a duplex stream (passthrough: true)"
+            log.error("audio tap not opened: %s", self.tap_error)
+            return
+        tap = self._tap_factory(rate)
+        if tap.cfg.ch > n_in:
+            self.tap_error = f"tap input {tap.cfg.ch} is past audio.json's {n_in} inputs"
+            log.error("audio tap not opened: %s", self.tap_error)
+            return
+        try:
+            tap.open()
+        except Exception as err:  # noqa: BLE001 — a missing virtual cable must not silence the house
+            self.tap_error = str(err)
+            log.error("audio tap failed to open (%s) — playing on without it", err)
+            return
+        self.tap, self.tap_error = tap, None
 
     def close(self) -> None:
         """Stop and close the stream, then close the mixer's streamed voices
         (a reopen builds a new mixer: the old one's tracks would otherwise
         keep their workers and files for the life of the process)."""
+        tap, self.tap = self.tap, None
+        if tap is not None:
+            tap.close()
         stream, self.stream = self.stream, None
         if stream is not None:
             for step in ("stop", "close"):
@@ -312,6 +348,18 @@ class Engine:
 
     def _duplex_cb(self, indata, outdata, frames, time, status) -> None:  # noqa: ARG002
         self._note(status)
+        tap = self.tap
+        if tap is not None:
+            # PortAudio's input buffer is not ours to write: sum into a copy.
+            scratch = self._scratch
+            if scratch is None or scratch.shape != indata.shape:
+                scratch = self._scratch = np.empty(indata.shape, dtype=np.float32)
+            np.copyto(scratch, indata)
+            try:
+                tap.add_into(scratch[:, tap.cfg.ch - 1])
+            except Exception:  # noqa: BLE001 — never let the callback raise
+                self.errors += 1
+            indata = scratch
         self._run(indata, outdata)
 
     def _output_cb(self, outdata, frames, time, status) -> None:  # noqa: ARG002

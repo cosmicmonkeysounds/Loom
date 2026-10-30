@@ -69,6 +69,7 @@ stagehand/
                                    with no length header, for `check`), mix (wave 40: the house
                                    mix's levels → the mixer's gain table, effectiveDb's mirror),
                                    footsteps (wave 49: FootstepBank, Walkers, stepPaceS's mirror)
+                                   tap (a capture device summed into an input: VoiceMeeter → input 3, wave 46)
     audio/sfx/                     the SFX library: dsp (synthesis toolkit), spec + registry (`SFX`), render,
                                    cli, inspect (PNGs), one module per category (sirens, dings, telephony,
                                    digital, retro, party, story, ambient)
@@ -108,7 +109,7 @@ module docstrings that explain the why).
 | Machine | Jobs | Config | Supervisor | Runbook |
 |---|---|---|---|---|
 | John's MacBook (macOS, M3 Max 48 GB) | `agents` + Ollama `gpt-oss:20b`; `audio` only as the fallback | `laptop.yaml`; `trapped.macbook.yaml` | `stagehand launchd` | `scripts/house-macbook/trabolta.md`; `audio.md` (fallback) |
-| John's Desktop (Windows) | `show`, `lights`, `audio` + the MOTU 828x, no ADAT expander (the living room on Main L/R + the sub on Analog Out 1; Chrome's sound, the TV's Trabolta, cabled into input 3) (+ Mosquitto, Zigbee2MQTT with Hue / ZL1 bulbs, the WLED controller, the TV kiosk) | `trapped.desktop.yaml` | `stagehand tasks` | `scripts/house-desktop/README.md` |
+| John's Desktop (Windows) | `show`, `lights`, `audio` + the MOTU 828x, no ADAT expander (the living room on Main L/R, outs 1–2, + the sub on Analog Out 1, out 3: the ASIO order; Chrome's sound, the TV's Trabolta, through VoiceMeeter and `audio.tap` into input 3) (+ Mosquitto, Zigbee2MQTT with Hue / ZL1 bulbs, the WLED controller, the TV kiosk) | `trapped.desktop.yaml` | `stagehand tasks` | `scripts/house-desktop/README.md` |
 
 - **`extends:`** (`config.py`): a file in the same folder; mappings merge
   key by key, anything else replaces, `null` deletes. Order: parent,

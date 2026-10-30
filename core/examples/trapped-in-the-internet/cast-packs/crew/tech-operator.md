@@ -50,7 +50,8 @@ every announcement.
    story's `sound announce_chime` rides MQTT `show/chime` to it, so a chime
    and an announcement ring once. Since wave 38 it also plays the music
    (a set per act, cued by the story) and Trabolta's TV voice on every
-   speaker: Chrome on this PC plays to its line out, cabled into the 828x,
+   speaker: Chrome on this PC plays into VoiceMeeter (it must be running),
+   which the router sums into the 828x's input 3 (no cable since wave 46),
    and the TV's own volume stays down (or he is heard twice). ■ Stop house
    sounds on Run fades the sounds and the music out.
 3. **The MacBook.** On its charger, `caffeinate` running, sleep off;

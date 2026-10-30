@@ -1527,11 +1527,11 @@ def test_the_bed_ducks_under_trabolta_on_his_reach_and_under_clippy_on_the_livin
         sidechain={"threshold_db": -45, "attack_s": 0.04, "hold_s": 0.8, "release_s": 1.2},
     )
     r.set_house(house, persist=False)
-    assert r.apply({"audio": show, "version": "show"}) and stream_of(r).kwargs["channels"] == (10, 12)
+    assert r.apply({"audio": show, "version": "show"}) and stream_of(r).kwargs["channels"] == (10, 14)
     r.on_sim({"type": "directive", "verb": "cue", "args": "music_one"})
     bed = 0.5 * db_to_lin(-10)
     quiet = spin(r, 10, np.zeros((400, 10), dtype=np.float32))
-    assert quiet[-1] == pytest.approx([bed, 0, bed, bed, 0, 0, 0, bed, bed, bed, 0, 0], abs=1e-4)  # every speaker's output
+    assert quiet[-1] == pytest.approx([bed, bed, bed, 0, bed, bed, 0, 0, 0, bed, 0, 0, 0, 0], abs=1e-4)  # every speaker's output
 
     def level(ins: dict[int, float]) -> np.ndarray:
         indata = np.zeros((400, 10), dtype=np.float32)
@@ -1543,22 +1543,22 @@ def test_the_bed_ducks_under_trabolta_on_his_reach_and_under_clippy_on_the_livin
         spin(r, 60, np.zeros((400, 10), dtype=np.float32))  # hold 0.8 s + release 1.2 s
 
     tv = 0.1
-    out = level({3: tv})  # Trabolta talks on the TV: his voice reaches 3, 4, 8, 9, 10 through the matrix
-    for o in (3, 4, 8, 9, 10):
+    out = level({3: tv})  # Trabolta talks on the TV: his voice reaches 1, 2, 5, 6, 10 through the matrix
+    for o in (1, 2, 5, 6, 10):
         assert out[o - 1] - tv == pytest.approx(bed * db_to_lin(-18), rel=0.01), o
-    assert out[0] == pytest.approx(bed * db_to_lin(-18), rel=0.01)  # the sub: not on his route, but on his reach (everywhere)
+    assert out[2] == pytest.approx(bed * db_to_lin(-18), rel=0.01)  # the sub: not on his route, but on his reach (everywhere)
     settle()
     out = level({1: 0.1})  # Clippy's wireless: metered, never routed (CueMix plays it)
-    for o in (1, 9, 10):
+    for o in (3, 1, 2):
         assert out[o - 1] == pytest.approx(bed * db_to_lin(-12), rel=0.01), o
-    for o in (3, 4, 8):
+    for o in (5, 6, 10):
         assert out[o - 1] == pytest.approx(bed, rel=1e-3), o
     settle()
     out = level({1: 0.1, 3: tv})  # both: the deeper claim on each output
-    for o in (9, 10):
+    for o in (1, 2):
         assert out[o - 1] - tv == pytest.approx(bed * db_to_lin(-18), rel=0.01), o
-    assert out[0] == pytest.approx(bed * db_to_lin(-18), rel=0.01)
-    assert out[2] - tv == pytest.approx(bed * db_to_lin(-18), rel=0.01)
+    assert out[2] == pytest.approx(bed * db_to_lin(-18), rel=0.01)
+    assert out[4] - tv == pytest.approx(bed * db_to_lin(-18), rel=0.01)
     h = r.health()
     assert h["sources"]["trabolta"] == 1.0 and h["sources"]["clippy"] == 1.0
     assert h["inputs"]["3"] == pytest.approx(-20.0, abs=0.1) and h["music"]["beds"][0]["speakers"] == ["living-l", "living-r", "living-sub", "kitchen-l", "kitchen-r", "optical-drive"]

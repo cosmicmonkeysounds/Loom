@@ -168,24 +168,25 @@ The **Audio** tab is the rest of the file, top to bottom:
   the name the computer shows: `828x` for the show's MOTU 828x; on Windows
   the router's machine file can name the ASIO device instead), how many inputs
   and outputs we use, its rate, and **the device reports** — how many it
-  must report when its layout is as planned. The show uses 10 in and 12 out
-  of the 828x on its own (no ADAT expander), numbered as the 828x numbers
-  them: outputs 1–8 are Analog 1–8 (the line outs on the back), 9–10 Main
-  L/R and 11–12 Phones L/R (each pair from a front headphone jack); inputs
-  1–2 are the front Mic/Gtr, 3–10 Analog 1–8. S/PDIF and the ADAT
-  channels are left unused. The device reports 32 in / 30 out with both
+  must report when its layout is as planned. The show uses 10 in and 14 out
+  of the 828x on its own (no ADAT expander), numbered as MOTU's Windows
+  (ASIO) driver numbers them: outputs 1–2 are Main L/R, 3–10 Analog 1–8
+  (the line outs on the back), 11–12 S/PDIF and 13–14 Phones L/R (a front
+  headphone jack); inputs 1–2 are the front Mic/Gtr, 3–10 Analog 1–8. The
+  ADAT channels are left unused. The device reports 32 in / 30 out with both
   optical ports set to ADAT, even with nothing plugged in; when mirroring
   Main and Phones, 96 kHz or an optical port on TOSLink changes that, every channel after the change
   is off, so `stagehand check` fails and the router logs it (it still
   plays). Clippy's wireless mic is mixed on the interface itself (CueMix);
-  the TV's sound comes in on input 3 and the router sends it on (Routing,
+  the TV's sound comes in on input 3 (from VoiceMeeter on the Desktop,
+  summed in by the router: no cable) and the router sends it on (Routing,
   below), so in CueMix input 3 goes to no output.
 - **Speakers** — every speaker, its room and its outputs. Select one on
   the plan for its inspector: name, id (renaming it renames it in every
   zone and cue), position and height, angle, gain in dB, its outputs as a
   grid (an output another speaker uses is marked) and its zones. The
-  show's living room is Main L/R (outputs 9–10) plus a subwoofer on
-  Analog 1 (output 1), a speaker of its own (`living-sub`) so its gain is
+  show's living room is Main L/R (outputs 1–2) plus a subwoofer on
+  Analog 1 (output 3), a speaker of its own (`living-sub`) so its gain is
   its own; the three make the `living` zone. A gain change is heard at
   once, even on a long music track.
 - **Outputs** — a label per output and the speakers on it.

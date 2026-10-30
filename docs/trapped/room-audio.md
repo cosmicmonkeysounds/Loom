@@ -33,6 +33,11 @@
 >   router's own inputs (Trabolta, then announcements, then Clippy's mic),
 >   live output trims, and a synthesized SFX library. The living room is
 >   now Main L/R plus a subwoofer.
+> - **Wave 46: no cable, and the ASIO order.** The Desktop has no line out:
+>   Chrome plays into VoiceMeeter and the router's `audio.tap` sums
+>   VoiceMeeter's output into input 3 (`scripts/house-desktop/README.md`
+>   §3.5). `audio.json`'s outputs follow MOTU's Windows ASIO order: Main
+>   L/R 1–2, Analog 1–8 3–10, S/PDIF 11–12, Phones 13–14 (14 opened).
 > - **Announcements cross machines**: the server's feed → the Desktop's
 >   `show` job → MQTT `show/announce` → the router. With the Desktop's
 >   broker or `show` job down, nothing is spoken (the tent's
@@ -543,7 +548,7 @@ stream, a fake server).
 
 | | `audio.json` (the event's project file) | `audio:` (the router machine's YAML) |
 |---|---|---|
-| Says | the device (name substring, channels used — the show's 828x: 10 in / 12 out — rate, `expect`), input + output labels, **speakers** (room, position, outputs, trim), **zones**, the **routes** matrix, **cues** (sound → targets, gain), `announce.to` / `announce.terminals`, `voice.tv` | what the router may do on its machine: `play_sounds`, `announce`, `passthrough`, `sounds_dir`, levels (`master_db`, `limit_db`), the ducking (`priority`, `sidechain`, `no_duck`; wave 38, §13), the `soundtrack`, `say_voice`, `chime`, an optional broker |
+| Says | the device (name substring, channels used — the show's 828x: 10 in / 14 out — rate, `expect`), input + output labels, **speakers** (room, position, outputs, trim), **zones**, the **routes** matrix, **cues** (sound → targets, gain), `announce.to` / `announce.terminals`, `voice.tv` | what the router may do on its machine: `play_sounds`, `announce`, `passthrough`, `sounds_dir`, levels (`master_db`, `limit_db`), the ducking (`priority`, `sidechain`, `no_duck`; wave 38, §13), the `soundtrack`, `say_voice`, `chime`, an optional broker |
 | Edited in | the map editor's Audio panel (a director save in the event state dir beats the project copy; `LOOM_AUDIO` is the LAN fallback) | `trapped.house.yaml` (shared) + the machine file (`trapped.macbook.yaml` / `trapped.desktop.yaml`), then restart the `audio` job (`stagehand launchd restart --job audio` on the MacBook, `stagehand tasks restart --job audio` on the Desktop) |
 | Reaches the router | a long-poll, `GET /api/mod/audio?router=1&name=<host>&after=<version>&tests=<seq>&stops=<seq>&wait=25` (returns at once on a new version, a pending speaker test or a stop; `router=1` is what the editor's router badge reads) | at boot |
 
@@ -654,8 +659,9 @@ warned about.
   sound, the matrix and the tests play from the start; the router retries
   the lock every 5 s.
 - Trabolta's TV voice comes from Chrome on the TV computer, John's Desktop.
-  Since wave 38 Chrome's output is the Desktop's line out, cabled into the
-  828x's rear Analog In 1 (input 3); `audio.json`'s routes play it on every
+  Since wave 46 Chrome's output is VoiceMeeter Input, and the router's
+  `audio.tap` sums VoiceMeeter's output into the 828x's input 3 (the
+  Desktop has no line out); `audio.json`'s routes play it on every
   placed speaker but the sub, and the router ducks the music under it
   (§13). It is never in a CueMix mix (that would play it twice), and the
   TV's own speakers get nothing. `audio.json` `voice.tv` is a note of where
@@ -724,7 +730,7 @@ permission a launchd duplex stream would need.
 
 ### 12.1 The 828x and `device.expect`
 
-(Wave 31: no expander. `audio.json` now declares 10 inputs, Mic/Gtr 1–2 and Analog 3–10, and 12 outputs, Analog 1–8, Main 9–10 and Phones 11–12, unmirrored; `expect` stays 32 / 30, so both optical ports stay on ADAT.)
+(Wave 31: no expander. `audio.json` now declares 10 inputs, Mic/Gtr 1–2 and Analog 3–10, and 12 outputs, Analog 1–8, Main 9–10 and Phones 11–12, unmirrored; `expect` stays 32 / 30, so both optical ports stay on ADAT. Wave 46: 14 outputs in MOTU's Windows ASIO order, Main 1–2, Analog 1–8 3–10, S/PDIF 11–12, Phones 13–14.)
 
 `audio.json` declares the channels we use, numbered as the 828x numbers
 them (no channel map, D1): 24 inputs (Mic/Gtr 1–2, Analog 3–10, the virtual
@@ -829,9 +835,9 @@ runbook is [`scripts/house-desktop/README.md`](../../scripts/house-desktop/READM
   mic stays in CueMix (hardware); the router only meters it, so Trabolta
   cannot duck Clippy. `duck_db` is gone (a config error naming
   `priority.announce.sfx`).
-- **The TV route.** Chrome's sound leaves the Desktop's line out into the
-  828x's rear Analog In 1; `audio.json`'s route plays it on outputs 3, 4,
-  8, 9 and 10 (every placed speaker but the sub), with no server round trip.
+- **The TV route.** Chrome's sound reaches input 3 through VoiceMeeter and
+  `audio.tap` (wave 46); `audio.json`'s route plays it on outputs 1, 2, 5,
+  6 and 10 (every placed speaker but the sub), with no server round trip.
   The TV page's own sound effects are silent (`terminal/src/sound/bus.ts`
   `VIEW_VOLUME.tv = 0`), so they never open Trabolta's duck; the TV's own
   speakers get nothing, or he plays twice. The MacBook fallback is

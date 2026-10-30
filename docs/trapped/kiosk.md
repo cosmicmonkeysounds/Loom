@@ -71,8 +71,9 @@ cutscene stingers, the casino's jingles, synthesised in the page and
 dropped while the character speaks. **Every story `sound X` and every
 announcement comes out of the house speakers** (the stagehand `audio`
 router with the MOTU 828x, on John's Desktop; the MacBook only in the
-fallback). Since wave 38 Trabolta's TV voice plays there too (the
-Desktop's line out is cabled into the 828x), and the TV page's own
+fallback). Since wave 38 Trabolta's TV voice plays there too (since wave
+46 Chrome plays into VoiceMeeter and the router's `audio.tap` sums it into
+the 828x's input 3), and the TV page's own
 accents are silent. Nothing on a tablet
 plays a story sound. The house speakers are set up in the project file
 `audio.json` (the map editor's 🔊 Audio tab, Run → House → 🗺 Map); the

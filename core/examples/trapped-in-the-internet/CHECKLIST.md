@@ -655,7 +655,7 @@ Terminal spots in `./house.json` (renamed in Oct 31 wave 3, before any tablet wa
 | Mounts (removable adhesive or 3D-printed) | 6–7 | $10–15 each | — | 🔴 | @__ | Mount per the measured pos/yaw/pitch (SW-MAP-02) |
 | 20 W charger + 2–3 m cable per tablet | 6–7 | ~$15 each | — | 🔴 | @__ | Charge all night |
 | ~~TV box: Raspberry Pi 5~~ → the **TV computer** (HW-AUD-07, section A) | 1 | — | — | — | @__ | A Pi 5 can't carry three.js, Chrome, the mixer and stagehand together; replaced 2026-10-15 (#13/#14) |
-| The TV above the fireplace: **Trabolta's main display** (#13) | 1 | owned | — | 🟡 | @__ | Never tested with `view=tv` (K-18); since wave 38 its sound goes from the Desktop's line out into the 828x's Analog In 1 and the router plays it on the house speakers (the TV's own volume down; `scripts/house-desktop/README.md` §3.5) |
+| The TV above the fireplace: **Trabolta's main display** (#13) | 1 | owned | — | 🟡 | @__ | Never tested with `view=tv` (K-18); since wave 38 its sound plays on the house speakers (since wave 46 through VoiceMeeter and the router's `audio.tap` into the 828x's input 3: the Desktop has no line out) (the TV's own volume down; `scripts/house-desktop/README.md` §3.5) |
 | Spare tablet | 1 | — | — | 🔴 | @__ | Hot swap |
 
 - [ ] **HW-SCR-01** 🔴 P0 · @__ · 🎃 B-5 — Provision each tablet with `/terminal/?code=…&name=…&spot=<id>&view=auto` (K-16 shows attract until Trabolta is revealed; `view=mirror` only if K-16 fails on a tablet); later with a scoped device QR (SW-QR-10).

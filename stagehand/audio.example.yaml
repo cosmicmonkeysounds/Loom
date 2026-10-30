@@ -42,6 +42,11 @@ audio:
   # `role` in audio.json). false opens an output-only stream: no microphone
   # permission needed, but nothing is metered and no input ducks anything.
   passthrough: true
+  # A software input (wave 46, audio/tap.py): a capture device summed into
+  # one interface input, as if cabled there (the house PC has no line out:
+  # Chrome plays into VoiceMeeter, whose B1 bus the router reads on MME).
+  # A tap that fails to open is logged and the router plays on without it.
+  # tap: { device: "VoiceMeeter Output", host_api: mme, ch: 3 }   # + channels: 2, gain_db: 0
 
   # device: "MOTU"     # override audio.json's device.name (a substring of the device name)
   # host_api: asio     # Windows: open the interface through ASIO (one N-channel device)
