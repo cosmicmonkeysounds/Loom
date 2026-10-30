@@ -177,6 +177,12 @@ export interface Prop {
   yaw?: number;
   color?: string;
   label?: string;
+  /** (wave 47) kind "box" / "cylinder" only: what it is drawn as
+   *  (`PROP_MODELS`: "wall", "cabinet", "rack", "crt", …). Drawing only — it
+   *  still collides as its plain shape; an unknown model draws plain. */
+  model?: string;
+  /** (wave 47) A model's neon colour, "#rrggbb" (default: the model's). */
+  neon?: string;
   /** Collides. Default: true for box / cylinder / king, false otherwise (`propSolid`) — so false for heart and pickup. */
   solid?: boolean;
   /** kind "king" only: his maximum hit points, an integer 1–99 (default 4) —

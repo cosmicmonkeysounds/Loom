@@ -18,6 +18,7 @@ export * from "./king.ts";
 export * from "./escape.ts";
 export * from "./presence.ts";
 export * from "./moment.ts";
+export * from "./models.ts";
 export * from "./audio.ts";
 export * from "./lights.ts";
 export * from "./lights-presence.ts";

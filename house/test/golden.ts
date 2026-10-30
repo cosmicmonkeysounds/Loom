@@ -76,6 +76,8 @@ import {
   validateHouse,
   buildWalls,
   doorGap,
+  PROP_MODELS,
+  partsOf,
 } from "../src/index.ts";
 import type { HouseMap, Prop, Room, Vec2, Vec3 } from "../src/index.ts";
 
@@ -383,5 +385,21 @@ export function goldenFiles(): Map<string, string> {
     );
   }
   files.set("constants.json", `${JSON.stringify(constantsGolden(), null, 2)}\n`);
+  files.set("models.json", jsonLines(modelsGolden()));
   return files;
+}
+
+/** (wave 47) `models.json`: every model's parts (`partsOf`) at its own
+ *  size, stretched and squashed, each part `{role, shape, axis, c, s}` with
+ *  the numbers rounded to 1 mm. */
+export function modelsGolden(): unknown[] {
+  const out: unknown[] = [];
+  for (const m of PROP_MODELS) {
+    const sizes: Vec3[] = [m.size, round3([m.size[0] * 1.7, m.size[1] * 1.3, m.size[2] * 0.6]), round3([m.size[0] * 0.5, m.size[1] * 0.6, m.size[2] * 1.4])];
+    for (const size of sizes) {
+      const parts = partsOf(m.id, size[0], size[1], size[2]).map((p) => ({ role: p.role, shape: p.shape, axis: p.axis, c: round3(p.c), s: round3(p.s) }));
+      out.push({ model: m.id, size, parts });
+    }
+  }
+  return out;
 }
