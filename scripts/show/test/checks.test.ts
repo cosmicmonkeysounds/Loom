@@ -2,7 +2,7 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
 
-import { agentChecks, agentsBeforeDoorsCheck, audioCheck, beforeDoors, mixerChecks, soundtrackChecks, healthCheck, joinBaseCheck, judgeCheck, lightsCheck, metricsCheck, peopleChecks, runCheck, screenChecks, stationsCheck, terminalChecks, terminalVerdict } from "../lib/checks.ts";
+import { agentChecks, agentsBeforeDoorsCheck, audioCheck, beforeDoors, mixerChecks, soundtrackChecks, dreamMediaCheck, healthCheck, joinBaseCheck, judgeCheck, lightsCheck, metricsCheck, peopleChecks, runCheck, screenChecks, stationsCheck, terminalChecks, terminalVerdict } from "../lib/checks.ts";
 
 const level = (name: string, rows: { name: string; level: string }[]) => rows.find((r) => r.name === name)?.level;
 
@@ -209,4 +209,11 @@ test("wave 40: the house mixer's levels off unity, only when the audio view carr
   assert.equal(at({ master: { db: -60, mute: false } }).level, "warn");
   const many = at(Object.fromEntries(Array.from({ length: 6 }, (_, i) => [`spk:s${i}`, { db: -1, mute: false }])));
   assert.match(many.detail, /^6 levels moved; .*; \+2 more$/u);
+});
+
+test("the dream's media: green when served, amber otherwise, and it names the fix", () => {
+  assert.equal(dreamMediaCheck(200).level, "ok");
+  assert.equal(dreamMediaCheck(404).level, "warn");
+  assert.match(dreamMediaCheck(404).detail, /dream-media\.sh upload/u);
+  assert.equal(dreamMediaCheck(null).level, "warn");
 });

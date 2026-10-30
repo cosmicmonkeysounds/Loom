@@ -136,6 +136,11 @@ presence rooms and `moment`), `spatial-cams.ts`, `spatial-voice.ts` and the
   times its size across the wall (`GAME_TERMINAL_SCALE`, VR
   `HouseBuilder.TERMINAL_SCALE`); the terminals' world view and the map
   editor keep 1×. The terminals send 320 × 240 frames to fill them.
+- **Clippy's dream** (wave 50, `docs/loom-w50-contract.md` C4). From the Y2K
+  bug the server feeds each terminal's moment of the video down the camera
+  routes, every terminal but the tent's, camera or none, with the real room
+  breaking through 3 s in every 24 s. Neither game has any code for it, so an
+  older APK shows it; it is 3 fps, like the feeds.
 - **Comfort in VR** (wave 33b). Smooth turning only, gentle near the
   stick's centre; a 1.4 m/s walk with no acceleration; the one stick's
   axis lock; the vignette; a light buzz on a wall. Keep new movement to

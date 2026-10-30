@@ -409,6 +409,14 @@ Radio call words: INTRO · BEANS · LATE · IN · DOOR OPEN / DOOR SHUT ·
 A / B / WRONG · ALARM · LIGHTS · HOLD · ARRIVAL · **ALL STOP**. Say the call
 word, where, who.
 
+**Clippy's dream** (wave 50). On *"…the Y2K BUG."*, about 30 s after 🕚, every
+terminal melts into the dream by itself, until an ending. Nothing to press. If a
+terminal stays on its old screen it couldn't reach the video (`pnpm showctl
+doctor`, *Clippy's dream*); the show goes on. 🌀 **Clippy's dream: on / off**
+(Anytime) puts every screen back: use it if the house wifi struggles, or
+before something on the TV must read clean (truth.txt, say). A blackout stays
+black, and a guest on a line, a board or a walk is never disturbed.
+
 ## 7. Emergencies and fixes
 
 **911** for fire, injury or someone unresponsive. The house manager calls
