@@ -28,8 +28,9 @@ Lanes (branches `oct31-w48/<lane>`, merged `--no-ff`):
 - A **word** is a run of letters (any script), digits and the look-alikes
   `@ $ *` (and an inner `'`), holding at least one letter. A word is
   **flagged** when a stem occurs anywhere inside it, case folded, after the
-  look-alikes `@→a $→s 0→o 1→i 3→e 4→a 5→s 7→t` and with `*` matching any
-  one character (a self-censored `f*ck` is caught). Embedded stems count:
+  look-alikes `@→a $→s 0→o 1→i/l 3→e 4→a 5→s 7→t` and with `*` matching
+  any one letter inside a stem, never its first or last (a self-censored
+  `f*ck` is caught, `**text**` is not). Embedded stems count:
   `password` (ass), `hello` (hell), `check` (heck), `button` (butt),
   `trumpet` (rump), `Saturday` (turd). That is the joke.
 - `filterHits(text) → FilterHit[]`, one per flagged word in order:
@@ -62,10 +63,12 @@ Lanes (branches `oct31-w48/<lane>`, merged `--no-ff`):
   <guest>, { message, words, list, fresh }, <censor character>)` where
   `fresh` is the words of `list` not censored before tonight (unique, in
   order; `""` for none), then masks the line in the chat store
-  (`ChatMessage.text` = `maskText(...)`, `censored: true`) and re-sends it:
-  a guest who can see it gets a `message` frame (the play app upserts by
-  seq, so no guest code changes), a booth or mod a `messageModerated`
-  frame. 200 `{ ok: true, seq, text }` (the masked text).
+  (`ChatMessage.text` = `maskText(...)`, `censored: true`) and re-sends it
+  to everyone who has it as a `messageModerated` frame carrying the whole
+  message (a guest's through `forGuest`, a booth's through `forBooth`).
+  Every client already upserts a whole message from that frame by seq,
+  silently (no balloon, no badge), so no guest or terminal code changes.
+  200 `{ ok: true, seq, text }` (the masked text).
 - **Replay.** `restore` rebuilds both from the journal: a
   `SWEAR_FLAGGED` signal re-indexes its line, a `SWEAR_CENSORED` one masks
   it again. Nothing is stored out of band; a story restart forgets both
