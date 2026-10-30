@@ -143,6 +143,7 @@ openers end with `:` and indent their body.
 | `CODEX Name` + `about:` / `code:` / `secret: true` / `category:` | lore a participant holds, unlocks, shares (filed under its category) |
 | `QUEST Name` + `title:` / `from:` / `text:` | a quest for the Quest Log |
 | `INTERACTION name` + `label:` / `who:` / `by:` / `while:` | a button in the app (or a cue on the sheet) |
+| `qr: <line>` (a `who: guest` INTERACTION) | prints a sign on Run → Print sheet whose QR presses that button; the line goes under its label |
 | `OBJECTIVE Name` + `for:` / `while:` / `act:` / `title:` / `text:` (`- to-do, done when <cond>`) / `buttons:` (+ `pass`, `scan`) / `loud: true` | what a phone shows as NOW, and the buttons it leads with ([objectives](objectives.md)) |
 | `go: The Desktop` / `target: Night.bottle_pick` / `pick: program.location == "The Desktop"` / `evergreen: true` (OBJECTIVE) | the Mission's one place to go / a booth's one guest / a booth's list of guests (PLAYER SELECT or rows) / the fallback never counted (lints `L1214`, `L1215`) |
 | `admin: true` (a performer's CHARACTER) | a host part: its booth gets the host console (cues, judging, announcements, the alert level) |

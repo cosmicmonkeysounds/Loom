@@ -301,7 +301,7 @@ factions and count toward majorities. Therefore:
 - **Wave 11: reserved.** Each featured CHARACTER carries `reserved: true` (not a part: it
   stays a guest's program). The picker and the directory search show it, and its `wiki:`
   article, 🔒 Reserved to anyone without its invitation's claim (`?code=<guest code>&claim=<token>`,
-  Run → Print sheet → Invitations; a token per program, stable across End → relaunch), and
+  Run → Print sheet's invited badges; a token per program, stable across End → relaunch), and
   register answers 409 `reserved`. A lost invitation: the director's 🔓 opens one program to
   anyone for two minutes (`POST /api/mod/claim/unlock`). The claim stays in the browser that
   joined, so a cut session rejoins with it.

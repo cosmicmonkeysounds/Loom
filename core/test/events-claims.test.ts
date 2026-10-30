@@ -100,6 +100,41 @@ describe("the claim secret is pinned to the project (Postgres)", () => {
     await eventCall(p.id, "end");
   });
 
+  it("wave 54: every printed code outlives End → relaunch with new performer + moderator codes", async (ctx) => {
+    if (!hasDb) return ctx.skip();
+    const p = await createProject(OWNER, "Badge show");
+    await upsertFile(p.id, "main.loom", "# Badges\n\nCHARACTER Microsoft Excel\n  reserved: true\n\nCHARACTER Clippy\n  when scanned by guest:\n    Clippy: Hello.\n\n== Start\nHello.\n");
+    const call = async (id: string, path: string, body: unknown, moderator = true) => {
+      const res = fakeRes();
+      await registry.get(id)!.handle(fakeReq(body), res, "POST", path, new URL(`http://x${path}`), moderator ? { moderator: true, moderatorName: "Ada" } : {});
+      return { status: res.statusCode, json: JSON.parse(res.body || "{}") as Record<string, unknown> };
+    };
+    const printed = async (id: string) => {
+      const codes = (await call(id, "/api/mod/codes", {})).json;
+      const blank = (await call(id, "/api/mod/badges", { from: 1, count: 3 })).json["badges"];
+      return { perf: codes["primePass"], guest: codes["eventPass"], staff: codes["castLinks"], invited: codes["claims"], blank };
+    };
+
+    const first = eventId(await eventCall(p.id, undefined, { mode: "preview" }));
+    const before = await printed(first);
+    expect((before.staff as unknown[]).length).toBe(1);
+    expect((before.invited as unknown[]).length).toBe(1);
+    expect((await eventCall(p.id, "end")).status).toBe(200);
+    const second = eventId(await eventCall(p.id, undefined, { mode: "preview", rotate: "staff" }));
+    const after = await printed(second);
+
+    expect(after.perf).not.toBe(before.perf);
+    expect(after.guest).toBe(before.guest);
+    expect(after.staff).toEqual(before.staff);
+    expect(after.invited).toEqual(before.invited);
+    expect(after.blank).toEqual(before.blank);
+    const part = (before.staff as Array<{ part: string }>)[0]!.part;
+    const signedIn = await call(second, "/api/prime/login", { passcode: before.guest, part }, false);
+    expect(signedIn.status).toBe(200);
+    expect(signedIn.json["character"]).toBe("Clippy");
+    await eventCall(p.id, "end");
+  });
+
   it("a row from before the column gets its runtime's minted secret written back (never over a pinned one)", async (ctx) => {
     if (!hasDb) return ctx.skip();
     const p = await createProject(OWNER, "Legacy row");

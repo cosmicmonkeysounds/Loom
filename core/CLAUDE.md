@@ -25,7 +25,7 @@ The show, *Trapped in the Internet* (Oct 31 2026), is the Loom project in
 | `server/event-runtime.ts` | one live event (`EventRuntime`, ~7,000 lines): every `/e/:id/api/*` handler, the journal commit + `fanout`, restarts, the ticker |
 | `server/registry.ts` | `EventRegistry`: one `EventRuntime` per event, rehydrated at boot |
 | `server/views.ts`, `chat.ts` | pure projections: `GuestView` / `PrimeView` / `ModView`, and SimEvent → channel messages. The editor imports both (`@loom/core/views`, `@loom/core/chat`) |
-| `server/routes/` | route modules split out of the runtime: `host.ts` (the host allowlist), `screen.ts` (the terminals' screen state + heartbeat), `claims.ts`, `crews.ts`, `sides.ts`, `cards.ts`, `recap.ts`, `mod-log.ts`, `metrics.ts`, `press-lines.ts`, and the OCT31 item files `k12.ts` (print sheet), `k13.ts` (check-in), `k31.ts` / `k31b.ts` (push), `n02.ts` (re-pair, release), `rejoin.ts` (wave 23: badges, invitations re-entering, ask a host, per-part cast cards) |
+| `server/routes/` | route modules split out of the runtime: `host.ts` (the host allowlist), `screen.ts` (the terminals' screen state + heartbeat), `claims.ts`, `crews.ts`, `sides.ts`, `cards.ts`, `recap.ts`, `mod-log.ts`, `metrics.ts`, `press-lines.ts`, and the OCT31 item files `k12.ts` (print sheet, wave 54's `actions` signs), `k13.ts` (check-in), `k31.ts` / `k31b.ts` (push), `n02.ts` (re-pair, release), `rejoin.ts` (wave 23: badges, invitations re-entering, ask a host, per-part staff badges; wave 54: invited badges) |
 | `server/` hubs | transport-free, clock-injected classes: `agents.ts` (`AgentHub`), `spatial.ts` (`SpatialHub`), `spatial-voice.ts`, `spatial-cams.ts`, `wallet.ts` (`WalletBook`), `facts.ts` (`FactsBook`), `push.ts` (`PushHub`), `audio.ts`, `lights.ts`, `lights-shown.ts` (wave 39: the lights estimate + the games' `lights` frame feed), `desk.ts` (`DeskHub`, wave 25: the house desk's runs, playhead, check marks; pure model `src/house-desk.ts`), `collab.ts` (`CollabHub`, Yjs), `live-file.ts` (`LiveFileSource`: a project file read live; `credits.ts`, `descent.ts`) |
 | `server/` control plane | `config.ts` (env), `boot.ts`, `db/` (`queries.ts`: access is `getProjectFor` / `listProjectsFor`), `auth-server.ts` (BetterAuth), `projects.ts`, `events-api.ts`, `collab-api.ts`, `mail.ts`, `migrate.ts` |
 | `server/store.ts` | the per-event state dir: journal, codes, sessions, meta (scenario source + phase), project snapshots |
@@ -429,6 +429,24 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   and each `/api/mod/broadcast` to everyone (`spokenAnnounce`: no alert mark, no
   emoji), `{stop: true}` on `/api/mod/audio/stop {announce: true}`. Memory only:
   a phone that missed one never hears it. Whether a phone speaks is the phone's.
+- **One QR per person** (wave 54, `routes/rejoin.ts` header,
+  `routes/claims.ts`, `routes/k12.ts`). A blank badge is `?code=<guest>&badge=`.
+  An invited badge is `?code=<guest>&claim=&badge=` (`Claims.links`, numbers
+  past `BADGE_MAX`, `invitedBadge`, so a blank never shares one; `ref` `F01`).
+  `/api/guest/enter {badge, claim}` resumes an unlinked invited badge whose
+  program joined by a bare claim, and links it; `/api/identities` answers
+  `invited` for a claim. A staff badge is `?code=<guest>&part=`: never the
+  performer code, so `rotate: "staff"` leaves every printed badge good.
+  `/api/prime/login` takes the guest code only beside a valid `part`, and still
+  takes the performer code. Codes derive from the claim secret and the folded
+  name: renaming a part or a reserved program retires its badge. `qr: <line>` on
+  a `who: guest` INTERACTION (`InteractionDef.qr`) prints a sign,
+  `?code=<guest>&act=<name>` (`actionSigns`, `/api/mod/codes` `actions`, a
+  `/cards` section); play posts `/api/guest/act`. Clearance is `TRAIT
+  Doorkeeper` (cast/kit.loom): an Antivirus or a host, never Clippy; a hook's
+  `->` does not end the hook, so a guard must be one `if` chain, and `super`
+  only splices at hook level. Tests: `test/server-rejoin.test.ts`,
+  `test/trapped-w54-door.test.ts`.
 - **Hub files have one owner at a time.** `event-runtime.ts`,
   `views.ts`, `chat.ts` and `sim.ts` are touched by almost every
   feature; when several agents work in parallel, give each of these to

@@ -318,9 +318,9 @@ to `reset_server_room`.
    contract). His gate is `when: self.awake == true`, so until Clippy
    introduces him every message gets the hold line *"Jean Trabolta will make
    an appearance later tonight. Please do not move the mouse."*
-6. **Print** from Run → Join → **🖨 Print sheet…** (K-12: the join poster,
-   every codex QR and the room check-in signs, QRs drawn in the browser,
-   1, 2 or 4 per page), plus the Bingo cards (appendix). Sort the codex
+6. **Print** from Run → Join → **🖨 Print sheet…** (wave 54: 3 × 2 in badges
+   and location cards, ten to a sheet, and fact cards four to a row, QRs drawn
+   in the browser, at 100%), plus the Bingo cards (appendix). Sort the codex
    posters by their colour band into the stacks of
    `generated/print-stacks.md` (gold: the hunt answers, hidden where each
    row says; then the four rarity tiers, wave 35: green common, blue rare,
@@ -1023,11 +1023,10 @@ featured tag is set by an exact-name compare on the picker's spelling. A
 director can fix `<guest>.featured` in Run → World. **Reserved** (wave 11):
 each of the nine is `reserved: true`, so the picker and the directory
 search show it (and its Wikipedia name) 🔒 Reserved to anyone without its
-invitation. Print the invitations from Run → Join → 🖨 Print sheet →
-**Invitations** (one claim QR each, `?code=<guest code>&claim=<token>`,
-kept across End → relaunch) and send each with its invitation. A lost one:
-tap 🔓 *lost? open 2 min* twice on that program's invitation card, and the
-invitee picks it within two minutes (a 🔒 tile re-asks every 12 s). The
+invitation. Print the invited badges from Run → Join → 🖨 Print sheet (one QR
+each, `?code=<guest code>&claim=<token>&badge=<code>`, kept across End →
+relaunch) and hand each to its guest. A lost one: tap 🔓 *lost? open 2 min*
+twice on that program's badge, and the invitee picks it within two minutes (a 🔒 tile re-asks every 12 s). The
 claim stays in the browser that joined, so a session cut by a restart
 rejoins with it. (Wave 11's door-only Antivirus part, Windows Defender, was
 deleted in wave 18, Q26: a finished upload fires `waiting_at_the_door`, every

@@ -63,21 +63,28 @@ turned the headers of `alerts.ts`, `cutscene.tsx`, `chrome/keyboard.ts` and
   (`resume.ts`).
 - **Getting back in** (wave 23, `rejoin.ts` + the lazy `rejoin-calls.ts`,
   server `core/server/routes/rejoin.ts`). A printed badge
-  (`?code=&badge=`) links to a guest at join or from Me (🪪) and then
-  signs them in on any phone (`/api/guest/enter`) and is their pass at a
-  booth (`scan.ts`); a signed-in guest opening someone else's badge gets
+  (`?code=&badge=`, an invited one with `&claim=` too) links to a guest at
+  join or from Me (🪪) and then signs them in on any phone
+  (`/api/guest/enter`) and is their pass at a booth (`scan.ts`). Wave 54: the
+  join screen hides the event code once a badge or claim resolves, an invited
+  badge lands on *You are …* with one button (`Identities.invited`, no picture
+  pick), and `ui.tsx` keeps a badge beside a possibly stale session, so it
+  still links at the join; a signed-in guest opening someone else's badge gets
   the Recruit sheet, never a switch. A featured guest's `?claim=`
   re-enters once joined. The join screen's *Already playing? Get back in*
   (`guest/get-back-in.tsx`, lazy) scans / types a badge or asks a host
   (`/api/guest/rejoin` → Needs and the director phone's *Let them in*). A
-  cast card (`?code=&part=`) signs in as its part and takes it from a lost
-  booth. `main.tsx` strips `badge` / `part` before render; `ui.tsx` runs
+  staff badge (`?code=&part=`, the guest code since wave 54) signs in as its
+  part and takes it from a lost booth; on a guest's phone it asks first, with
+  Stay as the primary button. `main.tsx` strips `badge` / `part` before render; `ui.tsx` runs
   the entry (`cardPlan`). The page's store falls back to memory when
   `localStorage` is blocked (`host.ts`).
 - **Streams reopen.** `client.ts` `openChatFeed` probes a dead
   `EventSource` (a Caddy 502 during a restart) and reopens on a 1 s → 15 s
   jittered backoff; the tray's live dot reads *reconnecting…*.
-- **Deep links.** `?unlock=` (codex), `?checkin=` (room sign), `?room=` /
+- **Deep links.** `?unlock=` (codex), `?checkin=` (room sign), `?act=` (a
+  sign that presses a guest's button, `act-link.ts`, wave 54: 📷 Scan or the
+  session's `pendingAct`, then `/api/guest/act`), `?room=` /
   `?go=` (a push tap or an exit), `?claim=`, `?pair=`, `?badge=`,
   `?part=`, `?role=director`.
   A link opened with no session lands on `LinkLanding`

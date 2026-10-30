@@ -308,6 +308,18 @@ host's 📣 (the `announce` stream frame, `play/src/phone-voice.ts`). Not proven
 a real phone: run `SIGNOFF-w53.md` §3 first. Help:
 `docs/help/play/07-performers.md`, `16-notifications.md`.
 
+**One QR per person** (wave 54, on branch `oct31-w54/badges`, not shipped; show
+text `DRAFT w54` on `SIGNOFF-w54.md`): a badge is handed out, scanned with the
+phone's camera, and the phone lands with everything filled in: a staff badge per
+part signs straight in to the upload, an invited badge per featured program lands
+on *You are …* with one button, and a numbered blank opens the picker with no
+code to type. After the upload a host's or an Antivirus's scan of the badge
+confirms them (staff keep the staff door; Clippy only greets). A 🚻 sign presses
+Bathroom Mode. Run → 🖨 Print sheet prints 3 × 2 in badges and location cards,
+ten to a sheet, and fact cards four to a row. It needs a release, then
+`sync-show`. Terminals still read the phone's pass, not a printed badge. Help:
+`docs/help/authoring/43-run-mode.md`, `docs/help/play/18-getting-back-in.md`.
+
 ### Release status
 
 The VPS runs **`w53b`** (master `136e656c`, shipped 2026-10-30; rollback `w53`):
