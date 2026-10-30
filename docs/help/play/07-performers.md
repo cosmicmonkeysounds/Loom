@@ -311,7 +311,9 @@ them there yourself ([How the house works](house-workings.md)). **Not now** keep
 where you opened it; **🩹 Not them…** (two
 taps) lifts the mark. From a card's **📡 Scan again** (not in person) 🛡
 takes two taps. A program someone else already caught says so (*Caught by
-…*).
+…*). Once the story opens it up (at the show: after the Bingo round), an
+Antivirus' **🛡 Send to the Internet** is on **every** program's card,
+marked or not, under *Marks or captures …: tap twice*.
 
 ## At the door
 

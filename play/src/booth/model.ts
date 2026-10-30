@@ -97,6 +97,14 @@ export function cardButtons(
   // the booth's own live buttons — never on a player's.
   if (admin) for (const id of card?.guestScoped ?? []) add(id);
   if (objs.length === 0 && opts.player !== true) for (const i of split.mine) add(i.id);
+  // Wave 47: this booth's own capture (🛡 Send to the Internet), live for
+  // this guest, is always on the face, past the three: once the story says
+  // anyone can go (after the Bingo round), every scan must offer it, though
+  // no objective of the moment names it. The story's `while:` says when.
+  // Its own: its `by:` names this character (the card's `live` is per guest;
+  // the view's own flag can't judge a `while:` about the program).
+  const me = foldName(character);
+  for (const i of interactions) if (i.who !== "admin" && i.actors?.some((a) => foldName(a) === me) === true && CAPTURE.test(i.label) && live.has(i.id) && !faceIds.includes(i.id)) faceIds.push(i.id);
   const face = faceIds.map((id) => ({ interaction: byId.get(id)!, live: true, ...(named.has(id) ? { named: true } : {}) }));
   // The rest: what this booth may press, minus the face; live ones first.
   // No card shows them since wave 21 (no "All buttons…"): `heldFace` reads
@@ -113,6 +121,8 @@ export function cardButtons(
 /** A press whose label says it marks, captures or sends the guest away
  *  ("🛡 Send to the Internet", "🙅 Truth refused: marked for reinstallation",
  *  "👁 Put on the watchlist"). Never one that takes a mark back. */
+/** Wave 47: a press that sends the guest to the Internet (a capture). */
+const CAPTURE = /(\bsend(?:s)?\b[^:]*\bto the internet|\bcaptur)/iu;
 const HARM = /(marked for reinstall|\bsend(?:s)?\b[^:]*\bto the internet|\bcaptur|\bquarantin|\bbanish|\bwatchlist|\bsweep them)/iu;
 const UNDO = /(\bunmark|\bnot going|\brelease|\bpardon|\bvouch)/iu;
 
