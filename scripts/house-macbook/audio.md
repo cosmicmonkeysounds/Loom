@@ -149,7 +149,7 @@ Where everything is:
    placeholder or a library stand-in, whatever its format, and neither
    generator ever touches one.
 5. `uv run stagehand check --config trapped.macbook.yaml --only audio` — it
-   shows the device's 32 / 30 against audio.json's 10 / 12 (`output-only`)
+   shows the device's 32 / 30 against audio.json's 10 / 14 (`output-only`)
    and fails if the layout moved; its warnings list every placeholder
    still there (the pre-show gate: none on the night), every empty music
    folder, and the audio.json roles an output-only stream can't meter
