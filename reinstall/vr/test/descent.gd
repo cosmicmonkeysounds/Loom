@@ -523,15 +523,28 @@ func _test_runner() -> void:
 	_check(not game.descent_held(house, far_off), "runner: … past 3 m it doesn't")
 	_check(not game.descent_held(house, [float(prop["pos"][0]), 0.0, float(prop["pos"][2]) - 1.0]), "runner: … nor a floor away")
 	seen.clear()
-	var late_house := house
 	# Held through the first beat: not run; held past DESCENT_LATE_S: dropped.
-	d.tick(late_house, far_off, true)
+	d.tick(house, far_off, true)
 	d.walk_t = 8.5
-	d.tick(late_house, far_off, true)
-	_check(seen.is_empty(), "runner: a held beat waits")
+	d.tick(house, far_off, true)
+	_check(seen.is_empty() and d.get("_next") == 0, "runner: a held beat waits")
 	d.walk_t = 8.0 + HouseDescent.DESCENT_LATE_S + 2.0
-	d.tick(late_house, far_off, false)
-	_check(seen.is_empty() or seen[0] != d.plan[0]["vision"] or int(d.plan[1]["at"]) < 29, "runner: a beat held too long is dropped (%s)" % [seen])
+	var due := HouseDescent.due_beat(d.plan, 0, d.walk_t)
+	d.tick(house, far_off, false)
+	_check(due != 0 and d.get("_next") == (due + 1 if due > 0 else 0) and (due < 0 or seen.size() == 1), "runner: a beat held too long is dropped (next %s, ran %s)" % [d.get("_next"), seen])
+	d._end_vision(false)
+	# One at a time: two beats due together run one after the other.
+	d.plan = [{"at": 0.0, "vision": "flicker", "n": 1}, {"at": 0.1, "vision": "whisper", "n": 1}]
+	d.set("_next", 0)
+	d.walk_t = 1.0
+	seen.clear()
+	var hall2 := _room_spot(house, "hall")
+	_at(game, hall2)
+	game._process(DT)
+	game._process(DT)
+	_check(seen == ["flicker"], "runner: one vision at a time (%s)" % [seen])
+	_frames(game, int(2.8 * 72))
+	_check(seen == ["flicker", "whisper"], "runner: the next when it is over (%s)" % [seen])
 	link.session_over.emit("test")
 	# A suspended walk holds, and an unreachable vision is skipped, not delayed.
 	link.assignment_received.emit(_assignment(house, "r-3", {"descent": 4.0}))
@@ -922,6 +935,14 @@ func _test_talk() -> void:
 	game.pointer.inject(game.player.camera.global_position, Vector3.UP, false)
 	game._process(DT)
 	_check(game.talk.hovered() == -1 and not d.trigger_taken(), "talk: off the rows the trigger is free")
+	# A trigger already held when it came up picks nothing: re-open with one held.
+	var again: Array = (d._node()["options"] as Array).map(func(o: Dictionary) -> String: return str(o["text"]))
+	game.talk.close()
+	game.talk.open(again, xf)
+	_aim_row(game, 0, true)
+	game._process(DT)
+	game._process(DT)
+	_check(d.talk_node() == "start" and link.get("told_posts") == [], "talk: a pull held from before the panel picks nothing")
 	# The trigger picks; marks go to the server.
 	_aim_row(game, 2, false)
 	game._process(DT)
@@ -950,6 +971,7 @@ func _test_talk() -> void:
 	_at(game, _room_spot(house, "hall"), 0.0)
 	_frames(game, 1)
 	_check(not d.talking() and not game.talk.is_open(), "talk: walking away ends the talk")
+	game.speech.tick(0.0)
 	_check(game.speech.busy() and not game.speech.busy_on(w["anchor"]), "talk: … its lines go; anyone else's stay")
 	game.speech.stop()
 	link.session_over.emit("test")
@@ -970,6 +992,23 @@ func _test_talk_marks() -> void:
 	_at(game, _beside(house, w["prop"]), 0.0)
 	game._process(DT)
 	_check(d.talk_node() == "again", "marks: told on an earlier walk, it opens elsewhere (%s)" % d.talk_node())
+	link.session_over.emit("test")
+	# An open talk holds the beats.
+	link.assignment_received.emit(_assignment(house, "m-1b", {"descent": 4.0}))
+	d = game.descent
+	w = _only_talker(game, house, "stove")
+	game.speech.stop()
+	_at(game, _beside(house, w["prop"]), 0.0)
+	game._process(DT)
+	_check(d.talking(), "holds: a talk is open")
+	d.plan = [{"at": 0.0, "vision": "flicker", "n": 1}]
+	d.walk_t = 0.1
+	d.set("_next", 0)
+	game._process(DT)
+	_check(d.vision == "", "holds: an open talk holds a beat")
+	d.end_talk()
+	game._process(DT)
+	_check(d.vision == "flicker", "holds: … until it ends")
 	link.session_over.emit("test")
 	# A `do` on an option sets off its vision, without waiting for the talk.
 	link.assignment_received.emit(_assignment(house, "m-2", {"descent": 4.0}))
@@ -1076,6 +1115,12 @@ func _test_talk_and_king() -> void:
 	game.player.teleport(HouseFrames.vec([-0.45, 0.0, -5.2]), 0.0)
 	game._process(DT)
 	_check(game.escaping() and not d.talking() and link.get("moments") == [["escape", ""]], "void: a talk never blocks it (%s)" % [link.get("moments")])
+	# An escape holds the beats; the clock runs on.
+	var t0 := d.walk_t
+	d.plan = [{"at": t0 + 0.05, "vision": "flicker", "n": 1}]
+	d.set("_next", 0)
+	_frames(game, 20)
+	_check(game.escaping() and d.vision == "" and d.walk_t > t0, "void: no vision starts during an escape")
 	link.session_over.emit("test")
 	await _end(main)
 
@@ -1143,6 +1188,12 @@ func _test_hallway() -> void:
 	game._process(DT)
 	_check(link.poses.size() == 2 and _same(link.poses[0]["p"], feet) and _same(link.poses[1]["p"], feet), "hallway: the pose pump keeps sending the door (%s)" % [link.poses.back()])
 	_check(moments.is_empty() and link.found_calls == claims and link.get("king_hits") == hits and not game.escaping(), "hallway: no void, heart, pickup, find or King in here")
+	var t0 := d.walk_t
+	d.plan = [{"at": t0, "vision": "flicker", "n": 1}]
+	d.set("_next", 0)
+	game._process(DT)
+	game._process(DT)
+	_check(d.vision == "" and d.walk_t > t0, "hallway: no vision in here; the walk's clock runs on")
 	_check(game.trail.count() == 0, "hallway: no trail")
 	_check(game.falls == 0, "hallway: the fall net never fires")
 	# The door backs away with them, 0.92 of their pace, then stays.

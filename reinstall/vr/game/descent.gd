@@ -335,16 +335,13 @@ func step(delta: float) -> void:
 func _shade() -> void:
 	var b := game.builder
 	var l := game.lamps
-	var env := game.world_env
 	var look: Dictionary = HouseDescent.descent_look(level)
 	var dip := _dip if vision == "flicker" else 1.0
 	if _pocket:
 		l.ambient_scale = POCKET_LIGHT
 		l.pool_scale = POCKET_LIGHT
 		l.tint_by = 0.0
-		if env != null:
-			env.fog_density = POCKET_FOG
-			env.fog_light_color = Color.BLACK
+		_set_fog(POCKET_FOG, Color.BLACK)
 		return
 	l.ambient_scale = float(look["ambient"]) * dip
 	l.pool_scale = dip
@@ -357,10 +354,18 @@ func _shade() -> void:
 	l.tint_by = by
 	b.neon_scale = dip * lerpf(1.0, DARK_NEON, _dark)
 	b.set_haze_scale(1.0 - _dark)
-	if env != null:
-		env.fog_density = lerpf(HouseLook.FOG_DENSITY * float(look["fog"]), DARK_FOG, _dark)
-		env.fog_light_color = HouseLook.HAZE.lerp(Color.BLACK, _dark)
-		env.background_color = HouseLook.HAZE.lerp(Color.BLACK, _dark)
+	_set_fog(lerpf(HouseLook.FOG_DENSITY * float(look["fog"]), DARK_FOG, _dark), HouseLook.HAZE.lerp(Color.BLACK, _dark))
+
+
+## The fog and the background, only when they change (each set reaches the
+## rendering server).
+func _set_fog(density: float, color: Color) -> void:
+	var env := game.world_env
+	if env == null or (is_equal_approx(env.fog_density, density) and env.fog_light_color.is_equal_approx(color)):
+		return
+	env.fog_density = density
+	env.fog_light_color = color
+	env.background_color = color
 
 
 func _next_n() -> int:
@@ -616,10 +621,9 @@ func say_hallway(part: String) -> void:
 	if not words is Dictionary:
 		return
 	var list: Array = (words as Dictionary)["hallway"][part]
-	if part == "far":
+	if part == "far" and not list.is_empty():
 		list = [HouseDescent.pick_line(list, HouseDuck.fnv1a32(seed_id) % 1024)]
-	var lines: Array = list.map(func(l: String) -> Dictionary: return {"from": "", "text": HouseDescent.fill_line(l, who)})
-	game.speech.say(lines, null)
+	game.speech.say(list.map(func(l: String) -> Dictionary: return {"from": "", "text": HouseDescent.fill_line(l, who)}), null)
 
 
 ## What Gerald says at the find, at this level (`[]`: nothing).
