@@ -114,7 +114,7 @@ const store = {
 let done = {};
 try { done = JSON.parse(store.get(DONE) || "{}") || {}; } catch { done = {}; }
 const saveDone = () => store.set(DONE, JSON.stringify(done));
-const TABS = [["rooms", "Rooms", ["rooms"]], ["facts", "Facts", ["facts"]], ["other", "Other", ["join", "invitations"]]];
+const TABS = [["rooms", "Rooms", ["rooms"]], ["facts", "Facts", ["facts"]], ["other", "Other", ["join", "signs", "invitations"]]];
 let auth = null; // {eventId, token, passcode}
 let data = null;
 let tab = "rooms";

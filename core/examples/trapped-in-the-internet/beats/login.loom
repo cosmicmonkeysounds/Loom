@@ -4,7 +4,7 @@
 // their identity as a computer program. It plays to each program on
 // their own phone the moment they register (ROLE Program: `when someone
 // joins` moves them into the Optical Drive, a `cutscene: true` location — the
-// app shows nothing but this stream until an Antivirus scans them in) —
+// app shows nothing but this stream until an Antivirus or a host scans them in) —
 // and to nobody else: the story's `start:` beat is `Power On`.
 //
 // Wave 53: everyone uploads. Clippy, the Antivirus and the hosts run these
@@ -152,7 +152,8 @@ show email "Your human inbox, for Jean Trabolta's letter. Optional." to program 
 // A deposited program gets the pass with its typed record (main.loom); the
 // stage's My pass button has it meanwhile, so nothing waits on the card.
 if program.left_behind != "deposited" and program.staff != true:
-  show pass "Hold this up. An Antivirus will scan you in. Until then you are nowhere." to program
+  // DRAFT w54
+  show pass "Hold this up, or your badge. A host or an Antivirus will scan you in. Until then you are nowhere." to program
 
 // Wave 53: the end of a staff upload, off the inbox card (the last one the
 // stage docks; TRAIT Staff). Nobody scans the scanners: the door is theirs.
@@ -167,9 +168,9 @@ set Kernel.staff_uploaded += 1
 move program to The Desktop
 
 // The door. A program waits in the Optical Drive — still on rails — until an
-// Antivirus scans their pass (`TRAIT Enforcer` in cast/kit.loom:
-// `beat Clearance`). Only then are they moved to the Desktop and handed
-// to Clippy. A host scanning them at the door just greets them.
+// Antivirus or a host scans their badge or their pass (`TRAIT Doorkeeper` in
+// cast/kit.loom: `beat Clearance`). Only then are they moved to the Desktop
+// and handed to Clippy. Clippy scanning them at the door just greets them.
 
 // The first thing on the Desktop: Clippy, and a tour of the computer
 // (the phone). `show tutorial` puts the app's own guided orientation on

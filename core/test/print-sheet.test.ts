@@ -60,6 +60,7 @@ describe("K-12 print extras", () => {
     expect(cast).not.toContain("Installation Wizard"); // playable: false
     expect(cast).not.toContain("Kernel");
     expect(printExtras(null, "https://x", "E").cast).toEqual([]);
+    expect(printExtras(null, "https://x", "E").actions).toEqual([]);
   });
 
   it("places each codex entry on its fact stack: hunt answers gold, facts by tier, hand-written ones already placed", () => {

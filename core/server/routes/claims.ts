@@ -14,6 +14,10 @@
 //! (`claim-secret.json` — the LAN default event, and a row from before the
 //! column, whose minted secret is written back to it).
 //!
+//! Wave 54: an invitation is printed as its program's **badge**: the link
+//! also carries a badge code, so it links at join and is the guest's pass at
+//! the door (`routes/rejoin.ts`). `links` is the one place those are built.
+//!
 //! A lost invitation: `POST /api/mod/claim/unlock {character, minutes?}`
 //! opens one reserved program to anyone for N minutes (default 2, at most
 //! 60; 0 shuts it again). The window runs on the wall clock and lives in
@@ -27,6 +31,7 @@ import type { SimModel } from "../../src/runtime/sim/model.ts";
 import { foldName } from "../../src/parser/names.ts";
 import { claimMatches, claimToken, identityDefs, guestPickable } from "../identity.ts";
 import { sendJson, str } from "../http-util.ts";
+import { badgeCode, invitedBadge, invitedRef, INVITED_BADGES, printedCode } from "./rejoin.ts";
 
 export const CLAIM_UNLOCK_ROUTE = "/api/mod/claim/unlock";
 /** A director's open window when the call names no `minutes`. */
@@ -43,8 +48,13 @@ export function mintClaimSecret(): string {
 export interface ClaimLink {
   character: string;
   claim: string;
-  /** `${joinBase}/?code=<guest code>&claim=<token>` — the invitation's QR. */
+  /** `${joinBase}/?code=<guest code>&claim=<token>&badge=<code>`: the
+   *  invited badge's QR. */
   url: string;
+  /** The badge's corner ref (`F01`). */
+  ref: string;
+  /** The printed badge code (`ABCD-EFGH`). */
+  code: string;
 }
 
 /** What the claims need from their `EventRuntime`. */
@@ -87,14 +97,24 @@ export class Claims {
     return out;
   }
 
-  /** Every reserved program a guest could be, with its invitation link. */
+  /** The reserved program `claim` opens, or null. */
+  characterOf(model: SimModel | null, claim: string | null): string | null {
+    if (model === null || claim === null) return null;
+    return identityDefs(model).find((d) => d.reserved && claimMatches(this.host.secret, d.name, claim))?.name ?? null;
+  }
+
+  /** Every reserved program a guest could be, with its invited badge, in
+   *  declaration order: a program added later takes the next number and
+   *  leaves every printed one alone. */
   links(model: SimModel | null, base: string, guestCode: string): ClaimLink[] {
     if (model === null) return [];
     return identityDefs(model)
       .filter((d) => d.reserved && guestPickable(d))
-      .map((d) => {
+      .slice(0, INVITED_BADGES)
+      .map((d, i) => {
         const claim = this.tokenFor(d.name);
-        return { character: d.name, claim, url: `${base}/?code=${encodeURIComponent(guestCode)}&claim=${encodeURIComponent(claim)}` };
+        const code = badgeCode(this.host.secret, invitedBadge(i));
+        return { character: d.name, claim, ref: invitedRef(i), code: printedCode(code), url: `${base}/?code=${encodeURIComponent(guestCode)}&claim=${encodeURIComponent(claim)}&badge=${encodeURIComponent(code)}` };
       });
   }
 

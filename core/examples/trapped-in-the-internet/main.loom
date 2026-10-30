@@ -2648,7 +2648,8 @@ ROLE Program
     else if question == null and program.left_behind == "deposited" and program.left_behind_text == "none":
       set program.left_behind_text = text
       Task Manager: Logged. It is not your concern. Fine.
-      show pass "Hold this up. An Antivirus will scan you in. Until then you are nowhere." to program
+      // DRAFT w54
+      show pass "Hold this up, or your badge. A host or an Antivirus will scan you in. Until then you are nowhere." to program
 
   // Wave 41 (C1, C2): the optional inbox for Trabolta's letter. The server
   // keeps the address; the story hears only `given` or `skipped`. DRAFT w41.
@@ -4259,6 +4260,8 @@ INTERACTION go to the bathroom
   restricted: allow
   // w26 (G1: no exemption stated up front)
   description: Leave honestly. Tells the Antivirus you are not hacking the Internet.
+  // Wave 54: the sign on the bathroom doors (Run → Print sheet). DRAFT w54
+  qr: Scan on your way in. Tap Back from the bathroom in Start when you return.
 
 INTERACTION back from the bathroom
   label: Back from the bathroom
