@@ -342,7 +342,8 @@ module docstrings that explain the why).
   inside the call (the Desktop never installs it, and `test_windows_import`
   must keep passing). A refusal is `LlmRefused`: `EngineCall.complete` moves
   the line and does not `mark_down`. `config.parse_agents` keeps the
-  orchestrator on Ollama off a hosted voice. Tests:
+  orchestrator on Ollama off a hosted voice, and `letter_model` gives a
+  letter `LETTER_TIMEOUT_S` over a voice line's short timeout. Tests:
   `tests/test_llm_anthropic.py`.
 - **The DM guards** (wave 42c, `docs/agents.md` "The guards" 0, 2, 3, 3b,
   4). A private line (never a stage line: `voice.dm_check` is None there)
@@ -439,6 +440,9 @@ module docstrings that explain the why).
   persona, a phase card or a fallback.
 - **An absent `mind_mode` is classic.** The show runs `mind_mode: new`;
   an older YAML silently keeps the two-model mind.
+- **`launchd install` over a running job** waits for it to stop
+  (`BOOTSTRAP_TRIES`): `bootout` returns first, and a bootstrap before the old
+  copy has gone fails with error 5, leaving nothing running.
 - **`check` exit codes matter to scripts**: `preflight.ps1`,
   `start-stagehand.ps1` and `scripts/accept/*.sh` read them.
 - **The house mix is not the install trim** (wave 40). audio.json's

@@ -20,6 +20,7 @@ import pytest
 from stagehand.agents import llm
 from stagehand.agents.config import OverflowEngine, parse_agents
 from stagehand.agents.engines import Engines
+from stagehand.agents.letter import LETTER_TIMEOUT_S, letter_model
 from stagehand.agents.llm import (
     ANTHROPIC_ENDPOINT,
     WAITING_TURN,
@@ -282,6 +283,13 @@ def test_check_warns_when_there_is_no_key(tmp_path, monkeypatch):
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     monkeypatch.setattr(llm, "ANTHROPIC_KEY_FILE", tmp_path / "none")
     assert any("has no key" in w for w in agents(tmp_path).warnings())
+
+
+def test_a_letter_gets_longer_than_a_hosted_voice_line():
+    from dataclasses import replace
+
+    assert letter_model(HAIKU).timeout_s == LETTER_TIMEOUT_S > HAIKU.timeout_s
+    assert letter_model(replace(HAIKU, timeout_s=90.0)).timeout_s == 90.0
 
 
 def test_only_the_agents_job_asks_for_the_sdk():

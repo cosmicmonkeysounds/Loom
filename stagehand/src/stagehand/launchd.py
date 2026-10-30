@@ -29,6 +29,7 @@ import os
 import plistlib
 import shutil
 import subprocess
+import time
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -39,6 +40,11 @@ LABEL_PREFIX = "com.mapsandducks.stagehand"
 JOBS = ("show", "agents", "audio", "lights")
 #: Seconds launchd waits before relaunching a job that exited.
 THROTTLE_S = 10
+#: `bootout` returns before a running job has stopped, and a bootstrap
+#: before then fails with error 5, leaving nothing running (2026-10-30: it
+#: took Trabolta's worker down). `install` keeps trying for this long.
+BOOTSTRAP_TRIES = 30
+BOOTSTRAP_WAIT_S = 1.0
 
 
 def label_for(job: str) -> str:
@@ -105,6 +111,7 @@ class Launchd:
     uid: int = field(default_factory=lambda: os.getuid())
     run: Runner = _run
     uv: str | None = None
+    sleep: Callable[[float], None] = time.sleep
 
     @property
     def domain(self) -> str:
@@ -133,9 +140,13 @@ class Launchd:
         path.write_bytes(plistlib.dumps(plist))
         # Replace a running copy (bootout of a job that isn't loaded just fails).
         self.run(["launchctl", "bootout", f"{self.domain}/{label_for(job)}"])
-        res = self.run(["launchctl", "bootstrap", self.domain, str(path)])
-        if res.returncode != 0:
-            raise ConfigError(f"launchctl bootstrap failed: {res.stderr.strip() or res.returncode}")
+        for tries_left in range(BOOTSTRAP_TRIES - 1, -1, -1):
+            res = self.run(["launchctl", "bootstrap", self.domain, str(path)])
+            if res.returncode == 0:
+                break
+            if not tries_left:
+                raise ConfigError(f"launchctl bootstrap failed: {res.stderr.strip() or res.returncode}")
+            self.sleep(BOOTSTRAP_WAIT_S)
         return [f"installed {label_for(job)} → {path}", f"log: {plist['StandardOutPath']}"]
 
     def uninstall(self, job: str) -> list[str]:
