@@ -11,7 +11,7 @@ the show's device setup is [`../docs/trapped/kiosk.md`](../docs/trapped/kiosk.md
 ```bash
 pnpm --filter loom-terminal dev        # Vite :5175, proxies /api + /e to LOOM_SERVER (default http://localhost:7000)
 pnpm --filter loom-terminal build      # dist/ (base /terminal/)
-pnpm --filter loom-terminal test       # vitest run: 1224 tests, 95 files (test/**/*.test.ts)
+pnpm --filter loom-terminal test       # vitest run: 1225 tests, 95 files (test/**/*.test.ts)
 pnpm --filter loom-terminal typecheck  # tsc --noEmit
 pnpm --filter loom-terminal exec vitest run test/door-bridge.test.ts   # one file
 ```

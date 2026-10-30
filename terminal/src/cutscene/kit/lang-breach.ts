@@ -304,10 +304,12 @@ function packRows(lines: readonly BreachLine[], aspect: number, hole: Rect, char
       }
       if (i === start) continue;
       placedAny = true;
-      // Centre what fits in the span, with a seeded nudge of the leftover.
+      // Centre what fits in the span, with a seeded nudge of the leftover, the
+      // row's first (most censored) in the middle and the rest alternating out
+      // to either side: a mound, its biggest words clear of the corners.
       const slack = Math.max(0, room - used);
       let x = x0! + slack * (0.5 + (noise1(SEED + 3, row * 2 + (x0 === m ? 0 : 1)) - 0.5) * 0.6);
-      for (let k = start; k < i; k++) {
+      for (const k of centreOut(start, i)) {
         const l = lines[k]!;
         const wk = width(l);
         const hk = height(l);
@@ -326,6 +328,14 @@ function packRows(lines: readonly BreachLine[], aspect: number, hole: Rect, char
     row++;
   }
   return slots;
+}
+
+/** `start..end-1` in the order a row lays them out left to right: the first in the middle, the rest alternating out. */
+export function centreOut(start: number, end: number): number[] {
+  const left: number[] = [];
+  const right: number[] = [];
+  for (let k = start; k < end; k++) ((k - start) % 2 === 0 ? left : right).push(k);
+  return [...left.reverse(), ...right];
 }
 
 /** (wave 48b) Where a line leaves the window for its slot: the window's edge, towards the slot. */

@@ -18,6 +18,7 @@ import {
   breachSize,
   breachSpan,
   breachTimes,
+  centreOut,
   cutAt,
   eyeLook,
   eyeOpen,
@@ -224,6 +225,18 @@ describe("the heap", () => {
     const first = max.slots[lines.findIndex((l) => l.kind === "word")]!;
     const last = max.slots[lines.length - 2]!;
     expect(first.fs).toBeGreaterThan(last.fs * 2);
+  });
+
+  it("a row lays its words out from the middle: the most censored centre bottom, clear of the tentacles' corners", () => {
+    expect(centreOut(0, 1)).toEqual([0]);
+    expect(centreOut(0, 5)).toEqual([4, 2, 0, 1, 3]);
+    expect(centreOut(10, 14)).toEqual([12, 10, 11, 13]);
+    const lines = languagePlan(fakeLanguage("max")).lines;
+    const tide = packTide(lines, 16 / 9, BREACH_WIN.land, 0.5);
+    const top = tide.slots[0]!;
+    expect(top.cx).toBeGreaterThan(0.3);
+    expect(top.cx).toBeLessThan(0.7);
+    expect(top.cy).toBeGreaterThan(0.9);
   });
 
   it("a word flies from the window's edge to its place, growing and coming to rest", () => {
