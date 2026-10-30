@@ -484,17 +484,42 @@ export interface PrimeView {
   filter?: FilterView;
 }
 
-/** `PrimeView.filter` (wave 48, C2; core's `server/views.ts`). */
+/** `PrimeView.filter` (wave 48, C2; wave 48b, C11; core's `server/views.ts`).
+ *  The wave 48b fields are optional: an older server sends none of them. */
 export interface FilterView {
-  /** Words flagged tonight (every guest line). */
+  /** Words caught tonight, at the time (every guest line). */
   flagged: number;
   /** Of them, censored. */
   censored: number;
-  /** Still to judge: not censored, not hidden; oldest first, the newest 40. */
+  /** Wave 48b (C11): the strength now, 0–100 in steps of 5 (starts 100). */
+  level?: number;
+  /** Wave 48b (C11): waiting lines the strength no longer catches. */
+  muted?: number;
+  /** Wave 48b (C11): ⭐ she has earned from ✂ tonight. */
+  stars?: number;
+  /** Wave 48b (C10, C11): the ⭐ mini-game's heat, as of this view. */
+  combo?: FilterCombo;
+  /** Still to judge: not censored, not hidden, caught at the current
+   *  strength; oldest first, the newest 40. */
   lines: FilterLine[];
 }
 
-/** One flagged guest line (wave 48, C2). */
+/** Wave 48b (C7): a hit's band, the lowest strength (0–100) that catches it.
+ *  0 is a slur (never shown, never read aloud). */
+export type FilterTier = 0 | 10 | 25 | 50 | 60 | 75 | 90 | 100;
+
+/** Wave 48b (C10, C11): the filter's heat. Each ✂ adds 1; 1 cools every
+ *  `coolMs`; a ✂ pays at notch `ceil(heat)` of `mults` (capped at the last). */
+export interface FilterCombo {
+  /** As of this view. */
+  heat: number;
+  /** 1 heat cools per this many ms. */
+  coolMs: number;
+  /** By notch: [3, 2, 1.5, 1, 0.5, 0.25]. */
+  mults: number[];
+}
+
+/** One flagged guest line (wave 48, C2; wave 48b, C11). */
 export interface FilterLine {
   /** The chat line. */
   seq: number;
@@ -506,21 +531,34 @@ export interface FilterLine {
   avatar?: string;
   /** "# lobby", "DM to Trabolta", "to Microsoft Excel", a room's title. */
   where: string;
-  /** The line as typed. */
+  /** The line as typed (wave 48b: slurs already starred). */
   text: string;
-  /** Every stem in `text` (UTF-16 offsets), to highlight. */
-  hits: Array<{ start: number; end: number }>;
-  /** The flagged words, lower case, in order. */
+  /** Every stem the current strength catches (UTF-16 offsets), to
+   *  highlight; wave 48b: each with its band (`tier`). */
+  hits: Array<{ start: number; end: number; tier?: FilterTier }>;
+  /** The flagged words as shown, lower case, in order; a slur is "[slur]". */
   words: string[];
+  /** Wave 48b (C11): its base worth now (before the multiplier). */
+  points?: number;
   /** Story ms. */
   ts: number;
 }
 
-/** `POST /api/prime/censor`'s 200 (wave 48, C2): the masked text. */
+/** `POST /api/prime/censor`'s 200 (wave 48, C2): the masked text; wave
+ *  48b (C8): what the ✂ paid (`stars = floor(points × mult)`). */
 export interface CensorResult {
   ok: true;
   seq: number;
   text: string;
+  points?: number;
+  mult?: number;
+  stars?: number;
+}
+
+/** `POST /api/prime/filter`'s 200 (wave 48b, C8): the strength now. */
+export interface FilterLevelResult {
+  ok: true;
+  level: number;
 }
 
 /** `PrimeView.letter` (wave 41, C3). */

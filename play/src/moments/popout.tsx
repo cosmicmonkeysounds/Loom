@@ -454,13 +454,14 @@ export function PopOut({ entry, api, docked = false }: { entry: PopEntry; api: P
             {p}
           </p>
         ))}
-        {/* Wave 48 (C5): the quoted line, its flagged runs marked. */}
+        {/* Wave 48 (C5): the quoted line, its flagged runs marked; wave
+            48b: each in its band's colour, a slur as its [slur] chip. */}
         {spec.quote !== undefined && spec.quote.length > 0 && (
           <p className="popout-quote">
             {spec.quote.map((q, i) =>
               q.mark === true ? (
-                <mark key={i} className="popout-mark">
-                  {q.text}
+                <mark key={i} className={`popout-mark${q.tier !== undefined ? ` filter-tier-${q.tier}` : ""}${q.chip !== undefined ? " popout-chip" : ""}`}>
+                  {q.chip ?? q.text}
                 </mark>
               ) : (
                 <span key={i}>{q.text}</span>
@@ -468,6 +469,7 @@ export function PopOut({ entry, api, docked = false }: { entry: PopEntry; api: P
             )}
           </p>
         )}
+        {spec.extra}
       </div>
       <div className="popout-actions">
         {actions.map((a, i) => {
@@ -482,7 +484,8 @@ export function PopOut({ entry, api, docked = false }: { entry: PopEntry; api: P
               disabled={busy || !live}
               onClick={() => runAction(a)}
             >
-              {busy ? "…" : a.label}
+              {busy ? "…" : armed && a.armedLabel !== undefined ? a.armedLabel : a.label}
+              {!busy && a.extra}
               {armed && <span className="popout-arm">{ARM_LINE}</span>}
             </button>
           );
