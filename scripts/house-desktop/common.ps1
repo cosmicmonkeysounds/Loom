@@ -147,6 +147,25 @@ function Get-Retained([string]$Topic, [int]$Seconds = 3) {
     return ,@($lines)
 }
 
+# Zigbee2MQTT's own health_check, round trip: milliseconds, -1 when it stays
+# silent for $Seconds, -2 with no mosquitto_rr. A process that is up and a
+# retained "online" prove nothing: only this says it still answers.
+function Test-Z2mHealth([int]$Seconds = 5) {
+    $rr = Find-Mosquitto 'mosquitto_rr'
+    if (-not $rr) { return -2 }
+    $clock = [Diagnostics.Stopwatch]::StartNew()
+    $out = & $rr -h 127.0.0.1 -p 1883 -t 'zigbee2mqtt/bridge/request/health_check' -e 'zigbee2mqtt/bridge/response/health_check' -m '{}' -W $Seconds 2>$null
+    if (($out -join ' ') -match 'status') { return [int]$clock.ElapsedMilliseconds }
+    return -1
+}
+
+# The lights job's retained stats as an object, or $null.
+function Get-LightsStats {
+    $lines = Get-Retained 'health/lights/stats' 2
+    if ($null -eq $lines -or $lines.Count -eq 0 -or -not $lines[0]) { return $null }
+    try { return (($lines[0] -split ' ', 2)[1] | ConvertFrom-Json) } catch { return $null }
+}
+
 # The mod passcode for a URL or a CLI call: the parameter, else LOOM_MOD_CODE.
 # Never printed in full.
 function Get-ModCode([string]$Given) {

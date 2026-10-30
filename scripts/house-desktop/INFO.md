@@ -40,7 +40,15 @@ goes silent for a minute, the job restarts its task and plays the story's look
 again (*Zigbee2MQTT has not answered*). `health/lights/stats` counts
 `z2m_restarts` and lists the `dark` bulbs. Because a looping look keeps sending,
 a change you make in the Z2M frontend lasts only until its next step: for hand
-work, `.\start-stagehand.ps1 -Stop lights`, then `-Restart lights` after.
+work, `.\lights-reset.ps1 -Hold`, then `-Release` after.
+
+```powershell
+.\lights-reset.ps1            # is the chain well? (changes nothing)
+.\lights-reset.ps1 -Hold      # the dashboard's changes stick; no look or cue plays
+.\lights-reset.ps1 -Release   # the job again, on the story's look
+.\lights-reset.ps1 -Reset     # restart Z2M and the job; safe during a show
+.\lights-drill.ps1            # break each link and watch it heal; never during a show
+```
 
 ## First bulb paired
 
