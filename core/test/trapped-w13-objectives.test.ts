@@ -353,6 +353,18 @@ describe("Trapped in the Internet — wave 13: every buried beat has a delivery 
     }, SLOW);
   }
 
+  // Wave 47: a late program hears it once ("You are late"), never a second
+  // "You are marked for reinstallation" heads-up over it; the mark itself stands.
+  it("⏰ a late program hears one line, not two (wave 47)", () => {
+    const n = boot();
+    for (const c of [...TO_HOUR, "five_minute_warning"]) n.press(c);
+    const out = n.press("summons_closed");
+    const lines = forGuest(out, "g1").map((m) => m.text);
+    expect(lines.filter((t) => /^⏰ You are late\./u.test(t))).toHaveLength(1);
+    expect(lines.filter((t) => t.startsWith("🚨 You are marked for reinstallation"))).toEqual([]);
+    expect(v(n.sim, "g1.marked")).toBe(true);
+  }, SLOW);
+
   // Wave 20 (CONTRACT-w20 §3.4): The Heart's notice is quiet on purpose: no
   // chime or banner pulls a crowd to the door at the moment he asks for it shut.
   it("🚪 The Heart is a quiet notice on every phone, never a major moment (wave 20)", () => {

@@ -1342,7 +1342,9 @@ ROLE Program
       set program.escort_by = "none"
       // w18: the soft heads-up (a minor moment; no pin, no restriction).
       // Wave 26 (D1): a Dare has its own big moment instead (`dare_taken`).
-      if program.marked_for != "chose Dare":
+      // Wave 47: so does a late program: the late rule just said "You are
+      // late. An Antivirus is coming for you." (a second line said it twice).
+      if program.marked_for != "chose Dare" and program.marked_for != "late for the Second Moment of Truth":
         reply "🚨 You are marked for reinstallation ({program.marked_for}). Nothing is switched off: carry on. The Antivirus are looking for you." with go: pass as "🎟 Show my pass", go: mission as "What happens now?"
       fire marked for program
 
