@@ -42,6 +42,8 @@ export function Mosh({ mode, target, seedKey, reduced }: { mode: MoshMode; targe
     let plan: MoshPlan | null = null;
     let was = 0;
     let stamped = -MOSH_STAMP_MS;
+    let ticks = 0;
+    let bled = false; // the dream's canvas holds a picture (a frame reloading keeps it)
     let timer = 0;
     let alive = true;
 
@@ -70,20 +72,23 @@ export function Mosh({ mode, target, seedKey, reduced }: { mode: MoshMode; targe
           back!.ctx.clearRect(0, 0, w, h);
           stamp(now);
         } else if (now - stamped >= MOSH_STAMP_MS) stamp(now);
+        // The one costly copy here: a wall takes the dream's picture every other tick.
         const source = dreamPlayer.source();
-        if (source !== null) {
+        if (source !== null && (take || target === "tv" || ticks % 2 === 0)) {
           try {
             dream.ctx.drawImage(source, 0, 0, w, h);
+            bled = true;
           } catch {
             // A frame not decoded yet: last tick's picture stands.
           }
         }
+        ticks += 1;
         // Reduced motion: one still, mid-cycle; nothing moves.
         const phase = reduced ? 0.6 : at.phase;
         const swap = front;
         front = back;
         back = swap;
-        drawMosh(front!.ctx as unknown as MoshCtx, plan!, { phase, was: reduced ? 0 : was, scene: scene.canvas, prev: back!.canvas, dream: source === null ? null : dream.canvas, bleed: take ? takeBleed : rotBleed });
+        drawMosh(front!.ctx as unknown as MoshCtx, plan!, { phase, was: reduced ? 0 : was, scene: scene.canvas, prev: back!.canvas, dream: bled ? dream.canvas : null, bleed: take ? takeBleed : rotBleed });
         was = phase;
         view.clearRect(0, 0, w, h);
         view.drawImage(front!.canvas, 0, 0);

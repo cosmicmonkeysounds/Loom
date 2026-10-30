@@ -122,10 +122,13 @@ re-buffers. A terminal's place is pure (`@loom/house` `dreamPositionS`: hash of
 its spot, salted so the show's 14 spots are ≥ 110 s apart, + the server's time),
 so nothing is remembered: a reload lands where it was.
 
-A stall (9 s) or error reloads the video; 3 failures fall back to the frames;
-9 misses there is `failed`, and the terminal keeps its old idle show and y2k
-slide. Both are retried every 60 s. With no view for 20 s (a line, a game) the
-video pauses and costs nothing, and picks up at its place. The dream's own code
+A stall (9 s) or error reloads the video; 3 failures, or at once a browser that
+refuses to autoplay it, fall back to the frames, one load at a time, 3 s to
+land; 6 misses there is `failed`, and the terminal keeps its old idle show and
+y2k slide. Only the clock moving counts as playing, never a seek's `timeupdate`.
+Every 60 s a fallback tries the video again beside itself, and it takes over
+only by playing. With no view for 20 s (a line, a game) the video pauses and
+costs nothing, and picks up at its place. The dream's own code
 is in the base bundle: a lazy chunk can be gone hours after boot.
 
 The source's full-field luminance was measured: at most 1 flash a second, never

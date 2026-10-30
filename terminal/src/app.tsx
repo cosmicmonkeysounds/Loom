@@ -101,7 +101,7 @@ import { Attract } from "./Attract.tsx";
 import { IdleShow } from "./idle-show/IdleShow.tsx";
 import { ScanBox } from "./idle-show/ScanBox.tsx";
 import { IdentifyOverlay, LiveScreenLayer } from "./ScreenLayer.tsx";
-import { useDreamArm, useDreamReady } from "./dream/DreamView.tsx";
+import { useDreamArm, useDreamPhase, useDreamReady } from "./dream/DreamView.tsx";
 import { dreamKeyOf } from "./dream/dream.ts";
 import { Tv } from "./Tv.tsx";
 import type { ReinstallTerminalProps } from "./reinstall/ReinstallTerminal.tsx";
@@ -241,6 +241,9 @@ export function App() {
   // Clippy's dream (wave 50): readied as soon as the story turns it on.
   useDreamArm(config, screenTargetOf(view ?? "auto"), screenState.state);
   const dreamReady = useDreamReady();
+  // On the takeover's moments, not the next poll: `covered` must flip with
+  // them, or a wall shows what is under the idle show for up to 2 s.
+  useDreamPhase(screenState.state);
   // The cutscenes, on every screen that draws slides (wave 17).
   const slides = view !== undefined && drawsSlides(view, room);
   useEffect(() => {

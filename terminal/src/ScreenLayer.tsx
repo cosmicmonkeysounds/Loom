@@ -423,12 +423,13 @@ export function LiveScreenLayer({ state, piloting, peek = false, room = false, s
     const id = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(id);
   }, []);
-  // A fresh answer re-decides at once rather than up to a second later.
-  const at = Math.max(now, state?.receivedAt ?? 0);
+  // A fresh answer re-decides at once rather than up to a second later; so
+  // does any other render (the dream's two moments are on the second, not `now`'s).
+  const at = Math.max(now, state?.receivedAt ?? 0, Date.now());
   // `slides` false (the tent's kiosk, wave 26 T3): no story slide, corner or
   // Y2K clock — but its moments (beat cutscenes) and the glitch still play.
   const dreamReady = useDreamReady();
-  useDreamPhase(state); // re-decides on the takeover's two moments, not a second late
+  useDreamPhase(state); // renders on the takeover's two moments, not a second late
   const layers = screenLayers(state, at, { piloting, peek, room, slides, dreamReady });
   const bare = piloting || peek || room;
   // Wave 50: what gets through the dream comes through it data moshed.

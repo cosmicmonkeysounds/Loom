@@ -7,13 +7,16 @@
 //! It keeps itself alive. A terminal's place is worked out from the server's
 //! clock (`dreamPositionS`), so nothing here has to be remembered: a stalled
 //! video is simply reloaded at its place, and after `DREAM_VIDEO_TRIES`
-//! failures the page falls back to the JPEG frames the games use, three a
-//! second and a tenth the bytes. If those fail too it is `failed`, and the
-//! terminal keeps its old idle show (`dreamPhase` never leaves `armed`); both
-//! are tried again every `DREAM_RETRY_MS`.
+//! failures (or at once, if the browser refuses to autoplay it) the page falls
+//! back to the JPEG frames the games use, three a second and a tenth the
+//! bytes. If those fail too it is `failed`, and the terminal keeps its old
+//! idle show (`dreamPhase` never leaves `armed`). Every `DREAM_RETRY_MS` a
+//! fallback tries the video again beside itself: it takes over only by
+//! really playing (the clock moving: a seek's `timeupdate` proves nothing).
 //!
-//! A held view that goes away (a line opens, a game starts) parks it; after
-//! `DREAM_PARK_MS` with no view it pauses, so a screen in use costs no video.
+//! A view that goes away (a line opens, a game starts) parks it; after
+//! `DREAM_PARK_MS` with no view it pauses, so a screen in use costs no video,
+//! and a screen busy when it is armed stops after `DREAM_ARM_KEEP_MS`.
 //! Reduced motion: one frame every `DREAM_STILL_MS`.
 
 import { DREAM_FRAME_FPS, DREAM_MEDIA, dreamFrameIndex, dreamFrameName, dreamPositionS } from "@loom/house";
@@ -22,13 +25,20 @@ import { dreamSrc } from "./dream.ts";
 /** A video that won't play gives way to the frames after this many tries. */
 export const DREAM_VIDEO_TRIES = 3;
 /** The frames give up after this many misses in a row. */
-export const DREAM_FRAME_TRIES = 9;
+export const DREAM_FRAME_TRIES = 6;
+/** A frame not here in this long is a miss (ms). One loads at a time: a new
+ *  `src` cancels a load with no event, so slow wifi would never land any. */
+export const DREAM_FRAME_WAIT_MS = 3000;
 /** A video that hasn't moved in this long has stalled (ms). */
 export const DREAM_STALL_MS = 9000;
 /** How long a fallback runs before the video is tried again (ms). */
 export const DREAM_RETRY_MS = 60_000;
 /** With no view on screen, it plays on this long before pausing (ms). */
 export const DREAM_PARK_MS = 20_000;
+/** Armed with no view yet, it readies this long: past the takeover (ms). */
+export const DREAM_ARM_KEEP_MS = 60_000;
+/** The video has played once its clock has moved this far (s). */
+export const DREAM_MOVED_S = 0.25;
 /** Back from a pause, it seeks only when this far off its place (s). */
 export const DREAM_DRIFT_S = 4;
 /** Reduced motion: a still this often (ms). */
@@ -44,7 +54,7 @@ export interface DreamHealth {
   frameFails: number;
 }
 
-export type DreamEvent = "playing" | "video-failed" | "frame-ok" | "frame-failed" | "retry";
+export type DreamEvent = "playing" | "video-failed" | "video-refused" | "frame-ok" | "frame-failed" | "retry";
 
 export const DREAM_FRESH: DreamHealth = { mode: "video", ready: false, videoFails: 0, frameFails: 0 };
 
@@ -55,8 +65,13 @@ export function dreamHealthAfter(h: DreamHealth, e: DreamEvent): DreamHealth {
       return { mode: "video", ready: true, videoFails: 0, frameFails: 0 };
     case "video-failed": {
       const videoFails = h.videoFails + 1;
+      // A trial beside a fallback that didn't work: the fallback stands.
+      if (h.mode !== "video") return { ...h, videoFails };
       return videoFails >= DREAM_VIDEO_TRIES ? { ...h, mode: "frames", videoFails } : { ...h, videoFails };
     }
+    case "video-refused":
+      // The browser won't autoplay it: no reload changes that.
+      return { ...h, mode: h.mode === "video" ? "frames" : h.mode, videoFails: DREAM_VIDEO_TRIES };
     case "frame-ok":
       return h.mode === "frames" ? { ...h, ready: true, frameFails: 0 } : h;
     case "frame-failed": {
@@ -64,8 +79,9 @@ export function dreamHealthAfter(h: DreamHealth, e: DreamEvent): DreamHealth {
       return frameFails >= DREAM_FRAME_TRIES ? { ...h, mode: "failed", ready: false, frameFails } : { ...h, frameFails };
     }
     case "retry":
-      // A picture in hand (the frames) stays up until the video proves itself.
-      return { ...h, mode: "video", videoFails: 0, frameFails: 0 };
+      // The video on trial, one try, beside the frames: they keep running
+      // (again, after `failed`) until it proves itself with `playing`.
+      return { ...h, mode: "frames", videoFails: DREAM_VIDEO_TRIES - 1, frameFails: 0 };
   }
 }
 
@@ -89,7 +105,10 @@ class DreamPlayer {
   private ticker = 0;
   private lastTime = -1;
   private movedAt = 0;
-  private frameAt = 0;
+  /** When the frame on its way was asked for; null: none is. */
+  private frameSince: number | null = null;
+  private frameShown = 0;
+  private stillAt = 0;
   private retryAt = 0;
   private readonly listeners = new Set<() => void>();
 
@@ -113,8 +132,12 @@ class DreamPlayer {
     this.health = dreamHealthAfter(was, e);
     if (this.stage !== null) this.stage.dataset["mode"] = this.health.mode;
     if (was.ready !== this.health.ready) for (const l of [...this.listeners]) l();
-    if (e === "video-failed") this.health.mode === "video" ? this.loadVideo() : this.dropVideo();
-    if (this.health.mode !== "video" && was.mode === "video") this.retryAt = performance.now() + DREAM_RETRY_MS;
+    if (e !== "video-failed" && e !== "video-refused") return;
+    if (this.health.mode === "video") this.loadVideo();
+    else {
+      this.dropVideo();
+      this.retryAt = performance.now() + DREAM_RETRY_MS;
+    }
   }
 
   /** The story turned the dream on: ready the picture now, hidden. */
@@ -132,14 +155,23 @@ class DreamPlayer {
     const img = document.createElement("img");
     img.alt = "";
     img.className = "dream-frame";
-    img.onload = () => this.report("frame-ok");
-    img.onerror = () => this.report("frame-failed");
+    img.onload = () => {
+      this.frameSince = null;
+      this.report("frame-ok");
+    };
+    img.onerror = () => {
+      this.frameSince = null;
+      this.report("frame-failed");
+    };
     stage.appendChild(img);
     document.body.appendChild(stage);
     this.stage = stage;
     this.img = img;
     this.health = DREAM_FRESH;
-    this.parkAt = null;
+    this.parkAt = performance.now() + DREAM_ARM_KEEP_MS;
+    this.frameSince = null;
+    this.frameShown = 0;
+    this.stillAt = 0;
     if (o.reduced) {
       this.health = { ...DREAM_FRESH, mode: "frames" };
       stage.dataset["mode"] = "frames";
@@ -169,7 +201,7 @@ class DreamPlayer {
   private dropVideo(): void {
     const v = this.video;
     if (v === null) return;
-    v.onloadedmetadata = v.onplaying = v.ontimeupdate = v.onerror = null;
+    v.onloadedmetadata = v.onseeked = v.ontimeupdate = v.onerror = null;
     v.pause();
     v.removeAttribute("src");
     v.load();
@@ -189,21 +221,34 @@ class DreamPlayer {
     v.setAttribute("playsinline", "");
     v.setAttribute("muted", "");
     v.preload = "auto";
+    // Where its clock stood when the seek landed: only moving on from there
+    // counts. A seek ending fires `timeupdate` too, paused or not.
+    let from = Number.POSITIVE_INFINITY;
     v.onloadedmetadata = () => {
       v.currentTime = dreamPositionS(o.key, this.arm_?.now() ?? o.now());
-      void v.play()?.catch(() => {});
+      this.play(v);
+    };
+    v.onseeked = () => {
+      from = v.currentTime;
     };
     v.ontimeupdate = () => {
-      if (v.readyState >= 2 && !v.seeking && !this.health.ready) this.report("playing");
-      else if (v.readyState >= 2 && !v.seeking && this.health.mode === "video" && this.health.videoFails > 0) this.report("playing");
+      if (v.paused || v.seeking || v.currentTime - from < DREAM_MOVED_S) return;
+      const h = this.health;
+      if (h.mode !== "video" || !h.ready || h.videoFails > 0) this.report("playing");
     };
     v.onerror = () => this.report("video-failed");
-    // Over the frame: with no picture yet it is see-through, so a retry never blacks out.
+    // Over the frame: a trial stays hidden until it plays (`data-mode`).
     this.stage.appendChild(v);
     this.video = v;
     v.src = dreamSrc(o.target);
     this.lastTime = -1;
     this.movedAt = performance.now();
+  }
+
+  private play(v: HTMLVideoElement): void {
+    void v.play()?.catch((e: unknown) => {
+      if ((e as { name?: string } | null)?.name === "NotAllowedError" && v === this.video) this.report("video-refused");
+    });
   }
 
   private wanted(): boolean {
@@ -217,7 +262,7 @@ class DreamPlayer {
     const at = dreamPositionS(o.key, o.now());
     if (Math.abs(v.currentTime - at) > DREAM_DRIFT_S) v.currentTime = at;
     this.movedAt = performance.now();
-    void v.play()?.catch(() => {});
+    this.play(v);
   }
 
   private readonly onVisibility = (): void => {
@@ -230,34 +275,44 @@ class DreamPlayer {
     if (o === null || document.hidden) return;
     const now = performance.now();
     const wanted = this.wanted();
-    if (this.health.mode === "video") {
-      const v = this.video;
-      if (v === null) return;
+    const v = this.video;
+    if (v !== null) {
       if (!wanted) {
         if (!v.paused) v.pause();
-        return;
-      }
-      if (v.currentTime !== this.lastTime) {
+      } else if (v.currentTime !== this.lastTime) {
         this.lastTime = v.currentTime;
         this.movedAt = now;
       } else if (now - this.movedAt > DREAM_STALL_MS) {
         this.movedAt = now;
         this.report("video-failed");
       }
-      return;
     }
-    if (this.health.mode === "failed" || !o.reduced) {
-      if (now >= this.retryAt && !o.reduced) {
-        this.report("retry");
-        this.loadVideo();
-        return;
-      }
+    if (this.health.mode === "video") return;
+    if (!o.reduced && now >= this.retryAt) {
+      this.report("retry");
+      this.loadVideo();
     }
-    if (this.health.mode === "frames" && wanted && now >= this.frameAt && this.img !== null) {
-      this.frameAt = now + (o.reduced ? DREAM_STILL_MS : 1000 / DREAM_FRAME_FPS);
-      this.img.src = `${DREAM_MEDIA}/frames/${dreamFrameName(dreamFrameIndex(o.key, o.now()))}`;
-    }
+    if (this.health.mode === "frames" && wanted) this.stepFrame(o, now);
   };
+
+  /** The frame for now, one at a time, and a miss if it never comes. */
+  private stepFrame(o: DreamArm, now: number): void {
+    const img = this.img;
+    if (img === null) return;
+    if (this.frameSince !== null) {
+      if (now - this.frameSince < DREAM_FRAME_WAIT_MS) return;
+      this.frameSince = null;
+      this.report("frame-failed");
+      if (this.health.mode !== "frames") return;
+    }
+    if (o.reduced && now < this.stillAt) return;
+    const n = dreamFrameIndex(o.key, o.now());
+    if (n === this.frameShown) return;
+    this.frameShown = n;
+    this.stillAt = now + DREAM_STILL_MS;
+    this.frameSince = now;
+    img.src = `${DREAM_MEDIA}/frames/${dreamFrameName(n)}`;
+  }
 
   /** Show the dream in `host`. Returns the release. */
   hold(host: HTMLElement): () => void {

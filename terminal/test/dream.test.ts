@@ -127,9 +127,28 @@ describe("the player's health", () => {
     const h = run(...fails("video-failed", DREAM_VIDEO_TRIES), ...fails("frame-failed", DREAM_FRAME_TRIES - 1), "frame-ok", "frame-failed");
     expect(h).toMatchObject({ mode: "frames", frameFails: 1 });
   });
-  it("keeps the frames' picture up while a retry of the video proves itself", () => {
+  it("keeps the frames running while a retry of the video proves itself", () => {
     const h = run(...fails("video-failed", DREAM_VIDEO_TRIES), "frame-ok", "retry");
-    expect(h).toMatchObject({ mode: "video", ready: true, videoFails: 0 });
+    expect(h).toMatchObject({ mode: "frames", ready: true });
+    expect(dreamHealthAfter(h, "playing")).toMatchObject({ mode: "video", ready: true, videoFails: 0 });
+  });
+  it("a retry that fails leaves the frames as they were", () => {
+    const h = run(...fails("video-failed", DREAM_VIDEO_TRIES), "frame-ok", "retry", "video-failed");
+    expect(h).toMatchObject({ mode: "frames", ready: true });
+  });
+  it("goes straight to the frames when the browser refuses to autoplay: no reload helps", () => {
+    expect(run("video-refused")).toMatchObject({ mode: "frames", ready: false });
+    expect(run("video-refused", "frame-ok")).toMatchObject({ mode: "frames", ready: true });
+  });
+  it("a refused trial leaves a fallback as it was, `failed` too", () => {
+    const failed = [...fails("video-failed", DREAM_VIDEO_TRIES), ...fails("frame-failed", DREAM_FRAME_TRIES)];
+    expect(run(...failed, "video-refused").mode).toBe("failed");
+    expect(run(...failed, "video-failed").mode).toBe("failed");
+  });
+  it("from `failed`, a retry tries the frames again too", () => {
+    const h = run(...fails("video-failed", DREAM_VIDEO_TRIES), ...fails("frame-failed", DREAM_FRAME_TRIES), "retry");
+    expect(h).toMatchObject({ mode: "frames", ready: false, frameFails: 0 });
+    expect(dreamHealthAfter(h, "frame-ok").ready).toBe(true);
   });
   it("ignores a late frame's load once the video is back", () => {
     const h = run("playing", "frame-ok");
