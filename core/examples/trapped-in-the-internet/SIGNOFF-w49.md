@@ -1,6 +1,6 @@
 # SIGNOFF — wave 49: the descent
 
-**Status: DRAFT.** Branches `oct31-w49/*`. Not shipped. Contract:
+**Status: DRAFT.** Shipped as written in `w50` (2026-10-30), awaiting sign-off. Contract:
 `docs/loom-w49-contract.md`.
 
 Your words, verbatim:
