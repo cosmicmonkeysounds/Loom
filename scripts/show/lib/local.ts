@@ -339,7 +339,7 @@ export async function serverroomChecks(p: Probe, server: string): Promise<Check[
   if (found !== null) out.push(row("Grand Central M4", found ? "ok" : "fail", found ? "on USB" : "not on USB — plug the M4 in (a data cable, not charge-only)", read));
   const whisper = await p.http(WHISPER_HEALTH);
   out.push(row("Whisper", whisper?.status === 200 ? "ok" : "warn", whisper?.status === 200 ? "listening on 127.0.0.1:8178" : "not running — scripts/server-room/start-whisper.ps1 (spoken answers wait on it; the choices still work)", WHISPER_HEALTH));
-  out.push(row("Kiosk URL", "info", `${kioskUrl(server, "server-room", "&door=serial&camera=user&webcam=C310&pad=1&whisper=1")} — first launch WITHOUT --kiosk to grant the serial port, camera, microphone and device access, then relaunch with --kiosk --autoplay-policy=no-user-gesture-required`, "docs/trapped/kiosk.md"));
+  out.push(row("Kiosk URL", "info", `${kioskUrl(server, "server-room", "&door=serial&camera=user&webcam=C310&pad=1&whisper=1&crt=1")} — first launch WITHOUT --kiosk to grant the serial port, camera, microphone and device access, then relaunch with --kiosk --autoplay-policy=no-user-gesture-required`, "docs/trapped/kiosk.md"));
   out.push(row("By hand", "info", "⚙ on the terminal: the door sensor connected + calibrated; open → shut the door once and watch 🚪 flip on Run → Terminals; plug one patch cable and watch 🔌 count it; the GameCube controller walks the choices and SPEAK TO HIM says your words back", "the M4 checks"));
   return out;
 }

@@ -131,6 +131,7 @@ export function Setup({
   const [webcam, setWebcam] = useState(current?.webcam ?? "");
   const [pad, setPad] = useState(current?.pad ?? false);
   const [whisper, setWhisper] = useState(current?.whisper ?? false);
+  const [crt, setCrt] = useState(current?.crt ?? false);
   const [keys, setKeys] = useState(current?.keys ?? true);
   const [bay, setBay] = useState(current?.bay ?? true);
   // A manual screen type / room ("" = the map's). A terminal not set up from
@@ -217,7 +218,7 @@ export function Setup({
       const base: TerminalConfig = sameEvent ? { ...current, token: access.token, title: access.title || current.title } : defaultConfig({ ...access, character: pickCharacter(null, cast) });
       const kept = await savedCharacter(character, base.character, async () => cast);
       const voiceFields = mic === undefined ? { voices: voicesOn } : { voices: voicesOn, mic };
-      const picked = applyPick({ ...base, character: kept, camera, engine, announce, camFeed, ...voiceFields, fullscreen, door, keys, bay, webcam: webcam.trim(), pad, whisper, serverVoice: serverVoice.trim(), browserVoice, speed, pause }, pick);
+      const picked = applyPick({ ...base, character: kept, camera, engine, announce, camFeed, ...voiceFields, fullscreen, door, keys, bay, webcam: webcam.trim(), pad, whisper, crt, serverVoice: serverVoice.trim(), browserVoice, speed, pause }, pick);
       if (mic === undefined) delete picked.mic;
       const next = picked;
       const own = manualTouched || (current !== null && current.spot === pick.spot);
@@ -450,7 +451,7 @@ export function Setup({
                 full screen <span className="muted">(asked again on every tap; off for a laptop that needs Esc)</span>
               </label>
               <DoorSetup door={door} onDoor={(d) => { setDoorTouched(true); setDoor(d); }} keys={keys} onKeys={setKeys} saved={current?.door ?? null} />
-              <RigSetup webcam={webcam} onWebcam={setWebcam} pad={pad} onPad={setPad} whisper={whisper} onWhisper={setWhisper} />
+              <RigSetup webcam={webcam} onWebcam={setWebcam} pad={pad} onPad={setPad} whisper={whisper} onWhisper={setWhisper} crt={crt} onCrt={setCrt} />
               {door !== "off" && <PatchSetup bay={bay} onBay={setBay} running={current !== null && current.door !== "off" && current.door === door && current.bay === bay} />}
               {current !== null && feedWanted(current) && <div className={`small ${feed.kind === "stopped" ? "warn" : "muted"}`}>{feedStatusText(feed)}</div>}
               {current !== null && (voiceRoles(current).mic || voiceRoles(current).voices) && <div className={`small ${voice.link === "stopped" || voice.mic === "denied" || voice.mic === "insecure" ? "warn" : "muted"}`}>{voice.link === "off" ? "voice link: starts once this terminal is set up" : `before ⚙ opened — ${voiceStatusText(voice)}`}</div>}

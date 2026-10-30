@@ -8,7 +8,7 @@ import { atEnd } from "../src/chat.tsx";
 import { ChoicePanel } from "../src/heart/ChoicePanel.tsx";
 import { hintsFromSearch, loadConfig, defaultConfig, withoutSecrets } from "../src/config.ts";
 import { deviceFor, openDevice, type DeviceLike } from "../src/devices.ts";
-import { GC, NO_PAD, PadMachine, REPEAT_EVERY_MS, REPEAT_FIRST_MS, SCROLL_MAX, frameOf, isGameCube, movedTo, type PadFrame, type RawPad } from "../src/gamepad/pad.ts";
+import { GC, NO_PAD, PadMachine, REPEAT_EVERY_MS, REPEAT_FIRST_MS, START_HOLD_MS, frameOf, isGameCube, movedTo, type PadFrame, type RawPad } from "../src/gamepad/pad.ts";
 import { setupDoor } from "../src/setup-map.ts";
 import { EndOfSpeech, FLOOR_MS, MAX_MS, NOTHING_MS, QUIET_MS, cleanText, parrotLine, rmsOf, wavOf } from "../src/whisper/speech.ts";
 
@@ -35,8 +35,8 @@ describe("the controller's frames", () => {
   });
 
   it("reads a controller in any port", () => {
-    const f = frameOf([raw(), raw(), raw(), raw([GC.a, GC.b, GC.start, GC.down], { [GC.stickY]: -1, [GC.cY]: 0.8 })]);
-    expect(f).toEqual({ a: true, b: true, start: true, dpad: 1, stick: -1, scroll: 0.8 });
+    const f = frameOf([raw(), raw(), raw(), raw([GC.a, GC.b, GC.y, GC.start, GC.down, GC.left], { [GC.stickY]: -1, [GC.stickX]: 0.7 })]);
+    expect(f).toEqual({ a: true, b: true, y: true, start: true, dpad: 1, side: -1, stick: -1, stickX: 0.7 });
     expect(frameOf([raw([GC.up])]).dpad).toBe(-1);
   });
 
@@ -44,19 +44,17 @@ describe("the controller's frames", () => {
     expect(frameOf([raw([GC.a], {}, "Xbox Wireless Controller")])).toEqual(NO_PAD);
   });
 
-  it("does nothing for the buttons with no job (X, Y, Z, L, R)", () => {
-    expect(frameOf([raw([0, 3, 4, 5, 7], { 3: 1, 4: 1 })])).toEqual(NO_PAD);
+  it("does nothing for the buttons with no job (X, Z, L, R), or the C stick", () => {
+    expect(frameOf([raw([0, 4, 5, 7], { 2: 1, 3: 1, 4: 1, 5: 1 })])).toEqual(NO_PAD);
   });
 });
 
 describe("PadMachine", () => {
-  it("fires A and Start once a press", () => {
+  it("fires A once a press", () => {
     const m = new PadMachine();
     m.step(frame(), 0);
     expect(m.step(frame({ a: true }), 16)).toEqual([{ t: "select" }]);
     expect(m.step(frame({ a: true }), 32)).toEqual([]);
-    m.step(frame(), 48);
-    expect(m.step(frame({ a: true, start: true }), 64)).toEqual([{ t: "select" }, { t: "latest" }]);
   });
 
   it("fires B once a press, and never as a select", () => {
@@ -93,21 +91,33 @@ describe("PadMachine", () => {
     expect(m.step(frame({ stick: -0.7 }), 60)).toEqual([{ t: "move", dir: -1 }]);
   });
 
-  it("scrolls with the C stick, up for up, faster further over", () => {
+  it("opens the keyboard on a held Start, never a tap", () => {
     const m = new PadMachine();
     m.step(frame(), 0);
-    expect(m.step(frame({ scroll: 0.2 }), 16)).toEqual([]);
-    const [full] = m.step(frame({ scroll: 1 }), 32);
-    expect(full).toEqual({ t: "scroll", px: (SCROLL_MAX * 16) / 1000 });
-    const [half] = m.step(frame({ scroll: -0.6 }), 48);
-    expect(half!.t === "scroll" && half!.px < 0 && Math.abs(half!.px) < (SCROLL_MAX * 16) / 1000).toBe(true);
+    expect(m.step(frame({ start: true }), 10)).toEqual([]);
+    expect(m.step(frame({ start: true }), 10 + START_HOLD_MS - 1)).toEqual([]);
+    expect(m.step(frame({ start: true }), 10 + START_HOLD_MS)).toEqual([{ t: "hold" }]);
+    expect(m.step(frame({ start: true }), 10 + START_HOLD_MS * 3)).toEqual([]); // once a hold
+    m.step(frame(), 3000);
+    m.step(frame({ start: true }), 3010);
+    m.step(frame(), 3100); // let go early
+    expect(m.step(frame({ start: true }), 3100 + START_HOLD_MS)).toEqual([]);
   });
 
-  it("doesn't jump after a stall: a long frame scrolls no further than a short one's cap", () => {
+  it("moves sideways on the D-pad and the stick, with repeat", () => {
     const m = new PadMachine();
     m.step(frame(), 0);
-    const [e] = m.step(frame({ scroll: 1 }), 5000);
-    expect(e).toEqual({ t: "scroll", px: (SCROLL_MAX * 50) / 1000 });
+    expect(m.step(frame({ side: 1 }), 10)).toEqual([{ t: "side", dir: 1 }]);
+    expect(m.step(frame({ side: 1 }), 10 + REPEAT_FIRST_MS)).toEqual([{ t: "side", dir: 1 }]);
+    m.step(frame(), 1000);
+    expect(m.step(frame({ stickX: -0.8 }), 1010)).toEqual([{ t: "side", dir: -1 }]);
+  });
+
+  it("fires Y once a press", () => {
+    const m = new PadMachine();
+    m.step(frame(), 0);
+    expect(m.step(frame({ y: true }), 16)).toEqual([{ t: "give" }]);
+    expect(m.step(frame({ y: true }), 32)).toEqual([]);
   });
 });
 

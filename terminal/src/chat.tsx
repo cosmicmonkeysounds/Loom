@@ -7,7 +7,7 @@
 //! reload), drawn as YOU with the time, a deed (`act`) in brackets. A line
 //! still queued for the voice waits behind one typing row.
 
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type FormEvent } from "react";
 import { waitBar } from "@loom/play/agent-wait-words.ts";
 import type { AgentWait } from "@loom/play/agent-wait.ts";
 import { useWaitWords } from "@loom/play/stream/wait-strip.tsx";
@@ -70,9 +70,50 @@ export function lineClass(m: Pick<Line, "theirs" | "kind" | "pick" | "act" | "pe
 /** Within this of the end (px), the thread follows new lines. */
 export const FOLLOW_PX = 48;
 
-/** Is the thread at its end? Scrolled back from it, new lines don't drag it down (wave 52: the C stick). */
-export function atEnd(el: Pick<HTMLElement, "scrollHeight" | "scrollTop" | "clientHeight">): boolean {
+type Scrolled = Pick<HTMLElement, "scrollHeight" | "scrollTop" | "clientHeight">;
+
+/** Is the thread at its end? Scrolled back from it, new lines don't drag it down. */
+export function atEnd(el: Scrolled): boolean {
   return el.scrollHeight - el.scrollTop - el.clientHeight <= FOLLOW_PX;
+}
+
+/**
+ * Does the thread still follow after a scroll? Scrolling up stops it at once,
+ * however little: at the end already is the only way to stay. A panel docking
+ * under the thread or a long line landing leaves it short of the end too, and
+ * those must never read as reading back.
+ */
+export function followAfter(was: boolean, before: number, el: Scrolled): boolean {
+  if (el.scrollTop < before - 0.5) return el.scrollHeight - el.scrollTop - el.clientHeight <= 1;
+  return atEnd(el) ? true : was;
+}
+
+/** The CRT's typewriter (wave 52b): characters a second at his normal pace.
+ *  A shade quicker than his voice, so a sentence is down as he ends it. */
+export const TYPE_CPS = 17;
+/** This far behind his voice (a voice that started late), it types faster. */
+const TYPE_LAG = 50;
+
+/**
+ * His words typing out. `cut` is as far as his voice has got: the end of the
+ * sentence he's on. It stops there and waits for the next, and the sentence's
+ * room is taken from the first letter, so no word jumps a line mid-type.
+ */
+export function Typed({ text, cut, cps, onType }: { text: string; cut: number; cps: number; onType?: () => void }) {
+  const [shown, setShown] = useState(0);
+  useEffect(() => {
+    if (shown >= cut) return;
+    const t = window.setTimeout(() => setShown((n) => Math.min(cut, n + (cut - n > TYPE_LAG ? 3 : 1))), 1000 / cps);
+    return () => window.clearTimeout(t);
+  }, [shown, cut, cps]);
+  useLayoutEffect(() => onType?.(), [shown, onType]);
+  return (
+    <>
+      {text.slice(0, shown)}
+      <span className="cursor">▮</span>
+      <span className="type-rest">{text.slice(shown, cut)}</span>
+    </>
+  );
 }
 
 export function Thread({
@@ -84,6 +125,7 @@ export function Thread({
   earlier = false,
   empty,
   wait = null,
+  typeCps = null,
 }: {
   lines: Line[];
   /** How much of each of the character's messages to show (seq → chars). */
@@ -97,20 +139,47 @@ export function Thread({
   empty?: string;
   /** Wave 42b (B5): the guest's line is queued behind other programs. */
   wait?: WaitProps | null;
+  /** His words type out as he says them at this many characters a second (null: as they always have). */
+  typeCps?: number | null;
 }) {
-  const end = useRef<HTMLDivElement>(null);
+  const box = useRef<HTMLDivElement>(null);
   const following = useRef(true);
+  const scrolledTo = useRef(0);
   const last = lines[lines.length - 1];
   const lastReveal = last !== undefined ? revealed.get(last.seq) : undefined;
   // A line still queued for the voice (its reveal not started) is not drawn
   // yet: one typing row stands for all of them (B3), never a wall of empty cursors.
   const waiting = (m: Line) => m.theirs && revealed.get(m.seq) === 0;
   const queued = lines.some(waiting);
+
+  /** Settle the follow against where the thread stands now. A render can land
+   *  between someone's scroll and its event: it must not undo the scroll. */
+  const look = (el: HTMLDivElement) => {
+    following.current = followAfter(following.current, scrolledTo.current, el);
+    scrolledTo.current = el.scrollTop;
+  };
+  const pin = () => {
+    const el = box.current;
+    if (el === null) return;
+    look(el);
+    if (following.current) {
+      el.scrollTop = el.scrollHeight;
+      scrolledTo.current = el.scrollTop;
+    }
+  };
+  // Every render: a new line, a line revealed further, a line changed.
+  useLayoutEffect(pin);
+  // The box itself changing size moves its end too: a menu docking under it.
   useEffect(() => {
-    if (following.current) end.current?.scrollIntoView({ block: "end" });
-  }, [lines.length, typing, lastReveal, queued, wait != null]);
+    const el = box.current;
+    const RO = (window as unknown as { ResizeObserver?: typeof ResizeObserver }).ResizeObserver;
+    if (el === null || RO === undefined) return;
+    const ro = new RO(() => pin());
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
   return (
-    <div className="thread" role="log" aria-live="polite" onScroll={(e) => (following.current = atEnd(e.currentTarget))}>
+    <div ref={box} className="thread" role="log" aria-live="polite" onScroll={(e) => look(e.currentTarget)}>
       {earlier && (
         <div className="line system earlier">
           <span className="text">— earlier messages are on your phone —</span>
@@ -134,8 +203,14 @@ export function Thread({
               <span className="when">{stamp(m.ts)}</span>
             </span>
             <span className="text">
-              {text}
-              {partial && <span className="cursor">▮</span>}
+              {typeCps !== null && cut !== undefined ? (
+                <Typed text={m.text} cut={cut} cps={typeCps} onType={pin} />
+              ) : (
+                <>
+                  {text}
+                  {partial && <span className="cursor">▮</span>}
+                </>
+              )}
             </span>
           </div>
         );
@@ -155,7 +230,6 @@ export function Thread({
           </span>
         </div>
       )}
-      <div ref={end} />
     </div>
   );
 }

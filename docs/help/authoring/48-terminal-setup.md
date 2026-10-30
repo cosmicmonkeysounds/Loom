@@ -47,14 +47,20 @@ fault. The crew's kiosk notes (`docs/trapped/kiosk.md`) have the laptop's
 launch line. What the room does with the door is in [Running the server
 room](38-server-room.md).
 
-On the night it has no mouse or keyboard: a USB webcam, a GameCube
-controller and spoken answers, set up with
-`&webcam=C310&pad=1&whisper=1` on the link or under ⚙ → *advanced* →
+On the night it has no mouse or keyboard: an old 4:3 CRT, a USB webcam, a
+GameCube controller and spoken answers, set up with
+`&webcam=C310&pad=1&whisper=1&crt=1` on the link or under ⚙ → *advanced* →
 *no mouse or keyboard*. `webcam` is part of the camera's name, and it's
 both the scanner and the microphone. On the controller, the left stick or
-D-pad moves through the answers, **A** picks one, **B** goes back, the C
-stick scrolls the conversation and **Start** jumps to the newest line.
-Nothing on it leaves the terminal. When a program picks ⟦SPEAK FREELY⟧,
+D-pad moves through the answers, **A** picks one, **B** goes back and **Y**
+gives him a file; the bottom of the screen always says which buttons work
+right now. Nothing on it leaves the terminal, and nothing skips him. The CRT
+shows big plain text that types out as he speaks, under a waveform of his
+voice, always on the newest line. With the door shut it plays the pipes, with
+no ads, glitches or sound effects; when the door opens it asks for a pass, and
+holding **Start** opens a virtual keyboard for a program name if the camera
+can't read one. Keep Windows on a true 4:3 mode for the sharpest picture. When
+a program picks ⟦SPEAK FREELY⟧,
 **SPEAK TO HIM** listens, he says their words back, and they confirm
 before anything is sent. Their voice stays on the laptop: whisper.cpp runs
 there and nothing else hears it. If it isn't running, the choices still

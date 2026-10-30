@@ -10,9 +10,13 @@
 //! - `data-pad-skip`: A clicks this before anything lit (his voice, skipped).
 //! - `data-pad-back`: B clicks the first of these on the page. Going back is
 //!   only ever B: the ⟦BACK⟧ bar isn't `data-pad`, so no A press can take it.
+//! - `data-pad-y`: Y clicks this (give him a file, where it's offered).
+//! - `data-pad-hold`: holding Start clicks this (the virtual keyboard).
+//!
+//! While something holds the controller (`grabPad`), all of it goes there.
 
 import { useEffect, useRef } from "react";
-import { PadMachine, frameOf, movedTo, type RawPad } from "./pad.ts";
+import { PadMachine, frameOf, movedTo, padHolder, type RawPad } from "./pad.ts";
 
 function usable(el: HTMLElement): boolean {
   return !(el as HTMLButtonElement).disabled && el.offsetParent !== null;
@@ -44,7 +48,7 @@ export function PadNav({ onActivity }: { onActivity: () => void }) {
       lit?.setAttribute("data-pad-focus", "");
       lit?.scrollIntoView({ block: "nearest" });
     };
-    const thread = () => document.querySelector<HTMLElement>(".thread");
+
     const frame = () => {
       raf = requestAnimationFrame(frame);
       const list = items();
@@ -52,13 +56,16 @@ export function PadNav({ onActivity }: { onActivity: () => void }) {
       const events = machine.step(frameOf(pads()), performance.now());
       for (const e of events) {
         activity.current();
+        const holder = padHolder();
+        if (holder !== null) {
+          holder(e);
+          continue;
+        }
         if (e.t === "move") light(list[movedTo(lit === null ? -1 : list.indexOf(lit), e.dir, list.length)] ?? null);
         else if (e.t === "select") (document.querySelector<HTMLElement>("[data-pad-skip]") ?? lit)?.click();
         else if (e.t === "back") document.querySelector<HTMLElement>("[data-pad-back]")?.click();
-        else {
-          const t = thread();
-          if (t !== null) t.scrollTop = e.t === "latest" ? t.scrollHeight : t.scrollTop + e.px;
-        }
+        else if (e.t === "give") document.querySelector<HTMLElement>("[data-pad-y]")?.click();
+        else if (e.t === "hold") document.querySelector<HTMLElement>("[data-pad-hold]")?.click();
       }
     };
     raf = requestAnimationFrame(frame);

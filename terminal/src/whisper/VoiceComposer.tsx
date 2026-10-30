@@ -22,10 +22,15 @@ export interface VoiceComposerProps {
   onListen: () => void;
   /** Say this, in his voice. */
   onSay: (text: string) => void;
+  /** He's talking (wave 52b, the CRT): nothing here can cut him off, not even his saying it back. */
+  busy?: boolean;
+  /** Hears each step (the CRT's button guide). */
+  onStep?: (step: Step["k"]) => void;
 }
 
-export default function VoiceComposer({ onSend, disabled, onInput, onListen, onSay }: VoiceComposerProps) {
+export default function VoiceComposer({ onSend, disabled, onInput, onListen, onSay, busy = false, onStep }: VoiceComposerProps) {
   const [step, setStep] = useState<Step>({ k: "ready", note: null });
+  useEffect(() => onStep?.(step.k), [step.k, onStep]);
   const recording = useRef<Recording | null>(null);
   const level = useRef<HTMLSpanElement>(null);
   // Each listen's number. B, or leaving the page, moves it on, and whatever
@@ -125,20 +130,20 @@ export default function VoiceComposer({ onSend, disabled, onInput, onListen, onS
       <div className="voice confirm">
         <span className="voice-head">{VOICE_COPY.said}</span>
         <span className="voice-text">{step.text}</span>
-        <button type="button" className="voice-btn" data-pad disabled={step.k === "sending"} onClick={() => void send(step.text)}>
+        <button type="button" className="voice-btn" data-pad disabled={step.k === "sending" || busy} onClick={() => void send(step.text)}>
           {VOICE_COPY.yes}
         </button>
-        <button type="button" className="voice-btn" data-pad disabled={step.k === "sending"} onClick={() => void listen()}>
+        <button type="button" className="voice-btn" data-pad disabled={step.k === "sending" || busy} onClick={() => void listen()}>
           {VOICE_COPY.no}
         </button>
-        {step.k === "confirm" && backButton}
+        {step.k === "confirm" && !busy && backButton}
       </div>
     );
   return (
     <div className="voice">
       {step.note !== null && <span className="voice-note">{step.note}</span>}
-      <button type="button" className="voice-btn" data-pad disabled={disabled} onClick={() => void listen()}>
-        🎤 {VOICE_COPY.speak}
+      <button type="button" className="voice-btn" data-pad disabled={disabled || busy} onClick={() => void listen()}>
+        {VOICE_COPY.speak}
       </button>
     </div>
   );

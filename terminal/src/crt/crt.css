@@ -1,0 +1,181 @@
+/* The server room's CRT (wave 52b): 640 × 480 stage pixels, stretched to fit
+   (`CrtStage.tsx`). Measured on the real tube, 2026-10-30: about 6% is lost
+   off every edge, so nothing sits outside a 7% margin; 26 px is the smallest
+   text a guest reads comfortably; white, amber and a green block read well,
+   thin green doesn't. Nothing thinner than 3 px (a 1 px line flickers on an
+   interlaced tube), no glow, no shadow, no dim text, no scanlines: the tube
+   brings its own. 37 columns, 13 lines. */
+
+html.crt-page, html.crt-page body, html.crt-page #root { background: #000; overflow: hidden; }
+
+.crt-stage {
+  --crt-white: #fff;
+  --crt-amber: #ffb000;
+  --crt-green: #55ff88;
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 640px;
+  height: 480px;
+  overflow: hidden;
+  background: #000;
+  transform: scale(var(--crt-sx, 1), var(--crt-sy, 1));
+  transform-origin: 0 0;
+  font-family: Consolas, "Lucida Console", monospace;
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 31px;
+  letter-spacing: 0;
+  color: var(--crt-white);
+  cursor: none;
+}
+.crt-pipes, .crt-pipes .idle-saver { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+
+/* The camera keeps reading passes behind the pipes, drawn nowhere; asking for
+   a pass, it shows, so a guest can aim. */
+.crt-scan { position: absolute; left: 0; top: 0; width: 8px; height: 8px; overflow: hidden; opacity: 0; pointer-events: none; }
+.crt-scan.shown { left: 180px; top: 132px; width: 280px; height: 210px; opacity: 1; border: 3px solid var(--crt-amber); z-index: 2; }
+.crt-scan .scanner { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; border-radius: 0; box-shadow: none; }
+.crt-scan .scanner video { width: 100%; height: 100%; object-fit: cover; }
+.crt-scan .reticle, .crt-scan .scan-note { display: none; }
+/* ⚙ is for the crew's mouse: there, unseen, on the usual 2 s hold. */
+.crt-stage .gear, .crt-stage .mirror-gear { position: absolute; right: 0; top: 0; width: 44px; height: 44px; opacity: 0; }
+
+.terminal.crt { position: absolute; inset: 0; display: block; height: auto; background: #000; }
+.crt-safe { position: absolute; inset: 34px 44px; display: flex; flex-direction: column; gap: 6px; }
+
+.crt-top { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 18px; height: 40px; padding-bottom: 6px; border-bottom: 3px solid var(--crt-amber); }
+.crt-name { color: var(--crt-amber); white-space: nowrap; }
+.crt-name.banner { color: #000; background: var(--crt-amber); padding: 0 8px; }
+.crt-wave { flex: 1 1 auto; min-width: 0; height: 34px; }
+
+.crt-main { position: relative; flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 6px; }
+.crt-main > .thread { flex: 1 1 0; min-height: 93px; }
+
+/* The conversation: his words in white, yours in amber, nothing else. It
+   never scrolls by hand: it stands on the newest line. */
+.crt-stage .thread {
+  padding: 0;
+  gap: 12px;
+  overflow: hidden;
+  scroll-behavior: auto;
+  /* A line cut by the top edge fades out rather than slicing through its letters. */
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 18px);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 18px);
+}
+.crt-stage .line { display: block; }
+.crt-stage .type-rest { visibility: hidden; }
+.crt-stage .line .meta { display: none; }
+.crt-stage .line .text { font-size: 26px; line-height: 31px; text-shadow: none; }
+.crt-stage .line.theirs .text { color: var(--crt-white); text-shadow: none; }
+.crt-stage .line.mine .text { color: var(--crt-amber); }
+.crt-stage .line.mine .text::before { content: "> "; }
+.crt-stage .line.system .text, .crt-stage .line.kind-system .text, .crt-stage .line.kind-narration .text { color: var(--crt-amber); font-style: normal; }
+.crt-stage .line.system.earlier { display: none; }
+.crt-stage .line.echo.act .text { color: var(--crt-amber); font-style: normal; opacity: 1; }
+.crt-stage .line.echo.pending { opacity: 1; }
+.crt-stage .wait-glass { display: none; }
+.crt-stage .line.system.wait .wait-cells { color: var(--crt-amber); }
+.crt-stage .line.partial .cursor { animation: none; }
+.crt-stage .dots i { background: var(--crt-white); box-shadow: none; }
+
+/* The answers: one row each, the lit one a green block, whole. */
+.crt-stage .heart-panel { flex: 0 1 auto; max-height: 218px; padding: 6px 0 0; background: none; border-top: 3px solid var(--crt-amber); box-shadow: none; }
+.crt-stage .heart-head { display: none; }
+.crt-stage .heart-list { font-size: 26px; line-height: 31px; scrollbar-width: none; }
+.crt-stage .heart-list::-webkit-scrollbar { display: none; }
+.crt-stage .heart-options, .crt-stage .heart-panel[data-open="true"] .heart-options { display: block; animation: none; }
+.crt-stage .heart-option { display: block; padding: 0 8px; color: var(--crt-amber); }
+.crt-stage .heart-row { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+/* Only the controller lights anything here: a resting mouse never does. */
+.crt-stage .heart-option:hover:not(:disabled), .crt-stage .heart-option:focus-visible, .crt-stage .heart-panel.fresh .heart-option:hover:not(:focus-visible) { background: none; color: var(--crt-amber); }
+.crt-stage .heart-panel.fresh .heart-option:hover:not(:focus-visible) .heart-tag { color: inherit; }
+.crt-stage .heart-num { display: none; }
+.crt-stage .heart-tag, .crt-stage .heart-option:hover:not(:disabled) .heart-tag { display: inline; border: 0; padding: 0; margin-right: 0.6em; font-size: inherit; letter-spacing: 0; line-height: inherit; color: inherit; }
+.crt-stage .heart-text { display: inline; }
+.crt-stage .heart-option[data-pad-focus], .crt-stage .heart-option[data-pad-focus]:hover:not(:disabled), .crt-stage .heart-panel.fresh .heart-option[data-pad-focus]:hover:not(:focus-visible) { background: var(--crt-green); color: #000; outline: none; }
+.crt-stage .heart-option[data-pad-focus] .heart-row { white-space: normal; }
+.crt-stage .heart-panel.greyed .heart-options { opacity: 1; filter: none; }
+/* The band across the top says it, and the guide says why the buttons went. */
+.crt-stage .heart-panel-door { display: none; }
+.crt-stage .heart-more { align-self: flex-end; margin: 0; padding: 0 8px; font-size: 22px; line-height: 26px; letter-spacing: 0; color: #000; background: var(--crt-amber); animation: none; }
+.crt-stage .heart-problem { font-size: 26px; padding: 0 8px; color: var(--crt-amber); }
+/* B takes it: the legend says so. */
+.crt-stage .heart-back { display: none; }
+
+/* Asking for a pass, with the camera (`.crt-scan.shown`) between its two lines. */
+.crt-prompt { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: space-between; text-align: center; }
+.crt-prompt-ask { font-size: 34px; line-height: 40px; color: var(--crt-amber); }
+
+/* The virtual keyboard. */
+.crt-keys { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 2px; }
+.crt-keys-head { color: var(--crt-amber); }
+.crt-keys-text { color: var(--crt-white); margin-bottom: 4px; white-space: nowrap; overflow: hidden; }
+.crt-keys-row { display: flex; justify-content: space-between; gap: 4px; }
+.crt-key { flex: 1 1 0; height: 40px; padding: 0; border: 3px solid var(--crt-amber); border-radius: 0; background: none; color: var(--crt-white); font: inherit; }
+.crt-key.wide { flex: 3 1 0; font-size: 24px; }
+.crt-key[data-lit] { background: var(--crt-green); color: #000; border-color: var(--crt-green); }
+
+/* The spoken answer. */
+.crt-stage .voice { flex: none; gap: 6px; padding: 6px 0 0; border-top: 3px solid var(--crt-amber); }
+.crt-stage .voice-head, .crt-stage .voice-note { color: var(--crt-amber); letter-spacing: 0; }
+.crt-stage .voice-text { color: var(--crt-white); }
+.crt-stage .voice-btn { display: block; width: 100%; padding: 0 8px; border: 0; border-radius: 0; background: none; color: var(--crt-amber); font: inherit; letter-spacing: 0; }
+.crt-stage .voice-btn:disabled { opacity: 1; color: var(--crt-amber); }
+.crt-stage .voice-btn[data-pad-focus] { background: var(--crt-green); color: #000; outline: none; }
+.crt-stage .voice-back { display: none; }
+.crt-stage .voice-meter { height: 18px; border: 3px solid var(--crt-amber); }
+.crt-stage .voice-meter > span { background: var(--crt-amber); }
+
+/* The button guide: one row, always in the same place. */
+.crt-legend { flex: none; display: flex; align-items: center; gap: 16px; height: 40px; padding-top: 6px; border-top: 3px solid var(--crt-amber); font-size: 24px; line-height: 28px; }
+.crt-legend-note { color: var(--crt-amber); width: 100%; }
+.crt-hint { display: inline-flex; align-items: center; gap: 6px; padding: 0; border: 0; background: none; color: var(--crt-white); font: inherit; white-space: nowrap; }
+.crt-hint kbd { padding: 0 6px; font: inherit; color: #000; background: var(--crt-green); }
+
+/* The file panel. */
+.crt-stage .file-panel { flex: 1 1 auto; min-height: 0; padding: 0; gap: 6px; display: flex; flex-direction: column; }
+.crt-stage .file-head { color: var(--crt-amber); letter-spacing: 0; }
+.crt-stage .file-head button { display: none; }
+.crt-stage .file-note { padding: 0; border: 0; font-size: 26px; letter-spacing: 0; color: var(--crt-amber); }
+.crt-stage .file-list { gap: 0; scrollbar-width: none; }
+.crt-stage .file-row { padding: 0; border: 0; gap: 12px; }
+.crt-stage .file-row.fresh { border: 0; }
+.crt-stage .file-title { color: var(--crt-white); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.crt-stage .file-title .small { display: none; }
+/* One he won't take: its name, then why, on a line of its own. */
+.crt-stage .file-row.kept { display: block; }
+.crt-stage .file-kept { display: block; color: var(--crt-amber); font-size: 22px; line-height: 26px; }
+/* The whole row lights, so the file's name is what's chosen. */
+.crt-stage .file-row:has([data-pad-focus]) { background: var(--crt-green); }
+.crt-stage .file-row:has([data-pad-focus]) .file-title { color: #000; }
+.crt-stage .file-give, .crt-stage .file-code button.link { flex: none; padding: 0 8px; border: 0; border-radius: 0; background: none; color: var(--crt-amber); font: inherit; letter-spacing: 0; }
+.crt-stage .file-give:disabled { opacity: 1; }
+.crt-stage .file-give[data-pad-focus], .crt-stage .file-code button.link[data-pad-focus] { background: var(--crt-green); color: #000; outline: none; }
+.crt-stage .file-code { margin: 0; padding: 0; }
+.crt-stage .file-code input, .crt-stage .file-code button[type="submit"] { display: none; }
+.crt-stage .file-list .small { font-size: 26px; line-height: 31px; color: var(--crt-white); }
+.crt-stage .file-scan { width: 200px; }
+
+/* What fills the screen. */
+.crt-card { position: absolute; inset: 0; z-index: 3; padding: 34px 44px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; text-align: center; background: #000; }
+.crt-big { font-size: 56px; line-height: 64px; color: var(--crt-white); }
+.crt-sub { color: var(--crt-amber); }
+.crt-note { color: var(--crt-white); }
+.crt-card pre { margin: 0; align-self: stretch; text-align: left; white-space: pre-wrap; font: inherit; color: var(--crt-white); }
+.crt-bar { align-self: stretch; height: 24px; border: 3px solid var(--crt-amber); }
+.crt-bar > i { display: block; height: 100%; background: var(--crt-amber); }
+.crt-room { flex: 1 1 auto; min-height: 0; overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end; color: var(--crt-white); }
+
+.crt-stage .flash { position: absolute; top: 34px; left: 44px; right: 44px; max-width: none; transform: none; padding: 8px 12px; border: 3px solid var(--crt-amber); box-shadow: none; background: #000; color: var(--crt-amber); font-size: 26px; line-height: 31px; letter-spacing: 0; z-index: 7; }
+
+/* What reaches every terminal. */
+/* Under his name and waveform, never over them: he's the one saying it. */
+.crt-stage .door-overlay { position: absolute; left: 44px; right: 44px; top: 82px; }
+.crt-stage .door-overlay-band { padding: 6px 8px; color: #000; background: var(--crt-amber); box-shadow: none; animation: none; font-size: 30px; line-height: 36px; letter-spacing: 0; text-align: center; }
+.crt-stage .door-overlay-icon { font-size: inherit; }
+.crt-stage .screen-overlay { position: absolute; inset: 0; }
+.crt-stage .overlay-text { font-size: 44px; line-height: 52px; letter-spacing: 0; padding: 0 44px; text-shadow: none; }
+.crt-stage .overlay-text.alarm, .crt-stage .overlay-text.go_to_living_room { color: var(--crt-amber); }
+.crt-stage .announce-banner { position: absolute; left: 44px; right: 44px; bottom: 34px; max-width: none; transform: none; padding: 8px 12px; border: 3px solid var(--crt-amber); border-radius: 0; box-shadow: none; background: #000; color: var(--crt-amber); font-size: 26px; line-height: 31px; }
+.crt-stage .announce-icon, .crt-stage .mic-cue { display: none; }

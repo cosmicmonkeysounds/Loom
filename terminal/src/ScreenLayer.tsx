@@ -21,7 +21,7 @@ import { useMomentUp, useSceneClockUp } from "./cutscene/moment-bus.ts";
 import { useDreamPhase, useDreamReady, useDreamSpeaking } from "./dream/DreamView.tsx";
 import { moshMode } from "./dream/dream.ts";
 import { Mosh } from "./dream/Mosh.tsx";
-import { FlickerPlays, GLITCH_MS, GLITCH_TEXT, STAFF_TAG, chartCallouts, chartLines, formatCountdown, screenLayers, slideCopy, slideSources, slideVideoSources, y2kClock, endFlicker, offerFlicker, type OverlayKind, type ScreenLayers } from "./slides.ts";
+import { FlickerPlays, GLITCH_MS, GLITCH_TEXT, STAFF_TAG, chartCallouts, chartLines, formatCountdown, plainLayers, screenLayers, slideCopy, slideSources, slideVideoSources, y2kClock, endFlicker, offerFlicker, type OverlayKind, type ScreenLayers } from "./slides.ts";
 import { sfx } from "./sound/bus.ts";
 
 /** PNGs that failed to load this page-load: go straight to the next source. */
@@ -417,7 +417,7 @@ export function ScreenLayer({ layers, gear, video, muted, onSlideTap, cutscene }
 
 /** The layer, live: re-decided every second (holds, the corner, the clock).
  *  `cutscenes` (wave 17): the slide's slot draws the cutscene layer (`cutscene/`). */
-export function LiveScreenLayer({ state, piloting, peek = false, room = false, slides = true, onSlideTap, gear, video, cutscenes = false, announcing = false, target = "wall", dreamKey = "" }: { state: ScreenState | null; piloting: boolean; peek?: boolean; room?: boolean; slides?: boolean; onSlideTap?: () => void; gear: ReactNode; video?: boolean; cutscenes?: boolean; /** The announcement banner is up. */ announcing?: boolean; target?: "tv" | "wall"; dreamKey?: string }) {
+export function LiveScreenLayer({ state, piloting, peek = false, room = false, slides = true, onSlideTap, gear, video, cutscenes = false, announcing = false, target = "wall", dreamKey = "", plain = false }: { state: ScreenState | null; piloting: boolean; peek?: boolean; room?: boolean; slides?: boolean; onSlideTap?: () => void; gear: ReactNode; video?: boolean; cutscenes?: boolean; /** The announcement banner is up. */ announcing?: boolean; target?: "tv" | "wall"; dreamKey?: string; /** The CRT (wave 52b): no glitch, burst, flicker or dream. */ plain?: boolean }) {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const id = window.setInterval(() => setNow(Date.now()), 1000);
@@ -430,7 +430,8 @@ export function LiveScreenLayer({ state, piloting, peek = false, room = false, s
   // Y2K clock — but its moments (beat cutscenes) and the glitch still play.
   const dreamReady = useDreamReady();
   useDreamPhase(state); // renders on the takeover's two moments, not a second late
-  const layers = screenLayers(state, at, { piloting, peek, room, slides, dreamReady });
+  const drawn = screenLayers(state, at, { piloting, peek, room, slides, dreamReady });
+  const layers = plain ? plainLayers(drawn) : drawn;
   const bare = piloting || peek || room;
   // Wave 50: what gets through the dream comes through it data moshed.
   const moment = useMomentUp();

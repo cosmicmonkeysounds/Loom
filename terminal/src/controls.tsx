@@ -26,6 +26,22 @@ export function takesFocusBack(active: unknown, o: { body: unknown; attached: bo
   return o.scope === null || !o.scope.contains(active);
 }
 
+/** A typed program name (or id) → that program, or a line saying why not. */
+export async function pickByName(config: TerminalConfig, name: string, onPick: (id: string) => void, onProblem: (msg: string) => void): Promise<boolean> {
+  try {
+    const hit = matchName(name, await fetchRoster(config));
+    if (hit.kind === "one") {
+      onPick(hit.id);
+      return true;
+    }
+    if (hit.kind === "many") onProblem(`SEVERAL PROGRAMS MATCH: ${hit.names.slice(0, 4).join(", ").toUpperCase()}`);
+    else onProblem("NO SUCH PROGRAM — REGISTER ON YOUR PHONE FIRST");
+  } catch (e) {
+    onProblem(`LOOKUP FAILED — ${(e as Error).message.toUpperCase()}`);
+  }
+  return false;
+}
+
 /**
  * Type a program name instead of scanning. Opened from a toggle, it takes
  * the focus at once. `focus` (wave 26, T3: the tent's kiosk, where it is
@@ -64,19 +80,9 @@ export function TypedFallback({ config, onPick, onProblem, focus, scope, clearOn
   const submit = async () => {
     if (name.trim() === "" || busy) return;
     setBusy(true);
-    try {
-      const hit = matchName(name, await fetchRoster(config));
-      if (hit.kind === "one") {
-        if (clearOnPick) setName("");
-        onPick(hit.id);
-      }
-      else if (hit.kind === "many") onProblem(`SEVERAL PROGRAMS MATCH: ${hit.names.slice(0, 4).join(", ").toUpperCase()}`);
-      else onProblem("NO SUCH PROGRAM — REGISTER ON YOUR PHONE FIRST");
-    } catch (e) {
-      onProblem(`LOOKUP FAILED — ${(e as Error).message.toUpperCase()}`);
-    } finally {
-      setBusy(false);
-    }
+    const picked = await pickByName(config, name, onPick, onProblem);
+    if (picked && clearOnPick) setName("");
+    setBusy(false);
   };
   return (
     <form

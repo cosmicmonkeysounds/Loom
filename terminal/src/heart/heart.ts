@@ -238,6 +238,8 @@ export function sceneHoldsPanel(value: string): boolean {
 export const PANEL_SETTLE_MS = 700;
 /** A voice that never drains (a stuck engine) holds a menu no longer than this (ms). */
 export const PANEL_WAIT_CAP_MS = 20_000;
+/** The same, where he can't be cut off (`hold`): a long speech is said whole (ms). */
+export const PANEL_HOLD_CAP_MS = 180_000;
 
 export type PanelWait = "voice" | "scene" | "settle";
 
@@ -250,8 +252,10 @@ export type PanelWait = "voice" | "scene" | "settle";
  * scene closes it again (a line he says while it waits is no reason to
  * snatch it away). `recheck`: ms until the answer may change by itself.
  */
-export function panelGate(o: { sinceDock: number; voiceBusy: boolean; sceneLeft: number; wasOpen?: boolean }): { open: boolean; wait: PanelWait | null; recheck: number | null } {
+export function panelGate(o: { sinceDock: number; voiceBusy: boolean; sceneLeft: number; wasOpen?: boolean; hold?: boolean }): { open: boolean; wait: PanelWait | null; recheck: number | null } {
   if (o.sceneLeft > 0) return { open: false, wait: "scene", recheck: o.sceneLeft };
+  // Wave 52b (`hold`): he finishes, whatever he says and whenever he says it.
+  if (o.hold === true && o.voiceBusy && o.sinceDock < PANEL_HOLD_CAP_MS) return { open: false, wait: "voice", recheck: PANEL_HOLD_CAP_MS - o.sinceDock };
   if (o.wasOpen === true) return { open: true, wait: null, recheck: null };
   if (o.voiceBusy && o.sinceDock < PANEL_WAIT_CAP_MS) return { open: false, wait: "voice", recheck: PANEL_WAIT_CAP_MS - o.sinceDock };
   if (o.sinceDock < PANEL_SETTLE_MS) return { open: false, wait: "settle", recheck: PANEL_SETTLE_MS - o.sinceDock };

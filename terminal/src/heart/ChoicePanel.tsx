@@ -29,6 +29,7 @@ export function ChoicePanel({
   sceneEndsAt = 0,
   onSkip,
   pad = false,
+  hold = false,
 }: {
   menu: HeartMenu;
   /** The door, as the panel reads it (`doorOpenNow`). */
@@ -47,6 +48,8 @@ export function ChoicePanel({
   onSkip?: () => void;
   /** A GameCube controller drives this terminal (wave 52): its words, not the keyboard's. */
   pad?: boolean;
+  /** He can't be cut off (wave 52b, the CRT): no answers on screen until he's done. */
+  hold?: boolean;
 }) {
   const model = panelModel(menu, doorOpen)!;
   const [sending, setSending] = useState<number | null>(null);
@@ -56,7 +59,7 @@ export function ChoicePanel({
   const dock = useRef<{ id: number; at: number; skipped: number; opened: boolean }>({ id: -1, at: 0, skipped: 0, opened: false });
   if (dock.current.id !== menu.id) dock.current = { id: menu.id, at: Date.now(), skipped: 0, opened: false };
   const now = Date.now();
-  const gate = panelGate({ sinceDock: panelSince(dock.current.at, dock.current.skipped, now), voiceBusy, sceneLeft: Math.max(0, sceneEndsAt - now), wasOpen: dock.current.opened });
+  const gate = panelGate({ sinceDock: panelSince(dock.current.at, dock.current.skipped, now), voiceBusy, sceneLeft: Math.max(0, sceneEndsAt - now), wasOpen: dock.current.opened, hold });
   if (gate.open) dock.current.opened = true;
   const open = gate.open;
   // Look again when the answer can change by itself (the settle, the cap, a scene's end).
@@ -164,6 +167,7 @@ export function ChoicePanel({
     );
   }
 
+  if (hold && !open) return null;
   const state = !open ? " waiting" : "";
   return (
     <div
@@ -209,9 +213,19 @@ export function ChoicePanel({
                 onMouseEnter={onActivity}
                 aria-label={o.raw}
               >
-                <span className="heart-num">{optionKey(o.index) ?? "·"}</span>
-                {o.tag !== null && <span className="heart-tag">{o.tag}</span>}
-                <span className="heart-text">{o.text}</span>
+                {hold ? (
+                  // One line, cut with a "…": a button can't do that to its own text.
+                  <span className="heart-row">
+                    {o.tag !== null && <span className="heart-tag">{o.tag}</span>}
+                    {o.text}
+                  </span>
+                ) : (
+                  <>
+                    <span className="heart-num">{optionKey(o.index) ?? "·"}</span>
+                    {o.tag !== null && <span className="heart-tag">{o.tag}</span>}
+                    <span className="heart-text">{o.text}</span>
+                  </>
+                )}
               </button>
             </li>
           ))}

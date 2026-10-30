@@ -10,7 +10,7 @@ import { isGameCube } from "./pad.ts";
 /** How often ⚙ looks again (ms). */
 const LOOK_MS = 2000;
 
-export function RigSetup({ webcam, onWebcam, pad, onPad, whisper, onWhisper }: { webcam: string; onWebcam: (w: string) => void; pad: boolean; onPad: (p: boolean) => void; whisper: boolean; onWhisper: (w: boolean) => void }) {
+export function RigSetup({ webcam, onWebcam, pad, onPad, whisper, onWhisper, crt, onCrt }: { webcam: string; onWebcam: (w: string) => void; pad: boolean; onPad: (p: boolean) => void; whisper: boolean; onWhisper: (w: boolean) => void; crt: boolean; onCrt: (c: boolean) => void }) {
   const [padSeen, setPadSeen] = useState(false);
   const [listening, setListening] = useState<boolean | null>(null);
   useEffect(() => {
@@ -40,6 +40,10 @@ export function RigSetup({ webcam, onWebcam, pad, onPad, whisper, onWhisper }: {
         spoken answers <span className="muted">(whisper.cpp on this computer, instead of typing)</span>
       </label>
       {whisper && listening !== null && <div className={`small ${listening ? "muted" : "warn"}`}>{listening ? "whisper is listening" : "whisper isn't answering: run scripts/server-room/start-whisper.ps1, and allow this site device access"}</div>}
+      <label className="check">
+        <input type="checkbox" checked={crt} onChange={(e) => onCrt(e.target.checked)} />
+        an old 4:3 CRT <span className="muted">(big plain text, a waveform for the face, the pipes when idle, no effects)</span>
+      </label>
     </fieldset>
   );
 }
