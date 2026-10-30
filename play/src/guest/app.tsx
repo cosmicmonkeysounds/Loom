@@ -441,9 +441,11 @@ export function GuestApp({ onLeave, badgeLink = null }: { onLeave: () => void; b
     // The room the guest stands in: its beat lines reach the blue screen.
     here: st.location !== null ? `loc:${st.location}` : null,
     openPass: () => nav.go({ to: "pass" }),
-    // A loud objective flashes the NOW bar (below the modal rungs) — not on
-    // the cutscene's stage, which has no NOW bar: there it is the banner.
-    nowBar: !cut.showing,
+    // A loud objective flashes the NOW bar (below the modal rungs). The
+    // cutscene's stage has no NOW bar: wave 47, a loud objective about the
+    // pass lights the stage's own My pass (the pass card under it says the
+    // rest); any other one is still the banner.
+    nowBar: !cut.showing || (st.objectives ?? []).some((o) => o.loud === true && o.buttons.includes("pass")),
     ...(go !== undefined ? { go } : {}),
     exitContext: () => exitContext(),
     // The big rung renders a card inside itself through the same answer path.

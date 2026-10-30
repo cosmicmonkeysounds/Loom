@@ -27,10 +27,11 @@ export function trayCardKey(m: Pick<ChatMessage, "seq" | "channel" | "widget">):
 }
 
 /** The card the tray leads with: the one a receipt asked for, else (and when
- *  that card has left the tray) the newest. */
-export function trayIndex(cards: readonly Pick<ChatMessage, "seq">[], focus: number | null): number {
+ *  that card has left the tray) the newest — or, on the arrival stage (wave
+ *  47, `lead: "oldest"`), the oldest, so its questions come in the order asked. */
+export function trayIndex(cards: readonly Pick<ChatMessage, "seq">[], focus: number | null, lead: "newest" | "oldest" = "newest"): number {
   const at = focus !== null ? cards.findIndex((c) => c.seq === focus) : -1;
-  return at >= 0 ? at : Math.max(0, cards.length - 1);
+  return at >= 0 ? at : lead === "oldest" ? 0 : Math.max(0, cards.length - 1);
 }
 
 /** Cards each pane's tray has already shown open (keyed by its crawl, one
@@ -81,6 +82,7 @@ export function CardTray({
   crowded = false,
   shut = 0,
   onOpenChange,
+  lead = "newest",
 }: {
   /** The room's live cards, oldest first (`trayCards`). */
   cards: readonly ChatMessage[];
@@ -95,11 +97,13 @@ export function CardTray({
   /** Wave 26 (P1): bumped to fold the tray from outside. */
   shut?: number;
   onOpenChange?: (open: boolean) => void;
+  /** Wave 47: which card leads with no receipt asking (the stage: the oldest). */
+  lead?: "newest" | "oldest";
 }) {
   const host = usePlayHost();
   const seen = trayShown(host.crawl);
   // The newest card leads; a receipt's tap jumps to its card and opens it.
-  const index = trayIndex(cards, focus);
+  const index = trayIndex(cards, focus, lead);
   const card = cards[index];
   const [open, setOpen] = useState(() => card !== undefined && !seen.has(trayCardKey(card)) && (!crowded || focus !== null));
   useEffect(() => {
