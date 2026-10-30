@@ -78,7 +78,14 @@ lights:
 #   never as a service: ASIO drivers are unreliable from session 0. Never
 #   beside the MacBook's (`stagehand launchd uninstall --job audio` there):
 #   two routers would both speak every announcement.
+#   - Trabolta's TV voice without a cable (wave 46: this PC has no line out):
+#     Chrome's output device is "VoiceMeeter Input" (VAIO), VoiceMeeter runs
+#     at sign-in with that strip on B1 only, and `tap:` sums VoiceMeeter's
+#     B1 ("VoiceMeeter Output") into input 3 as if it were cabled there:
+#     routed by the matrix, metered, and the music ducks under it
+#     (scripts/house-desktop/README.md §3.5).
 audio:
   host_api: asio
+  tap: { device: "VoiceMeeter Output", host_api: mme, ch: 3 }
   voice_engine: auto                # SAPI on this PC (System.Speech through Windows PowerShell)
   say_voice: Microsoft Zira Desktop # the female desktop voice; the default female voice if absent

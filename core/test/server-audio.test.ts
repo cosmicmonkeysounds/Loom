@@ -120,9 +120,9 @@ describe("the starter audio.json (Trapped in the Internet)", () => {
       const house = JSON.parse(readFileSync(join(dir, map), "utf8"));
       expect(validateAudio(audio, house).problems).toEqual([]);
     }
-    // Wave 31: the 828x's own outs, no ADAT expander (Analog 1-8, Main + Phones L/R).
-    expect(audio.device).toMatchObject({ name: "828x", inputs: 10, outputs: 12, expect: { inputs: 32, outputs: 30 } });
-    expect(audio.outputs).toHaveLength(12);
+    // Wave 46: the 828x's own outs in its ASIO order (Main L/R 1-2, Analog 1-8, S/PDIF, Phones L/R 13-14).
+    expect(audio.device).toMatchObject({ name: "828x", inputs: 10, outputs: 14, expect: { inputs: 32, outputs: 30 } });
+    expect(audio.outputs).toHaveLength(14);
     expect(audio.inputs).toHaveLength(10);
     expect(audio.zones.map((z) => z.id)).toEqual(["living"]);
     // Every `sound X` in the show has a cue (but the chime, rung with the

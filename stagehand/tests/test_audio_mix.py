@@ -79,15 +79,15 @@ def test_an_input_source_is_its_role_else_its_channel():
 def test_mix_gains_on_the_show_rig():
     doc = show_doc()
     assert mix_gains({}, doc).unity()
-    # The sub has its own speaker on out 1; living L / R are on 9 / 10.
+    # The sub has its own speaker on out 3; living L / R are on 1 / 2 (Main).
     g = mix_gains({"spk:living-sub": lv(-6), "room:desktop/src:music": lv(-3), "src:sfx": lv(0, True)}, doc)
     music = g.strips["music"]
-    assert len(music) == 12
-    assert music[0] == pytest.approx(db_to_lin(-9))  # the sub: room −3 + speaker −6
-    assert music[8] == pytest.approx(db_to_lin(-3)) and music[9] == pytest.approx(db_to_lin(-3))
-    assert music[2] == music[3] == music[7] == 1.0  # the kitchen, the optical drive
-    assert music[1] == music[10] == 1.0  # no speaker: master + src only
-    assert g.strips["tracks"][0] == pytest.approx(db_to_lin(-6)) and g.strips["tracks"][8] == 1.0
+    assert len(music) == 14
+    assert music[2] == pytest.approx(db_to_lin(-9))  # the sub: room −3 + speaker −6
+    assert music[0] == pytest.approx(db_to_lin(-3)) and music[1] == pytest.approx(db_to_lin(-3))
+    assert music[4] == music[5] == music[9] == 1.0  # the kitchen, the optical drive
+    assert music[3] == music[12] == 1.0  # no speaker: master + src only
+    assert g.strips["tracks"][2] == pytest.approx(db_to_lin(-6)) and g.strips["tracks"][0] == 1.0
     assert all(x == 0.0 for x in g.strips["sfx"])  # muted everywhere, the spare outputs too
     assert g.silent == frozenset()
 
@@ -95,11 +95,11 @@ def test_mix_gains_on_the_show_rig():
 def test_a_muted_room_silences_its_outputs_only_and_inputs_follow_the_mix():
     doc = show_doc()
     g = mix_gains({"room:start-bar": lv(0, True), "src:in:trabolta": lv(-6)}, doc)
-    assert [o + 1 for o, x in enumerate(g.strips["music"]) if x == 0.0] == [3, 4]
+    assert [o + 1 for o, x in enumerate(g.strips["music"]) if x == 0.0] == [5, 6]
     tv = g.inputs[3]
-    assert tv[2] == tv[3] == 0.0  # the kitchen is muted, the TV there too
-    assert tv[8] == pytest.approx(db_to_lin(-6)) and tv[7] == pytest.approx(db_to_lin(-6))
-    assert g.inputs[1][8] == 1.0 and g.inputs[1][2] == 0.0  # a room mute is every source there
+    assert tv[4] == tv[5] == 0.0  # the kitchen is muted, the TV there too
+    assert tv[0] == pytest.approx(db_to_lin(-6)) and tv[9] == pytest.approx(db_to_lin(-6))
+    assert g.inputs[1][0] == 1.0 and g.inputs[1][4] == 0.0  # a room mute is every source there
     # A room mute leaves the TV's ducking alone; a src mute (or master) stops it.
     assert g.silent == frozenset()
     assert mix_gains({"src:in:trabolta": lv(0, True)}, doc).silent == {"trabolta"}
@@ -134,64 +134,64 @@ def block(m: Mixer, frames: int = 100, indata: np.ndarray | None = None) -> np.n
 
 def test_a_muted_room_silences_a_bed_there_and_nowhere_else_and_never_a_test():
     doc = show_doc()
-    m = Mixer(10, 12, RATE)
+    m = Mixer(10, 14, RATE)
     block(m)  # running: a mix change ramps from here
-    every = {o: 0.0 for o in (1, 3, 4, 8, 9, 10)}
+    every = {o: 0.0 for o in (1, 2, 3, 5, 6, 10)}
     m.play(tone(20_000), every, bus="music", fade_in_s=0)
-    m.play(tone(20_000, 0.05), {3: 0.0, 9: 0.0}, bus="test", fade_in_s=0)
+    m.play(tone(20_000, 0.05), {5: 0.0, 1: 0.0}, bus="test", fade_in_s=0)
     out = block(m)
-    assert out[-1, 2] == pytest.approx(0.15) and out[-1, 8] == pytest.approx(0.15)
-    m.set_mix(mix_gains({"room:start-bar": lv(0, True)}, doc, 12))
+    assert out[-1, 4] == pytest.approx(0.15) and out[-1, 0] == pytest.approx(0.15)
+    m.set_mix(mix_gains({"room:start-bar": lv(0, True)}, doc, 14))
     out = block(m, 20)  # the ramp (TRIM_S = 50 ms): on its way down, not a step
-    assert 0.05 < out[-1, 2] < 0.15
+    assert 0.05 < out[-1, 4] < 0.15
     for _ in range(2):
         out = block(m)
-    assert out[-1, 2] == pytest.approx(0.05) and out[-1, 3] == 0.0  # the kitchen: only the test is left
-    assert out[-1, 8] == pytest.approx(0.15) and out[-1, 0] == pytest.approx(0.1) and out[-1, 7] == pytest.approx(0.1)
+    assert out[-1, 4] == pytest.approx(0.05) and out[-1, 5] == 0.0  # the kitchen: only the test is left
+    assert out[-1, 0] == pytest.approx(0.15) and out[-1, 2] == pytest.approx(0.1) and out[-1, 9] == pytest.approx(0.1)
 
 
 def test_the_strips_move_apart_and_the_subs_own_fader():
     doc = show_doc()
-    m = Mixer(10, 12, RATE)
-    m.set_mix(mix_gains({"src:tracks": lv(-6), "spk:living-sub": lv(-12), "src:announce": lv(0, True)}, doc, 12))
+    m = Mixer(10, 14, RATE)
+    m.set_mix(mix_gains({"src:tracks": lv(-6), "spk:living-sub": lv(-12), "src:announce": lv(0, True)}, doc, 14))
     block(m)  # a fresh stream starts at the mix
-    m.play(tone(5000), {1: 0.0, 9: 0.0}, bus="music", fade_in_s=0)
-    m.play(tone(5000), {3: 0.0}, bus="sfx", strip="tracks", fade_in_s=0)
-    m.play(tone(5000), {4: 0.0}, bus="sfx", fade_in_s=0)
-    m.play(tone(5000), {8: 0.0}, bus="announce", fade_in_s=0)
+    m.play(tone(5000), {3: 0.0, 1: 0.0}, bus="music", fade_in_s=0)
+    m.play(tone(5000), {5: 0.0}, bus="sfx", strip="tracks", fade_in_s=0)
+    m.play(tone(5000), {6: 0.0}, bus="sfx", fade_in_s=0)
+    m.play(tone(5000), {10: 0.0}, bus="announce", fade_in_s=0)
     out = block(m)
-    assert out[-1, 0] == pytest.approx(0.1 * db_to_lin(-12), rel=1e-3)  # the sub
-    assert out[-1, 8] == pytest.approx(0.1)
-    assert out[-1, 2] == pytest.approx(0.1 * db_to_lin(-6), rel=1e-3)  # a track
-    assert out[-1, 3] == pytest.approx(0.1)  # other sfx
-    assert out[-1, 7] == 0.0  # announcements muted
+    assert out[-1, 2] == pytest.approx(0.1 * db_to_lin(-12), rel=1e-3)  # the sub
+    assert out[-1, 0] == pytest.approx(0.1)
+    assert out[-1, 4] == pytest.approx(0.1 * db_to_lin(-6), rel=1e-3)  # a track
+    assert out[-1, 5] == pytest.approx(0.1)  # other sfx
+    assert out[-1, 9] == 0.0  # announcements muted
     with pytest.raises(ValueError):
         m.play(tone(10), {1: 0.0}, strip="nope")
 
 
 def test_the_tv_route_follows_its_source():
     doc = show_doc()
-    m = Mixer(10, 12, RATE, smooth_s=0.01)
-    m.set_routes({(3, o): 0.0 for o in (3, 4, 8, 9, 10)})
+    m = Mixer(10, 14, RATE, smooth_s=0.01)
+    m.set_routes({(3, o): 0.0 for o in (1, 2, 5, 6, 10)})
     ind = np.zeros((100, 10), dtype=np.float32)
     ind[:, 2] = 0.4
     for _ in range(3):
         out = block(m, 100, ind)
-    assert out[-1, 8] == pytest.approx(0.4, rel=1e-3) and out[-1, 0] == 0.0
-    m.set_mix(mix_gains({"src:in:trabolta": lv(-6), "room:start-bar/src:in:trabolta": lv(0, True)}, doc, 12))
+    assert out[-1, 0] == pytest.approx(0.4, rel=1e-3) and out[-1, 2] == 0.0
+    m.set_mix(mix_gains({"src:in:trabolta": lv(-6), "room:start-bar/src:in:trabolta": lv(0, True)}, doc, 14))
     for _ in range(3):
         out = block(m, 100, ind)
-    assert out[-1, 8] == pytest.approx(0.4 * db_to_lin(-6), rel=1e-3)
-    assert abs(out[-1, 2]) < 1e-4  # the kitchen's TV muted
+    assert out[-1, 0] == pytest.approx(0.4 * db_to_lin(-6), rel=1e-3)
+    assert abs(out[-1, 4]) < 1e-4  # the kitchen's TV muted
     # The routes still replace the matrix under the mix (set_routes keeps working).
-    m.set_routes({(3, 9): -6.0})
+    m.set_routes({(3, 1): -6.0})
     for _ in range(3):
         out = block(m, 100, ind)
-    assert out[-1, 8] == pytest.approx(0.4 * db_to_lin(-12), rel=1e-3) and abs(out[-1, 9]) < 1e-4
+    assert out[-1, 0] == pytest.approx(0.4 * db_to_lin(-12), rel=1e-3) and abs(out[-1, 1]) < 1e-4
     m.set_mix(None)
     for _ in range(3):
         out = block(m, 100, ind)
-    assert out[-1, 8] == pytest.approx(0.4 * db_to_lin(-6), rel=1e-3)
+    assert out[-1, 0] == pytest.approx(0.4 * db_to_lin(-6), rel=1e-3)
 
 
 def test_muting_the_tv_everywhere_stops_its_duck():
