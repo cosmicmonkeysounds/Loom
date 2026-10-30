@@ -79,7 +79,7 @@ describe("enter", () => {
   it("a cast card signs in as its part", async () => {
     const f = fakeFetch({ ...resolve, "/e/ev1/api/prime/login": (b) => (b["part"] === "p1" ? { status: 200, body: { token: "pt", character: "Clippy", admin: false, host: true } } : { status: 404, body: {} }) });
     expect(await enterPart("PRM1", "p1", f.fn)).toEqual({ token: "pt", character: "Clippy", admin: false, host: true, eventId: "ev1", title: "The Party" });
-    await expect(enterPart("PRM1", "nope", f.fn)).rejects.toThrow(/cast card/);
+    await expect(enterPart("PRM1", "nope", f.fn)).rejects.toThrow(/staff badge/);
   });
 });
 

@@ -380,6 +380,14 @@ export function GuestApp({ onLeave, badgeLink = null }: { onLeave: () => void; b
         return e instanceof Error ? e.message : "Couldn't link that badge — try again.";
       }
     }
+    if (scan.kind === "act") {
+      try {
+        await s.act(scan.name);
+        return null;
+      } catch (e) {
+        return e instanceof Error ? e.message : "That didn't work — try again.";
+      }
+    }
     // The dialog's chunk loads beside the request (the sheet prefetched it).
     let o;
     if (scan.kind === "checkin") {

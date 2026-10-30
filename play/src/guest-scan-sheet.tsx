@@ -14,6 +14,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useBigOnScreen, useMomentsHold } from "./moments/provider.tsx";
+import { actFromSearch } from "./act-link.ts";
 import { checkinFromSearch } from "./checkin.ts";
 import { unlockFromSearch } from "./codex.ts";
 import { badgeFromText } from "./rejoin.ts";
@@ -26,6 +27,8 @@ export type GuestScan =
   | { kind: "unlock"; code: string }
   /** A room's sign: check in there (the room's slug, as the sign carries it). */
   | { kind: "checkin"; at: string }
+  /** A sign that presses one of the guest's own buttons (wave 54). */
+  | { kind: "act"; name: string }
   /** Another guest's pass (wave 18, F3): the Recruit sheet. */
   | { kind: "pass"; id: string }
   /** A printed badge (wave 23): yours links to you; someone else's is their pass. */
@@ -41,6 +44,7 @@ const BARE_CODE = /^[A-Za-z0-9][A-Za-z0-9_-]{2,39}$/;
 export const SCAN_JOIN = "That's the party's join code — you're already in.";
 export const SCAN_INVITE = "That's an invitation link — you're already in.";
 export const SCAN_PAIR = "That's a director's re-pair code — it signs a phone in as someone. Only open it with your camera if a director handed it to you.";
+export const SCAN_STAFF = "That's a staff badge — it isn't yours to scan.";
 export const SCAN_OWN_PASS = "That's your own pass — performers scan it, not you.";
 export const SCAN_DIRECTOR = "That's the director's page — not for guests.";
 export const SCAN_UNKNOWN = "That QR isn't one of the party's codes.";
@@ -66,6 +70,8 @@ export function guestScan(raw: string, meId: string | null = null): GuestScan {
   if (unlock !== null) return { kind: "unlock", code: unlock };
   const checkin = checkinFromSearch(url.search);
   if (checkin !== null) return { kind: "checkin", at: checkin };
+  const act = actFromSearch(url.search);
+  if (act !== null) return { kind: "act", name: act };
   const p = url.searchParams;
   if ((p.get("pair") ?? "").trim() !== "") return { kind: "note", text: SCAN_PAIR };
   const badge = badgeFromText(p.get("badge") ?? "");
@@ -73,6 +79,7 @@ export function guestScan(raw: string, meId: string | null = null): GuestScan {
   const pass = p.get("pass") ?? p.get("guest");
   if (pass !== null && GUEST_ID.test(pass)) return passScan(pass, meId);
   if (p.get("role") === "director") return { kind: "note", text: SCAN_DIRECTOR };
+  if ((p.get("part") ?? "").trim() !== "") return { kind: "note", text: SCAN_STAFF };
   if ((p.get("claim") ?? "").trim() !== "") return { kind: "note", text: SCAN_INVITE };
   if (p.has("code")) return { kind: "note", text: SCAN_JOIN };
   return { kind: "note", text: SCAN_UNKNOWN };
@@ -184,7 +191,7 @@ export function ScanSheet({
     if (busy.current) return;
     if (hit.kind === "note") return setNote(hit.text);
     busy.current = true;
-    setNote(hit.kind === "unlock" ? "🔓 Unlocking…" : hit.kind === "pass" ? "🎟 Reading the pass…" : hit.kind === "badge" ? "🪪 Reading the badge…" : "📍 Checking in…");
+    setNote(hit.kind === "unlock" ? "🔓 Unlocking…" : hit.kind === "pass" ? "🎟 Reading the pass…" : hit.kind === "badge" ? "🪪 Reading the badge…" : hit.kind === "act" ? "One moment…" : "📍 Checking in…");
     void onScan(hit).then(
       (said) => {
         busy.current = false;

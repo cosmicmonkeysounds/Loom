@@ -41,6 +41,8 @@ export interface Identities {
   /** False until the director opens the doors (there is no cast to pick
    *  from yet). Absent from an older server → treated as open. */
   doorsOpen?: boolean;
+  /** Wave 54: the reserved program this caller's claim opens. */
+  invited?: string;
 }
 
 /** How often the join screen re-asks while the doors are still closed. */

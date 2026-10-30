@@ -13,7 +13,7 @@ import { initialRole, roleForBrand, type AppRole } from "./app-role.ts";
 import { ChunkBoundary, ChunkFailed, retryImport } from "./lazy-chunk.tsx";
 import { resumeToAdopt, storedGuestName, type ResumeLink } from "./resume.ts";
 import { cardPlan, rememberBadge, type CardLink } from "./rejoin.ts";
-import { claimFromSearch } from "./claim.ts";
+import { claimField, claimFromSearch } from "./claim.ts";
 import { codeFromUrl, useDocumentTitle, useLandingBrand, useTheme } from "./session/shared.ts";
 import { browserHost } from "./host.ts";
 
@@ -47,15 +47,20 @@ function storedRaw(key: string): string | null {
 }
 
 /** A sign-in the page opened with (wave 23): a badge, an invitation, a cast card. */
-type Entry = { kind: "badge"; code: string; badge: string } | { kind: "claim"; code: string; claim: string } | { kind: "part"; code: string; part: string };
+type Entry = { kind: "badge"; code: string; badge: string; claim: string | null } | { kind: "claim"; code: string; claim: string } | { kind: "part"; code: string; part: string };
 
 /** What the page's link asks to sign in as, before any app mounts. */
 function entryFor(card: CardLink | null, search: string, stored: (k: string) => string | null): { entry: Entry | null; confirm: string | null; link: string | null } {
   const guestName = storedGuestName(stored("loom.guest"));
   const plan = cardPlan(card, guestName, (stored("loom.prime") ?? "") !== "");
-  if (plan.kind === "enter") return { entry: { kind: "badge", code: plan.code, badge: plan.badge }, confirm: null, link: null };
+  if (plan.kind === "enter") return { entry: { kind: "badge", code: plan.code, badge: plan.badge, claim: claimFromSearch(search) }, confirm: null, link: null };
   if (plan.kind === "part") return { entry: { kind: "part", code: plan.code, part: plan.part }, confirm: plan.confirm, link: null };
-  if (plan.kind === "link") return { entry: null, confirm: null, link: plan.badge };
+  if (plan.kind === "link") {
+    // Kept beside the session: a stale one (a rehearsal's, cut by Go live)
+    // falls to the join screen, and the badge still links there.
+    rememberBadge(browserHost.storage, card!.code, plan.badge);
+    return { entry: null, confirm: null, link: plan.badge };
+  }
   // An invitation opened with no session: its program may have joined
   // already (a featured guest who lost their phone) — in at once if so.
   const claim = claimFromSearch(search);
@@ -110,12 +115,12 @@ export function App({ resume = null, card = null }: { resume?: ResumeLink | null
           setRole("prime");
         })
         .catch((e: unknown) => {
-          setResumeError(e instanceof Error ? e.message : "That cast card didn't work.");
+          setResumeError(e instanceof Error ? e.message : "That staff badge didn't work.");
           setRole("none");
         })
         .finally(done);
     } else {
-      const by = entry.kind === "badge" ? { badge: entry.badge } : { claim: entry.claim };
+      const by = entry.kind === "badge" ? { badge: entry.badge, ...claimField(entry.claim) } : { claim: entry.claim };
       void loadRejoinCalls()
         .then((m) => m.enterBy(entry.code, by))
         .then((r) => {
@@ -179,18 +184,18 @@ export function App({ resume = null, card = null }: { resume?: ResumeLink | null
     return (
       <div className="hero">
         <div className="glyph">🎭</div>
-        <p className="sub">This phone is signed in as {entryConfirm}. The cast card you scanned signs it in as a performer instead.</p>
-        <button className="choice primary" onClick={() => setEntryConfirm(null)}>
-          Switch this phone
-        </button>
+        <p className="sub">This phone is signed in as {entryConfirm}. That's a staff badge. If it's someone else's, leave it alone: switching signs them out.</p>
         <button
-          className="choice ghost"
+          className="choice primary"
           onClick={() => {
             setEntry(null);
             setEntryConfirm(null);
           }}
         >
           Stay {entryConfirm}
+        </button>
+        <button className="choice ghost" onClick={() => setEntryConfirm(null)}>
+          It's my badge: switch this phone
         </button>
       </div>
     );

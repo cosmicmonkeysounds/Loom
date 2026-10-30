@@ -7,7 +7,10 @@
 //! instead of a bare 404. Mirrors `terminal/src/scan.ts`.
 //!
 //! A guest's printed **badge** (wave 23, `…&badge=<code>`) is their pass
-//! too: its code goes to `/api/scan`, which resolves it.
+//! too: its code goes to `/api/scan`, which resolves it. An invited badge
+//! (wave 54) carries `badge=` too, so it reads the same. A **staff badge**
+//! (`…&part=`) is no pass: staff skip the door. A **sign** (`…&act=`) is for
+//! a guest's own phone.
 //!
 //! Pure — the camera lives in `scanner.tsx`.
 
@@ -17,7 +20,9 @@ export type ScanHit =
   /** A pass: the guest's id — or (wave 23) their printed badge's code, which
    *  the server resolves to the guest it is linked to. */
   | { kind: "guest"; id: string; badge?: true }
-  | { kind: "wall"; unlock: string | null; checkin?: string }
+  | { kind: "wall"; unlock: string | null; checkin?: string; sign?: true }
+  /** A performer's badge (wave 54). */
+  | { kind: "staff" }
   | { kind: "unknown"; text: string };
 
 /** A guest / persona id as the server mints them. */
@@ -31,7 +36,9 @@ export function parseScan(raw: string): ScanHit {
     const url = new URL(text);
     const badge = badgeFromText(url.searchParams.get("badge") ?? "");
     if (badge !== null) return { kind: "guest", id: badge, badge: true };
+    if ((url.searchParams.get("part") ?? "").trim() !== "") return { kind: "staff" };
     if (url.searchParams.has("code")) {
+      if (url.searchParams.has("act")) return { kind: "wall", unlock: null, sign: true };
       const checkin = url.searchParams.get("checkin");
       return checkin !== null ? { kind: "wall", unlock: null, checkin } : { kind: "wall", unlock: url.searchParams.get("unlock") };
     }
@@ -54,14 +61,20 @@ export function typedTarget(raw: string): string {
 }
 
 /** A badge no guest has linked yet (wave 23). */
-export const BADGE_NOT_LINKED = "That badge isn't linked to a guest yet — they scan it in their own app (Me → 🪪 Badge), then you can.";
+export const BADGE_NOT_LINKED = "That badge isn't linked to a guest yet — they scan it with their own phone first, then you can.";
+
+/** A performer's badge held up at a booth (wave 54). */
+export const STAFF_BADGE = "That's a staff badge. Staff use the staff door: nobody scans them in.";
 
 /** The words a performer sees for a scan that wasn't a pass. */
 export function scanProblem(hit: ScanHit): string | null {
   switch (hit.kind) {
     case "guest":
       return null;
+    case "staff":
+      return STAFF_BADGE;
     case "wall":
+      if (hit.sign === true) return "That's a sign for a guest's own phone — scan the guest's pass.";
       if (hit.checkin !== undefined) return "That's a room sign — scan the guest's pass.";
       return hit.unlock !== null ? "That's a codex code from the wall — scan the guest's pass." : "That's the join code — scan the guest's pass.";
     case "unknown":

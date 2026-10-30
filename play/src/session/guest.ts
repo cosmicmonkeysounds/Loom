@@ -4,6 +4,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { PictureChoices } from "../avatars.ts";
 import { maxSeqOf, useAlerts, type Alert, type Alerts } from "../alerts.ts";
+import { actFromSearch, withoutAct } from "../act-link.ts";
 import { checkinFromSearch, withoutCheckin } from "../checkin.ts";
 import { rememberClaim, withoutClaim } from "../claim.ts";
 import { ApiError, RequestTimeout, api, useChatStream, withTimeout } from "../client.ts";
@@ -637,6 +638,7 @@ export function useGuestSession(): GuestSession {
     async (badge: string): Promise<BadgeLink> => {
       try {
         const r = await post<Record<string, unknown>>("/api/guest/badge", { badge });
+        forgetBadge(host.storage);
         return badgeLinkOf(200, r) ?? { kind: "unknown" };
       } catch (e) {
         const hit = e instanceof ApiError ? badgeLinkOf(e.status, e.data) : null;
@@ -828,6 +830,23 @@ export function useGuestSession(): GuestSession {
       },
       () => {},
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [me, status, post]);
+  // A printed sign carries `?act=<interaction>` (wave 54): press it once
+  // signed in; its story reply lands like the button's.
+  const pendingAct = useRef<string | null>(host.ownsPage ? actFromSearch(window.location.search) : null);
+  useEffect(() => {
+    const name = pendingAct.current;
+    if (name === null || me === null || status === null) return;
+    pendingAct.current = null;
+    try {
+      window.history.replaceState(null, "", `${window.location.pathname}${withoutAct(window.location.search)}`);
+    } catch {
+      /* fine */
+    }
+    void act(name).catch((e: unknown) => {
+      if (!lockedRefusal(e)) alertsRef.current?.raise(e instanceof Error ? e.message : "That didn't work — try again.", { quiet: true });
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [me, status, post]);
   const links = useGuestLinks(me !== null && ready && status !== null, threads.list.map((c) => c.id), lobbyHidden(status));

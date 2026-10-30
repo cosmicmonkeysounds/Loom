@@ -14,7 +14,10 @@
 // - **Ask a host.** Pick your program from the joined ones; a host taps
 //   Approve on Needs (or the director phone) and this phone is in.
 //
-// A performer's **cast card** (`…/?code=<prime code>&part=<code>`) signs in
+// An **invited badge** (wave 54, `…&claim=<token>&badge=<code>`) is both: the
+// claim opens its program, the badge links at join and is the guest's pass.
+//
+// A performer's **staff badge** (`…/?code=<guest code>&part=<code>`) signs in
 // as that part and takes it back from a lost booth (`/api/prime/login
 // {passcode, part}`).
 //
