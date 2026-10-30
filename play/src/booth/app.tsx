@@ -789,7 +789,8 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
                     sub={s.view?.mission?.place != null ? `📍 ${s.view.mission.place}` : undefined}
                     paused={viewPaused(s.view)}
                     act={pwin === "mission" && t.activeId === null ? missionLine(s.view?.objectives) : undefined}
-                    flash={{ id: missionNews.id, title: missionNews.title, brief: "" }}
+                    // Wave 47: the card under it names the mission; the blink says only that it is new.
+                    flash={{ id: missionNews.id, title: missionNews.title, brief: "NEW MISSION" }}
                   />
                 ) : (
                   <NowBar

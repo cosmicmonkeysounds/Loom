@@ -81,3 +81,17 @@ describe("a line about an objective that ended (wave 47)", () => {
     expect(momentsReducer(s0, { type: "objectives", live: new Set(["explore"]) })).toBe(s0);
   });
 });
+
+describe("the NEW MISSION blink on Mission (wave 47)", () => {
+  it("reads NEW MISSION alone: the card under it already names the mission", async () => {
+    const { createElement } = await import("react");
+    const { renderToStaticMarkup } = await import("react-dom/server");
+    const { TitleBar } = await import("../src/chrome/title-bar.tsx");
+    const o = { id: "hunt", title: "The Truth Scavenger Hunt: find three facts", brief: "", checklist: [], buttons: [], act: null };
+    const html = renderToStaticMarkup(createElement(TitleBar, { objectives: [o], fallback: "x", onOpen: () => {}, act: "▣ MISSION", flash: { id: "hunt", title: o.title, brief: "NEW MISSION" } }));
+    expect(html).toContain('<span class="title-bar-news" role="status">NEW MISSION</span>');
+    expect(html).not.toContain("find three facts");
+    const frame = readFileSync(new URL("../src/guest/frame.tsx", import.meta.url), "utf8");
+    expect(frame).toContain('{ id: mission.id, title: mission.title, brief: "NEW MISSION" }');
+  });
+});

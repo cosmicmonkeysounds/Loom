@@ -35,7 +35,9 @@ brought it to 148.51 kB and wave 42b's line strip to 148.84 kB. A `//!`
 module header is a legal comment to esbuild and stays in the bundle
 (about 12 kB gzip of them in the first load today): write new eager
 modules' headers with `//`. Wave 44 turned `push.ts`, `crawl.ts` and `rejoin.ts`'s headers into `//`
-(−2.26 kB) and added the credits roll's eager slot: 146.95 kB.
+(−2.26 kB) and added the credits roll's eager slot: 146.95 kB. Wave 47
+(the Back, the stage's tray, the Mission echoes) brought it to 148.65 kB:
+0.35 kB of headroom, so the next eager addition needs a trim first.
 
 ## How a session works
 

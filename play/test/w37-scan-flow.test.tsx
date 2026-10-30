@@ -391,7 +391,8 @@ describe("wave 37 wiring (C7): NEW MISSION, said once", () => {
     const app = src("booth/app.tsx");
     expect(app).toContain('missionShown={(id) => (player && pwin === "mission" && layer === null && t.activeId === null) || (layer?.kind === "pick" && layer.objective === id)}');
     expect(app).toContain("onMissionNews={(o) => setMissionNews({ id: o.id, title: o.title })}");
-    expect(app).toContain('flash={{ id: missionNews.id, title: missionNews.title, brief: "" }}');
+    // Wave 47: the blink reads NEW MISSION alone (the card under it names it).
+    expect(app).toContain('flash={{ id: missionNews.id, title: missionNews.title, brief: "NEW MISSION" }}');
     // The blink stays 6 s, and a new headline clears it.
     expect(app).toMatch(/setTimeout\(\(\) => setMissionNews\(null\), 6000\)/u);
     expect(app).toContain("setMissionNews((n) => (n !== null && n.id !== headNow ? null : n));");

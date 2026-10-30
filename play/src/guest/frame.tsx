@@ -43,7 +43,7 @@ export function NowBar({ news: mission = null, ...props }: Omit<ComponentProps<t
     <TitleBar
       {...props}
       // Wave 47: a house banner that said what Mission says blinks it instead.
-      flash={nowFlashOf(news.moment) ?? (mission !== null ? { id: mission.id, title: mission.title, brief: "" } : null)}
+      flash={nowFlashOf(news.moment) ?? (mission !== null ? { id: mission.id, title: mission.title, brief: "NEW MISSION" } : null)}
       onOpen={(o) => {
         news.seen(true);
         props.onOpen(o);
