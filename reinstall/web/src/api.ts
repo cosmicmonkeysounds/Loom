@@ -4,9 +4,10 @@
 //! the play app's `ApiError` (the server's `error` text + the HTTP status).
 
 import { api, ApiError } from "@loom/play/client.ts";
-import { cloneData, normalizeHouse, validateHouse } from "@loom/house";
+import { cloneData, normalizeHouse, parseDescent, validateHouse } from "@loom/house";
 import type {
   Assignment,
+  DescentScript,
   DuckSpot,
   FoundResult,
   HouseMap,
@@ -464,6 +465,35 @@ export async function postMoment(base: string, token: string, req: MomentRequest
     if (error === "already") return { kind: "already" };
   }
   return { kind: "error", message: error };
+}
+
+// --- the descent (wave 49, C3): the words, and what a program told a prop -------
+
+/**
+ * The words of the descent (`GET /api/spatial/descent`), or null: no words,
+ * and the visions play without them (an old server, nothing configured, no
+ * network, a file that doesn't validate). Fetched at the start of a walk,
+ * never blocking it. `token`: a session's, or a moderator's on the map page.
+ */
+export async function fetchDescent(base: string, token: string, fetcher: typeof fetch = fetch): Promise<DescentScript | null> {
+  try {
+    const res = await fetcher(`${base}/api/spatial/descent`, { headers: { "x-loom-token": token } });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { script?: unknown };
+    return parseDescent(data.script);
+  } catch {
+    return null;
+  }
+}
+
+/** A talker remembers what it was told (`POST /api/spatial/told`). Best effort: memory only, for a later walk. */
+export async function postTold(base: string, token: string, talker: string, mark: string, fetcher: typeof fetch = fetch): Promise<boolean> {
+  try {
+    const res = await fetcher(`${base}/api/spatial/told`, { method: "POST", headers: { "content-type": "application/json", "x-loom-token": token }, body: JSON.stringify({ talker, mark }) });
+    return res.ok;
+  } catch {
+    return false;
+  }
 }
 
 /** `POST /api/spatial/end` — best effort (the session may be over already). */

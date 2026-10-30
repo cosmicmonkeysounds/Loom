@@ -10,6 +10,7 @@ import { PerspectiveCamera, Scene, WebGLRenderer } from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { polyBounds } from "@loom/house";
 import type { HouseMap } from "@loom/house";
+import { DESCENT_MAX } from "@loom/house";
 import { buildHouseScene, createDuck, houseAtmosphere } from "@loom/house/three";
 
 export default function Preview3D({ house, floor }: { house: HouseMap | null; floor: string }) {
@@ -75,7 +76,8 @@ export default function Preview3D({ house, floor }: { house: HouseMap | null; fl
     let built: ReturnType<typeof buildHouseScene> | null = null;
     const ducks: ReturnType<typeof createDuck>[] = [];
     const t = window.setTimeout(() => {
-      built = buildHouseScene(house, { ceilings: false });
+      // Every prop, even those only the far gone see (wave 49).
+      built = buildHouseScene(house, { ceilings: false, descent: DESCENT_MAX });
       for (const [id, g] of built.floors) g.visible = all || id === floor;
       s.scene.add(built.root);
       for (const spot of house.duck.spots) {

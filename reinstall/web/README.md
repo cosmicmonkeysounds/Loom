@@ -172,6 +172,14 @@ floats in the Hard Drive. Their lines are captioned in a *Message* window
 and spoken by the device voice (`game/lines.ts`). `game/moments.ts`
 decides when to post and what each answer means.
 
+**The descent** (wave 49, [`docs/loom-reinstall.md`](../../docs/loom-reinstall.md)
+§3). The more often a program has been reinstalled, the less the
+simulation holds together: the first walk is clean, a second has props
+that talk, and by the fifth the lights stutter, a pale Gerald waddles off,
+a grin hangs in the air after the rest has gone, the player meets themself,
+shrinks, grows, and a door turns up that leads down a corridor longer than
+the house. `?descent=N` plays this device at level N, for a rehearsal.
+
 **The real house lights and the graphics** (wave 39,
 [`docs/loom-reinstall.md`](../../docs/loom-reinstall.md) §3). The stream's
 `lights` frame draws every real fixture as a bulb in the colour and level
@@ -371,9 +379,10 @@ To change the show's own map (`core/examples/trapped-in-the-internet/house.json`
 | `src/game/hud.ts` | **pure**: room names, warmer / colder, compass, reach, the path reveal (`PATH_REVEAL_MS`, `FIND_GERALD`), `kingInView` |
 | `src/game/fight.ts` | **pure**: the King's reach nudges and hit notices (no meter since wave 26), `kingReach` (re-exported from `@loom/house`), `hitSpentAtStart`, `keepDoorOpen` |
 | `src/game/moments.ts`, `lines.ts`, `Scare.tsx` | wave 26: the void, the heart and the disk (**pure** decisions); `LinePlayer`, the captions + the device voice; the jump scare |
+| `src/game/descent.ts`, `visions.ts`, `hallway.ts`, `Talk.tsx` | wave 49: the descent's runner, holds, talks and numbers (**pure**, `Director`); what it looks like (three.js, built once at walk start); the pocket; the dialogue |
 | `src/game/trail.ts` | **pure**: the chevrons' path, `route()` made walkable on a stair (`test/autopilot.test.ts` walks the real physics along it to every duck spot, on the show's map and the three-floor fixture) |
 | `src/game/leash.ts` | **pure**: the 120 s no-input leash (paused while the tab is hidden) |
-| `src/game/audio.ts` | WebAudio quack, fanfare and buzz (no assets); `createSfx(output?)` plays on a host's bus |
+| `src/game/audio.ts` | WebAudio quack, fanfare and buzz, and the descent's steps, growl, wrong quack, mumble and drone (no assets); `createSfx(output?)` plays on a host's bus |
 | `src/game/cams.ts` | the terminals' camera feeds hung on the virtual walls |
 | `src/game/voice.ts` | the voice link with the terminals (`VoiceLink`; off by default, `voice=1`) |
 | `src/map/MapApp.tsx` | the map page's state: load / save / stream, undo history, keys; `toolbarExtras` render prop (`MapToolbarContext`) for the project bar |
@@ -382,7 +391,8 @@ To change the show's own map (`core/examples/trapped-in-the-internet/house.json`
 | `src/map/doors.ts`, `yards.ts`, `structure.ts` | **pure**: doors on wall lines; the yard cut; floors / rooms / stairs / blank house with cascades |
 | `src/map/history.ts`, `check.ts`, `tools.ts` | **pure**: undo / redo; structured problems + walkability + LOCATIONs; tools + selection floors |
 | `src/map/project.ts`, `ProjectBar.tsx` | **pure** + view: the project bar (variants, save to project, download), mounted through `toolbarExtras` |
-| `src/map/props.ts` | **pure**: props, terminals, the King: place, drag, turn, duplicate, wall snap |
+| `src/map/props.ts` | **pure**: props, terminals, the King: place, drag, turn, duplicate, wall snap; wave 49 the model groups, `from` and `talk` |
+| `src/map/descent-tools.ts` | wave 49: the event's `descent.json` for the inspector and the check, the 👣 Test |
 | `src/map/audio.ts`, `AudioPanel.tsx`, `audio-api.ts`, `audio-poll.ts` | the speakers and the 🔊 Audio tab (`audio.json` through `/api/mod/audio`) |
 | `src/map/lights.ts`, `LightsPanel.tsx`, `lights-api.ts`, `lights-poll.ts` | the lights and the 💡 Lights tab (`lights.json` through `/api/mod/lights`) |
 

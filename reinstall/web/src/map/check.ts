@@ -9,8 +9,8 @@
 //! them; a LOCATION no room is). Those two are warnings: they never block
 //! a save.
 
-import { locate, roomById, route, visibleIn, voiceOn } from "@loom/house";
-import type { HouseMap, Vec2 } from "@loom/house";
+import { locate, roomById, route, TALK_NONE, visibleIn, voiceOn } from "@loom/house";
+import type { DescentScript, HouseMap, Vec2 } from "@loom/house";
 import { REACH } from "../game/hud.ts";
 import type { Selection } from "./edit.ts";
 
@@ -216,6 +216,17 @@ export function voiceProblems(house: HouseMap): Problem[] {
       sel: { kind: "terminal", id: t.id },
       level: "warning",
     }));
+}
+
+/** (wave 49) A prop told to talk as a talker `descent.json` doesn't have: it
+ *  just never wakes, so a warning. Nothing while the script is unknown.
+ *  DRAFT w49 (UI copy). */
+export function talkProblems(house: HouseMap, script: DescentScript | null): Problem[] {
+  if (script === null) return [];
+  const known = new Set(script.talkers.map((t) => t.id));
+  return house.props
+    .filter((p) => p.talk !== undefined && p.talk !== TALK_NONE && !known.has(p.talk))
+    .map((p): Problem => ({ text: `prop "${p.id}" talks as "${p.talk}", and descent.json has no such talker — it will never wake`, sel: { kind: "prop", id: p.id }, level: "warning" }));
 }
 
 /** A story LOCATION, as the mod view lists them. */

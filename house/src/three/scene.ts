@@ -58,6 +58,7 @@ import {
   HAZE_OPACITY,
   HAZE_TILE_M,
   NEON_COVE,
+  NEON_FLICKER_S,
   NEON_GAIN,
   NEON_SKIRT,
   NEON_STRIP_AT,
@@ -160,6 +161,10 @@ export interface HouseScene {
   /** (wave 47, `neon: true`) Show this many haze sheets per floor (0: none,
    *  1: the floor's, 2: the ceiling's too). */
   setHaze(layers: number): void;
+  /** (wave 49, `neon: true`) The descent's hold on the neon: it stutters
+   *  `pace` times as often (each stutter no faster), at `level` of its
+   *  brightness. Default 1 and 1. */
+  tuneNeon(pace: number, level: number): void;
   /**
    * Show King `id`'s shared state (the server's `KingState`): his bar at
    * `hp / max`, kneeling while `fallen`, and the leaf of every door he
@@ -706,6 +711,8 @@ export function buildHouseScene(house: HouseMap, opts: HouseSceneOptions = {}): 
   }
 
   let time = 0;
+  let neonPace = 1;
+  let neonLevel = 1;
   let disposed = false;
   const eye = new Vector3();
   const at = new Vector3();
@@ -725,6 +732,10 @@ export function buildHouseScene(house: HouseMap, opts: HouseSceneOptions = {}): 
       haze.forEach((meshes, layer) => {
         for (const m of meshes) m.visible = layer < layers;
       });
+    },
+    tuneNeon(pace: number, level: number) {
+      neonPace = pace;
+      neonLevel = level;
     },
     showKing(id: string, king: { hp: number; max: number; fallen: boolean }, open = king.fallen) {
       if (disposed || !kingFallen.has(id)) return;
@@ -797,7 +808,7 @@ export function buildHouseScene(house: HouseMap, opts: HouseSceneOptions = {}): 
       const base = haloTex ? 0.7 : 0.22;
       term.glowMat.opacity = base + 0.1 * Math.sin(time * 2.2) + 0.03 * Math.sin(time * 31);
       if (neon) {
-        mats.glow.color.setScalar(neonFlicker(time));
+        mats.glow.color.setScalar(neonFlicker(time % (NEON_FLICKER_S / neonPace)) * neonLevel);
         hazeTex.forEach((t, layer) => {
           const [dx, dz] = HAZE_DRIFT[layer]!;
           t.offset.set(((time * dx) / HAZE_TILE_M) % 1, ((time * dz) / HAZE_TILE_M) % 1);

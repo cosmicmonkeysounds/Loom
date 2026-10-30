@@ -1563,6 +1563,67 @@ a malformed one change nothing.
   frame (`demoLights`: a light per indoor room, the one you stand under
   pulsing).
 
+### The descent (wave 49)
+
+Contract: `docs/loom-w49-contract.md` C2 + C5; the rules both games share
+(the level, the seeded plan, who wakes, how a talk walks) are `@loom/house`
+`descent.ts`, the words `descent.json`, served live by `GET
+/api/spatial/descent`. The more often a program has been reinstalled, the
+less the simulation holds together. A first walk is level 0 and builds none
+of this: no director, no visions, no Hallway, no per-frame cost but a check.
+
+- **`game/descent.ts`** (pure): `Director` runs the walk's clock (from the
+  end of the intro, on `dt`, so a hidden tab stops it) over `descentPlan` +
+  `dueBeat`. A beat waits while an escape is under way, a talk is open, the
+  walk is held, a vision is running, the King is within `KING_HOLD_M` or the
+  player is in the Hallway; one `DESCENT_LATE_S` overdue is dropped. A vision
+  that can't be drawn is skipped and the rest keep their time. Every effect
+  goes through `DirectorHost`, so a whole walk is a node test. `gradeOf`,
+  `flickerAt` (at most 3 Hz), `aliceAt` and `FollowerSteps` are how a vision
+  moves, as numbers.
+- **The words.** `fetchDescent` at the start of a walk, never blocking it; a
+  failure (an old server, no file, a file that doesn't validate) is visions
+  with no words and nobody awake. `?descent=N` overrides the level on this
+  device; `Assignment.reinstalled` still drives the intro's skip and `visit`.
+- **`game/visions.ts`** draws them, built once at walk start and only shown
+  and hidden after that (`renderer.compile` at the start, so the first vision
+  doesn't hitch). The steady `descentLook` and `flicker`, `tint` and `dark` are
+  the fog's uniforms, the ambient (`HouseLamps.setGrade`), the neon
+  (`HouseScene.tuneNeon`) and the exposure (`Post.setExposure`): the same on
+  every tier, no recompile and **no new point lights**. `whiteduck` is a
+  `createDuck` re-dressed (never the real duck, never findable), `self` a
+  `createAvatar` going along `sampleTrail` of the route (once the trail
+  shows; before that, the way they are looking), `grin` three sprites, the
+  cat going first and the grin last. `dark` is the fog at about 3 m and two
+  eyes behind the player, for those who turn round. `small` / `big` scale the
+  eye height alone (`aliceAt`, capped under a ceiling): poses, physics and
+  reach stay real, and the voice link keeps listening from the real eye.
+- **Talking.** Each awake prop (`wakeTalkers`) has a face on `faceAnchor`,
+  drawn within `FACE_NEAR_M`, on whichever of its sides faces the player
+  (`faceSides`: it blinks and is there). `TALK_NEAR_M` opens a talk. The lines
+  are their own `LinePlayer` + device voice (never the story's: `Director.hush`
+  cuts them for any moment's lines), in `Talk.tsx`'s window with up to four
+  answers: a tap, a click or keys 1–4 (`talkKey`). Talking never pauses
+  walking, and `TALK_LEAVE_M` ends a talk. A `tell` posts `POST
+  /api/spatial/told`; a `do` starts a vision.
+- **The Hallway** (`game/hallway.ts`). `Director` sees the player within
+  `HALLWAY_DOOR_M` of the door, and `Game.pocket` takes over: a one-room map
+  through `buildPhysicsWorld`, `HallwayWalk` for the far door, the clock and
+  `HALLWAY_MAX_S`. **`Game.body` never moves**, so the pose pump, the voice
+  link and the cameras keep reading the door's room, and the find, the King,
+  the void, the heart and the pickups are off because they all stand behind
+  the same check. The house's floors, the trail, the duck and the ghosts are
+  hidden (never `house.root`: its hemisphere and sun would leave the light
+  count), and the pool's first light is lent to the pocket
+  (`HouseLamps.borrow`). `leaveHallway` puts them at the door, facing away
+  from it, and runs first on a remap and on any session end.
+- **It never stops a walk.** A find, a hit, the void, the heart and the disk
+  don't read any of this. An escape calls `Director.interrupt`, a find
+  `stopDescent`. Gerald's `found` line plays with the egg, never for a refused
+  find.
+
+The guests' play help never describes any of this.
+
 ## 4. The terminals — world view
 
 `TerminalConfig` gains `spot` (a `house.terminals[].id`; the terminal's

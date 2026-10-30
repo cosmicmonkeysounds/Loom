@@ -411,6 +411,27 @@ code { font-family: var(--pixel); font-size: 1.15em; background: rgba(255, 255, 
 .hud-caption.over-sticks { bottom: calc(min(46vh, 300px) + 12px); }
 .hud-caption p { margin: 0; font-size: clamp(18px, 2.4vw, 24px); line-height: 1.25; color: var(--ink); }
 
+/* --- a prop talking (wave 49): the options are the only thing here that takes a tap -- */
+
+.talk-window {
+  position: absolute;
+  left: 50%;
+  bottom: calc(max(10px, env(safe-area-inset-bottom)) + 44px);
+  transform: translateX(-50%);
+  width: min(640px, calc(100vw - 32px));
+  font-family: var(--ui);
+  pointer-events: none;
+}
+/* Touch: above the stick zones, never over the thumbs. */
+.talk-window.over-sticks { bottom: calc(min(46vh, 300px) + 12px); }
+.talk-window p { margin: 0; font-size: clamp(18px, 2.4vw, 24px); line-height: 1.25; color: var(--ink); }
+.talk-options { display: grid; grid-template-columns: 1fr; gap: 4px; margin-top: 8px; pointer-events: auto; }
+@media (min-width: 640px) { .talk-options { grid-template-columns: 1fr 1fr; } }
+.talk-option { display: flex; align-items: center; justify-content: flex-start; gap: 0.6em; min-height: 40px; padding: 0.3em 0.7em; text-align: left; font-size: clamp(15px, 1.8vw, 18px); }
+.talk-option kbd { flex: none; min-width: 1.5em; font-family: inherit; font-weight: bold; text-align: center; color: var(--navy); }
+.found-line { font-style: italic; }
+.hud-top > .spacer { flex: 1; }
+
 .scare {
   position: absolute;
   inset: 0;
@@ -593,6 +614,8 @@ svg.plan.editing { cursor: crosshair; }
 .prop polygon, .prop ellipse { stroke: rgba(0, 0, 0, 0.45); stroke-width: 0.02; opacity: 0.8; }
 .prop.label polygon { stroke: #806000; }
 .prop.king polygon { stroke: #d4af37; stroke-width: 0.03; }
+.prop.from polygon, .prop.from ellipse { stroke-dasharray: 0.09 0.07; opacity: 0.5; }
+.prop-from { font-size: 0.16px; font-weight: bold; text-anchor: middle; dominant-baseline: middle; fill: #7a1fa2; pointer-events: none; }
 .prop.king .king-glyph { font-size: 0.32px; text-anchor: middle; dominant-baseline: middle; fill: #5a4500; pointer-events: none; }
 .prop.selected polygon, .prop.selected ellipse { stroke: var(--navy); stroke-width: 0.05; opacity: 1; }
 .prop-label { font-size: 0.17px; text-anchor: middle; dominant-baseline: middle; fill: #202020; pointer-events: none; }

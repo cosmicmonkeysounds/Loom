@@ -472,7 +472,7 @@ export function Canvas({ house, floor, edit, tool, snapStep, sel, players, onSel
           return (
             <g
               key={p.id}
-              className={`prop ${p.kind}${on ? " selected" : ""}`}
+              className={`prop ${p.kind}${p.from !== undefined ? " from" : ""}${on ? " selected" : ""}`}
               onPointerDown={(e) => pick(e, ps, { kind: "move", sel: ps, base: house, grab: toPlan(e), origin: [p.pos[0], p.pos[2]] })}
             >
               {p.kind === "cylinder" ? (
@@ -484,6 +484,12 @@ export function Canvas({ house, floor, edit, tool, snapStep, sel, players, onSel
                 // Wave 47: a model reads by its neon outline and its name.
                 <text x={p.pos[0]} y={p.pos[2]} fontSize={Math.max(0.07, Math.min(0.16, Math.min(p.size[0], p.size[2]) * 0.6, p.size[0] / Math.max(1, model.label.length) * 1.6))} textAnchor="middle" dominantBaseline="middle" fill="#333" pointerEvents="none">
                   {model.label}
+                </text>
+              )}
+              {p.from !== undefined && (
+                // Wave 49: there only at this descent level and deeper, and never solid.
+                <text x={p.pos[0]} y={p.pos[2] + Math.min(p.size[2] / 2, 0.3)} className="prop-from">
+                  ↓{p.from}
                 </text>
               )}
               {p.kind === "king" && (
