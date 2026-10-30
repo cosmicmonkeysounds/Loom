@@ -289,8 +289,10 @@ any of them. The preset `export_presets.cfg` → **Quest**: Android, Gradle buil
 OpenXR, the **Meta vendor plugin** (`com.oculus.intent.category.VR`,
 `supportedDevices = quest3|quest3s`), arm64-v8a only, `INTERNET`,
 package `com.mapsandducks.reinstall`, immersive. There is **no cleartext
-opt-in**: Android refuses plain `http://`, so a headset talks to the VPS over
-HTTPS (`https://app.mapsandducks.com`, the committed `config/station.json`).
+opt-in**; a show headset talks to the VPS over HTTPS
+(`https://app.mapsandducks.com`, the committed `config/station.json`). Godot's
+own sockets do reach a plain `http://` server (the quick test server over
+`adb reverse` proved it on a Quest 3, 2026-10-30).
 
 ### What you run, once (≈ 15 min)
 
