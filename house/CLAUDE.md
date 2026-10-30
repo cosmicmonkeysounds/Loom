@@ -196,6 +196,18 @@ surfaceOf(house, room); stepPaceS(speed);
   `test/golden/descent.json`. Footsteps have no port: the server judges and
   the router plays (stagehand mirrors only `stepPaceS`).
 
+## Wave 50 API (Clippy's dream)
+
+```ts
+// dream.ts: where a terminal is in the hour, the same for the terminal and the server
+export const DREAM_SECONDS, DREAM_FRAME_FPS, DREAM_FRAMES, DREAM_MEDIA, DREAM_SALT;
+export function dreamOffsetS(key): number; dreamPositionS(key, serverMs): number;
+export function dreamFrameIndex(key, serverMs): number; dreamFrameName(index): string;
+```
+
+- Pure, no clock. `test/dream.test.ts` reads both show maps: a changed salt or
+  a new terminal must keep every spot ≥ 110 s from every other.
+
 ## Test layout
 
 | Path | What |

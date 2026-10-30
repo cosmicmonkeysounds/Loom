@@ -870,6 +870,7 @@ Everything is optional; the defaults run a LAN event with no setup.
 | `LOOM_EVENT_PASS`, `LOOM_PRIME_PASS`, `LOOM_MOD_PASS` | generated, then kept | the default event's guest / performer / moderator codes |
 | `LOOM_STATE_DIR` | `server/.loom-state/` | journals, codes, sessions, per-event state |
 | `LOOM_APP_DIST`, `LOOM_TERMINAL_DIST`, `LOOM_REINSTALL_DIST` | the sibling packages' `dist/` | the built apps served at `/`, `/terminal/`, `/reinstall/` |
+| `LOOM_MEDIA_DIR` | unset | the house media (Clippy's dream, `scripts/ops/dream-media.sh`): the games' frames, and `/media/` with no proxy in front |
 | `LOOM_BASE_URL` | the first LAN address | the base of every join / check-in / re-pair link; set it on a public deployment |
 | `LOOM_HOUSE`, `LOOM_FACTS`, `LOOM_AUDIO`, `LOOM_LIGHTS`, `LOOM_DESK`, `LOOM_CREDITS`, `LOOM_DESCENT` | the example's `house.json` and `facts.json`; no default for audio / lights / desk; credits / descent: the scenario's own, with no project | fallbacks for an event whose project has no copy |
 | `LOOM_WIKI` | on | `off` keeps the program directory offline |

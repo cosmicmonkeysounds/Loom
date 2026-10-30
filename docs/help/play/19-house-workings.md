@@ -160,6 +160,21 @@ walks: clearly in its own room, muffled through a wall or a ceiling. It works
 only where there are speakers. If someone in the kitchen stops and listens,
 that is the point. Never explain it.
 
+## Clippy's dream
+
+- When Trabolta says *"…the Y2K BUG"* every terminal melts into Clippy's
+  dream, all at once, and stays there until an ending. It replaces the ads
+  and screensavers. Each screen is somewhere different in the hour, on
+  purpose.
+- Anything important still gets through, data moshed: cutscenes, slides,
+  announcements. It wipes clean every few seconds, so wait a moment to read it.
+- A terminal someone is using is left alone: a line to Trabolta, a chess game,
+  the casino, a walk in the tent. Scan a pass as usual; the scan box is still
+  in its corner, and so is the clock.
+- The games' terminals dream too, with the real room flickering through.
+- The director's **🌀 Clippy's dream: on / off** puts everything back (and
+  brings it back) if the wifi struggles or a scene must read clean.
+
 ## Terminals and the simulation
 
 - A terminal shows and hears the game only while a reinstalling player

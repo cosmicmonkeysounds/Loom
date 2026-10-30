@@ -60,6 +60,9 @@ The app's half is `terminal/src/kiosk.ts` and `fullscreen.ts`:
 - **One tap after a reload.** A browser plays sound only after a gesture,
   so after a reload a terminal shows TOUCH TO WAKE until someone taps it.
   Chrome with `--autoplay-policy=no-user-gesture-required` needs no tap.
+- **Fully Kiosk: turn on *Autoplay Videos*** (Web Content Settings). Clippy's
+  dream plays muted from the Y2K bug on; a tablet that refuses to autoplay it
+  falls back to its 3 frames a second, which works but stutters.
 
 ### Sound: the device's speaker and the house speakers
 

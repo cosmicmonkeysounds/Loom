@@ -904,3 +904,13 @@ shell at `/`.
 For the underlying server's security model, env-var reference, and
 non-Docker deployment paths, see
 [`loom-deployment.md`](./loom-deployment.md).
+
+## The house media (wave 50)
+
+Clippy's dream is ~950 MB and lives in neither git nor an image. On the VPS it
+is `~/loom-media/dream`, beside the checkout: compose mounts
+`${LOOM_MEDIA_HOST_DIR:-../loom-media}` read-only into the proxy (`/srv/media`,
+served at `/media/` with byte ranges) and the server (`/media`, `LOOM_MEDIA_DIR`).
+`scripts/ops/dream-media.sh encode <source>`, `check`, `upload [--dry-run]` and
+`remote`. Uploading restarts nothing, and `ship.sh` never touches the folder. See
+[`loom-w50-contract.md`](./loom-w50-contract.md) C2.

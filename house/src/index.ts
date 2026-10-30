@@ -28,3 +28,4 @@ export * from "./voice.ts";
 export * from "./look-edit.ts";
 export * from "./look-preview.ts";
 export * from "./look-templates.ts";
+export * from "./dream.ts";

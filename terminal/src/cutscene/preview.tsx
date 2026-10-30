@@ -43,7 +43,10 @@ import { useReducedMotion } from "./clock.ts";
 import { fakeBathroom, fakeCredits, fakeLanguage, fakeResults, fakeState } from "./fake.ts";
 import { creditsCache } from "./credits-fetch.ts";
 import { AdBurst } from "./kit/ad-burst.tsx";
-import { LiveScreenLayer, ScreenLayer } from "../ScreenLayer.tsx";
+import { LiveScreenLayer, ScreenLayer, SlideView } from "../ScreenLayer.tsx";
+import { DreamView, useDreamReady } from "../dream/DreamView.tsx";
+import { Mosh } from "../dream/Mosh.tsx";
+import { dreamPlayer } from "../dream/player.ts";
 import { screenLayers } from "../slides.ts";
 import { introduced } from "./pick.ts";
 import { noteWorldShowing } from "./world-bus.ts";
@@ -101,6 +104,7 @@ export function Preview() {
   const id = q.get("preview") ?? "list";
   if (id === "list") return <PreviewList />;
   if (id === "glitch") return <PreviewGlitch q={q} />;
+  if (id === "dream") return <PreviewDream q={q} />;
   if (id === "burst") return <PreviewBurst q={q} />;
   if (id === "flicker") return <PreviewFlicker q={q} />;
   if (id === "credits") return <PreviewCredits q={q} />;
@@ -119,6 +123,41 @@ function PreviewCredits({ q }: { q: URLSearchParams }) {
     return true;
   });
   return <PreviewOne id="credits" q={q} />;
+}
+
+// --- Clippy's dream (wave 50) ---------------------------------------------------------
+
+/**
+ * `?preview=dream[&what=banner|slide|take|plain][&target=tv][&key=<spot>]`: the
+ * dream on the real media (`/media/dream`), as that spot plays it, with an
+ * announcement or a slide coming through it moshed; `take` is the takeover. A
+ * tap starts the mosh over. Says so if the media isn't reachable.
+ */
+function PreviewDream({ q }: { q: URLSearchParams }) {
+  const what = q.get("what") ?? "banner";
+  const target = q.get("target") === "tv" ? "tv" : "wall";
+  const key = q.get("key") ?? "hall";
+  const [run, setRun] = useState(0);
+  useEffect(() => {
+    dreamPlayer.arm({ key, target, reduced: false, now: () => Date.now() });
+    return () => dreamPlayer.disarm();
+  }, [key, target]);
+  const ready = useDreamReady();
+  return (
+    <div className="pv-one" style={{ position: "fixed", inset: 0 }} onClick={() => setRun((n) => n + 1)}>
+      {ready ? <DreamView /> : <div className="pv-missing">Reading /media/dream… nothing yet: is the media on this server?</div>}
+      {what === "slide" && <SlideView slide={{ value: "print_certificate", cue: "screens_print_certificate" }} y2k={null} />}
+      {what === "banner" && (
+        <div className="announce-banner" role="status">
+          <span className="announce-icon" aria-hidden="true">
+            📢
+          </span>
+          Go to the living room.
+        </div>
+      )}
+      {ready && what !== "plain" && <Mosh key={run} mode={what === "take" ? "take" : "rot"} target={target} seedKey={key} reduced={false} />}
+    </div>
+  );
 }
 
 // --- the glitch takeover (wave 26, T2) ------------------------------------------------
