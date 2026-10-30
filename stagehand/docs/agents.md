@@ -175,6 +175,18 @@ the MacBook's Ollama share one worker and one mind. Claude is the primary with
 a line by spill: it is a standby, for an outage and for a refused line. The
 config is in `agents.example.yaml`.
 
+Measured 2026-10-30 on scratch servers (`pnpm sim:trabolta`, the same persona
+on both): 50 bots at the intro waited 1.9 s at the median and 7.1 s at worst, at
+190 replies a minute (gpt-oss on this MacBook: 99 s, 20.5 a minute). The
+54-scenario battery passed 42 on Claude Haiku 5.5 and 39 on gpt-oss, with 14
+fallback lines against 18; no refusal or API error in about 600 calls. Reading the transcripts
+found no leak, stand-down, promise or broken fiction. Its three `no-secrets`
+failures are false positives: he read `Night.clock` aloud, and its hour is
+also an accepted form of a hunt answer. Claude also does what the phase cards
+say where gpt-oss did not ("Count the minutes left": he counts, in his own
+estimate). A line costs about $0.0006 with the cache working (P1, 3.2k tokens,
+is served from it).
+
 - **The SDK** is an optional extra: `uv sync --extra anthropic`. The `agents`
   launchd job asks for it (`--extra anthropic` in its plist, so a machine that
   ran `launchd install` before wave 52 installs again); the Desktop's jobs

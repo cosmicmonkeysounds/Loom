@@ -109,7 +109,7 @@ module docstrings that explain the why).
 
 | Machine | Jobs | Config | Supervisor | Runbook |
 |---|---|---|---|---|
-| John's MacBook (macOS, M3 Max 48 GB) | `agents` + Ollama `gpt-oss:20b`; `audio` only as the fallback | `laptop.yaml`; `trapped.macbook.yaml` | `stagehand launchd` | `scripts/house-macbook/trabolta.md`; `audio.md` (fallback) |
+| John's MacBook (macOS, M3 Max 48 GB) | `agents` on Claude Haiku, Ollama `gpt-oss:20b` standing by (wave 52); `audio` only as the fallback | `laptop.yaml`; `trapped.macbook.yaml` | `stagehand launchd` | `scripts/house-macbook/trabolta.md`; `audio.md` (fallback) |
 | John's Desktop (Windows) | `show`, `lights`, `audio` + the MOTU 828x, no ADAT expander (the living room on Main L/R, outs 1–2, + the sub on Analog Out 1, out 3: the ASIO order; Chrome's sound, the TV's Trabolta, through VoiceMeeter and `audio.tap` into input 3) (+ Mosquitto, Zigbee2MQTT with Hue / ZL1 bulbs, the WLED controller, the TV kiosk) | `trapped.desktop.yaml` | `stagehand tasks` | `scripts/house-desktop/README.md` |
 
 - **`extends:`** (`config.py`): a file in the same folder; mappings merge
