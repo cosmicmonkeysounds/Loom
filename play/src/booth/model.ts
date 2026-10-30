@@ -605,7 +605,7 @@ export function scanTitle(caption?: string): string {
 
 /** What sits over the booth: the scanner, the Guests list, one guest's card,
  *  or (wave 18) the Wanted board, a picker, the door queue, the 🔔 Waiting
- *  window. A scan or a card opened from a window carries that window in
+ *  window, or (wave 48) the censor's 🔑 filter window. A scan or a card opened from a window carries that window in
  *  `back` (depth one), and closing it lands there. */
 export type Layer = OpenLayer | null;
 /** What the Wanted board keeps while a scan or a card opened from it is up
@@ -623,6 +623,8 @@ export type OpenLayer = (
   | { kind: "pick"; objective: string; opened: BoothObjective }
   | { kind: "door" }
   | { kind: "waiting" }
+  /** Wave 48 (C5): the censor's filter window (`booth/filter/window.tsx`). */
+  | { kind: "filter" }
 ) & { back?: OpenLayer };
 
 /** Where a scan or a card opened over `current` goes back to on ×: the
