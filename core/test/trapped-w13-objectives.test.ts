@@ -591,7 +591,11 @@ function cardFace(n: Night, character: string, guest: string): { face: string[];
   };
   for (const o of primeView(n.sim, character, undefined, { host }).objectives ?? []) for (const b of interactionButtons(o.buttons)) add(b);
   const fromObjectives = [...face];
-  for (const id of card.guestScoped) add(id);
+  // Wave 47: the booth's own capture (🛡) never takes one of the three: it
+  // rides past them (play's `cardButtons`).
+  const shield = live.has("send to the internet") && primeView(n.sim, character, undefined, { host }).interactions.find((i) => i.id === "send to the internet")?.actors?.includes(character) === true;
+  for (const id of card.guestScoped) if (!(shield && id === "send to the internet")) add(id);
+  if (shield && !face.includes("send to the internet")) face.push("send to the internet");
   return { face, fromObjectives };
 }
 
