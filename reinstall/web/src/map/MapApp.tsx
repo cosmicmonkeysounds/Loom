@@ -58,7 +58,8 @@ import { baseOf, dropConfig, loadConfig, saveConfig, type ReinstallConfig } from
 import { applyFrame, houseVersionOf, openSpatialStream } from "../spatial.ts";
 import { Desktop, Window } from "../wizard.tsx";
 import { Canvas } from "./Canvas.tsx";
-import { locationProblems, structuredProblems, walkabilityProblems, type StoryLocation } from "./check.ts";
+import { locationProblems, structuredProblems, talkProblems, walkabilityProblems, type StoryLocation } from "./check.ts";
+import { useMapDescent } from "./descent-tools.ts";
 import { moveDoorAlong } from "./doors.ts";
 import { draftFromText, editableSource, moveRoom, moveTo, positionOf, remoteMapAction, removeThing, saveBaseOf, saveStateOf, setYaw, yawOf, type SaveState, type Selection } from "./edit.ts";
 import { emptyHistory, pushed, redone, undone, type History } from "./history.ts";
@@ -739,6 +740,7 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
     window.setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
+  const descent = useMapDescent(base, config.token, unlock, setNotice);
   /** 🔈: the router on the house Mac plays its tone + label there. */
   const testSpeaker = useCallback(
     async (target: { speaker: string } | { out: number }) => {
@@ -992,7 +994,7 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
   const speakerProblems = audioProblemList(audio, house);
   const lightProblems = lightProblemList(lights, house, { saved: savedLights, storyLooks: lightsView?.looks ?? [] });
   const errors = [...(textError !== null ? [{ text: textError, sel: null, level: "error" as const }] : structuredProblems(house, validation?.problems ?? [])), ...speakerProblems.errors, ...lightProblems.errors];
-  const warnings = [...(walk ?? []), ...locationProblems(house, locations), ...speakerProblems.warnings, ...lightProblems.warnings];
+  const warnings = [...(walk ?? []), ...talkProblems(house, descent.script), ...locationProblems(house, locations), ...speakerProblems.warnings, ...lightProblems.warnings];
   const busy = saveState.kind === "saving" || audioSaveState.kind === "saving" || lightsSaveState.kind === "saving";
   const canSave = (allPlan.map || allPlan.speakers || allPlan.lights) && !busy && editable;
 
@@ -1239,6 +1241,8 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
                 commitLights={applyLights}
                 devices={lightsView?.devices ?? []}
                 {...(lightsStatus === "ok" ? { onLightTest: (t: LightTestTarget) => void testLightNow(t) } : {})}
+                descent={descent.script}
+                {...(audioStatus === "ok" ? { onStepsTest: descent.stepsTest } : {})}
               />
             )}
             {tab === "audio" && (
