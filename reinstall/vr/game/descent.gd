@@ -190,8 +190,7 @@ func start(a: Dictionary, lvl: int, given: Variant) -> void:
 		return
 	_ensure_built()
 	seed_id = str(a.get("session", ""))
-	var r: Variant = a.get("reinstalled")
-	who = {"name": str(a.get("name", "")), "visit": (int(r) if r is float or r is int else 0) + 1}
+	who = {"name": str(a.get("name", "")), "visit": HouseDescent.visit_of(a.get("reinstalled"), level)}
 	told = (a["told"] as Dictionary).duplicate() if a.get("told") is Dictionary else {}
 	plan = HouseDescent.descent_plan(seed_id, level)
 	words = given

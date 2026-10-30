@@ -59,7 +59,7 @@
 
 import { ACESFilmicToneMapping, PerspectiveCamera, Scene, Vector3, WebGLRenderer } from "three";
 import type { Group } from "three";
-import { buildWalls, clampDescent, heartProps, propModel, hiddenFloors, locate, heartReached, outsideGround, pathLength, pickupProps, pickupReach, presenceRoom, spaceOf, toSpace, wrapYaw, yawFromSpace, yawToSpace, yawToward } from "@loom/house";
+import { visitOf, buildWalls, clampDescent, heartProps, propModel, hiddenFloors, locate, heartReached, outsideGround, pathLength, pickupProps, pickupReach, presenceRoom, spaceOf, toSpace, wrapYaw, yawFromSpace, yawToSpace, yawToward } from "@loom/house";
 import type { Assignment, DuckSpot, GameLights, HouseMap, KingState, PlayerPose, PlayerState, Prop, Spawn, SpatialFrame, Vec3 } from "@loom/house";
 import { applySpace, buildHouseScene, createAvatar, createDuck, createTrail, GAME_TERMINAL_SCALE, houseAtmosphere, PoseBuffer, spaceGroup } from "@loom/house/three";
 import type { Avatar, Duck, HouseScene, King, Trail } from "@loom/house/three";
@@ -555,7 +555,7 @@ export class Game {
       level: this.descentLevel,
       seed: a.session,
       house: this.map,
-      who: { name: a.name, visit: (a.reinstalled ?? 0) + 1 },
+      who: { name: a.name, visit: visitOf(a.reinstalled, this.descentLevel) },
       told: a.told,
       host: {
         start: (kind, n, door) => this.visions?.start(kind, n, door) ?? false,

@@ -18,7 +18,7 @@ code and that file disagree, fix one of them in the same change.
 ## Commands
 
 ```bash
-pnpm --filter @loom/house test        # vitest: 495 passed + 4 skipped, 22 files
+pnpm --filter @loom/house test        # vitest: 541 passed + 4 skipped, 24 files
 pnpm --filter @loom/house typecheck
 pnpm --filter @loom/house goldens     # regenerate test/golden/ after a deliberate geometry/route/king change
 pnpm --filter @loom/house sync        # copy the show's house.json, goldens and voice vectors into reinstall/vr/
@@ -179,7 +179,7 @@ descentLevel(reinstalled); descentOf(assignment); descentLook(level);
 descentPlan(seed, level): DescentBeat[]; dueBeat(plan, from, t);
 validateDescent(raw); parseDescent(raw); talkerFor(script, prop); wakeTalkers(house, script, level, seed);
 talkReach(house, feet, prop); faceAnchor(prop); doorSpot(house, feet, yaw);
-openNode(talker, told); pickOption(talker, node, i); fillLine(text, who); pickLine(list, n);
+openNode(talker, told); pickOption(talker, node, i); visitOf(reinstalled, level); fillLine(text, who); pickLine(list, n);
 // footsteps.ts: which speakers carry a program
 AudioConfig.footsteps?: { enabled?, reach?, gain? };
 walkerOutputs(audio, house, room, p); walkersOf(audio, house, players): Walker[]; sameWalkers(a, b);

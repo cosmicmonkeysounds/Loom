@@ -30,6 +30,7 @@ import {
   talkerFor,
   validateDescent,
   validateHouse,
+  visitOf,
   wakeTalkers,
 } from "../src/index.ts";
 import type { DescentScript, HouseMap, Prop, Talker } from "../src/index.ts";
@@ -58,6 +59,17 @@ describe("the level", () => {
       expect(descentLook(l).ambient).toBeLessThan(descentLook(l - 1).ambient);
     }
     expect(descentLook(0)).toEqual({ fog: 1, ambient: 1, flicker: 1, tint: "#ffffff", tintBy: 0 });
+  });
+});
+
+describe("the visit", () => {
+  it("is the walks so far plus this one, never fewer than the level says", () => {
+    expect(visitOf(0, 0)).toBe(1);
+    expect(visitOf(3, 3)).toBe(4);
+    expect(visitOf(7, 4)).toBe(8);
+    expect(visitOf(0, 4)).toBe(5);
+    expect(visitOf(undefined, 2)).toBe(3);
+    expect(visitOf(-3, 0)).toBe(1);
   });
 });
 

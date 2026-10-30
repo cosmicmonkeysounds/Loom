@@ -475,6 +475,16 @@ static func ordinal(n: int) -> String:
 	return NTH[n] if n >= 0 and n < NTH.size() else "%dth" % n
 
 
+## A walk's number for the lines (`{visit}`): the finds behind it plus this
+## one, and never fewer than its level says, so a level a director forced on a
+## first walk still reads as a program that has been here before.
+static func visit_of(reinstalled: Variant, lvl: int) -> int:
+	var n := 0
+	if (reinstalled is int or reinstalled is float) and float(reinstalled) > 0.0:
+		n = int(floor(float(reinstalled)))
+	return maxi(n, clamp_descent(lvl)) + 1
+
+
 ## A line for this program (`who`: `{name, visit}`): `{name}` their name,
 ## `{visit}` this walk's number, `{nth}` it as a word ("fourth").
 static func fill_line(text: String, who: Dictionary) -> String:

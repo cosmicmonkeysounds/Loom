@@ -186,6 +186,7 @@ func _test_port_script() -> void:
 	bad = (_read_json("res://house/descent.json") as Dictionary).duplicate(true)
 	bad["talkers"][0]["nodes"]["start"]["do"] = "tea"
 	_check(not bool(HouseDescent.validate_descent(bad)["ok"]), "script: an unknown vision is refused")
+	_check(HouseDescent.visit_of(0, 0) == 1 and HouseDescent.visit_of(3, 3) == 4 and HouseDescent.visit_of(7, 4) == 8 and HouseDescent.visit_of(0, 4) == 5 and HouseDescent.visit_of(null, 2) == 3 and HouseDescent.visit_of(-3, 0) == 1, "visit: the walks so far plus this one, never fewer than the level says")
 	var who := {"name": "Ada", "visit": 4}
 	_check(HouseDescent.fill_line("{name}, {visit}, {nth}", who) == "Ada, 4, fourth", "script: fill_line")
 	_check(HouseDescent.fill_line("{nth}", {"name": "", "visit": 13}) == "13th", "script: past twelve it counts in figures")

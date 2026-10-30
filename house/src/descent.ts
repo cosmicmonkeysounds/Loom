@@ -100,6 +100,15 @@ export function descentLevel(reinstalled: unknown): number {
   return clampDescent(reinstalled);
 }
 
+/** A walk's number for the lines (`{visit}`): the finds behind it plus this
+ *  one, and never fewer than its level says, so a level a director forced on a
+ *  first walk still reads as a program that has been here before. */
+export function visitOf(reinstalled: unknown, level: number): number {
+  return Math.max(clampVisits(reinstalled), clampDescent(level)) + 1;
+}
+
+const clampVisits = (n: unknown): number => (typeof n === "number" && Number.isFinite(n) && n > 0 ? Math.floor(n) : 0);
+
 /** A walk's level: the server's word (`descent`), else its `reinstalled`. */
 export function descentOf(a: { descent?: number | undefined; reinstalled?: number | undefined }): number {
   return typeof a.descent === "number" ? clampDescent(a.descent) : descentLevel(a.reinstalled);

@@ -65,7 +65,7 @@ validateDescent(raw); parseDescent(raw); talkerFor(script, prop);
 wakeTalkers(house, script, level, seed): {prop, talker}[];
 talkReach(house, feet, prop, radius?); faceAnchor(prop); doorSpot(house, feet, yaw);
 openNode(talker, told); pickOption(talker, node, index);
-fillLine(text, {name, visit}); pickLine(list, n);
+visitOf(reinstalled, level); fillLine(text, {name, visit}); pickLine(list, n);
 
 // footsteps.ts
 AudioConfig.footsteps?: {enabled?, reach?, gain?};
@@ -77,7 +77,7 @@ WalkersFrame { seq, at, walkers }
 ```
 
 The seed of a plan and a wake is the session id. `visit` in `fillLine` is
-`reinstalled + 1`. Goldens: `house/test/golden/descent.json`, `models.json`.
+`visitOf(reinstalled, level)`: `reinstalled + 1`, never fewer than the level says. Goldens: `house/test/golden/descent.json`, `models.json`.
 `descent.json` (the show's) is copied to `reinstall/vr/house/descent.json` by
 `pnpm house:sync`.
 
