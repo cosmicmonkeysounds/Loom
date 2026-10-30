@@ -19,6 +19,7 @@ import type { ScreenState } from "../screen.ts";
 import { useIdleTimeout } from "../idle.ts";
 import { Scanner, cameraProblem, type CameraState } from "../scanner.tsx";
 import { Gear, TypedFallback } from "../controls.tsx";
+import { DreamView, useDreamPhase } from "../dream/DreamView.tsx";
 import { unlock } from "../speech/engine.ts";
 import { playNotes } from "../sound/bus.ts";
 import { CASINO_GAMES, CASINO_INFO, REEL, multiplier, pickLabel, rollText, type CasinoGame } from "../../../core/src/casino.ts";
@@ -29,6 +30,7 @@ type Seated = Extract<CasinoSession, { kind: "seated" }>;
 
 export function CasinoTerminal({ config, state, polled, takeover, onSetup }: { config: TerminalConfig; state: ScreenState | null; polled: boolean; takeover: boolean; onSetup: () => void }) {
   const [s, dispatch] = useReducer(reduce, INITIAL);
+  const dream = useDreamPhase(state) === "through"; // wave 49: never at a table
   const [camera, setCamera] = useState<CameraState>("starting");
   const [typedOpen, setTypedOpen] = useState(false);
   const seatedRef = useRef<Seated | null>(null);
@@ -138,6 +140,7 @@ export function CasinoTerminal({ config, state, polled, takeover, onSetup }: { c
       {s.kind === "attract" || s.kind === "checking" ? (
         <main className="casino-attract">
           <section className="casino-marquee">
+            {dream && <DreamView />}
             <div className="casino-sign">
               <span className="bulbs" aria-hidden="true" />
               <div className="casino-title">CASINO</div>

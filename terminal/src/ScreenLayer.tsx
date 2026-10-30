@@ -16,7 +16,11 @@ import { ringChime } from "./announce.ts";
 import { BUILD } from "./health.ts";
 import { BurstFlash } from "./burst-flash.tsx";
 import { CutsceneSlot } from "./cutscene/slot.tsx";
-import { useSceneClockUp } from "./cutscene/moment-bus.ts";
+import { useReducedMotion } from "./cutscene/clock.ts";
+import { useMomentUp, useSceneClockUp } from "./cutscene/moment-bus.ts";
+import { useDreamPhase, useDreamReady, useDreamSpeaking } from "./dream/DreamView.tsx";
+import { moshMode } from "./dream/dream.ts";
+import { Mosh } from "./dream/Mosh.tsx";
 import { FlickerPlays, GLITCH_MS, GLITCH_TEXT, STAFF_TAG, chartCallouts, chartLines, formatCountdown, screenLayers, slideCopy, slideSources, slideVideoSources, y2kClock, endFlicker, offerFlicker, type OverlayKind, type ScreenLayers } from "./slides.ts";
 import { sfx } from "./sound/bus.ts";
 
@@ -33,7 +37,7 @@ export interface SlideVideoOpts {
 
 /** One slide: on the TV its first clip that plays, then the first of its
  *  PNGs that loads, else its text card. */
-export function SlideView({ slide, y2k, chart = null, chartShown, video = false, muted = false }: { slide: { value: string; cue: string }; y2k: number | null; chart?: ScreenChart | null; chartShown?: number } & SlideVideoOpts) {
+export function SlideView({ slide, y2k, chart = null, chartShown, video = false, muted = false, dream = false }: { slide: { value: string; cue: string }; y2k: number | null; chart?: ScreenChart | null; chartShown?: number; /** (wave 49) Clippy's dream is up: the clock floats on it. */ dream?: boolean } & SlideVideoOpts) {
   const sources = slideSources(slide, import.meta.env.BASE_URL);
   const firstOk = () => sources.find((s) => !missing.has(s)) ?? null;
   const [src, setSrc] = useState<string | null>(firstOk);
@@ -49,7 +53,7 @@ export function SlideView({ slide, y2k, chart = null, chartShown, video = false,
     // The clock is live, so it is always drawn — a PNG would freeze it.
     const c = y2kClock(y2k);
     return (
-      <div className="screen-slide y2k-slide" data-slide={slide.cue}>
+      <div className="screen-slide y2k-slide" data-slide={slide.cue} data-dream={dream ? "" : undefined}>
         <div className="y2k-tray">
           <span className="y2k-time">{c.time}</span>
           <span className="y2k-date">{c.date}</span>
@@ -378,7 +382,7 @@ export function GlitchTakeover({ seq, at: cueAt, t, text = GLITCH_TEXT }: { seq:
  */
 export function ScreenLayer({ layers, gear, video, muted, onSlideTap, cutscene }: { layers: ScreenLayers; gear: ReactNode; onSlideTap?: () => void; cutscene?: (card: ReactNode) => ReactNode } & SlideVideoOpts) {
   const covered = layers.overlay !== null || layers.slide !== null;
-  const slide = layers.overlay === null && layers.slide !== null && <SlideView slide={layers.slide} y2k={layers.y2k} chart={layers.chart} chartShown={layers.chartShown} video={video} muted={muted} />;
+  const slide = layers.overlay === null && layers.slide !== null && <SlideView slide={layers.slide} y2k={layers.y2k} chart={layers.chart} chartShown={layers.chartShown} video={video} muted={muted} dream={layers.dream === "through"} />;
   return (
     <>
       {/* A tap on a slide peeks under it (B21) where `onSlideTap` is given;
@@ -413,7 +417,7 @@ export function ScreenLayer({ layers, gear, video, muted, onSlideTap, cutscene }
 
 /** The layer, live: re-decided every second (holds, the corner, the clock).
  *  `cutscenes` (wave 17): the slide's slot draws the cutscene layer (`cutscene/`). */
-export function LiveScreenLayer({ state, piloting, peek = false, room = false, slides = true, onSlideTap, gear, video, cutscenes = false }: { state: ScreenState | null; piloting: boolean; peek?: boolean; room?: boolean; slides?: boolean; onSlideTap?: () => void; gear: ReactNode; video?: boolean; cutscenes?: boolean }) {
+export function LiveScreenLayer({ state, piloting, peek = false, room = false, slides = true, onSlideTap, gear, video, cutscenes = false, announcing = false, target = "wall", dreamKey = "" }: { state: ScreenState | null; piloting: boolean; peek?: boolean; room?: boolean; slides?: boolean; onSlideTap?: () => void; gear: ReactNode; video?: boolean; cutscenes?: boolean; /** The announcement banner is up. */ announcing?: boolean; target?: "tv" | "wall"; dreamKey?: string }) {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const id = window.setInterval(() => setNow(Date.now()), 1000);
@@ -423,17 +427,27 @@ export function LiveScreenLayer({ state, piloting, peek = false, room = false, s
   const at = Math.max(now, state?.receivedAt ?? 0);
   // `slides` false (the tent's kiosk, wave 26 T3): no story slide, corner or
   // Y2K clock — but its moments (beat cutscenes) and the glitch still play.
-  const layers = screenLayers(state, at, { piloting, peek, room, slides });
+  const dreamReady = useDreamReady();
+  useDreamPhase(state); // re-decides on the takeover's two moments, not a second late
+  const layers = screenLayers(state, at, { piloting, peek, room, slides, dreamReady });
   const bare = piloting || peek || room;
+  // Wave 49: what gets through the dream comes through it data moshed.
+  const moment = useMomentUp();
+  const speaking = useDreamSpeaking();
+  const reduced = useReducedMotion();
+  const mosh = moshMode({ phase: layers.dream, overlay: layers.overlay, slide: layers.slide?.value ?? null, glitch: layers.glitch !== null, burst: layers.burst !== null, moment, announcing, speaking, busy: bare, reduced });
   return (
-    <ScreenLayer
-      layers={layers}
-      gear={gear}
-      video={video}
-      muted={state?.voice?.muted === true}
-      onSlideTap={onSlideTap}
-      cutscene={cutscenes ? (card) => <CutsceneSlot state={state} layers={layers} bare={bare} card={card} gear={gear} /> : undefined}
-    />
+    <>
+      <ScreenLayer
+        layers={layers}
+        gear={gear}
+        video={video}
+        muted={state?.voice?.muted === true}
+        onSlideTap={onSlideTap}
+        cutscene={cutscenes ? (card) => <CutsceneSlot state={state} layers={layers} bare={bare} card={card} gear={gear} /> : undefined}
+      />
+      {mosh !== null && <Mosh key={mosh} mode={mosh} target={target} seedKey={dreamKey} reduced={reduced} />}
+    </>
   );
 }
 

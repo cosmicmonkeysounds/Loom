@@ -37,8 +37,10 @@ import { kioskFullscreen } from "./fullscreen.ts";
 import { setSoundMuted } from "./sound/bus.ts";
 import { onSceneFace } from "./cutscene/face-bus.ts";
 import { emitSpeech, setSpeechLive } from "./cutscene/speech-bus.ts";
+import { DreamView, useDreamPhase } from "./dream/DreamView.tsx";
+import { setDreamSpeaking } from "./dream/player.ts";
 import { serverNow } from "./cutscene/clock.ts";
-import type { RoomSpeech } from "./speech/said.ts";
+import { DREAM_BUG_LINE, type RoomSpeech } from "./speech/said.ts";
 
 /** A caption stays up this long after the last line (ms). */
 const CAPTION_LINGER_MS = 6000;
@@ -159,6 +161,7 @@ export function Tv({
           starts.current.delete(id);
         }
         feed.chunk(id, i);
+        if (DREAM_BUG_LINE.test(text)) speech.namedBug(); // wave 49: on his word
         setMood(moodOfText(text));
         setSpoken({ seq: id, index: i });
         setSpeaking(true);
@@ -177,7 +180,7 @@ export function Tv({
       engine: (kind) => setEngineUsed(kind),
     }, voiceFloor, gapsFor(config));
     return { q, chunks };
-  }, [config, feed]);
+  }, [config, feed, speech]);
 
   const lingerTimer = useRef(0);
   const player = useMemo(
@@ -296,6 +299,14 @@ export function Tv({
   // `here`. A TV with no spot never shows it (`linkedNow`, as the walls).
   const linked = usePresenceLatch(linkedNow({ view: "tv", spot: config.spot, here: state?.spot, anyone: inSimulation }));
   const showWorld = canDraw && linked && !attract;
+  // Wave 49: Clippy's dream fills his place on the TV; his face comes through
+  // it for a line, data moshed. `tv-attract` has its own, in the idle show.
+  const dream = useDreamPhase(state) === "through" && !attract;
+  const dreaming = dream && !speaking;
+  useEffect(() => {
+    setDreamSpeaking(dream && speaking);
+    return () => setDreamSpeaking(false);
+  }, [dream, speaking]);
   // A long spoken line's caption pieces, cut once per line.
   const captionPieces = useMemo(
     () => (caption === null || caption.mode !== "speak" || caption.text.length <= CAPTION_CHUNK_OVER ? [] : captionChunks(caption.text)),
@@ -304,8 +315,9 @@ export function Tv({
   return (
     <div className={`terminal tv${showWorld ? " with-world" : ""}`} data-muted={String(muted)} data-speaking={String(speaking)}>
       <section className="tv-face">
-        <Face mood={mood} speaking={speaking} handle={face} paused={attract} />
+        <Face mood={mood} speaking={speaking} handle={face} paused={attract || dreaming} />
         {showsNameplate(state) && <div className="nameplate">{config.character.toUpperCase()}</div>}
+        {dream && <DreamView active={dreaming} />}
       </section>
       {showWorld && <section className="tv-world">{worldSlot(world)}</section>}
       {caption !== null && !attract && (

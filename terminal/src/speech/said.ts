@@ -32,7 +32,15 @@ export interface SpeechReport {
    *  sentence (`chunk`, from 0), or `chunk: null` once that line is done.
    *  Absent / null: nothing to report (left out of the poll). */
   sp?: { seq: number; chunk: number | null } | null;
+  /** (wave 49) The TV just started the sentence that names the Y2K bug. */
+  bug?: boolean;
 }
+
+/** (wave 49) The sentence that sets off Clippy's dream. */
+export const DREAM_BUG_LINE = /\bY2K BUG\b/u;
+/** (wave 49) `bug=1` rides the polls this long (ms): a poll can fail, and a
+ *  story restart must not find it still set. The server takes the first. */
+export const DREAM_BUG_MS = 4000;
 
 /** The poll's `talk` / `said` keys for a report (none for a terminal that doesn't speak). */
 export function speechQuery(r: SpeechReport | null | undefined): Record<string, string> {
@@ -44,6 +52,7 @@ export function speechQuery(r: SpeechReport | null | undefined): Record<string, 
     const chunk = sp.chunk === null ? "d" : Number.isFinite(sp.chunk) && sp.chunk >= 0 ? String(Math.min(999, Math.floor(sp.chunk))) : null;
     if (chunk !== null) q["sp"] = `${Math.floor(sp.seq)}:${chunk}`;
   }
+  if (r.bug === true) q["bug"] = "1";
   return q;
 }
 
@@ -61,6 +70,7 @@ export class RoomSpeech {
   private speakers = 0;
   /** (wave 26, V1 phase 2) The line being said and its sentence (`chunk` null: done). */
   private sp: { seq: number; chunk: number | null } | null = null;
+  private bugUntil = 0;
   private readonly drains = new Set<() => void>();
 
   /** A player is mounted to speak the room's lines; call the result when it goes. */
@@ -121,13 +131,20 @@ export class RoomSpeech {
    * player mounted (the setup screen) nothing here will say the room's lines:
    * not talking, finished through the last head heard.
    */
-  report(cursor: number | null): SpeechReport {
-    const sp = this.sp === null ? {} : { sp: { ...this.sp } };
+  report(cursor: number | null, now: number = Date.now()): SpeechReport {
+    const sp = { ...(this.sp === null ? {} : { sp: { ...this.sp } }), ...(now < this.bugUntil ? { bug: true } : {}) };
     if (this.speakers === 0) return { talk: false, said: this.head ?? cursor, ...sp };
     const through = cursor ?? this.head;
     if (this.pending.length === 0) return { talk: false, said: through, ...sp };
     const before = this.pending[0]! - 1;
     return { talk: true, said: through === null ? before : Math.min(through, before), ...sp };
+  }
+
+  /** (wave 49) The TV has started the sentence that names the Y2K bug. The
+   *  poll goes now, not up to a second late: the walls have seconds to hear it. */
+  namedBug(now: number = Date.now()): void {
+    this.bugUntil = now + DREAM_BUG_MS;
+    this.drained();
   }
 
   /** Called each time the queue drains (talk 1 → 0). Returns the unsubscribe. */

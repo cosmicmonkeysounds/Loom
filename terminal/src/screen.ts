@@ -710,6 +710,10 @@ export interface ScreenState {
    *  in the last 6 s, or an older server). Optional for hand-built states;
    *  `parseScreenState` always sets it. */
   tvSpeech?: TvSpeech | null;
+  /** (wave 49) Clippy's dream, while the story has it on: `at` is when the
+   *  takeover starts (server ms; 0: long since). Null: off, or an older
+   *  server. Optional for hand-built states. */
+  dream?: { at: number } | null;
 }
 
 /** A ranked chart the server keeps live (`SCREEN_CHARTS`, core). */
@@ -866,7 +870,15 @@ export function parseScreenState(raw: unknown, receivedAt: number = Date.now()):
     results: resultsOf(r["results"]),
     spot: spotOf(r["spot"]),
     tvSpeech: tvSpeechOf(r["tvSpeech"]),
+    dream: dreamOf(r["dream"]),
   };
+}
+
+/** A `dream` block off the wire; anything malformed (or an older server's none) is null. */
+export function dreamOf(raw: unknown): { at: number } | null {
+  if (typeof raw !== "object" || raw === null) return null;
+  const at = (raw as Record<string, unknown>)["at"];
+  return typeof at === "number" && Number.isFinite(at) && at >= 0 ? { at } : null;
 }
 
 /** The recent announcements, oldest first; an older server sends only
