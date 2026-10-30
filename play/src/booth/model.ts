@@ -88,23 +88,27 @@ export function cardButtons(
     if (faceIds.length >= FACE_MAX || faceIds.includes(id) || !live.has(id) || !byId.has(id)) return;
     faceIds.push(id);
   };
+  // Wave 47: this booth's own capture (🛡 Send to the Internet), live for
+  // this guest, is always on the face, past the three: once the story says
+  // anyone can go (after the Bingo round), every scan must offer it, though
+  // no objective of the moment names it. The story's `while:` says when.
+  // Its own: its `by:` names this character (the card's `live` is per guest;
+  // the view's own flag can't judge a `while:` about the program). An
+  // Antivirus' or a host's (the show's `by: Antivirus, Hosts`).
+  const me = foldName(character);
+  const captures = interactions.filter((i) => i.who !== "admin" && i.actors?.some((a) => foldName(a) === me) === true && CAPTURE.test(i.label) && live.has(i.id)).map((i) => i.id);
   const objs = objectives ?? [];
   for (const o of objs) for (const id of o.buttons) if (!RESERVED.has(id)) add(id);
   const named = new Set(faceIds);
   // Wave 21 (D4): only a host (or an admin booth) also leads with the
   // buttons live because of this guest; everyone else gets what an
   // objective names. A story with no objective at all still falls back to
-  // the booth's own live buttons — never on a player's.
-  if (admin) for (const id of card?.guestScoped ?? []) add(id);
-  if (objs.length === 0 && opts.player !== true) for (const i of split.mine) add(i.id);
-  // Wave 47: this booth's own capture (🛡 Send to the Internet), live for
-  // this guest, is always on the face, past the three: once the story says
-  // anyone can go (after the Bingo round), every scan must offer it, though
-  // no objective of the moment names it. The story's `while:` says when.
-  // Its own: its `by:` names this character (the card's `live` is per guest;
-  // the view's own flag can't judge a `while:` about the program).
-  const me = foldName(character);
-  for (const i of interactions) if (i.who !== "admin" && i.actors?.some((a) => foldName(a) === me) === true && CAPTURE.test(i.label) && live.has(i.id) && !faceIds.includes(i.id)) faceIds.push(i.id);
+  // the booth's own live buttons — never on a player's. Neither takes one
+  // of the three for the capture, which comes after them anyway (a host's
+  // 🛡 would push 🩹 off a marked program's card).
+  if (admin) for (const id of card?.guestScoped ?? []) if (!captures.includes(id)) add(id);
+  if (objs.length === 0 && opts.player !== true) for (const i of split.mine) if (!captures.includes(i.id)) add(i.id);
+  for (const id of captures) if (!faceIds.includes(id)) faceIds.push(id);
   const face = faceIds.map((id) => ({ interaction: byId.get(id)!, live: true, ...(named.has(id) ? { named: true } : {}) }));
   // The rest: what this booth may press, minus the face; live ones first.
   // No card shows them since wave 21 (no "All buttons…"): `heldFace` reads

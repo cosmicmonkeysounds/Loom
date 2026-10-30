@@ -347,7 +347,9 @@ Clippy) through `scripts/sim` evenings at 390x700 and in Chrome.
   character; the label sends to the Internet), live for this guest, is on
   the face past the three, though no objective names it. The story's
   `while:` says when (the show: every program after the Bingo round, wave
-  46). `test/w47-av-send.test.ts`.
+  46). A host booth too, when the view's `actors` name it (the show's
+  `by: Antivirus, Hosts` and TRAIT Host's hook, so a host's press is heard).
+  `test/w47-av-send.test.ts`.
 
 ### Wave 48: the Password Manager's filter
 
