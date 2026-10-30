@@ -20,7 +20,9 @@
 //!
 //! Wave 48 (C5): the censor's booth (`PrimeView.filter`) gets the 🔑
 //! LANGUAGE pop-out (the driver), the tray's `🔑 n` and the filter window
-//! (`booth/filter/`), sharing one `useFilter`.
+//! (`booth/filter/`), sharing one `useFilter`. Wave 48b (C13): ⊞ Start's
+//! 🔑 Filter strength (its layer, the only way to it), the ⭐ game's heat
+//! handed down (`FilterGameContext`) and the burst after a ✂.
 
 import { useEffect, useMemo, useRef, useState, type ReactElement, type ReactNode, type RefObject } from "react";
 import { ActionRow, InviteSheet, PickerSheet, SessionEnded, useWide } from "../ui/primitives.tsx";
@@ -92,6 +94,9 @@ import { NowJobs } from "./now-card.tsx";
 import { CreditsSlot, creditsStartItem, useCredits } from "../credits/lazy.tsx";
 import { useFilter } from "./filter/use-filter.ts";
 import { FilterWindow } from "./filter/window.tsx";
+import { FilterBurst, FilterGameContext } from "./filter/game.tsx";
+import { FilterStrengthWindow } from "./filter/strength.tsx";
+import { filterStartItem } from "./filter/model.ts";
 
 /**
  * A guest's thread as the booth shows it: its rows come from several rooms,
@@ -755,12 +760,15 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
     popOutAdapter: boothPopOutAdapter(adapterCtx, (d) => bindDraft(d, openers, rung.defer)),
     openCard: (guestId: string) => openCard(guestId),
   };
+  // Wave 48b (C13): the censor's dial, only here (she has to find it).
+  const filterItem = filter.view !== null ? filterStartItem(() => setLayer({ kind: "strength" })) : null;
   const start = player
     ? playerStartItems({
         character,
         wake,
         embedded: host.embedded,
         credits: creditsStartItem(s.view?.night?.credits, () => credits.set(Date.now())),
+        filter: filterItem,
         onHelp: () => setHelp(true),
         onSheet: setSheet,
         onPeople: () => setPeopleOpen(true),
@@ -777,6 +785,7 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
     knows: s.view?.codex?.length ?? 0,
     wake,
     embedded: host.embedded,
+    filter: filterItem,
     onHelp: () => setHelp(true),
     onSheet: setSheet,
     onSignOut: () => {
@@ -787,6 +796,7 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
   });
 
   return (
+    <FilterGameContext.Provider value={filter.game}>
     <MomentsProvider {...moments}>
       <AvatarsContext.Provider value={avatars}>
         <WalletActionsProvider value={{ view: s.view?.wallet ?? null, me: null, clock: walletClock, approve: (id) => void s.walletApprove(id), deny: (id) => void s.walletDeny(id) }}>
@@ -944,6 +954,8 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
             )}
             {layer?.kind === "waiting" && <WaitingWindow onClose={closeLayer} />}
             {layer?.kind === "filter" && <FilterWindow api={filter} now={storyMs} onClose={closeLayer} />}
+            {layer?.kind === "strength" && <FilterStrengthWindow api={filter} onClose={closeLayer} />}
+            {filter.view !== null && <FilterBurst burst={filter.burst} onDone={filter.clearBurst} />}
             {picking && t.active && (
               <InviteSheet
                 title={`Invite to ${t.active.title}`}
@@ -987,5 +999,6 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
         </WalletActionsProvider>
       </AvatarsContext.Provider>
     </MomentsProvider>
+    </FilterGameContext.Provider>
   );
 }

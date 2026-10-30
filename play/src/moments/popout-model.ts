@@ -14,6 +14,7 @@
 //! and renders it (the booth's chunk); `popout-registry.ts` is the engine's
 //! doorway to it.
 
+import type { ReactNode } from "react";
 import type { PopTone } from "../alerts.ts";
 import type { MomentMessage } from "./model.ts";
 import { noticeKey } from "../../../core/src/delivery.ts";
@@ -33,10 +34,15 @@ export interface PopGuest {
 }
 
 /** Wave 48 (C5): one run of a quoted line; `mark` runs are highlighted
- *  (the language filter's flagged stems). */
+ *  (the language filter's flagged stems). Wave 48b (C13): a marked run
+ *  takes its band's colour (`tier`, the `filter-tier-<n>` class), and a
+ *  `chip` run is drawn as that chip in place of its own text (a slur:
+ *  `[slur]` over its stars). */
 export interface PopQuotePart {
   text: string;
   mark?: boolean;
+  tier?: number;
+  chip?: string;
 }
 
 /** One button. */
@@ -55,6 +61,11 @@ export interface PopAction {
   run: () => void | Promise<unknown>;
   /** Default true: a run that resolves (not throws) marks the key handled. */
   closes?: boolean;
+  /** Wave 48b: the label while armed (✂ Censor? It raises their suspicion.). */
+  armedLabel?: string;
+  /** Wave 48b: live content inside the button after its label (what ✂
+   *  would pay now). Never stored: a restored pop-out has no buttons. */
+  extra?: ReactNode;
 }
 
 export interface PopOutSpec {
@@ -75,6 +86,9 @@ export interface PopOutSpec {
   /** Wave 48 (C5): a line quoted under the body, its marked runs
    *  highlighted (🔑 LANGUAGE: the flagged stems). Plain text only. */
   quote?: PopQuotePart[];
+  /** Wave 48b: live content under the quote (the filter's heat meter).
+   *  Never stored: a pop-out back from storage comes without it. */
+  extra?: ReactNode;
   /** ≤ 4, in visual order; the shell adds "Later" unless `noLater`. */
   actions: PopAction[];
   noLater?: boolean;
@@ -285,8 +299,8 @@ export function pagerOf(queued: number): string | null {
   return queued > 0 ? `1 of ${queued + 1}` : null;
 }
 
-/** A pop-out's spec as storage keeps it (no handlers). */
-export type StoredSpec = Omit<PopOutSpec, "actions">;
+/** A pop-out's spec as storage keeps it (no handlers, no live content). */
+export type StoredSpec = Omit<PopOutSpec, "actions" | "extra">;
 export interface StoredPopOuts {
   handled: Array<{ key: string; rev: string }>;
   /** The sticky live ones and every deferred one. */
@@ -301,7 +315,7 @@ export function popKey(session: string): string {
 /** What to persist: the handled pairs, the sticky unhandled ones, the tray. */
 export function storedOf(s: PopState): StoredPopOuts {
   const strip = (spec: PopOutSpec): StoredSpec => {
-    const { actions: _a, ...rest } = spec;
+    const { actions: _a, extra: _x, ...rest } = spec;
     return rest;
   };
   return {
@@ -352,12 +366,18 @@ export function parseStored(v: unknown): StoredPopOuts {
   return out;
 }
 
-/** A stored quote, defensively: only `{text}` runs survive. */
+/** A stored quote, defensively: only `{text}` runs survive (with their
+ *  mark, its tier and its chip). */
 function quoteOf(v: readonly unknown[]): PopQuotePart[] {
   const out: PopQuotePart[] = [];
   for (const q of v) {
-    const x = q as { text?: unknown; mark?: unknown } | null;
-    if (typeof x?.text === "string") out.push(x.mark === true ? { text: x.text, mark: true } : { text: x.text });
+    const x = q as { text?: unknown; mark?: unknown; tier?: unknown; chip?: unknown } | null;
+    if (typeof x?.text !== "string") continue;
+    if (x.mark !== true) {
+      out.push({ text: x.text });
+      continue;
+    }
+    out.push({ text: x.text, mark: true, ...(typeof x.tier === "number" && Number.isFinite(x.tier) ? { tier: x.tier } : {}), ...(typeof x.chip === "string" ? { chip: x.chip } : {}) });
   }
   return out;
 }
