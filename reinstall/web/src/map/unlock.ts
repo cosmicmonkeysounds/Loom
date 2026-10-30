@@ -3,9 +3,15 @@
 //! first save, Save to project or tent ⇄ shed switch in a page load waits
 //! for the passcode, checked against `/api/resolve-code` (a moderator code
 //! for this device's event). Once it checks out the page stays unlocked
-//! until it is reloaded; the token itself is untouched.
+//! until it is reloaded; the token itself is untouched. A page that has been
+//! given the passcode already starts open: a `?code=` link, or Run → House →
+//! 🗺 Map, where the author's own session is the unlock.
+//!
+//! Also the map's key rules, pure: which keys are the map's, and where a key
+//! really landed once the editor sits in a shadow root.
 
 import { api, ApiError } from "@loom/play/client.ts";
+import { TOOLS } from "./tools.ts";
 
 /** Resolve a code the way the server does: `{eventId, role}`, throwing an `ApiError` on a miss. */
 export type ResolveCode = (code: string) => Promise<{ eventId?: unknown; role?: unknown }>;
@@ -36,10 +42,15 @@ export async function checkModCode(code: string, eventId: string, resolve: Resol
  * `ensure` resolves false and the write must not happen.
  */
 export class MapUnlock {
-  private unlocked = false;
+  private unlocked: boolean;
   private pending: Promise<boolean> | null = null;
+  private readonly verify: (code: string) => Promise<string | null>;
 
-  constructor(private readonly verify: (code: string) => Promise<string | null>) {}
+  /** `open`: the passcode isn't asked for at all. */
+  constructor(verify: (code: string) => Promise<string | null>, open = false) {
+    this.verify = verify;
+    this.unlocked = open;
+  }
 
   get open(): boolean {
     return this.unlocked;
@@ -75,4 +86,29 @@ export class MapUnlock {
  */
 export function editorTakesKey(k: { typing: boolean; editing: boolean; asking: boolean }): boolean {
   return k.editing && !k.typing && !k.asking;
+}
+
+/** Where a key really landed: at the window, `e.target` of a key inside a
+ *  shadow root is the shadow host. */
+export function keyOrigin(e: Pick<Event, "composedPath" | "target">): EventTarget | null {
+  return e.composedPath()[0] ?? e.target;
+}
+
+/** A key landing in a field that takes text (not a checkbox or a button). */
+export function isTyping(target: EventTarget | null): boolean {
+  const t = target as { tagName?: unknown; type?: unknown; isContentEditable?: unknown } | null;
+  if (t === null || typeof t.tagName !== "string") return false;
+  if (t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable === true) return true;
+  return t.tagName === "INPUT" && !["checkbox", "radio", "button", "submit", "color", "range"].includes(String(t.type));
+}
+
+const MOVE_KEYS = ["Escape", "Delete", "Backspace", "[", "]", "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"];
+
+/** The keys the map answers to (`MapEditor`'s handler), in or out of a field:
+ *  embedded, these stop at the map and never reach the host page's shortcuts. */
+export function mapAnswersKey(e: Pick<KeyboardEvent, "key" | "metaKey" | "ctrlKey" | "altKey">): boolean {
+  const key = e.key.toLowerCase();
+  if (e.metaKey || e.ctrlKey) return key === "z" || key === "y" || key === "d";
+  if (e.altKey) return false;
+  return MOVE_KEYS.includes(e.key) || TOOLS.some((t) => t.key === key);
 }

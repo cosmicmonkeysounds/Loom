@@ -57,6 +57,7 @@ import {
 import { placingLabel, snapTerminalToWall, takesModel, WALL_SNAP, YAW_STEP } from "./props.ts";
 import { addRoom, addStair, moveStair, rectFrom } from "./structure.ts";
 import type { EditMode, Placing, Tool } from "./tools.ts";
+import { keyOrigin } from "./unlock.ts";
 import { yardOf, yardsOn } from "./yards.ts";
 
 type ViewBox = [number, number, number, number];
@@ -151,7 +152,8 @@ export function Canvas({ house, floor, edit, tool, snapStep, sel, players, onSel
   // Space held = pan with the left button.
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
-      if (e.code === "Space" && !(e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement)) space.current = true;
+      const on = keyOrigin(e);
+      if (e.code === "Space" && !(on instanceof HTMLInputElement || on instanceof HTMLTextAreaElement)) space.current = true;
     };
     const up = (e: KeyboardEvent) => {
       if (e.code === "Space") space.current = false;
