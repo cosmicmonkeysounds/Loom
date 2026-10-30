@@ -342,6 +342,12 @@ Clippy) through `scripts/sim` evenings at 390x700 and in Chrome.
   inside the moments provider in every branch (`useBackMoment`).
 - **A booth's letter ask** is one 48 px row on a phone (`LetterCard
   startOpen={wide}`).
+- **A capture is always on the card** (`booth/model.ts` `cardButtons`,
+  `CAPTURE`): this booth's own capture button (its `by:` names the
+  character; the label sends to the Internet), live for this guest, is on
+  the face past the three, though no objective names it. The story's
+  `while:` says when (the show: every program after the Bingo round, wave
+  46). `test/w47-av-send.test.ts`.
 
 ### Host windows (wave 25; the contract is `docs/loom-house-desk.md` §6.2)
 
