@@ -176,6 +176,12 @@ var _intro_ring := Vector3.ZERO
 var _intro_duck := Vector3.ZERO
 
 var _trail_in := 0.0
+## The trail's route on a worker thread (a headset only): the task in flight
+## (-1: none), its route map's copy, and a generation that a clear bumps so
+## a late answer for an old trail is dropped.
+var _trail_task := -1
+var _route_copy: Dictionary = {}
+var _trail_gen := 0
 ## Seconds of this walk played so far (PLAYING only), and when the trail
 ## comes on ([member trail_revealed]); the minute restarts on a re-scan.
 var _played_for := 0.0
@@ -369,7 +375,7 @@ func enter_lobby() -> void:
 	intro_space.close()
 	_update_route_house()
 	duck.remove()
-	trail.clear()
+	_clear_trail()
 	cams.stop()
 	_stop_voice()
 	sfx.set_hum(false)
@@ -442,6 +448,9 @@ func _update_route_house() -> bool:
 	var moved := open != king_door_open
 	king_door_open = open
 	route_house = HouseKing.trail_map(builder.house, id, open)
+	# The trail's worker thread reads its own copy (the builder's map can
+	# change under it on this thread).
+	_route_copy = route_house.duplicate(true)
 	return moved
 
 
@@ -610,7 +619,7 @@ func _start_play() -> void:
 	_escape_answer = {}
 	_reveal_after = maxf(0.0, float(link.config.get("trail_delay", HouseRoute.PATH_REVEAL_MS / 1000.0)))
 	trail_revealed = false
-	trail.clear()
+	_clear_trail()
 	# The play buttons act on a press made while playing, never on one held
 	# over from the lobby or the intro (the trigger that pulled START; B / Y
 	# does nothing there).
@@ -762,7 +771,7 @@ func _on_found_answered(ok: bool, data: Dictionary) -> void:
 	if not refused:
 		duck.celebrate()
 		_fanfare_in = Sfx.FANFARE_AFTER
-	trail.clear()
+	_clear_trail()
 	if released:
 		hud.show_found("REINSTALLATION COMPLETE", who)
 	elif refused:
@@ -1104,7 +1113,7 @@ func _tick_play(delta: float) -> void:
 		if trail_revealed:
 			refresh_trail(feet, duck_p)
 		else:
-			trail.clear()
+			_clear_trail()
 
 	_tick_quack(feet, duck_p, delta)
 	_tick_props(house, feet, delta)
@@ -1129,7 +1138,7 @@ func escaping() -> bool:
 ## The player is [constant HouseEscape.ESCAPE_M] into the void: scare them
 ## and post the escape — or, within the cooldown, put them back quietly.
 func _start_escape() -> void:
-	trail.clear()
+	_clear_trail()
 	var now := float(clock.call())
 	if _escaped_at >= 0.0 and (now - _escaped_at) * 1000.0 < HouseEscape.ESCAPE_COOLDOWN_MS:
 		_back_to_spawn({})
@@ -1612,12 +1621,46 @@ static func stair_step_out(house: Dictionary, stair: Dictionary, p: Array) -> Va
 	return null
 
 
-## Re-route the chevrons from `from` to the duck (house frame).
+## Re-route the chevrons from `from` to the duck (house frame). On a
+## headset the route runs on a worker thread: it rebuilds the house's whole
+## visibility graph (13 ms a call on a desktop, several frames on a Quest),
+## and twice a second on this thread it snapped the view while walking.
+## One route in flight at a time; the desktop rig and the tests route here.
 func refresh_trail(from: Array, to: Array) -> void:
+	if player == null or not player.xr_active:
+		_lay_trail(HouseRoute.sample_trail(trail_path(route_house, from, to)), _trail_gen)
+		return
+	if _trail_task != -1:
+		return
+	if _route_copy.is_empty():
+		_route_copy = route_house.duplicate(true)
+	var house := _route_copy
+	var gen := _trail_gen
+	_trail_task = WorkerThreadPool.add_task(func() -> void:
+		var samples := HouseRoute.sample_trail(Game.trail_path(house, from, to))
+		_trail_done.call_deferred(samples, gen))
+
+
+func _trail_done(samples: Array, gen: int) -> void:
+	if _trail_task != -1:
+		WorkerThreadPool.wait_for_task_completion(_trail_task)
+		_trail_task = -1
+	_lay_trail(samples, gen)
+
+
+func _lay_trail(samples: Array, gen: int) -> void:
+	if gen != _trail_gen:
+		return
 	var points: Array = []
-	for s: Dictionary in HouseRoute.sample_trail(trail_path(route_house, from, to)):
+	for s: Dictionary in samples:
 		points.append({"pos": builder.to_world(s["p"]), "yaw": builder.yaw_to_world(s["yaw"])})
 	trail.show_points(points)
+
+
+## Hide the trail, and drop any route still on its way for it.
+func _clear_trail() -> void:
+	_trail_gen += 1
+	trail.clear()
 
 
 func _room_label(room_id: Variant) -> String:

@@ -2059,6 +2059,17 @@ func _test_main_and_game() -> void:
 	game._process(0.016)
 	_check(not link.poses.is_empty() and _diff(link.poses.back()["p"], spawn) == "", "game: poses go out as house-frame feet")
 	_check(game.trail.count() > 0, "game: the golden trail is laid (%d chevrons)" % game.trail.count())
+	# On a headset the route runs on a worker thread and lands a frame later.
+	game._clear_trail()
+	player.xr_active = true
+	game.refresh_trail(spawn, a["duck"]["pos"])
+	_check(game.trail.count() == 0, "game: a headset's trail route goes to a worker thread (not laid at once)")
+	for i in 60:
+		await process_frame
+		if game.trail.count() > 0:
+			break
+	player.xr_active = false
+	_check(game.trail.count() > 0, "game: … and is laid when it lands (%d chevrons)" % game.trail.count())
 	var spawn_room: Dictionary = HouseGeometry.room_by_id(house, house["spawn"]["room"])
 	_check(game.hud.room_text() == str(spawn_room["label"]), "game: the HUD names the room")
 	_check(link.found_calls == 0, "game: no claim far from the duck")
