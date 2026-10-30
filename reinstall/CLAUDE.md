@@ -109,6 +109,18 @@ presence rooms and `moment`), `spatial-cams.ts`, `spatial-voice.ts` and the
   autopilot never plays it. Re-encode both videos from the source if it
   changes (the ffmpeg lines are in `docs/loom-reinstall.md` §3).
 
+- **The descent** (wave 49, `docs/loom-w49-contract.md`). A walk's level is
+  `descentOf(assignment)`, 0 on a first walk: level 0 is the game as it always
+  was, at no extra cost. Both games run the same seeded plan and wake the same
+  props (`@loom/house` `descent.ts`, the VR port `house_descent.gd`, diffed
+  against the golden); what a vision looks like is each game's own. A vision or
+  a talk never blocks a find, a hit or a moment, talking never stops walking,
+  and one vision runs at a time. In the Hallway (the `door` vision) the pose
+  pump keeps sending the pose at the door it entered, and everything judged is
+  off. A `from` prop is drawn only by the games, at its level, and is never
+  solid. The words are `descent.json`, served live; the props know nothing
+  useful, and the play help never describes any of it.
+
 ## Conventions and gotchas
 
 - **Old devices.** `web/` builds for `chrome87` / `safari14`: use

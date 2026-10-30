@@ -129,6 +129,8 @@ interface Prop {
                                 //   "cabinet", "rack", "crt", …); drawing only, it collides as its plain shape;
                                 //   an unknown well-formed id draws plain
   neon?: string;                // (wave 47) a model's neon colour, "#rrggbb" (default: the model's)
+  from?: number;                // (wave 49) only there at this descent level and deeper, in the games alone; never solid
+  talk?: string;                // (wave 49) a talker id in `descent.json`, or "none"; absent: by model
   signals?: { won?: string; lost?: string; drawn?: string; hit?: string; fallen?: string; reached?: string; taken?: string };
                                 // the story signals a prop posts, keys checked per kind: a king's won / lost /
                                 //   drawn (the chess terminal) and hit / fallen (the server; defaults "chess won" /
@@ -176,6 +178,11 @@ Validation (`validateHouse`) returns `{ ok, problems: string[], house? }`
   on any other kind; a `label` on a heart or a pickup (an older game would
   draw it). An older server or bundle refuses both new kinds, so the
   server ships before a map that has them.
+- **`from`** (wave 49): an integer 1–4 on a `box` or `cylinder`. `propSolid`
+  is false whatever else it says, `solid: true` is refused, and no wall,
+  route, locate or terminal sees it: it exists only in a game whose walk runs
+  at that level or deeper. `talk` is a well-formed talker id or `"none"`; one
+  naming no talker in `descent.json` draws a warning in the map editor.
 - **Models** (wave 47): a `model` that is not a lowercase id
   (`PROP_MODEL_PATTERN`), a `neon` that is not `#rrggbb`, or either on a
   kind other than `box` / `cylinder`. An older server ignores both fields
@@ -605,6 +612,27 @@ stair, then `linkedSpots`); a map with a heart or a pickup also gets
 `PICKUP_SLACK_M`); and once, `constants.json` with every new constant.
 Queries are stored with their answers, so a port only reads and compares.
 A test fails when the committed goldens drift from the code.
+
+### 1.3b The descent — `descent.json` (wave 49)
+
+The words of the descent (contract `docs/loom-w49-contract.md`; rules
+`house/src/descent.ts`, schema `validateDescent`). A project file like
+`credits.json`: read live (the project's, else `LOOM_DESCENT`, else, with no
+project, the scenario's own), never journaled or snapshotted, always replaced
+by `sync-show`, linted by `loomcheck`. VR keeps a copy
+(`reinstall/vr/house/descent.json`, `pnpm house:sync`) for a server with none.
+
+A walk's **level** is the ducks its program found before it, capped at 4, or a
+level a director forced. Level 0 is the clean game. The level seeds a plan of
+**visions** (`descentPlan`, the session id its seed) and wakes **talkers**
+(`wakeTalkers`): props with a face that speak to a program within reach and
+offer up to four options. Nothing here touches the server's judgement: a
+vision never blocks a find or a hit. The one thing kept is what a program told
+a talker (`POST /api/spatial/told`), in memory, so a later visit can open
+differently (`openNode`).
+
+**Footsteps** are the same idea as §1.4's presence, for `audio.json`: see
+`house/src/footsteps.ts` and §2.
 
 ### 1.4 House lights — `lights.json` (wave 20)
 
