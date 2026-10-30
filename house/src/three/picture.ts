@@ -1,8 +1,9 @@
-//! Profile pictures as textures — a ghost's head (`avatar.ts`) and the icon
+//! Profile pictures as textures — a ghost's swarm (`avatar.ts`) and the icon
 //! in its title-bar tag. `loadPicture(url)` fetches an image the browser can
 //! decode (the event's same-origin `/e/<id>/api/avatar/<key>`, so the canvas
 //! is never tainted) and draws it, contain-fit, on a fixed-size canvas framed
-//! as a raised Windows 98 tile. The draw size is fixed, never the image's
+//! as a raised Windows 98 tile; `shardsOf` gives that tile's bare picture,
+//! cut to a square on a transparent canvas, for the swarm. The draw size is fixed, never the image's
 //! own: an SVG with no intrinsic size reports `naturalWidth` 0 in Firefox and
 //! Safari and would otherwise draw nothing.
 //!
@@ -14,8 +15,8 @@
 //! `PICTURE_RETRY_MS`, so nothing retries in a loop — but it expires: the
 //! server's 404 is often transient (an upstream fetch still running, a
 //! restart), and the terminals run all night without a reload, so the next
-//! ask after a minute tries once more. A ghost with no picture keeps its
-//! plain capsule meanwhile.
+//! ask after a minute tries once more. A ghost with no picture is a swarm of
+//! static meanwhile.
 
 import { CanvasTexture, SRGBColorSpace } from "three";
 import type { Texture } from "three";
@@ -49,6 +50,11 @@ export function loadPicture(url: string): Promise<Texture | null> {
   });
   cache.set(url, made);
   return made;
+}
+
+/** The bare picture a tile was drawn from, for the swarm (null: only the tile exists). */
+export function shardsOf(tile: Texture): Texture | null {
+  return (tile.userData as { shards?: Texture }).shards ?? null;
 }
 
 /** Forget every cached picture (tests only — live textures are never freed). */
@@ -104,6 +110,25 @@ export function tile(img: CanvasImageSource & { naturalWidth?: number; naturalHe
   const dh = ih * k;
   try {
     g.drawImage(img, INSET + (box - dw) / 2, INSET + (box - dh) / 2, dw, dh);
+  } catch {
+    return null;
+  }
+  const tex = new CanvasTexture(c);
+  tex.colorSpace = SRGBColorSpace;
+  tex.userData = { shards: bare(img, iw, ih) };
+  return tex;
+}
+
+/** The picture alone, cover-fit on a transparent square: no bevel and no white in the swarm. */
+function bare(img: CanvasImageSource, iw: number, ih: number): Texture | null {
+  const c = document.createElement("canvas");
+  c.width = PICTURE_PX;
+  c.height = PICTURE_PX;
+  const g = c.getContext("2d");
+  if (!g) return null;
+  const k = Math.max(PICTURE_PX / iw, PICTURE_PX / ih);
+  try {
+    g.drawImage(img, (PICTURE_PX - iw * k) / 2, (PICTURE_PX - ih * k) / 2, iw * k, ih * k);
   } catch {
     return null;
   }

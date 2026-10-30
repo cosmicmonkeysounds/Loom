@@ -5,8 +5,8 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PerspectiveCamera, Vector3 } from "three";
-import type { Sprite, Texture } from "three";
-import { AVATAR_HEIGHT, BAR_MAX_ELEV_DEG, createAvatar, createKing, kingBarY, loadPicture, PICTURE_PX } from "../src/three/index.ts";
+import type { ShaderMaterial, Sprite, Texture } from "three";
+import { BAR_MAX_ELEV_DEG, createAvatar, createKing, kingBarY, loadPicture, PICTURE_PX, shardsOf } from "../src/three/index.ts";
 import { clearPictureCache, PICTURE_RETRY_MS } from "../src/three/picture.ts";
 import { healthBarTexture } from "../src/three/textures.ts";
 import { loadHouse, SHOW_HOUSE } from "./golden.ts";
@@ -127,26 +127,37 @@ describe("loadPicture", () => {
 describe("a ghost wearing its picture", () => {
   const url = "/e/ev/api/avatar/cccccccccccccccc";
 
-  it("the tile is the head over the capsule; the tag is lifted above it and redrawn with the icon", async () => {
-    const plain = createAvatar("Excel", "g-1");
-    const plainTagY = plain.tag!.position.y;
+  it("the swarm is cut from the bare picture; the tag takes the tile as its icon", async () => {
     const a = createAvatar("Excel", "g-1", { picture: url });
-    expect(a.object.getObjectByName("avatar:picture")).toBeUndefined(); // not loaded yet
+    const swarm = a.object.getObjectByName("avatar:body") as unknown as { material: ShaderMaterial };
+    const uniforms = swarm.material.uniforms as Record<string, { value: unknown }>;
+    expect(a.wearing).toBe(false); // not loaded yet
+    expect(uniforms["uWorn"]!.value).toBe(0);
     const iconsBefore = calls.filter((c) => c.op === "drawImage").length;
     await settle();
-    const tile = a.object.getObjectByName("avatar:picture") as Sprite;
-    expect(tile).toBeDefined();
-    expect(tile.position.y - tile.scale.y / 2).toBeGreaterThan(AVATAR_HEIGHT);
-    expect(a.tag!.position.y).toBeGreaterThan(tile.position.y + tile.scale.y / 2);
-    expect(a.tag!.position.y).toBeGreaterThan(plainTagY);
-    // The tile's draw and the tag's icon.
-    expect(calls.filter((c) => c.op === "drawImage").length).toBe(iconsBefore + 2);
-    // Off again: no tile, the tag back down.
+    expect(a.wearing).toBe(true);
+    const tile = (await loadPicture(url))!;
+    expect(uniforms["uMap"]!.value).toBe(shardsOf(tile));
+    expect(uniforms["uMap"]!.value).not.toBe(tile);
+    expect(uniforms["uWorn"]!.value).toBe(1);
+    // The tile's draw, the bare picture's and the tag's icon.
+    expect(calls.filter((c) => c.op === "drawImage").length).toBe(iconsBefore + 3);
+    // Off again: static.
     a.setPicture(null);
-    expect(a.object.getObjectByName("avatar:picture")).toBeUndefined();
-    expect(a.tag!.position.y).toBe(plainTagY);
+    expect(a.wearing).toBe(false);
+    expect(uniforms["uMap"]!.value).toBeNull();
+    expect(uniforms["uWorn"]!.value).toBe(0);
     a.dispose();
-    plain.dispose();
+  });
+
+  it("the bare picture covers its square, with no bevel", async () => {
+    const before = calls.length;
+    const tex = (await loadPicture("/e/ev/api/avatar/ffffffffffffffff"))!;
+    const draws = calls.slice(before).filter((c) => c.op === "drawImage");
+    expect(draws).toHaveLength(2);
+    const [, x, y, w, h] = draws[1]!.args as [unknown, number, number, number, number];
+    expect([x, y, w, h]).toEqual([0, 0, PICTURE_PX, PICTURE_PX]);
+    expect(shardsOf(tex)).not.toBeNull();
   });
 
   it("dispose never frees the shared texture (another ghost may wear it)", async () => {
@@ -158,7 +169,7 @@ describe("a ghost wearing its picture", () => {
     tex.addEventListener("dispose", () => freed++);
     a.dispose();
     expect(freed).toBe(0);
-    expect(b.object.getObjectByName("avatar:picture")).toBeDefined();
+    expect(b.wearing).toBe(true);
     b.setPicture(null);
     b.dispose();
     expect(freed).toBe(0);
@@ -168,12 +179,8 @@ describe("a ghost wearing its picture", () => {
     const a = createAvatar("Excel", "g-1", { picture: "/e/ev/api/avatar/1111111111111111" });
     a.setPicture("/e/ev/api/avatar/2222222222222222");
     await settle();
-    const tiles: Sprite[] = [];
-    a.object.traverse((o) => {
-      if (o.name === "avatar:picture") tiles.push(o as Sprite);
-    });
-    expect(tiles).toHaveLength(1);
-    expect(tiles[0]!.material.map).toBe(await loadPicture("/e/ev/api/avatar/2222222222222222"));
+    const swarm = a.object.getObjectByName("avatar:body") as unknown as { material: ShaderMaterial };
+    expect((swarm.material.uniforms as Record<string, { value: unknown }>)["uMap"]!.value).toBe(shardsOf((await loadPicture("/e/ev/api/avatar/2222222222222222"))!));
     expect(a.picture).toBe("/e/ev/api/avatar/2222222222222222");
     a.dispose();
   });
@@ -185,17 +192,17 @@ describe("a ghost wearing its picture", () => {
     failing.add(url);
     const a = createAvatar("Excel", "g-1", { picture: url });
     await settle();
-    expect(a.object.getObjectByName("avatar:picture")).toBeUndefined();
+    expect(a.wearing).toBe(false);
     failing.delete(url);
     a.setPicture(url); // the next sync, too soon
     await settle();
-    expect(a.object.getObjectByName("avatar:picture")).toBeUndefined();
+    expect(a.wearing).toBe(false);
     expect(images).toBe(1);
     now += PICTURE_RETRY_MS;
     a.setPicture(url); // a sync a minute later
     a.setPicture(url); // and the frame after, while it loads: one load
     await settle();
-    expect(a.object.getObjectByName("avatar:picture")).toBeDefined();
+    expect(a.wearing).toBe(true);
     expect(images).toBe(2);
     a.setPicture(url); // worn: a no-op
     await settle();
@@ -203,10 +210,10 @@ describe("a ghost wearing its picture", () => {
     a.dispose();
   });
 
-  it("a picture that won't load leaves the plain capsule", async () => {
+  it("a picture that won't load leaves the swarm as static", async () => {
     const a = createAvatar("Excel", "g-1", { picture: "/e/ev/api/avatar/broken" });
     await settle();
-    expect(a.object.getObjectByName("avatar:picture")).toBeUndefined();
+    expect(a.wearing).toBe(false);
     expect(a.object.getObjectByName("avatar:body")).toBeDefined();
     a.dispose();
   });
