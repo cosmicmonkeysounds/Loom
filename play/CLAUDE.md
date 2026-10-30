@@ -305,6 +305,42 @@ windows), the Desk, the director phone and Help are lazy chunks.
   Under 370 px the bar's gaps and the tray's chrome tighten (booth.css,
   and the guest's in chrome.css) so two items fit beside four windows.
 
+### Wave 47: nothing twice, Back stays in the app
+
+Found by riding phones (two guests, a guest in a room, an Antivirus,
+Clippy) through `scripts/sim` evenings at 390x700 and in Chrome.
+
+- **The arrival stage docks its questions** (`cutscene.tsx` `stageTray`):
+  every live card but the CAPTCHA (`STAGE_INLINE`) sits in a `CardTray` in
+  the stage's foot, one at a time, oldest first (`lead="oldest"`), with a
+  one-line receipt where it was dealt (`StreamMode.inline`); the foot is
+  ≤ 55% of the stage and the conversation keeps 120 px. A loud objective
+  about the pass lights the stage's **My pass** (`nowBar` on the stage,
+  `.cut-pass.lit`) instead of a banner over it.
+- **Optional cards** (`widgets.tsx` `optionalCard`: the story's `optional:
+  true`, or an email card with a `skip:`) never reach Mission or Chats' Your
+  move (`LiveCard.optional`), and a room's tray keeps one folded until a
+  receipt or Mission asks (`CardTray foldOptional`). A poll / answer / email
+  on Mission reads as its question, never its kind.
+- **Mission echoes** (`moments/model.ts` `echoesMission`, `sharesTitle`):
+  with Mission on screen (`MomentsInput.missionEcho`), a house alert or a new
+  quest waits `MISSION_ECHO_WAIT_MS` for the view, and one in the same beat
+  (`MISSION_ECHO_MS` of the NOW change) sharing two title words is read,
+  straight to the bin, with its chime and a NEW MISSION blink (`NowBar
+  news`); one already up retires when Mission opens. When an objective
+  ends, a waiting line echoing its title leaves with it (the `objectives`
+  action's `ended`). A player's YOUR GAME IS ON never pops on Mission
+  (`AdapterCtx.missionOnScreen` / `onQuietGame`; a held one is moot there).
+- **The phone's Back** never leaves the app mid-show: a booth walks
+  `boothBackStep` (a layer, sheets, a floating pop-out → Later, the room on a
+  phone, Chats / the Desk → home); a guest `guestBackStep` (under a big or the
+  takeover it does nothing, so ✕ / Collect lands where they were; a dialog
+  closes; then sheets, the overlay, the credits; on the stage or the lock
+  screen nothing; then the room, the window). The guest's `GuestBack` sits
+  inside the moments provider in every branch (`useBackMoment`).
+- **A booth's letter ask** is one 48 px row on a phone (`LetterCard
+  startOpen={wide}`).
+
 ### Host windows (wave 25; the contract is `docs/loom-house-desk.md` §6.2)
 
 A host booth (`isHostBooth` in `host/dock.tsx`, never a player) has three
