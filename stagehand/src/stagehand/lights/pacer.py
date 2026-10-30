@@ -12,9 +12,14 @@ keeps it to one state per bulb:
     one at a time  a bulb gets its next command only after Z2M's state echo
                    for the last one (`zigbee2mqtt/<device>`, 100-300 ms), or
                    `ACK_MS` without it; at most `MAX_IN_FLIGHT` across the house
-    dark           `FAILS_TO_DARK` commands in a row with no echo, or Z2M's
-                   `availability` saying offline: the bulb gets one probe every
-                   `PROBE_MS`, carrying its newest state, until it answers
+    dark           `FAILS_TO_DARK` commands in a row with no echo: the bulb
+                   gets one probe every `PROBE_MS`, carrying its newest state,
+                   until it answers
+
+Only a missed echo darkens a bulb. Z2M's `availability` can free one, never
+darken it: after a restart it publishes `offline` for bulbs that are fine
+(steam_1, server_room in the 2026-10-30 drill), and the heart's bulb must not
+wait 30 s for its cue on a stale flag.
 
 An idle bulb still gets a cue at once, so nothing here slows a healthy house.
 A command that is only an `effect` has no echo: its bulb is free again after
@@ -61,12 +66,11 @@ class Slot:
     due_at: float = 0.0
     echoless: bool = False
     fails: int = 0
-    offline: bool = False
     last_sent: float = float("-inf")
 
     @property
     def dark(self) -> bool:
-        return self.offline or self.fails >= FAILS_TO_DARK
+        return self.fails >= FAILS_TO_DARK
 
 
 class Pacer:
@@ -113,17 +117,16 @@ class Pacer:
         was = slot.dark
         slot.sent_at = None
         slot.fails = 0
-        slot.offline = False
         self._changed(slot, was)
         self.pump()
 
-    def availability(self, device: str, online: bool) -> None:
-        slot = self._slot(device)
-        was = slot.dark
-        slot.offline = not online
-        if online:
-            slot.fails = 0
-        self._changed(slot, was)
+    def came_back(self, device: str) -> None:
+        """Z2M says this bulb is online: try it now, not at the next probe."""
+        slot = self.slots.get(device)
+        if slot is None or not slot.dark:
+            return
+        slot.fails = 0
+        self._changed(slot, True)
         self.pump()
 
     def tick(self) -> None:
