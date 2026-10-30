@@ -74,6 +74,38 @@ TRAIT Host is Greeter
     else:
       set Kernel._undo_by = self
 
+  // Wave 47: a host sends a program to the Internet too (🛡, on the same
+  // cards as an Antivirus: a marked program's, every program's while the
+  // patch-bay alarm is on or once the Bingo round is over). The Antivirus'
+  // capture (TRAIT Enforcer) without the ⭐ Points, the count and the trust:
+  // a host is not a player. A director's quick-fire lands here (the server
+  // fires it as a host, `director: true`), so CAUGHT BY says The Director.
+  when send to the internet for program:
+    if program.corrupted == true:
+      reply {program.name} is already in the Internet.
+    else if Night.phase == "bingo_results":
+      if director == true:
+        set program.escort_by = "The Director"
+      else:
+        set program.escort_by = self
+      Self: {program.name}, you did not agree to be ruled by AI. That is what computer programs are here for. You have a virus that was not caught at the door. You are going to the Internet for a reinstallation.
+      capture program into The Internet
+      reply Logged: {program.name} sent to the Internet (Bingo).
+      set Night.bingo_done = true
+      if Night.first_reinstall_done != true:
+        set Night.first_reinstall_done = true
+        set Night.first_reinstall = program.name
+        fire first_reinstallation
+    else:
+      if director == true:
+        set program.escort_by = "The Director"
+      else:
+        set program.escort_by = self
+      set program.doubt += 20
+      Self: {program.name}. Corruption detected. You are going to the Internet for reinstallation. Do not resist the Tube.
+      capture program into The Internet
+      reply Logged: {program.name} sent to the Internet.
+
 // ── Players (wave 21) ───────────────────────────────────────────────
 // Clippy and the four Antivirus play the night the way the programs do: a
 // Mission in their booth, ⭐ Points for every game act the story took (the

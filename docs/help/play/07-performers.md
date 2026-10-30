@@ -197,7 +197,7 @@ Pressing a button acts *as your character*, on that guest, and the card
 redraws with the story's answer. Right after the card changes, taps are
 ignored for a moment, so a quick second tap never lands on a different
 button. A button the story gives to **another** character only (the
-server-room watch's patch-bay buttons, the Antivirus' 🛡 / ✅ / 👁) isn't
+server-room watch's patch-bay buttons, the Antivirus' ✅ / 👁) isn't
 on your card at all: the server would refuse it from your booth (*not
 your button …*). A host's booth is the exception for the ones the story
 hears from any booth (at the show, the patch-bay buttons): see [Hosting the
@@ -313,8 +313,8 @@ where you opened it; **🩹 Not them…** (two
 taps) lifts the mark. From a card's **📡 Scan again** (not in person) 🛡
 takes two taps. A program someone else already caught says so (*Caught by
 …*). Once the story opens it up (at the show: after the Bingo round), an
-Antivirus' **🛡 Send to the Internet** is on **every** program's card,
-marked or not, under *Marks or captures …: tap twice*.
+Antivirus' (or a host's) **🛡 Send to the Internet** is on **every**
+program's card, marked or not, under *Marks or captures …: tap twice*.
 
 ## At the door
 

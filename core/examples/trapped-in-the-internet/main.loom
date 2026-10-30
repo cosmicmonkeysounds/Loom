@@ -3756,8 +3756,10 @@ INTERACTION language_report
 INTERACTION send to the internet
   label: 🛡 Send to the Internet
   who: performer
-  // w13 Q22: the Antivirus' own. Only TRAIT Enforcer's hooks hear it, so no host's card lists it and a host's press is refused.
-  by: Antivirus
+  // w13 Q22: the Antivirus' own. Wave 47: the hosts' too (TRAIT Host's hook
+  // hears a host's press, without the Antivirus' ⭐ Points); Clippy's is
+  // still refused (only these two groups' hooks hear it).
+  by: Antivirus, Hosts
   // w13 Q29: arm then fire on every Antivirus booth. One tap used to capture a program just cleared at the door.
   // (Wave 18: the booth's CORRUPTION DETECTED screen fires it with one tap after an in-person scan.)
   arm: true
@@ -3768,7 +3770,7 @@ INTERACTION send to the internet
   // reinstallation moment): from then on an Antivirus can always send any
   // program to the Internet, marked or not.
   while: program.corrupted != true and (program.marked == true or Night.alarm_on == true or Night.bingo_done == true or Night.first_reinstall_done == true)
-  description: Antivirus. A marked program (any program, once the Bingo round is over): drag them through the Tube for reinstallation.
+  description: Antivirus and Hosts. A marked program (any program, once the Bingo round is over): drag them through the Tube for reinstallation.
 
 INTERACTION mark as reinstalled
   label: ✅ Mark as reinstalled

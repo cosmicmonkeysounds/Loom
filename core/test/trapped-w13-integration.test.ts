@@ -339,59 +339,110 @@ describe("Trapped in the Internet — wave 13 integration: SIGNOFF §8 is the ap
 
 describe("Trapped in the Internet — wave 13 integration: a host is offered only buttons its press is heard on (fhostby)", () => {
   const PATCH = ["radio_crew_door", "radio_combo_a", "radio_combo_b", "radio_wrong_patch"]; // 🔧 🔌 💥 ❌: story rules
-  const ANTIVIRUS = ["send to the internet", "mark as reinstalled", "accuse"]; // 🛡 ✅ 👁: TRAIT Enforcer's hooks only
+  const ANTIVIRUS = ["mark as reinstalled", "accuse"]; // ✅ 👁: TRAIT Enforcer's hooks only
+  const HOSTS = ["Task Manager", "Adobe Acrobat", "Recycling Bin"];
+  const SHIELD = "send to the internet"; // 🛡: wave 47, the Antivirus' and the hosts' (TRAIT Host's hook)
 
-  it("at the Y2K hour Task Manager's card offers 🔧 🔌 💥 ❌, never 🛡 ✅ 👁; an Antivirus' has them", () => {
+  it("at the Y2K hour Task Manager's card offers 🔧 🔌 💥 ❌ and 🛡, never ✅ 👁; an Antivirus' has them", () => {
     const sim = boot();
     for (const c of TO_Y2K) sim.signal(c);
     expect((sim.world.get("Night.step") as { value: number }).value).toBeGreaterThanOrEqual(14);
     expect((sim.world.get("g1.cleared") as { value: unknown }).value).toBe(true);
-    for (const host of ["Task Manager", "Adobe Acrobat", "Recycling Bin"]) {
+    for (const host of HOSTS) {
       const live = guestCardView(sim, [], host, "g1", true)!.live;
       for (const b of PATCH) expect(live, `${host}: ${b}`).toContain(b);
       for (const b of ANTIVIRUS) expect(live, `${host}: ${b}`).not.toContain(b);
+      // Wave 47: past the Bingo round 🛡 is on every program's card, a host's too.
+      expect(live, `${host}: 🛡`).toContain(SHIELD);
       const view = primeView(sim, host, undefined, { host: true });
       for (const b of ANTIVIRUS) expect(view.interactions.find((i) => i.id === b)?.hostHeard, `${host}: ${b}`).toBe(false);
       for (const b of PATCH) expect(view.interactions.find((i) => i.id === b)?.hostHeard, `${host}: ${b}`).toBeUndefined();
-      // No host objective puts one of them on the face.
+      expect(view.interactions.find((i) => i.id === SHIELD)?.actors, `${host}: 🛡`).toContain(host);
+      // No host objective puts ✅ or 👁 on the face.
       for (const o of view.objectives ?? []) for (const b of ANTIVIRUS) expect(o.buttons, `${host} ${o.id}`).not.toContain(b);
     }
     // 🫘 is Adobe Acrobat's own hook: the other hosts are never offered it.
     expect(primeView(sim, "Task Manager", undefined, { host: true }).interactions.find((i) => i.id === "radio_beans")?.hostHeard).toBe(false);
+    // Clippy is no host (wave 21): never offered 🛡.
+    expect(guestCardView(sim, [], "Clippy", "g1", false)!.live).not.toContain(SHIELD);
     const norton = guestCardView(sim, [], "Norton Anti-Virus", "g1", false)!.live;
     for (const b of ["accuse", ...PATCH]) expect(norton, b).toContain(b);
     // Wave 18 (A6): ✅ only on a captured program's card. 🛡 is on a marked
     // one's, and on every program's once the Bingo round is over, as here
     // (g1 missed the summons in this walk, so it is marked: late).
     expect((sim.world.get("g1.marked") as { value: unknown }).value).toBe(true);
-    expect(norton).toContain("send to the internet");
+    expect(norton).toContain(SHIELD);
     expect(norton).not.toContain("mark as reinstalled");
     sim.signal("unmark_for_reinstallation", "g1", undefined, "Norton Anti-Virus");
-    expect(guestCardView(sim, [], "Norton Anti-Virus", "g1", false)!.live).toContain("send to the internet");
+    expect(guestCardView(sim, [], "Norton Anti-Virus", "g1", false)!.live).toContain(SHIELD);
+    expect(guestCardView(sim, [], "Task Manager", "g1", true)!.live).toContain(SHIELD);
     sim.signal("mark_for_reinstallation", "g1");
-    sim.signal("send to the internet", "g1", undefined, "Norton Anti-Virus");
+    sim.signal(SHIELD, "g1", undefined, "Norton Anti-Virus");
     expect(guestCardView(sim, [], "Norton Anti-Virus", "g1", false)!.live).toContain("mark as reinstalled");
+    // A captured program's card offers 🛡 to nobody.
+    for (const who of ["Norton Anti-Virus", ...HOSTS]) expect(guestCardView(sim, [], who, "g1", HOSTS.includes(who))!.live, who).not.toContain(SHIELD);
   }, SLOW);
 
-  it("/api/prime/act: a host's 🛡 is refused like any other booth's (403, nothing changes); its 🔧 lands", { timeout: SLOW }, async () => {
+  it("before Bingo a host's card offers 🛡 only on a marked program's card, like an Antivirus'", () => {
+    const sim = boot();
+    for (const c of ["call_to_the_desktop", "start_the_bingo"]) sim.signal(c);
+    expect((sim.world.get("Night.bingo_done") as { value: unknown } | undefined)?.value).not.toBe(true);
+    for (const host of HOSTS) expect(guestCardView(sim, [], host, "g2", true)!.live, host).not.toContain(SHIELD);
+    sim.signal("mark_for_reinstallation", "g2");
+    for (const host of HOSTS) expect(guestCardView(sim, [], host, "g2", true)!.live, host).toContain(SHIELD);
+  }, SLOW);
+
+  it("at the Bingo results a host's 🛡 closes the round and is the night's first reinstallation, with no ⭐", () => {
+    const sim = boot();
+    for (const c of ["call_to_the_desktop", "start_the_bingo", "bingo_time"]) sim.signal(c);
+    expect((sim.world.get("Night.phase") as { value: unknown }).value).toBe("bingo_results");
+    sim.signal(SHIELD, "g2", undefined, "Recycling Bin");
+    expect((sim.world.get("g2.corrupted") as { value: unknown }).value).toBe(true);
+    expect((sim.world.get("g2.escort_by") as { value: unknown }).value).toBe("Recycling Bin");
+    expect((sim.world.get("Night.bingo_done") as { value: unknown }).value).toBe(true);
+    expect((sim.world.get("Night.first_reinstall_done") as { value: unknown }).value).toBe(true);
+    expect((sim.world.get("Night.first_reinstall") as { value: unknown }).value).toBe("Winamp");
+    expect((sim.world.get("Recycling Bin.score") as { value: unknown } | undefined)?.value ?? 0).toBe(0);
+    // From here 🛡 is on every program's card, the hosts' and the Antivirus'.
+    for (const who of [...HOSTS, "Norton Anti-Virus"]) expect(guestCardView(sim, [], who, "g1", HOSTS.includes(who))!.live, who).toContain(SHIELD);
+  }, SLOW);
+
+  it("/api/prime/act: a host's 🛡 captures (CAUGHT BY the host, no ⭐); ✅ 👁 are still refused; its 🔧 lands", { timeout: SLOW }, async () => {
     const rt = runtime();
     rt.openDoors();
     const g = await arrive(rt, "Calculator");
     const host = (await call(rt, "POST", "/api/prime/login", { character: "Task Manager", passcode: CODES.prime })).json["token"] as string;
-    const act = (name: string) => call(rt, "POST", "/api/prime/act", { name, guest: g.id }, { token: host });
-    const shield = await act("send to the internet");
-    expect(shield.status).toBe(403);
-    expect(shield.json["error"]).toBe("not your button: “🛡 Send to the Internet” is for Antivirus");
-    expect(rt.liveSim!.world.peek(`${g.id}.corrupted`)).not.toMatchObject({ value: true });
-    for (const b of ["mark as reinstalled", "accuse"]) expect((await act(b)).status, b).toBe(403);
+    const act = (name: string, guest = g.id) => call(rt, "POST", "/api/prime/act", { name, guest }, { token: host });
+    for (const b of ANTIVIRUS) expect((await act(b)).status, b).toBe(403);
     const card = await call(rt, "POST", "/api/prime/card", { guest: g.id }, { token: host });
     for (const b of ANTIVIRUS) expect(card.json["live"] as string[], b).not.toContain(b);
     // A patch-bay button is a story rule's: a host's press is heard (the crew window opens).
     const before = rt.liveSim!.world.peek("Night.crew_door_until");
     expect((await act("radio_crew_door")).status).toBe(200);
     expect(rt.liveSim!.world.peek("Night.crew_door_until")).not.toEqual(before);
-    // An Antivirus presses 🛡 (wave 18: on any program; its `while:` only steers the card).
+    // Wave 47: the host's 🛡 sends them (its `while:` only steers the card).
+    const doubt = (rt.liveSim!.world.peek(`${g.id}.doubt`) as { value: number }).value;
+    expect((await act(SHIELD)).status).toBe(200);
+    expect(rt.liveSim!.world.peek(`${g.id}.corrupted`)).toMatchObject({ value: true });
+    expect(rt.liveSim!.world.peek(`${g.id}.escort_by`)).toMatchObject({ value: "Task Manager" });
+    expect(rt.liveSim!.world.peek(`${g.id}.doubt`)).toMatchObject({ value: doubt + 20 });
+    // A host is no player: no ⭐, no capture count.
+    expect(rt.liveSim!.world.peek("Task Manager.score")).not.toMatchObject({ value: expect.any(Number) });
+    // A second press reads as already there.
+    expect((await act(SHIELD)).status).toBe(200);
+    expect(rt.liveSim!.world.peek(`${g.id}.doubt`)).toMatchObject({ value: doubt + 20 });
+    // An Antivirus presses 🛡 (wave 18: on any program).
+    const g2 = await arrive(rt, "Winamp");
     const av = (await call(rt, "POST", "/api/prime/login", { character: "McAfee Anti-Virus", passcode: CODES.prime })).json["token"] as string;
-    expect((await call(rt, "POST", "/api/prime/act", { name: "send to the internet", guest: g.id }, { token: av })).status).toBe(200);
+    expect((await call(rt, "POST", "/api/prime/act", { name: SHIELD, guest: g2.id }, { token: av })).status).toBe(200);
+    expect(rt.liveSim!.world.peek(`${g2.id}.escort_by`)).toMatchObject({ value: "McAfee Anti-Virus" });
+    // Clippy's press is still refused.
+    const g3 = await arrive(rt, "Solitaire");
+    const clippy = (await call(rt, "POST", "/api/prime/login", { character: "Clippy", passcode: CODES.prime })).json["token"] as string;
+    expect((await call(rt, "POST", "/api/prime/act", { name: SHIELD, guest: g3.id }, { token: clippy })).status).toBe(403);
+    // A director's quick-fire lands as a host stand-in: CAUGHT BY The Director, no host credited.
+    expect((await mod(rt, SHIELD, { subject: g3.id })).status).toBe(200);
+    expect(rt.liveSim!.world.peek(`${g3.id}.corrupted`)).toMatchObject({ value: true });
+    expect(rt.liveSim!.world.peek(`${g3.id}.escort_by`)).toMatchObject({ value: "The Director" });
   });
 });

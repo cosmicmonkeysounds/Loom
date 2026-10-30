@@ -153,11 +153,13 @@ The old wave-by-wave list is in [`history.md`](./history.md).
   sheet holds only its own secret.
 - Buttons that do nothing out of phase are normal (W-05). Only the un-phased
   buttons work any time: 🛡 **Send to the Internet** (on a marked program's
-  card since wave 18, and on every card while the patch-bay alarm is on), ✅ **Mark as
+  card since wave 18, on every card while the patch-bay alarm is on, and on
+  every card once the Bingo round is over), ✅ **Mark as
   reinstalled** (on a captured program's card), 🩹 **Unmark**, 🎀 ribbon, 🤝
   Vouch, 👁 watchlist, 🪙 Pay / Charge and ♟ They beat the machine; every
-  verdict button is phase-gated. 🛡 ✅ 👁 are the Antivirus' own (wave 13):
-  no host's or Clippy's card shows them.
+  verdict button is phase-gated. ✅ 👁 are the Antivirus' own (wave 13):
+  no host's or Clippy's card shows them. 🛡 is the Antivirus' and the
+  hosts' (wave 47: a host's capture earns no ⭐); never Clippy's.
 - **Verdicts mark, Antivirus capture.** Every verdict (🎯 🤷 🙅 🎩 🏓 🍎,
   pressed by a host or by Clippy) marks a program for reinstallation. The mark hinders nothing (Q30): the
   program lights up on every Antivirus' Wanted board, one claims them, finds

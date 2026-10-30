@@ -51,8 +51,14 @@ the taskbar · Codex · `# hosts` · `# quarantine` · **Readouts** ·
 **Messages** (a program typing to you) · the rooms. A scanned program's card
 leads with at most three buttons your objective needs (wave 21: no *All
 buttons…* fold any more; a press the story refuses still shows its `# hosts`
-reason). 🛡, ✅ Mark as reinstalled and 👁 are the Antivirus' own and
-never on your card: radio one. The console's **Needs** tab leads with **🚨 n marked · m nobody on it** while programs wait on the Antivirus' Wanted board (tap it for the board, read-only); **Judge** has the *Judging: auto ⇄ review* switch; **More** is split into **Night** (doors, pause, the show clock, announce, the alert level), **House** (wallets, the King, terminals, Trabolta, crews) and **Setup** (codes and QRs, parts). Help → *The host console* has the rest.
+reason). **🛡 Send to the Internet** is yours too: scan a marked
+program in person and you get *CORRUPTION DETECTED* with one big 🛡
+(one tap), as an Antivirus does; and 🛡 is on every card while the
+patch-bay alarm is on and on **every** program's card once the Bingo
+round is over (tap it twice). Walk them through the Tube to the tent; a
+marked one's poster reads CAUGHT BY you, and a host earns no ⭐ for it. ✅ Mark as
+reinstalled and 👁 are the Antivirus' own and never on your card: radio
+one. The console's **Needs** tab leads with **🚨 n marked · m nobody on it** while programs wait on the Antivirus' Wanted board (tap it for the board, read-only); **Judge** has the *Judging: auto ⇄ review* switch; **More** is split into **Night** (doors, pause, the show clock, announce, the alert level), **House** (wallets, the King, terminals, Trabolta, crews) and **Setup** (codes and QRs, parts). Help → *The host console* has the rest.
 
 **You call the games now (wave 21).** Clippy is a *player*, not a
 caller: every game cue (🎱 Bingo, ⏰ Bingo time, 🔎 the hunt, ⚖️ ⏱ 📋 🍾 the First
