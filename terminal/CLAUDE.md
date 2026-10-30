@@ -11,7 +11,7 @@ the show's device setup is [`../docs/trapped/kiosk.md`](../docs/trapped/kiosk.md
 ```bash
 pnpm --filter loom-terminal dev        # Vite :5175, proxies /api + /e to LOOM_SERVER (default http://localhost:7000)
 pnpm --filter loom-terminal build      # dist/ (base /terminal/)
-pnpm --filter loom-terminal test       # vitest run: 1166 tests, 93 files (test/**/*.test.ts)
+pnpm --filter loom-terminal test       # vitest run: 1225 tests, 95 files (test/**/*.test.ts)
 pnpm --filter loom-terminal typecheck  # tsc --noEmit
 pnpm --filter loom-terminal exec vitest run test/door-bridge.test.ts   # one file
 ```
@@ -48,7 +48,7 @@ play app's own `useChatStream` (imported as source) and narrows it to
 | `src/slides.ts`, `src/ScreenLayer.tsx` | the screen layer: overlay > slide > attract > base, holds, `PeekClock`, slide copy, the live Y2K clock and Trust Chart, TV mp4 slides, the glitch (`glitchLayer`, `GlitchTakeover`, `coverOf`) and the ad burst (wave 32: `burstLayer`, `isBurst`; `burst-flash.tsx` where no cutscene layer draws it) |
 | `src/Attract.tsx`, `src/attract.ts` | the asleep screen (the idle show full screen); Mystify's pure parts |
 | `src/idle-show/` | the idle show: `schedule.ts` (seeded segments; `PATTERN`, `CALM_PATTERN`), `pools.ts` (by `Night.phase`; `calm`), `field.ts` (popup lives and places, `popupCap`, `calmPace`), `ads.ts` + `art.tsx`, `popups.ts`, `storm.ts`, `gags.ts`, `savers/`, `ScanBox.tsx` + `scan-copy.ts` |
-| `src/cutscene/` | `SceneDef` (`types.ts`), `pick.ts` (which scene plays, `MomentQueue`), `clock.ts` (server time), `CutsceneLayer.tsx`, `registry.ts`, `kit/` (Win98 blocks, typewriter, particles…), `scenes/{act1,act2,act3,moments,house,heart,credits}.tsx`, `access-bus.ts` (the app's event base + token for a scene that fetches), `credits-fetch.ts` + `credits-roll.ts` (wave 44), `speech-bus.ts` + `voice-clock.ts` + `voice-scenes.ts` (the TV's voice-timed scenes), `preview.tsx` (`?preview=`) |
+| `src/cutscene/` | `SceneDef` (`types.ts`), `pick.ts` (which scene plays, `MomentQueue`), `clock.ts` (server time), `CutsceneLayer.tsx`, `registry.ts`, `kit/` (Win98 blocks, typewriter, particles…), `scenes/{act1,act2,act3,moments,house,heart,credits}.tsx` (+ `scenes/language.tsx`, G14's breach, listed in act3's), `kit/lang-breach.ts` + `kit/lang-breach-draw.ts` (wave 48b: the breach's timeline and its canvas), `access-bus.ts` (the app's event base + token for a scene that fetches), `credits-fetch.ts` + `credits-roll.ts` (wave 44), `speech-bus.ts` + `voice-clock.ts` + `voice-scenes.ts` (the TV's voice-timed scenes), `preview.tsx` (`?preview=`) |
 | `src/sound/` | `bus.ts` (master, effects, voices buses; `soundPlayingUntil`), `library.ts` (30 synthesised `SFX_NAMES`), `sfx()` |
 | `src/speech/` | `engine.ts` (browser → Fully → silent ladder, opt-in server voice, the queue and its pauses, `VoiceFloor`), `lexicon.ts` + `pronounce.json` (how a word is said), `split.ts`, `pick-voice.ts` (male for the character, female for announcements; macOS + Windows names), `said.ts` (`RoomSpeech` → `talk` / `said` / `sp`, `PollPacer`, the drain re-poll) |
 | `src/announce.ts` | which house announcements a terminal says, the chime |
@@ -208,18 +208,60 @@ silent scene on the TV and the walls (no speech, no sfx, no face mood):
 - `?preview=credits[&programs=<n>][&credits=none]` draws it over
   `fake.ts` `fakeCredits` (made-up names; never the real crew's).
 
-## The ceremony's reports (waves 45, 48)
+## The ceremony's reports (waves 45, 48, 48b)
 
-G13 and G14 are asides between awards, each a held scene in
-`scenes/act3.tsx` listed ahead of the `award_*` row so it wins its slide:
-`award_bathroom` (`BathroomScene`, `night.bathroom`) and `award_language`
-(`LanguageScene`, `night.language` via `languageOf`: who cursed the most,
-*c of f words censored*, then every censored word whole on a stamped tile,
-the wall fitted to the screen by `langFitStep`; copy `DRAFT w48`). A block
-rides the night only while its slide is up; without one the slide shows its
-title and line. One confetti burst each, never over the numbers or words.
-`?preview=bathroom[&bath=one|nobody|none]`,
-`?preview=language[&lang=none|tie|long|kept|old]`.
+G13 and G14 are asides between awards, each a held scene listed in
+`scenes/act3.tsx` ahead of the `award_*` row so it wins its slide:
+`award_bathroom` (`BathroomScene`, `night.bathroom`; one confetti burst,
+never over the numbers) and `award_language` (`scenes/language.tsx`
+`LanguageScene`, `night.language` via `languageOf`). A block rides the night
+only while its slide is up; without one the slide shows its title and line.
+`?preview=bathroom[&bath=one|nobody|none]`.
+
+**The Language Report is a containment breach (wave 48b,
+`docs/loom-w48-contract.md` C12, C14).** `languageOf` reads up to 400
+censored words, most censored first, each with its count (`counts`; 1 each
+from a wave 48 server), `more`, `unsaid` (slurs: a count, never a word),
+`level` and `stars` (null from a wave 48 server). The timeline is
+`kit/lang-breach.ts`, pure: after the award's intro a DOS window
+(`C:\FILTER> type censored.log`) prints every line (`breachLines`: each word
+with its ×n, a **redaction bar** for each unsaid word, which has no text
+field at all, then "+ n more"), faster and faster (`lineAt`): first line to
+last ≤ 20 s for 1 to 400 lines (`breachSpan`), inside a stage of at least
+6 s. At the leak the buffer overflows: the window strains (`windowShake`)
+and turns red, and the words burst out (`breachSchedule`) to a heap packed
+from the floor up round the window (`packTide`: the largest font that fits,
+the most censored biggest, a short night's heap under the window, 400
+lines up to the top). Deadpan notes pop up and are OK'd away
+(`BREACH_NOTES`, `noteLife`); an eye opens in the log (`eyeOpen`,
+`eyeLook`: its iris rings of the most censored words, bars when only slurs
+were censored); then *Abort, Retry, Censor?*, ✂ Censor sinks, scissors
+cross the screen (`scissorsX` / `cutAt`: the heap splits and falls away
+behind them) and the window switches off like a CRT (`windowOff`). The
+summary holds: who cursed the most, *c of f censored*, the filter's strength
+(`levelCaption`), the Password Manager's ⭐, the closed log (lines, the most
+censored word, ✂ CONTAINED); no confetti. Nobody flagged: one line. Flagged,
+none censored: the summary and its line, no breach. Copy `LANG_COPY`,
+`DRAFT w48b`.
+
+- **The TV** draws the heap on one canvas (`BreachTide`): the words at rest
+  go once onto an offscreen layer as they land, so each frame is one
+  `drawImage` plus the words in flight (`flightAt`) and four tentacles of
+  words (`drawTentacles`); the log's canvas holds the eye. The heap breathes
+  and the window bulges.
+- **A wall** draws each word once, straight onto the canvas, where it lands
+  (no flights, tentacles, scaling or filters), redraws its log and eye at
+  10 fps, and shows three notes.
+- **Reduced motion**: no shake, flight, spin, look or sweep; the heap fills
+  in place in 250 ms steps, two notes, everything fades at the snap.
+- Nothing blinks faster than 1 Hz (the cursor 530 ms, the OVERFLOW 500 ms
+  half-periods; reduced: steady); no full-screen flash.
+- `kit/lang-breach-draw.ts` draws over a plain 2D context, so
+  `test/lang-breach.test.ts` records it: every word reaches `fillText`, a
+  bar never does.
+- `?preview=language&lang=none|kept|one|dozen|unsaid|bars|hundreds|max|tie|w48|old`
+  (`fake.ts` `fakeLanguage`; the default is a 120-word night); `&t=` freezes
+  a frame, `&play=1` runs it.
 
 ## The idle show
 

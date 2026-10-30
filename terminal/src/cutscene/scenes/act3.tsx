@@ -14,7 +14,7 @@
 //! Strikes narration, main.loom's broadcasts) and the slide copy.
 
 import "./act3.css";
-import { useEffect, useLayoutEffect, useRef, useState, type ComponentType, type CSSProperties, type RefObject } from "react";
+import { useEffect, useRef, type ComponentType, type CSSProperties } from "react";
 import { HISTORY_T } from "../clock.ts";
 import type { SceneDef, SceneProps } from "../types.ts";
 import type { ScreenNight, ScreenResultQuestion } from "../../screen.ts";
@@ -41,7 +41,6 @@ import {
   between,
   blink,
   clamp01,
-  confettiEmitters,
   countdownParts,
   ease,
   eased,
@@ -58,7 +57,8 @@ import {
   type StormMessage,
 } from "../kit/index.ts";
 import { AwardEmblem, BinaryRain, ChatWindow, Curtains, DiscoBall, EqBars, FloatLayer, Heart, Lasers, Motorcycle, Notepad, RainCanvas, SpotCones, Sunburst, Trophy } from "../kit/tv3-parts.tsx";
-import { ASSESSMENT_MS, AWARDS, AWARD_CONFETTI, HAND_JIVE, LANG, LANG_FIT_START, TRUTH_TXT, awardConfettiAt, awardOf, awardValue, bathTime, bobStateOf, brokenYear, chatAt, handJivePhase, karaokeAt, langFitStep, langStampCues, langTileAt, langWallSize, langWord, notepadAt, sinceMoment, spinAngle, tallyOf, vortexAt, wrapLines, type BobState, type ChatLine } from "../kit/tv3-time.ts";
+import { ASSESSMENT_MS, AWARDS, AWARD_CONFETTI, HAND_JIVE, TRUTH_TXT, awardConfettiAt, awardOf, awardValue, bathTime, bobStateOf, brokenYear, chatAt, handJivePhase, karaokeAt, notepadAt, sinceMoment, spinAngle, tallyOf, vortexAt, wrapLines, type BobState, type ChatLine } from "../kit/tv3-time.ts";
+import { LanguageScene } from "./language.tsx";
 
 // --- small shared helpers ---------------------------------------------------------------------
 
@@ -1426,225 +1426,7 @@ function BathroomScene({ t, value, night, sfx, reduced, target }: SceneProps) {
   );
 }
 
-// --- G14 · the Language Report (wave 48: screens_award_language; persistent) ------------------------------
-//
-//   0–800     the spot narrows (the award's room, gone dark as a vault)
-//   800–2200  the key over its redaction bar flips in, THE LANGUAGE REPORT types
-//   2800      CURSED THE MOST: the name slams in with its count (one confetti
-//             pop from the corners, landed before the wall starts)
-//   4600      CENSORED: c of f words, that share blacked out of a paper bar
-//   6600→     the wall: one tile every 70–260 ms (all in by ~11 s), each landing
-//             under a black bar that wipes off to show the word whole, then
-//             its CENSORED stamp; "+ n more" last
-//   →         hold: the spot breathes, the key bobs, stars twinkle, one tile
-//             at a time catches the light
-// The numbers and words are the story's (`night.language`, read when G14 was
-// pressed). Nobody flagged: one line at 2800. Flagged but none censored: the
-// wall's place says so. No report (an older server): the title and its line.
-// The wall starts at a size for its words (`langWallSize`), then takes the
-// largest scale that fits the screen it is on (`langFitStep`): 60 words fit
-// the TV and a portrait wall alike, and a few words stand big.
-
-/** The Language Report's own copy (DRAFT w48). */
-export const LANG_COPY = {
-  kind: "BONUS SECTION",
-  curser: "Cursed the most",
-  censored: "Censored",
-  stamp: "CENSORED",
-  none: "Nobody said anything the filter caught.",
-  noneCensored: "Not one of them was censored.",
-} as const;
-
-/** The report as the slide draws it, beat by beat (wave 48). */
-export interface LanguagePlan {
-  /** Nobody's words were flagged: this one line, and nothing else. */
-  none: string | null;
-  /** Who cursed the most (a tie is one string) and their count; null for nobody. */
-  curser: { who: string; count: string } | null;
-  /** `c` of `f` words censored (`of` follows the counted-up `c`); `share` fills the bar. */
-  censored: { c: number; f: number; of: string; share: number } | null;
-  /** The censored words' tiles, each whole (`langWord`). */
-  tiles: string[];
-  /** "+ n more" past the tiles, or null. */
-  more: string | null;
-  /** In the wall's place when nothing was censored. */
-  line: string | null;
-}
-
-/** The plan for a report (DRAFT w48). */
-export function languagePlan(r: NonNullable<ScreenNight["language"]>): LanguagePlan {
-  if (r.flagged === 0) return { none: LANG_COPY.none, curser: null, censored: null, tiles: [], more: null, line: null };
-  const count = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
-  const any = r.censored > 0;
-  return {
-    none: null,
-    curser: r.curser === null ? null : { who: r.curser, count: count(r.curses, "flagged word", "flagged words") },
-    censored: { c: r.censored, f: r.flagged, of: ` of ${count(r.flagged, "word", "words")}`, share: clamp01(r.censored / r.flagged) },
-    tiles: any ? r.words.map(langWord) : [],
-    more: any && r.more > 0 ? `+ ${r.more} more` : null,
-    line: any ? null : LANG_COPY.noneCensored,
-  };
-}
-
-/** A name's size on its card: a long tie steps down (wave 48). */
-function whoSize(who: string): string {
-  return who.length > 56 ? " longer" : who.length > 26 ? " long" : "";
-}
-
-/**
- * Fits a box's content to the box (`--lang-k`, the largest scale that fits:
- * `langFitStep`): on mount, on a resize, when the fonts land, when `sig`
- * changes. Each try re-renders before the paint, so the wall is never seen
- * overflowing or mid-fit.
- */
-function useFitScale(sig: string): [RefObject<HTMLDivElement>, number] {
-  const ref = useRef<HTMLDivElement>(null);
-  const [bump, setBump] = useState(0);
-  const [fit, setFit] = useState({ key: "", f: LANG_FIT_START });
-  const key = `${sig}#${bump}`;
-  const f = fit.key === key ? fit.f : LANG_FIT_START;
-  useEffect(() => {
-    let live = true;
-    const on = () => {
-      if (live) setBump((b) => b + 1);
-    };
-    window.addEventListener("resize", on);
-    document.fonts?.ready.then(on, () => {});
-    return () => {
-      live = false;
-      window.removeEventListener("resize", on);
-    };
-  }, []);
-  useLayoutEffect(() => {
-    const el = ref.current;
-    if (f.done || el === null || el.clientHeight === 0) return;
-    const over = el.scrollHeight > el.clientHeight + 1 || el.scrollWidth > el.clientWidth + 1;
-    setFit({ key, f: langFitStep(f, over) });
-  }, [key, f]);
-  return [ref, f.k];
-}
-
-/** One censored word: it lands under a black bar that wipes off, then its stamp (reduced: they fade in). */
-function LangTile({ word, t, at, reduced, lit }: { word: string; t: number; at: number; reduced: boolean; lit: boolean }) {
-  const cls = `tv3-lang-tile${lit ? " lit" : ""}`;
-  if (reduced)
-    return (
-      <span className={cls} style={{ opacity: progress(t, at, 240) }}>
-        {word}
-        <span className="tv3-lang-stamp" style={{ opacity: progress(t, at + 240, 240) }}>
-          {LANG_COPY.stamp}
-        </span>
-      </span>
-    );
-  const wiped = eased(t, at + 60, LANG.wipe, ease.inOutCubic);
-  const land = progress(t, at + 60 + LANG.wipe, 220);
-  return (
-    <span className={cls} style={{ opacity: progress(t, at, 80) }}>
-      {word}
-      {t >= at && wiped < 1 && <span className="tv3-lang-wipe" style={{ transform: `scaleX(${(1 - wiped).toFixed(3)})` }} />}
-      <span className="tv3-lang-stamp" style={land >= 1 ? undefined : { opacity: clamp01(land * 2), transform: `rotate(-6deg) scale(${lerp(1.4, 1, ease.outBack(land)).toFixed(3)})` }}>
-        {LANG_COPY.stamp}
-      </span>
-    </span>
-  );
-}
-
-// One pop from the lower corners when the name lands (the cannons only, no
-// fall from the top): every piece is gone by 6500, before the wall's first tile.
-export const LANG_POP_TV = confettiEmitters(LANG.curser, 500, 1, 181).slice(0, 2);
-export const LANG_POP_WALL = confettiEmitters(LANG.curser, 500, 0.5, 181).slice(0, 2);
-
-function LanguageScene({ t, value, night, sfx, reduced, target }: SceneProps) {
-  const lite = target === "wall";
-  const award = awardOf(value);
-  const report = night.language ?? null;
-  const plan = report === null ? null : languagePlan(report);
-  const tiles = plan?.tiles ?? [];
-  const more = plan?.more ?? null;
-  const size = langWallSize(tiles, more === null ? 0 : 1);
-  const [wall, k] = useFitScale(`${size}|${tiles.join(" ")}|${more ?? ""}`);
-  useSfxCues(t, sfx, [
-    [200, "drumroll", { gain: 0.55 }],
-    [900, "whoosh", { gain: 0.5 }],
-    ...(plan === null ? [] : plan.none !== null ? [[LANG.curser, "chime"] as const] : plan.curser !== null ? [[LANG.curser, "tada"] as const] : []),
-    ...(plan?.censored != null ? [[LANG.censored, "blip", { gain: 0.6 }] as const] : []),
-    ...(plan?.line != null ? [[LANG.wall, "blip", { gain: 0.5 }] as const] : []),
-    ...langStampCues(tiles.length).map((at) => [at, "click", { gain: 0.35 }] as const),
-  ]);
-  const flip = reduced ? fade(t, 800, 400) : eased(t, 800, 700, ease.outBack);
-  const bar = reduced ? 1 : eased(t, LANG.censored + 200, 1000);
-  // The hold: once every tile is in, one at a time catches the light.
-  const allIn = langTileAt(tiles.length, tiles.length) + 600;
-  const lit = !reduced && tiles.length > 0 && t >= allIn ? Math.floor((t - allIn) / 700) % tiles.length : -1;
-  const shown = (at: number): CSSProperties => (t >= at ? slam(t, at, reduced, 380) : { opacity: 0 });
-  return (
-    <Stage bg="radial-gradient(ellipse at 50% 55%, #2e2710 0%, #050403 78%)" className="tv3-award tv3-lang">
-      <SpotCones t={t} reduced={reduced} color="rgba(255, 220, 140, 0.1)" />
-      <Particles t={t} emitters={lite ? TWINKLE_WALL : TWINKLE_TV} blend="add" />
-      <div className="tv3-award-spot" style={{ opacity: 0.45 + 0.25 * pulse(t, 5200), transform: `translate(-50%, -50%) scale(${lerp(2.4, 1, eased(t, 0, 800)).toFixed(3)})` }} />
-      <div className="tv3-award-emblem tv3-lang-emblem" style={{ opacity: clamp01(flip * 2), transform: reduced ? "translateX(-50%)" : `translateX(-50%) perspective(60em) rotateY(${lerp(-90, 0, flip).toFixed(1)}deg) translateY(${(Math.sin(t / 900) * 3).toFixed(1)}%)` }}>
-        <AwardEmblem kind={award.emblem} size={lite ? "13vmin" : "12vmin"} />
-      </div>
-      <div className="tv3-award-kind tv3-lang-kind" style={{ opacity: fade(t, LANG.kind, 400) }}>
-        {LANG_COPY.kind}
-      </div>
-      <div className="tv3-award-title tv3-lang-title">
-        <Typewriter text={award.title.toUpperCase()} t={t} start={LANG.title} cps={26} caret={t < 2400} />
-      </div>
-      {plan === null ? (
-        <div className="tv3-award-line" style={{ opacity: fade(t, 2600, 800) }}>
-          {award.line}
-        </div>
-      ) : plan.none !== null ? (
-        <div className="tv3-lang-none" style={shown(LANG.curser)}>
-          {plan.none}
-        </div>
-      ) : (
-        <>
-          <div className={`tv3-lang-stats${plan.curser === null ? " solo" : ""}`}>
-            {plan.curser !== null && (
-              <div className="tv3-lang-card" style={shown(LANG.curser)}>
-                <span className="tv3-lang-label">{LANG_COPY.curser}</span>
-                <span className={`tv3-lang-who${whoSize(plan.curser.who)}`}>{plan.curser.who}</span>
-                <span className="tv3-lang-sub">{plan.curser.count}</span>
-              </div>
-            )}
-            {plan.censored !== null && (
-              <div className="tv3-lang-card" style={{ opacity: progress(t, LANG.censored, 400), transform: reduced ? undefined : `translateY(${lerp(30, 0, eased(t, LANG.censored, 500, ease.outBack)).toFixed(1)}%)` }}>
-                <span className="tv3-lang-label">{LANG_COPY.censored}</span>
-                <span className="tv3-lang-frac">
-                  {reduced ? <span className="tv3-lang-c">{plan.censored.c}</span> : <BigNumber t={t} to={plan.censored.c} start={LANG.censored + 200} dur={1000} className="tv3-lang-c" />}
-                  {plan.censored.of}
-                </span>
-                <span className="tv3-lang-bar">
-                  <span style={{ transform: `scaleX(${(plan.censored.share * bar).toFixed(3)})` }} />
-                </span>
-              </div>
-            )}
-          </div>
-          {plan.line !== null ? (
-            <div className="tv3-lang-line" style={{ opacity: fade(t, LANG.wall, 600) }}>
-              {plan.line}
-            </div>
-          ) : (
-            <div ref={wall} className={`tv3-lang-wall ${size}`} style={{ "--lang-k": k.toFixed(3) } as CSSProperties}>
-              {tiles.map((w, i) => (
-                <LangTile key={`${i}:${w}`} word={w} t={t} at={langTileAt(i, tiles.length)} reduced={reduced} lit={i === lit} />
-              ))}
-              {more !== null && (
-                <span className="tv3-lang-tile tv3-lang-more" style={{ opacity: progress(t, langTileAt(tiles.length, tiles.length), 300) }}>
-                  {more}
-                </span>
-              )}
-            </div>
-          )}
-        </>
-      )}
-      {/* One pop when the name lands, never again: nothing falls over the words. */}
-      {!reduced && plan !== null && plan.curser !== null && <Particles t={t} emitters={lite ? LANG_POP_WALL : LANG_POP_TV} />}
-    </Stage>
-  );
-}
+// --- G14 · the Language Report: its own file (`language.tsx`, wave 48b's breach) ------------------------
 
 // --- G11 · the resurrection (signal resurrection: "you are human again") ---------------------------------
 //
