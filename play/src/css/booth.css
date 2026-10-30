@@ -558,4 +558,4 @@
   font: 700 14px var(--ui-font); color: var(--ink); text-align: left; cursor: pointer;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.booth-letter-skip { flex: 0 0 auto; min-height: var(--tap); padding: 0 8px; }
+.booth-letter-skip { flex: 0 0 auto; width: auto; min-height: var(--tap); padding: 0 8px; }
