@@ -752,7 +752,7 @@ func _test_avatar_decode() -> void:
 	var bs := AvatarCache.decode(bare)
 	_check(bs == null or maxi(bs.get_width(), bs.get_height()) <= 512, "avatar: an svg declaring no size never renders big (%s)" % [bs.get_size() if bs != null else null])
 	_check(AvatarCache.decode('<svg xmlns="http://www.w3.org/2000/svg" width="1e7" height="10"><rect width="10" height="10"/></svg>'.to_utf8_buffer()) == null, "avatar: an implausible declared size is refused")
-	_check(AvatarCache.decode(gif) == null and AvatarCache.decode(avif) == null, "avatar: gif and avif stay on the capsule")
+	_check(AvatarCache.decode(gif) == null and AvatarCache.decode(avif) == null, "avatar: gif and avif stay static")
 	_check(AvatarCache.decode("hello".to_utf8_buffer()) == null and AvatarCache.decode(PackedByteArray()) == null, "avatar: junk and nothing decode to nothing")
 	var broken := png.slice(0, 20)
 	_check(AvatarCache.decode(broken) == null, "avatar: a truncated png is nothing")
@@ -1893,7 +1893,38 @@ func _test_builder_geometry(b: HouseBuilder, house: Dictionary) -> void:
 
 ## Ghosts wear their profile pictures: fetched once per URL (two at a time,
 ## deduplicated, cached, a failure not retried within the visit), shown as a head once the
-## bytes land; an `avatar` frame changes it; no key → the plain capsule.
+## bytes land; an `avatar` frame changes it; no key → a swarm of static.
+## The swarm's layout and trail: the same shards as `swarm.ts`, whose test
+## pins these numbers too.
+func _test_swarm() -> void:
+	var shards := Swarm.layout()
+	_check(shards.size() == Swarm.SHARDS, "swarm: %d shards" % shards.size())
+	_check(_near((shards[0]["home"] as Vector3).y, 0.9204645976540632, 1e-5) and _near((shards[0]["rand"] as Color).r, 0.4209635134320706, 1e-5), "swarm: shard 0 is swarm.ts's")
+	_check(_near((shards[100]["size"] as Vector2).x, 0.023696090903909256, 1e-5) and _near((shards[100]["cell"] as Color).r, 0.5556649875167446, 1e-5), "swarm: shard 100 is swarm.ts's")
+	var faces := 0
+	var outside := 0
+	for s: Dictionary in shards:
+		faces += 1 if (s["rand"] as Color).a >= 1.0 else 0
+		var h: Vector3 = s["home"]
+		outside += 1 if Vector2(h.x, h.z).length() > Swarm.RADIUS * 1.2 + 1e-6 else 0
+	_check(faces == Swarm.FACE_GRID * Swarm.FACE_GRID, "swarm: the face's %d cells" % faces)
+	_check(outside == 0, "swarm: every shard rests inside the collider (%d out)" % outside)
+	var t := Swarm.SwarmTrail.new()
+	t.step(Vector3.ZERO, 0.016)
+	_check(t.offsets.size() == Swarm.TRAIL and t.offsets[Swarm.TRAIL - 1] == Vector3.ZERO, "swarm: the trail starts on the body")
+	var x := 0.0
+	for i in 60:
+		x += 0.02
+		t.step(Vector3(x, 0, 0), 0.016)
+	_check(t.offsets[0] == Vector3.ZERO and t.offsets[Swarm.TRAIL - 1].x < -0.5, "swarm: … hangs behind a walk (%.2f)" % t.offsets[Swarm.TRAIL - 1].x)
+	t.step(Vector3(x + Swarm.TELEPORT_M + 1.0, 0, 0), 0.016)
+	_check(t.offsets[Swarm.TRAIL - 1] == Vector3.ZERO, "swarm: … and a teleport starts it again")
+	var wide := Image.create(8, 4, false, Image.FORMAT_RGBA8)
+	wide.fill(Color(1, 0, 0, 0.5))
+	var bare := AvatarCache.bare_of(wide)
+	_check(bare.get_width() == AvatarCache.TILE and bare.get_height() == AvatarCache.TILE and bare.has_mipmaps() and bare.get_pixel(64, 64).a < 0.6, "swarm: the bare picture is a square, mipmapped, transparency kept")
+
+
 func _test_ghost_pictures(game: Game, link: LinkBase) -> void:
 	var g := game.ghosts
 	var asked: Array = []  # [url, done]
@@ -1912,22 +1943,30 @@ func _test_ghost_pictures(game: Game, link: LinkBase) -> void:
 		pose.call("nokey", "Persona", null), pose.call("old", "Old Server", null),
 	]})
 	_check(g.count() == 5 and g.picture_url("excel") == "fixture://avatar/aaaa", "ghosts: a ghost's avatar key names its picture (%s)" % g.picture_url("excel"))
-	_check(g.picture_url("nokey") == "" and g.picture_url("old") == "" and not g.has_picture("nokey") and not g.has_picture("old"), "ghosts: no key (null, or an old server's missing field) → the plain capsule")
+	_check(g.picture_url("nokey") == "" and g.picture_url("old") == "" and not g.has_picture("nokey") and not g.has_picture("old"), "ghosts: no key (null, or an old server's missing field) → a swarm of static")
 	_check(asked.size() == 2 and g.avatars.in_flight() == 2, "ghosts: two picture requests at a time (%d)" % asked.size())
-	_check(not g.has_picture("excel"), "ghosts: … no head before the bytes land")
+	_check(not g.has_picture("excel"), "ghosts: … no picture before the bytes land")
 	(asked[0][1] as Callable).call(true, ok_headers, png)
-	_check(g.has_picture("excel"), "ghosts: the picture lands as a head")
-	var pic: Sprite3D = null
+	_check(g.has_picture("excel"), "ghosts: the picture lands in the swarm")
+	var swarm: MultiMeshInstance3D = null
+	var meshes := 0
 	for c in g.get_children():
-		if c.get_node_or_null("Picture") != null:
-			pic = c.get_node("Picture")
-	_check(pic != null and pic.billboard == BaseMaterial3D.BILLBOARD_ENABLED and _near(pic.pixel_size * AvatarCache.TILE, Ghosts.PICTURE_SIZE) and pic.texture.get_width() == AvatarCache.TILE, "ghosts: … a billboard square, %.2f m" % Ghosts.PICTURE_SIZE)
+		if c.get_node_or_null("Swarm") != null:
+			if swarm == null:
+				swarm = c.get_node("Swarm")
+			for n in c.get_children():
+				meshes += 1 if n is MeshInstance3D else 0
+	var mat := swarm.material_override as ShaderMaterial if swarm != null else null
+	var worn: Texture2D = mat.get_shader_parameter("map") if mat != null else null
+	_check(swarm != null and mat.shader == Ghosts.SWARM_SHADER and bool(mat.get_shader_parameter("worn")) and worn != null, "ghosts: … one shader over the swarm's shards")
+	_check(worn != null and is_same(worn, g.avatars.bare("fixture://avatar/aaaa")) and not is_same(worn, g.avatars.texture("fixture://avatar/aaaa")), "ghosts: … cut from the bare picture, not the lobby's tile")
+	_check(meshes == 0, "ghosts: no capsule, visor or tile is drawn (%d)" % meshes)
 	_check(asked.size() == 3 and str(asked[2][0]) == "fixture://avatar/cccc", "ghosts: the third request goes once one lands")
 	(asked[1][1] as Callable).call(false, PackedStringArray(), PackedByteArray())  # word: a 404
 	var gif := "GIF89a".to_ascii_buffer()
 	gif.append_array(PackedByteArray([1, 0, 1, 0, 0]))
 	(asked[2][1] as Callable).call(true, PackedStringArray(["Content-Type: image/gif"]), gif)  # paint: a GIF
-	_check(not g.has_picture("word") and not g.has_picture("paint") and g.avatars.has_failed("fixture://avatar/bbbb") and g.avatars.has_failed("fixture://avatar/cccc"), "ghosts: a failed or undecodable picture leaves the capsule")
+	_check(not g.has_picture("word") and not g.has_picture("paint") and g.avatars.has_failed("fixture://avatar/bbbb") and g.avatars.has_failed("fixture://avatar/cccc"), "ghosts: a failed or undecodable picture leaves it static")
 
 	# The same key again: cached (no request, at once); a failed one: never retried.
 	link.stream_frame.emit("join", {"player": pose.call("excel2", "Excel", "aaaa")})
@@ -1941,6 +1980,11 @@ func _test_ghost_pictures(game: Game, link: LinkBase) -> void:
 	_check(g.picture_url("nokey") == "fixture://avatar/dddd" and asked.size() == 4, "ghosts: an avatar frame fetches the new picture")
 	(asked[3][1] as Callable).call(true, ok_headers, png)
 	_check(g.has_picture("nokey"), "ghosts: … and wears it")
+	var one_set: Array = []
+	for c in g.get_children():
+		if c.get_node_or_null("Swarm") != null and not one_set.has((c.get_node("Swarm") as MultiMeshInstance3D).multimesh):
+			one_set.append((c.get_node("Swarm") as MultiMeshInstance3D).multimesh)
+	_check(one_set.size() == 1, "ghosts: every ghost shares one set of shards (%d)" % one_set.size())
 	link.stream_frame.emit("avatar", {"session": "excel", "avatar": null})
 	_check(not g.has_picture("excel") and g.picture_url("excel") == "", "ghosts: an avatar frame with no key takes the picture off")
 	link.stream_frame.emit("avatar", {"session": "nobody", "avatar": "eeee"})
@@ -2549,6 +2593,7 @@ func _test_main_and_game() -> void:
 	link.stream_frame.emit("poses", {"t": 1, "players": [{"session": "other", "p": [2.0, 0.0, 1.0], "yaw": 90.0, "pitch": 0.0}]})
 	link.stream_frame.emit("leave", {"session": "other", "reason": "ended"})
 	_check(game.ghosts.count() == 0, "game: a leave removes the ghost")
+	_test_swarm()
 	_test_ghost_pictures(game, link)
 
 	# Is-at-duck: plan radius 0.9 on the duck's own floor.
