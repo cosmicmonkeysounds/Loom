@@ -64,6 +64,14 @@ most 4 a second) and every 20 s anyway (the server's freshness keepalive),
 so the games light their virtual house with the real one. Nothing is posted
 before the first command; a 404 (an older server) is logged once and
 posting stops until the module restarts.
+
+**Zigbee flow control (2026-10-30).** Every Zigbee command goes through
+`pacer.py`: one state per bulb, the next only after Z2M's echo of the last, so
+Z2M never builds a backlog; a fixture Z2M doesn't know is not sent at all.
+Every `z2m_check_s` the module asks Z2M's `health_check`; `z2m_stall_s` with no
+answer (and a connected broker) and it restarts `z2m_task` (Windows: `schtasks
+/End` + `/Run`) and, once Z2M is back, plays the catch-up. `pace: false` is the
+kill switch for the pacer; no `z2m_task` only logs the stall.
 """
 
 from __future__ import annotations
@@ -74,6 +82,7 @@ import logging
 import os
 import re
 import socket
+import subprocess
 import time
 from dataclasses import dataclass, field
 from typing import Any, Protocol
@@ -83,6 +92,7 @@ import httpx
 from ..modapi import ModApiError, ModClient, run_stream
 from ..module import ConfigError, Context
 from .config import LightsSectionConfig, parse_lights_section
+from .pacer import Pacer
 from .plan import Command, Plan, clamp_for_safety, ordered, plan_look
 from .routing import (
     LIGHTS_FILE,
@@ -129,6 +139,11 @@ RESTORE_FADE_S = 0.8
 DOOR_STAGES = ("door", "scan", "talk")
 ALARM_LOOK = "heart_alarm"
 DOOR_LOOK = "heart_door_open"
+#: How often the pacer looks for a command Z2M never echoed.
+PACER_TICK_MS = 250
+#: A restart gets this long to bring Z2M back before the watch judges it again.
+Z2M_RESTART_GRACE_MS = 120_000
+Z2M_RESTART_TIMEOUT_S = 20
 
 
 def build_lights(section: Any, base_dir: str) -> "HouseLights":
@@ -138,6 +153,11 @@ def build_lights(section: Any, base_dir: str) -> "HouseLights":
         raise
     except ValueError as err:
         raise ConfigError(f"lights: {err}") from err
+
+
+def run_hidden(argv: list[str]) -> "subprocess.CompletedProcess[str]":
+    """A console command from a `pythonw` job: no window may open on the TV."""
+    return subprocess.run(argv, capture_output=True, text=True, check=False, timeout=Z2M_RESTART_TIMEOUT_S, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
 
 
 class Timer(Protocol):
@@ -278,6 +298,12 @@ class HouseLights:
         self._shown_last = float("-inf")
         self._shown_task: asyncio.Task | None = None
         self._shown_failing = False
+        # Zigbee flow control: the bulbs' slots, and the watch on Z2M itself.
+        self.pacer = Pacer(self.publish, self.timer.now, on_dark=self._bulb_dark)
+        self.run_cmd = run_hidden
+        self._z2m_lost = False
+        self._z2m_heard = self.timer.now()
+        self.z2m_restarts = 0
 
     # -- describe / check ------------------------------------------------------
 
@@ -422,8 +448,21 @@ class HouseLights:
             if not payload_for(f, wire):
                 self._remember(f, state)
                 return
-        self.publish(light_topic(f, self.cfg.z2m_base), payload_for(f, wire))
+        self._wire(f, payload_for(f, wire))
         self._remember(f, state, wire)
+
+    def _wire(self, f: dict, payload: dict) -> None:
+        topic = light_topic(f, self.cfg.z2m_base)
+        if not self.cfg.pace or f.get("kind") == "wled":
+            self.publish(topic, payload)
+        elif not self.device_names or f["device"] in self.device_names:  # else Z2M only logs "Entity is unknown"
+            self.pacer.send(f["device"], topic, payload)
+
+    def _bulb_dark(self, device: str, dark: bool) -> None:
+        if dark:
+            log.warning("%s is not answering Zigbee: one probe every 30 s until it does; its newest state waits", device)
+        else:
+            log.info("%s answers again", device)
 
     # -- the report (wave 39) -----------------------------------------------------------
 
@@ -580,7 +619,7 @@ class HouseLights:
         if p.kind == "wled":
             self.publish(topic, {"seg": [{"fx": WLED_PULSE_FX.get(p.effect, 2)}]})
             self._remember(f, {}, {"effect": "blink" if p.effect == "blink" else "breathe"}, pulse=True)
-        else:
+        elif not (self.cfg.pace and self.pacer.is_dark(f["device"])):
             self.publish(topic, {"effect": p.effect})
             self._remember(f, {}, {"effect": p.effect}, pulse=True)
 
@@ -861,9 +900,19 @@ class HouseLights:
         if topic == f"{base}/bridge/state":
             ok = bridge_online(raw)
             if ok is not None:
-                self.z2m = "online" if ok else "offline"
+                self._z2m_state(ok)
+            return
+        if topic == f"{base}/bridge/response/health_check":
+            self._z2m_heard = self.timer.now()
             return
         if topic not in (f"{base}/bridge/devices", f"{base}/bridge/groups"):
+            parts = topic.split("/")[len(base.split("/")):]
+            if len(parts) == 1:
+                self.pacer.acked(parts[0])
+            elif len(parts) == 2 and parts[1] == "availability" and parts[0] != "bridge":
+                online = bridge_online(raw)
+                if online is not None:
+                    self.pacer.availability(parts[0], online)
             return
         try:
             doc = json.loads(raw.decode("utf-8"))
@@ -875,6 +924,20 @@ class HouseLights:
             self._raw_groups = doc
         self.device_names = {d["friendly"] for d in self.devices()}
         self.schedule_devices()
+
+    def _z2m_state(self, online: bool) -> None:
+        was = self.z2m
+        self.z2m = "online" if online else "offline"
+        self.pacer.paused = not online
+        if not online:
+            self.pacer.reset()
+            self._z2m_lost = self._z2m_lost or was == "online"
+        else:
+            self._z2m_heard = self.timer.now()
+            self.pacer.pump()
+            if self._z2m_lost:
+                self._z2m_lost = False
+                self.schedule_catch_up("z2m")
 
     def devices(self) -> list[dict]:
         return reduce_devices(self._raw_devices, self._raw_groups)
@@ -916,7 +979,60 @@ class HouseLights:
             "z2m": self.z2m,
             "pulsed": sorted(self.pulses),
             "shown_posts": self.shown_posts,
+            "z2m_restarts": self.z2m_restarts,
+            "dark": self.pacer.dark(),
+            "waiting": self.pacer.waiting(),
+            "superseded": self.pacer.superseded,
         }
+
+    # -- the watch on Zigbee2MQTT ---------------------------------------------------------
+
+    def _broker_up(self) -> bool:
+        connected = getattr(self.mqtt, "connected", None)
+        return self.mqtt is not None and (connected is None or connected.is_set())
+
+    async def check_z2m(self) -> bool:
+        """One look at Z2M's last `health_check` answer. → True when it restarted."""
+        if not self._broker_up():
+            self._z2m_heard = self.timer.now()  # the broker's trouble, not Z2M's
+            return False
+        silent = self.timer.now() - self._z2m_heard
+        if silent < self.cfg.z2m_stall_s * 1000:
+            return False
+        task = self.cfg.z2m_task
+        self._z2m_heard = self.timer.now()
+        if not task:
+            log.error("Zigbee2MQTT has not answered for %.0f s and no lights.z2m_task is set: restart it by hand", silent / 1000)
+            return False
+        log.error("Zigbee2MQTT has not answered for %.0f s: restarting %s", silent / 1000, task)
+        self._z2m_heard += Z2M_RESTART_GRACE_MS
+        self.z2m_restarts += 1
+        self._z2m_lost = True
+        self.pacer.reset()
+        try:
+            await asyncio.to_thread(self.run_cmd, ["schtasks", "/End", "/TN", task])
+            res = await asyncio.to_thread(self.run_cmd, ["schtasks", "/Run", "/TN", task])
+        except (OSError, subprocess.SubprocessError) as err:
+            log.error("restarting %s failed (%s)", task, err)
+            return False
+        if res.returncode != 0:
+            log.error("restarting %s failed: %s", task, (res.stderr or res.stdout).strip() or res.returncode)
+            return False
+        return True
+
+    async def _z2m_loop(self) -> None:
+        topic = f"{self.cfg.z2m_base}/bridge/request/health_check"
+        self._z2m_heard = self.timer.now()
+        while True:
+            await self.timer.sleep_until(self.timer.now() + self.cfg.z2m_check_s * 1000)
+            if self._broker_up():
+                self.publish(topic, {})
+            await self.check_z2m()
+
+    async def _pacer_loop(self) -> None:
+        while True:
+            await self.timer.sleep_until(self.timer.now() + PACER_TICK_MS)
+            self.pacer.tick()
 
     async def _health_loop(self) -> None:
         while True:
@@ -1023,7 +1139,7 @@ class HouseLights:
         self.mqtt = MqttBridge(
             m.host,
             m.port,
-            filters=[f"{base}/bridge/state", f"{base}/bridge/devices", f"{base}/bridge/groups"],
+            filters=[f"{base}/bridge/state", f"{base}/bridge/devices", f"{base}/bridge/groups", f"{base}/bridge/response/health_check", f"{base}/+", f"{base}/+/availability"],
             loop=loop,
             client_id=m.client_id,
             username=m.username,
@@ -1039,6 +1155,8 @@ class HouseLights:
             asyncio.ensure_future(self._mqtt_loop()),
             asyncio.ensure_future(self._health_loop()),
             asyncio.ensure_future(self._shown_loop()),
+            asyncio.ensure_future(self._pacer_loop()),
+            asyncio.ensure_future(self._z2m_loop()),
         ]
         try:
             await asyncio.gather(*tasks)

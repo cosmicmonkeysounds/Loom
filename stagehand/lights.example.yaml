@@ -38,3 +38,11 @@ lights:
   # The `show` job in the same YAML drops its own `cue` rules for every look
   # lights.json defines, so one cue never drives a bulb twice.
   take_looks: true
+  # One Zigbee command per bulb in flight, the newest state replacing what
+  # waits (pacer.py), so Z2M can never build a backlog. false: the kill switch.
+  pace: true
+  # Z2M silent for z2m_stall_s (it answers health_check every z2m_check_s when
+  # well): restart this Task Scheduler task. null: only log it.
+  z2m_task: null                 # the Desktop: Loom\zigbee2mqtt
+  z2m_check_s: 15
+  z2m_stall_s: 60
