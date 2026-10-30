@@ -427,7 +427,7 @@ describe("Trapped in the Internet — wave 13 integration: a host is offered onl
     expect(rt.liveSim!.world.peek(`${g.id}.escort_by`)).toMatchObject({ value: "Task Manager" });
     expect(rt.liveSim!.world.peek(`${g.id}.doubt`)).toMatchObject({ value: doubt + 20 });
     // A host is no player: no ⭐, no capture count.
-    expect(rt.liveSim!.world.peek("Task Manager.score")?.value ?? 0).toBe(0);
+    expect(rt.liveSim!.world.peek("Task Manager.score")).not.toMatchObject({ value: expect.any(Number) });
     // A second press reads as already there.
     expect((await act(SHIELD)).status).toBe(200);
     expect(rt.liveSim!.world.peek(`${g.id}.doubt`)).toMatchObject({ value: doubt + 20 });
