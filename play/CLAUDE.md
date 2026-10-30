@@ -37,7 +37,8 @@ module header is a legal comment to esbuild and stays in the bundle
 modules' headers with `//`. Wave 44 turned `push.ts`, `crawl.ts` and `rejoin.ts`'s headers into `//`
 (−2.26 kB) and added the credits roll's eager slot: 146.95 kB. Wave 47
 (the Back, the stage's tray, the Mission echoes) brought it to 148.65 kB:
-0.35 kB of headroom, so the next eager addition needs a trim first.
+0.35 kB of headroom, so the next eager addition needs a trim first. Wave
+48b (all booth chunk) measures 148.64 kB.
 
 ## How a session works
 
@@ -349,15 +350,19 @@ Clippy) through `scripts/sim` evenings at 390x700 and in Chrome.
   `while:` says when (the show: every program after the Bingo round, wave
   46). `test/w47-av-send.test.ts`.
 
-### Wave 48: the Password Manager's filter
+### Wave 48: the Password Manager's filter (48b: the dial, the ⭐ game)
 
 The story's `censor:` header names a CHARACTER (the show: Password
 Manager); only that booth gets `PrimeView.filter` (`FilterView`:
 `flagged`, `censored`, `lines` — the guest lines with a swear stem still to
-judge, oldest first, the newest 40; contract `docs/loom-w48-contract.md`
-C2, C5). Everything is booth chunk only, in `booth/filter/`:
+judge, oldest first, the newest 40; since wave 48b also `level`, `muted`,
+`stars`, `combo`, each hit's `tier` and each line's `points`, all optional
+for an older server; contract `docs/loom-w48-contract.md` C2, C5, C7–C13).
+Everything is booth chunk only, in `booth/filter/`:
 
-- `model.ts` (pure, copy `FILTER_COPY`, `DRAFT w48`): `waitingLines` (not
+- `model.ts` (pure, copy `FILTER_COPY` `DRAFT w48`, the 48b lines and
+  `FILTER_GAME_COPY` / `FILTER_LEVEL_COPY` / `FILTER_BANDS` `DRAFT w48b`):
+  `waitingLines` (not
   let go on this phone, not censored here while the view catches up),
   `filterPlan` (a line not seen before pops once, the newest of a batch,
   only while no `filter:<seq>` pop-out is up — on screen, queued or
@@ -366,33 +371,87 @@ C2, C5). Everything is booth chunk only, in `booth/filter/`:
   meanwhile only count; a held one whose line left retires, one still
   waiting is raised again in place), `filterDraft` (🔑 LANGUAGE: picture,
   name, `whereLine`, the line as `PopOutSpec.quote` with each `hits` range
-  marked, ✂ Censor `arm: true`, Let it go, 🔑 All flagged (n) when more
+  marked, ✂ Censor `arm: true` whose `armedLabel` is *✂ Censor? It raises
+  their suspicion.*, Let it go, 🔑 All flagged (n) when more
   wait, the shell's Later; info, priority 35, `yields`, not sticky; its
-  status line is the hint or the last refusal), `markSegments` /
-  `hitRanges` / `clipLine` (clamped, merged, never splitting a surrogate
-  pair), `censorRefusal` (409 *already censored* → gone quietly; doors,
-  404, 403, timeout, offline → plain words).
+  status line is the hint or the last refusal; 48b: `game` puts the live
+  meter in `PopOutSpec.extra` and the pay in the ✂ action's `extra`),
+  `markSegments` / `tierRanges` / `clipLine` (clamped, merged where they
+  overlap (the lower tier wins) or touch within one band, never splitting
+  a surrogate pair; a tier-0 run is the `[slur]` chip, `UNSAID_WORD`),
+  `censorRefusal` (409 *already censored* or *the filter no longer catches
+  it* → gone quietly; doors, 404, 403, timeout, offline → plain words),
+  `censorDone` (the 200's `points` / `mult` / `stars` when sent). 48b:
+  `snapLevel` / `levelOf` / `bandAt` / `bandsAt` / `stepBand` (the dial,
+  0–100 in steps of 5, starts 100; between tiers a strength catches what
+  the lower one does), `levelRefusal`, `mutedNote`, and the game's numbers:
+  `comboOf`, `heatAt`, `notchAt`, `multAt` (C11:
+  `mults[min(len − 1, ceil(max(0, heat − elapsed / coolMs)))]`, elapsed
+  from the view's arrival), `payOf` (`floor(points × mult)`),
+  `nextNotchMs`, `restedInMs`, `heatShare`, `multText` (×1½, ×¼),
+  `burstLine` / `burstQuip` (a 0 ⭐ ✂ at ×¼ reads as a joke).
 - `use-filter.ts`: `useFilter(session, storage)`, one per booth
-  (`booth/app.tsx`), shared by the driver, the tray and the window. Memory
+  (`booth/app.tsx`), shared by the driver, the tray and the windows. Memory
   in host storage `loom.booth.filter.<token>` (`{seen, let}`, each capped
   at 400, reads / writes in try/catch); Let it go never reaches the
   server. ✂ is `PrimeSession.censor(seq)` → `POST
-  /e/:eventId/api/prime/censor {seq}` (token header, 15 s timeout).
+  /e/:eventId/api/prime/censor {seq}` (token header, 15 s timeout). 48b:
+  `level` / `setLevel` (`PrimeSession.filterLevel` → `POST
+  /api/prime/filter {level}`): optimistic (the dial shows the pick until
+  the view says it), one POST at a time with the newest pick queued (an
+  older pick's refusal never rolls back a newer one), a refusal rolls back
+  to the view's level with `levelError`; `game` (`{combo, at}`, re-based
+  on every view's combo object); `burst` (the last ✂'s score, until
+  `clearBurst`). The driver's `key` includes each line's marks and worth,
+  so a new strength re-marks a held pop-out.
 - `window.tsx`: the `{ kind: "filter" }` layer (`booth/model.ts`): header
-  *Censored c of f flagged words*, every waiting line with ✂ Censor (two
-  taps) and Let it go, a refusal under its line, *Nothing to judge.*
+  *Censored c of f flagged words* (48b: with *⭐ n tonight*, the heat
+  meter and *n waiting lines hidden at this strength* when `muted`), every
+  waiting line with its worth, ✂ Censor (two taps; it shows what it pays
+  now) and Let it go, a refusal under its line, *Nothing to judge.*
   × / Escape / Back go through `closeTo`.
+- `game.tsx` (48b): `FilterGameContext` (the booth provides
+  `filter.game`, so a pop-out raised earlier still reads the heat now),
+  `useGameClock` (one timeout at a time while the heat is up: every 500 ms
+  for the meter, at the next notch for a pay label; none once rested, none
+  after unmount), `FilterMeter` (worth, ×m, a hot-to-cool strip a grey
+  cover slides back over, *×3 in n s* / *rested*), `FilterPay` (*+n ⭐*),
+  `filterGameNodes` (the driver's live parts), `FilterBurst` (*+n ⭐ ×m*
+  and a quip over the booth for `FILTER_BURST_MS`, a light
+  `navigator.vibrate` where there is one; reduced motion fades in place).
+- `strength.tsx` (48b): the `{ kind: "strength" }` layer, opened only from
+  ⊞ Start → 🔑 Filter strength (`filterStartItem`, passed as `filter` to
+  `playerStartItems` / `boothStartItems` only when `PrimeView.filter` is
+  present). The big %, the band's words, an `<input type="range">` (step
+  5, 44 px track, 28 × 40 thumb) that posts on release (pointer up, touch
+  end, key up, blur; never per move), ◀ Less / More ▶ (a band at a time),
+  the legend (every band's colour, on / off, ⭐ a word; the slur row is
+  *Slurs (never shown)*), the status line (*Saving…*, or the refusal and
+  *Still n%*). **Nothing else points at it**: not the pop-out, the tile,
+  the tray or the help article (which says only that it can be tuned
+  *somewhere on your phone*).
+- **Bands' colours** (`css/booth.css`): one token per tier
+  (`--filter-tier-<n>`) and one class (`.filter-tier-<n>`), used by the
+  pop-out's `.popout-mark`, the window's `.filter-hit` and the legend; a
+  slur is a black `[slur]` chip (`PopQuotePart.chip`, `.popout-chip` /
+  `.filter-chip`). The pop-out shell (`moments/popout.tsx`) gained
+  `PopQuotePart.tier` / `chip`, `PopOutSpec.extra`, `PopAction.extra` and
+  `PopAction.armedLabel`; `storedOf` drops `extra` (live content is never
+  stored).
 - The driver (`popouts/use-booth-popouts.ts`, `DriverOpts.filter` /
   `filterOpen`) runs `filterPlan`; `BoothDo` has `censor` / `letGo` /
   `filter`. The tray's `🔑 n` (`BoothTray filter`, calm, no alarm tone)
   follows 🚨 in `boothTrayOrder`. A guest needs no change: a censored line
   comes back as a `messageModerated` frame carrying the whole message
   (same seq, `ChatMessage.censored`), which `chatFrameHandler` upserts
-  silently.
+  silently. Since wave 48b ✂ raises the program's suspicion (the story's
+  `doubt`, +5 a ✂) instead of marking it; the server tells the guest.
 - Help: `docs/help/play/22-language-filter.md` (`role: performer`). Tests:
   `test/w48-filter.test.ts` (the rules, a flood through the real reducer),
   `test/w48-filter-booth.test.tsx` (the hook, the real driver over the
-  real store, the pop-out, the tray, the window, the first-load fence).
+  real store, the pop-out, the tray, the window, the first-load fence),
+  `test/w48b-filter.test.tsx` (the dial, the bands, the game's numbers
+  and components, the Start item, the strength window, the palette).
 - **The 🔑 Filter tile** (`booth/mission-model.ts` `FILTER_ROOM`): the
   censor's Mission home always has it beside Wanted (*n to judge*), since on
   a phone the tray fits two items and 🔔 + 🚨 push its 🔑 out.
