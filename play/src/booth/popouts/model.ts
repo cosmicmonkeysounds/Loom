@@ -843,6 +843,11 @@ export interface AdapterCtx {
   me?: string;
   /** Wave 37 (C8): a player's booth (Clippy's YOUR GAME IS ON is a game pop-out). */
   player?: boolean;
+  /** Wave 47: is the player's Mission on screen now (nothing over it)? */
+  missionOnScreen?: () => boolean;
+  /** Wave 47: a game that never pops, because Mission already says it (the
+   *  booth chimes and blinks NEW MISSION instead). */
+  onQuietGame?: (game: Draft) => void;
 }
 
 const bareText = (m: Pick<ChatMessage, "text">) => m.text.trim().replace(/^!+/u, "").trim();
@@ -906,7 +911,15 @@ export function adaptBoothMessage(m: BoothMessage, ctx: AdapterCtx): Draft | nul
   const text = bareText(m);
   const about = typeof m.about === "string" ? m.about : null;
   const game = gameDraft(m, ctx);
-  if (game !== null) return game;
+  if (game !== null) {
+    // Wave 47: on Mission the new mission is on screen already; a pop-out
+    // over it saying "▣ Go to Mission" said it twice (seen in Chrome).
+    if (ctx.missionOnScreen?.() === true) {
+      ctx.onQuietGame?.(game);
+      return null;
+    }
+    return game;
+  }
   if (about !== null && isDoorReadout(m)) return null;
   // Wave 37 (C10): marks are the Wanted pop-outs' and the board's, even when
   // the readout lands before the view lists the guest.

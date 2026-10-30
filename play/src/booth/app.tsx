@@ -74,7 +74,7 @@ import { boardRowCount, nowRow } from "./now-card.tsx";
 import { PlayerSelect } from "./pick/select.tsx";
 import { RowsWindow } from "./pick/rows.tsx";
 import { boothPopOutAdapter, coveredElsewhere, doorClaimer, doorQueue, pickLayout, wizardSteps, type AdapterCtx, type DoorEntry } from "./popouts/model.ts";
-import { PopOutHost, PopOutQuiet, PopOutScope, popOutWaiting, usePopOuts } from "./popouts/rung.ts";
+import { PopOutHost, PopOutQuiet, PopOutScope, playTone, popOutWaiting, usePopOuts } from "./popouts/rung.ts";
 import { useSystemBack } from "../back-gesture.ts";
 import { bindDraft, useBoothPopOuts, type BoothOpeners } from "./popouts/use-booth-popouts.ts";
 import { WaitingWindow } from "./waiting.tsx";
@@ -280,7 +280,21 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
     ...(boothView(s.view)?.guests ?? []).filter((g) => doorClaimer(g) === character0).map((g) => `door:${g.id}`),
   ].join("\n");
   // Wave 37 (C8): `me` + `player`: a player's own `dm:` "… · …" big is its game pop-out.
-  const adapterCtx: AdapterCtx = { wanted: wantedOf(s.view), openGuest: () => (layer?.kind === "card" || layer?.kind === "scan" ? cardGuest.current : null), guestName: (id) => s.view?.guests.find((g) => g.id === id)?.name ?? null, me: character0, player: player0 };
+  const adapterCtx: AdapterCtx = {
+    wanted: wantedOf(s.view),
+    openGuest: () => (layer?.kind === "card" || layer?.kind === "scan" ? cardGuest.current : null),
+    guestName: (id) => s.view?.guests.find((g) => g.id === id)?.name ?? null,
+    me: character0,
+    player: player0,
+    // Wave 47: YOUR GAME IS ON while Mission is on screen is NEW MISSION's
+    // blink and the game's chime, never a pop-out over the card it names.
+    missionOnScreen: () => player0 && pwin === "mission" && layer === null && t.activeId === null,
+    onQuietGame: (game) => {
+      playTone(game.tone, host.sound && game.sound !== false);
+      const head = s.view?.objectives?.[0];
+      if (head !== undefined) setMissionNews({ id: head.id, title: head.title });
+    },
+  };
   const adapterRef = useRef(adapterCtx);
   adapterRef.current = adapterCtx;
   const momentFeed = useMemo(() => {
