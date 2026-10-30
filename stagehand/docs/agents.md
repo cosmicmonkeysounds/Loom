@@ -211,7 +211,14 @@ is served from it).
   first (`ANTHROPIC_RETRIES`), so a hung call costs `timeout_s` twice.
 - **The orchestrator stays on this machine's Ollama** and never gets the key.
   Quiet summaries, letters and Rewrite stay on the primary, so they have no
-  fallback: a director runs them again.
+  fallback: a director runs them again. A letter takes `LETTER_TIMEOUT_S`
+  (60 s) whatever the voice's `timeout_s`.
+- **Measured besides the DMs** (2026-10-30, Claude Haiku 5.5): 3 of 3 talk
+  scene lines answered, 4.1 s at worst; 58 of 60 rulings as expected on twelve
+  made-up cases (5 each), median 1 s, the two others on a paraphrase the
+  prompt lets through; three letters in 3.5 to 6 s, each parsed and clean. An
+  outage and a refusal drilled through the real SDK into the MacBook's Ollama
+  (a stub for the API): every line answered, the engine left up on a refusal.
 
 ### Overflow engines: more compute for one mind (wave 42b)
 
