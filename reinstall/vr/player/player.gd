@@ -122,7 +122,6 @@ func set_xr(on: bool) -> void:
 		camera.position = Vector3(0, EYE_HEIGHT, 0)
 		camera.rotation = Vector3.ZERO
 		_pitch = 0.0
-	left_hand.visible = on
 	right_hand.visible = on
 
 

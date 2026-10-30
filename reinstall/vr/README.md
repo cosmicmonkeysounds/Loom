@@ -528,6 +528,9 @@ with `released: true` while you walk to Gerald.
   `game/swarm.gdshader`, the port of `@loom/house/three`'s `swarm.ts`. A
   guest with no picture, or one Godot can't decode (GIF, AVIF), is the same
   swarm as static.
+- **The player's right hand is a small swarm of their own picture**
+  (`game/hand_swarm.gd`, the assignment's `avatar`); the left hand is not
+  drawn. Both controllers still work.
 - **The terminals show the real rooms** (wave 14, `net/cam_feeds.gd`):
   while playing, the headset lists the live camera feeds every 2 s
   (`GET /e/<event>/api/spatial/cams`, the token the map is fetched with)

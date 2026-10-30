@@ -25,7 +25,7 @@ pnpm --filter loom-reinstall build        # dist/ (base /reinstall/)
 pnpm --filter loom-reinstall test         # vitest: 788 tests, 60 files
 pnpm --filter loom-reinstall typecheck
 pnpm dev --reinstall                      # repo root: the dev stack + this Vite on :5176
-pnpm test:vr                              # = reinstall/vr/test/run.sh [godot]: 1236 checks + 300 descent + quest.sh 42
+pnpm test:vr                              # = reinstall/vr/test/run.sh [godot]: 1261 checks + 300 descent + quest.sh 42
 pnpm house:sync                           # after any show-map or house geometry change
 reinstall/vr/tools/quest.sh setup|build --station vr-N|install   # the Quest APKs
 ```
@@ -193,6 +193,11 @@ presence rooms and `moment`), `spatial-cams.ts`, `spatial-voice.ts` and the
   its face. Keep it one draw per ghost, opaque and cut with `discard`, all
   motion in the vertex shader (Quest 3, old tablets), and any storm under the
   glitch's 3 Hz.
+- **The player's hands** (wave 51). VR draws no left hand, and the right is
+  the player's own picture as a small swarm (`game/hand_swarm.gd`, from the
+  assignment's `avatar`), its face gathering only now and then. Both
+  controllers still work: the sticks, the triggers and the lobby's laser, so
+  a dead right controller never strands a guest.
 - **Station config.** VR reads `user://station.json` (written by the
   in-headset setup) over the committed `config/station.json` (which must
   keep `CHANGEME`; a test checks it). Never write `res://`.

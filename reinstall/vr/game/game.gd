@@ -169,6 +169,8 @@ var world_env: Environment
 var sun: DirectionalLight3D
 var trail: Trail
 var ghosts: Ghosts
+## The player's right hand: their own picture as a swarm.
+var hand: HandSwarm
 ## The terminals' live camera feeds on their screens ([CamFeeds]).
 var cams: CamFeeds
 var hud: Hud
@@ -387,6 +389,10 @@ func setup(l: LinkBase, xr: bool) -> void:
 	link.lights_changed.connect(lamps.apply)
 	link.descent_loaded.connect(func(words: Variant) -> void: descent.adopt_script(words))
 	ghosts.url_of = link.avatar_url
+	hand = HandSwarm.new()
+	hand.attach(ghosts.avatars, link.avatar_url)
+	player.right_hand.add_child(hand)
+	link.stream_frame.connect(hand.on_frame)
 
 	lobby.set_station(link.station_name())
 	lobby.set_status(link.status)
@@ -426,6 +432,8 @@ func enter_lobby() -> void:
 	_escape_t = -1.0
 	_escape_answer = {}
 	ghosts.own_session = ""
+	hand.own_session = ""
+	hand.wear(null)
 	# The head-locked HUD would float over the tiles: a notice still up
 	# (the session ended, …) moves to the lobby's own message line.
 	var carried := hud.notice_text() if _notice_left > 0.0 and hud.big_text() == "" else ""
@@ -621,6 +629,8 @@ func _enter_walk(a: Dictionary, resume_pose: Dictionary) -> void:
 	ghosts.own_session = str(a.get("session", ""))
 	ghosts.on_frame("leave", {"session": ghosts.own_session})
 	ghosts.new_visit()
+	hand.own_session = ghosts.own_session
+	hand.wear(a.get("avatar"))
 	_escaped_at = -1.0
 	_reset_props(a)
 	_king_said = false

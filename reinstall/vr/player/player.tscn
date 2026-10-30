@@ -15,13 +15,6 @@ shader_parameter/strength = 0.0
 [sub_resource type="QuadMesh" id="QuadMesh_vignette"]
 size = Vector2(2, 2)
 
-[sub_resource type="BoxMesh" id="BoxMesh_hand"]
-size = Vector3(0.05, 0.03, 0.12)
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_hand"]
-albedo_color = Color(0.239, 0.949, 0.91, 1)
-shading_mode = 2
-
 [node name="Player" type="CharacterBody3D"]
 script = ExtResource("1_player")
 
@@ -46,13 +39,5 @@ material_override = SubResource("ShaderMaterial_vignette")
 [node name="LeftHand" type="XRController3D" parent="XROrigin3D"]
 tracker = &"left_hand"
 
-[node name="Mesh" type="MeshInstance3D" parent="XROrigin3D/LeftHand"]
-mesh = SubResource("BoxMesh_hand")
-surface_material_override/0 = SubResource("StandardMaterial3D_hand")
-
 [node name="RightHand" type="XRController3D" parent="XROrigin3D"]
 tracker = &"right_hand"
-
-[node name="Mesh" type="MeshInstance3D" parent="XROrigin3D/RightHand"]
-mesh = SubResource("BoxMesh_hand")
-surface_material_override/0 = SubResource("StandardMaterial3D_hand")
