@@ -152,3 +152,19 @@ Clippy at G14, new and changed lines:
 | her ⭐ | The Password Manager earned {n} stars censoring you. She was having a great time. |
 | never moved the slider | And the filter ran at one hundred percent all night. At one hundred percent, "Password Manager" is a swear. She never found the dial. |
 | moved it | She left the filter at {n} percent. She found the dial! |
+
+Her booth (`play/src/booth/filter/model.ts`):
+
+| Where | Text |
+|---|---|
+| ✂ armed | ✂ Censor? It raises their suspicion. |
+| the pop-up's hint | ✂ Censor stars it out for everyone and raises their suspicion. |
+| the list's foot | ✂ Censor takes two taps and raises their suspicion. Let it go only clears it from this phone. |
+| a line's worth / the ✂ button | ⭐ {n} · +{n} ⭐ |
+| the heat meter | Heat · ×{m} · rested · ×3 in {s} s |
+| the list's header | Censored {c} of {f} flagged words · ⭐ {n} tonight · {n} waiting lines hidden at this strength |
+| the burst after ✂ | +{n} ⭐ ×{m}, then one of: *Clean cut!* · *Snip!* · *Warm scissors.* · *Getting hot.* · *Overheating…* · *Scissors on fire.* · at 0 ⭐: *Too hot to pay. Let the scissors cool.* |
+| ⊞ Start | 🔑 Filter strength |
+| the strength window | Filter strength · {n}% · Catches · ◀ Less · More ▶ · Saving… · *It decides what new lines get caught. Lines it no longer catches wait hidden until you raise it again.* |
+| the bands | Slurs only · + fuck, cunt · + shit, asshole, bitch… · + crap, balls, butt, ass… · + hell, heck, darn, fart… · + swears hiding inside words (Scunthorpe) · + mild ones inside words (password, button) · + everything (hello, check, Password Manager); the legend's slur row: *Slurs (never shown)* |
+| a refused move | Not changed: that strength isn't on the dial. / the doors are closed. / this part isn't the censor tonight. … Still {n}%. |

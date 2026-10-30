@@ -149,7 +149,7 @@ The censor's booth (`view.filter` present) gets:
   pop-out, `🔑 LANGUAGE`, only when no filter pop-out is up or held:
   the program's picture and name, where they said it, the line with each
   stem highlighted, and ✂ **Censor** (arms first: two taps, it marks
-  them), **Let it go**, and **🔑 All flagged (n)** when more wait. Later
+  them; since 48b it raises their suspicion instead, C12), **Let it go**, and **🔑 All flagged (n)** when more wait. Later
   puts it in 🔔 Waiting. Lines that arrive while one is up only count.
 - **The filter window.** A tray counter `🔑 n` (lines waiting, not let
   go) opens a layer listing every waiting line, oldest first, each with ✂

@@ -113,7 +113,7 @@ describe("the bands and the dial (C7)", () => {
       "+ fuck, cunt",
       "+ shit, asshole, bitch…",
       "+ crap, balls, butt, ass…",
-      "+ hell, heck, damn, fart…",
+      "+ hell, heck, darn, fart…",
       "+ swears hiding inside words (Scunthorpe)",
       "+ mild ones inside words (password, button)",
       "+ everything (hello, check, Password Manager)",

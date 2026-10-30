@@ -121,7 +121,7 @@ export const FILTER_BANDS: readonly FilterBand[] = [
   { tier: 10, key: "worst", catches: "+ fuck, cunt", points: 8 },
   { tier: 25, key: "strong", catches: "+ shit, asshole, bitch…", points: 5 },
   { tier: 50, key: "mild", catches: "+ crap, balls, butt, ass…", points: 3 },
-  { tier: 60, key: "soft", catches: "+ hell, heck, damn, fart…", points: 2 },
+  { tier: 60, key: "soft", catches: "+ hell, heck, darn, fart…", points: 2 },
   { tier: 75, key: "buried", catches: "+ swears hiding inside words (Scunthorpe)", points: 2 },
   { tier: 90, key: "buried-mild", catches: "+ mild ones inside words (password, button)", points: 1 },
   { tier: 100, key: "paranoid", catches: "+ everything (hello, check, Password Manager)", points: 1 },
