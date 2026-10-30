@@ -25,6 +25,7 @@ import {
   DoubleSide,
   EdgesGeometry,
   Fog,
+  FogExp2,
   Group,
   HemisphereLight,
   LineBasicMaterial,
@@ -32,6 +33,7 @@ import {
   Mesh,
   MeshBasicMaterial,
   MeshLambertMaterial,
+  MeshPhongMaterial,
   Path,
   PlaneGeometry,
   Shape,
@@ -47,6 +49,27 @@ import { breakpoints, buildFloors, buildRamps, buildWalls, doorGap, pointInPolyS
 import type { FloorPlane, HouseMap, Ramp, TerminalSpot, Vec2, WallKind, WallSegment } from "../types.ts";
 import { Bin, DEG, merge, paint, projectUvs } from "./dispose.ts";
 import { outsideGround } from "../escape.ts";
+import {
+  HAZE_AT,
+  HAZE_COLOR,
+  HAZE_DRIFT,
+  HAZE_FOG,
+  HAZE_FOG_DENSITY,
+  HAZE_OPACITY,
+  HAZE_TILE_M,
+  NEON_COVE,
+  NEON_GAIN,
+  NEON_SKIRT,
+  NEON_STRIP_AT,
+  NEON_STRIP_H,
+  NEON_STRIP_PROUD,
+  ROLE_COLORS,
+  modelBodyColor,
+  modelNeonColor,
+  modelParts,
+  neonFlicker,
+  type ModelPart,
+} from "../models.ts";
 import { createHeart, type Heart } from "./heart.ts";
 import { createKing, type King } from "./king.ts";
 import { createPickup, type Pickup } from "./pickup.ts";
@@ -61,6 +84,7 @@ import {
   fenceTexture,
   glowTexture,
   hasDom,
+  hazeTexture,
   scanlineTexture,
   signTexture,
   starfieldTexture,
@@ -96,6 +120,11 @@ export interface HouseSceneOptions {
   /** (wave 26, R7) `pickup` props as spinning disks (default false: only the
    *  games draw them — never the terminals or the map editor's preview). */
   pickups?: boolean;
+  /** (wave 47) The games' look: glossy props, neon strips along every wall,
+   *  flickering unfogged neon and the haze sheets (`setHaze`) — default
+   *  false: the terminals' world view and the map editor stay plain. A
+   *  prop model is drawn either way. */
+  neon?: boolean;
 }
 
 export interface HouseScene {
@@ -125,6 +154,9 @@ export interface HouseScene {
   ground: Group | null;
   /** Hide (taken) or show a pickup's disk for this viewer. False when the scene has no such disk. */
   setPickupTaken(id: string, taken: boolean): boolean;
+  /** (wave 47, `neon: true`) Show this many haze sheets per floor (0: none,
+   *  1: the floor's, 2: the ceiling's too). */
+  setHaze(layers: number): void;
   /**
    * Show King `id`'s shared state (the server's `KingState`): his bar at
    * `hp / max`, kneeling while `fallen`, and the leaf of every door he
@@ -168,8 +200,16 @@ const FEED_PX: readonly [number, number] = [320, 240];
  *  their size (wave 33b; VR: `HouseBuilder.TERMINAL_SCALE`). */
 export const GAME_TERMINAL_SCALE = 3;
 
-/** Background + fog for a scene showing a house (deep navy night, fog to match). */
-export function houseAtmosphere(scene: Scene, opts: { color?: string; near?: number; far?: number } = {}): void {
+/** Background + fog for a scene showing a house (deep navy night, fog to
+ *  match). `haze` (wave 47, the games): the violet haze, an exponential fog
+ *  (`HAZE_FOG`, `HAZE_FOG_DENSITY`). */
+export function houseAtmosphere(scene: Scene, opts: { color?: string; near?: number; far?: number; haze?: boolean } = {}): void {
+  if (opts.haze === true) {
+    const color = new Color(opts.color ?? HAZE_FOG);
+    scene.background = color;
+    scene.fog = new FogExp2(color, HAZE_FOG_DENSITY);
+    return;
+  }
   const color = new Color(opts.color ?? "#0b0b2e");
   scene.background = color;
   scene.fog = new Fog(color, opts.near ?? 7, opts.far ?? 32);
@@ -181,6 +221,7 @@ export function buildHouseScene(house: HouseMap, opts: HouseSceneOptions = {}): 
   const dom = hasDom();
   const useTextures = (opts.textures ?? dom) && dom;
   const useLabels = (opts.labels ?? dom) && dom;
+  const neon = opts.neon === true;
   const style = styleOf(house);
   const walls = opts.walls ?? buildWalls(house);
 
@@ -229,7 +270,14 @@ export function buildHouseScene(house: HouseMap, opts: HouseSceneOptions = {}): 
     // Ramps are seen from below too (walking under one on the lower floor).
     ramp: bin.add(new MeshLambertMaterial({ ...textured(checker, "#ffffff"), vertexColors: true, side: DoubleSide })),
     ceiling: bin.add(new MeshBasicMaterial(textured(ceilingTex, PALETTE.night))),
-    prop: bin.add(new MeshLambertMaterial({ vertexColors: true, flatShading: true })),
+    prop: bin.add(
+      neon
+        ? new MeshPhongMaterial({ vertexColors: true, flatShading: true, shininess: 70, specular: new Color(0x3a3f48) })
+        : new MeshLambertMaterial({ vertexColors: true, flatShading: true }),
+    ),
+    // Neon, screens and alarms: unlit, in a model's own colours (painted
+    // past 1 in the games, so they bloom; unfogged there, so they cut the haze).
+    glow: bin.add(new MeshBasicMaterial({ vertexColors: true, fog: !neon })),
     propScreen: bin.add(new MeshBasicMaterial(textured(tex(desktopScreenTexture), PALETTE.desktop))),
   } satisfies Record<string, Material>;
   const wallMat: Record<WallKind, Material> = { wall: mats.wall, lintel: mats.lintel, fence: mats.fence, rail: mats.rail };
@@ -260,6 +308,40 @@ export function buildHouseScene(house: HouseMap, opts: HouseSceneOptions = {}): 
         group.add(lines);
       }
     }
+  }
+
+  // ── Neon along the walls (wave 47, the games) ─────────────────────
+  // A skirting and a cove strip on both faces of every wall segment (a
+  // door's gap splits the segment, so the strips stop at its jambs).
+  const glowGeoms = new Map<string, BufferGeometry[]>();
+  const pushGlow = (floor: string, g: BufferGeometry): void => {
+    const list = glowGeoms.get(floor) ?? [];
+    list.push(g);
+    glowGeoms.set(floor, list);
+  };
+  if (neon) {
+    const skirt = new Color(NEON_SKIRT).multiplyScalar(NEON_GAIN);
+    const cove = new Color(NEON_COVE).multiplyScalar(NEON_GAIN);
+    walls.forEach((w, i) => {
+      if (w.kind !== "wall") return;
+      const b = boxes[i]!;
+      const bottom = b.center[1] - b.size[1] / 2;
+      const top = b.center[1] + b.size[1] / 2;
+      if (top - bottom < NEON_STRIP_AT[0] + NEON_STRIP_AT[1] + NEON_STRIP_H * 2) return;
+      const alongX = w.axis === "x";
+      const half = (alongX ? b.size[2] : b.size[0]) / 2 + NEON_STRIP_PROUD;
+      const len = alongX ? b.size[0] : b.size[2];
+      for (const side of [-1, 1]) {
+        for (const [y, color] of [
+          [bottom + NEON_STRIP_AT[0], skirt],
+          [top - NEON_STRIP_AT[1], cove],
+        ] as const) {
+          const g = alongX ? new BoxGeometry(len, NEON_STRIP_H, 0.004) : new BoxGeometry(0.004, NEON_STRIP_H, len);
+          g.translate(alongX ? b.center[0] : b.center[0] + side * half, y, alongX ? b.center[2] + side * half : b.center[2]);
+          pushGlow(w.floor, paint(g, color));
+        }
+      }
+    });
   }
 
   // ── Floors, ramps, ceilings ───────────────────────────────────────
@@ -345,6 +427,16 @@ export function buildHouseScene(house: HouseMap, opts: HouseSceneOptions = {}): 
       k.object.name = `king:${prop.id}`;
       kings.set(prop.id, k);
       group.add(k.object);
+    } else if ((prop.kind === "box" || prop.kind === "cylinder") && modelParts(prop) !== null) {
+      // A model (wave 47): its parts, the lit ones with the props, the glowing ones apart.
+      const body = modelBodyColor(prop);
+      const glow = new Color(modelNeonColor(prop)).multiplyScalar(neon ? NEON_GAIN : 1);
+      for (const part of modelParts(prop)!) {
+        const g = place(partGeometry(part));
+        if (part.role === "neon") pushGlow(room.floor, paint(g, glow));
+        else if (part.role === "screen" || part.role === "alert") pushGlow(room.floor, paint(g, new Color(ROLE_COLORS[part.role]).multiplyScalar(neon ? 1.4 : 1)));
+        else push(propGeoms, room.floor, paint(g, part.role === "body" ? body : ROLE_COLORS[part.role]));
+      }
     } else if (prop.kind === "box") {
       push(propGeoms, room.floor, paint(place(new BoxGeometry(w, h, d).translate(0, h / 2, 0)), prop.color ?? PALETTE.face));
     } else if (prop.kind === "cylinder") {
@@ -375,6 +467,13 @@ export function buildHouseScene(house: HouseMap, opts: HouseSceneOptions = {}): 
     if (!merged) continue;
     const mesh = new Mesh(merged, mats.prop);
     mesh.name = `props:${floorId}`;
+    floorGroup(floorId)?.add(mesh);
+  }
+  for (const [floorId, geoms] of glowGeoms) {
+    const merged = bin.add(merge(geoms));
+    if (!merged) continue;
+    const mesh = new Mesh(merged, mats.glow);
+    mesh.name = `glow:${floorId}`;
     floorGroup(floorId)?.add(mesh);
   }
   for (const [floorId, geoms] of screenGeoms) {
@@ -448,6 +547,45 @@ export function buildHouseScene(house: HouseMap, opts: HouseSceneOptions = {}): 
     grid.name = "ground:grid";
     ground.add(grid);
     outFloor.add(ground);
+  }
+
+  // ── The haze (wave 47, the games) ─────────────────────────────────
+  // Two soft drifting sheets per floor over every room's bounds (+1 m):
+  // one just over the floor, one under the ceiling. Additive, never
+  // writing depth; `setHaze` picks how many show (none at first).
+  const haze: Mesh[][] = [[], []];
+  const hazeTex: Texture[] = [];
+  if (neon && useTextures) {
+    for (let layer = 0; layer < 2; layer++) {
+      const t = bin.add(hazeTexture(47 + layer));
+      if (!t) continue;
+      hazeTex.push(t);
+      const mat = bin.add(
+        new MeshBasicMaterial({ map: t, color: HAZE_COLOR, transparent: true, opacity: HAZE_OPACITY[layer]!, blending: AdditiveBlending, depthWrite: false, fog: false, side: DoubleSide }),
+      );
+      for (const f of house.floors) {
+        const rooms = house.rooms.filter((rm) => rm.floor === f.id);
+        if (rooms.length === 0) continue;
+        const xs = rooms.flatMap((rm) => rm.poly.map((p) => p[0]));
+        const zs = rooms.flatMap((rm) => rm.poly.map((p) => p[1]));
+        const x0 = Math.min(...xs) - 1;
+        const x1 = Math.max(...xs) + 1;
+        const z0 = Math.min(...zs) - 1;
+        const z1 = Math.max(...zs) + 1;
+        const y = layer === 0 ? f.elevation + HAZE_AT[0] : f.elevation + f.height - HAZE_AT[1];
+        const geom = bin.add(new PlaneGeometry(x1 - x0, z1 - z0).rotateX(-Math.PI / 2).translate((x0 + x1) / 2, y, (z0 + z1) / 2));
+        // World-anchored tiling: one texture repeat per HAZE_TILE_M.
+        const uv = geom.getAttribute("uv");
+        const pos = geom.getAttribute("position");
+        for (let i = 0; i < uv.count; i++) uv.setXY(i, pos.getX(i) / HAZE_TILE_M, pos.getZ(i) / HAZE_TILE_M);
+        const mesh = new Mesh(geom, mat);
+        mesh.name = `haze:${layer}:${f.id}`;
+        mesh.renderOrder = 5;
+        mesh.visible = false;
+        haze[layer]!.push(mesh);
+        floorGroup(f.id)?.add(mesh);
+      }
+    }
   }
 
   // ── Terminal screens ──────────────────────────────────────────────
@@ -551,6 +689,11 @@ export function buildHouseScene(house: HouseMap, opts: HouseSceneOptions = {}): 
     hearts,
     pickups,
     ground,
+    setHaze(layers: number) {
+      haze.forEach((meshes, layer) => {
+        for (const m of meshes) m.visible = layer < layers;
+      });
+    },
     showKing(id: string, king: { hp: number; max: number; fallen: boolean }, open = king.fallen) {
       if (disposed || !kingFallen.has(id)) return;
       kingFallen.set(id, king.fallen);
@@ -621,6 +764,13 @@ export function buildHouseScene(house: HouseMap, opts: HouseSceneOptions = {}): 
       // "Watching": a slow breathing glow with a faint flicker.
       const base = haloTex ? 0.7 : 0.22;
       term.glowMat.opacity = base + 0.1 * Math.sin(time * 2.2) + 0.03 * Math.sin(time * 31);
+      if (neon) {
+        mats.glow.color.setScalar(neonFlicker(time));
+        hazeTex.forEach((t, layer) => {
+          const [dx, dz] = HAZE_DRIFT[layer]!;
+          t.offset.set(((time * dx) / HAZE_TILE_M) % 1, ((time * dz) / HAZE_TILE_M) % 1);
+        });
+      }
     },
     dispose() {
       if (disposed) return;
@@ -632,6 +782,16 @@ export function buildHouseScene(house: HouseMap, opts: HouseSceneOptions = {}): 
       bin.dispose();
     },
   };
+}
+
+/** A model part as geometry in the prop's own frame (base at y 0). */
+function partGeometry(part: ModelPart): BufferGeometry {
+  const [sx, sy, sz] = part.s.map((n) => Math.max(n, 1e-4)) as [number, number, number];
+  if (part.shape === "box") return new BoxGeometry(sx, sy, sz).translate(part.c[0], part.c[1], part.c[2]);
+  const g = new CylinderGeometry(0.5, 0.5, 1, 16);
+  if (part.axis === "x") g.rotateZ(Math.PI / 2);
+  else if (part.axis === "z") g.rotateX(Math.PI / 2);
+  return g.scale(sx, sy, sz).translate(part.c[0], part.c[1], part.c[2]);
 }
 
 function floorTint(plane: FloorPlane): string {

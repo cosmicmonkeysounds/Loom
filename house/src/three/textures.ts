@@ -503,3 +503,34 @@ export function titleBarTexture(
   );
   return texture ? { texture, aspect: w / h } : null;
 }
+
+/** (wave 47) The games' haze: soft seamless white wisps on black (drawn
+ *  additive, so black is clear), every blob drawn at its wrapped copies too. */
+export function hazeTexture(seed = 47): CanvasTexture | null {
+  return drawTexture(
+    256,
+    256,
+    (g, w, h) => {
+      g.fillStyle = "#000";
+      g.fillRect(0, 0, w, h);
+      const rand = mulberry32(seed);
+      g.globalCompositeOperation = "lighter";
+      for (let i = 0; i < 46; i++) {
+        const x = rand() * w;
+        const y = rand() * h;
+        const r = 18 + rand() * 62;
+        const a = 0.05 + rand() * 0.12;
+        for (const dx of [-w, 0, w]) {
+          for (const dy of [-h, 0, h]) {
+            const grad = g.createRadialGradient(x + dx, y + dy, 0, x + dx, y + dy, r);
+            grad.addColorStop(0, `rgba(255,255,255,${a})`);
+            grad.addColorStop(1, "rgba(255,255,255,0)");
+            g.fillStyle = grad;
+            g.fillRect(x + dx - r, y + dy - r, r * 2, r * 2);
+          }
+        }
+      }
+    },
+    { nearest: false },
+  );
+}

@@ -760,3 +760,39 @@ describe("wave 26: the heart, the pickups and the outside ground", () => {
     expect(freed).toBe(geoms.size);
   });
 });
+
+describe("wave 47: models, neon and haze", () => {
+  const withModels = () => {
+    const h = loadHouse(SHOW_HOUSE);
+    const room = h.props.find((p) => p.kind === "box")!.room;
+    const base = h.props.find((p) => p.kind === "box")!;
+    h.props.push({ id: "m-rack", room, kind: "box", model: "rack", pos: base.pos, size: [0.6, 2, 1] }, { id: "m-plant", room, kind: "cylinder", model: "plant", pos: base.pos, size: [0.5, 1.1, 0.5] });
+    return h;
+  };
+
+  it("draws a model's glowing parts on their own unlit mesh, plain scenes included", () => {
+    const plain = buildHouseScene(show, {});
+    const glowBefore = plain.root.getObjectByName("glow:main");
+    const scene = buildHouseScene(withModels(), {});
+    const glow = meshes(scene.root).filter((m) => m.name.startsWith("glow:"));
+    expect(glow.length).toBeGreaterThan(0);
+    // The plain show map (no models) has no glow mesh unless neon is on.
+    expect(glowBefore).toBeUndefined();
+    plain.dispose();
+    scene.dispose();
+  });
+
+  it("neon: strips along the walls, unfogged; plain: none", () => {
+    const scene = buildHouseScene(show, { neon: true });
+    const glow = meshes(scene.root).filter((m) => m.name.startsWith("glow:"));
+    expect(glow.length).toBeGreaterThan(0);
+    for (const m of glow) expect((m.material as Material & { fog: boolean }).fog).toBe(false);
+    const verts = glow.reduce((n, m) => n + m.geometry.getAttribute("position").count, 0);
+    const wallCount = buildWalls(show).filter((w) => w.kind === "wall").length;
+    // Two faces × two strips × a box (24 vertices) per tall-enough wall.
+    expect(verts).toBeGreaterThan(wallCount * 24);
+    scene.setHaze(2); // no canvas under node: no sheets, and no throw
+    scene.update(0.5);
+    scene.dispose();
+  });
+});
