@@ -12,6 +12,10 @@ Shape (`lights.example.yaml` carries a commented copy):
       health_s: 15                             # health/lights/stats period (s)
       take_looks: true                         # the show module drops its YAML `cue` rules
                                                # whose name lights.json defines
+      pace: true                               # one Zigbee command per bulb in flight (pacer.py)
+      z2m_task: null                           # Windows: the Task Scheduler task to restart when Z2M stalls
+      z2m_check_s: 15                          # ask Z2M's health_check this often (s)
+      z2m_stall_s: 60                          # silent this long = stalled (s)
 
 Everything has a default, so `lights: {}` is a module on this Mac's broker
 that plays whatever lights.json the event serves.
@@ -42,9 +46,13 @@ class LightsSectionConfig:
     poll_wait: float = 25.0
     health_s: float = 15.0
     take_looks: bool = True
+    pace: bool = True
+    z2m_task: str | None = None
+    z2m_check_s: float = 15.0
+    z2m_stall_s: float = 60.0
 
 
-_KEYS = {"mqtt", "z2m_base", "config_file", "house_file", "cache_dir", "poll_wait", "health_s", "take_looks"}
+_KEYS = {"mqtt", "z2m_base", "config_file", "house_file", "cache_dir", "poll_wait", "health_s", "take_looks", "pace", "z2m_task", "z2m_check_s", "z2m_stall_s"}
 
 
 def _path(raw: Any, base_dir: str, key: str) -> str | None:
@@ -89,6 +97,12 @@ def parse_lights_section(raw: Any, base_dir: str = ".") -> LightsSectionConfig:
     take = raw.get("take_looks", True)
     if not isinstance(take, bool):
         raise ConfigError("lights.take_looks must be true or false")
+    pace = raw.get("pace", True)
+    if not isinstance(pace, bool):
+        raise ConfigError("lights.pace must be true or false")
+    task = raw.get("z2m_task")
+    if task is not None and (not isinstance(task, str) or task == ""):
+        raise ConfigError("lights.z2m_task must be a task name (Loom\\zigbee2mqtt)")
     cache = raw.get("cache_dir", DEFAULT_CACHE)
     if not isinstance(cache, str) or cache == "":
         raise ConfigError("lights.cache_dir must be a path")
@@ -101,4 +115,8 @@ def parse_lights_section(raw: Any, base_dir: str = ".") -> LightsSectionConfig:
         poll_wait=_num(raw.get("poll_wait"), "poll_wait", 25.0, 0, 30),
         health_s=_num(raw.get("health_s"), "health_s", 15.0, 1, 3600),
         take_looks=take,
+        pace=pace,
+        z2m_task=task,
+        z2m_check_s=_num(raw.get("z2m_check_s"), "z2m_check_s", 15.0, 1, 3600),
+        z2m_stall_s=_num(raw.get("z2m_stall_s"), "z2m_stall_s", 60.0, 5, 3600),
     )

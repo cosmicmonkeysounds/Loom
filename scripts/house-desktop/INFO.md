@@ -32,6 +32,16 @@ Zigbee2MQTT's in `C:\zigbee2mqtt\data\log\`.
 The `warning: fixture … no Zigbee2MQTT device` lines are expected: one per
 bulb not paired and renamed yet. They go away one by one as you pair.
 
+**The lights job protects Zigbee2MQTT** (2026-10-30). It keeps one command per
+bulb in flight, so a loop can't build a backlog in Z2M. A bulb that stops
+answering gets a probe every 30 s and picks up its newest state when it is
+back (`lights.log`: *is not answering Zigbee*, *answers again*). If Z2M itself
+goes silent for a minute, the job restarts its task and plays the story's look
+again (*Zigbee2MQTT has not answered*). `health/lights/stats` counts
+`z2m_restarts` and lists the `dark` bulbs. Because a looping look keeps sending,
+a change you make in the Z2M frontend lasts only until its next step: for hand
+work, `.\start-stagehand.ps1 -Stop lights`, then `-Restart lights` after.
+
 ## First bulb paired
 
 One **ThirdReality ZL1** (`3RCB01057Z`) joined and was interviewed, still
