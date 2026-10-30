@@ -736,6 +736,9 @@ class FakeMod:
         self.posts: list[tuple] = []
         self.post_error = post_error
 
+    def stream_url(self, path):
+        return f"fake://{path}"
+
     async def post(self, path, body):
         self.posts.append((path, body))
         if self.post_error is not None:
