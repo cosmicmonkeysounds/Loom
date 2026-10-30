@@ -61,7 +61,7 @@ CHARACTER Password Manager is Enforcer
   wiki: 1Password
   // Knows every code in the house. Notices when you get one wrong. Keeps
   // the list of who is in which club. Sixteen elections, sixteen losses.
-  // Decides what gets left out.
+  // Decides what gets left out: since wave 48, literally (the filter, ✂).
 
   when wrong code for program:
     Self: That is not a password I recognise, {program.name}, and I have reviewed every one of them. Unsubstantiated claims are removed. Try to look less like you are guessing.
@@ -82,6 +82,29 @@ CHARACTER Password Manager is Enforcer
       set self.covert += 1
       Self (quietly): This message will not be saved. The Antivirus have your name. Bathroom Mode excuses a summons, and nobody follows you into Disk Cleanup.
       reply 🤫 You tipped off {program.name}. Nobody saw.
+
+  // ✂ The filter (wave 48, `censor: Password Manager` in main.loom's
+  // header). Every guest line the filter catches pops up in this booth; ✂
+  // Censor masks it for everyone (p***word) and fires this: `words` caught
+  // in the line, `list` them, `fresh` the ones nobody censored before
+  // tonight. It counts for the Language Report (G14) and marks the program
+  // for reinstallation, while the night is on and they are loose. DRAFT w48
+  when swear_censored for program:
+    set program.lang_censored += words
+    set Night.lang_censored += words
+    if fresh != "" and Night.lang_words == "none":
+      set Night.lang_words = fresh
+    else if fresh != "":
+      set Night.lang_words = Night.lang_words + ", " + fresh
+    if Night.ended == true:
+      reply ✂ Censored {program.name}: {list}. The night is over, so no mark; it counts for the Language Report.
+    else if program.corrupted == true:
+      reply ✂ Censored {program.name}: {list}. They are already in the Internet.
+    else if program.marked == true:
+      reply ✂ Censored {program.name}: {list}. They were already marked for reinstallation.
+    else:
+      fire mark_for_reinstallation for program with reason: "censored: " + list
+      reply ✂ Censored {program.name}: {list}. Marked for reinstallation.
 
   when who joins Unlimited Power:
     reply 🔑 {who.name} joined Unlimited Power.
