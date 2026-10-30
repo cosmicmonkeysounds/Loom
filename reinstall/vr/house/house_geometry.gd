@@ -82,7 +82,11 @@ static func style_of(house: Dictionary) -> Dictionary:
 
 
 ## Whether a prop collides: `solid`, else true for box / cylinder / king.
+## (wave 49) A prop that exists only for some programs (`from`) never blocks
+## anyone.
 static func prop_solid(prop: Dictionary) -> bool:
+	if prop.get("from") != null:
+		return false
 	if prop.get("solid") != null:
 		return bool(prop["solid"])
 	var kind := str(prop.get("kind", ""))
