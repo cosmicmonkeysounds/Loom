@@ -672,6 +672,35 @@ function foldBalloons(queue: Queued[]): { queue: Queued[]; out: Moment[] } {
 }
 
 /** Wave 37 (C19): the house alerts (queued or arriving) that echo a big moment queued or arriving with them: read, never shown. */
+/** Wave 47: a house alert this close (story ms) to the NOW objective changing is the same beat. */
+export const MISSION_ECHO_MS = 30_000;
+/** Wave 47: how long a house alert waits, a guest on Mission, for the view
+ *  with the new objective (the snapshot can land just after the line). */
+export const MISSION_ECHO_WAIT_MS = 1_200;
+const ECHO_SKIP: ReadonlySet<string> = new Set(["your", "with", "from", "have", "this", "that", "they", "them", "their", "there", "what", "when", "will", "into", "here", "every", "program", "programs", "minutes", "minute", "now"]);
+function echoWords(s: string): Set<string> {
+  const out = new Set<string>();
+  for (const w of s.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").split(" ")) if (w.length >= 4 && !ECHO_SKIP.has(w)) out.add(w);
+  return out;
+}
+
+/**
+ * Wave 47: does a house alert say what the Mission on screen says? It
+ * landed within `MISSION_ECHO_MS` of the NOW objective changing (`since`,
+ * story ms) and shares at least two words of its title ("🔎 THE TRUTH
+ * SCAVENGER HUNT has begun" under "The Truth Scavenger Hunt: find three
+ * facts"). A guest looking at Mission then reads it there: the banner over
+ * it said it twice (seen in Chrome, every act change of the night). One with
+ * news of its own ("📥 TRUTHER DOWNLOAD received") shares no title words.
+ */
+export function echoesMission(m: Pick<Moment, "text" | "at">, now: { title: string; since: number } | null): boolean {
+  if (now === null || Math.abs(m.at - now.since) > MISSION_ECHO_MS) return false;
+  const title = echoWords(now.title);
+  let shared = 0;
+  for (const w of echoWords(m.text)) if (title.has(w)) shared += 1;
+  return shared >= 2;
+}
+
 export function bigEchoes(moments: readonly Moment[], queue: readonly Queued[]): Set<string> {
   const all = [...queue.map((q) => q.moment), ...moments];
   const bigs = all.filter((m) => m.severity === "big");

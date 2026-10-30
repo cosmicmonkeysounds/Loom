@@ -37,12 +37,13 @@ export function nowFlashOf(m: { key: string; text: string } | null): { id: strin
 /** The guest's NOW title bar, wired to the moments layer: a loud objective
  *  going live flashes it open (never a second copy as a banner); opening
  *  the objective is reading it. Inside `MomentsProvider`. */
-export function NowBar(props: Omit<ComponentProps<typeof TitleBar>, "flash">) {
+export function NowBar({ news: mission = null, ...props }: Omit<ComponentProps<typeof TitleBar>, "flash"> & { news?: { id: string; title: string } | null }) {
   const news = useNowMoment();
   return (
     <TitleBar
       {...props}
-      flash={nowFlashOf(news.moment)}
+      // Wave 47: a house banner that said what Mission says blinks it instead.
+      flash={nowFlashOf(news.moment) ?? (mission !== null ? { id: mission.id, title: mission.title, brief: "" } : null)}
       onOpen={(o) => {
         news.seen(true);
         props.onOpen(o);

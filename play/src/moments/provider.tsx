@@ -35,12 +35,14 @@ import {
   BALLOON_MS,
   GLITCH_MS,
   GLANCE_MS,
+  MISSION_ECHO_WAIT_MS,
   READOUT_WAIT_MS,
   STICKY_MS,
   afterWait,
   arrivals,
   bigEchoes,
   doneAbove,
+  isHouseAlert,
   missedCount,
   momentExit,
   momentMessage,
@@ -156,6 +158,14 @@ export interface MomentsInput {
   /** The frame has a NOW title bar (the guest's): a loud objective below the
    *  modal rungs flashes it (`useNowMoment`) instead of a sticky / balloon. */
   nowBar?: boolean;
+  /** Wave 47 (a guest with Mission on screen): does this house alert say
+   *  what Mission says (`echoesMission`)? Then it is read, straight to the
+   *  bin, and `onMissionEcho` blinks the title bar. Absent → off Mission. */
+  missionEcho?: (m: Moment) => boolean;
+  onMissionEcho?: (m: Moment) => void;
+  /** Wave 47: changes when what `missionEcho` judges changes (Mission on
+   *  screen, the NOW objective), so a banner already up is judged again. */
+  missionEchoKey?: string;
   /** Where a moment's room exit goes (`exitRoomFor`: a live card's room,
    *  never the room already open); absent → the moment's own room. The
    *  pre-wave-18 path: an app that passes `go` + `exitContext` never needs it. */
@@ -430,6 +440,36 @@ function useMomentsEngine(input: MomentsInput): Engine {
       for (const k of echoes) markSeen(k);
       sorted.now = sorted.now.filter((m) => !echoes.has(m.key));
       dispatch({ type: "read", keys: [...echoes] });
+    }
+    // Wave 47: a guest looking at Mission. A house alert waits a beat (the
+    // view with the new objective can land just after the line), then one
+    // that says what Mission says is read, straight to the bin, and the
+    // title bar blinks instead; the rest arrive as ever.
+    if (role === "guest" && input.missionEcho !== undefined && !backlog) {
+      const hold = sorted.now.filter((m) => isHouseAlert(m) && m.severity !== "big");
+      if (hold.length > 0) {
+        sorted.now = sorted.now.filter((m) => !hold.includes(m));
+        for (const m of hold) if (m.seq !== null) mem.pending.add(m.seq);
+        window.setTimeout(() => {
+          for (const m of hold) if (m.seq !== null) mem.pending.delete(m.seq);
+          const judge = inputRef.current.missionEcho;
+          const dup = judge !== undefined ? hold.filter((m) => judge(m)) : [];
+          if (dup.length > 0) {
+            for (const m of dup) markSeen(m.key);
+            dispatch({ type: "read", keys: dup.map((m) => m.key) });
+            // Its chime still says something changed; the title bar blinks.
+            if (inputRef.current.sound) {
+              playChime();
+              vibrate();
+            }
+            inputRef.current.onMissionEcho?.(dup[0]!);
+          }
+          const rest = hold.filter((m) => !dup.includes(m));
+          for (const m of rest) if (m.seq !== null) mem.inflight.add(m.seq);
+          if (rest.length > 0) arrive(rest, false);
+          else settleNow();
+        }, MISSION_ECHO_WAIT_MS);
+      }
     }
     // Until the queue renders them, the mark must not pass them (an effect
     // later in this commit settles against the state before the dispatch).
@@ -886,6 +926,17 @@ function useMomentsEngine(input: MomentsInput): Engine {
     dispatch({ type: "read", keys });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  // Wave 47: a house banner up when the guest opens Mission (or the NOW
+  // objective it echoes lands under it) is read: Mission says it now.
+  const echoStickyKey = surfaces.sticky?.moment.key ?? null;
+  useEffect(() => {
+    const q = surfaces.sticky;
+    const judge = input.missionEcho;
+    if (q === null || judge === undefined || !isHouseAlert(q.moment) || !judge(q.moment)) return;
+    markSeen(q.moment.key);
+    readMany([q.moment.key]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [echoStickyKey, input.missionEchoKey]);
 
   // --- Notifications ---------------------------------------------------------------
   const groups = useMemo(

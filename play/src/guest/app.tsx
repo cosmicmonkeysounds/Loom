@@ -39,6 +39,7 @@ import type { GuestScan } from "../guest-scan-sheet.tsx";
 import { LazyScanSheet as ScanSheet } from "../guest-scan-sheet-lazy.tsx";
 import { LazyScanDone, loadScanDone, settled } from "../scan-done-lazy.tsx";
 import { BellButton, MomentsLayer, MomentsProvider, useBackMoment, type MomentsInput } from "../moments/provider.tsx";
+import { echoesMission, type Moment } from "../moments/model.ts";
 import { GuestRegister, PictureChanger } from "./register.tsx";
 import { FullPass } from "../chrome/pass.tsx";
 import { PeopleSheet } from "./sheets.tsx";
@@ -280,6 +281,20 @@ export function GuestApp({ onLeave, badgeLink = null }: { onLeave: () => void; b
   useEffect(() => {
     if (onMission && nowId !== seenNow) setSeenNow(nowId);
   }, [onMission, nowId, seenNow]);
+  // Wave 47: when the NOW objective last changed (story ms), so a house
+  // banner saying the same thing over Mission goes to the bin, and the
+  // title bar blinks NEW MISSION for 6 s instead (`missionNews`).
+  const nowSince = useRef<{ id: string | null; since: number }>({ id: null, since: 0 });
+  if (nowSince.current.id !== nowId) nowSince.current = { id: nowId, since: st?.clock ?? 0 };
+  const [missionNews, setMissionNews] = useState<{ id: string; title: string } | null>(null);
+  useEffect(() => {
+    if (missionNews === null) return;
+    const t = setTimeout(() => setMissionNews(null), 6000);
+    return () => clearTimeout(t);
+  }, [missionNews]);
+  useEffect(() => {
+    setMissionNews((n) => (n !== null && n.id !== nowId ? null : n));
+  }, [nowId]);
   // A crew room that left the view (dissolved, or the guest left it) while
   // open: back to Chats with a word, never a dead room titled with its raw
   // id (A3).
@@ -458,6 +473,20 @@ export function GuestApp({ onLeave, badgeLink = null }: { onLeave: () => void; b
     // Wave 26 (T2): the story's glitch takes the phone over (locked or not).
     glitch: st.night?.glitch,
     takeover: "full",
+    // Wave 47: Mission on screen: a house banner saying what it says is read there.
+    ...(onMission && nav.overlay === null && !cut.showing && !s.locked
+      ? {
+          missionEcho: (m: Moment) => {
+            const o = st.objectives?.[0];
+            return echoesMission(m, o !== undefined ? { title: o.title, since: nowSince.current.since } : null);
+          },
+        }
+      : {}),
+    onMissionEcho: () => {
+      const o = st.objectives?.[0];
+      if (o !== undefined) setMissionNews({ id: o.id, title: o.title });
+    },
+    missionEchoKey: `${onMission && nav.overlay === null ? 1 : 0}:${nowId ?? ""}`,
   };
   // The phone's own Back steps back inside the app (NM-F9; wave 47: every
   // sheet, a moment, the stage and the lock screen too), when it owns the page.
@@ -748,6 +777,7 @@ export function GuestApp({ onLeave, badgeLink = null }: { onLeave: () => void; b
       head={
         <>
           <NowBar
+            news={missionNews}
             objectives={objectives}
             fallback={titleFallback(t.active?.title ?? null, storyTitle)}
             onOpen={() => nav.go({ to: "mission" })}
