@@ -13,7 +13,7 @@ import { clamp01, ease, hashSeed, loop, noise1, progress, typedCount, typedDurat
 // --- the awards (beats/ceremony.loom) --------------------------------------------------
 
 /** An award's emblem (drawn by `tv3-parts.tsx` `AwardEmblem`). */
-export type AwardEmblem = "shield" | "beans" | "plane" | "book" | "coin" | "mask" | "duck" | "scroll" | "palette" | "trophy" | "lanyard" | "star" | "mole" | "roll";
+export type AwardEmblem = "shield" | "beans" | "plane" | "book" | "coin" | "mask" | "duck" | "scroll" | "palette" | "trophy" | "lanyard" | "star" | "mole" | "roll" | "key";
 
 export interface AwardInfo {
   /** The slide value's tail (`most_trusted`). */
@@ -45,6 +45,8 @@ export const AWARDS: readonly AwardInfo[] = [
   { id: "the_painting", title: "The Million Dollar Painting", kind: "Bonus award", label: "Signatures on the canvas", emblem: "palette", line: "It goes to silent auction." },
   // Wave 45: G13, the Bathroom Report (its own scene, `BathroomScene`; this row names it). DRAFT w45
   { id: "bathroom", title: "The Bathroom Report", kind: "Bonus award", label: "All together, in Disk Cleanup", emblem: "roll", line: "Bathroom Mode is a promise. Every promise was logged." },
+  // Wave 48: G14, the Language Report (its own scene, `LanguageScene`; this row names it). DRAFT w48
+  { id: "language", title: "The Language Report", kind: "Bonus award", label: "Words censored", emblem: "key", line: "The filter heard every word. Some of them were censored." },
   // Wave 21: the staff's own awards, after G10 and before G11 (`Night.award` staff_trusted / staff_points / staff_mole).
   { id: "staff_trusted", title: "Trabolta's Favourite Staff", kind: "Staff award", label: "Trust score", emblem: "lanyard", line: "He could not run the house without you. He has said so." },
   { id: "staff_points", title: "Staff Player Of The Night", kind: "Staff award", label: "Points", emblem: "star", line: "The staff played too. You played best." },
@@ -62,6 +64,73 @@ export function bathTime(s: number): string {
   if (m < 1) return "under a minute";
   if (m < 60) return `${m} min`;
   return `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, "0")} min`;
+}
+
+// --- the Language Report (wave 48, G14: screens_award_language) -----------------------
+
+/**
+ * (wave 48) The Language Report's beats, ms into its scene: the kind and
+ * the title as an award's, who cursed the most, the censored share, then the
+ * wall of censored words, one tile landing every `langEvery(n)` ms. A tile
+ * arrives under a black bar that wipes off over `wipe` ms, then its stamp
+ * lands.
+ */
+export const LANG = { kind: 900, title: 1100, curser: 2800, censored: 4600, wall: 6600, wipe: 280, spread: 4200, minEvery: 70, maxEvery: 260 } as const;
+
+/** (wave 48) The longest word a tile shows whole (code points); past it, "…". */
+export const LANG_WORD_MAX = 18;
+
+/** (wave 48) ms between two tiles: `n` of them over about `LANG.spread`, 70–260 ms apart. */
+export function langEvery(n: number): number {
+  if (!Number.isFinite(n) || n <= 1) return LANG.maxEvery;
+  return Math.round(Math.min(LANG.maxEvery, Math.max(LANG.minEvery, LANG.spread / n)));
+}
+
+/** (wave 48) When tile `i` of `n` lands (the "+ n more" tile is tile `n`, a beat later). */
+export function langTileAt(i: number, n: number): number {
+  return LANG.wall + i * langEvery(n) + (i >= n ? 300 : 0);
+}
+
+/** (wave 48) The stamps that sound: one at most every 240 ms, the last tile's always. */
+export function langStampCues(n: number): number[] {
+  const every = langEvery(n);
+  const skip = Math.max(1, Math.ceil(240 / every));
+  const out: number[] = [];
+  for (let i = 0; i < n; i += skip) out.push(langTileAt(i, n) + LANG.wipe);
+  const last = langTileAt(n - 1, n) + LANG.wipe;
+  if (n > 0 && out[out.length - 1] !== last) out.push(last);
+  return out;
+}
+
+/** (wave 48) A tile's word: whole up to `LANG_WORD_MAX` characters, then clipped with "…". */
+export function langWord(w: string): string {
+  const cps = Array.from(w.trim());
+  return cps.length <= LANG_WORD_MAX ? cps.join("") : `${cps.slice(0, LANG_WORD_MAX - 1).join("")}…`;
+}
+
+/** (wave 48) The wall's tile size, by how much there is to show. */
+export type LangWallSize = "xl" | "l" | "m" | "s";
+
+/**
+ * (wave 48) The wall's starting tile size for these words (the scene then
+ * shrinks it until it fits the screen it is on: `langFitNext`). Weighs each
+ * tile by its characters plus its padding, the "+ n more" tile as one more.
+ */
+export function langWallSize(words: readonly string[], more: number): LangWallSize {
+  const weight = words.reduce((sum, w) => sum + Array.from(langWord(w)).length + 3, 0) + (more > 0 ? 10 : 0);
+  if (weight <= 60) return "xl";
+  if (weight <= 150) return "l";
+  if (weight <= 330) return "m";
+  return "s";
+}
+
+/** (wave 48) How far the wall may shrink to fit (`--lang-k`), a step at a time. */
+export const LANG_FIT = { min: 0.4, step: 0.88 } as const;
+
+/** (wave 48) The wall's next scale: smaller while it overflows, down to `LANG_FIT.min`; else as it is. */
+export function langFitNext(k: number, overflows: boolean): number {
+  if (!overflows || k <= LANG_FIT.min) return k;
+  return Math.max(LANG_FIT.min, Math.round(k * LANG_FIT.step * 1000) / 1000);
 }
 
 /** The staff awards' ids (wave 21): the ones a player part takes. */

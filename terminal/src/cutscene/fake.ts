@@ -3,7 +3,7 @@
 //! has a plausible late-night value; override what a scene needs.
 
 import { creditsView, type CreditsFile, type CreditsView } from "../../../core/src/credits.ts";
-import { EMPTY_NIGHT, type ResultOutcome, type ScreenBathroom, type ResultRow, type RulingStamp, type ScreenChart, type ScreenKing, type ScreenMoment, type ScreenNight, type ScreenResultQuestion, type ScreenResults, type ScreenState, type ScreenTarget } from "../screen.ts";
+import { EMPTY_NIGHT, type ResultOutcome, type ScreenBathroom, type ScreenLanguage, type ResultRow, type RulingStamp, type ScreenChart, type ScreenKing, type ScreenMoment, type ScreenNight, type ScreenResultQuestion, type ScreenResults, type ScreenState, type ScreenTarget } from "../screen.ts";
 
 export interface FakeOpts {
   now?: number;
@@ -149,7 +149,6 @@ const FAKE_CREDITS_FILE: CreditsFile = {
   end: ["Thank you for playing.", "Happy Halloween."],
 };
 
-/** A made-up `CreditsView` with `programs` of the fake programs (cycled, numbered past the list). */
 /** (wave 45) A made-up Bathroom Report for `?preview=bathroom` (`bath=one`: one goer; `bath=nobody`). */
 export function fakeBathroom(kind: string | null): ScreenBathroom {
   if (kind === "nobody") return { goers: 0, never: 9, total_s: 0, most: null, most_s: 0, least: null, least_s: 0, toggler: null, toggles: 0 };
@@ -157,6 +156,27 @@ export function fakeBathroom(kind: string | null): ScreenBathroom {
   return { goers: 31, never: 4, total_s: 24_330, most: "Netscape Navigator", most_s: 2_710, least: "Minesweeper and Solitaire", least_s: 40, toggler: "Winamp", toggles: 14 };
 }
 
+/** (wave 48) Words the over-eager filter flags (a stem inside: "password" for "ass"), a few
+ *  mild swears among them, unique and lower case, for `fakeLanguage`. */
+export const FAKE_FLAGGED_WORDS: readonly string[] = [
+  "password", "hello", "check", "button", "trumpet", "saturday", "damn", "class", "heck", "scrap", "title", "crap", "assignment", "cocktail",
+  "danger", "passport", "assistant", "grumpy", "checklist", "attitude", "peacock", "massive", "dickens", "parse", "sparse", "classic", "bumblebee", "competition",
+  "scrapbook", "buttercup", "glasses", "shellfish", "brass", "farther", "nincompoop", "refrigerator", "prickly", "swanky", "bass", "embassy", "cockpit", "petition",
+  "rebuttal", "compass", "othello", "constitution", "cassette", "dangerous", "butterfly", "frumpy", "sassy", "checkmate", "titanic", "arsenal", "harass", "molasses",
+  "lmao", "darn", "bloody", "frick", "album", "crappy", "assessment", "trespass", "picasso", "bypass", "superstition", "hassle", "grasshopper", "shell", "wtf", "dang", "rump",
+];
+
+/** (wave 48) A made-up Language Report for `?preview=language` (`lang=none`: nothing flagged;
+ *  `tie`: a tie for the most; `long`: 60 words and more; `kept`: flagged, none censored). */
+export function fakeLanguage(kind: string | null): ScreenLanguage {
+  if (kind === "none") return { flagged: 0, censored: 0, curser: null, curses: 0, words: [], more: 0 };
+  if (kind === "kept") return { flagged: 27, censored: 0, curser: "Excel", curses: 12, words: [], more: 0 };
+  if (kind === "tie") return { flagged: 31, censored: 6, curser: "Winamp and MS Paint", curses: 9, words: ["password", "hello", "button", "darn", "heck", "trumpet"], more: 0 };
+  if (kind === "long") return { flagged: 212, censored: 118, curser: "Netscape Navigator", curses: 41, words: FAKE_FLAGGED_WORDS.slice(0, 60), more: FAKE_FLAGGED_WORDS.length - 60 };
+  return { flagged: 96, censored: 23, curser: "Netscape Navigator", curses: 17, words: FAKE_FLAGGED_WORDS.slice(0, 14), more: 0 };
+}
+
+/** A made-up `CreditsView` with `programs` of the fake programs (cycled, numbered past the list). */
 export function fakeCredits(programs = FAKE_PROGRAMS.length): CreditsView {
   const names = Array.from({ length: Math.max(0, programs) }, (_, i) => (i < FAKE_PROGRAMS.length ? FAKE_PROGRAMS[i]! : `${FAKE_PROGRAMS[i % FAKE_PROGRAMS.length]!} ${Math.floor(i / FAKE_PROGRAMS.length) + 1}`));
   return creditsView(FAKE_CREDITS_FILE, names, 1);

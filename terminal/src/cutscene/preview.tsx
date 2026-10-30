@@ -25,7 +25,9 @@
 //! scenes theirs: question `results_q` for hunt_results, H4–H6 for the
 //! tally, the verdict for The Verdict), `rows=<n>` (filings per question),
 //! `bath=one|nobody|none` (wave 45: the Bathroom Report's made-up numbers;
-//! `none` is an older server's, with no report).
+//! `none` is an older server's, with no report), `lang=none|tie|long|kept|old`
+//! (wave 48: the Language Report's — nothing flagged, a tie for the most, 60
+//! words and more, flagged but none censored, an older server's no report).
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "./kit/kit.css";
@@ -35,7 +37,7 @@ import { sfx } from "../sound/bus.ts";
 import { audioUnlocked, unlock } from "../speech/engine.ts";
 import { SceneStage } from "./CutsceneLayer.tsx";
 import { useReducedMotion } from "./clock.ts";
-import { fakeBathroom, fakeCredits, fakeResults, fakeState } from "./fake.ts";
+import { fakeBathroom, fakeCredits, fakeLanguage, fakeResults, fakeState } from "./fake.ts";
 import { creditsCache } from "./credits-fetch.ts";
 import { AdBurst } from "./kit/ad-burst.tsx";
 import { LiveScreenLayer, ScreenLayer } from "../ScreenLayer.tsx";
@@ -231,6 +233,7 @@ function PreviewOne({ id, q }: { id: string; q: URLSearchParams }) {
   const resultsQ = q.get("results") ?? "auto";
   const rowsQ = q.get("rows");
   const bathQ = q.get("bath");
+  const langQ = q.get("lang");
   // `world=1`: before the scene mounts, as a world view would be.
   const [world] = useState(() => (q.get("world") === "1" ? noteWorldShowing() : null));
   useEffect(() => () => world?.(), [world]);
@@ -242,13 +245,13 @@ function PreviewOne({ id, q }: { id: string; q: URLSearchParams }) {
       now: AT + t,
       introduced: intro,
       target: target === "tv" ? "tv" : "terminals",
-      night: id === "bathroom" && bathQ !== "none" ? { ...night, bathroom: fakeBathroom(bathQ) } : night,
+      night: id === "bathroom" && bathQ !== "none" ? { ...night, bathroom: fakeBathroom(bathQ) } : id === "language" && langQ !== "old" ? { ...night, language: fakeLanguage(langQ) } : night,
       countdown: countdown !== null ? "y2k" : null,
       remaining: countdown !== null ? Math.max(0, Number(countdown) - Math.floor(t / 1000)) : null,
       moments: previewBeats(beats, t),
       results,
     });
-  }, [t, target, countdown, phase, intro, nightQ, beats, id, resultsQ, rowsQ, bathQ]);
+  }, [t, target, countdown, phase, intro, nightQ, beats, id, resultsQ, rowsQ, bathQ, langQ]);
   if (def === null) return <div className="pv-missing">No scene called “{id}”. Try ?preview=list.</div>;
   const blocked = def.namesCharacter === true && !introduced(state);
   // Scrubbing is silent: sounds only while it plays.
