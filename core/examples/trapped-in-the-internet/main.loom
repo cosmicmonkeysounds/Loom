@@ -3348,6 +3348,14 @@ INTERACTION y2k_clock
   description: Fire only after the patch-bay watch radios IN (inside the server room, door shut). From here the patch bay judges its own cables (the bay on the server-room terminal posts each full patch); the watch stays inside as the fallback, with the 🔌 💥 ❌ buttons.
   while: Night.step < 14 and Night.scenario != 0 and Night.clock == "--:--"
 
+INTERACTION dream_toggle
+  label: 🌀 Clippy's dream: on / off
+  who: admin
+  act: E · Act III: the Y2K hour and the server room
+  sequence: false
+  description: The dream starts by itself on "…the Y2K BUG." and runs until an ending. Press it to put every terminal and the games' terminals back on their usual screens (the house wifi can't carry it, or a scene must read clean), and again to bring it back.
+  while: Night.clock != "--:--" and Night.ended != true
+
 INTERACTION y2k_midnight
   label: 🎆 Midnight (auto at 60 min)
   who: admin
@@ -5189,6 +5197,11 @@ when y2k_clock:
     set Night.screen = "y2k"
     set Night.terminals = "y2k"
     sound y2k_chime
+    // Wave 49 (docs/loom-w49-contract.md): the glitch era. `dream_begin`
+    // readies every terminal's video; it takes over on "…the Y2K BUG." in
+    // The Y2K Clock, when the TV says so (31 s on, with no word from the TV).
+    set Night.dream = true
+    cue dream_begin
     // w18b (R4, O7): the sides join the founded factions; the count starts.
     broadcast "!🕚 SYSTEM CLOCK RESET: 11:00 PM, DECEMBER 31, 1999. New orders are in your messages: Unlimited Power and The Way Out are recruiting now, beside every faction founded since the Truther Download. The count starts now." to everyone with go: sides, go: Truther Download
     -> The Y2K Clock
@@ -5196,6 +5209,17 @@ when y2k_clock:
     broadcast "🕚 Not again: the clock has already been reset. Nothing happens." to channel(hosts)
   else:
     broadcast "🕚 Not yet: 🤖 Trabolta shares the next facts first (round 3 opens there). Nothing happens." to channel(hosts)
+
+// Wave 49: a director's hand on the dream. An ending ends it by itself.
+when dream_toggle:
+  if Night.clock == "--:--" or Night.ended == true:
+    broadcast "🌀 Not now: the dream runs from 🕚 until an ending. Nothing happens." to channel(hosts)
+  else if Night.dream == true:
+    set Night.dream = false
+    broadcast "🌀 Clippy's dream is off: the terminals are back on their usual screens." to channel(hosts)
+  else:
+    set Night.dream = true
+    broadcast "🌀 Clippy's dream is back on the terminals." to channel(hosts)
 
 when Night.final_round == true and Night.ended != true and Night.clock_30 != true and Time.elapsed >= Night.y2k_end - 1800:
   set Night.clock_30 = true
@@ -6697,6 +6721,8 @@ set Night.ads_started = false
 // takeover) or "burst" (⚡); the bursts' count, cycle, timer, and last second.
 set Night.talk = "none"
 set Night.glitch_kind = "none"
+// Wave 49: Clippy's dream, on from the Y2K bug (🌀 turns it off and on).
+set Night.dream = false
 set Night.burst_n = 0
 set Night.burst_i = 0
 set Night.burst_at = 0

@@ -98,6 +98,7 @@ import { DESK_SPEECH_GRACE_MS } from "../src/house-desk.ts";
 import { ScreenWatch, speechWatchOf, handleScreenGet, handleScreenTerminalsGet, handleScreenVoicePost, screenKingOf, screenTerminals } from "./routes/screen.ts";
 import { handleScreenIdentifyPost } from "./routes/screen.ts";
 import { CAM_BODY_LIMIT, CamStore, parseCamUpload } from "./spatial-cams.ts";
+import { DreamFeed } from "./dream-feed.ts";
 import { VOICE_LAG_BYTES, VOICE_PING_MS, VoiceRelay, parseVoiceUpload, type VoiceListener } from "./spatial-voice.ts";
 import {
   SpatialHub,
@@ -618,6 +619,8 @@ export interface EventRuntimeInit {
   deskFile?: string | null;
   /** Wave 44 (C5): the credits' fallback file (`LOOM_CREDITS`; null = none). */
   creditsFile?: string | null;
+  /** Wave 49: the house media folder (`LOOM_MEDIA_DIR`; null = none). */
+  mediaDir?: string | null;
   /** The desk's timers (tests inject; default `setTimeout`). */
   deskTimers?: DeskTimers;
   /** Is this event an author's private preview / shared rehearsal right now
@@ -866,6 +869,8 @@ export class EventRuntime {
   readonly spatial: SpatialHub;
   /** The wall terminals' camera feeds (wave 14): the latest frame per spot, memory only. */
   readonly cams: CamStore;
+  /** Clippy's dream on the games' terminals (wave 49). */
+  readonly dreamFeed: DreamFeed;
   /** The voice link (wave 19): terminal mics ⇄ headsets, routed by pose, memory only. */
   readonly voice: VoiceRelay;
   private readonly houseFile: string;
@@ -1148,6 +1153,7 @@ export class EventRuntime {
     });
     this.spatial.setOpen(false); // idle until the doors open
     this.cams = new CamStore({ now: () => this.clock() });
+    this.dreamFeed = new DreamFeed({ dir: init.mediaDir !== undefined ? init.mediaDir : (process.env.LOOM_MEDIA_DIR ?? null), now: () => this.clock() });
     this.voice = new VoiceRelay({
       now: () => this.clock(),
       // The hub's current map (never a fresh `spatialHouse()` read: that
@@ -4168,6 +4174,14 @@ export class EventRuntime {
     return ids;
   }
 
+  /** (wave 49) The terminals the dream feeds to the games, while it runs and
+   *  its frames are here: every spot on the map but the tent's. Null: not now. */
+  private dreamSpots(): Set<string> | null {
+    const dream = this.screens.dreamOf(this.sim);
+    if (dream === null || this.clock() < dream.at || !this.dreamFeed.ready()) return null;
+    return new Set((this.spatialHouse()?.terminals ?? []).filter((t) => t.view !== "reinstall").map((t) => t.id));
+  }
+
   /** `POST /api/mod/spatial/cam {spot, jpeg, w, h}` — a terminal's frame
    *  (§2.3). Read under its own body cap, before the generic parse. */
   private async handleCamUpload(req: IncomingMessage, res: ServerResponse, moderator: boolean): Promise<boolean> {
@@ -4322,18 +4336,30 @@ export class EventRuntime {
       // A game session sees only the feeds of its own presence room, never
       // the tent's (wave 26, C7); a moderator sees every feed.
       const seen = moderator || this.sessions.canModerate(token) ? null : this.spatial.camSpotsFor(token);
+      const dream = this.dreamSpots();
       if (path === "/api/spatial/cams") {
-        sendJson(res, 200, { cams: seen === null ? this.cams.list() : this.cams.list().filter((c) => seen.has(c.spot)) });
+        const cams = dream === null ? this.cams.list() : this.dreamFeed.list(dream, this.cams.list());
+        sendJson(res, 200, { cams: seen === null ? cams : cams.filter((c) => seen.has(c.spot)) });
         return true;
       }
       const spot = (url.searchParams.get("spot") ?? "").trim();
-      const frame = seen === null || seen.has(spot) ? this.cams.get(spot) : null;
-      if (frame === null) {
-        sendJson(res, 404, { error: "no feed" });
+      const allowed = seen === null || seen.has(spot);
+      const frame = allowed ? this.cams.get(spot) : null;
+      const send = (jpeg: Buffer, at: number): void => {
+        res.writeHead(200, { "content-type": "image/jpeg", "content-length": String(jpeg.length), "cache-control": "no-store", "x-cam-at": String(at) });
+        res.end(jpeg);
+      };
+      const none = (): void => sendJson(res, 404, { error: "no feed" });
+      if (allowed && dream?.has(spot) === true && !this.dreamFeed.showsCamera(spot, frame !== null)) {
+        void this.dreamFeed.frame(spot).then((f) => {
+          if (f !== null) send(f.jpeg, f.at);
+          else if (frame !== null) send(frame.jpeg, frame.at);
+          else none();
+        });
         return true;
       }
-      res.writeHead(200, { "content-type": "image/jpeg", "content-length": String(frame.jpeg.length), "cache-control": "no-store", "x-cam-at": String(frame.at) });
-      res.end(frame.jpeg);
+      if (frame === null) none();
+      else send(frame.jpeg, frame.at);
       return true;
     }
     if (path === "/api/spatial/house" || path === "/api/spatial/stream") {
