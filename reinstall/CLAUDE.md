@@ -142,8 +142,8 @@ presence rooms and `moment`), `spatial-cams.ts`, `spatial-voice.ts` and the
   that standard: most players have never worn a headset.
 - **Graphics tiers** (wave 39). VR's `graphics` (`low | medium | high`,
   default `medium`) sets the house lights' pool (2 / 4 / 5), the shading
-  (per vertex on `low`), MSAA (2× `medium`, 4× `high`) and glow (`high`
-  only); ACES on all. The display runs 90 Hz with the physics tick
+  (per vertex on `low`), and glow + 2× MSAA (`high` only; MSAA on
+  `medium` drew a black void on the Quest 3); ACES on all. The display runs 90 Hz with the physics tick
   matched to it; the turn and the vignette run per rendered frame, but
   anything that collides (walking, gravity, room scale) stays on the
   physics tick: moved per frame, the body fell through the lobby's floor

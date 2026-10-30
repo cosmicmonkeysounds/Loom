@@ -1786,9 +1786,10 @@ Provision: `/terminal/?code=…&name=Kitchen&character=Trabolta&spot=start-bar&v
   tick (moved per frame, the body fell through floors not yet in the
   physics space), and `main.gd` asks for 90 Hz once the OpenXR session has
   begun and sets the physics tick to the display's rate (a 90 Hz tick on
-  the Quest's default 72 Hz judders). A body under the lobby's or the
-  intro's floor is put back on it (`Game._catch_fall`, logged). Foveation is
-  level 1 (low), dynamic. A comfort vignette closes while moving or turning (turning to
+  the Quest's default 72 Hz judders). Foveation stays level 3; MSAA on
+  `medium` drew a black void on the Quest 3 (2026-10-29). A body under the lobby's or the
+  intro's floor is put back on it (`Game._catch_fall`, logged).
+  A comfort vignette closes while moving or turning (turning to
   0.85); walking into a wall gives a light haptic buzz (at most every
   0.6 s); room-scale head offset folded into the body. The buttons are the King's
   hit (trigger, or A / X; on a Mac, Space or F) and the voice link's mute
@@ -1937,8 +1938,8 @@ picks the picture (`HouseLook.environment(tier)`, `HouseLook.msaa`,
 | | real lights | shading | tone map | glow | MSAA |
 |---|---|---|---|---|---|
 | low | 2 | per vertex | ACES (white 2.0) | off | off |
-| medium | 4 | per pixel (Lambert, no specular) | ACES | off | 2× |
-| high | 5 | per pixel | ACES | on (screen, threshold 0.7) | 4× |
+| medium | 4 | per pixel (Lambert, no specular) | ACES | off | off |
+| high | 5 | per pixel | ACES | on (screen, threshold 0.7) | 2× |
 
 No tier has SSAO, SSR, SSIL, SDFGI or volumetric fog. Comfort is unchanged.
 Unproven on hardware: whether Quest 3 holds 90 Hz on `medium` (per-pixel

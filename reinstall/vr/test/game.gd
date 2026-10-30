@@ -4711,7 +4711,7 @@ func _test_house_lights() -> void:
 		_check(env.glow_enabled == (t == "high"), "graphics: %s %s glow" % [t, "has" if t == "high" else "has no"])
 		_check(not env.ssao_enabled and not env.ssr_enabled and not env.ssil_enabled and not env.volumetric_fog_enabled and not env.sdfgi_enabled, "graphics: %s has no SSAO / SSR / SSIL / volumetric fog / SDFGI" % t)
 		_check(_near(env.ambient_light_energy, HouseLights.DAY_AMBIENT), "graphics: %s starts at today's ambient" % t)
-	_check(HouseLook.msaa("high") == Viewport.MSAA_4X and HouseLook.msaa("medium") == Viewport.MSAA_2X and HouseLook.msaa("low") == Viewport.MSAA_DISABLED, "graphics: MSAA 4× on high, 2× on medium, off on low")
+	_check(HouseLook.msaa("high") == Viewport.MSAA_2X and HouseLook.msaa("medium") == Viewport.MSAA_DISABLED and HouseLook.msaa("low") == Viewport.MSAA_DISABLED, "graphics: MSAA on high only")
 	HouseLook.set_tier("low")
 	var low_mat := HouseLook.wall() as StandardMaterial3D
 	HouseLook.set_tier("medium")
@@ -4887,7 +4887,7 @@ func _test_house_lamps_game() -> void:
 	game.clock = func() -> float: return _now
 	var env: Environment = (main.get_node("WorldEnvironment") as WorldEnvironment).environment
 	_check(env.glow_enabled and env.tonemap_mode == Environment.TONE_MAPPER_ACES and game.world_env == env, "lamps game: high glows and tone-maps; the game has the environment")
-	_check(main.get_viewport().msaa_3d == Viewport.MSAA_4X, "lamps game: high turns MSAA 4× on")
+	_check(main.get_viewport().msaa_3d == Viewport.MSAA_2X, "lamps game: high turns MSAA on")
 	_check(game.lamps != null and game.lamps.pool.size() == 5 and game.lamps.bulb_ids().size() == 5, "lamps game: a frame already in is drawn; high pools 5")
 	game._process(0.016)
 	_check(not game.lamps.in_house and _near(env.ambient_light_energy, HouseLights.DAY_AMBIENT, 1e-3), "lamps game: the lobby keeps today's ambient")

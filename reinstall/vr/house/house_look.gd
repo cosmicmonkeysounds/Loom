@@ -298,14 +298,8 @@ static func environment(tier := HouseLights.DEFAULT_TIER) -> Environment:
 	return env
 
 
-## The 3D anti-aliasing for a tier: 2× on `medium`, 4× on `high`. Edges that
-## crawl as the view moves tire the eyes fast in a headset, and MSAA is
-## nearly free on the Quest's tiled GPU; only `low` (the fallback) goes
-## without.
+## The 3D anti-aliasing for a tier: 2× MSAA on `high` only. (2× on `medium`
+## drew a black void on the Quest 3, with only the text showing, on
+## 2026-10-29: leave `medium` without until a build proves otherwise.)
 static func msaa(tier := HouseLights.DEFAULT_TIER) -> Viewport.MSAA:
-	match HouseLights.tier_of(tier):
-		"high":
-			return Viewport.MSAA_4X
-		"medium":
-			return Viewport.MSAA_2X
-	return Viewport.MSAA_DISABLED
+	return Viewport.MSAA_2X if HouseLights.tier_of(tier) == "high" else Viewport.MSAA_DISABLED

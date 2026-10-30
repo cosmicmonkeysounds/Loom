@@ -27,6 +27,7 @@ func _ready() -> void:
 	HouseLook.set_tier(tier)
 	$WorldEnvironment.environment = HouseLook.environment(tier)
 	get_viewport().msaa_3d = HouseLook.msaa(tier)
+	print("reinstall-vr: picture — tier %s, msaa %d, foveation %s, xr %s" % [tier, get_viewport().msaa_3d, ProjectSettings.get_setting("xr/openxr/foveation_level"), xr_on])
 	$Sun.rotation_degrees = Vector3(-55.0, 35.0, 0.0)
 	$Sun.light_energy = HouseLights.DAY_SUN
 	game.world_env = $WorldEnvironment.environment
@@ -68,6 +69,7 @@ func _ask_refresh_rate() -> void:
 func _match_physics(rate: float) -> void:
 	if rate >= 60.0:
 		Engine.physics_ticks_per_second = roundi(rate)
+	print("reinstall-vr: display %.0f Hz (offered %s), physics %d Hz" % [rate, xr_interface.get_available_display_refresh_rates(), Engine.physics_ticks_per_second])
 
 
 ## A Quest pauses the app when the headset sleeps: no frame runs until it

@@ -17,12 +17,19 @@
     tools\quest-win.ps1 -DebugBuild                                  # plain debug, no bake
     tools\quest-win.ps1 -Station vr-2 -Code PASS -Install -Launch    # build, sideload, start
     tools\quest-win.ps1 -InstallOnly -Station vr-2 -Serial 2G0Y...   # re-sideload the last build
+    tools\quest-win.ps1 -Logs                                       # record the game's log
 
   -Install sideloads onto the one connected headset (-Serial picks one when
   several are plugged in; `adb devices` lists them). A headset holding a
   copy signed with another key (a debug build) refuses the update: -Replace
   uninstalls it first, which wipes the headset's own setup -- the baked
   station config covers that. -Launch starts the game afterwards.
+
+  -Logs records the game's log from the headset (Godot's own lines, the
+  `reinstall-vr:` ones and its errors) into build\logs\quest-<time>.log
+  until Ctrl+C; with -Install / -InstallOnly it starts after the launch.
+  Installing also raises the headset's log buffer to 16 MB, so a run is
+  still there to read afterwards (`adb logcat -d -s godot`).
 
   Env fallbacks: JAVA_HOME, ANDROID_HOME, GODOT_PATH (the editor exe; the
   _console.exe beside it is used for headless output), LOOM_MOD_CODE (the
@@ -44,7 +51,8 @@ param(
   [switch]$InstallOnly,
   [switch]$Replace,
   [switch]$Launch,
-  [string]$Serial = ""
+  [string]$Serial = "",
+  [switch]$Logs
 )
 
 $ErrorActionPreference = "Stop"
@@ -127,6 +135,7 @@ function Install-Apk($apk) {
   }
   if ($res -notmatch "Success") { Die "install failed: $($res.Trim())" }
   Say "  installed"
+  Adb logcat -G 16M | Out-Null
   if ($Launch) {
     Adb shell am start -n "$Package/com.godot.game.GodotAppLauncher" | Out-Null
     Say "  launched (wake a controller if the headset asks for one)"
@@ -153,12 +162,23 @@ function Ensure-Vendors($destAddons) {
   Remove-Item -Recurse -Force $unzip
 }
 
+function Record-Logs {
+  if (-not (Test-Path $Adb)) { Die "no adb at $Adb" }
+  $dir = Join-Path $Build "logs"
+  New-Item -ItemType Directory -Force -Path $dir | Out-Null
+  $file = Join-Path $dir ("quest-{0}.log" -f (Get-Date -Format "yyyyMMdd-HHmmss"))
+  Say "-- recording the game's log into $file (Ctrl+C to stop)"
+  Adb logcat -s "godot:*" | ForEach-Object { $_; Add-Content -Path $file -Value $_ }
+}
+
 if ($InstallOnly) {
   $apk = Join-Path $Build (Apk-Name)
   if (-not (Test-Path $apk)) { Die "no $apk to install -- build it first" }
   Install-Apk $apk
+  if ($Logs) { Record-Logs }
   exit 0
 }
+if ($Logs -and -not $Install) { Record-Logs; exit 0 }
 
 # -- stage ------------------------------------------------------------------
 Say "-- staging into $Stage"
@@ -257,4 +277,4 @@ $size = "{0:N0} MB" -f ((Get-Item $out).Length / 1MB)
 Say ""
 Say "built $out ($size)"
 if ($Station) { Say "baked: $Station / $Name / $Server" }
-if ($Install) { Install-Apk $out } else { Say "next: tools\quest-win.ps1 -InstallOnly$(if ($Station) { " -Station $Station" }) (or: adb install -r `"$out`")" }
+if ($Install) { Install-Apk $out; if ($Logs) { Record-Logs } } else { Say "next: tools\quest-win.ps1 -InstallOnly$(if ($Station) { " -Station $Station" }) (or: adb install -r `"$out`")" }

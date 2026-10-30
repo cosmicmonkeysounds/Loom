@@ -125,8 +125,8 @@ volumetric fog.
 | | real lights | shading | glow | MSAA |
 |---|---|---|---|---|
 | `low` | 2 | per vertex | — | — |
-| `medium` | 4 | per pixel | — | 2× |
-| `high` | 5 | per pixel | on | 4× |
+| `medium` | 4 | per pixel | — | — |
+| `high` | 5 | per pixel | on | 2× |
 
 Set it with `--graphics` (desktop), `"graphics"` in `user://station.json`,
 or bake / push it: `tools/quest.sh build --station vr-1 --graphics low`
