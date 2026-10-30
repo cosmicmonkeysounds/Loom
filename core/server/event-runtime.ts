@@ -84,6 +84,7 @@ import { CreditsSource } from "./credits.ts"; // w44
 import { CREDITS_ROUTE, creditsAnswer, sendCredits } from "./routes/credits.ts"; // w44
 import { VIDEO_ROUTE, sendVideoConsent, videoConsentView } from "./routes/video.ts"; // w44
 import { CREDITS_FILE } from "../src/credits.ts"; // w44
+import { DESCENT_FILE, DescentSource } from "./descent.ts"; // w49
 import { SWEAR_CENSORED, SWEAR_FILTER, SWEAR_FLAGGED, decodeHits, encodeHits, filterHits, hitList, isFilterLevel, maskText, maskUnsaid, type FilterHit } from "../src/language-filter.ts"; // w48, w48b
 import { FilterBook, type FilterView } from "./language-filter.ts"; // w48
 import { forBooth, hostSeen, seenCues, seenName } from "./unseen-directors.ts";
@@ -103,12 +104,14 @@ import {
   SpatialHub,
   houseVersion,
   houseWarnings,
+  isDescentLevel,
   isWorld,
   parseDuckRun,
   parsePrefs,
   parsePrefsBook,
   parseMomentRequest,
   parsePose,
+  parseTold,
   sortCandidates,
   type DuckRun,
   type KingRef,
@@ -618,6 +621,8 @@ export interface EventRuntimeInit {
   deskFile?: string | null;
   /** Wave 44 (C5): the credits' fallback file (`LOOM_CREDITS`; null = none). */
   creditsFile?: string | null;
+  /** Wave 49 (C3.2): the descent's fallback file (`LOOM_DESCENT`; null = none). */
+  descentFile?: string | null;
   /** The desk's timers (tests inject; default `setTimeout`). */
   deskTimers?: DeskTimers;
   /** Is this event an author's private preview / shared rehearsal right now
@@ -884,6 +889,8 @@ export class EventRuntime {
   private readonly factsFile: string;
   /** Wave 44 (C5): the credits, read live (`credits.ts`). */
   private readonly credits: CreditsSource;
+  /** Wave 49 (C3.2): the descent's words, read live (`descent.ts`). */
+  private readonly descent: DescentSource;
   private factsMemo: { text: string; book: FactsBook | null } | null = null;
   private showFacts: { mtimeMs: number; book: FactsBook | null } | null = null;
   private readonly factsWatch = new FactsWatch();
@@ -943,6 +950,8 @@ export class EventRuntime {
   readonly screens: ScreenWatch;
   // Spatial stream subscribers (terminals, the map page) — never `clients`.
   private readonly spatialStreams = new Set<ServerResponse>();
+  /** (wave 49) The footsteps' streams (the router's). */
+  private readonly walkerStreams = new Set<ServerResponse>();
   // Flushes poses every 100 ms (and sweeps every second) while anything is
   // going on; started lazily, stops itself when idle.
   private spatialLoop: ReturnType<typeof setInterval> | null = null;
@@ -1041,6 +1050,14 @@ export class EventRuntime {
       scenarioFile: join(dirname(this.houseFile), CREDITS_FILE),
       ...(init.now !== undefined ? { now: init.now } : {}),
     });
+    // Wave 49 (C3.2): the descent's words, found the same way.
+    const descentEnv = init.descentFile !== undefined ? init.descentFile : (process.env.LOOM_DESCENT ?? null);
+    this.descent = new DescentSource({
+      project: readCredits !== undefined && this.project !== null ? () => readCredits.call(this.project, DESCENT_FILE) : null,
+      envFile: descentEnv,
+      scenarioFile: join(dirname(this.houseFile), DESCENT_FILE),
+      ...(init.now !== undefined ? { now: init.now } : {}),
+    });
     this.projectFacts = init.facts !== undefined ? init.facts : this.store.loadFacts();
     if (init.facts !== undefined) this.store.saveFacts(init.facts);
     // The speakers ride the same record; a director's save in the state dir wins.
@@ -1130,6 +1147,10 @@ export class EventRuntime {
       onPresence: (entries) => this.lights.setPresence(entries),
       lightsHello: () => this.gameLights.hello(),
       onHouse: () => this.gameLights.changed(),
+      // (wave 49) A program walking is heard on the speakers near it: the
+      // hub judges by the config in force, the router's stream carries it.
+      audio: () => this.audio.config(),
+      onWalkers: (walkers) => this.audio.setWalkers(walkers),
     });
     this.gameLights = new GameLightsFeed({
       now: () => this.clock(),
@@ -4160,6 +4181,25 @@ export class EventRuntime {
     });
   }
 
+  /**
+   * `GET /api/mod/audio/walkers` (wave 49, C3.1): the router's footsteps, one
+   * `walkers` event per `WalkersFrame`. `no-transform` keeps a compressing
+   * proxy from sitting on a frame: this path ends in neither `/events` nor
+   * `/stream`, and the router asks for gzip.
+   */
+  private openWalkersStream(req: IncomingMessage, res: ServerResponse): void {
+    res.writeHead(200, { "content-type": "text/event-stream", "cache-control": "no-cache, no-transform", connection: "keep-alive" });
+    res.write(":ok\n\n");
+    this.walkerStreams.add(res);
+    const off = this.audio.onWalkers((frame) => sseSend(res, "walkers", frame));
+    const ping = setInterval(() => sseWrite(res, ":ping\n\n"), 25000);
+    req.on("close", () => {
+      clearInterval(ping);
+      this.walkerStreams.delete(res);
+      off();
+    });
+  }
+
   /** The current map's terminal ids; feeds of any other spot are dropped
    *  (a terminal that left the map on a house change takes its feed along). */
   private camSpots(): Set<string> {
@@ -4374,6 +4414,9 @@ export class EventRuntime {
         sendJson(res, 200, { assignment: this.spatial.station(id, name, world) });
         return true;
       }
+      case "/api/mod/spatial/descent":
+        sendJson(res, 200, { forced: this.spatial.forcedLevel });
+        return true;
       case "/api/mod/spatial/stations":
         sendJson(res, 200, { stations: this.spatial.stationList() });
         return true;
@@ -4571,6 +4614,24 @@ export class EventRuntime {
         const out = this.spatial.setPrefs(token, prefs);
         if (out.kind !== "ok") refuse(out.kind);
         else sendJson(res, 200, { ok: true, prefs: out.prefs });
+        return true;
+      }
+      case "/api/spatial/told": {
+        // (wave 49) What a program told a talker, for its later visits.
+        // Memory only and commits nothing, so it is open while the doors
+        // are closed.
+        if (!this.spatial.hasToken(token)) {
+          refuse(this.spatial.tokenState(token));
+          return true;
+        }
+        const told = parseTold(body);
+        if (told === null) {
+          sendJson(res, 400, { error: "told is {talker, mark}, strings of 1–64 characters" });
+          return true;
+        }
+        const out = this.spatial.tell(token, told.talker, told.mark);
+        if (out !== "ok") refuse(out);
+        else sendJson(res, 200, { ok: true });
         return true;
       }
       case "/api/spatial/end": {
@@ -5413,7 +5474,8 @@ export class EventRuntime {
     this.gameLights.dispose();
     this.voice.reset();
     this.spatial.detachAll();
-    for (const s of [...this.spatialStreams]) {
+    this.audio.endWalkers();
+    for (const s of [...this.spatialStreams, ...this.walkerStreams]) {
       try {
         s.end();
       } catch {
@@ -5421,6 +5483,7 @@ export class EventRuntime {
       }
     }
     this.spatialStreams.clear();
+    this.walkerStreams.clear();
   }
 
   // -- restart recovery ----------------------------------------------------
@@ -5928,6 +5991,15 @@ export class EventRuntime {
     // --- the house mixer (wave 40): a director's or a host's panel ---
     if (method === "GET" && path === "/api/mod/audio/mixer") return handleMixerGet(this.audio, this.audioContext(), req, res, url, (t) => opts.moderator === true || this.canHostToken(t));
     if (method === "GET" && path === "/api/mod/audio") return handleAudioGet(this.audio, this.audioContext(), req, res, url, (t) => opts.moderator === true || this.sessions.canModerate(t));
+    // --- the footsteps (wave 49, C3.1): the router's stream, a director's alone ---
+    if (method === "GET" && path === "/api/mod/audio/walkers") {
+      if (opts.moderator !== true && !this.sessions.canModerate(queryTokenOf(req, url))) {
+        sendJson(res, 403, { error: "moderators only" });
+        return true;
+      }
+      this.openWalkersStream(req, res);
+      return true;
+    }
     // --- the house desk (wave 25, desk.ts): the view + its long poll (hosts too) ---
     if (method === "GET" && path === "/api/mod/desk") {
       const token = queryTokenOf(req, url);
@@ -5947,6 +6019,15 @@ export class EventRuntime {
     if (method === "POST" && path === "/api/mod/screen/voice") return handleScreenVoicePost(this.screens, req, res, (t) => opts.moderator === true || this.canHostToken(t));
     if (method === "POST" && path === "/api/mod/screen/identify") return handleScreenIdentifyPost(this.screens, req, res, (t) => opts.moderator === true || this.canHostToken(t));
 
+    // --- the descent's words (wave 49, C3.2): a game's, or the map editor's ---
+    if (method === "GET" && path === "/api/spatial/descent") {
+      if (!this.spatialReader(queryTokenOf(req, url), opts.moderator === true)) {
+        sendJson(res, 401, { error: "a moderator or game session token is required" });
+        return true;
+      }
+      sendJson(res, 200, { script: (await this.descent.read()).file });
+      return true;
+    }
     // --- the reinstallation games: the map, the stream, stations ---
     if (method === "GET" && (path.startsWith("/api/spatial/") || path.startsWith("/api/mod/spatial/"))) {
       if (this.handleSpatialGet(req, res, path, url, opts.moderator === true)) return true;
@@ -7702,6 +7783,18 @@ export class EventRuntime {
       case "/api/mod/spatial/end": {
         this.spatial.end(str(body, "session"));
         sendJson(res, 200, { ok: true });
+        return true;
+      }
+      case "/api/mod/spatial/descent": {
+        // (wave 49, C3.3) Force the level of the next deals, mostly to test.
+        // Memory only; a story reset clears it; a walk under way keeps its own.
+        const level = body["level"];
+        if (level !== null && !isDescentLevel(level)) {
+          sendJson(res, 400, { error: "level must be 0–4, or null for by visits" });
+          return true;
+        }
+        this.spatial.forceDescent(level);
+        sendJson(res, 200, { ok: true, forced: level });
         return true;
       }
       case "/api/mod/spatial/king": {
