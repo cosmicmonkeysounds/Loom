@@ -35,12 +35,14 @@ import {
   BALLOON_MS,
   GLITCH_MS,
   GLANCE_MS,
+  MISSION_ECHO_WAIT_MS,
   READOUT_WAIT_MS,
   STICKY_MS,
   afterWait,
   arrivals,
   bigEchoes,
   doneAbove,
+  isHouseAlert,
   missedCount,
   momentExit,
   momentMessage,
@@ -156,6 +158,14 @@ export interface MomentsInput {
   /** The frame has a NOW title bar (the guest's): a loud objective below the
    *  modal rungs flashes it (`useNowMoment`) instead of a sticky / balloon. */
   nowBar?: boolean;
+  /** Wave 47 (a guest with Mission on screen): does this house alert say
+   *  what Mission says (`echoesMission`)? Then it is read, straight to the
+   *  bin, and `onMissionEcho` blinks the title bar. Absent → off Mission. */
+  missionEcho?: (m: Moment) => boolean;
+  onMissionEcho?: (m: Moment) => void;
+  /** Wave 47: changes when what `missionEcho` judges changes (Mission on
+   *  screen, the NOW objective), so a banner already up is judged again. */
+  missionEchoKey?: string;
   /** Where a moment's room exit goes (`exitRoomFor`: a live card's room,
    *  never the room already open); absent → the moment's own room. The
    *  pre-wave-18 path: an app that passes `go` + `exitContext` never needs it. */
@@ -431,6 +441,36 @@ function useMomentsEngine(input: MomentsInput): Engine {
       sorted.now = sorted.now.filter((m) => !echoes.has(m.key));
       dispatch({ type: "read", keys: [...echoes] });
     }
+    // Wave 47: a guest looking at Mission. A house alert or a new quest
+    // waits a beat (the view with the new objective can land just after the
+    // line), then one that says what Mission says is read, straight to the
+    // bin, and the title bar blinks instead; the rest arrive as ever.
+    if (role === "guest" && input.missionEcho !== undefined && !backlog) {
+      const hold = sorted.now.filter((m) => echoable(m));
+      if (hold.length > 0) {
+        sorted.now = sorted.now.filter((m) => !hold.includes(m));
+        for (const m of hold) if (m.seq !== null) mem.pending.add(m.seq);
+        window.setTimeout(() => {
+          for (const m of hold) if (m.seq !== null) mem.pending.delete(m.seq);
+          const judge = inputRef.current.missionEcho;
+          const dup = judge !== undefined ? hold.filter((m) => judge(m)) : [];
+          if (dup.length > 0) {
+            for (const m of dup) markSeen(m.key);
+            dispatch({ type: "read", keys: dup.map((m) => m.key) });
+            // Its chime still says something changed; the title bar blinks.
+            if (inputRef.current.sound) {
+              playChime();
+              vibrate();
+            }
+            inputRef.current.onMissionEcho?.(dup[0]!);
+          }
+          const rest = hold.filter((m) => !dup.includes(m));
+          for (const m of rest) if (m.seq !== null) mem.inflight.add(m.seq);
+          if (rest.length > 0) arrive(rest, false);
+          else settleNow();
+        }, MISSION_ECHO_WAIT_MS);
+      }
+    }
     // Until the queue renders them, the mark must not pass them (an effect
     // later in this commit settles against the state before the dispatch).
     for (const m of sorted.now) if (m.seq !== null) mem.inflight.add(m.seq);
@@ -602,13 +642,18 @@ function useMomentsEngine(input: MomentsInput): Engine {
   }, [input.messages]);
 
   // A loud objective going live: one major moment per sign-in (persisted).
+  const lastObjectives = useRef<readonly ObjectiveView[]>([]);
   useEffect(() => {
     if (session === null || input.objectives === undefined) return;
     const fresh = announceLoud(host.storage, role, session, input.objectives, storyNow([], input.clock), live.current.phase);
     for (const m of fresh) keepExtra(mem, m);
     arrive(fresh, false);
     // An objective that ended takes its moment with it.
-    dispatch({ type: "objectives", live: new Set(input.objectives.map((o) => o.id)) });
+    // Wave 47: and a line that announced one that ended (`sharesTitle`).
+    const liveIds = new Set(input.objectives.map((o) => o.id));
+    const ended = lastObjectives.current.filter((o) => !liveIds.has(o.id)).map((o) => o.title);
+    lastObjectives.current = input.objectives;
+    dispatch({ type: "objectives", live: liveIds, ended });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [input.objectives, session]);
 
@@ -886,6 +931,18 @@ function useMomentsEngine(input: MomentsInput): Engine {
     dispatch({ type: "read", keys });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  // Wave 47: a house banner up when the guest opens Mission (or the NOW
+  // objective it echoes lands under it) is read: Mission says it now.
+  const echoStickyKey = surfaces.sticky?.moment.key ?? null;
+  const echoBalloonKey = surfaces.balloon?.moment.key ?? null;
+  useEffect(() => {
+    const judge = input.missionEcho;
+    if (judge === undefined) return;
+    const done = [surfaces.sticky, surfaces.balloon].filter((q): q is Queued => q !== null && echoable(q.moment) && judge(q.moment)).map((q) => q.moment.key);
+    for (const k of done) markSeen(k);
+    readMany(done);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [echoStickyKey, echoBalloonKey, input.missionEchoKey]);
 
   // --- Notifications ---------------------------------------------------------------
   const groups = useMemo(
@@ -1110,6 +1167,29 @@ export function useStickyMoment(): { key: string | null; count: number; keys: re
   const joined = (e?.surfaces.stickyKeys ?? []).join("\u0000");
   const read = e?.readMany;
   return useMemo(() => ({ key, count, keys: joined === "" ? [] : joined.split("\u0000"), read: read ?? (() => {}) }), [key, count, joined, read]);
+}
+
+/** Wave 47: a moment a guest on Mission may already be reading there (a
+ *  house alert, a new quest; never a big, a card or their own objective). */
+function echoable(m: Moment): boolean {
+  return m.severity !== "big" && (isHouseAlert(m) || m.kind === "quest");
+}
+
+/** Wave 47: what the phone's Back does with a moment on screen. A big and
+ *  the takeover keep their keys inside (no Escape, no tap-away), so Back
+ *  does nothing there (`swallow`), never moving the view under them; a
+ *  dialog or a blue screen closes as its ✕ would (`dismiss`). */
+export function useBackMoment(): { kind: "swallow" | "dismiss" | null; dismiss: () => void } {
+  const e = useContext(EngineContext);
+  const big = e?.surfaces.big ?? null;
+  const modal = e?.surfaces.modal ?? null;
+  const takeover = e?.takeover ?? null;
+  const dismiss = e?.dismiss;
+  return useMemo(() => {
+    if (big !== null || takeover !== null) return { kind: "swallow" as const, dismiss: () => {} };
+    if (modal !== null) return { kind: "dismiss" as const, dismiss: () => dismiss?.(modal) };
+    return { kind: null, dismiss: () => {} };
+  }, [big, modal, takeover, dismiss]);
 }
 
 /** Is a big moment on screen now (it covers everything: a sheet under it steps aside)? */

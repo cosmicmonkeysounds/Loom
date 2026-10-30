@@ -242,16 +242,18 @@ export function useBoothPopOuts({ session, open, now, placeTitle, ownFireAt, tar
   // (raised under a card or the scanner, held quiet) is moot once Mission is
   // on screen (× landed there): the title bar blinks instead. It chimes then
   // only if it never reached the screen.
-  const moot = player ? rung.held.find((e) => e.deferredAt === undefined && e.spec.key.startsWith("mission:") && missionShown?.(e.spec.key.slice("mission:".length)) === true) : undefined;
+  // Wave 47: so is a held YOUR GAME IS ON (its ▣ Go to Mission is done).
+  const moot = player ? rung.held.find((e) => e.deferredAt === undefined && ((e.spec.key.startsWith("mission:") && missionShown?.(e.spec.key.slice("mission:".length)) === true) || (e.spec.key.startsWith("game:") && headId !== "" && missionShown?.(headId) === true))) : undefined;
   const mootKey = moot?.spec.key ?? null;
-  const onScreenMission = rung.current?.key.startsWith("mission:") === true && !rung.quieted ? rung.current.key : null;
+  const onScreenMission = (rung.current?.key.startsWith("mission:") === true || rung.current?.key.startsWith("game:") === true) && !rung.quieted ? rung.current.key : null;
   const missionsSeen = useRef(new Set<string>());
   if (onScreenMission !== null && onScreenMission !== mootKey) missionsSeen.current.add(onScreenMission);
   useEffect(() => {
     if (moot === undefined || mootKey === null) return;
     rung.retire(mootKey);
     if (!missionsSeen.current.has(mootKey) && !rung.quietNow()) playTone("info", host.sound && moot.spec.sound !== false);
-    onMissionNews?.({ id: mootKey.slice("mission:".length), title: moot.spec.title });
+    const game = mootKey.startsWith("game:");
+    onMissionNews?.({ id: game ? headId : mootKey.slice("mission:".length), title: game ? (nowObj?.title ?? moot.spec.title) : moot.spec.title });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mootKey]);
 

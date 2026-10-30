@@ -397,7 +397,7 @@ export function ChannelView({
   const lay = footLayout({ decision: docked, trayOpen: trayOpen && tray.length > 0, typing: typing || composing, composer: onSend !== undefined && canPost });
   const hint = channel.kind === "codex" ? "Enter a code…" : `Message ${channel.title}…`;
   const foot = streamFoot(channel.id, {
-    tray: tray.length > 0 && widgets ? <CardTray cards={tray} widgets={widgets} focus={trayFocus} onFocus={setTrayFocus} composing={composing} crowded={dk != null} shut={shut} onOpenChange={setTrayOpen} /> : null,
+    tray: tray.length > 0 && widgets ? <CardTray cards={tray} widgets={widgets} focus={trayFocus} onFocus={setTrayFocus} composing={composing} crowded={dk != null} shut={shut} onOpenChange={setTrayOpen} foldOptional /> : null,
     decision: docked && dk != null ? (
       <DecisionTray
         decision={dk}

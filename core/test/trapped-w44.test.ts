@@ -64,6 +64,8 @@ describe("wave 44: the video card at the upload (C1)", () => {
     const card = cards[0]!;
     expect(card.text).toBe("🎥 May video of you from tonight be used?");
     expect(card.params["options"]).toBe("Yes, use video of me | No, leave me out");
+    // Wave 47: asked at the upload, then never on Mission (Start has 🎥).
+    expect(card.params["optional"]).toBe("true");
     expect(card.audience).toEqual(["g1"]);
     // Unanswered: uploaded all the same, nothing decided (an opt-out).
     expect(v(n.sim, "g1.uploaded")).toBe(true);

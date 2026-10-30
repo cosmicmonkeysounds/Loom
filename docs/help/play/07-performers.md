@@ -151,8 +151,10 @@ Tap **📷 Scan**. The scanner fills the screen with the camera on, and a
 box under it to type a guest's id (it's under their QR). Point it at a
 guest's pass: **that guest's card opens at once**. Press what you need,
 then **×** (or Escape, or your phone's Back): **one tap** takes you back
-to where you opened the scanner: Mission, Show, the Wanted board or the
-Door queue. At the door (the Antivirus), **📷 Next guest** brings the
+to where you opened the scanner: Mission, Show, a room, the Wanted board
+or the Door queue. Your phone's Back steps back the same way everywhere: a
+pop-out goes to 🔔 Waiting, a room closes, then Chats or the Desk goes back
+to Mission or Show. It never leaves the app. At the door (the Antivirus), **📷 Next guest** brings the
 camera back for the next pass instead; the camera stays on the whole
 time the scanner is open, so a queue scans pass after pass. Anyone else
 taps **📷 Scan** in the taskbar for the next one. The pass you just closed is ignored

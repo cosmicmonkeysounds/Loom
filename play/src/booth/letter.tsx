@@ -13,7 +13,20 @@ import type { PrimeLetter } from "../types.ts";
 import { EMAIL_MAX, emailResult } from "../widgets.tsx";
 import { LETTER_COPY, LETTER_TITLE, letterCardState, letterDismissKey, letterErrorText, loadLetterDismissed, saveLetterDismissed } from "./letter-model.ts";
 
-export function LetterCard({ letter, eventId, character, save }: { letter: PrimeLetter | undefined; eventId: string; character: string; save: ((email: string | null) => Promise<{ ok: true; email: string | null }>) | undefined }) {
+export function LetterCard({
+  letter,
+  eventId,
+  character,
+  save,
+  startOpen = false,
+}: {
+  letter: PrimeLetter | undefined;
+  eventId: string;
+  character: string;
+  save: ((email: string | null) => Promise<{ ok: true; email: string | null }>) | undefined;
+  /** Wave 47: open from the start (a wide screen has the room); a phone's starts folded to one row. */
+  startOpen?: boolean;
+}) {
   const host = usePlayHost();
   const key = letterDismissKey(eventId, character);
   const [dismissed, setDismissed] = useState(() => loadLetterDismissed(host.storage, key));
@@ -23,6 +36,8 @@ export function LetterCard({ letter, eventId, character, save }: { letter: Prime
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Wave 47: the ask starts as one 48 px row; a tap opens the form in place.
+  const [open, setOpen] = useState(startOpen);
   const viewEmail = letter?.email ?? null;
   useEffect(() => {
     setSaved(null);
@@ -69,6 +84,25 @@ export function LetterCard({ letter, eventId, character, save }: { letter: Prime
     );
   }
 
+  const noThanks = () => {
+    saveLetterDismissed(host.storage, key);
+    setDismissed(true);
+  };
+  // Wave 47: folded, the ask is one row above the window (it was a 175 px
+  // card that sat over every Mission on a phone, seen in Chrome at 375x600).
+  if (state === "ask" && !open && !editing) {
+    return (
+      <div className="booth-letter folded" role="region" aria-label="A letter from Jean Trabolta">
+        <button type="button" className="booth-letter-open" aria-expanded={false} onClick={() => setOpen(true)}>
+          {LETTER_TITLE} <span aria-hidden>›</span>
+        </button>
+        <button type="button" className="link booth-letter-skip" onClick={noThanks}>
+          No thanks
+        </button>
+      </div>
+    );
+  }
+
   const result = emailResult(text);
   const go = () => {
     if (result !== null && !busy) void send(String(result["email"]));
@@ -105,16 +139,14 @@ export function LetterCard({ letter, eventId, character, save }: { letter: Prime
             Cancel
           </button>
         ) : (
-          <button
-            type="button"
-            className="link"
-            onClick={() => {
-              saveLetterDismissed(host.storage, key);
-              setDismissed(true);
-            }}
-          >
-            No thanks
-          </button>
+          <>
+            <button type="button" className="link" onClick={() => setOpen(false)}>
+              Later
+            </button>
+            <button type="button" className="link" onClick={noThanks}>
+              No thanks
+            </button>
+          </>
         )}
       </div>
     </div>

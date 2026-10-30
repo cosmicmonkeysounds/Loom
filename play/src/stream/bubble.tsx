@@ -261,6 +261,9 @@ export interface StreamMode {
   settlePass: boolean;
   /** Tapping a receipt opens its card in the tray. */
   openTray?: (seq: number) => void;
+  /** Wave 47: card kinds that stay whole in the stream even with a tray (the
+   *  arrival stage's CAPTCHA is the scene itself). */
+  inline?: ReadonlySet<string>;
 }
 const StreamModeContext = createContext<StreamMode>({ tray: false, settlePass: false });
 export const StreamModeProvider = StreamModeContext.Provider;
@@ -294,7 +297,7 @@ function WidgetBubble({ msg, widgets, superseded, showChannel, modBtn }: { msg: 
   const card = msg.widget!;
   const answered = widgets?.answered.get(msg.seq) ?? null;
   const answerable = widgets !== undefined;
-  const form = cardForm({ card, answered, superseded: superseded === true, answerable, tray: mode.tray, settlePass: mode.settlePass });
+  const form = cardForm({ card, answered, superseded: superseded === true, answerable, tray: mode.tray && mode.inline?.has(card.kind) !== true, settlePass: mode.settlePass });
   const host = (
     <WidgetHost
       card={card}

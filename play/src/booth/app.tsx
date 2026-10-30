@@ -74,7 +74,7 @@ import { boardRowCount, nowRow } from "./now-card.tsx";
 import { PlayerSelect } from "./pick/select.tsx";
 import { RowsWindow } from "./pick/rows.tsx";
 import { boothPopOutAdapter, coveredElsewhere, doorClaimer, doorQueue, pickLayout, wizardSteps, type AdapterCtx, type DoorEntry } from "./popouts/model.ts";
-import { PopOutHost, PopOutQuiet, PopOutScope, popOutWaiting, usePopOuts } from "./popouts/rung.ts";
+import { PopOutHost, PopOutQuiet, PopOutScope, playTone, popOutWaiting, usePopOuts } from "./popouts/rung.ts";
 import { useSystemBack } from "../back-gesture.ts";
 import { bindDraft, useBoothPopOuts, type BoothOpeners } from "./popouts/use-booth-popouts.ts";
 import { WaitingWindow } from "./waiting.tsx";
@@ -117,9 +117,46 @@ export { WantedBoard } from "./wanted/board.tsx";
 
 /** The room a performer lands in wide: Readouts (wave 18, G2: the house's
  *  broadcast feed is the far-away Chat log, never a default room). */
+/** What is open over the booth's home, for the phone's Back (wave 47). */
+export interface BoothOpen {
+  layer: unknown;
+  sheet: unknown;
+  people: unknown;
+  help: boolean;
+  credits?: boolean;
+  /** A floating pop-out on screen: `later` when it offers Later. */
+  popout?: "later" | "stays" | null;
+  /** A player's 👥 People list. */
+  peopleOpen?: boolean;
+  /** A room open over the window (a phone: it covers the home). */
+  room?: boolean;
+  /** A window other than home on screen (a player's Chats, a host's Chats or Desk). */
+  window?: boolean;
+}
+
 /** Is something open over the booth's home that the phone's Back should close? */
-export function boothAway(open: { layer: unknown; sheet: unknown; people: unknown; help: boolean; credits?: boolean }): boolean {
-  return open.layer !== null || open.sheet !== null || open.people !== null || open.help || open.credits === true;
+export function boothAway(open: BoothOpen): boolean {
+  return boothBackStep(open) !== null;
+}
+
+/**
+ * What one press of the phone's Back closes (wave 47): the top thing first
+ * (the credits, a layer, a sheet, a list, a floating pop-out), then the room
+ * over the window, then a window that is not home. Never past home: there
+ * Back is the browser's again. Before wave 47 a room or Chats was not
+ * "away", so Back there left the app mid-show.
+ */
+export function boothBackStep(open: BoothOpen): "credits" | "layer" | "peopleOpen" | "sheet" | "people" | "help" | "popout" | "room" | "window" | null {
+  if (open.credits === true) return "credits";
+  if (open.layer !== null) return "layer";
+  if (open.peopleOpen === true) return "peopleOpen";
+  if (open.sheet !== null) return "sheet";
+  if (open.people !== null) return "people";
+  if (open.help) return "help";
+  if (open.popout != null) return "popout";
+  if (open.room === true) return "room";
+  if (open.window === true) return "window";
+  return null;
 }
 
 export function boothHome(list: Channel[]): string | null {
@@ -243,7 +280,21 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
     ...(boothView(s.view)?.guests ?? []).filter((g) => doorClaimer(g) === character0).map((g) => `door:${g.id}`),
   ].join("\n");
   // Wave 37 (C8): `me` + `player`: a player's own `dm:` "… · …" big is its game pop-out.
-  const adapterCtx: AdapterCtx = { wanted: wantedOf(s.view), openGuest: () => (layer?.kind === "card" || layer?.kind === "scan" ? cardGuest.current : null), guestName: (id) => s.view?.guests.find((g) => g.id === id)?.name ?? null, me: character0, player: player0 };
+  const adapterCtx: AdapterCtx = {
+    wanted: wantedOf(s.view),
+    openGuest: () => (layer?.kind === "card" || layer?.kind === "scan" ? cardGuest.current : null),
+    guestName: (id) => s.view?.guests.find((g) => g.id === id)?.name ?? null,
+    me: character0,
+    player: player0,
+    // Wave 47: YOUR GAME IS ON while Mission is on screen is NEW MISSION's
+    // blink and the game's chime, never a pop-out over the card it names.
+    missionOnScreen: () => player0 && pwin === "mission" && layer === null && t.activeId === null,
+    onQuietGame: (game) => {
+      playTone(game.tone, host.sound && game.sound !== false);
+      const head = s.view?.objectives?.[0];
+      if (head !== undefined) setMissionNews({ id: head.id, title: head.title });
+    },
+  };
   const adapterRef = useRef(adapterCtx);
   adapterRef.current = adapterCtx;
   const momentFeed = useMemo(() => {
@@ -335,13 +386,57 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
   // face (the scanner, a card, PLAYER SELECT).
   const credits = useCredits(s.view?.night?.credits?.roll, s.view?.clock);
   const creditsFace = layer?.kind === "scan" || layer?.kind === "card" || layer?.kind === "pick";
-  useSystemBack(host.ownsPage && signedIn, boothAway({ layer, sheet, people: people ?? (peopleOpen ? true : null), help, credits: credits.open !== null }), () => {
-    if (credits.open !== null && !creditsFace) credits.set(null);
-    else if (layer !== null) setLayer((l) => closeTo(l));
-    else if (peopleOpen) setPeopleOpen(false);
-    else if (sheet !== null) setSheet(null);
-    else if (people !== null) setPeople(null);
-    else if (help) setHelp(false);
+  // Wave 47: a room on a phone, a window that isn't home and a floating
+  // pop-out are "away" too, so Back steps back inside the app (a room →
+  // its window → home) and never leaves it mid-show.
+  const player1 = s.auth !== null && isPlayer(s.view) && !boothHost(s.auth, s.view) && !s.auth.admin;
+  const hostWins1 = !player1 && s.auth !== null && isHostBooth(s);
+  const floating = rung.current !== null && !rung.quieted && rung.activeDock === null ? (rung.current.noLater === true ? "stays" : "later") : null;
+  const backOpen: BoothOpen = {
+    layer,
+    sheet,
+    people,
+    help,
+    credits: credits.open !== null && !creditsFace,
+    peopleOpen,
+    popout: floating,
+    room: !wide && activeId !== null,
+    window: (player1 && pwin !== "mission") || (hostWins1 && hwin !== "show"),
+  };
+  useSystemBack(host.ownsPage && signedIn, boothAway(backOpen), () => {
+    switch (boothBackStep(backOpen)) {
+      case "credits":
+        credits.set(null);
+        return;
+      case "layer":
+        setLayer((l) => closeTo(l));
+        return;
+      case "peopleOpen":
+        setPeopleOpen(false);
+        return;
+      case "sheet":
+        setSheet(null);
+        return;
+      case "people":
+        setPeople(null);
+        return;
+      case "help":
+        setHelp(false);
+        return;
+      case "popout":
+        // Back is Later (it waits in 🔔 Waiting); one with no Later stays.
+        if (floating === "later" && rung.current !== null) rung.defer(rung.current.key);
+        return;
+      case "room":
+        t.back();
+        return;
+      case "window":
+        if (player1) setPwin("mission");
+        else setHwin("show");
+        return;
+      default:
+        return;
+    }
   });
   if (!s.auth) return host.embedded ? <SessionEnded notice={s.notice} /> : <PrimeLogin session={s} />;
   const admin = s.auth.admin;
@@ -694,7 +789,8 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
                     sub={s.view?.mission?.place != null ? `📍 ${s.view.mission.place}` : undefined}
                     paused={viewPaused(s.view)}
                     act={pwin === "mission" && t.activeId === null ? missionLine(s.view?.objectives) : undefined}
-                    flash={{ id: missionNews.id, title: missionNews.title, brief: "" }}
+                    // Wave 47: the card under it names the mission; the blink says only that it is new.
+                    flash={{ id: missionNews.id, title: missionNews.title, brief: "NEW MISSION" }}
                   />
                 ) : (
                   <NowBar
@@ -726,7 +822,7 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
               <MomentsLayer />
               {/* Wave 41 (C3): the letter opt-in, on the booth's home only, never over a scan. */}
               {letterOnHome({ player, mission: pwin === "mission", host: hostWins, showOnScreen: hostShown === "show", wide, roomOpen: t.activeId !== null, scanning: layer?.kind === "scan" }) && (
-                <LetterCard letter={s.view?.letter} eventId={s.auth?.eventId ?? ""} character={character} save={s.letter} />
+                <LetterCard letter={s.view?.letter} eventId={s.auth?.eventId ?? ""} character={character} save={s.letter} startOpen={wide} />
               )}
               <Shell side={side} stage={stage} wide={wide} placeholder={player ? "Pick a chat, or follow your mission." : "Pick a room — or 📷 Scan a pass."} />
               {/* No `hidden` here: the dock owns its keyboard rule. With the

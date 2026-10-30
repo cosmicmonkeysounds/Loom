@@ -61,6 +61,8 @@ export interface LiveCard {
   glyph: string;
   channel: string;
   seq: number;
+  /** Wave 47: an optional card (`optionalCard`): never on Mission. */
+  optional?: true;
 }
 
 /** A direct-message room the viewer has, for an announcement that sends them to it. */

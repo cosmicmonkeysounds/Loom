@@ -7,13 +7,28 @@
 //! When the story moves them on, the stage does not vanish mid-line: a
 //! Continue button appears and the guest steps into the app themselves.
 
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { PERSONAL_STREAM } from "./crawl.ts";
 import { usePlayHost } from "./host.ts";
-import type { WidgetHook } from "./stream/bubble.tsx";
+import { useNowMoment } from "./moments/provider.tsx";
+import { StreamModeProvider, type StreamMode, type WidgetHook } from "./stream/bubble.tsx";
+import { CardTray } from "./stream/card-tray.tsx";
 import { DecisionTray, useDockReady } from "./stream/channel-view.tsx";
 import { MessageList } from "./stream/list.tsx";
+import { trayCards } from "./stream/settled.ts";
 import type { ChatMessage, Decision } from "./types.ts";
+import { supersededCards } from "./widgets.tsx";
+
+/** Wave 47: the cards that stay whole on the stage — the CAPTCHA is the
+ *  scene itself. Every other card the upload asks (the write-ins, the video
+ *  question, the inbox) docks in the stage's tray, one at a time, so the
+ *  conversation that asks them always keeps the screen. */
+const STAGE_INLINE: ReadonlySet<string> = new Set(["captcha"]);
+
+/** The live cards the stage docks under the stream, oldest first (pure). */
+export function stageTray(messages: readonly ChatMessage[], answered: WidgetHook["answered"]): ChatMessage[] {
+  return trayCards(messages, answered, supersededCards(messages)).filter((m) => !STAGE_INLINE.has(m.widget!.kind));
+}
 
 /** Typed chat in a room (not a DM): another guest talking where you stand. */
 function roomChatter(m: ChatMessage): boolean {
@@ -94,15 +109,29 @@ export function CutsceneStage({
     host.crawl.setOpen(PERSONAL_STREAM);
     return () => host.crawl.setOpen(null);
   }, [host]);
-  // The decision docks once its question has crawled in (never under it).
-  const dockReady = useDockReady(PERSONAL_STREAM, messages, decision !== null);
-  // The alert banner sits above the stage (the app's moments layer, wave 13).
+  // Wave 47: the cards waiting on the guest dock under the stream, one at a
+  // time and oldest first, leaving a one-line receipt where they were dealt.
+  const cards = useMemo(() => stageTray(messages, widgets.answered), [messages, widgets.answered]);
+  const [trayFocus, setTrayFocus] = useState<number | null>(null);
+  const mode = useMemo<StreamMode>(() => ({ tray: true, settlePass: false, openTray: setTrayFocus, inline: STAGE_INLINE }), []);
+  // The decision docks once its question has crawled in (never under it);
+  // so does a card.
+  const dockReady = useDockReady(PERSONAL_STREAM, messages, decision !== null || cards.length > 0);
+  // Wave 47: the loud "show your pass" objective is the stage's own My pass
+  // button lit up — never a banner over the stage saying what its pass card
+  // and that button already say.
+  const now = useNowMoment();
+  const passLit = now.moment !== null && now.moment.pass === true;
+  const openPass = () => {
+    if (passLit) now.seen(true);
+    onPass();
+  };
   return (
     <div className="cutscene" role="region" aria-label={where ?? "Story"}>
       <header className="cut-head">
         <span className="cut-where">{where ?? ""}</span>
         <span className="cut-title">{title ?? ""}</span>
-        <button type="button" className="cut-pass" onClick={onPass} title="Your pass — hold it up to be scanned">
+        <button type="button" className={`cut-pass${passLit ? " lit" : ""}`} onClick={openPass} title="Your pass — hold it up to be scanned">
           <span aria-hidden>🎟️</span> My pass
         </button>
       </header>
@@ -111,15 +140,20 @@ export function CutsceneStage({
           reconnecting…
         </div>
       )}
-      <MessageList messages={messages} widgets={widgets} empty="Stand by." flushId={PERSONAL_STREAM} />
+      <StreamModeProvider value={mode}>
+        <MessageList messages={messages} widgets={widgets} empty="Stand by." flushId={PERSONAL_STREAM} />
+      </StreamModeProvider>
       <footer className="cut-foot">
         {decision && dockReady && <DecisionTray decision={decision} />}
+        {cards.length > 0 && dockReady && (
+          <CardTray cards={cards} widgets={widgets} focus={trayFocus} onFocus={setTrayFocus} crowded={decision !== null} lead="oldest" />
+        )}
         {over && (
           <button type="button" className="choice primary cut-go" onClick={onContinue}>
             Continue ▸
           </button>
         )}
-        {!over && !(decision && dockReady) && (
+        {!over && !((decision !== null || cards.length > 0) && dockReady) && (
           <span className="cut-cursor" aria-hidden>
             ▮
           </span>

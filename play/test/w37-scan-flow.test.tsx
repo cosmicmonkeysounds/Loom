@@ -250,7 +250,8 @@ describe("C2: back to where the scan started", () => {
   it("every layer's close and the phone's Back go through closeTo", () => {
     const app = src("booth/app.tsx");
     expect(app).toContain("const closeLayer = () => setLayer((l) => closeTo(l));");
-    expect(app).toContain("if (layer !== null) setLayer((l) => closeTo(l));");
+    // Wave 47: the phone's Back walks `boothBackStep`; its layer step is closeTo.
+    expect(app).toMatch(/case "layer":\s*setLayer\(\(l\) => closeTo\(l\)\);/u);
     expect(app).not.toMatch(/onClose=\{\(\) => setLayer\(null\)\}/u);
     expect(app).not.toMatch(/onLater=\{\(\) => setLayer\(null\)\}/u);
     // openScan / openCard read the layer they open over.
@@ -390,7 +391,8 @@ describe("wave 37 wiring (C7): NEW MISSION, said once", () => {
     const app = src("booth/app.tsx");
     expect(app).toContain('missionShown={(id) => (player && pwin === "mission" && layer === null && t.activeId === null) || (layer?.kind === "pick" && layer.objective === id)}');
     expect(app).toContain("onMissionNews={(o) => setMissionNews({ id: o.id, title: o.title })}");
-    expect(app).toContain('flash={{ id: missionNews.id, title: missionNews.title, brief: "" }}');
+    // Wave 47: the blink reads NEW MISSION alone (the card under it names it).
+    expect(app).toContain('flash={{ id: missionNews.id, title: missionNews.title, brief: "NEW MISSION" }}');
     // The blink stays 6 s, and a new headline clears it.
     expect(app).toMatch(/setTimeout\(\(\) => setMissionNews\(null\), 6000\)/u);
     expect(app).toContain("setMissionNews((n) => (n !== null && n.id !== headNow ? null : n));");
@@ -412,7 +414,8 @@ describe("wave 37 wiring (C7): NEW MISSION, said once", () => {
 describe("wave 37 wiring (C8): YOUR GAME IS ON is the player's game pop-out", () => {
   it("the adapter knows who this booth is and whether it plays", () => {
     const app = src("booth/app.tsx");
-    expect(app).toMatch(/const adapterCtx: AdapterCtx = \{[^\n]*me: character0, player: player0 \};/u);
+    // Wave 47: the context is one field a line (it gained missionOnScreen / onQuietGame).
+    expect(app).toMatch(/const adapterCtx: AdapterCtx = \{[\s\S]*?me: character0,\s*player: player0,/u);
     // player0 is defined before the adapter reads it.
     expect(app.indexOf("const player0 =")).toBeLessThan(app.indexOf("const adapterCtx: AdapterCtx"));
   });

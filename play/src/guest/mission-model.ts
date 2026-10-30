@@ -111,6 +111,9 @@ export interface MissionModel {
 }
 
 /** A card label cut to a button's length (≤ 32 characters, an ellipsis past it). */
+/** Wave 47: the card kinds whose own text is a question to the guest. */
+const QUESTION_CARDS: ReadonlySet<string> = new Set(["poll", "answer", "email"]);
+
 function clipLabel(s: string): string {
   const t = s.trim();
   return t.length <= 32 ? t : `${t.slice(0, 31).trimEnd()}…`;
@@ -231,7 +234,10 @@ export function missionOf(o: MissionInput): MissionModel {
     const m = byRoom.get(c.channel)?.messages.find((x) => x.seq === c.seq);
     // The kind's own short label, never the card's whole text (GN-F18: the
     // doors' button read the Y2K headline twice over).
-    const label = m?.widget !== undefined ? clipLabel(splitGlyph(widgetLabel(m.widget)).words.split(" — ")[0]!) : "a card";
+    // Wave 47: a question card (a poll, a write-in, an inbox) reads as its
+    // question ("May video of you from…"), never its kind ("poll").
+    const ask = m?.widget !== undefined && QUESTION_CARDS.has(m.widget.kind) ? splitGlyph(splitGlyph(m.widget.text).words).words.trim() : "";
+    const label = m?.widget !== undefined ? clipLabel(ask !== "" ? ask : splitGlyph(widgetLabel(m.widget)).words.split(" — ")[0]!) : "a card";
     return { label, room: roomTitle(c.channel) };
   };
   const cards = [...o.cards].sort((a, b) => b.seq - a.seq);

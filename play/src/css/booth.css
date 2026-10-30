@@ -551,3 +551,11 @@
 .booth-letter-foot { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
 .booth-letter.on-file { display: flex; align-items: center; gap: 8px; padding: 0 10px; min-height: var(--tap); }
 .booth-letter-addr { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; }
+/* Wave 47: the ask folded to one row (a tap opens the form in place). */
+.booth-letter.folded { display: flex; align-items: center; gap: 8px; padding: 0 4px 0 0; min-height: var(--tap); }
+.booth-letter-open {
+  flex: 1 1 auto; min-width: 0; min-height: var(--tap); margin: 0; padding: 0 10px; border: none; background: none;
+  font: 700 14px var(--ui-font); color: var(--ink); text-align: left; cursor: pointer;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.booth-letter-skip { flex: 0 0 auto; width: auto; min-height: var(--tap); padding: 0 8px; }

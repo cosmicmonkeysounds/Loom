@@ -97,6 +97,9 @@ between.
 - **The taskbar**: **⊞ Start**, **▣ Mission**, **💬 Chats**, **🎟 Pass** (your
   QR, full screen, one tap — see [Your pass](your-pass.md)) and **📷 Scan**,
   on every screen, inside rooms too.
+- **Your phone's Back** steps back inside the app: a sheet closes, then the
+  room, then Chats goes back to Mission. It never closes a full-screen
+  moment (use its own buttons), so when that closes you are where you were.
 
 **Being filmed.** While you're uploaded the app asks whether video of you
 from tonight may be used afterwards. If you'd rather not be in it, tap

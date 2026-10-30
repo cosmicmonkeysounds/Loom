@@ -198,6 +198,21 @@ div.stream-settled-line { cursor: default; color: var(--dim-ink); }
   margin: 0; padding: 0 12px; border: none; background: none; cursor: pointer; text-align: left;
   font: italic 12px var(--ui-font); color: var(--dim-ink);
 }
+/* ── the cutscene, wave 47 ───────────────────────────────────────────────
+   The upload's cards dock in the stage's foot (one at a time, oldest first),
+   so the lines asking them keep the screen: the foot takes at most 55% and
+   scrolls inside itself, the card's body 34% of the screen. The loud "show
+   your pass" objective lights My pass instead of a banner over the stage. */
+.cut-foot { max-height: 55%; overflow-y: auto; overscroll-behavior: contain; gap: 6px; }
+.cut-foot > * { flex: none; }
+.cut-foot .stream-tray { margin-bottom: 0; }
+.cut-foot .stream-tray-body { max-height: 34vh; max-height: 34dvh; }
+.cut-foot .stream-tray-title, .cut-foot .stream-tray-step { min-height: 48px; }
+.cut-foot .widget-foot .choice.widget-go { min-height: 48px; }
+.cutscene > .thread { min-height: 120px; }
+.cut-pass.lit { border-color: var(--highlight); color: var(--highlight); animation: cut-pulse 1.6s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .cut-pass.lit { animation: none; } }
+
 .stream-ticker-ico { font-style: normal; flex-shrink: 0; }
 .stream-ticker-text { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; animation: stream-fade 600ms ease-out; }
 .stream-ticker-list { list-style: none; margin: 0; padding: 0 12px 6px 30px; font: italic 12px/1.5 var(--ui-font); color: var(--dim-ink); }
