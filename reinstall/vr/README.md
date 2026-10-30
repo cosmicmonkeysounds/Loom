@@ -537,7 +537,7 @@ with `released: true` while you walk to Gerald.
 ```
 
 On 2026-10-28 (wave 39, branch `oct31-w39/vr`, Godot 4.7.1) it reports
-1236 checks and `quest.sh` 42, all passing.
+1239 checks and `quest.sh` 42, all passing.
 
 The runner refreshes the import, compiles every script and loads every
 scene, then runs `test/game.gd` headless with `--offline`:

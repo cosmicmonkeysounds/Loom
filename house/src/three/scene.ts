@@ -349,6 +349,7 @@ export function buildHouseScene(house: HouseMap, opts: HouseSceneOptions = {}): 
   const ceilings = new Map<string, Mesh>();
   const planes = buildFloors(house);
   const ramps = buildRamps(house);
+  const lowest = Math.min(...house.floors.map((f) => f.elevation));
   for (const [floorId, group] of floors) {
     const floorGeoms: BufferGeometry[] = [];
     const ceilGeoms: BufferGeometry[] = [];
@@ -356,6 +357,12 @@ export function buildHouseScene(house: HouseMap, opts: HouseSceneOptions = {}): 
       if (plane.floor !== floorId) continue;
       if (plane.kind === "floor") floorGeoms.push(paint(planeGeometry(plane), floorTint(plane)));
       else if (opts.ceilings !== false) ceilGeoms.push(planeGeometry(plane));
+      // A floor over another floor has an underside (in its ceilings), so
+      // where it overhangs the open air (the backyard) nobody sees up into
+      // its rooms from below.
+      if (plane.kind === "floor" && plane.y > lowest + 0.01 && opts.ceilings !== false) {
+        ceilGeoms.push(planeGeometry({ ...plane, kind: "ceiling", y: plane.y - UNDERSIDE_GAP }));
+      }
     }
     const rampGeoms: BufferGeometry[] = [];
     for (const ramp of ramps) {
@@ -853,6 +860,9 @@ function groundCells(rect: readonly [number, number, number, number], holes: Vec
   }
   return out;
 }
+
+/** How far under a floor its underside sits (just under, so no slit). */
+export const UNDERSIDE_GAP = 0.01;
 
 /**
  * A room's floor (facing up) or ceiling (facing down) as a flat mesh at its

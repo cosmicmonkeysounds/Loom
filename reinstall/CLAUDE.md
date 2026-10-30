@@ -25,7 +25,7 @@ pnpm --filter loom-reinstall build        # dist/ (base /reinstall/)
 pnpm --filter loom-reinstall test         # vitest: 701 tests, 56 files
 pnpm --filter loom-reinstall typecheck
 pnpm dev --reinstall                      # repo root: the dev stack + this Vite on :5176
-pnpm test:vr                              # = reinstall/vr/test/run.sh [godot]: 1236 checks + quest.sh 42
+pnpm test:vr                              # = reinstall/vr/test/run.sh [godot]: 1239 checks + quest.sh 42
 pnpm house:sync                           # after any show-map or house geometry change
 reinstall/vr/tools/quest.sh setup|build --station vr-N|install   # the Quest APKs
 ```
