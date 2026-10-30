@@ -1154,7 +1154,7 @@ ul.check label { min-width: 0; cursor: pointer; }
         <tr><td>Any terminal</td><td><code>https://app.mapsandducks.com/terminal/?code=&lt;mod&gt;&amp;spot=&lt;spot&gt;</code></td></tr>
         <tr><td>Server-room terminal</td><td><code>…/terminal/?code=&lt;mod&gt;&amp;spot=server-room&amp;door=serial&amp;camera=user</code></td></tr>
         <tr><td>Tent laptop</td><td><code>…/terminal/?code=&lt;mod&gt;&amp;spot=tent&amp;announce=1</code> (never add <code>&amp;view=reinstall</code>)</td></tr>
-        <tr><td>Map editor (tent / shed switch)</td><td><code>https://app.mapsandducks.com/reinstall/map</code></td></tr>
+        <tr><td>Map editor (tent / shed switch)</td><td>Run → House → 🗺 Map, or <code>https://app.mapsandducks.com/reinstall/map</code></td></tr>
         <tr><td>QR presenter</td><td><code>https://app.mapsandducks.com/cards</code></td></tr>
         <tr><td>Health</td><td><code>https://app.mapsandducks.com/api/health</code></td></tr>
       </tbody>
@@ -1254,7 +1254,7 @@ Windows (PowerShell):
 
     <h3>By time</h3>
     <div class="slot"><div class="t">10:00<small>director, tech op</small></div><ul class="check" data-list="t1000">
-      <li><input type="checkbox" id="ck-t1000-weather-call-gusts-over-30-40"><label for="ck-t1000-weather-call-gusts-over-30-40">Weather call: gusts over 30–40 km/h or steady rain means the shed. Switch at <code>/reinstall/map</code> (<em>Map: Tent | Shed</em>).</label></li>
+      <li><input type="checkbox" id="ck-t1000-weather-call-gusts-over-30-40"><label for="ck-t1000-weather-call-gusts-over-30-40">Weather call: gusts over 30–40 km/h or steady rain means the shed. Switch on Run's House map card (<em>Tent | Shed</em>), or at <code>/reinstall/map</code>.</label></li>
       <li><input type="checkbox" id="ck-t1000-first-pause-doors-closed-a-restart"><label for="ck-t1000-first-pause-doors-closed-a-restart"><strong>First ⏸ Pause</strong> (doors closed). A restart keeps the doors as it finds them: Push draft or Go live on an open event plays Power On at once, and a pause afterwards cannot take it back.</label></li>
       <li><input type="checkbox" id="ck-t1000-morning-reset-a-plain-sync-loom"><label for="ck-t1000-morning-reset-a-plain-sync-loom">Morning reset: a <em>plain</em> sync (<code>LOOM_SSH=loom-vps LOOM_PROJECT="trapped in the internet" pnpm sync-show</code>, no <code>--replace-*</code>: the project now holds the bulb placement, the look tests and any speaker survey, and a replace would overwrite them), then <strong>Push draft</strong>, scan the door QR on a phone on cellular, then <strong>Go live in place</strong>, before anyone registers.</label></li>
       <li><input type="checkbox" id="ck-t1000-run-world-does-not-show-kernel"><label for="ck-t1000-run-world-does-not-show-kernel">Run → World does <em>not</em> show <code>Kernel.door_code</code> set yet. If it does, Power On already played: pause, then Restart (still before anyone registers).</label></li>
@@ -1372,7 +1372,7 @@ Windows (PowerShell):
         <tr><td>House internet down</td><td>Guests turn Wi-Fi off and use cellular. Keep firing cues from Run on a phone hotspot. Stagehand catches the lights up once it reconnects.</td></tr>
         <tr><td>Server restarted</td><td>Nothing to press. Everything reconnects by itself (Caddy holds requests for up to 60 s; the server answers 503 <code>starting</code> until the events are back). Reinstallation walks end (rescan in the tent).</td></tr>
         <tr><td>VPS dead</td><td>Start the warm standby, restore the newest backup from the MacBook (<code>~/LoomBackups</code>), repoint DNS.</td></tr>
-        <tr><td>Rain or wind</td><td>Switch to the shed at <code>/reinstall/map</code>.</td></tr>
+        <tr><td>Rain or wind</td><td>Switch to the shed on Run's House map card, or at <code>/reinstall/map</code>.</td></tr>
         <tr><td>A terminal silent, or red ⛶</td><td>Its Wi-Fi, power, is the page open? Relaunch Chrome with <code>--kiosk</code> (TV, laptops) or touch the tablet once. A loop or a lost camera: hold ⚙ 2 s → View <code>mirror</code>.</td></tr>
         <tr><td>The TV silent after a reboot</td><td>Click once into the TV page; <kbd>M</kbd> unmutes.</td></tr>
         <tr><td>Server Door terminal dead</td><td>♟ <em>They beat the King: the door code</em> (<code>chess_won</code>) naming the winner.</td></tr>
