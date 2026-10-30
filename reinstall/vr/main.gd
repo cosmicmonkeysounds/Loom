@@ -59,10 +59,16 @@ func _start_xr() -> bool:
 	return true
 
 
-## The display at [constant REFRESH_RATE] when the headset offers it.
+## The display at the offered rate nearest [constant REFRESH_RATE] (the
+## runtime's floats need not be exactly 90.0, so never match them exactly).
 func _ask_refresh_rate() -> void:
-	if xr_interface.get_available_display_refresh_rates().has(REFRESH_RATE) and not is_equal_approx(xr_interface.display_refresh_rate, REFRESH_RATE):
-		xr_interface.display_refresh_rate = REFRESH_RATE
+	var want := 0.0
+	for r: float in xr_interface.get_available_display_refresh_rates():
+		if want == 0.0 or absf(r - REFRESH_RATE) < absf(want - REFRESH_RATE):
+			want = r
+	if want > 0.0 and absf(xr_interface.display_refresh_rate - want) > 0.5:
+		print("reinstall-vr: asking for %.3f Hz" % want)
+		xr_interface.display_refresh_rate = want
 	_match_physics(xr_interface.display_refresh_rate)
 
 
@@ -72,7 +78,7 @@ func _ask_refresh_rate() -> void:
 func _match_physics(rate: float) -> void:
 	if rate >= 60.0:
 		Engine.physics_ticks_per_second = roundi(rate)
-	print("reinstall-vr: display %.0f Hz (offered %s), physics %d Hz" % [rate, xr_interface.get_available_display_refresh_rates(), Engine.physics_ticks_per_second])
+	print("reinstall-vr: display %.3f Hz (offered %s), physics %d Hz" % [rate, xr_interface.get_available_display_refresh_rates(), Engine.physics_ticks_per_second])
 
 
 ## A Quest pauses the app when the headset sleeps: no frame runs until it
