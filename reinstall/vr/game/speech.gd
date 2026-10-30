@@ -110,6 +110,26 @@ func busy() -> bool:
 	return not _line.is_empty() or not _queue.is_empty() or _gap_left > 0.0
 
 
+## (wave 49) Whether a line over `anchor` is up or waiting.
+func busy_on(anchor: Node3D) -> bool:
+	if not _line.is_empty() and _line["anchor"] == anchor:
+		return true
+	return _queue.any(func(l: Dictionary) -> bool: return l["anchor"] == anchor)
+
+
+## (wave 49) Drop every line over `anchor`, the one up now too (a talker
+## given up on); anyone else's lines go on.
+func cancel(anchor: Node3D) -> void:
+	_queue = _queue.filter(func(l: Dictionary) -> bool: return l["anchor"] != anchor)
+	if _line.is_empty() or _line["anchor"] != anchor:
+		return
+	if _voiced:
+		stopper.call()
+	_voiced = false
+	_end_line()
+	_gap_left = LINE_GAP_MS
+
+
 ## The caption up now ("" between lines).
 func caption_text() -> String:
 	if _line.is_empty():

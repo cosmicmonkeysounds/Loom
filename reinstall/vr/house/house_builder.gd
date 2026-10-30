@@ -100,6 +100,16 @@ var _t := 0.0
 var _haze: Array = []
 ## The props' merged meshes while building: role → SurfaceTool.
 var _role_tools := {}
+## (wave 49) The descent level the `from` props are shown at
+## ([method set_descent]); kept across rebuilds. The house is built before
+## the assignment, so these are toggled, never rebuilt.
+var descent := 0
+## `{from, node}` per merged mesh of `from` props.
+var _from_meshes: Array = []
+## (wave 49) The neon's stutter under a level's look
+## ([method Descent.neon_level]: 1 = today's) and a vision's dimming of it.
+var neon_rate := 1.0
+var neon_scale := 1.0
 ## Cylinder segments for the props' merged meshes.
 const PROP_SEGMENTS := 16
 ## A plain (model-less) prop's colour when it has none.
@@ -147,6 +157,7 @@ func clear() -> void:
 	_hearts = {}
 	_pickups = {}
 	_haze = []
+	_from_meshes = []
 
 
 ## World (VR space) point → house `[x, y, z]`.
@@ -508,6 +519,8 @@ func _build_props() -> void:
 		var kind := str(prop["kind"])
 		var solid := HouseGeometry.prop_solid(prop)
 		var xf := Transform3D(basis, pos)
+		# (wave 49) Only there from this level: merged apart, to be toggled.
+		var from: int = int(prop["from"]) if prop.get("from") != null else 0
 		var parts: Variant = HouseModels.model_parts(prop)
 		if parts != null:
 			# Wave 47: drawn from its model's parts, merged per role; it still
@@ -516,7 +529,7 @@ func _build_props() -> void:
 			var glow := Color(HouseModels.model_neon_color(prop))
 			for part: Dictionary in parts:
 				var r := str(part["role"])
-				_part(r, part, xf, body if r == "body" else (glow if r == "neon" else Color.WHITE), prop["room"])
+				_part(r, part, xf, body if r == "body" else (glow if r == "neon" else Color.WHITE), prop["room"], from)
 		match kind:
 			"box", "screen":
 				if kind == "screen":
@@ -528,7 +541,7 @@ func _build_props() -> void:
 					mi.material_override = HouseLook.screen(prop.get("color"))
 					root.add_child(mi)
 				elif parts == null:
-					_part("body", {"shape": "box", "axis": "y", "c": Vector3(0, size.y / 2.0, 0), "s": size}, xf, _plain_color(prop), prop["room"])
+					_part("body", {"shape": "box", "axis": "y", "c": Vector3(0, size.y / 2.0, 0), "s": size}, xf, _plain_color(prop), prop["room"], from)
 				if solid:
 					_collide_box(pos + basis * Vector3(0, size.y / 2.0, 0), size, basis)
 			"cylinder":
@@ -536,7 +549,7 @@ func _build_props() -> void:
 				cyl.top_radius = maxf(size.x, size.z) / 2.0
 				if parts == null:
 					var dia := maxf(size.x, size.z)
-					_part("body", {"shape": "cyl", "axis": "y", "c": Vector3(0, size.y / 2.0, 0), "s": Vector3(dia, size.y, dia)}, xf, _plain_color(prop), prop["room"])
+					_part("body", {"shape": "cyl", "axis": "y", "c": Vector3(0, size.y / 2.0, 0), "s": Vector3(dia, size.y, dia)}, xf, _plain_color(prop), prop["room"], from)
 				if solid:
 					var shape := CylinderShape3D.new()
 					shape.radius = cyl.top_radius
@@ -566,10 +579,11 @@ static func _plain_color(prop: Dictionary) -> Color:
 
 ## One part (in a prop's frame `xf`) into its role's merged mesh, coloured
 ## `color` per vertex (the body's and the neon's; the other roles white).
-func _part(role: String, part: Dictionary, xf: Transform3D, color: Color, room_id: Variant = null) -> void:
+## `from` > 0: a prop only there from that level, merged apart ([method set_descent]).
+func _part(role: String, part: Dictionary, xf: Transform3D, color: Color, room_id: Variant = null, from := 0) -> void:
 	# Merged per floor too, so a hidden floor hides its props.
 	var r: Variant = HouseGeometry.room_by_id(house, room_id) if room_id != null else null
-	var key := "%s|%s" % [str(r["floor"]) if r != null else "", role]
+	var key := "%s|%s|%d" % [str(r["floor"]) if r != null else "", role, from]
 	if not _role_tools.has(key):
 		var tool := SurfaceTool.new()
 		tool.begin(Mesh.PRIMITIVE_TRIANGLES)
@@ -588,13 +602,33 @@ func _commit_parts(prefix: String) -> void:
 	for key: String in _role_tools:
 		var fl := key.get_slice("|", 0)
 		var r := key.get_slice("|", 1)
+		var from := key.get_slice("|", 2).to_int()
 		var mi := MeshInstance3D.new()
-		mi.name = "%s_%s" % [prefix, r]
+		mi.name = "%s_%s" % [prefix, r] if from == 0 else "%s_from%d_%s" % [prefix, from, r]
 		mi.mesh = (_role_tools[key] as SurfaceTool).commit()
 		mi.material_override = HouseLook.role(r)
 		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		(_floor_node(fl) if fl != "" else self).add_child(mi)
+		if from > 0:
+			mi.visible = descent >= from
+			_from_meshes.append({"from": from, "node": mi})
 	_role_tools = {}
+
+
+## (wave 49) Show the `from` props of level `level` and shallower (0: none).
+func set_descent(level: int) -> void:
+	descent = level
+	for f: Dictionary in _from_meshes:
+		(f["node"] as Node3D).visible = level >= int(f["from"])
+
+
+## How many merged `from` meshes are shown of how many: `[shown, all]`.
+func from_shown() -> Array:
+	var on := 0
+	for f: Dictionary in _from_meshes:
+		if (f["node"] as Node3D).visible:
+			on += 1
+	return [on, _from_meshes.size()]
 
 
 ## A triangle facing `outward` (Godot's front faces wind clockwise).
@@ -1015,7 +1049,7 @@ func _spin(p: Dictionary) -> void:
 
 func _process(delta: float) -> void:
 	_t += delta
-	HouseLook.set_neon(HouseModels.neon_flicker(_t))
+	HouseLook.set_neon(Descent.neon_level(_t, neon_rate) * neon_scale)
 	for h: Dictionary in _haze:
 		var dr: Vector2 = h["drift"]
 		(h["mat"] as StandardMaterial3D).uv1_offset = Vector3(fposmod(dr.x * _t, 1.0), fposmod(dr.y * _t, 1.0), 0.0)
