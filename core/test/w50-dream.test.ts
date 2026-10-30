@@ -2,7 +2,7 @@
 //! screen state's `dream` block and when the takeover falls, the story's
 //! switch and its endings, and the games' feed down the camera routes.
 
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { IncomingMessage, ServerResponse } from "node:http";
@@ -10,7 +10,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import { afterAll, describe, expect, it } from "vitest";
 
 import { dreamFrameIndex, dreamFrameName, dreamOffsetS } from "@loom/house";
-import { DREAM_CAM_EVERY_MS, DREAM_CAM_MS, DREAM_CHECK_MS, DreamFeed } from "../server/dream-feed.ts";
+import { DREAM_CHECK_MS, DREAM_SPURT_MAX_MS, DREAM_SPURT_MIN_MS, DreamFeed, dreamSpurting } from "../server/dream-feed.ts";
 import { EventRuntime } from "../server/event-runtime.ts";
 import { DREAM_FALLBACK_MS, DREAM_LEAD_MS, ScreenWatch, screenDeviceOf, type ScreenDevice } from "../server/routes/screen.ts";
 import { Store } from "../server/store.ts";
@@ -187,6 +187,85 @@ describe("the show", () => {
   });
 });
 
+/** The first moment from `from` the dream is (not) on `spot`. */
+function when(spot: string, from: number, on: boolean): number {
+  let t = from;
+  while (dreamSpurting(spot, t) !== on) t += 100;
+  return t;
+}
+const whenSpurting = (spot: string, from: number): number => when(spot, from, true);
+const whenCalm = (spot: string, from: number): number => when(spot, from, false);
+
+describe("the dream's spurts in the games: mostly the real room", () => {
+  const HOUR = 3_600_000;
+  const START = 1_800_000_000_000;
+  const STEP = 100;
+  const showSpots = (JSON.parse(readFileSync(join(import.meta.dirname, "../examples/trapped-in-the-internet/house.json"), "utf8")) as { terminals: Array<{ id: string }> }).terminals.map((t) => t.id);
+  /** Every spurt of `spot` in an hour, as lengths (ms). */
+  const spurts = (spot: string): number[] => {
+    const out: number[] = [];
+    let run = 0;
+    // From a calm moment: a spurt already running at the start would read short.
+    for (let t = whenCalm(spot, START); t < START + HOUR; t += STEP) {
+      if (dreamSpurting(spot, t)) run += STEP;
+      else if (run > 0) {
+        out.push(run);
+        run = 0;
+      }
+    }
+    return out;
+  };
+
+  it("shows the room most of the time on every terminal", () => {
+    for (const spot of showSpots) {
+      const share = spurts(spot).reduce((a, b) => a + b, 0) / HOUR;
+      expect(share, spot).toBeGreaterThan(0.08);
+      expect(share, spot).toBeLessThan(0.17);
+    }
+  });
+
+  it("is occasional: about one every 30 s on any terminal, so a player passing through sees one", () => {
+    for (const spot of showSpots) {
+      const n = spurts(spot).length;
+      expect(n, spot).toBeGreaterThan(90);
+      expect(n, spot).toBeLessThan(150);
+    }
+  });
+
+  it("lasts seconds, and long enough for a terminal's next read of the feed list", () => {
+    for (const spot of showSpots) {
+      for (const ms of spurts(spot)) {
+        expect(ms, spot).toBeGreaterThanOrEqual(DREAM_SPURT_MIN_MS - STEP);
+        expect(ms, spot).toBeLessThanOrEqual(DREAM_SPURT_MAX_MS + STEP);
+      }
+    }
+  });
+
+  it("is no metronome: the gaps between one terminal's spurts vary", () => {
+    let t = whenSpurting("hall", START);
+    const starts: number[] = [];
+    while (starts.length < 12) {
+      starts.push(t);
+      t = whenSpurting("hall", whenCalm("hall", t));
+    }
+    const gaps = starts.slice(1).map((v, i) => v - starts[i]!);
+    expect(new Set(gaps.map((g) => Math.round(g / 1000))).size).toBeGreaterThan(5);
+  });
+
+  it("gives each terminal its own spurts: two walls only overlap by chance", () => {
+    let both = 0;
+    for (let t = START; t < START + HOUR; t += 1000) if (dreamSpurting("hall", t) && dreamSpurting("ram", t)) both += 1;
+    expect(both / 3600).toBeLessThan(0.05);
+  });
+
+  it("is a pure function of the terminal and the time: a restart or a second game agrees", () => {
+    const t = whenSpurting("ram", START);
+    expect(dreamSpurting("ram", t)).toBe(true);
+    expect(dreamSpurting("ram", t)).toBe(true);
+    expect(dreamSpurting("ram", whenCalm("ram", t))).toBe(false);
+  });
+});
+
 describe("the games' feed", () => {
   function feed(o: { now?: number; dir?: string | null; read?: (f: string) => Promise<Buffer>; found?: boolean } = {}) {
     let t = o.now ?? 1_800_000_000_000;
@@ -243,27 +322,13 @@ describe("the games' feed", () => {
     expect(looks()).toBe(2);
   });
 
-  it("lets the real room break through on each terminal's own beat, only with a camera", () => {
-    const { f, at } = feed({ now: 0 });
-    const beatStart = (DREAM_CAM_EVERY_MS - ((dreamOffsetS("hall") * 1000) % DREAM_CAM_EVERY_MS)) % DREAM_CAM_EVERY_MS;
-    at(beatStart + 10);
-    expect(f.showsCamera("hall", true)).toBe(true);
-    expect(f.showsCamera("hall", false)).toBe(false);
-    at(beatStart + DREAM_CAM_MS + 10);
-    expect(f.showsCamera("hall", true)).toBe(false);
-  });
-
-  it("the room shows a small share of the time", () => {
-    expect(DREAM_CAM_MS / DREAM_CAM_EVERY_MS).toBeLessThan(0.2);
-  });
-
-  it("lists every terminal, with or without a camera, keeping a real feed's entry", () => {
-    const { f } = feed({ now: 5000 });
-    const list = f.list(["hall", "ram"], [{ spot: "hall", at: 1, w: 320, h: 240 }]);
-    expect(list).toEqual([
-      { spot: "hall", at: 1, w: 320, h: 240 },
-      { spot: "ram", at: 5000, w: 320, h: 240 },
-    ]);
+  it("adds a terminal with no camera to the list only for a spurt, and keeps a real feed's entry", () => {
+    const t = whenSpurting("ram", 5000);
+    const { f, at } = feed({ now: t });
+    const real = [{ spot: "hall", at: 1, w: 320, h: 240 }];
+    expect(f.list(["hall", "ram"], real)).toEqual([real[0], { spot: "ram", at: t, w: 320, h: 240 }]);
+    at(whenCalm("ram", t));
+    expect(f.list(["hall", "ram"], real)).toEqual(real);
   });
 });
 
@@ -311,6 +376,8 @@ async function call(rt: EventRuntime, path: string): Promise<{ status: number; h
 }
 
 const JPEG = Buffer.from([0xff, 0xd8, 0xff, 0xd9]);
+const DREAM_JPEG = Buffer.from([0xff, 0xd8, 0xd1, 0xff, 0xd9]);
+const CAMERA_JPEG = Buffer.from([0xff, 0xd8, 0xca, 0xff, 0xd9]);
 
 describe("the camera routes while the dream runs", () => {
   async function dreaming() {
@@ -323,7 +390,7 @@ describe("the camera routes while the dream runs", () => {
     writeFileSync(join(media, "dream", "frames", dreamFrameName(1)), JPEG);
     rt.dreamFeed.ready();
     await new Promise((r) => setTimeout(r, 30));
-    return { rt, clock };
+    return { rt, clock, media };
   }
 
   it("leaves the feeds alone before the dream", { timeout: SLOW }, async () => {
@@ -332,35 +399,71 @@ describe("the camera routes while the dream runs", () => {
     expect((await call(rt, "/api/spatial/cam?spot=hall")).status).toBe(404);
   });
 
-  it("feeds every terminal but the tent's, cameras or none, a frame of its own", { timeout: SLOW }, async () => {
-    const { rt } = await dreaming();
+  /** Press to 🕚 on a runtime, as a dream that began before this boot: on at once. */
+  async function atTheHour(rt: EventRuntime): Promise<void> {
     const r = rt as unknown as { sim: Sim };
     const out = await pressChain(TO_Y2K, async (name) => (r.sim.signal(name), { ok: true }), () => {});
     expect(out.ok).toBe(true);
-    rt.screens.adopt(r.sim); // began before this boot: on at once, no takeover to wait for
-    const list = JSON.parse((await call(rt, "/api/spatial/cams")).raw.toString()) as { cams: Array<{ spot: string; w: number; h: number }> };
-    const spots = list.cams.map((c) => c.spot);
-    expect(spots).toContain("hall");
-    expect(spots).toContain("desktop-tv");
-    expect(spots).not.toContain("tent");
-    expect(list.cams[0]).toMatchObject({ w: 320, h: 240 });
-    const frame = await call(rt, "/api/spatial/cam?spot=hall");
-    expect(frame.status).toBe(200);
-    expect(frame.head["content-type"]).toBe("image/jpeg");
-    expect(frame.head["cache-control"]).toBe("no-store");
-    expect(frame.head["x-cam-at"]).toBeDefined();
-    expect(frame.raw[0]).toBe(0xff);
-    expect((await call(rt, "/api/spatial/cam?spot=tent")).status).toBe(404);
-    expect((await call(rt, "/api/spatial/cam?spot=upstairs-hall")).status).toBe(404); // a frame the set lacks: the terminal keeps its own screen
+    rt.screens.adopt(r.sim);
+  }
+  /** Put the clock at `t` with a frame of `spot` on disk for it, and a live camera on `hall`. */
+  function moveTo(rt: EventRuntime, clock: { t: number }, media: string, spot: string, t: number): void {
+    clock.t = t;
+    writeFileSync(join(media, "dream", "frames", dreamFrameName(dreamFrameIndex(spot, t))), DREAM_JPEG);
+    rt.cams.put("hall", CAMERA_JPEG, 320, 240);
+  }
+  const listed = async (rt: EventRuntime): Promise<string[]> => (JSON.parse((await call(rt, "/api/spatial/cams")).raw.toString()) as { cams: Array<{ spot: string }> }).cams.map((c) => c.spot);
+
+  it("shows the real camera between spurts, and the terminal's own moment in one", { timeout: SLOW }, async () => {
+    const { rt, clock, media } = await dreaming();
+    await atTheHour(rt);
+    moveTo(rt, clock, media, "hall", whenCalm("hall", clock.t));
+    expect((await call(rt, "/api/spatial/cam?spot=hall")).raw).toEqual(CAMERA_JPEG);
+    moveTo(rt, clock, media, "hall", whenSpurting("hall", clock.t));
+    const spurt = await call(rt, "/api/spatial/cam?spot=hall");
+    expect(spurt.status).toBe(200);
+    expect(spurt.raw).toEqual(DREAM_JPEG);
+    expect(spurt.head["content-type"]).toBe("image/jpeg");
+    expect(spurt.head["cache-control"]).toBe("no-store");
+    expect(spurt.head["x-cam-at"]).toBeDefined();
+    moveTo(rt, clock, media, "hall", whenCalm("hall", clock.t));
+    expect((await call(rt, "/api/spatial/cam?spot=hall")).raw).toEqual(CAMERA_JPEG);
   });
 
-  it("stops with 🌀", { timeout: SLOW }, async () => {
-    const { rt } = await dreaming();
-    const r = rt as unknown as { sim: Sim };
-    await pressChain(TO_Y2K, async (name) => (r.sim.signal(name), { ok: true }), () => {});
-    rt.screens.adopt(r.sim);
-    r.sim.signal("dream_toggle");
-    expect(JSON.parse((await call(rt, "/api/spatial/cams")).raw.toString())).toEqual({ cams: [] });
+  it("gives a terminal with no camera its spurts, and its usual screen between them", { timeout: SLOW }, async () => {
+    const { rt, clock, media } = await dreaming();
+    await atTheHour(rt);
+    moveTo(rt, clock, media, "ram", whenSpurting("ram", clock.t));
+    expect(await listed(rt)).toContain("ram");
+    expect((await call(rt, "/api/spatial/cam?spot=ram")).raw).toEqual(DREAM_JPEG);
+    moveTo(rt, clock, media, "ram", whenCalm("ram", clock.t));
+    expect(await listed(rt)).not.toContain("ram");
+    expect((await call(rt, "/api/spatial/cam?spot=ram")).status).toBe(404);
+  });
+
+  it("never touches the tent", { timeout: SLOW }, async () => {
+    const { rt, clock, media } = await dreaming();
+    await atTheHour(rt);
+    moveTo(rt, clock, media, "tent", whenSpurting("tent", clock.t));
+    expect(await listed(rt)).not.toContain("tent");
+    expect((await call(rt, "/api/spatial/cam?spot=tent")).status).toBe(404);
+  });
+
+  it("falls back on the camera when the set is short a frame", { timeout: SLOW }, async () => {
+    const { rt, clock } = await dreaming();
+    await atTheHour(rt);
+    clock.t = whenSpurting("hall", clock.t + 3_600_000); // no frame on disk for this moment
+    rt.cams.put("hall", CAMERA_JPEG, 320, 240);
+    expect((await call(rt, "/api/spatial/cam?spot=hall")).raw).toEqual(CAMERA_JPEG);
+  });
+
+  it("stops with 🌀: the camera again, in what would have been a spurt", { timeout: SLOW }, async () => {
+    const { rt, clock, media } = await dreaming();
+    await atTheHour(rt);
+    moveTo(rt, clock, media, "hall", whenSpurting("hall", clock.t));
+    expect((await call(rt, "/api/spatial/cam?spot=hall")).raw).toEqual(DREAM_JPEG);
+    (rt as unknown as { sim: Sim }).sim.signal("dream_toggle");
+    expect((await call(rt, "/api/spatial/cam?spot=hall")).raw).toEqual(CAMERA_JPEG);
   });
 
   it("does nothing at all with no media folder", { timeout: SLOW }, async () => {

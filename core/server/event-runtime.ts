@@ -4214,8 +4214,9 @@ export class EventRuntime {
     return ids;
   }
 
-  /** (wave 50) The terminals the dream feeds to the games, while it runs and
-   *  its frames are here: every spot on the map but the tent's. Null: not now. */
+  /** (wave 50) The terminals the dream can break through in the games, while
+   *  it runs and its frames are here: every spot on the map but the tent's.
+   *  Null: not now. */
   private dreamSpots(): Set<string> | null {
     const dream = this.screens.dreamOf(this.sim);
     if (dream === null || this.clock() < dream.at || !this.dreamFeed.ready()) return null;
@@ -4390,7 +4391,7 @@ export class EventRuntime {
         res.end(jpeg);
       };
       const none = (): void => sendJson(res, 404, { error: "no feed" });
-      if (allowed && dream?.has(spot) === true && !this.dreamFeed.showsCamera(spot, frame !== null)) {
+      if (allowed && dream?.has(spot) === true && this.dreamFeed.spurting(spot)) {
         void this.dreamFeed.frame(spot).then((f) => {
           if (f !== null) send(f.jpeg, f.at);
           else if (frame !== null) send(frame.jpeg, frame.at);

@@ -400,8 +400,9 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   (`SCREEN_NIGHT_VARS.dream`) is on from `y2k_clock`; `cue dream_begin` (the
   `DREAM_CUE`, never a screen family) arms `ScreenState.dream {at}`: the cue +
   `DREAM_FALLBACK_MS`, or a TV's `bug=1` + `DREAM_LEAD_MS`, once, only sooner.
-  `ScreenWatch.dreamOf` is the one reader. While it runs `DreamFeed`
-  (`dream-feed.ts`, frames off `LOOM_MEDIA_DIR`) answers
+  `ScreenWatch.dreamOf` is the one reader. While it runs the games' feeds
+  stay the real cameras and `DreamFeed` (`dream-feed.ts`, frames off
+  `LOOM_MEDIA_DIR`, `dreamSpurting`, pure) breaks through them in spurts on
   `/api/spatial/cams` and `/cam`, so the games need no code. The media is
   never in git or an image: `scripts/ops/dream-media.sh`; Caddy serves
   `/media/`, and `server.ts` does only with no proxy. Tests:

@@ -271,8 +271,8 @@ every terminal melts at one instant into an hour-long video, replacing the idle
 show until an ending, each at its own place in it. The clock floats on it; a
 line, a board and a walk are left alone. What outranks it comes through **data
 moshed** (`terminal/src/dream/`): cutscenes, slides, overlays, announcements,
-wiping clean every 6.4 s; a blackout stays black. The games get it down the
-camera routes, so no APK. The media is in `~/loom-media/dream` on both machines,
+wiping clean every 6.4 s; a blackout stays black. The games' terminals keep
+their real room cameras, with spurts of it down the same routes, so no APK. The media is in `~/loom-media/dream` on both machines,
 never in git or an image (`scripts/ops/dream-media.sh`; already on the VPS).
 🌀 turns it off and on. Help: `docs/help/play/19-house-workings.md`.
 

@@ -171,7 +171,8 @@ that is the point. Never explain it.
 - A terminal someone is using is left alone: a line to Trabolta, a chess game,
   the casino, a walk in the tent. Scan a pass as usual; the scan box is still
   in its corner, and so is the clock.
-- The games' terminals dream too, with the real room flickering through.
+- The games' terminals keep showing the real rooms, with spurts of the dream
+  breaking through every so often.
 - The director's **🌀 Clippy's dream: on / off** puts everything back (and
   brings it back) if the wifi struggles or a scene must read clean.
 
