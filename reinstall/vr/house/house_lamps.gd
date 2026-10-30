@@ -64,6 +64,16 @@ var slots: Array = []
 var _repick_in := 0.0
 ## The ambient now (eased toward [method HouseLights.ambient]).
 var ambient_now: Dictionary = HouseLights.ambient({})
+## (wave 49, [Descent]) What the descent does to the light: `ambient_scale`
+## multiplies the ambient and the sun, `pool_scale` the real lights, and
+## `tint` is mixed into all of them by `tint_by`. The pool stays fixed. The
+## defaults leave the house as it was.
+var ambient_scale := 1.0
+var pool_scale := 1.0
+var tint := Color.WHITE
+var tint_by := 0.0
+## The sun's own colour.
+var _sun_color := Color.WHITE
 
 static var _bulb_mesh: SphereMesh
 
@@ -72,6 +82,8 @@ func setup(b: HouseBuilder, e: Environment, s: DirectionalLight3D, t: String) ->
 	builder = b
 	env = e
 	sun = s
+	if sun != null:
+		_sun_color = sun.light_color
 	if builder != null:
 		builder.built.connect(_place)
 	set_tier(t)
@@ -209,8 +221,8 @@ func step(delta: float) -> void:
 			continue
 		var b: Dictionary = _bulbs[slots[i]]
 		l.visible = true
-		l.light_color = Color(str(b["light"]["color"]))
-		l.light_energy = LIGHT_ENERGY * HouseLights.shown_level(b["light"], float(b["t"]))
+		l.light_color = Color(str(b["light"]["color"])).lerp(tint, tint_by)
+		l.light_energy = LIGHT_ENERGY * HouseLights.shown_level(b["light"], float(b["t"])) * pool_scale
 	var want := HouseLights.ambient(frame if in_house else {})
 	var k := 1.0 - exp(-AMBIENT_EASE * delta) if delta > 0.0 else 0.0
 	ambient_now = {
@@ -260,7 +272,8 @@ func _repick() -> void:
 
 func _apply_ambient() -> void:
 	if env != null:
-		env.ambient_light_energy = float(ambient_now["energy"])
-		env.ambient_light_color = ambient_now["color"]
+		env.ambient_light_energy = float(ambient_now["energy"]) * ambient_scale
+		env.ambient_light_color = (ambient_now["color"] as Color).lerp(tint, tint_by)
 	if sun != null:
-		sun.light_energy = float(ambient_now["sun"])
+		sun.light_energy = float(ambient_now["sun"]) * ambient_scale
+		sun.light_color = _sun_color.lerp(tint, tint_by)

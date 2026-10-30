@@ -381,6 +381,7 @@ describe("GET /api/mod/audio/mixer", () => {
       ["music", false],
       ["tracks", false],
       ["sfx", false],
+      ["steps", false],
       ["announce", false],
       ["in:clippy", true],
       ["in:trabolta", false],

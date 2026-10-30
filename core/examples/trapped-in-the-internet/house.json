@@ -1104,7 +1104,8 @@
         0.9,
         3.8
       ],
-      "color": "#d8d4c8"
+      "color": "#d8d4c8",
+      "model": "counter"
     },
     {
       "id": "fridge",
@@ -1120,7 +1121,7 @@
         1.8,
         0.8
       ],
-      "model": "cabinet"
+      "model": "fridge"
     },
     {
       "id": "router",
@@ -1170,7 +1171,8 @@
         0.9,
         0.6
       ],
-      "color": "#2b2b2b"
+      "color": "#2b2b2b",
+      "model": "stove"
     },
     {
       "id": "desk",
@@ -1221,7 +1223,8 @@
         0.5
       ],
       "yaw": 90,
-      "color": "#8c5a46"
+      "color": "#8c5a46",
+      "model": "fireplace"
     },
     {
       "id": "couch",
@@ -1238,7 +1241,8 @@
         0.9
       ],
       "yaw": -90,
-      "color": "#5b6b4a"
+      "color": "#5b6b4a",
+      "model": "couch"
     },
     {
       "id": "coffee-table",
@@ -1319,7 +1323,8 @@
         1,
         0.6
       ],
-      "color": "#1f1f1f"
+      "color": "#1f1f1f",
+      "model": "bbq"
     },
     {
       "id": "picnic-table",
@@ -1489,7 +1494,9 @@
         0.75,
         0.65
       ],
-      "color": "#f7f7f7"
+      "color": "#f7f7f7",
+      "model": "toilet",
+      "yaw": 180
     },
     {
       "id": "sink-1",
@@ -1505,7 +1512,9 @@
         0.85,
         0.6
       ],
-      "color": "#e6e6e6"
+      "color": "#e6e6e6",
+      "model": "sink",
+      "yaw": 180
     },
     {
       "id": "washer",
@@ -1521,7 +1530,9 @@
         0.85,
         0.7
       ],
-      "color": "#e8e8e8"
+      "color": "#e8e8e8",
+      "model": "washer",
+      "yaw": 90
     },
     {
       "id": "dryer",
@@ -1538,7 +1549,9 @@
         0.7
       ],
       "color": "#dcdcdc",
-      "label": "FAN"
+      "label": "FAN",
+      "model": "dryer",
+      "yaw": 90
     },
     {
       "id": "laundry-basket",
@@ -1671,7 +1684,8 @@
         0.7
       ],
       "color": "#2a2a30",
-      "label": "RAM"
+      "label": "RAM",
+      "model": "mixing"
     },
     {
       "id": "studio-couch",
@@ -1683,11 +1697,13 @@
         19.5
       ],
       "size": [
-        0.9,
+        1.8,
         0.8,
-        1.8
+        0.9
       ],
-      "color": "#7a4a4a"
+      "color": "#7a4a4a",
+      "model": "couch",
+      "yaw": 90
     },
     {
       "id": "speaker-l",
@@ -1703,7 +1719,8 @@
         1.1,
         0.4
       ],
-      "color": "#111111"
+      "color": "#111111",
+      "model": "speaker"
     },
     {
       "id": "storage-boxes",
@@ -1751,7 +1768,8 @@
         0.55,
         1.5
       ],
-      "color": "#f2f2f2"
+      "color": "#f2f2f2",
+      "model": "bathtub"
     },
     {
       "id": "toilet-2",
@@ -1767,7 +1785,9 @@
         0.75,
         0.65
       ],
-      "color": "#f7f7f7"
+      "color": "#f7f7f7",
+      "model": "toilet",
+      "yaw": 180
     },
     {
       "id": "sink-2",
@@ -1783,7 +1803,9 @@
         0.85,
         0.6
       ],
-      "color": "#e6e6e6"
+      "color": "#e6e6e6",
+      "model": "sink",
+      "yaw": 180
     },
     {
       "id": "bed",
@@ -1799,7 +1821,8 @@
         0.55,
         1.6
       ],
-      "color": "#3a5a8c"
+      "color": "#3a5a8c",
+      "model": "bed"
     },
     {
       "id": "drawing-desk",
@@ -1816,7 +1839,8 @@
         1.4
       ],
       "color": "#6e4f33",
-      "label": "GPU"
+      "label": "GPU",
+      "model": "desk"
     },
     {
       "id": "server-heart",
@@ -1850,6 +1874,489 @@
         0.3,
         0.3
       ]
+    },
+    {
+      "id": "microwave",
+      "room": "start-bar",
+      "kind": "box",
+      "model": "microwave",
+      "pos": [
+        6.75,
+        0.9,
+        19.4
+      ],
+      "size": [
+        0.5,
+        0.3,
+        0.4
+      ],
+      "yaw": 90,
+      "solid": false
+    },
+    {
+      "id": "toaster",
+      "room": "start-bar",
+      "kind": "box",
+      "model": "toaster",
+      "pos": [
+        6.75,
+        0.9,
+        18.45
+      ],
+      "size": [
+        0.3,
+        0.2,
+        0.18
+      ],
+      "yaw": 90,
+      "solid": false
+    },
+    {
+      "id": "modular-synth",
+      "room": "ram",
+      "kind": "box",
+      "model": "modular",
+      "pos": [
+        -6.8,
+        -2.7,
+        17.5
+      ],
+      "size": [
+        1.2,
+        1.6,
+        0.35
+      ],
+      "yaw": -90
+    },
+    {
+      "id": "guitar-amp",
+      "room": "ram",
+      "kind": "box",
+      "model": "amp",
+      "pos": [
+        -6.82,
+        -2.7,
+        19.3
+      ],
+      "size": [
+        0.6,
+        0.5,
+        0.3
+      ],
+      "yaw": -90
+    },
+    {
+      "id": "studio-piano",
+      "room": "ram",
+      "kind": "box",
+      "model": "piano",
+      "pos": [
+        -6.66,
+        -2.7,
+        10.5
+      ],
+      "size": [
+        1.5,
+        1.25,
+        0.6
+      ],
+      "yaw": -90
+    },
+    {
+      "id": "turntable",
+      "room": "ram",
+      "kind": "box",
+      "model": "turntable",
+      "pos": [
+        -3.55,
+        -1.9,
+        12.45
+      ],
+      "size": [
+        0.5,
+        0.14,
+        0.4
+      ],
+      "solid": false
+    },
+    {
+      "id": "arcade",
+      "room": "steam-room",
+      "kind": "box",
+      "model": "arcade",
+      "pos": [
+        -7.1,
+        0,
+        9.8
+      ],
+      "size": [
+        0.7,
+        1.75,
+        0.75
+      ],
+      "yaw": -90
+    },
+    {
+      "id": "office-crt",
+      "room": "cpu",
+      "kind": "box",
+      "model": "crt",
+      "pos": [
+        -6,
+        0.75,
+        14.25
+      ],
+      "size": [
+        0.42,
+        0.4,
+        0.42
+      ],
+      "solid": false
+    },
+    {
+      "id": "office-armchair",
+      "room": "cpu",
+      "kind": "box",
+      "model": "armchair",
+      "pos": [
+        -10.2,
+        0,
+        12.3
+      ],
+      "size": [
+        0.9,
+        0.9,
+        0.85
+      ],
+      "yaw": 180
+    },
+    {
+      "id": "floor-lamp",
+      "room": "desktop",
+      "kind": "cylinder",
+      "model": "lamp",
+      "pos": [
+        2.5,
+        0,
+        11.1
+      ],
+      "size": [
+        0.4,
+        1.7,
+        0.4
+      ]
+    },
+    {
+      "id": "bedroom-tv",
+      "room": "graphics-card",
+      "kind": "box",
+      "model": "tv",
+      "pos": [
+        2.6,
+        2.8,
+        20.7
+      ],
+      "size": [
+        1.1,
+        1.2,
+        0.5
+      ],
+      "yaw": 180
+    },
+    {
+      "id": "gnome-1",
+      "room": "backyard",
+      "kind": "cylinder",
+      "model": "gnome",
+      "pos": [
+        -12.5,
+        0,
+        28.4
+      ],
+      "size": [
+        0.3,
+        0.6,
+        0.3
+      ],
+      "solid": false
+    },
+    {
+      "id": "gnome-2",
+      "room": "backyard",
+      "kind": "cylinder",
+      "model": "gnome",
+      "pos": [
+        -5.5,
+        0,
+        24.3
+      ],
+      "size": [
+        0.3,
+        0.6,
+        0.3
+      ],
+      "solid": false
+    },
+    {
+      "id": "mirror-upstairs",
+      "room": "upstairs-hall",
+      "kind": "box",
+      "model": "mirror",
+      "pos": [
+        -2.8,
+        2.8,
+        15.4
+      ],
+      "size": [
+        0.8,
+        2,
+        0.1
+      ],
+      "yaw": -90,
+      "from": 1
+    },
+    {
+      "id": "hall-clock",
+      "room": "hall",
+      "kind": "box",
+      "model": "clock",
+      "pos": [
+        -4.75,
+        0,
+        16.2
+      ],
+      "size": [
+        0.6,
+        2.2,
+        0.4
+      ],
+      "yaw": -90,
+      "from": 2
+    },
+    {
+      "id": "little-bottle",
+      "room": "start-bar",
+      "kind": "cylinder",
+      "model": "bottle",
+      "pos": [
+        5.1,
+        0.75,
+        18.4
+      ],
+      "size": [
+        0.12,
+        0.3,
+        0.12
+      ],
+      "from": 2
+    },
+    {
+      "id": "mushroom-bath",
+      "room": "bathroom-1",
+      "kind": "cylinder",
+      "model": "mushroom",
+      "pos": [
+        -0.4,
+        -2.7,
+        7.6
+      ],
+      "size": [
+        0.7,
+        0.9,
+        0.7
+      ],
+      "from": 2
+    },
+    {
+      "id": "tea-party",
+      "room": "backyard",
+      "kind": "box",
+      "model": "teatable",
+      "pos": [
+        -10.5,
+        0,
+        25.2
+      ],
+      "size": [
+        2.4,
+        0.95,
+        1
+      ],
+      "from": 3
+    },
+    {
+      "id": "tea-chair-1",
+      "room": "backyard",
+      "kind": "box",
+      "model": "chair",
+      "pos": [
+        -12.1,
+        0,
+        25.2
+      ],
+      "size": [
+        0.6,
+        1,
+        0.6
+      ],
+      "yaw": -90,
+      "from": 3
+    },
+    {
+      "id": "tea-chair-2",
+      "room": "backyard",
+      "kind": "box",
+      "model": "chair",
+      "pos": [
+        -8.9,
+        0,
+        25.2
+      ],
+      "size": [
+        0.6,
+        1,
+        0.6
+      ],
+      "yaw": 90,
+      "from": 3
+    },
+    {
+      "id": "flamingo-1",
+      "room": "backyard",
+      "kind": "box",
+      "model": "flamingo",
+      "pos": [
+        -10.8,
+        0,
+        20.5
+      ],
+      "size": [
+        0.4,
+        1.1,
+        0.6
+      ],
+      "yaw": 40,
+      "from": 3
+    },
+    {
+      "id": "flamingo-2",
+      "room": "backyard",
+      "kind": "box",
+      "model": "flamingo",
+      "pos": [
+        -11.7,
+        0,
+        21.4
+      ],
+      "size": [
+        0.4,
+        1.1,
+        0.6
+      ],
+      "yaw": -70,
+      "from": 3
+    },
+    {
+      "id": "mushroom-yard",
+      "room": "backyard",
+      "kind": "cylinder",
+      "model": "mushroom",
+      "pos": [
+        -13.6,
+        0,
+        23.6
+      ],
+      "size": [
+        1,
+        1.4,
+        1
+      ],
+      "from": 3
+    },
+    {
+      "id": "spiral-living",
+      "room": "desktop",
+      "kind": "cylinder",
+      "model": "spiral",
+      "pos": [
+        -1.9,
+        0,
+        10.2
+      ],
+      "size": [
+        1.6,
+        2.7,
+        1.6
+      ],
+      "from": 3
+    },
+    {
+      "id": "rabbit-hole",
+      "room": "basement-hall",
+      "kind": "cylinder",
+      "model": "hole",
+      "pos": [
+        2,
+        -2.7,
+        16.5
+      ],
+      "size": [
+        1.4,
+        0.02,
+        1.4
+      ],
+      "from": 3
+    },
+    {
+      "id": "office-door",
+      "room": "cpu",
+      "kind": "box",
+      "model": "door",
+      "pos": [
+        -8,
+        0,
+        16.9
+      ],
+      "size": [
+        1,
+        2.1,
+        0.12
+      ],
+      "from": 3
+    },
+    {
+      "id": "card-left",
+      "room": "basement-hall",
+      "kind": "box",
+      "model": "card",
+      "pos": [
+        2.9,
+        -2.7,
+        20.3
+      ],
+      "size": [
+        0.7,
+        1.9,
+        0.08
+      ],
+      "from": 4
+    },
+    {
+      "id": "card-right",
+      "room": "basement-hall",
+      "kind": "box",
+      "model": "card",
+      "pos": [
+        4.9,
+        -2.7,
+        20.3
+      ],
+      "size": [
+        0.7,
+        1.9,
+        0.08
+      ],
+      "from": 4
     }
   ],
   "spaces": {

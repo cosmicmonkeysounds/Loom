@@ -50,7 +50,7 @@ Where everything is:
 
 - **What the speakers are, which output each is on, where each sound goes,
   where the announcements play**: the event's `audio.json`, edited on the
-  map editor's **Audio** tab (`/reinstall/map`, help *The house map* →
+  map editor's **Audio** tab (Run → House → 🗺 Map, help *The house map* →
   *The Audio tab*). The repo's copy is
   `core/examples/trapped-in-the-internet/audio.json`.
 - **What the router may do**: the `audio:` section of

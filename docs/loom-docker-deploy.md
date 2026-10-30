@@ -16,7 +16,7 @@ have a domain everything under the app address is reachable by plain
 | `https://app.mapsandducks.com/edit/` | The **editor** — sign up, write, run + deploy events |
 | `https://app.mapsandducks.com/terminal/` | The **wall terminals** — the kiosk tablets around the house (`terminal/`) |
 | `https://app.mapsandducks.com/reinstall/` | The **web reinstallation game** — the tent tablet's golden-duck hunt, and the King at the server-room door (`reinstall/web/`) |
-| `https://app.mapsandducks.com/reinstall/map` | The **house map** viewer + editor for directors |
+| `https://app.mapsandducks.com/reinstall/map` | The **house map** viewer + editor on its own page; directors use it in the editor, Run → House → 🗺 Map |
 | `…/api/*`, `…/e/*` | The event server's API (used by both apps) |
 
 Under the hood it's four containers, defined in the repo-root
@@ -427,7 +427,8 @@ setup above matters.
 
 Nothing to configure — the `loom` image already serves the wall
 terminals at `/terminal/` and the web reinstallation game at
-`/reinstall/` (the house map editor at `/reinstall/map`); the design
+`/reinstall/` (the house map editor at `/reinstall/map`, which the editor also
+embeds as Run → House → 🗺 Map); the design
 contract is [`loom-reinstall.md`](./loom-reinstall.md). Every device is
 provisioned with the event's **moderator passcode** by a link, e.g.
 
@@ -445,7 +446,7 @@ draft) refreshes them, End → relaunch plays the project's current map.
 The map page's variant buttons switch the live map (mid-show too), **Save
 to project** writes the event's map back into the project, **Download
 JSON** gives you the file to commit. Order: a director's save from
-`/reinstall/map` (stored per event in the `loom-state` volume — the
+the map editor (stored per event in the `loom-state` volume — the
 default event, the one the env passcodes open, at
 `/data/spatial-house.json`, every other event at
 `/data/<eventId>/spatial-house.json`) > the project's active variant >
@@ -674,7 +675,8 @@ story, so a server that predates them must be shipped **first** (§5¾
 *Deploy order*). `scripts/accept/k01.sh` (needs `LOOM_MOD_CODE`) checks the
 three front doors, that `/api/mod/codes` hands out the `LOOM_BASE_URL`
 origin, and that the SSE feed's 25 s pings arrive on time and uncompressed
-(the Caddyfile compresses everything *except* `*/events` and `*/stream`).
+(the Caddyfile compresses everything *except* `*/events`, `*/stream` and
+`*/audio/walkers`).
 
 **Load test** (OCT31 K-32, on a **rehearsal** event — it adds 45 bot
 personas and refuses an event with real guests):

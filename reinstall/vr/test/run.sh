@@ -42,5 +42,9 @@ watchdog 180 "$godot" --headless --path "$project" --xr-mode off --script res://
 # --offline keeps the ServerLink autoload off the network.
 watchdog 180 "$godot" --headless --path "$project" --xr-mode off --script res://test/game.gd -- --offline
 
+# The descent (wave 49): the ports against their goldens, the runner, the
+# visions, the talkers' panel, the Hallway, the autopilot at the deepest level.
+watchdog 240 "$godot" --headless --path "$project" --xr-mode off --script res://test/descent.gd -- --offline
+
 # The Quest build tooling (K-30): pure helpers + dry runs, no Android needed.
 "$here/quest_sh.sh"

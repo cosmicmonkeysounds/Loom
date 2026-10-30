@@ -387,9 +387,11 @@ token or the owning author's session.
 | Facts judge | (no routes of its own) | `facts.ts`; verdicts go through `/api/mod/signal` |
 | Agents | `GET /api/agent/stream`, `POST /api/agent/{reply,trace,judge}`, `GET /api/agent/facts`, `/api/agent/mind`, `/api/mod/agent/{trace,control}` | `agents.ts`, `agent-recent.ts`, `agent-dossier.ts` |
 | Reinstallation games | `/api/spatial/{house,stream,pose,found,moment,end}`, `/api/spatial/king/hit`, `/api/mod/spatial/*` | `spatial.ts`; the contract is [`docs/loom-reinstall.md`](../docs/loom-reinstall.md) §2; `moment` (wave 26: the void, the heart, a pickup) is [`docs/loom-w26-contract.md`](../docs/loom-w26-contract.md) C6 |
+| The descent | `GET /api/spatial/descent`, `POST /api/spatial/told`, `GET`+`POST /api/mod/spatial/descent` | `descent.ts` (`descent.json`, read live; a session token or a moderator's), `spatial.ts`; wave 49: what was told and a forced level are memory only; never on the host allowlist. [`docs/loom-w49-contract.md`](../docs/loom-w49-contract.md) C3.2, C3.3 |
 | Voice + cameras | `POST /api/spatial/voice`, `GET /api/spatial/voice/stream`, `POST /api/mod/spatial/cam`, `GET /api/spatial/{cams,cam}` | `spatial-voice.ts`, `spatial-cams.ts`; memory only, never journaled; the upload answers `watched`, and a game session sees only the feeds of its own room (wave 26) |
 | Screens | `GET /api/screen/state`, `/api/mod/screen/{terminals,voice,identify}`, `/api/mod/tts` | `routes/screen.ts`, `tts.ts` |
 | House sound | `/api/mod/audio{,/project,/test,/stop,/announce,/play,/report}` | `audio.ts` (`audio.json`); wave 25: `play` (one sound / announcement, hosts too) and the router's `report` (acks + health, memory only) |
+| Footsteps | `GET /api/mod/audio/walkers` (SSE: `walkers` frames), `POST /api/mod/audio/walkers/test {speaker}` | `audio.ts`, `spatial.ts` (`walkersOf`); wave 49: the router's stream, memory only, never on the host allowlist. [`docs/loom-w49-contract.md`](../docs/loom-w49-contract.md) C3.1 |
 | House desk | `GET /api/mod/desk[?after=&wait=]`, `POST /api/mod/desk{,/project,/go,/standby,/stop,/check,/check/reset}` | `desk.ts` (`desk.json`, wave 25); hosts reach the GET, `go`, `standby`, `stop`, `check`; the contract is [`docs/loom-house-desk.md`](../docs/loom-house-desk.md) |
 | House lights | `/api/mod/lights{,/project,/test,/devices,/pair,/shown}` (wave 39: `presence` + the `presence=<seq>` cursor on the GET) | `lights.ts` (`lights.json`), `lights-shown.ts` (the games' `lights` frame) |
 | Web Push | `/api/push/{config,subscribe,unsubscribe,visible}`, `/api/mod/push/status`, `/api/guest/homescreen` | `push.ts`, `routes/k31.ts`, `routes/k31b.ts` |
@@ -870,7 +872,7 @@ Everything is optional; the defaults run a LAN event with no setup.
 | `LOOM_APP_DIST`, `LOOM_TERMINAL_DIST`, `LOOM_REINSTALL_DIST` | the sibling packages' `dist/` | the built apps served at `/`, `/terminal/`, `/reinstall/` |
 | `LOOM_MEDIA_DIR` | unset | the house media (Clippy's dream, `scripts/ops/dream-media.sh`): the games' frames, and `/media/` with no proxy in front |
 | `LOOM_BASE_URL` | the first LAN address | the base of every join / check-in / re-pair link; set it on a public deployment |
-| `LOOM_HOUSE`, `LOOM_FACTS`, `LOOM_AUDIO`, `LOOM_LIGHTS`, `LOOM_DESK` | the example's `house.json` and `facts.json`; no default for audio / lights / desk | fallbacks for an event whose project has no copy |
+| `LOOM_HOUSE`, `LOOM_FACTS`, `LOOM_AUDIO`, `LOOM_LIGHTS`, `LOOM_DESK`, `LOOM_CREDITS`, `LOOM_DESCENT` | the example's `house.json` and `facts.json`; no default for audio / lights / desk; credits / descent: the scenario's own, with no project | fallbacks for an event whose project has no copy |
 | `LOOM_WIKI` | on | `off` keeps the program directory offline |
 | `LOOM_TTS_URL` (+ `_API_KEY`, `_MODEL`, `_VOICE`, `_FORMAT`) | off | the opt-in server voice; the terminals use the devices' own voices by default |
 | `LOOM_VAPID_PUBLIC_KEY`, `LOOM_VAPID_PRIVATE_KEY`, `LOOM_VAPID_SUBJECT` | unset (push off) | Web Push; generate once, never rotate before a show |

@@ -14,6 +14,7 @@ Thumbsticks, plus one button for the King (and a laser in the lobby):
 | **Right stick** | turn smoothly (a small push turns slowly, at most 70°/s; no snap turn since wave 33b — it made people dizzy) |
 | **Trigger** (either hand) or **A / X** | hit the King, near and facing him — once per visit |
 | **Lobby** | point a controller at your program's tile and pull the **trigger** (either hand: a thin beam shows where), or walk the tiles with the stick and hold **right** for 1 s; then **START** (trigger, or hold right again) or **BACK** |
+| **A prop that talks** (wave 49) | the same beam and **trigger** (or **A**) on its panel's rows; walk off to leave it |
 | **The intro** | the same beam and **trigger** (or **A**) on the panel's buttons; the stick walks and turns once the tutorial says so |
 
 With only the **right** controller (the show's headsets), its stick's
@@ -61,24 +62,27 @@ Quest: Theora at 720p30 in software, and the video's audio level.
 | `house/house_king.gd` | The King's reach (`kingReach`: `KING_REACH` 1.25 m, `KING_CONE_DEG` 55°), the fallen map the trail routes over (the web game's `trailMap`), and the shared `KingState` off the wire. |
 | `house/house_builder.gd` · `house_look.gd` | The map as a scene: StaticBody3D walls, fences, lintels and rails; checker floors with stair holes; starfield ceilings; ramps; props; the King with his shared health bar and a shut leaf in each door he guards; Trabolta's heart (shown once he has fallen) and the pickups (the floppy disk); terminal screens (or a terminal's live camera feed); room labels. The Web-1.0 look is built from procedural textures. |
 | `house/house_lights.gd` · `house_lamps.gd` | Wave 39: the real house's lights. `house_lights.gd` ports `gameLightsOf` / `pulseFactor` and holds the pure rules (the pool pick, the night ambient, the graphics tiers); `house_lamps.gd` draws a bulb per fixture, pulses the ones a program stands under, lights the nearest with a fixed pool of real lights and dims the ambient (below). |
+| `house/house_models.gd` · `house_descent.gd` | Literal ports: every prop model's parts (wave 47, wave 49's 35 more, the `wood` and `flame` roles, `GLOW_ROLES`), green against `test/golden/models.json`; and the descent's rules (`descent.ts`: the level, the seeded plan, who wakes, the dialogue's walk, `doorSpot`), green against `test/golden/descent.json`. |
 | `house/house_escape.gd` · `house_moment.gd` | Ports of `@loom/house`'s void (`voidDistance`, `outsideGround`) and the moments (`heartReached`, `pickupReach`) (house lane). |
-| `house/house.json` | The show's map. It is a copy, so do not edit it here; see below. |
+| `house/house.json` · `house/descent.json` | The show's map, and the descent's words (the fallback for a server with no script). Both are copies, so do not edit them here; see below. |
 | `net/server_link.gd` | The `ServerLink` autoload: config, mod login, station polling, begin / pose / found / King hit / end, house fetch, the shared King, and the spatial stream (`sse_client.gd` + `sse_parser.gd`). The 10 Hz pose pump is latest-only and flushes the newest pose before a claim (`pose_pump.gd`). |
 | `net/cam_feeds.gd` | The terminals' live camera feeds: the list every 2 s, the terminals in the player's own (presence) room at ~3 fps (never the tent's station), one request per spot, JPEG into a texture updated in place, back-off, stopped with the session. |
 | `net/voice_link.gd` · `voice_codec.gd` | The voice link (the terminals heard, the player heard on them), the mic's states, `hold_for` (the game's own sounds keep the mic shut), the lobby's TEST MIC. `voice_codec.gd` is a port (house lane). |
 | `net/avatar_cache.gd` | The ghosts' profile pictures: two downloads at a time off the event's `/api/avatar/<key>`, 2 MB cap, cached, a failure not retried until the next visit; PNG / JPEG / WebP / SVG (rendered once near 256 px, whatever size it declares) by magic bytes, drawn as a Win98-bevelled tile. |
 | `net/config.gd` | Station configuration and its precedence; the in-headset setup's `user://station.json` (`save_user` / `forget_user`). |
 | `player/` | The XR rig on a CharacterBody3D (`player.tscn`), the locomotion maths (`locomotion.gd`), the comfort vignette, and the lobby's pointer (`pointer.gd`: a laser from each hand's aim pose, the mouse on a desktop). |
-| `game/` | The state machine (`game_flow.gd`, `game.gd`), the intro (`intro_flow.gd`: its steps, pure; `intro_space.gd`: the cinema, the practice floor and the tutorial panel), the lobby (`lobby.gd`: the picture tiles, the confirm card, the MICROPHONE box; `lobby_tiles.gd`: its geometry; `picker.gd`: the stick; `setup_panel.gd`: SET UP THIS HEADSET), the duck, the chevron trail, ghosts of other players, the HUD (and the void's scare), the game's sounds (`sfx.gd`) and in-game speech (`speech.gd`). |
+| `game/` | The state machine (`game_flow.gd`, `game.gd`), the intro (`intro_flow.gd`: its steps, pure; `intro_space.gd`: the cinema, the practice floor and the tutorial panel), the lobby (`lobby.gd`: the picture tiles, the confirm card, the MICROPHONE box; `lobby_tiles.gd`: its geometry; `picker.gd`: the stick; `setup_panel.gd`: SET UP THIS HEADSET), the duck, the chevron trail, ghosts of other players, the HUD (and the void's scare), the game's sounds (`sfx.gd`) and in-game speech (`speech.gd`); wave 49's descent: the runner, the visions and the faces (`descent.gd`), the options' panel (`talk_panel.gd`), the pocket off the map (`hallway.gd`). |
 | `main.tscn` / `main.gd` | Bootstrap: OpenXR when there is a runtime, else the desktop rig. |
 | `test/` | The headless checks (`run.sh`). |
 | `media/` | `reinstallation.ogv`, the intro's video (shipped in the APK: the preset's `media/*.ogv`). |
-| `tools/` | `quest.sh` builds, sideloads and provisions the Quest APK (below); `make_action_map.gd` regenerates `openxr_action_map.tres`; `screenshot.gd` renders a few views (the lobby, the intro's cinema and each tutorial step, the house). |
+| `tools/` | `quest.sh` builds, sideloads and provisions the Quest APK (below); `make_action_map.gd` regenerates `openxr_action_map.tres`; `screenshot.gd` renders a few views (the lobby, the intro's cinema and each tutorial step, the house); `descent_shots.gd` renders the descent at level 4 (the strange props, each vision, a talker's panel, the Hallway). |
 
 ### The house map
 
-`house/house.json` and `test/golden/` are copies made by `@loom/house`. After
-the show's map (`core/examples/trapped-in-the-internet/house.json`) changes:
+`house/house.json`, `house/descent.json` and `test/golden/` are copies made
+by `@loom/house`. After the show's map
+(`core/examples/trapped-in-the-internet/house.json`) or its `descent.json`
+changes:
 
 ```bash
 pnpm --filter @loom/house goldens && pnpm --filter @loom/house sync
@@ -141,6 +145,52 @@ and stutters now and then; the fog is a violet exponential haze, thicker
 near the floor, with drifting haze sheets per floor (none on `low`, one on
 `medium`, two on `high`). The King is a turned chess king, Gerald a smoother
 duck on a gold ring, the terminals carry a neon rim.
+
+## The descent (wave 49)
+
+The more often a program has been reinstalled, the less the simulation holds
+together: `docs/loom-w49-contract.md` C2 and C6, `docs/loom-reinstall.md` §5.
+`house/house_descent.gd` decides, `game/descent.gd` draws. A walk's level is
+the assignment's `descent`, else its `reinstalled` (capped at 4); `--descent N`
+or the mirror combo overrides it on this headset. **Level 0 is the game as it
+always was**: nothing is built, fetched or touched.
+
+- **The look.** Fog, ambient, a tint and a more restless neon, on for the whole
+  walk; `from` props are merged apart in `HouseBuilder` and toggled at walk
+  start (the house is built before the assignment), never solid.
+- **The visions** come on a plan seeded by the session, one at a time, held
+  while an escape, a talk, a suspended walk or the King (3 m) is in the way, and
+  dropped if held too long. `flicker`, `follower`, `whisper`, `tint`,
+  `whiteduck`, `grin`, `dark`, `self`, `small`, `big`, `door`. A vision that
+  can't be drawn is skipped. `dark` is the fog pulled in, black, to about 3 m:
+  no light, no shader. `small` / `big` scale `XROrigin3D.world_scale` about the
+  head, over `ALICE_EASE_S`; the camera's height on the desktop rig. Poses,
+  body and reach stay the real ones.
+- **The talkers.** Up to 5 props wake (seeded), with eyes that follow you and a
+  mouth, drawn within 8 m. Walk within 1.8 m and one speaks (`Speech` with the
+  prop as the anchor); then a plain world panel, one row per option, turned to
+  you, chosen with `LobbyPointer`: the beam is up only while a panel is, the
+  row under it lights, the trigger picks (a trigger on a row never hits the
+  King; off the rows it does). A `tell` goes to `POST /api/spatial/told`; a
+  `do` sets off a vision. Walking 3 m off ends it.
+- **The Hallway.** A free-standing door; walk within 0.7 m and you are in a
+  corridor off the map (`game/hallway.gd`, its own floor and walls like
+  `intro_space.gd`), one light moving with you. The far door backs away at 0.92
+  of your pace for 22 s, then stays. Reaching it, or 70 s, or any session end,
+  or a remap, brings you back at the door you came in by, facing away from it,
+  the door gone. Inside, `_tick_play` returns early as for an escape: poses
+  still go out from the door, and the void, the heart, pickups, the King and the
+  find are off; the house, ghosts and trail are hidden.
+- **Nothing here blocks a walk.** A vision or a talk never stops a find, a King
+  hit, the void, the heart or the disk, and the autopilot walks through it all
+  (it never goes through the door).
+- **The words** come from `GET /api/spatial/descent` at each walk, falling back
+  on `res://house/descent.json`; nothing waits for them. A script that doesn't
+  validate reads as none. The lines are all `DRAFT w49` (`SIGNOFF-w49.md`).
+
+Try it with no server: in the lobby press **A A B B A B A B B A A** (the mirror
+of the test level's B B A A B A B A A B B) to play offline at level 4, a fifth
+walk with a skippable intro. `--descent 4` does the same against a server.
 
 ## Run it from the Godot editor
 
@@ -263,7 +313,7 @@ and logs in as a moderator. Settings are applied in this order (lowest first):
 2. `res://config/station.json`: committed, with placeholders (`CHANGEME` never dials out)
 3. `user://station.json`: per headset — written by the lobby's **SET UP THIS
    HEADSET** panel (or pushed by `quest.sh provision`)
-4. the command line after `--`: `--server URL --code PASS --station vr-1 --name "Headset 1" [--guest g-xxxxxx] [--offline] [--autopilot] [--voice false] [--mic false] [--trail-delay 0] [--intro false] [--graphics low|medium|high]`
+4. the command line after `--`: `--server URL --code PASS --station vr-1 --name "Headset 1" [--guest g-xxxxxx] [--offline] [--autopilot] [--voice false] [--mic false] [--trail-delay 0] [--intro false] [--graphics low|medium|high] [--descent 0..4]`
 
 `voice` (on by default) is the voice link; `mic: false` keeps it but
 listens only (the headset hears the terminals and is never heard).
@@ -271,7 +321,8 @@ listens only (the headset hears the terminals and is never heard).
 the golden trail back at the start of each walk; `--trail-delay 0` for a
 quick dev walk. `intro` (on by default) plays the video and the tutorial
 before each walk; `--intro false` for a quick dev walk. `graphics`
-(`medium` by default) is the picture's tier (above).
+(`medium` by default) is the picture's tier (above). `descent` (unset by
+default) forces every walk on this headset to that level (rehearsals, tests).
 
 ```json
 { "server": "https://app.mapsandducks.com", "code": "4821", "station": "vr-1", "name": "Headset 1", "graphics": "medium" }
@@ -536,11 +587,20 @@ with `released: true` while you walk to Gerald.
 ./reinstall/vr/test/run.sh        # [path-to-godot]; or `pnpm test:vr` from the repo root
 ```
 
-On 2026-10-28 (wave 39, branch `oct31-w39/vr`, Godot 4.7.1) it reports
-1236 checks and `quest.sh` 42, all passing.
+On 2026-10-30 (wave 49, branch `oct31-w49/vr`, Godot 4.7.1) it reports
+1236 checks in `test/game.gd`, 299 in `test/descent.gd` and `quest.sh` 42, all
+passing.
 
 The runner refreshes the import, compiles every script and loads every
-scene, then runs `test/game.gd` headless with `--offline`:
+scene, then runs `test/game.gd` and `test/descent.gd` headless with
+`--offline`. `test/descent.gd` (wave 49) diffs `house_descent.gd` against
+`test/golden/descent.json` and the constants of `descent.ts`, then plays the
+descent on `main.tscn` with a fake link: level 0 building and touching nothing,
+the runner and every hold, each vision, the talkers and their panel through
+`pointer.inject`, the marks, the King and the void beside an open talk, the
+Hallway (its way in, its retreat, its timeout, a session end, a remap, a real
+body on its floor), small and big, the autopilot finding the duck at every spot
+at level 4, and the mirror combo through the real link, offline. `test/game.gd`:
 
 - the §1.2 walls / routes / locate ports against every golden at 1e-3, with
   the first mismatches printed

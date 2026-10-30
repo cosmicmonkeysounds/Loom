@@ -14,6 +14,7 @@ import { useEditJournal } from '@/store/edit-journal'
 import { LeftRail, CenterStage, TimelineDock, Region } from './regions'
 import { PropertiesTray } from './PropertiesTray'
 import { ModeBar } from './ModeBar'
+import { HouseMapKeeper } from '@/components/house/HouseMapHost'
 import { useLspProjectIndex } from '@/lib/use-lsp-index'
 
 export function StudioShell() {
@@ -90,6 +91,7 @@ export function StudioShell() {
         />
       </div>
       <ModeBar />
+      <HouseMapKeeper />
     </div>
   )
 }

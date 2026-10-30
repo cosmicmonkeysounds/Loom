@@ -247,6 +247,24 @@ top five; the TV lets every censored word out (`award_language`, the
 screen state's `night.language`). Help:
 `docs/help/authoring/55-language-filter.md`.
 
+**The descent** (wave 49, not shipped; `docs/loom-w49-contract.md`, show text
+`DRAFT w49` on `SIGNOFF-w49.md`): the more often a program is reinstalled, the
+less the simulation holds together (House of Leaves, Alice). Its first walk is
+clean; each find after adds a level, capped at 4 (`descentLevel`), or a director
+forces one on the Run page's House map card. Levels bring hallucination moments
+on a seeded plan, props with faces that talk with multiple options and remember
+what a program told them (memory only), strange props that appear (`Prop.from`:
+the tea party, the clock, the bottle) and the door that wasn't there, into a
+hallway longer than the house. No story change. The words are `descent.json`,
+read live, so an edit needs no APK. Footsteps: the server judges from the poses
+which speakers carry each walker (same room clear, another room or floor
+muffled, `audio.json` `footsteps`), and the router synthesises the steps
+(`stagehand audio`, a 🎚 Footsteps strip). The map editor is now **Run → House →
+🗺 Map**, signed in by the run; `/reinstall/map` still works. The catalogue has
+58 prop models, and both show maps were redrawn with them, so shipping needs
+`sync-show --replace-maps` (Download JSON any project edits first). Help:
+`docs/help/play/19-house-workings.md` (staff; the guests' help never describes it).
+
 **Clippy's dream** (wave 50, not shipped; `docs/loom-w50-contract.md`): when
 Trabolta says *"…the Y2K BUG."* (the TV reports it; 42 s after 🕚 without one)
 every terminal melts at one instant into an hour-long video, replacing the idle

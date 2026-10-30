@@ -158,6 +158,11 @@ export function testAudio(base: string, token: string, target: { speaker: string
   return post<{ ok: true; seq: number; router?: unknown }>(`${base}/api/mod/audio/test`, token, target, fetcher);
 }
 
+/** (wave 49) 👣 Test: a program's steps on this speaker alone, for a few seconds (the router synthesises them). */
+export function testFootsteps(base: string, token: string, speaker: string, fetcher: typeof fetch = fetch): Promise<MapReply<{ ok: true }>> {
+  return post<{ ok: true }>(`${base}/api/mod/audio/walkers/test`, token, { speaker }, fetcher);
+}
+
 /** What a test's refusal tells the director (a speaker the server hasn't got is an unsaved one). */
 export function testRefusal(r: { status: number; error: string }, target: { speaker: string } | { out: number }): string {
   if (r.status === 404 && "speaker" in target) return `“${target.speaker}” isn't saved yet — save the speakers, then test it.`;

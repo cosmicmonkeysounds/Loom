@@ -8,12 +8,12 @@
 //! device's expected layout (`device.expect`, the 828x), each input's *Ducks
 //! as* role and its reach (wave 38: the router's sidechain), a Test per speaker /
 //! output, and its own save (`base` → 409), Save to project and Download
-//! JSON. Every edit is an op from `audio.ts` handed to `commit` (one undo
-//! step each).
+//! JSON, and (wave 49) the 👣 Footsteps block. Every edit is an op from
+//! `audio.ts` handed to `commit` (one undo step each).
 
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import { AUDIO_INPUT_KINDS, AUDIO_KNOWN_ROLES, resolveTargets, roomById } from "@loom/house";
+import { AUDIO_INPUT_KINDS, AUDIO_KNOWN_ROLES, footstepsSettings, resolveTargets, roomById } from "@loom/house";
 import type { AudioConfig, AudioInputKind, HouseMap } from "@loom/house";
 import { audioConflictText, routerBadge, testAge, type AudioTestRow, type AudioView } from "./audio-api.ts";
 import {
@@ -37,6 +37,7 @@ import {
   setCueTargets,
   setDevice,
   setExpect,
+  setFootsteps,
   setInputReach,
   setInputRole,
   setTvVoice,
@@ -206,6 +207,7 @@ export function AudioPanel(p: AudioPanelProps) {
   const cellG = cell !== null ? cellGain(audio, cell.in, cell.out) : null;
 
   const badge = routerBadge(p.view?.router ?? null, now);
+  const steps = footstepsSettings(audio);
   return (
     <div className="audio-panel">
       <div className="audio-head">
@@ -432,6 +434,18 @@ export function AudioPanel(p: AudioPanelProps) {
             <Num label="gain dB" value={cellG} step={1} placeholder="off" disabled={off} onChange={(v) => commit(setCell(audio, cell.in, cell.out, v))} />
           </div>
         )}
+      </Section>
+
+      {/* Wave 49. DRAFT w49 (UI copy). */}
+      <Section title="👣 Footsteps" count={steps.enabled ? `on · ${steps.reach} m` : "off"}>
+        <p className="muted small">A program walking in the games is heard in the real house: on the speakers near where it walks, through the walls of the next room. The router makes the steps itself. 👣 Test on a speaker plays them there alone.</p>
+        <label className="radio checkbox">
+          <input type="checkbox" checked={steps.enabled} disabled={off} onChange={(e) => commit(setFootsteps(audio, { enabled: e.target.checked }))} /> On
+        </label>
+        <div className="num-row">
+          <Num label="reach m" value={steps.reach} step={1} disabled={off} onChange={(v) => commit(setFootsteps(audio, { reach: v }))} />
+          <Num label="level dB" value={steps.gain} step={1} disabled={off} onChange={(v) => commit(setFootsteps(audio, { gain: v }))} />
+        </div>
       </Section>
 
       <Section title="Zones" count={`${audio.zones.length} + everywhere`}>

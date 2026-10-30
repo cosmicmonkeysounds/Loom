@@ -17,6 +17,8 @@
 ##
 ## [method poll] reads one frame; the lobby says what the ray hit and
 ## [method draw] shows it. Tests [method inject] a ray instead of devices.
+## The house's only use of it is a talker's option panel (wave 49, [TalkPanel]):
+## the beam is up only while one is open.
 class_name LobbyPointer
 extends Node3D
 

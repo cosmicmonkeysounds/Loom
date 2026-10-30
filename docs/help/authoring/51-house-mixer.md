@@ -2,7 +2,7 @@
 title: The Mixer — balance the house sound and steer the soundtrack
 section: Live Shows
 order: 51
-keywords: mixer, mix, house mix, balance, fader, faders, level, levels, volume, louder, quieter, mute, unmute, dB, decibel, meter, meters, peak, room, rooms, zone, speaker, sub, subwoofer, master, everywhere, source, sources, music, soundtrack, featured tracks, sound effects, sfx, announcements, TV, Trabolta's channel, input, CueMix, reset, reset all, plays at, silent, now playing, scene, music scene, by hand, follow the story, skip, skip track, next track, skip all, stop music, playlist, bed, empty playlist, router, Run → House, host, director
+keywords: mixer, mix, house mix, balance, fader, faders, level, levels, volume, louder, quieter, mute, unmute, dB, decibel, meter, meters, peak, room, rooms, zone, speaker, sub, subwoofer, master, everywhere, source, sources, music, soundtrack, featured tracks, sound effects, sfx, footsteps, steps, announcements, TV, Trabolta's channel, input, CueMix, reset, reset all, plays at, silent, now playing, scene, music scene, by hand, follow the story, skip, skip track, next track, skip all, stop music, playlist, bed, empty playlist, router, Run → House, host, director
 ---
 
 The **Mixer** is the live balance of the house sound. Open it in
@@ -47,7 +47,7 @@ One column per scope, side by side (scroll across for more rooms):
 | Strip | What it moves |
 |---|---|
 | **Master** / **Room** | everything in that scope |
-| **Music**, **Featured tracks**, **Sound effects**, **Announcements** | that source, in that scope |
+| **Music**, **Featured tracks**, **Sound effects**, **Footsteps**, **Announcements** | that source, in that scope. **Footsteps** are the programs walking in the reinstallation games, heard on the house speakers near where they walk |
 | An input (Trabolta's channel, the TV) | that routed input, in that scope |
 | A speaker (in a room's column) | that one speaker: the sub has its own |
 | A meter only (Clippy's mic) | nothing: it is mixed in CueMix, not by the router |

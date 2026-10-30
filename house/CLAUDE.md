@@ -18,7 +18,7 @@ code and that file disagree, fix one of them in the same change.
 ## Commands
 
 ```bash
-pnpm --filter @loom/house test        # vitest: 495 passed + 4 skipped, 22 files
+pnpm --filter @loom/house test        # vitest: 541 passed + 4 skipped, 24 files
 pnpm --filter @loom/house typecheck
 pnpm --filter @loom/house goldens     # regenerate test/golden/ after a deliberate geometry/route/king change
 pnpm --filter @loom/house sync        # copy the show's house.json, goldens and voice vectors into reinstall/vr/
@@ -36,7 +36,7 @@ show's `house.json`, or to `geometry.ts` / `route.ts` / `locate.ts` /
 
 | Entry | Contents |
 |---|---|
-| `@loom/house` (`src/index.ts`) | `types.ts` (schema v1 + wire types), `clone.ts`, `validate.ts` (`validateHouse`, `TERMINAL_VIEWS`, `guardWarnings`), `geometry.ts` (`buildWalls` normative, `buildFloors`, `buildRamps`, `doorGap`, `propSolid`), `locate.ts` (`locate`, `heightAt`, `standable`, `solidPropAt`), `route.ts` (`route`, `sampleTrail`), `frames.ts` (`toSpace`, `DEFAULT_SPOT_FOV`, `horizontalFov`), `duck.ts` (`pickDuckSpot`, FNV-1a), `king.ts` (`kingReach`, `withFallenKings`, `kingStateOf`), `escape.ts`, `presence.ts`, `moment.ts` (wave 26, below), `audio.ts`, `lights.ts`, `look-edit.ts` (wave 30: the looks builder's pure ops, shared by the map editor and the editor's Cue designer), `look-preview.ts` (`previewAt`, `previewLength`, `lampCss`: a look played on screen), `look-templates.ts` (`lookFromTemplate`, `lookFloor`), `voice.ts` (`hearsTerminals` / `hearsPlayers`: same room only) |
+| `@loom/house` (`src/index.ts`) | `types.ts` (schema v1 + wire types), `clone.ts`, `validate.ts` (`validateHouse`, `TERMINAL_VIEWS`, `guardWarnings`), `geometry.ts` (`buildWalls` normative, `buildFloors`, `buildRamps`, `doorGap`, `propSolid`), `locate.ts` (`locate`, `heightAt`, `standable`, `solidPropAt`), `route.ts` (`route`, `sampleTrail`), `frames.ts` (`toSpace`, `DEFAULT_SPOT_FOV`, `horizontalFov`), `duck.ts` (`pickDuckSpot`, FNV-1a), `king.ts` (`kingReach`, `withFallenKings`, `kingStateOf`), `escape.ts`, `presence.ts`, `moment.ts` (wave 26, below), `descent.ts`, `footsteps.ts` (wave 49, below), `audio.ts`, `lights.ts`, `look-edit.ts` (wave 30: the looks builder's pure ops, shared by the map editor and the editor's Cue designer), `look-preview.ts` (`previewAt`, `previewLength`, `lampCss`: a look played on screen), `look-templates.ts` (`lookFromTemplate`, `lookFloor`), `voice.ts` (`hearsTerminals` / `hearsPlayers`: same room only) |
 | `@loom/house/three` (`src/three/`) | the three.js scene: `buildHouseScene`, `createDuck`, `createTrail`, `createKing`, `createHeart`, `createPickup`, `createAvatar`, `loadPicture`, `PoseBuffer`, `spaceGroup`. Peer dependency `three` (optional for the root entry) |
 | `@loom/house/voice-on` | `voiceOn(house, spot)` alone, so the terminal's main bundle avoids the codec |
 
@@ -164,6 +164,38 @@ buildHouseScene(house, { neon?: boolean }); HouseScene.setHaze(layers); houseAtm
 - GDScript port: `reinstall/vr/house/house_models.gd`, diffed against
   `test/golden/models.json` (`goldens` writes it; change both together).
 
+## Wave 49 API (the descent, footsteps; contract `docs/loom-w49-contract.md` C1)
+
+```ts
+// models.ts: 35 more models, groups home / studio / strange, roles wood + flame
+export const GLOW_ROLES;                            // screen, alert, flame: drawn glowing
+// types.ts
+Prop.from?: number;   // only there at this descent level and deeper: propSolid() false, `solid: true` refused
+Prop.talk?: string;   // a talker id, or "none"; absent: by model
+Assignment.descent?: number; Assignment.told?: Record<string, string>;
+buildHouseScene(house, { descent });                // leaves out `from` above it (default 0: the terminals)
+// descent.ts: what both games must decide alike
+descentLevel(reinstalled); descentOf(assignment); descentLook(level);
+descentPlan(seed, level): DescentBeat[]; dueBeat(plan, from, t);
+validateDescent(raw); parseDescent(raw); talkerFor(script, prop); wakeTalkers(house, script, level, seed);
+talkReach(house, feet, prop); faceAnchor(prop); doorSpot(house, feet, yaw);
+openNode(talker, told); pickOption(talker, node, i); visitOf(reinstalled, level); fillLine(text, who); pickLine(list, n);
+// footsteps.ts: which speakers carry a program
+AudioConfig.footsteps?: { enabled?, reach?, gain? };
+walkerOutputs(audio, house, room, p); walkersOf(audio, house, players): Walker[]; sameWalkers(a, b);
+surfaceOf(house, room); stepPaceS(speed);
+```
+
+- A `from` prop is drawing for the games only: no wall, route, locate or
+  golden sees it, and an older server refuses the field (deploy it first).
+- `descent.json` (the show's words) is copied to `reinstall/vr/house/` by
+  `sync`; `test/sync.test.ts` pins the copy. Its schema is `validateDescent`;
+  `test/descent.test.ts` greps it for hints at the void, heart, disk and patch
+  bay. It is a project file: never name it `house.<x>.json`.
+- GDScript port: `reinstall/vr/house/house_descent.gd`, diffed against
+  `test/golden/descent.json`. Footsteps have no port: the server judges and
+  the router plays (stagehand mirrors only `stepPaceS`).
+
 ## Wave 50 API (Clippy's dream)
 
 ```ts
@@ -181,7 +213,7 @@ export function dreamFrameIndex(key, serverMs): number; dreamFrameName(index): s
 | Path | What |
 |---|---|
 | `test/fixtures/*.json` | small maps (`two-rooms`, `l-room`, `hole`, `stair`, `yard`, `tie`, `props`, `three-floors`) + `audio-*`, `lights-*` (shared with stagehand's Python tests) + `voice-mulaw.json` (μ-law vectors, copied to VR) |
-| `test/golden/<map>.{walls,routes,locate,escape,presence}.json` | the GDScript port's reference; `models.json` every model's parts (wave 47); `show.king.json` / `show.fallen.json` for the King, `show.moments.json` for the heart and the disk, `constants.json` for the wave 26 constants |
+| `test/golden/<map>.{walls,routes,locate,escape,presence}.json` | the GDScript port's reference; `models.json` every model's parts (wave 47); `descent.json` the descent's rules on the show (wave 49); `show.king.json` / `show.fallen.json` for the King, `show.moments.json` for the heart and the disk, `constants.json` for the wave 26 constants |
 | `test/maps/` | frozen older show maps (`two-floor*`, `three-floor*`) for tests that pin mechanics, so a show-map edit never breaks them |
 | `test/show.test.ts` | the real show maps (`house.json` + `house.shed.json`) validate and route; the heart's placement and the disk's distance from the duck spots and the trails |
 

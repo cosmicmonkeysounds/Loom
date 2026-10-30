@@ -10,7 +10,8 @@ command, and `inspect` draws a waveform + spectrogram per sound for review.
 The output (`media/library/`) is git-ignored: anyone re-renders it, byte for
 byte.
 
-Imports stay light: nothing here is imported by the router at run time.
+Imports stay light: the router imports only `dsp` (numpy alone) at run time,
+for the footsteps (`audio/footsteps.py`).
 """
 
 from __future__ import annotations

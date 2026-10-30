@@ -3,7 +3,7 @@ title: How the house works (staff)
 section: Performers
 order: 19
 role: performer
-keywords: staff, how the house works, behind the scenes, guest guide, hidden rules, spoilers, marked, marks, what marks, lift, locked, lock screen, quarantine, quarantined, capture, release, banished, banish, hand jive, party favour, after the end, show over, human again, speedrun, reinstall, reinstallation, not marked, held, path, trail, golden trail, gerald, king, health bar, shared bar, kneel, hit, chess, server door, checkmate, door code, no prize, heart, server room, close the door, trusted, proof, thrown out, escape, void, virus, disk, pickup, terminal, linked, world view, window, microphone, mic, camera, shadow, identify, idle show, glitch, takeover, announcements, house speakers, holding line, answer as, stimulus, grant, freeze, reserve, audit, every third, auto-approve, director cancelled, truther download, factions, heat, switching sides, codex, wrong code
+keywords: staff, descent, hallucination, talking props, hallway, footsteps, how the house works, behind the scenes, guest guide, hidden rules, spoilers, marked, marks, what marks, lift, locked, lock screen, quarantine, quarantined, capture, release, banished, banish, hand jive, party favour, after the end, show over, human again, speedrun, reinstall, reinstallation, not marked, held, path, trail, golden trail, gerald, king, health bar, shared bar, kneel, hit, chess, server door, checkmate, door code, no prize, heart, server room, close the door, trusted, proof, thrown out, escape, void, virus, disk, pickup, terminal, linked, world view, window, microphone, mic, camera, shadow, identify, idle show, glitch, takeover, announcements, house speakers, holding line, answer as, stimulus, grant, freeze, reserve, audit, every third, auto-approve, director cancelled, truther download, factions, heat, switching sides, codex, wrong code
 ---
 
 The guest guide (every Help article without *Performers* on it) tells a
@@ -137,6 +137,28 @@ mentions them, and nobody should explain them to a guest.
 - **The disk.** A floppy disk sits in the game all night. Picking it up
   gives the same Codex entry the tent's QR does (Free Antivirus Trial or
   ILOVEYOU). The printed QRs stay as the backup.
+
+## The descent (never in the guest guide)
+
+The more often a program is reinstalled, the less the simulation holds
+together. Its first walk is the clean game. From the second, the lights
+stutter, something walks behind it and a prop wakes up and talks to it, with
+choices. The third brings the wrong colours, a pale duck that isn't Gerald and
+a grin in the air. From the fourth it can shrink or grow, meet itself, lose the
+lights, and find a door that wasn't there, into a hallway longer than the house.
+There is a tea party in the yard.
+
+None of this is real to the story: nothing here changes a program's trust,
+marks or fate, nothing stops it finding Gerald, and no prop knows anything
+useful. If a guest asks, the house has always been like this. A director can
+force a level in Run → House map (*Descent*).
+
+## Footsteps in the house
+
+A program walking in either game is heard on the real speakers near where it
+walks: clearly in its own room, muffled through a wall or a ceiling. It works
+only where there are speakers. If someone in the kitchen stops and listens,
+that is the point. Never explain it.
 
 ## Clippy's dream
 

@@ -57,6 +57,9 @@ signal setup_answered(ok: bool, message: String)
 ## effect, pulse, safety}]}`), or `{}` once the link is gone — the house
 ## then looks as it did before the lights frame existed.
 signal lights_changed(lights: Dictionary)
+## (wave 49) The descent's words for this walk ([method fetch_descent]):
+## the server's script, else the bundled one, else null (visions, no words).
+signal descent_loaded(script: Variant)
 ## (wave 40) A held walk was picked back up ([method resume]): `assignment`
 ## is the same shape [signal assignment_received] carries, `pose` is where
 ## to respawn (`{p, yaw, pitch}`), `ready` is whether its intro was already
@@ -81,6 +84,8 @@ var king: Dictionary = {}
 var map_warning_text := ""
 ## The latest `lights` frame ([signal lights_changed]; `{}` = none).
 var lights: Dictionary = {}
+## (wave 49) The descent's words last fetched (null: none yet).
+var descent_script: Variant = null
 
 
 ## Ask the server to start `guest` on this station.
@@ -118,6 +123,19 @@ func hit_king() -> void:
 ## "escape" (the void), "heart" or "pickup" with the prop's id — judged by
 ## the server on the newest pose, which goes first ([signal moment_answered]).
 func moment(_kind: String, _prop := "") -> void:
+	pass
+
+
+## (wave 49) Fetch the descent's words for this walk ([signal
+## descent_loaded], `GET /api/spatial/descent`), never blocking it: anything
+## but a valid script means the bundled one.
+func fetch_descent() -> void:
+	_adopt_descent(null)
+
+
+## (wave 49) What a program told a talker (`POST /api/spatial/told`): memory
+## on the server, read back as the assignment's `told` on later walks.
+func post_told(_talker: String, _mark: String) -> void:
 	pass
 
 
@@ -290,6 +308,14 @@ func _adopt_lights(raw: Variant) -> void:
 		return
 	lights = next
 	lights_changed.emit(lights)
+
+
+## Take a script off the wire ([method HouseDescent.parse_descent]): one that
+## isn't a valid script reads as the bundled one.
+func _adopt_descent(raw: Variant) -> void:
+	var script: Variant = HouseDescent.parse_descent(raw)
+	descent_script = script if script != null else HouseDescent.bundled()
+	descent_loaded.emit(descent_script)
 
 
 ## Parse and emit a map from a JSON string; false when it isn't one.

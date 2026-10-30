@@ -10,7 +10,7 @@ the YAML switches on a **module**:
 |---|---|---|
 | **show** | `show:` | story → MQTT / OSC cues (Trabolta's room cuts and the flicker, bulb by bulb; the announcement relay); MQTT sensors → journaled story signals |
 | **agents** | `agents:` | voices every `mind: external` character (Trabolta) with a local model through Ollama |
-| **audio** | `audio:` | the house speaker router: every story `sound X`, the house announcements, the soundtrack (music beds per act, ducked under Trabolta, Clippy's mic and the announcements), Trabolta's TV routed to every speaker, speaker tests and Run's ■ Stop house sounds, through one multichannel interface (the MOTU 828x on its own outs, no ADAT expander); also renders the synthesized SFX library |
+| **audio** | `audio:` | the house speaker router: every story `sound X`, the house announcements, the soundtrack (music beds per act, ducked under Trabolta, Clippy's mic and the announcements), Trabolta's TV routed to every speaker, the footsteps of the programs in the reinstallation games, speaker tests and Run's ■ Stop house sounds, through one multichannel interface (the MOTU 828x on its own outs, no ADAT expander); also renders the synthesized SFX library |
 | **lights** | `lights:` | plays the event's `lights.json` looks (every story `cue lights_*` and `heart_*`) on Zigbee2MQTT / WLED, bulb by bulb, safety-clamped, with identify / test / pairing from the map editor, and catches the house look up from the screen state's `night.lights` |
 | **alexa** | `alexa:` | **retired for the show** (wave 18b): a standalone announcement player. The router speaks the announcements now; the code stays for a house that wants one |
 
@@ -510,8 +510,8 @@ audio:
   the step ends.
 - **The house mixer** (wave 40, [`docs/loom-w40-contract.md`](../docs/loom-w40-contract.md)
   C3): Run → House → 🎚 Mixer (or a host's Desk window) balances the
-  sources (`music`, `tracks`, `sfx`, `announce`, each routed input as
-  `in:<role>`) everywhere, per room and per speaker. Every poll answer
+  sources (`music`, `tracks`, `sfx`, `steps`, `announce`, each routed input
+  as `in:<role>`) everywhere, per room and per speaker. Every poll answer
   carries the mix; the router ramps to it over 50 ms on top of the
   speakers' install trims (it never edits `audio.json`). Speaker tests
   are never mixed, and an input muted everywhere ducks nothing. The
@@ -520,6 +520,27 @@ audio:
   ■ Stop music (both held until the story's next music cue), *Follow the
   story*. While a panel is open the router posts live meters to
   `POST /api/mod/audio/meters` four times a second.
+- **The footsteps** (wave 49, [`docs/loom-w49-contract.md`](../docs/loom-w49-contract.md)
+  C4, `audio/footsteps.py`): as a program in a reinstallation game pulses
+  the real bulb it walks under, the real house hears it walk. The server
+  decides which speakers carry each program and how loud, and streams that
+  (`GET /api/mod/audio/walkers`) only when the answer changes; the router
+  plays the steps itself at the pace the frame's `speed` asks for, so
+  nothing crosses the wire per step. A step is a low heel thump and a short
+  scuff, synthesised here, seeded, in six takes each of `floor`, `tile` and
+  `grass`; a speaker in another room or on another floor plays a muffled
+  copy (low-passed at 400 Hz), as through a wall. Steps sit on the sfx bus,
+  so they duck like sound effects and ■ Stop house sounds fades them
+  (anyone still walking is heard again from the next frame, within 2 s); the
+  mixer's **Footsteps** strip balances or mutes them, and a test step is
+  **👣 Test** on a speaker in the map editor. To use a recording, drop
+  `footstep_<surface>_<n>.wav` (n from 1 to 6) in `sounds_dir`: it takes
+  that take's place, mixed to mono, cut to 0.5 s and level-matched with the
+  rest, and is read at the next router start. They need `play_sounds`. With
+  no frame for 4.5 s everyone stops. An older server answers 404: logged
+  once, and no footsteps until the router restarts. `audio.json`'s
+  `footsteps {enabled, reach, gain}` is the server's. Restart only `audio`
+  to take this up (`start-stagehand.ps1 -Restart audio`).
 - **Offline**: the last `audio.json` + `house.json` and the house mix are
   cached, so a boot with the uplink down still routes at the last balance.
 - **Health**: a line every `health_s`; `health/audio` and the retained
@@ -553,7 +574,7 @@ and an `alexa:` section beside `audio.announce: true` is a config error
 ## Tests
 
 ```bash
-uv run pytest            # 2193 passed + 4 skipped, ~70 s, no hardware
+uv run pytest            # 2922 passed + 4 skipped, ~90 s, no hardware
 ```
 
 Pure units over fakes: the config loader (`extends:`, overlays,
@@ -561,7 +582,7 @@ placeholders), directives, conditions, topics, both maps, the SSE parser,
 the whole agents path (persona, prompts, guards, memos, the wire, the
 judge, answer secrecy, the classic snapshot, the replay harness without a
 model), the router (routing fixtures, the mixer block by block, streams and the
-resampler, the soundtrack, priority ducking end to end on the show's
+resampler, the soundtrack, the footsteps, priority ducking end to end on the show's
 `audio.json`, a fake stream and server), every SFX library sound
 (levels, seams, determinism), the lights (planner fixtures, the module, the CLI),
 launchd plists and Task Scheduler XML, the SAPI voice, the PowerShell
