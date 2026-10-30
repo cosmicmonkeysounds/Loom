@@ -829,7 +829,8 @@ def test_the_soundtracks_scenes_reach_the_house_but_the_fan_closet():
         if name == "off":
             assert beds == {} and notes == []
             continue
-        assert beds.get(name) == every or set(beds.get(name, ())) | set(beds.get("fan_closet", ())) == set(every), name
+        music = next(e.play for e in st.scenes[name] if e.to == ("everywhere",))
+        assert beds.get(music) == every or set(beds.get(music, ())) | set(beds.get("fan_closet", ())) == set(every), name
         assert all("The Fan Closet" in n for n in notes), notes
 
 

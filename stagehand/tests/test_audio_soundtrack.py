@@ -146,11 +146,15 @@ def run(d: Director, m: Mixer, blocks: int) -> np.ndarray:
 def test_the_shows_soundtrack_loads():
     st = load_soundtrack(MEDIA / "soundtrack.yaml")
     assert (st.level_db, st.crossfade_s, st.scene_fade_s) == (-10, 3, 2.5)
-    acts = ["doors", "act_1", "malware", "act_2", "act_3", "final", "ceremony", "afterparty"]
-    assert list(st.playlists) == [*acts, "fan_closet"]
-    for name in acts:
+    # Wave 52: the acts and the ending are TIDAL playlists, each with its folder as the fallback.
+    on_app = ["act_1", "act_2", "act_3", "afterparty"]
+    assert list(st.playlists) == [*on_app, "ceremony", "fan_closet"]
+    for name in [*on_app, "ceremony"]:
         assert st.playlists[name].dir == str((MEDIA / "music" / name.replace("_", "-")).resolve())
-        assert st.scenes[name] == st.scenes[name] and [(e.to, e.play) for e in st.scenes[name]] == [(("everywhere",), name), (("The Fan Closet",), "fan_closet")]
+    assert all(st.playlists[name].tidal and not st.playlists[name].shuffle for name in on_app) and st.playlists["ceremony"].tidal is None
+    scene_plays = {"doors": "act_1", "act_1": "act_1", "malware": "act_2", "act_2": "act_2", "act_3": "act_3", "final": "act_3", "ceremony": "ceremony", "afterparty": "afterparty"}
+    for name, plays in scene_plays.items():
+        assert [(e.to, e.play) for e in st.scenes[name]] == [(("everywhere",), plays), (("The Fan Closet",), "fan_closet")]
     fan = st.playlists["fan_closet"]
     assert fan.files == (str((MEDIA / "library/ambient/dryer-tumble.wav").resolve()),) and fan.loop and fan.level_db == -14
     assert st.scenes["off"] == ()

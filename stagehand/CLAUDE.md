@@ -69,7 +69,8 @@ stagehand/
                                    with no length header, for `check`), mix (wave 40: the house
                                    mix's levels → the mixer's gain table, effectiveDb's mirror),
                                    footsteps (wave 49: FootstepBank, Walkers, stepPaceS's mirror)
-                                   tap (a capture device summed into an input: VoiceMeeter → input 3, wave 46)
+                                   tap (a capture device summed into an input: VoiceMeeter → input 3, wave 46),
+                                   tidal (the TIDAL app as a stereo bed: capture + DevTools remote, wave 52)
     audio/sfx/                     the SFX library: dsp (synthesis toolkit), spec + registry (`SFX`), render,
                                    cli, inspect (PNGs), one module per category (sirens, dings, telephony,
                                    digital, retro, party, story, ambient)
@@ -110,7 +111,7 @@ module docstrings that explain the why).
 | Machine | Jobs | Config | Supervisor | Runbook |
 |---|---|---|---|---|
 | John's MacBook (macOS, M3 Max 48 GB) | `agents` on Claude Haiku, Ollama `gpt-oss:20b` standing by (wave 52); `audio` only as the fallback | `laptop.yaml`; `trapped.macbook.yaml` | `stagehand launchd` | `scripts/house-macbook/trabolta.md`; `audio.md` (fallback) |
-| John's Desktop (Windows) | `show`, `lights`, `audio` + the MOTU 828x, no ADAT expander (the living room on Main L/R, outs 1–2, + the sub on Analog Out 1, out 3: the ASIO order; Chrome's sound, the TV's Trabolta, through VoiceMeeter and `audio.tap` into input 3) (+ Mosquitto, Zigbee2MQTT with Hue / ZL1 bulbs, the WLED controller, the TV kiosk) | `trapped.desktop.yaml` | `stagehand tasks` | `scripts/house-desktop/README.md` |
+| John's Desktop (Windows) | `show`, `lights`, `audio` + the TIDAL app (`tidal.ps1`) + the MOTU 828x, no ADAT expander (the living room on Main L/R, outs 1–2, + the sub on Analog Out 1, out 3: the ASIO order; Chrome's sound, the TV's Trabolta, through VoiceMeeter and `audio.tap` into input 3) (+ Mosquitto, Zigbee2MQTT with Hue / ZL1 bulbs, the WLED controller, the TV kiosk) | `trapped.desktop.yaml` | `stagehand tasks` | `scripts/house-desktop/README.md` |
 
 - **`extends:`** (`config.py`): a file in the same folder; mappings merge
   key by key, anything else replaces, `null` deletes. Order: parent,
@@ -251,6 +252,16 @@ module docstrings that explain the why).
   as a `Stream` (`SoundBank.stream`); at most the current and next track
   of each bed are open; `_preload` skips tracks. Short story sounds stay
   decoded in memory.
+- **The TIDAL app is a reconciled source** (wave 52, `audio/tidal.py`). A
+  playlist with `tidal: <uuid>` is a live bed: `LiveReader`s over one
+  `LiveInput` (VoiceMeeter Aux Output, MME; DirectSound underran on the
+  ASIO clock) on the `music` bus. The director only calls `want(uuid | None)`
+  / `next()`; `TidalRemote`'s worker thread presses the app's buttons over
+  loopback DevTools (`data-test` attributes; tidal.ps1's `-disable-auto-update`
+  pins them) until it matches, and the callback and the event loop never
+  touch it. Two TIDAL beds never crossfade (one app, one cable): the old fades,
+  the app changes, the new fades in. `dir` / `files` on such a playlist are
+  its fallback (`problem()`, or `SILENT_S`). Tests: `tests/test_audio_tidal.py`.
 - **The SFX library is original and deterministic** (C6): no samples,
   no trademarked motifs; each sound's seed comes from its name, so a
   re-render is byte-identical. One-shots are set by loudness (the loudest

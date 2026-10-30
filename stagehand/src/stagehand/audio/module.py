@@ -156,6 +156,7 @@ from .routing import (
 from .sounds import EXTENSIONS, SoundBank, identify_label, identify_tone, placeholders_in, sound_lengths
 from .soundtrack import OFF, Director, scene_of_cue
 from .tap import Tap, TapConfig, find_device
+from .tidal import Tidal
 
 log = logging.getLogger("stagehand.audio")
 
@@ -358,6 +359,7 @@ class AudioRouter:
         music_rng=None,
         tap_stream_factory=None,
         tap_query=None,
+        tidal=None,
     ) -> None:
         self.cfg = cfg
         self._query = query
@@ -435,7 +437,9 @@ class AudioRouter:
         self._check_answer: dict | None = None
         self._check_problem: str | None = None
         #: The soundtrack's director (wave 38, C3), when `soundtrack:` is set.
-        self.music: Director | None = Director(cfg.soundtrack, stream_factory=music_streams, rng=music_rng) if cfg.soundtrack is not None else None
+        #: The TIDAL app (wave 52): a fake in the tests.
+        self.tidal: Any = tidal if tidal is not None else (Tidal(cfg.tidal) if cfg.tidal is not None and cfg.soundtrack is not None else None)
+        self.music: Director | None = Director(cfg.soundtrack, stream_factory=music_streams, rng=music_rng, live=self.tidal) if cfg.soundtrack is not None else None
         #: Bumped by every live scene (a feed cue, MQTT): a catch-up that read
         #: the state while one landed plays nothing (the live one wins).
         self._music_live = 0
@@ -569,7 +573,24 @@ class AudioRouter:
     def preflight(self) -> list[str]:
         """`stagehand check`: the device against the local / cached audio.json
         (and the tap's capture device, wave 46)."""
-        return self._preflight_device() + self._preflight_tap()
+        return self._preflight_device() + self._preflight_tap() + self._preflight_tidal()
+
+    def _preflight_tidal(self) -> list[str]:
+        cfg = self.cfg.tidal
+        if cfg is None or self.cfg.soundtrack is None:
+            return []
+        try:
+            if self._tap_query is not None:
+                devices, apis = self._tap_query()
+            else:
+                import sounddevice as sd
+
+                devices, apis = list(sd.query_devices()), list(sd.query_hostapis())
+            index = find_device(cfg, devices, apis)
+        except Exception as err:  # noqa: BLE001 — ValueError (none / several), no PortAudio
+            return [f"audio: {err}".replace("audio.tap", "audio.tidal")]
+        print(f"audio tidal: {devices[index]['name']} → the music bus")
+        return []
 
     def _preflight_tap(self) -> list[str]:
         tap = self.cfg.tap
@@ -695,7 +716,7 @@ class AudioRouter:
         st = self.cfg.soundtrack
         if st is None:
             return []
-        out = st.warnings(doc, self._local_house())
+        out = st.warnings(doc, self._local_house(), live=self.cfg.tidal is not None)
         if self.cfg.play_sounds and Path(self.cfg.sounds_dir).is_dir():  # no folder: the sounds_dir warning says it
             bank = SoundBank(self.cfg.sounds_dir, self.cfg.rate or 48000)
             missing = sorted(n for n in st.tracks if bank.find(n) is None)
@@ -1925,6 +1946,7 @@ class AudioRouter:
                 + (f" | underruns {h['underruns']}" if h["underruns"] else "")
                 + (f" | {h['walkers']} walking" if h["walkers"] else "")
                 + (f" | tap {h['tap']}" if h.get("tap") else "")
+                + (f" | tidal {self.tidal.stats()}" if self.tidal is not None else "")
                 + (f" | ducking: {', '.join(f'{k} {v:.0%}' for k, v in h['sources'].items() if v > 0)}" if any(v > 0 for v in h["sources"].values()) else "")
                 + (f" | music {h['music']['scene'] or '—'}: " + (", ".join(f"{b['playlist']} {b['track'] or '—'}" for b in h["music"]["beds"]) or "no bed") if h.get("music") else ""),
                 f" | no file: {', '.join(h['missing'])}" if h["missing"] else "",
@@ -2132,6 +2154,8 @@ class AudioRouter:
                 self.mqtt = None
             if self.engine is not None:
                 self.engine.close()
+            if self.tidal is not None:
+                self.tidal.close()
             if self.lock_fd is not None:
                 os.close(self.lock_fd)
                 self.lock_fd = None

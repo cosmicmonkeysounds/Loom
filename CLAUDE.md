@@ -187,6 +187,14 @@ window; `docs/loom-w40-contract.md`). A host's phone has the same Setup and chec
 its **Desk** window. Help: `docs/help/authoring/49-house-setup.md`,
 `50-cue-designer.md`, `47-house-desk.md`.
 
+**The soundtrack from TIDAL** (wave 52, `oct31-w52/tidal`, not shipped):
+the acts and the ending are John's TIDAL playlists, played by the app on the
+Desktop (`scripts/house-desktop/tidal.ps1`, which gives it its control port)
+and heard through VoiceMeeter's AUX → B2 as a stereo bed on the `music` bus;
+each act's `media/music/` folder is the fallback. Custom songs stay MP3s.
+Runbook: `scripts/house-desktop/README.md` §3.7;
+`docs/loom-w52-contract.md`.
+
 **Trabolta's letters** (wave 41, not shipped; `docs/loom-w41-contract.md`,
 show text `DRAFT w41` on `SIGNOFF-w41.md`): the upload ends with an
 optional inbox card (performers get one in their booth), the problem form
