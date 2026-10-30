@@ -208,8 +208,8 @@ mute and the TV's agree and survive a reload.
 
 During the reinstallation games (`docs/loom-reinstall.md`) a placed
 terminal is a **window into the virtual copy of its room**: the camera sits
-where the tablet hangs and the players walk past it as ghosts wearing their
-profile pictures. An unplaced terminal follows the most recent player. A
+where the tablet hangs and the players walk past it as ghosts, a glitchy
+swarm of each one's profile picture. An unplaced terminal follows the most recent player. A
 corner mini-map shows the floor, the ducks and this terminal's view cone.
 
 - **No WebGL2** (old tablets): a Canvas 2D raycaster draws the same thing

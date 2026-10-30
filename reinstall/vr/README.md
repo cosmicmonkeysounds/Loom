@@ -470,10 +470,13 @@ with `released: true` while you walk to Gerald.
   remap while crossing a fallen King's spot keeps them there. The chess
   itself is at the real door's terminal; nothing here plays it. A server
   with no shared King (an older release) shows no bar and takes no hit.
-- **Ghosts wear the guest's profile picture** as a head (the event's
-  `/api/avatar/<key>`, the `avatar` key on each player and the `avatar`
-  frame); a guest with no picture, or one Godot can't decode (GIF, AVIF),
-  stays a plain capsule.
+- **Ghosts are a glitchy swarm of the guest's profile picture** (the
+  event's `/api/avatar/<key>`, the `avatar` key on each player and the
+  `avatar` frame): one `MultiMeshInstance3D` per ghost over one shared set
+  of shards (`game/swarm.gd`), everything that moves in
+  `game/swarm.gdshader`, the port of `@loom/house/three`'s `swarm.ts`. A
+  guest with no picture, or one Godot can't decode (GIF, AVIF), is the same
+  swarm as static.
 - **The terminals show the real rooms** (wave 14, `net/cam_feeds.gd`):
   while playing, the headset lists the live camera feeds every 2 s
   (`GET /e/<event>/api/spatial/cams`, the token the map is fetched with)

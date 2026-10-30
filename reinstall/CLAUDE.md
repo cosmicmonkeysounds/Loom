@@ -25,7 +25,7 @@ pnpm --filter loom-reinstall build        # dist/ (base /reinstall/)
 pnpm --filter loom-reinstall test         # vitest: 701 tests, 56 files
 pnpm --filter loom-reinstall typecheck
 pnpm dev --reinstall                      # repo root: the dev stack + this Vite on :5176
-pnpm test:vr                              # = reinstall/vr/test/run.sh [godot]: 1239 checks + quest.sh 42
+pnpm test:vr                              # = reinstall/vr/test/run.sh [godot]: 1251 checks + quest.sh 42
 pnpm house:sync                           # after any show-map or house geometry change
 reinstall/vr/tools/quest.sh setup|build --station vr-N|install   # the Quest APKs
 ```
@@ -47,7 +47,7 @@ reveal, and `--trail-delay 0` turns it off for a hand-driven dev run).
 | `web/src/map/` | the editor: `MapApp.tsx`, `Canvas.tsx`, `Toolbar.tsx`, `Inspector.tsx`, `Panels.tsx`, `Preview3D.tsx`, `ProjectBar.tsx`, and pure `plan.ts`, `edit.ts`, `doors.ts`, `yards.ts`, `structure.ts`, `props.ts`, `history.ts`, `check.ts`, `project.ts`; speakers `audio*.ts` + `AudioPanel.tsx` (wave 38: an input's *Ducks as* role and its reach, `setInputRole` / `setInputReach` / `inputReachSpeakers`; renaming or removing a speaker or zone rewrites every input's reach too); lights `lights*.ts` + `LightsPanel.tsx` (wave 39: the Presence block, `setLightPresence`) |
 | `vr/house/*.gd` | literal GDScript ports of `@loom/house` (walls, locate + presence, route, frames, duck, the King, and wave 26's `house_escape.gd` + `house_moment.gd`), diffed against `test/golden/`; `house_builder.gd` also draws the heart and the disk; wave 39 `house_lights.gd` (`gameLightsOf` / `pulseFactor` ported, the pool pick, the night ambient, the graphics tiers) and `house_lamps.gd` (the real house's bulbs, the fixed `OmniLight3D` pool, the ambient) |
 | `vr/net/` | `server_link.gd` (the autoload: config, polling, begin / pose / found / hit / moment, wave 33 `mark_ready`, the stream), `cam_feeds.gd` (the presence room's feeds), `voice_link.gd` (with `hold_for`, TEST MIC, ASK AGAIN) + `voice_codec.gd`, `avatar_cache.gd`, `config.gd` (with `trail_delay`, wave 33 `intro`, wave 39 `graphics` and the build stamp); the stream's `lights` frame → `LinkBase.lights_changed` / `lights` (wave 39) |
-| `vr/game/`, `vr/player/` | the state machine (`game.gd`: the path reveal, the void, the heart, the disk, the intro), wave 33's intro (`intro_flow.gd`: the video → tutorial steps and the skip rule, pure; `intro_space.gd`: the cinema, the practice floor, the tutorial panel), the lobby (PICK YOUR PROGRAM tiles, SET UP THIS HEADSET, the MICROPHONE box with the build stamp), the duck, trail, ghosts, HUD; wave 26 `sfx.gd` (synthesised sounds on the `Sfx` bus) and `speech.gd` (captions + `tts_speak`); the XR rig and pointer |
+| `vr/game/`, `vr/player/` | the state machine (`game.gd`: the path reveal, the void, the heart, the disk, the intro), wave 33's intro (`intro_flow.gd`: the video → tutorial steps and the skip rule, pure; `intro_space.gd`: the cinema, the practice floor, the tutorial panel), the lobby (PICK YOUR PROGRAM tiles, SET UP THIS HEADSET, the MICROPHONE box with the build stamp), the duck, trail, ghosts (wave 51: `ghosts.gd` + `swarm.gd` + `swarm.gdshader`), HUD; wave 26 `sfx.gd` (synthesised sounds on the `Sfx` bus) and `speech.gd` (captions + `tts_speak`); the XR rig and pointer |
 | `vr/media/reinstallation.ogv` | the intro's video (Theora 720p30), shipped in the APK |
 | `vr/house/house.json`, `vr/test/golden/` | **copies** written by `pnpm house:sync`; never edit them here |
 
@@ -152,6 +152,15 @@ presence rooms and `moment`), `spatial-cams.ts`, `spatial-voice.ts` and the
   body fallen out of the lobby or the intro back.
   Quest 3 must hold its frame rate on `medium`: keep SSAO / SSR / SSIL /
   volumetric fog off, ≤ 8 omni lights on a mesh (5 pool + the duck, heart and disk), and the pool fixed.
+- **The ghosts are a swarm** (wave 51). A program's profile picture cut into
+  shards (`@loom/house/three` `swarm.ts`, VR `game/swarm.gdshader`, the
+  raycaster's `terminal/src/raycast/swarm.ts`): they hold to the capsule the
+  body would fill (never drawn; ghosts collide with nothing) and tear into a
+  face that always stares at the camera, which also forms whenever one comes
+  within ~4 m. No visor, no ring, no tile: where a ghost looks only leans
+  its face. Keep it one draw per ghost, opaque and cut with `discard`, all
+  motion in the vertex shader (Quest 3, old tablets), and any storm under the
+  glitch's 3 Hz.
 - **Station config.** VR reads `user://station.json` (written by the
   in-headset setup) over the committed `config/station.json` (which must
   keep `CHANGEME`; a test checks it). Never write `res://`.

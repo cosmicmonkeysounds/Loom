@@ -130,13 +130,14 @@ King!* Too far, or looking away? It says *Get closer to the King.* or
 ## Ghosts
 
 Everyone else in the simulation walks past you as a **ghost** with their
-name over it, wearing **their own profile picture** as a head (Excel
-looks like Excel). A program with no picture is a plain glowing ghost.
+name over it: **their own profile picture**, torn into a swarm of pieces
+that follows them around (Excel looks like Excel, more or less). A program
+with no picture is a swarm of static.
 
 ## Everyone is watching
 
 The **terminals** on the walls can see into the simulation, and the
-people standing by them can see you: a ghost with your name and your
+people standing by them can see you: a swarm with your name and your
 picture. Walk into a room with a terminal and you'll see its screen
 glowing on the virtual wall. See [The terminals on the
 walls](terminals.md).

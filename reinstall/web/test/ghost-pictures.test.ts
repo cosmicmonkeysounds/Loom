@@ -37,7 +37,7 @@ function game(...ps: PlayerState[]): Bare {
 }
 
 describe("ghost pictures", () => {
-  it("each ghost asks for its own picture; no key (an old server) is the plain capsule; never our own ghost", () => {
+  it("each ghost asks for its own picture; no key (an old server) is a swarm of static; never our own ghost", () => {
     const g = game(player("a", "0123456789abcdef"), player("b"), player("me", "ffffffffffffffff"));
     g.syncGhosts(0);
     expect([...g.ghosts.keys()]).toEqual(["a", "b"]);
