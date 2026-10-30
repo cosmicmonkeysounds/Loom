@@ -71,7 +71,7 @@ stagehand/
     audio/sfx/                     the SFX library: dsp (synthesis toolkit), spec + registry (`SFX`), render,
                                    cli, inspect (PNGs), one module per category (sirens, dings, telephony,
                                    digital, retro, party, story, ambient)
-    lights/                        module, config, plan (planLook mirror), routing, z2m
+    lights/                        module, config, plan (planLook mirror), routing, z2m, pacer (Zigbee flow control)
     alexa/                         module, config, player (retired)
     replay/                        the K-04 replay harness (`python -m stagehand.replay`)
   tests/                           pytest; fixtures/ holds copied house-package fixtures + the classic snapshot
@@ -209,6 +209,18 @@ module docstrings that explain the why).
   index update or a buffer copy; a stream's worker thread does the rest.
   An underrun plays silence and counts. Keep new mixer work O(block) and
   allocation-light (the callback's budget is ~10 ms at 512 frames).
+- **Zigbee never queues in Zigbee2MQTT** (2026-10-30, `lights/pacer.py`).
+  Z2M queues every `/set` without limit, and a looping look over bulbs that
+  stopped answering wedged it overnight. So every Zigbee command from
+  `_send` goes through the `Pacer`: one state per bulb, the next only after
+  Z2M's state echo (`ACK_MS` else; ≤ `MAX_IN_FLIGHT` across the house), a
+  bulb with no echo three times or `availability` offline gets one probe
+  every 30 s. A fixture Z2M doesn't know is not sent. `_z2m_loop` asks
+  `bridge/request/health_check`; silent for `z2m_stall_s` it restarts
+  `lights.z2m_task` (no `z2m_task`: it only logs) and the catch-up plays when
+  Z2M is back. `pace: false` is the kill switch. Tests:
+  `tests/test_lights_pacer.py`. A `z2m_task` must run the real `node.exe`,
+  never nvm's shim (`zigbee2mqtt.ps1 -InstallTask`, `-Check` flags it).
 - **Long files stream, never cache.** Soundtrack beds and `tracks:` open
   as a `Stream` (`SoundBank.stream`); at most the current and next track
   of each bed are open; `_preload` skips tracks. Short story sounds stay
