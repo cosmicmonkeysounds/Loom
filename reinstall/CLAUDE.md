@@ -25,7 +25,7 @@ pnpm --filter loom-reinstall build        # dist/ (base /reinstall/)
 pnpm --filter loom-reinstall test         # vitest: 678 tests, 51 files
 pnpm --filter loom-reinstall typecheck
 pnpm dev --reinstall                      # repo root: the dev stack + this Vite on :5176
-pnpm test:vr                              # = reinstall/vr/test/run.sh [godot]: 1221 checks + quest.sh 42
+pnpm test:vr                              # = reinstall/vr/test/run.sh [godot]: 1225 checks + quest.sh 42
 pnpm house:sync                           # after any show-map or house geometry change
 reinstall/vr/tools/quest.sh setup|build --station vr-N|install   # the Quest APKs
 ```
@@ -143,11 +143,13 @@ presence rooms and `moment`), `spatial-cams.ts`, `spatial-voice.ts` and the
 - **Graphics tiers** (wave 39). VR's `graphics` (`low | medium | high`,
   default `medium`) sets the house lights' pool (2 / 4 / 5), the shading
   (per vertex on `low`), and glow + 2× MSAA (`high` only; MSAA on
-  `medium` drew a black void on the Quest 3); ACES on all. The display runs 90 Hz with the physics tick
-  matched to it; the turn and the vignette run per rendered frame, but
-  anything that collides (walking, gravity, room scale) stays on the
-  physics tick: moved per frame, the body fell through the lobby's floor
-  on the Quest (a black void). `Game._catch_fall` puts a fallen body back.
+  `medium` drew a black void on the Quest 3); ACES on all. The rig moves every rendered frame (turn, walk,
+  gravity, room scale), each headset frame by exactly one display interval
+  (`VrPlayer.frame_step`): physics ticks drift against the display and
+  snap the view. After a teleport the body waits two physics ticks (new
+  floors). The physics tick is matched to the display's rate (72 Hz on the
+  Quest 3: it ignores the 90 Hz request so far). `Game._catch_fall` puts a
+  body fallen out of the lobby or the intro back.
   Quest 3 must hold its frame rate on `medium`: keep SSAO / SSR / SSIL /
   volumetric fog off, ≤ 8 omni lights on a mesh (5 pool + the duck, heart and disk), and the pool fixed.
 - **Station config.** VR reads `user://station.json` (written by the

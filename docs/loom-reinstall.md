@@ -1781,12 +1781,14 @@ Provision: `/terminal/?code=…&name=Kitchen&character=Trabolta&spot=start-bar&v
   right controller) the right stick's forward / back walks too, its weaker
   axis dropped unless the push is a real diagonal (`Locomotion.axis_lock`,
   0.5; once in, an axis holds down to 0.3, so a push near the edge never
-  flickers turning on and off). The turn and the vignette run every
-  rendered frame; walking, gravity and room scale stay on the physics
-  tick (moved per frame, the body fell through floors not yet in the
-  physics space), and `main.gd` asks for 90 Hz once the OpenXR session has
-  begun and sets the physics tick to the display's rate (a 90 Hz tick on
-  the Quest's default 72 Hz judders). Foveation stays level 3; MSAA on
+  flickers turning on and off). The rig (turn, walk, gravity, room
+  scale) moves every rendered frame, on a headset by exactly one display
+  interval per frame (`VrPlayer.frame_step`; physics ticks drift against
+  the display, and the measured frame time is noisy: both snap the view);
+  after a teleport the body waits two physics ticks for new floors.
+  `main.gd` asks for the offered rate nearest 90 Hz (start, session begun,
+  focus) and sets the physics tick to the display's rate; the Quest 3 has
+  so far stayed at 72 Hz. The game logs its frame timing every 10 s. Foveation stays level 3; MSAA on
   `medium` drew a black void on the Quest 3 (2026-10-29). A body under the lobby's or the
   intro's floor is put back on it (`Game._catch_fall`, logged).
   A comfort vignette closes while moving or turning (turning to

@@ -2300,12 +2300,27 @@ func _test_main_and_game() -> void:
 	player.right_stick = Vector2.ZERO
 	var jump := absf(HouseFrames.wrap_yaw(player.head_yaw() - yaw1))
 	_check(_near(jump, Locomotion.TURN_RATE * VrPlayer.MAX_STEP, 0.1), "player: a 2 s frame turns one MAX_STEP at most (%.1f°)" % jump)
-	# The body moves on the physics tick only: a frame alone never walks it.
+	# After a teleport the body waits two physics ticks (a floor built that
+	# frame is not in the physics space yet), then walks every frame.
+	player.teleport(player.feet(), player.head_yaw())
 	var at := player.feet()
 	player.left_stick = Vector2(0, 1)
 	player._process(1.0 / 72.0)
+	_check(player.feet().distance_to(at) < 1e-4, "player: after a teleport the body waits for the physics ticks")
+	player._physics_process(1.0 / 72.0)
+	player._physics_process(1.0 / 72.0)
+	player._process(1.0 / 72.0)
 	player.left_stick = Vector2.ZERO
-	_check(player.feet().distance_to(at) < 1e-4, "player: walking waits for the physics tick (the floors live there)")
+	_check(player.feet().distance_to(at) > 0.01, "player: … then walks on a frame, no tick needed (%.3f m)" % player.feet().distance_to(at))
+	# On a headset a frame near the display interval moves exactly one.
+	var ticks := Engine.physics_ticks_per_second
+	Engine.physics_ticks_per_second = 72
+	player.xr_active = true
+	_check(_near(player.frame_step(0.0131), 1.0 / 72.0, 1e-6) and _near(player.frame_step(0.0152), 1.0 / 72.0, 1e-6), "player: a headset frame near the interval moves exactly one interval")
+	_check(_near(player.frame_step(0.03), 0.03, 1e-6) and _near(player.frame_step(0.5), VrPlayer.MAX_STEP, 1e-6), "player: … a long one moves its own time, at most MAX_STEP")
+	player.xr_active = false
+	Engine.physics_ticks_per_second = ticks
+	_check(_near(player.frame_step(0.0131), 0.0131, 1e-6), "player: … the desktop rig moves the measured time")
 
 	link.session_over.emit("test")
 
