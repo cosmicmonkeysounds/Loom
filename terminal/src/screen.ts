@@ -318,11 +318,17 @@ export interface ScreenLanguage {
 /** (wave 48b) The most censored words the slide carries (C12). */
 export const LANGUAGE_WORDS_MAX = 400;
 
+/** (wave 48b) A word the slide may print: not blank, not the journal's `[slur]`, not a starred one (no letter or digit left). Slurs are `unsaid`, a count. */
+function sayable(w: string): boolean {
+  const t = w.trim();
+  return t !== "" && t.toLowerCase() !== "[slur]" && /[\p{L}\p{N}]/u.test(t);
+}
+
 /**
  * (wave 48) The report off the wire. Malformed (not an object, or no
  * `flagged` count) reads null, as if absent. A bad number reads 0; censored
  * words are flagged words, so `flagged` is at least `censored`; `words`
- * keeps the non-blank strings, trimmed, each with its count (wave 48b: no
+ * keeps the strings it may print (`sayable`), trimmed, each with its count (wave 48b: no
  * `counts`, or a bad one, is 1: a wave 48 server sends none), most censored
  * first (a stable sort, so equal counts keep the server's order), the
  * first `LANGUAGE_WORDS_MAX` (any past them count into `more`). No `unsaid`
@@ -336,7 +342,7 @@ export function languageOf(raw: unknown): ScreenLanguage | null {
   const who = (v: unknown): string | null => (typeof v === "string" && v.trim() !== "" && v.trim().toLowerCase() !== "none" ? v.trim() : null);
   const counts = Array.isArray(r["counts"]) ? (r["counts"] as unknown[]) : [];
   const all = (Array.isArray(r["words"]) ? (r["words"] as unknown[]) : [])
-    .flatMap((w, i) => (typeof w === "string" && w.trim() !== "" ? [{ word: w.trim(), count: Math.max(1, n(counts[i])), i }] : []))
+    .flatMap((w, i) => (typeof w === "string" && sayable(w) ? [{ word: w.trim(), count: Math.max(1, n(counts[i])), i }] : []))
     .sort((a, b) => b.count - a.count || a.i - b.i);
   const kept = all.slice(0, LANGUAGE_WORDS_MAX);
   const censored = n(r["censored"]);

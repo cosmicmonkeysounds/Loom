@@ -331,6 +331,8 @@ describe("every tv3 scene draws", () => {
     // Clamped and trimmed; a bad count is 1; most censored first, ties in the server's order; the strength 0–100.
     expect(nightOf({ language: { flagged: -2, censored: 4.7, curser: "none", curses: Number.NaN, words: ["  password ", 3, "", null, "hello", "heck"], counts: [1, 9, 9, 9, 4, "x"], more: -1, unsaid: -3, level: 140, stars: -5 } }).language).toEqual({ flagged: 4, censored: 4, curser: null, curses: 0, words: ["hello", "password", "heck"], counts: [4, 1, 1], more: 0, unsaid: 0, level: 100, stars: 0 });
     expect(nightOf({ language: { flagged: 9, words: "password", counts: "7", level: "35" } }).language).toEqual({ flagged: 9, censored: 0, curser: null, curses: 0, words: [], counts: [], more: 0, unsaid: 0, level: null, stars: null });
+    // Never a slur as a word: the journal's `[slur]` and a starred word are dropped (the unsaid is a count).
+    expect(nightOf({ language: { flagged: 9, censored: 4, words: ["[slur]", "****", "heck", " [SLUR] ", "p***word"], counts: [3, 2, 1, 1, 1], unsaid: 2 } }).language).toMatchObject({ words: ["heck", "p***word"], counts: [1, 1], unsaid: 2 });
     // At most 400 words (the most censored), the rest counted into `more`.
     const many = Array.from({ length: 430 }, (_, k) => `word${k}`);
     const capped = nightOf({ language: { flagged: 900, censored: 600, curser: "Excel", curses: 20, words: many, counts: many.map((_, k) => (k === 420 ? 50 : 1)), more: 5 } }).language!;
