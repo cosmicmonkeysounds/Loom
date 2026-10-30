@@ -465,8 +465,9 @@ stays at or under 3 Hz; no open flames; VR is played seated with a spotter.
    Read it **after G1** for Most / Least Trusted (wave 45: G1 takes 5
    trust from every program that never used Bathroom Mode). **G13 🚻 The
    Bathroom Report** reads its own numbers: press it between two awards.
-   So does **G14 🔑 The Language Report** (wave 48: the Password
-   Manager's filter, who cursed the most, the censored words).
+   So does **G14 🔑 The Language Report** (wave 48, 48b: the Password
+   Manager's filter, who cursed the most, the top censored words, her ⭐;
+   the TV lets every censored word out, slurs only as black bars).
 2. Backups: on the VPS `deploy/backup.sh --label show`; Run → Export
    (`loom-run/1`) for the archive; `scripts/ops/showbackup.sh uninstall` on
    the MacBook once the night's copies are safe.

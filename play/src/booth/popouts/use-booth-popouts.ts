@@ -20,6 +20,7 @@ import { countdownRunning, cueAtEnd, cueSpecs, cueWaitsFor, doorQueue, doorSpec,
 import { playTone, usePopOuts, type PopOutSpec } from "./rung.ts";
 import { newMissionSpec } from "../mission-model.ts";
 import { filterDraft, filterPlan, filterPopSeq } from "../filter/model.ts";
+import { filterGameNodes } from "../filter/game.tsx";
 import type { FilterApi } from "../filter/use-filter.ts";
 
 /** What a bound pop-out's buttons may open in the booth. */
@@ -299,8 +300,9 @@ export function useBoothPopOuts({ session, open, now, placeTitle, ownFireAt, tar
     if (plan.seen.length > 0) filter.markSeen(plan.seen);
     for (const k of plan.retire) rung.retire(k);
     const n = filter.waiting.length;
-    for (const line of plan.refresh) rung.raise(bind(filterDraft(line, n, filter.refusal(line.seq))));
-    if (plan.raise !== null) rung.raise(bind(filterDraft(plan.raise, n, filter.refusal(plan.raise.seq))));
+    // Wave 48b (C13): each with the ⭐ game's live meter and ✂'s pay now.
+    for (const line of plan.refresh) rung.raise(bind(filterDraft(line, n, filter.refusal(line.seq), filterGameNodes(line))));
+    if (plan.raise !== null) rung.raise(bind(filterDraft(plan.raise, n, filter.refusal(plan.raise.seq), filterGameNodes(plan.raise))));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filterKey, heldFilterKey, filterOpen]);
 

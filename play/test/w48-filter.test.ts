@@ -23,7 +23,7 @@ import {
   filterPopKey,
   filterPopSeq,
   filterStoreKey,
-  hitRanges,
+  tierRanges,
   loadFilterMemory,
   markSegments,
   parseFilterMemory,
@@ -208,7 +208,7 @@ describe("the highlight (markSegments)", () => {
   it("overlapping, touching and duplicate ranges merge into one mark", () => {
     expect(marked(markSegments("asshell", [{ start: 0, end: 3 }, { start: 3, end: 7 }]))).toEqual(["asshell"]);
     expect(marked(markSegments("bastard", [{ start: 1, end: 3 }, { start: 0, end: 4 }, { start: 1, end: 3 }]))).toEqual(["bast"]);
-    expect(hitRanges("abcdefgh", [{ start: 5, end: 7 }, { start: 1, end: 3 }, { start: 2, end: 6 }])).toEqual([[1, 7]]);
+    expect(tierRanges("abcdefgh", [{ start: 5, end: 7 }, { start: 1, end: 3 }, { start: 2, end: 6 }])).toEqual([{ start: 1, end: 7, tier: null }]);
   });
 
   it("bad offsets never throw and never lose text: clamped, dropped when empty or junk", () => {

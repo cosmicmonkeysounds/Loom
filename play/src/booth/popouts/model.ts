@@ -8,7 +8,7 @@ import { destructive, armsFirst } from "../model.ts";
 import { evergreenFlag } from "../../guest/wire.ts";
 import type { ChatMessage, CountdownSummary, Interaction, ObjectiveView } from "../../types.ts";
 import type { BoothGuest, BoothMessage, BoothObjective, CallsView, WantedEntry } from "../wire.ts";
-import type { PopOutSpec, PopTone } from "./rung.ts";
+import type { PopAction, PopOutSpec, PopTone } from "./rung.ts";
 
 /** What a pop-out's button does, for the hook to bind. */
 export type BoothDo =
@@ -44,6 +44,10 @@ export interface DraftAction {
   arm?: boolean;
   deadMs?: number;
   closes?: boolean;
+  /** Wave 48b: the label while armed (`PopAction.armedLabel`). */
+  armedLabel?: string;
+  /** Wave 48b: live content in the button (`PopAction.extra`). */
+  extra?: PopAction["extra"];
   do: BoothDo;
 }
 

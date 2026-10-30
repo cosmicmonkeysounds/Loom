@@ -1,6 +1,7 @@
 //! The booth's Start menu (wave 13): who you are in its banner, and the
 //! settings that used to sit behind the old ☰ — Help, Keep my screen on, Get
 //! alerts, what the character knows, moderator powers, Sign out (confirmed).
+//! Wave 48b (C13): the censor's 🔑 Filter strength, the only way to it.
 
 import { useState } from "react";
 import { GroupPill, PersonAvatar, Sheet } from "../ui/primitives.tsx";
@@ -46,6 +47,7 @@ export function boothStartItems({
   onHelp,
   onSheet,
   onSignOut,
+  filter = null,
 }: {
   character: string;
   admin: boolean;
@@ -57,12 +59,15 @@ export function boothStartItems({
   onHelp: () => void;
   onSheet: (s: BoothSheet) => void;
   onSignOut: () => void;
+  /** Wave 48b (C13): the censor's `🔑 Filter strength` (`filterStartItem`), else null. */
+  filter?: StartItem | null;
 }): StartItem[] {
   const items: StartItem[] = [{ id: "help", icon: <Icon name="help" />, label: "Help", onClick: onHelp }];
   if (!embedded && wake.supported) {
     items.push({ id: "wake", icon: <Icon name={wake.on ? "screen-on" : "screen-off"} />, label: wake.on ? "Screen stays on (tap to allow sleep)" : "Keep my screen on", onClick: wake.toggle });
   }
   if (!embedded) items.push({ id: "alerts", icon: <Icon name="bell" />, label: "Get alerts", onClick: () => onSheet("alerts") });
+  if (filter !== null) items.push(filter);
   if (knows > 0) items.push({ id: "knows", icon: <BoothIcon name="lore" />, label: `What ${character} knows`, onClick: () => onSheet("knows") });
   if (!admin && !host) items.push({ id: "powers", icon: <BoothIcon name="powers" />, label: "Add moderator powers", onClick: () => onSheet("powers") });
   items.push({ id: "signout", icon: <Icon name="leave" />, label: "Sign out", danger: true, confirm: `Sign out of ${character}? The part is freed for another phone.`, onClick: onSignOut });
@@ -73,7 +78,8 @@ export function boothStartItems({
  * A player's Start menu (wave 21, P4): Help, Keep my screen on, Get alerts,
  * 👥 People, Sign out (confirmed). No moderator powers and no "What X
  * knows" — Mission's Codex tile is the character's knowledge. Wave 44
- * (C7): 🎬 Credits first, once the story has rolled them.
+ * (C7): 🎬 Credits first, once the story has rolled them. Wave 48b (C13):
+ * the censor's 🔑 Filter strength before People.
  */
 export function playerStartItems({
   character,
@@ -84,6 +90,7 @@ export function playerStartItems({
   onPeople,
   onSignOut,
   credits = null,
+  filter = null,
 }: {
   character: string;
   wake: Pick<WakeLock, "supported" | "on" | "toggle">;
@@ -94,6 +101,8 @@ export function playerStartItems({
   onSignOut: () => void;
   /** Wave 44 (C7): `🎬 Credits` while the story has rolled them (`creditsStartItem`), first. */
   credits?: StartItem | null;
+  /** Wave 48b (C13): the censor's `🔑 Filter strength` (`filterStartItem`), else null. */
+  filter?: StartItem | null;
 }): StartItem[] {
   const items: StartItem[] = credits !== null ? [credits] : [];
   items.push({ id: "help", icon: <Icon name="help" />, label: "Help", onClick: onHelp });
@@ -101,6 +110,7 @@ export function playerStartItems({
     items.push({ id: "wake", icon: <Icon name={wake.on ? "screen-on" : "screen-off"} />, label: wake.on ? "Screen stays on (tap to allow sleep)" : "Keep my screen on", onClick: wake.toggle });
   }
   if (!embedded) items.push({ id: "alerts", icon: <Icon name="bell" />, label: "Get alerts", onClick: () => onSheet("alerts") });
+  if (filter !== null) items.push(filter);
   items.push({ id: "people", icon: <Icon name="people" />, label: "People", onClick: onPeople });
   items.push({ id: "signout", icon: <Icon name="leave" />, label: "Sign out", danger: true, confirm: `Sign out of ${character}? The part is freed for another phone.`, onClick: onSignOut });
   return items;

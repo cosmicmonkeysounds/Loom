@@ -158,6 +158,15 @@ describe("Pass and Scan are one tap from every screen (fguest)", () => {
     expect(css).toContain(".guest-frame .start-menu-away { z-index: -1; }");
   });
 
+  it("an open Start menu comes up over a booth pop-out (wave 48b)", () => {
+    const booth = readFileSync(new URL("../src/css/booth.css", import.meta.url), "utf8");
+    const moments = readFileSync(new URL("../src/css/moments.css", import.meta.url), "utf8");
+    expect(booth).toContain(".booth-frame .taskbar.start-open { z-index: calc(var(--z-popout) + 2); }");
+    expect(moments).toMatch(/--z-popout: \d+/u);
+    const src = readFileSync(new URL("../src/chrome/taskbar.tsx", import.meta.url), "utf8");
+    expect(src).toContain('className={`taskbar${open ? " start-open" : ""}`}');
+  });
+
   it("a taskbar button with the Start menu open closes it and does its job in the same tap", () => {
     const src = readFileSync(new URL("../src/chrome/taskbar.tsx", import.meta.url), "utf8");
     expect(src).toMatch(/if \(open\) close\(\);\s*b\.onClick\(\);/u);

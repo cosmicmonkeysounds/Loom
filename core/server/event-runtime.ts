@@ -84,7 +84,7 @@ import { CreditsSource } from "./credits.ts"; // w44
 import { CREDITS_ROUTE, creditsAnswer, sendCredits } from "./routes/credits.ts"; // w44
 import { VIDEO_ROUTE, sendVideoConsent, videoConsentView } from "./routes/video.ts"; // w44
 import { CREDITS_FILE } from "../src/credits.ts"; // w44
-import { SWEAR_CENSORED, SWEAR_FLAGGED, filterHits, hitList, maskText, type FilterHit } from "../src/language-filter.ts"; // w48
+import { SWEAR_CENSORED, SWEAR_FILTER, SWEAR_FLAGGED, decodeHits, encodeHits, filterHits, hitList, isFilterLevel, maskText, maskUnsaid, type FilterHit } from "../src/language-filter.ts"; // w48, w48b
 import { FilterBook, type FilterView } from "./language-filter.ts"; // w48
 import { forBooth, hostSeen, seenCues, seenName } from "./unseen-directors.ts";
 import { guestSide } from "./routes/sides.ts";
@@ -1537,10 +1537,11 @@ export class EventRuntime {
     };
   }
 
-  /** Wave 48 (C2): the censor booth's `filter` block. */
+  /** Wave 48 (C2, C11): the censor booth's `filter` block. */
   private filterView(): FilterView {
     const sim = this.sim;
     return this.filter.view({
+      now: Date.now(),
       hidden: (seq) => this.chat.get(seq)?.hidden === true,
       nameOf: (g) => sim?.persons.get(g)?.name ?? g,
       avatarOf: (g) => {
@@ -1565,47 +1566,68 @@ export class EventRuntime {
     this.filter.flag({ seq: m.seq, guest, where: this.filterWhere(m, guest), text: m.text, hits, ts: m.ts });
   }
 
-  /** Wave 48 (C2): after a person's own line is stored (`stored`, the say's
-   *  fanout), run the filter over it; with hits, index it and journal
-   *  `swear_flagged` (no actor), whose fanout pushes the censor's snapshot.
-   *  Never a character's line, and nothing without a `censor:` header. */
-  private flagGuestLine(guest: string, stored: readonly ChatMessage[]): void {
+  /** Wave 48b (C9): a line about to be stored with its slurs starred, when
+   *  the story has a censor (`censor:`); as it is otherwise. */
+  private unsaidMasked(text: string): string {
+    if (this.sim === null || this.sim.model.censor === null) return text;
+    const hits = filterHits(text, 0);
+    return hits.length === 0 ? text : maskUnsaid(text, hits);
+  }
+
+  /** Wave 48 (C2, C8): after a guest's own line is stored (`stored`, the
+   *  say's fanout), run the filter over it at the current strength; with
+   *  hits, index it and journal `swear_flagged` (no actor), whose fanout
+   *  pushes the censor's snapshot. Only what a guest typed themselves:
+   *  never a director's play-as typing, a character's line or a pick, and
+   *  nothing without a `censor:` header. `raw` is the line as typed, before
+   *  its slurs were starred (the offsets are the same). */
+  private flagGuestLine(guest: string, raw: string, stored: readonly ChatMessage[]): void {
     const sim = this.sim;
-    if (sim === null || sim.model.censor === null) return;
+    if (sim === null || sim.model.censor === null || this.actingBy !== undefined) return;
     const name = sim.persons.get(guest)?.name;
     if (name === undefined) return;
     const line = stored.find((m) => m.kind === "line" && m.from === name && m.pick !== true);
-    if (line === undefined) return;
-    const hits = filterHits(line.text);
+    if (line === undefined || line.text.length !== raw.length) return;
+    const level = this.filter.level;
+    const hits = filterHits(raw, level);
     if (hits.length === 0) return;
     this.indexFlag(guest, line, hits);
-    this.fanout(this.commit("signal", SWEAR_FLAGGED, guest, { message: line.seq, words: hits.length, list: hitList(hits) }));
+    this.fanout(this.commit("signal", SWEAR_FLAGGED, guest, { message: line.seq, words: hits.length, list: hitList(hits), level, marks: encodeHits(hits) }));
   }
 
-  /** Wave 48 (C2): a journaled `swear_flagged` / `swear_censored` signal,
-   *  replayed (`signal(name, guest, { message, … })`): re-index the line, or
-   *  mask it again. The line itself was replayed earlier in the journal. */
+  /** Wave 48 (C2, C8): a journaled `swear_filter` / `swear_flagged` /
+   *  `swear_censored` signal, replayed: the strength, the line's hits (from
+   *  its `marks`, never a filter that may have changed since), or the
+   *  censor's mask and pay. The line itself was replayed earlier. */
   private replayFilter(a: readonly unknown[]): void {
+    const args = (a[2] ?? {}) as Record<string, unknown>;
+    if (a[0] === SWEAR_FILTER) {
+      if (isFilterLevel(args["level"])) this.filter.setLevel(args["level"]);
+      return;
+    }
     const guest = a[1];
-    const message = (a[2] as { message?: unknown } | null | undefined)?.message;
+    const message = args["message"];
     if (typeof guest !== "string" || typeof message !== "number") return;
     if (a[0] === SWEAR_CENSORED) {
-      this.applyCensor(message, false);
+      const num = (k: string): number => (typeof args[k] === "number" ? (args[k] as number) : 0);
+      this.applyCensor(message, this.filter.live(message), { stars: num("stars"), heat: num("heat"), at: num("heat_at") }, false);
       return;
     }
     const m = this.chat.get(message);
     if (m === undefined) return;
-    const hits = filterHits(m.text);
+    const level = isFilterLevel(args["level"]) ? args["level"] : this.filter.level;
+    const hits = typeof args["marks"] === "string" ? decodeHits(m.text, args["marks"]) : filterHits(m.text, level);
     if (hits.length > 0) this.indexFlag(guest, m, hits);
   }
 
-  /** Wave 48 (C2): mask a censored line in the chat store; live, re-send it
-   *  (a silent upsert: `messageModerated` with the whole message, which
-   *  every client already takes by seq). */
-  private applyCensor(seq: number, live: boolean): ChatMessage | null {
-    const e = this.filter.censor(seq);
+  /** Wave 48 (C2, C8): mask a censored line's `hits` in the chat store and
+   *  book what it paid; live, re-send it (a silent upsert:
+   *  `messageModerated` with the whole message, which every client already
+   *  takes by seq). */
+  private applyCensor(seq: number, hits: readonly FilterHit[], paid: { stars: number; heat: number; at: number }, live: boolean): ChatMessage | null {
+    const e = this.filter.censor(seq, hits, paid);
     if (e === null) return null;
-    const m = this.chat.censor(seq, maskText(e.text, e.hits));
+    const m = this.chat.censor(seq, maskText(e.text, hits));
     if (m === null || !live) return m;
     for (const c of this.clients) {
       if (c.role === "guest") {
@@ -5452,8 +5474,8 @@ export class EventRuntime {
             // A widget answer — `signal(<kind> answered, guest, {…, card: seq})`.
             const card = (e.a[2] as { card?: unknown } | null | undefined)?.card;
             if (typeof e.a[1] === "string" && typeof card === "number") this.answeredWidgets.add(`${card}:${e.a[1]}`);
-            // Wave 48 (C2): the filter's flags and censors, from the journal.
-            if (e.a[0] === SWEAR_FLAGGED || e.a[0] === SWEAR_CENSORED) this.replayFilter(e.a);
+            // Wave 48 (C2, C8): the filter's strength, flags and censors, from the journal.
+            if (e.a[0] === SWEAR_FLAGGED || e.a[0] === SWEAR_CENSORED || e.a[0] === SWEAR_FILTER) this.replayFilter(e.a);
             // An agent's own use of a power counts against its `limit:` again.
             if (e.by === `${AGENT_BY}${String(e.a[3])}` && Array.isArray(out) && powerSpent(out as SimEvent[])) {
               const def = this.sim!.model.interactions.get(String(e.a[0]));
@@ -5897,6 +5919,8 @@ export class EventRuntime {
           // Wave 26 (C4, R5): players whose presence room is this spot's
           // room — the terminal's link to the Internet (null: no map / no such spot).
           spotHere: (spot) => this.spatial.spotHere(spot),
+          // Wave 48b (C12): the filter's book for the Language Report.
+          language: () => ({ words: this.filter.wordCounts(), unsaid: this.filter.unsaid, level: this.filter.level, stars: this.filter.stars }),
         },
       );
     }
@@ -6705,8 +6729,8 @@ export class EventRuntime {
         const parentSeq = this.sim!.threadableOf(channel) && body["parentSeq"] != null ? Number(body["parentSeq"]) : null;
         // A director typing through a play-as pane: the room sees the guest,
         // the mod feed sees who really typed it — like `/api/mod/say`.
-        const said = this.fanout(this.commit("say", id, channel, text, parentSeq), this.actingBy);
-        this.flagGuestLine(id, said); // w48
+        const said = this.fanout(this.commit("say", id, channel, this.unsaidMasked(text), parentSeq), this.actingBy);
+        this.flagGuestLine(id, text, said); // w48
         this.agentHeard(channel, [id]);
         sendJson(res, 200, { ok: true });
         return true;
@@ -7237,10 +7261,13 @@ export class EventRuntime {
         sendJson(res, 200, { ok: true });
         return true;
       }
-      case "/api/prime/censor": {
-        // Wave 48 (C2): the censor's ✂ on a flagged guest line. Journals
-        // `swear_censored` as the censor (the story counts it and marks the
-        // program), masks the line and re-sends it to everyone who has it.
+      case "/api/prime/censor":
+      case "/api/prime/filter": {
+        // Wave 48 (C2, C8): the censor's ✂ on a flagged guest line, and its
+        // strength slider (`/filter`, wave 48b). ✂ journals `swear_censored`
+        // as the censor (the story counts it, pays its ⭐ and raises the
+        // program's suspicion), masks the line's hits at the current
+        // strength and re-sends it to everyone who has it.
         const token = tokenOf(req, body);
         const character = this.characterOf(token);
         if (!character || !this.canScan(token)) {
@@ -7255,6 +7282,20 @@ export class EventRuntime {
           sendJson(res, 409, { error: "doors are closed" });
           return true;
         }
+        if (path === "/api/prime/filter") {
+          const level = body["level"];
+          if (!isFilterLevel(level)) {
+            sendJson(res, 400, { error: "level is 0–100 in steps of 5" });
+            return true;
+          }
+          const was = this.filter.level;
+          if (level !== was) {
+            this.filter.setLevel(level);
+            this.fanout(this.commit("signal", SWEAR_FILTER, character, { level, was }, character));
+          }
+          sendJson(res, 200, { ok: true, level });
+          return true;
+        }
         const seq = Number(body["seq"]);
         const flagged = Number.isInteger(seq) ? this.filter.get(seq) : undefined;
         if (flagged === undefined || this.chat.get(seq)?.hidden !== false) {
@@ -7265,10 +7306,30 @@ export class EventRuntime {
           sendJson(res, 409, { error: "already censored" });
           return true;
         }
-        const args = { message: seq, words: flagged.hits.length, list: hitList(flagged.hits), fresh: this.filter.fresh(seq).join(", ") };
-        const m = this.applyCensor(seq, true);
+        const hits = this.filter.live(seq);
+        if (hits.length === 0) {
+          sendJson(res, 409, { error: "the filter no longer catches it" });
+          return true;
+        }
+        const pay = this.filter.score(hits, Date.now());
+        const fresh = this.filter.fresh(hits).join(", ");
+        const m = this.applyCensor(seq, hits, pay, true);
+        const args = {
+          message: seq,
+          words: hits.length,
+          list: hitList(hits),
+          fresh,
+          unsaid: hits.filter((h) => h.unsaid).length,
+          points: pay.points,
+          mult: pay.mult,
+          stars: pay.stars,
+          top: this.filter.top(),
+          distinct: this.filter.wordCounts().length,
+          heat: pay.heat,
+          heat_at: pay.at,
+        };
         this.fanout(this.commit("signal", SWEAR_CENSORED, flagged.guest, args, character));
-        sendJson(res, 200, { ok: true, seq, text: m?.text ?? "" });
+        sendJson(res, 200, { ok: true, seq, text: m?.text ?? "", points: pay.points, mult: pay.mult, stars: pay.stars });
         return true;
       }
       case "/api/prime/say": {
@@ -8128,10 +8189,9 @@ export class EventRuntime {
         const owed = byHand ? this.agents.openOn(this.talkThread()) : null;
         const aloud = byHand && (owed !== null || this.talkSceneNow() !== null);
         const said = this.fanout(
-          aloud ? this.commit("say", speaker, channel, text, parentSeq, "all", owed === null ? null : answeredSeq(owed.req)) : this.commit("say", speaker, channel, text, parentSeq, audience),
+          aloud ? this.commit("say", speaker, channel, text, parentSeq, "all", owed === null ? null : answeredSeq(owed.req)) : this.commit("say", speaker, channel, isPerson ? this.unsaidMasked(text) : text, parentSeq, audience),
           isPerson ? by : undefined,
         );
-        if (isPerson) this.flagGuestLine(speaker, said); // w48
         // A director's persona messaging an agent gets an answer, exactly as
         // the guest would — that's what makes a rehearsal of the bot real.
         if (isPerson) this.agentHeard(channel, [speaker]);

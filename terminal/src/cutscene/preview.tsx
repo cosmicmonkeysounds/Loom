@@ -25,9 +25,12 @@
 //! scenes theirs: question `results_q` for hunt_results, H4–H6 for the
 //! tally, the verdict for The Verdict), `rows=<n>` (filings per question),
 //! `bath=one|nobody|none` (wave 45: the Bathroom Report's made-up numbers;
-//! `none` is an older server's, with no report), `lang=none|tie|long|kept|old`
-//! (wave 48: the Language Report's — nothing flagged, a tie for the most, 60
-//! words and more, flagged but none censored, an older server's no report).
+//! `none` is an older server's, with no report), `lang=none|kept|one|dozen|
+//! unsaid|bars|hundreds|max|tie|w48|old` (waves 48, 48b: the Language
+//! Report's breach — nothing flagged, flagged but none censored, one word, a
+//! dozen, a dozen and unsaid bars, only bars, 180 words, 400 + 62 more and
+//! bars, a tie for the most, a wave 48 server's report, an older server's no
+//! report; `fake.ts` `fakeLanguage`).
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "./kit/kit.css";

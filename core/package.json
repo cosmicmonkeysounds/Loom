@@ -48,6 +48,7 @@
     "@loom/house": "workspace:*",
     "better-auth": "^1.6.23",
     "nodemailer": "^10.0.1",
+    "obscenity": "0.4.6",
     "pg": "^8.22.0",
     "qrcode": "^1.5.4",
     "tsx": "^4.19.2",

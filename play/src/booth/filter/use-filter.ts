@@ -5,11 +5,40 @@
 // the lines this phone censored while the next snapshot is on its way, and
 // the last refusal per line (said in place). Storage is handed in (the
 // booth passes `usePlayHost().storage`), so the hooks harness can drive it.
+// Wave 48b (C13): the strength (optimistic: the dial shows the pick until
+// the view says it, rolls back and says so on a refusal; one POST at a
+// time, the latest pick wins), the ⭐ game's heat with the wall time its
+// view arrived (`game`, for `game.tsx`'s live meter), and the last ✂'s
+// burst.
 
 import { useRef, useState } from "react";
 import type { SessionStorage } from "../../host.ts";
-import type { CensorResult, FilterLine, FilterView, PrimeView } from "../../types.ts";
-import { FILTER_COPY, censorRefusal, filterOf, loadFilterMemory, pruneDropped, remember, saveFilterMemory, waitingLines, type CensorOutcome, type FilterMemory } from "./model.ts";
+import type { CensorResult, FilterCombo, FilterLevelResult, FilterLine, FilterView, PrimeView } from "../../types.ts";
+import {
+  FILTER_COPY,
+  censorDone,
+  censorRefusal,
+  comboOf,
+  filterOf,
+  levelOf,
+  levelRefusal,
+  loadFilterMemory,
+  pruneDropped,
+  remember,
+  saveFilterMemory,
+  snapLevel,
+  waitingLines,
+  type CensorOutcome,
+  type FilterBurstData,
+  type FilterMemory,
+} from "./model.ts";
+
+/** The ⭐ game's heat as of a view, and the wall ms that view arrived (C11:
+ *  the multiplier decays from the view's arrival). */
+export interface FilterGame {
+  combo: FilterCombo;
+  at: number;
+}
 
 export interface FilterApi {
   /** `PrimeView.filter`, or null: this booth is not the censor (or an older server). */
@@ -18,7 +47,7 @@ export interface FilterApi {
   waiting: FilterLine[];
   /** Lines this sign-in has seen (popped, or only counted). */
   seen: readonly number[];
-  /** Changes whenever the waiting list or a refusal does (the driver's dependency). */
+  /** Changes whenever the waiting list (a line's marks or worth) or a refusal does (the driver's dependency). */
   key: string;
   /** Remember lines as seen (the driver, after a plan). */
   markSeen: (seqs: readonly number[]) => void;
@@ -28,6 +57,19 @@ export interface FilterApi {
   censor: (seq: number) => Promise<CensorOutcome>;
   /** The last refusal for a line, else null. */
   refusal: (seq: number) => string | null;
+  /** Wave 48b: the strength the dial shows (the pick on its way, else the view's). */
+  level: number;
+  /** Wave 48b: a strength POST is on its way. */
+  saving: boolean;
+  /** Wave 48b: the last strength refusal (the dial rolled back), else null. */
+  levelError: string | null;
+  /** Wave 48b: set the strength (snapped to the dial; posted, latest wins). */
+  setLevel: (level: number) => void;
+  /** Wave 48b: the ⭐ game's heat, or null (an older server: no game). */
+  game: FilterGame | null;
+  /** Wave 48b: the last ✂'s "+n ⭐ ×m", until `clearBurst`. */
+  burst: FilterBurstData | null;
+  clearBurst: () => void;
 }
 
 /** What the hook reads off the booth's session. */
@@ -35,7 +77,12 @@ export interface FilterSource {
   auth: { token: string } | null;
   view: PrimeView | null;
   censor?: (seq: number) => Promise<CensorResult>;
+  filterLevel?: (level: number) => Promise<FilterLevelResult>;
 }
+
+/** A line's part of the driver's key: its seq, its worth and its marks
+ *  (a new strength re-marks a held pop-out in place). */
+const lineSig = (l: FilterLine) => `${l.seq}.${l.points ?? ""}.${(Array.isArray(l.hits) ? l.hits : []).map((h) => `${h.start}-${h.end}-${h.tier ?? ""}`).join("_")}`;
 
 export function useFilter(s: FilterSource, storage: SessionStorage): FilterApi {
   const token = s.auth?.token ?? "";
@@ -44,6 +91,14 @@ export function useFilter(s: FilterSource, storage: SessionStorage): FilterApi {
   const dropped = useRef(new Set<number>());
   const [refusals, setRefusals] = useState<ReadonlyMap<number, string>>(() => new Map());
   const [, setVersion] = useState(0);
+  const [levelError, setLevelError] = useState<string | null>(null);
+  const [burst, setBurst] = useState<FilterBurstData | null>(null);
+  const bursts = useRef(0);
+  // The strength picked and not yet in the view, and the one POST in flight.
+  const want = useRef<number | null>(null);
+  const posting = useRef<{ busy: boolean; next: number | null }>({ busy: false, next: null });
+  // The heat re-bases on every view that carries a combo (C11).
+  const heat = useRef<{ src: unknown; game: FilterGame | null }>({ src: undefined, game: null });
   const source = useRef(s);
   source.current = s;
   const store = useRef(storage);
@@ -53,6 +108,13 @@ export function useFilter(s: FilterSource, storage: SessionStorage): FilterApi {
   if (view !== null) pruneDropped(dropped.current, view.lines);
   const memory = mem.current.memory;
   const waiting = waitingLines(view, memory, dropped.current);
+  const viewLevel = levelOf(view);
+  // The view caught up with the pick (or the pick was the view's already).
+  if (want.current !== null && !posting.current.busy && want.current === viewLevel) want.current = null;
+  if (heat.current.src !== view?.combo) {
+    const combo = comboOf(view?.combo);
+    heat.current = { src: view?.combo, game: combo !== null ? { combo, at: Date.now() } : null };
+  }
 
   const update = (f: (m: FilterMemory) => FilterMemory) => {
     const cur = mem.current!;
@@ -70,13 +132,37 @@ export function useFilter(s: FilterSource, storage: SessionStorage): FilterApi {
       return next;
     });
 
+  /** Post the newest pick until none is left; only the last answer decides. */
+  const pump = async () => {
+    const p = posting.current;
+    p.busy = true;
+    setVersion((n) => n + 1);
+    while (p.next !== null) {
+      const level = p.next;
+      p.next = null;
+      const call = source.current.filterLevel;
+      try {
+        if (call === undefined) throw new Error("offline");
+        const r = await call(level);
+        if (p.next === null) want.current = typeof r?.level === "number" ? snapLevel(r.level) : level;
+      } catch (e) {
+        if (p.next === null) {
+          want.current = null;
+          setLevelError(call === undefined ? levelRefusal(null) : levelRefusal(e));
+        }
+      }
+    }
+    p.busy = false;
+    setVersion((n) => n + 1);
+  };
+
   const waitingSeqs = new Set(waiting.map((l) => l.seq));
   const shownRefusals = [...refusals].filter(([seq]) => waitingSeqs.has(seq));
   return {
     view,
     waiting,
     seen: memory.seen,
-    key: `${waiting.map((l) => l.seq).join(",")}#${shownRefusals.map(([seq, t]) => `${seq}:${t}`).join("|")}`,
+    key: `${waiting.map(lineSig).join(",")}#${shownRefusals.map(([seq, t]) => `${seq}:${t}`).join("|")}`,
     markSeen: (seqs) => update((m) => remember(m, "seen", seqs)),
     letGo: (seq) => {
       forget(seq);
@@ -89,8 +175,7 @@ export function useFilter(s: FilterSource, storage: SessionStorage): FilterApi {
       if (call === undefined) out = { kind: "refused", text: FILTER_COPY.refused.offline };
       else
         try {
-          await call(seq);
-          out = { kind: "done" };
+          out = censorDone(await call(seq));
         } catch (e) {
           out = censorRefusal(e);
         }
@@ -100,10 +185,30 @@ export function useFilter(s: FilterSource, storage: SessionStorage): FilterApi {
       } else {
         dropped.current.add(seq);
         update((m) => remember(m, "seen", [seq]));
+        if (out.kind === "done" && out.stars !== undefined) {
+          bursts.current += 1;
+          setBurst({ id: bursts.current, stars: out.stars, mult: out.mult ?? null, points: out.points ?? null });
+        }
         setVersion((n) => n + 1);
       }
       return out;
     },
     refusal: (seq) => (waitingSeqs.has(seq) ? (refusals.get(seq) ?? null) : null),
+    level: want.current ?? viewLevel,
+    saving: posting.current.busy,
+    levelError,
+    setLevel: (n) => {
+      const level = snapLevel(n);
+      setLevelError(null);
+      // Nothing new: the dial already says it (or that pick is on its way).
+      if (level === (want.current ?? viewLevel)) return;
+      want.current = level;
+      posting.current.next = level;
+      setVersion((v) => v + 1);
+      if (!posting.current.busy) void pump();
+    },
+    game: view !== null ? heat.current.game : null,
+    burst,
+    clearBurst: () => setBurst(null),
   };
 }

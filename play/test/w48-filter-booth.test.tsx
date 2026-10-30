@@ -6,7 +6,7 @@ import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-import type { ReactElement } from "react";
+import { isValidElement, type ReactElement } from "react";
 
 import { elements, mountHooks } from "./hooks-harness.ts";
 import { ARM_LINE } from "../src/arm.ts";
@@ -286,6 +286,15 @@ describe("the booth's driver raises 🔑 LANGUAGE on the real store", () => {
     const r = rig([L(1)]);
     r.lines([]);
     expect(held()).toEqual([]);
+  });
+
+  it("wave 48b: each 🔑 LANGUAGE carries the ⭐ game's live meter and ✂'s pay now; ✂ armed warns of suspicion", () => {
+    rig([L(1)]);
+    const spec = held()[0]!;
+    expect(isValidElement(spec.extra)).toBe(true);
+    expect(isValidElement(spec.actions[0]!.extra)).toBe(true);
+    expect(spec.actions[0]!.armedLabel).toBe("✂ Censor? It raises their suspicion.");
+    expect(spec.status).toBe("✂ Censor stars it out for everyone and raises their suspicion.");
   });
 
   it("a booth that is not the censor gets none", () => {

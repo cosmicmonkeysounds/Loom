@@ -767,7 +767,6 @@ export const SCREEN_NIGHT_VARS = {
   lang_censored: "Night.lang_censored",
   lang_curser: "Night.lang_curser",
   lang_curses: "Night.lang_curses",
-  lang_words: "Night.lang_words",
 } as const;
 /** (wave 45) The longest tie the Bathroom Report's slide carries. */
 const MAX_TIE_NAMES = 120;
@@ -775,8 +774,8 @@ const MAX_TIE_NAMES = 120;
 export const BATHROOM_SLIDE = "award_bathroom";
 /** (wave 48) The slide the Language Report (G14) cues. */
 export const LANGUAGE_SLIDE = "award_language";
-/** (wave 48) The most censored words the slide lists, and the longest one. */
-export const LANGUAGE_WORDS_MAX = 60;
+/** (wave 48, 48b) The most censored words the slide lists, and the longest one. */
+export const LANGUAGE_WORDS_MAX = 400;
 const LANGUAGE_WORD_CHARS = 40;
 /** A story var holding this names nobody / nothing yet (the show's "none"). */
 const NIGHT_NONE = "none";
@@ -837,18 +836,25 @@ export interface ScreenNight {
   language?: ScreenLanguage;
 }
 
-/** (wave 48, `docs/loom-w48-contract.md` C4) The Language Report (G14), as
- *  the story read it: words the Password Manager's filter caught tonight,
- *  of them censored, the program with the most caught (a tie "A and B";
- *  null for nobody) and its count, and the censored words (each once, first
- *  censored first; `more` past the ones listed). */
+/** (wave 48, `docs/loom-w48-contract.md` C4, C12) The Language Report
+ *  (G14): words the Password Manager's filter caught tonight (at the
+ *  strength of the time), of them censored, the program with the most
+ *  caught (a tie "A and B"; null for nobody) and its count, as the story
+ *  read them; and from the server's book every censored word once with how
+ *  often (most first; `more` past the ones listed; never a slur), the slur
+ *  words censored (`unsaid`: a redaction bar each, never text), the
+ *  strength now and the ⭐ ✂ paid. */
 export interface ScreenLanguage {
   flagged: number;
   censored: number;
   curser: string | null;
   curses: number;
   words: string[];
+  counts: number[];
   more: number;
+  unsaid: number;
+  level: number;
+  stars: number;
 }
 
 /** (wave 45) The Bathroom Report (G13), as the story read it. Times are
@@ -907,6 +913,10 @@ export interface ScreenPollExtras {
    *  spatial hub. Null: the server can't tell for that spot (no spatial map,
    *  or a spot the map lacks), so `spot.here` is left out. */
   spotHere?: (spot: string) => number | null;
+  /** (wave 48b) The Password Manager's filter book: every censored word with
+   *  its tally (most first, never a slur), slurs censored, the strength now
+   *  and the ⭐ paid. Read only while the Language Report's slide is up. */
+  language?: () => { words: ReadonlyArray<{ word: string; n: number }>; unsaid: number; level: number; stars: number };
 }
 
 /** A filing's public outcome on a screen: `a` accepted (an accurate filing
@@ -1763,15 +1773,19 @@ export class ScreenWatch {
     if (slideUp === LANGUAGE_SLIDE) {
       const count = (path: string): number => Math.max(0, Math.floor(num(path) ?? 0));
       const curser = peek(SCREEN_NIGHT_VARS.lang_curser);
-      const raw = peek(SCREEN_NIGHT_VARS.lang_words);
-      const all = raw === null || raw === NIGHT_NONE ? [] : raw.split(",").map((w) => w.trim()).filter((w) => w !== "");
+      const book = extras.language?.() ?? { words: [], unsaid: 0, level: 100, stars: 0 };
+      const shown = book.words.slice(0, LANGUAGE_WORDS_MAX);
       night.language = {
         flagged: count(SCREEN_NIGHT_VARS.lang_flagged),
         censored: count(SCREEN_NIGHT_VARS.lang_censored),
         curser: curser === null || curser.trim() === "" || curser === NIGHT_NONE ? null : clip(curser, MAX_TIE_NAMES),
         curses: count(SCREEN_NIGHT_VARS.lang_curses),
-        words: all.slice(0, LANGUAGE_WORDS_MAX).map((w) => clip(w, LANGUAGE_WORD_CHARS)),
-        more: Math.max(0, all.length - LANGUAGE_WORDS_MAX),
+        words: shown.map((w) => clip(w.word, LANGUAGE_WORD_CHARS)),
+        counts: shown.map((w) => w.n),
+        more: Math.max(0, book.words.length - LANGUAGE_WORDS_MAX),
+        unsaid: book.unsaid,
+        level: book.level,
+        stars: book.stars,
       };
     }
 

@@ -193,6 +193,21 @@ describe("play help", () => {
     expect(articlesFor("guest").some((a) => a.slug === "language-filter")).toBe(false);
     for (const q of ["censor", "language filter", "swear", "flagged words", "password manager", "starred out"]) expect(searchHelp(prime, q)[0]?.article.slug, q).toBe("language-filter");
   });
+
+  it("wave 48b: the article says the filter starts at full strength and can be tuned, never where; ✂ raises suspicion; the ⭐ game", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { FILTER_COPY } = await import("../src/booth/filter/model.ts");
+    const text = readFileSync(new URL("../../docs/help/play/22-language-filter.md", import.meta.url), "utf8").replace(/\s+/gu, " ");
+    expect(text).toContain("full strength");
+    expect(text).toContain("somewhere on your phone");
+    // She has to find the dial: the article never says where it is.
+    expect(text).not.toMatch(/⊞|Start menu|\bStart\b|Filter strength|slider/u);
+    expect(text).toContain(FILTER_COPY.censorArmed.replace(/\.$/u, ""));
+    expect(text).toContain("suspicion");
+    expect(text).not.toMatch(/marked for reinstallation|Wanted board/u);
+    for (const t of ["## ⭐ Stars for censoring", "[slur]", "×3", "×¼", "+15 ⭐"]) expect(text).toContain(t);
+    for (const q of ["slur", "multiplier", "stars"]) expect(searchHelp(articlesFor("performer"), q)[0]?.article.slug, q).toBe("language-filter");
+  });
 });
 
 describe("wave 26 G2: the guest guide never explains the machinery", () => {
