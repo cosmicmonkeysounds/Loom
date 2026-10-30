@@ -30,7 +30,7 @@ terminal.
 ## The Server Room laptop and its door sensor
 
 The heart terminal (the Server Room, wave 20) bridges the room's door
-sensor and has a keyboard and mouse:
+sensor:
 `/terminal/?code=<mod passcode>&spot=server-room&door=serial`. The first
 time, hold ⚙ 2 seconds → *advanced* → *door sensor* → **Connect door
 sensor** and pick the board in Chrome's list (once per browser profile),
@@ -46,6 +46,20 @@ testing: **O** opens a pretend door, **C** shuts it, **F** toggles a
 fault. The crew's kiosk notes (`docs/trapped/kiosk.md`) have the laptop's
 launch line. What the room does with the door is in [Running the server
 room](38-server-room.md).
+
+On the night it has no mouse or keyboard: a USB webcam, a GameCube
+controller and spoken answers, set up with
+`&webcam=C310&pad=1&whisper=1` on the link or under ⚙ → *advanced* →
+*no mouse or keyboard*. `webcam` is part of the camera's name, and it's
+both the scanner and the microphone. On the controller, the left stick or
+D-pad moves through the answers, **A** picks one, **B** goes back, the C
+stick scrolls the conversation and **Start** jumps to the newest line.
+Nothing on it leaves the terminal. When a program picks ⟦SPEAK FREELY⟧,
+**SPEAK TO HIM** listens, he says their words back, and they confirm
+before anything is sent. Their voice stays on the laptop: whisper.cpp runs
+there and nothing else hears it. If it isn't running, the choices still
+work and **SPEAK TO HIM** says so. `pnpm showctl preflight serverroom`
+checks it.
 
 ## Saying the house announcements
 

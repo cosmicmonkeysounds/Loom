@@ -70,13 +70,15 @@
 
 import { Component, Fragment, Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState, type ComponentType, type MutableRefObject, type ReactNode } from "react";
 import { Composer, Thread } from "./chat.tsx";
+import { PadNav } from "./gamepad/PadNav.tsx";
+import { mic } from "./voice/mic.ts";
 import { adoptCharacter, baseOf, castCheckKey, characterProblem, dropConfig, hintsFromSearch, loadConfig, provision, roomOf, saveConfig, spotProblem, tvRoomOf, withoutSecrets, type TerminalConfig } from "./config.ts";
 import { Setup } from "./Setup.tsx";
 import { followMap, followVoice, linkConfig } from "./setup-map.ts";
 import { useCamFeed } from "./camfeed.ts";
 import { useVoiceLink } from "./voice/hook.ts";
 import { MicCue } from "./voice/MicCue.tsx";
-import { useCameraLive, type Facing } from "./camera.ts";
+import { camera, useCameraLive, type Facing } from "./camera.ts";
 import { Face, type FaceHandle } from "./face/Face.tsx";
 import { moodOfText, type Mood } from "./face/mood.ts";
 import { lineLeash, talkWaitsOnDoor, useIdleTimeout } from "./idle.ts";
@@ -144,6 +146,9 @@ export function App() {
   // event and the token here. Set while rendering, so a scene that mounts
   // in this same commit already has it (its effects run before ours).
   setSceneAccess(config === null ? null : { base: baseOf(config), token: config.token });
+  // (wave 52) The webcam to open, while rendering: the scanner's effect runs before ours.
+  camera.prefer(config?.webcam ?? "");
+  mic.prefer(config?.webcam ?? "");
   const [screen, setScreen] = useState<Screen>(() => (loadConfig() ? { kind: "attract" } : { kind: "setup", notice: null }));
   const [awake, setAwake] = useState(() => audioUnlocked());
   // The tent laptop (`view=reinstall`) has a walk or the wizard on screen.
@@ -642,6 +647,8 @@ export function App() {
 
 /** After the world view failed to load (or draw), try again this much later (ms). */
 const WORLD_RETRY_MS = 30_000;
+/** The spoken composer's chunk (wave 52); a failed load leaves the choices working. */
+const VoiceComposer = lazy(retryable(() => import("./whisper/VoiceComposer.tsx")));
 /** A mirror reloads the page at most this often (ms). */
 const RELOAD_GAP_MS = 5 * 60_000;
 const RELOAD_KEY = "loom-terminal:world-reload";
@@ -1214,6 +1221,19 @@ function Terminal({
     setSpeaking(false);
   }, [queue, roomBusy]);
 
+  // Wave 52: what the spoken composer has him say back. No line's reveal rides on these ids.
+  const sayBackId = useRef(-1);
+  const sayBack = useCallback(
+    (text: string) => {
+      const chunks = splitSentences(text);
+      if (chunks.length === 0) return;
+      const id = sayBackId.current--;
+      chunkText.current.set(id, chunks);
+      queue.say({ id, chunks });
+    },
+    [queue],
+  );
+
   // Mood follows the situation when nothing is being said.
   useEffect(() => {
     if (speaking) return;
@@ -1359,16 +1379,16 @@ function Terminal({
             <>
               {room !== null && (
                 <div className="file-strip">
-                  <button type="button" className="file-open" onClick={() => setFilesOpen(true)}>
+                  <button type="button" className="file-open" data-pad data-pad-aside onClick={() => setFilesOpen(true)}>
                     📎 GIVE HIM A FILE
                   </button>
                 </div>
               )}
               <Thread lines={withPendingPicks(thread.lines, pendingPicks, pilot.name, session.lines)} revealed={revealed} typing={session.typing} wait={session.wait} character={config.character} guestName={pilot.name} earlier={thread.earlier} empty={emptyThreadText({ character: config.character, keys: config.keys, heart: heartTerminal, stage: state?.night?.heart_stage ?? null, waited: now - pilotSince.current })} />
               {panelPlace(menu, showComposer) === "main" && menu !== null && (
-                <ChoicePanel menu={menu} doorOpen={doorOpen} numberKeys={true} onActivity={touch} onPick={(i) => choose(menu, i)} voiceBusy={voiceBusy} sceneEndsAt={sceneEndsAt} onSkip={roomBusy ? undefined : skipVoice} />
+                <ChoicePanel menu={menu} doorOpen={doorOpen} numberKeys={true} onActivity={touch} onPick={(i) => choose(menu, i)} voiceBusy={voiceBusy} sceneEndsAt={sceneEndsAt} onSkip={roomBusy ? undefined : skipVoice} pad={config.pad} />
               )}
-              {showComposer && (
+              {showComposer && !config.whisper && (
                 <Composer
                   onSend={async (t) => {
                     touch();
@@ -1379,7 +1399,14 @@ function Terminal({
                   placeholder={session.ready ? `say something to ${config.character}` : "connecting…"}
                 />
               )}
-              {panelPlace(menu, showComposer) === "under" && menu !== null && <ChoicePanel menu={menu} doorOpen={doorOpen} numberKeys={false} onActivity={touch} onPick={(i) => choose(menu, i)} sceneEndsAt={sceneEndsAt} />}
+              {showComposer && config.whisper && (
+                <WorldBoundary fallback={null} onError={() => {}}>
+                  <Suspense fallback={null}>
+                    <VoiceComposer onSend={(t) => session.say(t)} disabled={!session.ready} onInput={touch} onListen={skipVoice} onSay={sayBack} />
+                  </Suspense>
+                </WorldBoundary>
+              )}
+              {panelPlace(menu, showComposer) === "under" && menu !== null && <ChoicePanel menu={menu} doorOpen={doorOpen} numberKeys={false} onActivity={touch} onPick={(i) => choose(menu, i)} sceneEndsAt={sceneEndsAt} pad={config.pad} />}
             </>
           )}
         </section>
@@ -1414,6 +1441,7 @@ function Terminal({
       {flash !== null && <div className="flash">{flash}</div>}
       {warning !== null && pilot !== null && <div className="leash">{filesOpen ? "STILL THERE? " : ""}DISCONNECTING IN {warning} — TOUCH TO STAY</div>}
       <div className="scanlines" aria-hidden="true" />
+      {config.pad && <PadNav onActivity={touch} />}
     </div>
   );
 }

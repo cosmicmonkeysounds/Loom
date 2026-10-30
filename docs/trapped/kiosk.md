@@ -258,22 +258,47 @@ The script runs Chrome with its own profile (`%LOCALAPPDATA%\loom-tv`) and
 ## The server room — Steph's laptop
 
 Trabolta's heart. Steph's laptop, lid closed, drives a **monitor** with a
-**mouse**, a **keyboard** and a **webcam** facing the program, and the
-**Grand Central M4** on its USB reads the **door sensor** and the
-**patch bay** ([`hardware/server-room-m4/`](../../hardware/server-room-m4/README.md)).
+**USB webcam** (Logi C310) facing the program, which is both its camera and
+its microphone, and a **GameCube controller** through a Mayflash adapter in
+PC mode: no mouse or keyboard on the night. The **Grand Central M4** on its
+USB reads the **door sensor** and the **patch bay**
+([`hardware/server-room-m4/`](../../hardware/server-room-m4/README.md)).
 The page reads the board over **Web Serial**: desktop Chrome (89+) or Edge
 on https only. Nothing from stagehand runs here.
 
 The map's `server-room` spot is in the Server Room (`house.json` and
 `house.shed.json`: room `server-room`, pos `[3.9, -1.3, 26]`, yaw 0) with
 `view: "face"` and `speaks: true`, so the link needs only the spot plus the
-board and camera keys:
+board, camera, controller and voice keys:
 
 ```
-/terminal/?code=<mod>&spot=server-room&door=serial&camera=user
+/terminal/?code=<mod>&spot=server-room&door=serial&camera=user&webcam=C310&pad=1&whisper=1
 ```
 
-(`&keys=0` only for a mouse-only rig.)
+`webcam` is part of the device's name, for the camera and the microphone
+both, because Windows' default microphone moves. A first-time setup by
+tapping the map turns the door on by itself, but not the other two keys.
+
+| On the controller | Does |
+|---|---|
+| Left stick, D-pad | Up and down the answers |
+| A | Picks the lit answer; skips his voice while it says LISTENING |
+| B | Back: drops what was said, then leaves talking freely. Never out of the terminal |
+| C stick | Scrolls the conversation; it stops following new lines until Start |
+| Start | The newest line |
+
+X, Y, Z, L and R do nothing, and the header's DISCONNECT and ⚙ can't be
+reached from it. A guest's line ends on its leash.
+
+⟦SPEAK FREELY⟧ opens **SPEAK TO HIM**: it listens until they stop (or A),
+whisper.cpp writes it down, he says it back and asks, and YES sends it. Speech
+stays on this laptop: `127.0.0.1:8178`, never the server. Install once, then
+it starts with the terminal:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\server-room\install-whisper.ps1
+powershell -ExecutionPolicy Bypass -File scripts\server-room\start-whisper.ps1
+```
 
 ### First launch: grants and calibration
 
@@ -293,9 +318,12 @@ open -na "Google Chrome" --args --user-data-dir="$HOME/.loom-terminal" \
   "https://app.mapsandducks.com/terminal/?code=<mod>&spot=server-room&door=serial&camera=user"
 ```
 
-1. Allow the camera.
+1. Allow the camera, the microphone and, when Chrome asks, access to apps on
+   this device (that's whisper; ⚙'s *no mouse or keyboard* section asks).
 2. Hold ⚙ 2 s → *advanced* → *door sensor* → **Connect door sensor** →
-   pick the Grand Central in Chrome's list.
+   pick the Grand Central in Chrome's list. A terminal that shows no door
+   after this was saved with the sensor off: check the select says *the door
+   sensor*, and Save.
 3. **Calibrate: door shut** (door shut, 2 s), open the door, **Calibrate:
    door open**. The thresholds are stored on the laptop and in the board's
    flash and re-sent on every connect. **Always calibrate again after a
@@ -319,6 +347,7 @@ caffeinate -dims open -na "Google Chrome" --args --user-data-dir="$HOME/.loom-te
 
 ```powershell
 # Windows
+powershell -ExecutionPolicy Bypass -File scripts\server-room\start-whisper.ps1
 & "C:\Program Files\Google\Chrome\Application\chrome.exe" --user-data-dir="$env:LOCALAPPDATA\loom-terminal" `
   --kiosk --autoplay-policy=no-user-gesture-required --no-first-run "https://app.mapsandducks.com/terminal/"
 ```

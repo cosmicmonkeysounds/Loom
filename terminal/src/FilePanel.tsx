@@ -105,7 +105,7 @@ export function FilePanel({
     <div className="file-panel" role="dialog" aria-label={`give ${character} a file`}>
       <div className="file-head">
         <span>📎 GIVE {who} A FILE</span>
-        <button type="button" className="link" onClick={onClose}>
+        <button type="button" className="link" data-pad data-pad-aside data-pad-back onClick={onClose}>
           BACK TO THE LINE
         </button>
       </div>
@@ -123,7 +123,7 @@ export function FilePanel({
               {no !== null ? (
                 <span className="file-kept small">{no.toUpperCase()}</span>
               ) : (
-                <button type="button" className="file-give" disabled={busy !== null || given.has(e.id)} onClick={() => void give(e)}>
+                <button type="button" className="file-give" data-pad disabled={busy !== null || given.has(e.id)} onClick={() => void give(e)}>
                   {given.has(e.id) ? "GIVEN" : busy === e.id ? "…" : "GIVE"}
                 </button>
               )}
@@ -142,7 +142,7 @@ export function FilePanel({
         <button type="submit" disabled={busy !== null || code.trim() === ""}>
           UNLOCK
         </button>
-        <button type="button" className="link" onClick={() => setScanning((v) => !v)}>
+        <button type="button" className="link" data-pad onClick={() => setScanning((v) => !v)}>
           {scanning ? "STOP CAMERA" : "SCAN A FILE'S QR"}
         </button>
       </form>

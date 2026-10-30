@@ -1,0 +1,53 @@
+/* The spoken composer (wave 52), in the composer's place under the thread. */
+.voice {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35em;
+  padding: 0.5em 0.75em;
+  border-top: 2px solid var(--phosphor-faint);
+}
+.voice-head {
+  color: var(--amber);
+  letter-spacing: 0.08em;
+}
+.voice-text {
+  color: var(--white);
+  overflow-wrap: anywhere;
+}
+.voice-note {
+  color: var(--amber);
+}
+.voice-btn {
+  background: none;
+  border: 1px solid var(--phosphor-dim);
+  border-radius: 4px;
+  padding: 0.3em 0.6em;
+  color: var(--phosphor);
+  font: inherit;
+  letter-spacing: 0.06em;
+  text-align: left;
+}
+.voice-btn:disabled {
+  opacity: 0.45;
+}
+.voice-meter {
+  height: 0.5em;
+  border: 1px solid var(--phosphor-faint);
+}
+.voice-meter > span {
+  display: block;
+  height: 100%;
+  background: var(--phosphor);
+  transform: scaleX(0);
+  transform-origin: left;
+}
+.voice-back {
+  align-self: flex-end;
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--phosphor-dim);
+  font: inherit;
+  font-size: 0.75em;
+  letter-spacing: 0.06em;
+}

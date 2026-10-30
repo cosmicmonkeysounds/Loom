@@ -58,6 +58,9 @@ play app's own `useChatStream` (imported as source) and narrows it to
 | `src/pilot.ts`, `src/chat.tsx`, `src/controls.tsx`, `src/idle.ts` | impersonate / say / end; `terminal opened` / `closed` (`VisitLatch`); a room terminal checks for a locked pass first (`refusesLockedPass`, `passLocked`); the thread + composer; the 2 s ⚙ hold; the leash (30 s, files 120 s, heart 180 s); wave 42b: the guest's place in his line (`pilotWait` over play's `useAgentWait`, `chat.tsx` `WaitLine` + `waitCells`: an amber system line with the phone's `DRAFT w42` words and a ten-block bar where the typing row goes, its estimate counting down; `answering` is the typing row; a queued line holds the leash; the waits are the piloted guest's only and clear on every `history` frame; `test/w42-wait.test.ts`) |
 | `src/files.ts`, `src/FilePanel.tsx` | 📎 GIVE HIM A FILE: share / redeem as the piloted guest |
 | `src/heart/` | `heart.ts` (the heart menu = newest `choices` entry on `dm:<character>` whose beat starts `heart `; tags; when the composer shows; wave 27: `panelGate` + `panelSince` (the panel waits on his voice and his scenes, and settles again after a skip), `panelPlace` (a ⟦BACK⟧ menu with no composer still draws its bar), `optionKey`, `layerOfCue` (scene timing only; wave 29: no header, card or test shows a layer number), `echoOf` (re-exported from core's `pick-echo.ts`), `composerBlocked` (also held at the heart until his first word, `heartWaitingFirstWord`), `threadFor`, `pilotEndWait`), `pending-pick.ts` (a pick shown at once until the server's line), `ChoicePanel.tsx`, `DoorOverlay.tsx`, `DoorSetup.tsx`, `PatchSetup.tsx` |
+| `src/devices.ts` | wave 52: which camera and microphone a stream opens, by part of its name (`config.webcam`) |
+| `src/gamepad/` | wave 52: the GameCube controller: `pad.ts` (pure: `GC`, `frameOf`, `PadMachine`, `movedTo`), `PadNav.tsx` (the loop, over `data-pad` / `data-pad-aside` / `data-pad-skip` / `data-pad-back`), `RigSetup.tsx` (⚙) |
+| `src/whisper/` | wave 52: spoken answers: `speech.ts` (pure: `wavOf`, `EndOfSpeech`, `cleanText`, `parrotLine`, `VOICE_COPY`, DRAFT w52), `listen.ts` (the mic → whisper.cpp), `VoiceComposer.tsx` (lazy; the composer when `config.whisper`) |
 | `src/serial/` | the M4 bridge: `door-protocol.ts` (JSON lines, pure), `door-bridge.ts` + `patch-bridge.ts` (decisions, pure), `door-serial.ts` (Web Serial + `door=sim`, lazy), `door-status.ts` (store + heartbeat keys), `use-door.ts` (hook) |
 | `src/world/` | spatial SSE + house map → `WorldStore`; `presence.ts` (linked by room: `linkedNow`, `linkedPane`, `usePresenceLatch`); `director.ts` (mount / follow / orbit, three-free), `minimap.ts`, `WorldView.tsx` (three.js, lazy) |
 | `src/raycast/` | the no-WebGL2 Canvas 2D raycaster (lazy, never imports three); `swarm.ts`: its ghosts, a small Canvas 2D swarm |
@@ -400,7 +403,7 @@ drain during a poll in flight polls again right after it.
 ## Provisioning keys
 
 `?code= name= character= camera= engine= spot= view= room= announce= cam=
-mic= voices= door= keys= bay= pause=` (`UrlHints`). A new key needs three edits in
+mic= voices= door= keys= bay= pause= webcam= pad= whisper=` (`UrlHints`). A new key needs three edits in
 `config.ts`: `UrlHints`, `hintsFromSearch`, and `withoutSecrets` (which
 scrubs the bar), plus `provision`'s defaults. `name` / `view` / `room` on a
 link override the map and stop `fromMap`; the setup-by-map path leaves
@@ -427,6 +430,32 @@ them out.
   `hardware/server-room-m4/test/fixtures/lines.jsonl` and the terminal's
   own `test/fixtures/door-lines.jsonl`. A protocol change touches the
   firmware, both fixtures, `door-protocol.ts` and its test together.
+
+## No mouse or keyboard (wave 52)
+
+The server room runs on a USB webcam, a GameCube controller (Mayflash adapter
+in PC mode) and whisper.cpp on the laptop: `&webcam=C310&pad=1&whisper=1`.
+Keep `keys` true: it means the program can answer freely, and `false` ends
+the line at *not yet* and *leave*.
+
+- **The controller walks the DOM.** `PadNav` lights `[data-pad]` elements in
+  page order, and A clicks the lit one, so a new button joins by taking the
+  attribute. `data-pad-aside` is reachable but never lit by itself (the file
+  strip). A clicks `[data-pad-skip]` first (his voice). B clicks the first
+  `[data-pad-back]`, and only B goes back: the ⟦BACK⟧ bar is deliberately not
+  `data-pad`. DISCONNECT and ⚙ stay out of it: there's no way out of the
+  terminal from the controller.
+- **The adapter's map is measured, not standard** (`mapping` is empty): `GC`
+  in `pad.ts`, from a real controller, 2026-10-30. Chrome shows four pads,
+  one per port, so `frameOf` merges them.
+- **Thread.** `Thread` follows new lines only while at its end (`atEnd`), so
+  the C stick can read back; Start scrolls to the end, which follows again.
+- **Spoken answers.** `VoiceComposer` replaces `Composer`. Each listen has a
+  `turn`, and B moves it on, so a late transcript is dropped. Whisper stays on
+  127.0.0.1: an https page may fetch it once the site has Chrome's device-
+  access grant, and CORS is whisper-server's own `*`.
+- **Local tests.** Vite against a scratch server, `door=sim`:
+  `LOOM_SERVER=http://127.0.0.1:7391 pnpm --filter loom-terminal dev`.
 
 ## Conventions and gotchas
 

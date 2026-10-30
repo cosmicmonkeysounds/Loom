@@ -67,6 +67,14 @@ export function lineClass(m: Pick<Line, "theirs" | "kind" | "pick" | "act" | "pe
   return `line ${m.theirs ? "theirs" : "mine"} kind-${m.kind}${pick}${partial ? " partial" : ""}`;
 }
 
+/** Within this of the end (px), the thread follows new lines. */
+export const FOLLOW_PX = 48;
+
+/** Is the thread at its end? Scrolled back from it, new lines don't drag it down (wave 52: the C stick). */
+export function atEnd(el: Pick<HTMLElement, "scrollHeight" | "scrollTop" | "clientHeight">): boolean {
+  return el.scrollHeight - el.scrollTop - el.clientHeight <= FOLLOW_PX;
+}
+
 export function Thread({
   lines,
   revealed,
@@ -91,6 +99,7 @@ export function Thread({
   wait?: WaitProps | null;
 }) {
   const end = useRef<HTMLDivElement>(null);
+  const following = useRef(true);
   const last = lines[lines.length - 1];
   const lastReveal = last !== undefined ? revealed.get(last.seq) : undefined;
   // A line still queued for the voice (its reveal not started) is not drawn
@@ -98,10 +107,10 @@ export function Thread({
   const waiting = (m: Line) => m.theirs && revealed.get(m.seq) === 0;
   const queued = lines.some(waiting);
   useEffect(() => {
-    end.current?.scrollIntoView({ block: "end" });
+    if (following.current) end.current?.scrollIntoView({ block: "end" });
   }, [lines.length, typing, lastReveal, queued, wait != null]);
   return (
-    <div className="thread" role="log" aria-live="polite">
+    <div className="thread" role="log" aria-live="polite" onScroll={(e) => (following.current = atEnd(e.currentTarget))}>
       {earlier && (
         <div className="line system earlier">
           <span className="text">— earlier messages are on your phone —</span>

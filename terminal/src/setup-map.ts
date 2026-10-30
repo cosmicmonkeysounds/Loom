@@ -13,7 +13,8 @@
 // The subpath, not the barrel: the voice codec stays in the lazy link chunk.
 import { voiceOn } from "@loom/house/voice-on";
 import type { HouseMap, TerminalSpot } from "@loom/house";
-import { DEFAULT_TV_ROOM, VIEWS, withViewDefaults, type TerminalConfig, type TerminalView, type UrlHints } from "./config.ts";
+import { DEFAULT_TV_ROOM, VIEWS, foldName, withViewDefaults, type TerminalConfig, type TerminalView, type UrlHints } from "./config.ts";
+import { HEART_ROOM } from "./heart/heart.ts";
 
 /** What a map terminal sets on a tablet chosen as it. */
 export interface MapPick {
@@ -137,6 +138,15 @@ export function applyPick(c: TerminalConfig, pick: MapPick, overrides: Pick<UrlH
     voiceLink: pick.voice,
     fromMap: pick.spot !== "",
   };
+}
+
+/**
+ * A first-time setup as the heart's own terminal bridges the door sensor,
+ * unless ⚙ said otherwise. A tap on the map has no `&door=serial` to carry it,
+ * and a heart terminal with the sensor off looks exactly like a dead sensor.
+ */
+export function setupDoor(c: TerminalConfig, o: { first: boolean; touched: boolean }): TerminalConfig {
+  return o.first && !o.touched && c.door === "off" && foldName(c.room) === foldName(HEART_ROOM) ? { ...c, door: "serial" } : c;
 }
 
 /** At boot: a terminal set up from the map follows the map's current entry
