@@ -24,13 +24,16 @@ static var _materials := {}
 static var _textures := {}
 ## Per-pixel lighting ([method set_tier]); per vertex on `low`.
 static var per_pixel := true
+## The graphics tier [method set_tier] took (wave 47: the haze sheets' count).
+static var tier := HouseLights.DEFAULT_TIER
 
 
 ## Take a graphics tier before the house, the lobby and the intro are
 ## built: `low` lights per vertex. Clears the cached materials when it
 ## changes (what is already built keeps its own).
-static func set_tier(tier: String) -> void:
-	var pp := HouseLights.tier_of(tier) != "low"
+static func set_tier(t: String) -> void:
+	tier = HouseLights.tier_of(t)
+	var pp := tier != "low"
 	if pp != per_pixel:
 		per_pixel = pp
 		_materials.clear()
@@ -224,6 +227,117 @@ static func gilded() -> Material:
 		return m)
 
 
+# --- wave 47: models, neon, haze ---------------------------------------------
+
+
+## A clean lit surface for the prop models: glossy, a little specular (per
+## vertex on `low`). `vertex` takes its colour from the mesh (the bodies).
+static func _gloss(albedo: Color, roughness: float, metallic := 0.0, vertex := false) -> StandardMaterial3D:
+	var m := _lit(albedo)
+	m.specular_mode = BaseMaterial3D.SPECULAR_SCHLICK_GGX
+	m.diffuse_mode = BaseMaterial3D.DIFFUSE_BURLEY
+	m.roughness = roughness
+	m.metallic = metallic
+	m.metallic_specular = 0.6
+	if vertex:
+		m.vertex_color_use_as_albedo = true
+		m.vertex_color_is_srgb = true
+	return m
+
+
+## The material a model part's role is drawn in ([constant HouseModels.PART_ROLES]):
+## `body` white plastic coloured per vertex (the prop's colour), `trim`
+## chrome, `dark` black gloss, `neon` the shared neon ([method neon]),
+## `screen` / `alert` lit from inside, `glass`, `leaf` plastic.
+static func role(r: String) -> Material:
+	match r:
+		"body":
+			return _cached("role:body", func() -> Material: return _gloss(BODY_TINT, 0.35, 0.0, true))
+		"trim":
+			return _cached("role:trim", func() -> Material: return _gloss(Color(HouseModels.ROLE_COLORS["trim"]), 0.22, 0.55))
+		"dark":
+			return _cached("role:dark", func() -> Material: return _gloss(Color(HouseModels.ROLE_COLORS["dark"]), 0.18))
+		"neon":
+			return neon()
+		"screen", "alert":
+			return _cached("role:%s" % r, func() -> Material:
+				var c := Color(HouseModels.ROLE_COLORS[r])
+				var m := _unshaded(c)
+				m.disable_fog = r == "alert"
+				return m)
+		"glass":
+			return _cached("role:glass", func() -> Material: return _gloss(Color(HouseModels.ROLE_COLORS["glass"]), 0.06))
+		"leaf":
+			return _cached("role:leaf", func() -> Material: return _gloss(Color(HouseModels.ROLE_COLORS["leaf"]), 0.3))
+	return paint(null)
+
+
+## The neon: unlit, its colour per vertex times [constant HouseModels.NEON_GAIN],
+## never fogged (it cuts through the haze), shared by every strip and model
+## part so one [method set_neon] flickers it all.
+static func neon() -> StandardMaterial3D:
+	return _cached("neon", func() -> Material:
+		var m := StandardMaterial3D.new()
+		m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		m.vertex_color_use_as_albedo = true
+		m.vertex_color_is_srgb = true
+		m.albedo_color = Color(HouseModels.NEON_GAIN, HouseModels.NEON_GAIN, HouseModels.NEON_GAIN)
+		m.disable_fog = true
+		return m) as StandardMaterial3D
+
+
+## The neon at `level` (0 … 1, [method HouseModels.neon_flicker]).
+static func set_neon(level: float) -> void:
+	var g := HouseModels.NEON_GAIN * level
+	neon().albedo_color = Color(g, g, g)
+
+
+## A soft tiling noise (white, alpha = the noise), made once.
+static func haze_texture() -> ImageTexture:
+	if not _textures.has("haze"):
+		var noise := FastNoiseLite.new()
+		noise.seed = 1997
+		noise.noise_type = FastNoiseLite.TYPE_PERLIN
+		noise.frequency = 0.035
+		noise.fractal_octaves = 3
+		var src := noise.get_seamless_image(128, 128)
+		var img := Image.create(128, 128, false, Image.FORMAT_RGBA8)
+		for y in 128:
+			for x in 128:
+				var v := clampf((src.get_pixel(x, y).r - 0.3) / 0.5, 0.0, 1.0)
+				img.set_pixel(x, y, Color(1, 1, 1, HAZE_ALPHA[0] + (HAZE_ALPHA[1] - HAZE_ALPHA[0]) * v))
+		img.generate_mipmaps()
+		_textures["haze"] = ImageTexture.create_from_image(img)
+	return _textures["haze"]
+
+
+## A haze sheet's material (its own: each drifts its UVs): additive, unlit,
+## seen from both sides, at `opacity`.
+static func haze_sheet(opacity: float) -> StandardMaterial3D:
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	m.cull_mode = BaseMaterial3D.CULL_DISABLED
+	m.disable_fog = true
+	m.disable_receive_shadows = true
+	m.albedo_color = Color(Color(HouseModels.HAZE_COLOR), opacity)
+	m.albedo_texture = haze_texture()
+	m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	return m
+
+
+## The King: gold that shines.
+static func king_gold(color: Variant) -> Material:
+	var c: Color = Color(str(color)) if color is String and str(color).begins_with("#") else GOLD
+	return _cached("king:%s" % c.to_html(), func() -> Material:
+		var m := _gloss(c, 0.28, 0.75)
+		m.emission_enabled = true
+		m.emission = c.darkened(0.6)
+		m.emission_energy_multiplier = 0.3
+		return m)
+
+
 ## The King's health bar, Win98 progress-bar style: a sunken grey frame
 ## (dark top/left, white bottom/right) and navy blocks for the points left —
 ## `hp` of `max`, empty at 0. Not cached: it changes with every hit.
@@ -262,6 +376,21 @@ static func label(text: String, height := 0.18, color := INK) -> Label3D:
 	return l
 
 
+## The haze's fog (wave 47): its colour (the background too), the density
+## per metre, and the height under which it thickens (house y) and by how much.
+const HAZE := Color(HouseModels.HAZE_FOG)
+const FOG_DENSITY := 0.05
+const FOG_HEIGHT := 0.6
+const FOG_HEIGHT_DENSITY := 0.25
+
+
+## White plastic is drawn a little under white (the web's neon-mode body
+## tint), so a lit body stays under the glow's threshold on `high`.
+const BODY_TINT := Color(0.78, 0.8, 0.84)
+## The haze texture's alpha between its thinnest and its thickest blobs.
+const HAZE_ALPHA := [0.18, 0.48]
+
+
 ## The tone map's white point (ACES): the Mobile renderer's HDR buffer tops
 ## out near 2, so anything brighter — a bulb, a screen — rolls off into it.
 const TONEMAP_WHITE := 2.0
@@ -277,13 +406,20 @@ const TONEMAP_EXPOSURE := 1.0
 static func environment(tier := HouseLights.DEFAULT_TIER) -> Environment:
 	var env := Environment.new()
 	env.background_mode = Environment.BG_COLOR
-	env.background_color = NIGHT
+	env.background_color = HAZE
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	env.ambient_light_color = HouseLights.DAY_COLOR
 	env.ambient_light_energy = HouseLights.DAY_AMBIENT
+	# Wave 47: the haze. Plain exponential depth fog (cheap on the Mobile
+	# renderer: no volumetric fog) in the violet night, read like three's
+	# FogExp2 at HouseModels.HAZE_FOG_DENSITY, and thicker near the floor.
 	env.fog_enabled = true
-	env.fog_light_color = FOG
-	env.fog_density = 0.035
+	env.fog_mode = Environment.FOG_MODE_EXPONENTIAL
+	env.fog_light_color = HAZE
+	env.fog_light_energy = 1.0
+	env.fog_density = FOG_DENSITY
+	env.fog_height = FOG_HEIGHT
+	env.fog_height_density = FOG_HEIGHT_DENSITY
 	env.tonemap_mode = Environment.TONE_MAPPER_ACES
 	env.tonemap_white = TONEMAP_WHITE
 	env.tonemap_exposure = TONEMAP_EXPOSURE

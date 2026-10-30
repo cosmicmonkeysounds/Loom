@@ -38,6 +38,7 @@ func _run() -> void:
 	_test_duck()
 	_test_king_rules()
 	_test_wave26_props()
+	_test_wave47_look()
 	_test_avatar_decode()
 	_test_config()
 	_test_config_setup()
@@ -158,6 +159,7 @@ func _test_goldens() -> void:
 		_golden_king(name, house)
 		_golden_wave26(name, house)
 	_golden_constants()
+	_golden_models()
 
 
 ## A deep compare: numbers within TOL, everything else equal. Returns the
@@ -331,6 +333,70 @@ func _golden_wave26(name: String, house: Dictionary) -> void:
 		_report("golden %s.moments" % name, mismatches, want.size())
 
 
+## Wave 47: model props drawn from their parts (merged per role), plain
+## props merged too and still colliding, the walls' neon, the haze sheets per
+## tier and the hazy environment.
+func _test_wave47_look() -> void:
+	var house: Dictionary = _read_json("res://house/house.json")
+	var b := HouseBuilder.new()
+	b.build(house)
+	var colliders := (b.get_node("Colliders") as Node).get_child_count()
+	_check(b.get_node_or_null("Props_body") is MeshInstance3D, "wave 47: the plain props are one merged body mesh")
+	_check(b.get_node_or_null("Neon_walls") is MeshInstance3D and (b.get_node("Neon_walls") as MeshInstance3D).material_override == HouseLook.neon(), "wave 47: the walls carry neon strips in the shared neon")
+	var boxes := HouseBuilder.wall_boxes(b.walls, HouseGeometry.style_of(house)["wallThickness"]).filter(func(x: Dictionary) -> bool: return x["kind"] == "wall" and (x["hi"] as Vector3).y - (x["lo"] as Vector3).y >= 0.5)
+	var strip_tris := (b.get_node("Neon_walls") as MeshInstance3D).mesh.get_faces().size() / 3 if b.get_node_or_null("Neon_walls") != null else 0
+	_check(strip_tris == boxes.size() * 4 * 12, "wave 47: a skirting and a cove strip on both faces of every wall (%d tris, %d walls)" % [strip_tris, boxes.size()])
+	b.free()
+	var modelled: Dictionary = house.duplicate(true)
+	var room: String = modelled["spawn"]["room"]
+	var spawn: Array = modelled["spawn"]["pos"]
+	(modelled["props"] as Array).append({"id": "w47-rack", "room": room, "kind": "box", "model": "rack", "pos": [spawn[0], spawn[1], spawn[2]], "size": [0.6, 2, 1], "neon": "#ff00aa"})
+	(modelled["props"] as Array).append({"id": "w47-bin", "room": room, "kind": "cylinder", "model": "bin", "pos": [spawn[0], spawn[1], spawn[2]], "size": [0.35, 0.5, 0.35]})
+	(modelled["props"] as Array).append({"id": "w47-odd", "room": room, "kind": "box", "model": "jukebox", "pos": [spawn[0], spawn[1], spawn[2]], "size": [0.5, 1, 0.5]})
+	var b2 := HouseBuilder.new()
+	b2.build(modelled)
+	_check((b2.get_node("Colliders") as Node).get_child_count() == colliders + 3, "wave 47: a model prop still collides as its plain shape (one collider each)")
+	var roles_built: Array = []
+	for r: String in HouseModels.PART_ROLES:
+		if b2.get_node_or_null("Props_%s" % r) is MeshInstance3D:
+			roles_built.append(r)
+	_check(roles_built.has("body") and roles_built.has("neon") and roles_built.has("trim") and roles_built.has("dark") and roles_built.has("alert"), "wave 47: a rack draws its parts in their roles (%s)" % [roles_built])
+	_check((b2.get_node("Props_neon") as MeshInstance3D).material_override == HouseLook.neon() and (HouseLook.neon() as StandardMaterial3D).disable_fog, "wave 47: model neon is the shared, unfogged neon")
+	_check(b2.get_node_or_null("Prop_w47-rack") != null and b2.get_node_or_null("Prop_w47-odd") != null, "wave 47: every prop keeps its Prop_<id> root")
+	var neon_faces := (b2.get_node("Props_neon") as MeshInstance3D).mesh.get_faces().size()
+	var plain: Dictionary = house.duplicate(true)
+	for pr: Dictionary in plain["props"]:
+		pr.erase("model")
+	var b3 := HouseBuilder.new()
+	b3.build(plain)
+	_check(b3.get_node_or_null("Props_neon") == null and neon_faces > 0, "wave 47: plain props add no neon; models do")
+	_check((b3.get_node("Colliders") as Node).get_child_count() == colliders, "wave 47: the same colliders with or without models")
+	b3.free()
+	b2.free()
+	# The neon flickers with the builder's clock.
+	HouseLook.set_neon(0.35)
+	_check(_near(HouseLook.neon().albedo_color.r, HouseModels.NEON_GAIN * 0.35), "wave 47: set_neon dims the neon")
+	HouseLook.set_neon(1.0)
+	# The haze sheets per tier (each floor with rooms gets that many).
+	var floors_with_rooms := {}
+	for rm: Dictionary in house["rooms"]:
+		floors_with_rooms[rm["floor"]] = true
+	var was := HouseLook.tier
+	for t: String in ["low", "medium", "high"]:
+		HouseLook.set_tier(t)
+		var bh := HouseBuilder.new()
+		bh.build(house)
+		_check(bh.haze_count() == HouseModels.haze_layers(t) * floors_with_rooms.size(), "wave 47: %s has %d haze sheets per floor (%d)" % [t, HouseModels.haze_layers(t), bh.haze_count()])
+		bh.free()
+	HouseLook.set_tier(was)
+	for t: String in HouseLights.TIERS:
+		var env := HouseLook.environment(t)
+		_check(env.fog_enabled and env.fog_mode == Environment.FOG_MODE_EXPONENTIAL and env.fog_density >= 0.04 and env.fog_height_density > 0.0 and env.fog_light_color == HouseLook.HAZE and env.background_color == HouseLook.HAZE and not env.volumetric_fog_enabled, "wave 47: %s is hazy (violet exponential fog, thicker near the floor; no volumetric fog)" % t)
+	# White plastic stays under the glow's threshold.
+	var body := HouseLook.role("body") as StandardMaterial3D
+	_check(body.vertex_color_use_as_albedo and body.albedo_color.r < 0.9 and body.roughness < 0.5, "wave 47: the bodies are glossy, coloured per vertex, a little under white")
+
+
 ## Wave 26: the show's heart and disk build nothing yet (the vr lane draws
 ## them), carry no collider and no label; the rules read them.
 func _test_wave26_props() -> void:
@@ -420,6 +486,34 @@ func _golden_constants() -> void:
 			bad.append(k)
 	_check(bad.is_empty() and want.size() >= 13, "goldens: the wave 26 constants are ported (%s)" % [bad])
 	_check(HouseEscape.OUTSIDE_GROUND_MARGIN == HouseBuilder.GROUND_MARGIN, "escape: the outside ground is the builder's (GROUND_MARGIN)")
+
+
+## (wave 47) Every model's parts at three sizes, against `models.json`.
+func _golden_models() -> void:
+	var path := GOLDEN_DIR + "models.json"
+	_check(FileAccess.file_exists(path), "goldens: models.json is synced")
+	if not FileAccess.file_exists(path):
+		return
+	var want: Array = _read_json(path)
+	var mismatches: Array = []
+	var seen := {}
+	for row: Dictionary in want:
+		var size: Array = row["size"]
+		seen[row["model"]] = true
+		var got: Array = []
+		for p: Dictionary in HouseModels.parts_of(str(row["model"]), float(size[0]), float(size[1]), float(size[2])):
+			var c: Vector3 = p["c"]
+			var sz: Vector3 = p["s"]
+			got.append({"role": p["role"], "shape": p["shape"], "axis": p["axis"], "c": [c.x, c.y, c.z], "s": [sz.x, sz.y, sz.z]})
+		var d := _diff(got, row["parts"], "%s %s" % [row["model"], JSON.stringify(size)])
+		if d != "":
+			mismatches.append(d)
+	_report("golden models", mismatches, want.size())
+	_check(seen.size() == HouseModels.PROP_MODELS.size(), "models: the golden covers every model (%d / %d)" % [seen.size(), HouseModels.PROP_MODELS.size()])
+	var flick := [HouseModels.neon_flicker(0.0), HouseModels.neon_flicker(0.02), HouseModels.neon_flicker(0.05), HouseModels.neon_flicker(1.0), HouseModels.neon_flicker(9.7 + 0.02), HouseModels.neon_flicker(-0.5)]
+	# sin(1.8) > 0, sin(4.5) < 0: the stutter; past 0.35 s it is steady.
+	_check(flick == [0.35, 1.0, 0.35, 1.0, 1.0, 1.0], "models: the neon flicker (%s)" % [flick])
+	_check(HouseModels.haze_layers("low") == 0 and HouseModels.haze_layers("medium") == 1 and HouseModels.haze_layers("high") == 2, "models: haze sheets per tier 0 / 1 / 2")
 
 
 # --- frames + duck ---------------------------------------------------------

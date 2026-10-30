@@ -84,6 +84,14 @@ var _pickups := {}
 var _taken := {}
 ## The beat's / the disk's clock (s).
 var _t := 0.0
+## The haze sheets ([method _build_haze]): `{mat, drift}` each.
+var _haze: Array = []
+## The props' merged meshes while building: role → SurfaceTool.
+var _role_tools := {}
+## Cylinder segments for the props' merged meshes.
+const PROP_SEGMENTS := 16
+## A plain (model-less) prop's colour when it has none.
+const PLAIN_COLOR := "#8a8f99"
 ## Terminal id → true while it has a voice emitter ([method voice_emitter]);
 ## kept across rebuilds (the emitter itself is new: its generator starts empty).
 var _voices := {}
@@ -104,6 +112,8 @@ func build(map: Dictionary) -> void:
 	_build_ground()
 	_build_ramps()
 	_build_props()
+	_build_neon_strips()
+	_build_haze()
 	_build_door_leaves()
 	_build_terminals()
 	_build_labels()
@@ -121,6 +131,7 @@ func clear() -> void:
 	_leaves = {}
 	_hearts = {}
 	_pickups = {}
+	_haze = []
 
 
 ## World (VR space) point → house `[x, y, z]`.
@@ -402,29 +413,36 @@ func _build_props() -> void:
 		add_child(root)
 		var kind := str(prop["kind"])
 		var solid := HouseGeometry.prop_solid(prop)
+		var xf := Transform3D(basis, pos)
+		var parts: Variant = HouseModels.model_parts(prop)
+		if parts != null:
+			# Wave 47: drawn from its model's parts, merged per role; it still
+			# collides as its plain shape (below).
+			var body := Color(HouseModels.model_body_color(prop))
+			var glow := Color(HouseModels.model_neon_color(prop))
+			for part: Dictionary in parts:
+				var r := str(part["role"])
+				_part(r, part, xf, body if r == "body" else (glow if r == "neon" else Color.WHITE))
 		match kind:
 			"box", "screen":
-				var mi := MeshInstance3D.new()
-				var box := BoxMesh.new()
-				box.size = size
-				mi.mesh = box
-				mi.position.y = size.y / 2.0
-				mi.material_override = HouseLook.screen(prop.get("color")) if kind == "screen" else HouseLook.paint(prop.get("color"))
-				root.add_child(mi)
+				if kind == "screen":
+					var mi := MeshInstance3D.new()
+					var box := BoxMesh.new()
+					box.size = size
+					mi.mesh = box
+					mi.position.y = size.y / 2.0
+					mi.material_override = HouseLook.screen(prop.get("color"))
+					root.add_child(mi)
+				elif parts == null:
+					_part("body", {"shape": "box", "axis": "y", "c": Vector3(0, size.y / 2.0, 0), "s": size}, xf, _plain_color(prop))
 				if solid:
 					_collide_box(pos + basis * Vector3(0, size.y / 2.0, 0), size, basis)
 			"cylinder":
-				var mi := MeshInstance3D.new()
 				var cyl := CylinderMesh.new()
 				cyl.top_radius = maxf(size.x, size.z) / 2.0
-				cyl.bottom_radius = cyl.top_radius
-				cyl.height = size.y
-				cyl.radial_segments = 12
-				cyl.rings = 1
-				mi.mesh = cyl
-				mi.position.y = size.y / 2.0
-				mi.material_override = HouseLook.paint(prop.get("color"))
-				root.add_child(mi)
+				if parts == null:
+					var dia := maxf(size.x, size.z)
+					_part("body", {"shape": "cyl", "axis": "y", "c": Vector3(0, size.y / 2.0, 0), "s": Vector3(dia, size.y, dia)}, xf, _plain_color(prop))
 				if solid:
 					var shape := CylinderShape3D.new()
 					shape.radius = cyl.top_radius
@@ -454,29 +472,247 @@ func _build_props() -> void:
 				l.width = maxf(size.x, 0.2) / l.pixel_size
 				l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 			root.add_child(l)
+	_commit_parts("Props")
+
+
+static func _plain_color(prop: Dictionary) -> Color:
+	var c: Variant = prop.get("color")
+	return Color(str(c)) if c is String and str(c).begins_with("#") else Color(PLAIN_COLOR)
+
+
+## One part (in a prop's frame `xf`) into its role's merged mesh, coloured
+## `color` per vertex (the body's and the neon's; the other roles white).
+func _part(role: String, part: Dictionary, xf: Transform3D, color: Color) -> void:
+	if not _role_tools.has(role):
+		var tool := SurfaceTool.new()
+		tool.begin(Mesh.PRIMITIVE_TRIANGLES)
+		_role_tools[role] = tool
+	var st: SurfaceTool = _role_tools[role]
+	var c: Vector3 = part["c"]
+	var sz: Vector3 = part["s"]
+	if part["shape"] == "cyl":
+		add_cylinder(st, xf, c, sz, str(part["axis"]), color, PROP_SEGMENTS)
+	else:
+		add_box(st, xf, c, sz, color)
+
+
+## Every role's merged mesh, named `<prefix>_<role>` (no colliders).
+func _commit_parts(prefix: String) -> void:
+	for r: String in _role_tools:
+		var mi := MeshInstance3D.new()
+		mi.name = "%s_%s" % [prefix, r]
+		mi.mesh = (_role_tools[r] as SurfaceTool).commit()
+		mi.material_override = HouseLook.role(r)
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		add_child(mi)
+	_role_tools = {}
+
+
+## A triangle facing `outward` (Godot's front faces wind clockwise).
+static func _tri(st: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, na: Vector3, nb: Vector3, nc: Vector3, outward: Vector3, color: Color) -> void:
+	if (b - a).cross(c - a).dot(outward) > 0.0:
+		var t := b
+		b = c
+		c = t
+		var tn := nb
+		nb = nc
+		nc = tn
+	for v: Array in [[a, na], [b, nb], [c, nc]]:
+		var p: Vector3 = v[0]
+		st.set_color(color)
+		st.set_normal(v[1])
+		st.set_uv(Vector2(p.x + p.z, p.y))
+		st.add_vertex(p)
+
+
+## A box (centre `c`, size `s`, in the frame `xf`), all six faces.
+static func add_box(st: SurfaceTool, xf: Transform3D, c: Vector3, s: Vector3, color: Color) -> void:
+	var h := s / 2.0
+	for axis in 3:
+		for sign: float in [-1.0, 1.0]:
+			var n := Vector3.ZERO
+			n[axis] = sign
+			var u := Vector3.ZERO
+			u[(axis + 1) % 3] = h[(axis + 1) % 3]
+			var v := Vector3.ZERO
+			v[(axis + 2) % 3] = h[(axis + 2) % 3]
+			var f := c + n * h[axis]
+			var p0 := xf * (f - u - v)
+			var p1 := xf * (f + u - v)
+			var p2 := xf * (f + u + v)
+			var p3 := xf * (f - u + v)
+			var wn := (xf.basis * n).normalized()
+			_tri(st, p0, p1, p2, wn, wn, wn, wn, color)
+			_tri(st, p0, p2, p3, wn, wn, wn, wn, color)
+
+
+## A cylinder (centre `c`, extents `s`, along `axis`), smooth sides, capped.
+static func add_cylinder(st: SurfaceTool, xf: Transform3D, c: Vector3, s: Vector3, axis: String, color: Color, segments := 16) -> void:
+	var ai := 0 if axis == "x" else (2 if axis == "z" else 1)
+	var bi := (ai + 1) % 3
+	var ci := (ai + 2) % 3
+	var hl: float = s[ai] / 2.0
+	var rb: float = s[bi] / 2.0
+	var rc: float = s[ci] / 2.0
+	var along := Vector3.ZERO
+	along[ai] = 1.0
+	var wa := (xf.basis * along).normalized()
+	var top := xf * (c + along * hl)
+	var bottom := xf * (c - along * hl)
+	var rim_lo: Array = []
+	var rim_hi: Array = []
+	var normals: Array = []
+	for i in segments + 1:
+		var t := TAU * float(i) / float(segments)
+		var p := c
+		p[bi] += cos(t) * rb
+		p[ci] += sin(t) * rc
+		rim_lo.append(xf * (p - along * hl))
+		rim_hi.append(xf * (p + along * hl))
+		var n := Vector3.ZERO
+		n[bi] = cos(t) / maxf(rb, 1e-4)
+		n[ci] = sin(t) / maxf(rc, 1e-4)
+		normals.append((xf.basis * n).normalized())
+	for i in segments:
+		var n0: Vector3 = normals[i]
+		var n1: Vector3 = normals[i + 1]
+		var out := (n0 + n1).normalized()
+		_tri(st, rim_lo[i], rim_lo[i + 1], rim_hi[i + 1], n0, n1, n1, out, color)
+		_tri(st, rim_lo[i], rim_hi[i + 1], rim_hi[i], n0, n1, n0, out, color)
+		_tri(st, top, rim_hi[i], rim_hi[i + 1], wa, wa, wa, wa, color)
+		_tri(st, bottom, rim_lo[i + 1], rim_lo[i], -wa, -wa, -wa, -wa, color)
+
+
+## Wave 47: a neon skirting and cove strip along both faces of every
+## `wall` segment (HouseModels.NEON_*), one merged mesh, no colliders.
+func _build_neon_strips() -> void:
+	var boxes := wall_boxes(walls, HouseGeometry.style_of(house)["wallThickness"])
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var any := false
+	var hh := HouseModels.NEON_STRIP_H
+	var proud := HouseModels.NEON_STRIP_PROUD
+	var levels := [[float(HouseModels.NEON_STRIP_AT[0]), Color(HouseModels.NEON_SKIRT)], [-float(HouseModels.NEON_STRIP_AT[1]), Color(HouseModels.NEON_COVE)]]
+	for i in boxes.size():
+		var box: Dictionary = boxes[i]
+		if str(box["kind"]) != "wall":
+			continue
+		var lo: Vector3 = box["lo"]
+		var hi: Vector3 = box["hi"]
+		if hi.y - lo.y < 0.5:
+			continue
+		var along_x: bool = walls[i]["axis"] == "x"
+		for level: Array in levels:
+			var at: float = level[0]
+			var y := lo.y + at if at > 0.0 else hi.y + at
+			for out: float in [-1.0, 1.0]:
+				if along_x:
+					var z := (lo.z if out < 0.0 else hi.z) + out * proud / 2.0
+					add_box(st, Transform3D.IDENTITY, Vector3((lo.x + hi.x) / 2.0, y, z), Vector3(hi.x - lo.x, hh, proud), level[1])
+				else:
+					var x := (lo.x if out < 0.0 else hi.x) + out * proud / 2.0
+					add_box(st, Transform3D.IDENTITY, Vector3(x, y, (lo.z + hi.z) / 2.0), Vector3(proud, hh, hi.z - lo.z), level[1])
+				any = true
+	if any:
+		var mi := MeshInstance3D.new()
+		mi.name = "Neon_walls"
+		mi.mesh = st.commit()
+		mi.material_override = HouseLook.neon()
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		add_child(mi)
+
+
+## Wave 47: the haze — soft drifting sheets per floor over its rooms (a
+## metre past them): one just over the floor (`medium`), and one just
+## under the ceiling too (`high`); none on `low` (HouseModels.HAZE_*).
+func _build_haze() -> void:
+	var layers := HouseModels.haze_layers(HouseLook.tier)
+	if layers == 0:
+		return
+	for fl: Dictionary in house.get("floors", []):
+		var pts: Array = []
+		for room: Dictionary in house.get("rooms", []):
+			if str(room["floor"]) == str(fl["id"]):
+				pts.append_array(room["poly"])
+		if pts.is_empty():
+			continue
+		var b := HouseGeometry.poly_bounds(pts)
+		var w: float = float(b[2]) - float(b[0]) + 2.0
+		var d: float = float(b[3]) - float(b[1]) + 2.0
+		var elevation := float(fl["elevation"])
+		var heights := [elevation + float(HouseModels.HAZE_AT[0]), elevation + float(fl["height"]) - float(HouseModels.HAZE_AT[1])]
+		for i in layers:
+			var plane := PlaneMesh.new()
+			plane.size = Vector2(w, d)
+			var mi := MeshInstance3D.new()
+			mi.name = "Haze_%s_%d" % [fl["id"], i]
+			mi.mesh = plane
+			mi.position = Vector3((float(b[0]) + float(b[2])) / 2.0, heights[i], (float(b[1]) + float(b[3])) / 2.0)
+			var mat := HouseLook.haze_sheet(float(HouseModels.HAZE_OPACITY[i]))
+			mat.uv1_scale = Vector3(w / HouseModels.HAZE_TILE_M, d / HouseModels.HAZE_TILE_M, 1.0)
+			mi.material_override = mat
+			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			add_child(mi)
+			var drift: Array = HouseModels.HAZE_DRIFT[i]
+			_haze.append({"mat": mat, "drift": Vector2(float(drift[0]), float(drift[1])) / HouseModels.HAZE_TILE_M})
+
+
+## How many haze sheets were built (for the tests).
+func haze_count() -> int:
+	return _haze.size()
 
 
 ## The King (a chess boss in a doorway): a gold body with a small crown on
 ## top, and over him the shared health bar — a name line and a Win98 bar,
 ## both turning to face the player.
 func _build_king(root: Node3D, prop: Dictionary, pos: Vector3, size: Vector3, basis: Basis, solid: bool) -> void:
-	var gold := HouseLook.paint(prop.get("color", "#d4af37"), Color("#d4af37"))
-	var mi := MeshInstance3D.new()
+	var gold := HouseLook.king_gold(prop.get("color", "#d4af37"))
+	# Wave 47: a chess king turned from primitives — plinth, flared foot, a
+	# tapering trunk, two collars, a flared head — under a crowned cross,
+	# with a red alarm ring round his foot. `Body` is centred on its middle
+	# (the kneel scales it there), `Crown` on its own.
+	var body_h := size.y - 0.15
+	var r := minf(size.x, size.z) / 2.0
+	var mi := Node3D.new()
 	mi.name = "Body"
-	var box := BoxMesh.new()
-	box.size = Vector3(size.x, size.y - 0.15, size.z)
-	mi.mesh = box
-	mi.position.y = (size.y - 0.15) / 2.0
-	mi.material_override = gold
+	mi.position.y = body_h / 2.0
 	root.add_child(mi)
-	var crown := MeshInstance3D.new()
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var base := -body_h / 2.0
+	# [from, to, radius] as fractions of his body height and radius.
+	for ring: Array in [[0.0, 0.07, 1.0], [0.07, 0.13, 0.86], [0.13, 0.27, 0.7], [0.27, 0.42, 0.6], [0.42, 0.57, 0.52], [0.57, 0.72, 0.45], [0.72, 0.76, 0.66], [0.76, 0.8, 0.56], [0.8, 0.9, 0.47], [0.9, 1.0, 0.58]]:
+		var y0: float = base + body_h * float(ring[0])
+		var y1: float = base + body_h * float(ring[1])
+		var dia: float = 2.0 * r * float(ring[2])
+		add_cylinder(st, Transform3D.IDENTITY, Vector3(0, (y0 + y1) / 2.0, 0), Vector3(dia, y1 - y0, dia), "y", Color.WHITE, 20)
+	var shape := MeshInstance3D.new()
+	shape.name = "Shape"
+	shape.mesh = st.commit()
+	shape.material_override = gold
+	mi.add_child(shape)
+	var ring_st := SurfaceTool.new()
+	ring_st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	add_cylinder(ring_st, Transform3D.IDENTITY, Vector3(0, base + body_h * 0.07, 0), Vector3(2.0 * r * 1.02, 0.014, 2.0 * r * 1.02), "y", Color.WHITE, 20)
+	var alarm := MeshInstance3D.new()
+	alarm.name = "Alarm"
+	alarm.mesh = ring_st.commit()
+	alarm.material_override = HouseLook.role("alert")
+	mi.add_child(alarm)
+	var crown := Node3D.new()
 	crown.name = "Crown"
-	var cbox := BoxMesh.new()
-	cbox.size = Vector3(size.x * 0.5, 0.15, size.z * 0.5)
-	crown.mesh = cbox
 	crown.position.y = size.y - 0.075
-	crown.material_override = gold
 	root.add_child(crown)
+	var cst := SurfaceTool.new()
+	cst.begin(Mesh.PRIMITIVE_TRIANGLES)
+	add_cylinder(cst, Transform3D.IDENTITY, Vector3(0, -0.05, 0), Vector3(r * 1.0, 0.05, r * 1.0), "y", Color.WHITE, 20)
+	add_box(cst, Transform3D.IDENTITY, Vector3(0, 0.0, 0), Vector3(0.035, 0.11, 0.035), Color.WHITE)
+	add_box(cst, Transform3D.IDENTITY, Vector3(0, 0.02, 0), Vector3(0.1, 0.03, 0.035), Color.WHITE)
+	var cshape := MeshInstance3D.new()
+	cshape.name = "Shape"
+	cshape.mesh = cst.commit()
+	cshape.material_override = gold
+	crown.add_child(cshape)
 	var health := Node3D.new()
 	health.name = "Health"
 	health.position.y = size.y + 0.22
@@ -687,9 +923,11 @@ func _spin(p: Dictionary) -> void:
 
 
 func _process(delta: float) -> void:
-	if _hearts.is_empty() and _pickups.is_empty():
-		return
 	_t += delta
+	HouseLook.set_neon(HouseModels.neon_flicker(_t))
+	for h: Dictionary in _haze:
+		var dr: Vector2 = h["drift"]
+		(h["mat"] as StandardMaterial3D).uv1_offset = Vector3(fposmod(dr.x * _t, 1.0), fposmod(dr.y * _t, 1.0), 0.0)
 	for id: String in _hearts:
 		if (_hearts[id]["root"] as Node3D).visible:
 			_beat(_hearts[id])
@@ -827,7 +1065,7 @@ func _apply_king() -> void:
 ## Down on one knee (half his height, bowed forward), or standing.
 func _kneel(k: Dictionary, on: bool) -> void:
 	var h: float = k["height"]
-	var body: MeshInstance3D = k["body"]
+	var body: Node3D = k["body"]
 	var body_h := h - 0.15
 	var f := 0.55 if on else 1.0
 	body.scale = Vector3(1.0, f, 1.0)
@@ -865,8 +1103,19 @@ func _build_terminals() -> void:
 		fb.size = Vector3(0.36, 0.26, 0.03)
 		frame.name = "Frame"
 		frame.mesh = fb
-		frame.material_override = HouseLook.paint("#1a1a1a")
+		frame.material_override = HouseLook.role("dark")
 		root.add_child(frame)
+		# Wave 47: a thin neon rim round the bezel (hidden with it under a feed).
+		var rim_st := SurfaceTool.new()
+		rim_st.begin(Mesh.PRIMITIVE_TRIANGLES)
+		var rim_c := HouseLook.TEAL_GLOW
+		for bar: Array in [[Vector3(0, 0.13, -0.016), Vector3(0.36, 0.006, 0.004)], [Vector3(0, -0.13, -0.016), Vector3(0.36, 0.006, 0.004)], [Vector3(0.18, 0, -0.016), Vector3(0.006, 0.26, 0.004)], [Vector3(-0.18, 0, -0.016), Vector3(0.006, 0.26, 0.004)]]:
+			add_box(rim_st, Transform3D.IDENTITY, bar[0], bar[1], rim_c)
+		var rim := MeshInstance3D.new()
+		rim.name = "Rim"
+		rim.mesh = rim_st.commit()
+		rim.material_override = HouseLook.neon()
+		root.add_child(rim)
 		var glass := MeshInstance3D.new()
 		var gq := QuadMesh.new()
 		gq.size = Vector2(0.32, 0.22)
@@ -979,6 +1228,7 @@ func clear_cam(id: String) -> void:
 		root.remove_child(feed)
 		feed.queue_free()
 	(root.get_node("Frame") as Node3D).visible = true
+	(root.get_node("Rim") as Node3D).visible = true
 	(root.get_node("Glass") as Node3D).visible = true
 	(root.get_node("Label") as Node3D).position.y = -0.18
 
@@ -998,7 +1248,7 @@ func _show_cam(root: Node3D, texture: Texture2D) -> void:
 		bb.size = Vector3(CAM_SIZE.x + 2.0 * CAM_BEZEL, CAM_SIZE.y + 2.0 * CAM_BEZEL, 0.03)
 		bezel.name = "Bezel"
 		bezel.mesh = bb
-		bezel.material_override = HouseLook.paint("#1a1a1a")
+		bezel.material_override = HouseLook.role("dark")
 		feed.add_child(bezel)
 		var video := MeshInstance3D.new()
 		var vq := QuadMesh.new()
@@ -1015,6 +1265,7 @@ func _show_cam(root: Node3D, texture: Texture2D) -> void:
 		root.add_child(feed)
 	((feed.get_node("Video") as MeshInstance3D).material_override as StandardMaterial3D).albedo_texture = texture
 	(root.get_node("Frame") as Node3D).visible = false
+	(root.get_node("Rim") as Node3D).visible = false
 	(root.get_node("Glass") as Node3D).visible = false
 	(root.get_node("Label") as Node3D).position.y = -(CAM_SIZE.y / 2.0 + CAM_BEZEL + 0.03)
 
