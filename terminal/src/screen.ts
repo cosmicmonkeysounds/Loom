@@ -288,6 +288,51 @@ export interface ScreenNight {
   /** (wave 45) The Bathroom Report's numbers, only while its slide
    *  (`award_bathroom`) is up; absent otherwise or from an older server. */
   bathroom?: ScreenBathroom | null;
+  /** (wave 48) The Language Report's numbers, only while its slide
+   *  (`award_language`) is up; absent otherwise or from an older server. */
+  language?: ScreenLanguage | null;
+}
+
+/** (wave 48) The Language Report (G14), as the story read it (the server's
+ *  `ScreenLanguage`, `docs/loom-w48-contract.md` C4). `curser` may be a tie
+ *  ("A and B"), null for nobody; `words` are the censored words, unique,
+ *  lower case, first censored first, at most `LANGUAGE_WORDS_MAX`; `more`
+ *  counts the unique censored words past them. */
+export interface ScreenLanguage {
+  flagged: number;
+  censored: number;
+  curser: string | null;
+  curses: number;
+  words: string[];
+  more: number;
+}
+
+/** (wave 48) The most censored words the slide carries (C4). */
+export const LANGUAGE_WORDS_MAX = 60;
+
+/**
+ * (wave 48) The report off the wire. Malformed (not an object, or no
+ * `flagged` count) reads null, as if absent. A bad number reads 0; censored
+ * words are flagged words, so `flagged` is at least `censored`; `words`
+ * keeps the non-blank strings, trimmed, the first `LANGUAGE_WORDS_MAX`
+ * (any past them count into `more`).
+ */
+export function languageOf(raw: unknown): ScreenLanguage | null {
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return null;
+  const r = raw as Record<string, unknown>;
+  if (typeof r["flagged"] !== "number" || !Number.isFinite(r["flagged"])) return null;
+  const n = (v: unknown): number => (typeof v === "number" && Number.isFinite(v) && v > 0 ? Math.floor(v) : 0);
+  const who = (v: unknown): string | null => (typeof v === "string" && v.trim() !== "" && v.trim().toLowerCase() !== "none" ? v.trim() : null);
+  const all = Array.isArray(r["words"]) ? r["words"].flatMap((w) => (typeof w === "string" && w.trim() !== "" ? [w.trim()] : [])) : [];
+  const censored = n(r["censored"]);
+  return {
+    flagged: Math.max(n(r["flagged"]), censored),
+    censored,
+    curser: who(r["curser"]),
+    curses: n(r["curses"]),
+    words: all.slice(0, LANGUAGE_WORDS_MAX),
+    more: n(r["more"]) + Math.max(0, all.length - LANGUAGE_WORDS_MAX),
+  };
 }
 
 /** (wave 45) The Bathroom Report (G13), as the story read it (the server's
@@ -355,6 +400,8 @@ export function nightOf(raw: unknown): ScreenNight {
     patch_override: bool(r["patch_override"]),
     // Wave 45: present only while the server sends it (its slide is up).
     ...((b) => (b === null ? {} : { bathroom: b }))(bathroomOf(r["bathroom"])),
+    // Wave 48: likewise, only while the Language Report's slide is up.
+    ...((l) => (l === null ? {} : { language: l }))(languageOf(r["language"])),
   };
 }
 

@@ -141,7 +141,8 @@ describe("wave 45: G13 🚻 The Bathroom Report", () => {
   it("is appended last in act G as an aside, live only during the ceremony", () => {
     const sim = Sim.fromSources(SRC);
     const admin = [...sim.model.interactions.values()].filter((i) => i.who === "admin");
-    const last = admin[admin.length - 1]!;
+    // Wave 48: 🔑 G14 is appended after it.
+    const last = admin[admin.length - 2]!;
     expect(last.id).toBe("bathroom_report");
     expect(last.label.startsWith("G13 · 🚻")).toBe(true);
   });

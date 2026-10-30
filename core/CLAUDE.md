@@ -331,6 +331,24 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   directors only, never on the host allowlist) reads every guest's `video`
   slot. Tests: `test/w44-credits.test.ts`, `test/w44-server.test.ts`,
   `test/trapped-w44.test.ts`.
+- **The censor's filter** (wave 48,
+  [`docs/loom-w48-contract.md`](../docs/loom-w48-contract.md)). The
+  header `censor: <Character>` (`model.censor`) turns it on. The pure
+  filter is `src/language-filter.ts` (`filterHits`, `maskText`, the stems;
+  a stem counts anywhere inside a word, on purpose). After a person's own
+  line (`/api/guest/say`, `/api/mod/say` as a person) the runtime's
+  `flagGuestLine` indexes it in `FilterBook` (`server/language-filter.ts`)
+  and journals `signal("swear_flagged", guest, {message, words, list})`;
+  the censor's booth reads `PrimeView.filter` (the newest 40 lines still to
+  judge). `POST /api/prime/censor {seq}` (that part's booth only) masks the
+  line in the chat store (`ChatMessage.censored`, text `p***word`), re-sends
+  it as a silent `messageModerated` upsert and journals
+  `signal("swear_censored", guest, {message, words, list, fresh}, censor)`.
+  Nothing is stored out of band: `restore` rebuilds the index and the masks
+  from those two signals (`replayFilter`). The screen state's
+  `night.language` rides the `award_language` slide (G14). Tests:
+  `test/w48-language-filter.test.ts`, `test/w48-filter-server.test.ts`,
+  `test/trapped-w48-language.test.ts`.
 - **Hub files have one owner at a time.** `event-runtime.ts`,
   `views.ts`, `chat.ts` and `sim.ts` are touched by almost every
   feature; when several agents work in parallel, give each of these to

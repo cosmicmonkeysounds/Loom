@@ -208,6 +208,19 @@ silent scene on the TV and the walls (no speech, no sfx, no face mood):
 - `?preview=credits[&programs=<n>][&credits=none]` draws it over
   `fake.ts` `fakeCredits` (made-up names; never the real crew's).
 
+## The ceremony's reports (waves 45, 48)
+
+G13 and G14 are asides between awards, each a held scene in
+`scenes/act3.tsx` listed ahead of the `award_*` row so it wins its slide:
+`award_bathroom` (`BathroomScene`, `night.bathroom`) and `award_language`
+(`LanguageScene`, `night.language` via `languageOf`: who cursed the most,
+*c of f words censored*, then every censored word whole on a stamped tile,
+the wall fitted to the screen by `langFitStep`; copy `DRAFT w48`). A block
+rides the night only while its slide is up; without one the slide shows its
+title and line. One confetti burst each, never over the numbers or words.
+`?preview=bathroom[&bath=one|nobody|none]`,
+`?preview=language[&lang=none|tie|long|kept|old]`.
+
 ## The idle show
 
 `idle-show/` runs the asleep screen. Before the 📺 ad hijack it is calm

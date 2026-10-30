@@ -56,8 +56,9 @@ export interface MissionMove {
 
 export interface MissionTile {
   /** `faction` (wave 18b): your faction's count, in faction mode.
-   *  `wanted` (wave 21, a booth's Mission): the Wanted board. */
-  id: "wallet" | "quests" | "codex" | "faction" | "wanted";
+   *  `wanted` (wave 21, a booth's Mission): the Wanted board.
+   *  `filter` (wave 48, the censor's Mission): the 🔑 filter window. */
+  id: "wallet" | "quests" | "codex" | "faction" | "wanted" | "filter";
   label: string;
   status: string;
   /** A yellow dot, never a number. */

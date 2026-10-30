@@ -3,6 +3,7 @@ start: Power On
 theme: aol97
 directory: everyone
 judge: Trabolta
+censor: Password Manager
 alerts: Night.alerts
 currency: score as Truthcoin, max 500, expiry 10m
 watch: Night.clock as Y2K clock, Night.round as Truth round, Night.judge_mode as Judge, Night.lights as Lights
@@ -284,6 +285,11 @@ ROLE Program
   bath_presses: 0 to 1000 = 0
   bath_open: 0 to 1 = 0
   no_bath: 0 to 1 = 0
+  // Wave 48: the Password Manager's filter (G14). Words of this program's
+  // lines the filter caught (`swear_flagged`, the server's), and of them,
+  // words the Password Manager censored (`swear_censored`).
+  lang_flagged: 0 to 100000 = 0
+  lang_censored: 0 to 100000 = 0
   from_jeeves: 0 to 99 = 0
   jeeves_told: 0 to 99 = 0
   signed: bool = false
@@ -607,6 +613,16 @@ ROLE Program
   when Trabolta.awake == true and self.cleared:
     // w18b (R18): his owner's title.
     Trabolta: Hello, {self.name}. I am Jean Trabolta, Sole Owner and Founder of Maps and Ducks, and proud to be the world's first AI small business owner. Your requests have been logged. Personal queries are routed to Clippy.
+
+  // ── The Password Manager's filter (wave 48) ──
+  // The server fires this after every line this program types that holds a
+  // swear stem (core/src/language-filter.ts: over-eager on purpose,
+  // "password" is caught for "ass"): `words` caught, `list` the words. It
+  // only counts; the Password Manager's booth gets the alert itself, and her
+  // ✂ is `swear_censored` (cast/antivirus.loom).
+  when swear_flagged for program:
+    set program.lang_flagged += words
+    set Night.lang_flagged += words
 
   // ── Bathroom Mode (guest buttons) ──
   // The Antivirus and the Recycling Bin hear the same event in their own
@@ -3704,6 +3720,16 @@ INTERACTION bathroom_report
   description: Any time after G1, between two awards (before the trust awards G2 / G3 reads best). The host reads the party's Bathroom Mode numbers off the story and the TV shows them: the time everyone spent in Disk Cleanup all together, who spent the most and the least (of those who went), who switched Bathroom Mode on and off the most, and how many never went. Those never went lost 5 trust at G1 and are told here; a first trip now gives it back. Press again to read it again with the newest numbers.
   while: Night.ceremony == true and Night.resurrected != true
 
+// Wave 48, appended last so no cue number moves; an aside in the awards
+// ceremony (G) like G13. DRAFT w48
+INTERACTION language_report
+  label: G14 · 🔑 The Language Report (between awards)
+  who: admin
+  act: G · The awards ceremony
+  sequence: false
+  description: Any time after G1, between two awards. The host reads the night's Language Report off the story and the TV shows it: the program that cursed the most (the most words the Password Manager's filter caught in what they typed), how many words she censored out of every word the filter caught, and every word she censored. Press again to read it again with the newest numbers.
+  while: Night.ceremony == true and Night.resurrected != true
+
 // Performer buttons (on every guest card). Every hook guards its phase
 // and ignores a wrong-phase press — except `send to the internet` and
 // `mark as reinstalled`, which work on any program at any time.
@@ -6494,6 +6520,29 @@ when bathroom_report:
     set Night.bath_reported += 1
     -> Bathroom Report
 
+// G14 (wave 48): the Language Report. The filter's counts are kept live
+// (`swear_flagged` in ROLE Program, `swear_censored` on the Password
+// Manager, which also keeps `Night.lang_words`, every censored word once);
+// this reads who cursed the most off the programs at the party (cleared,
+// not gone, not a Run persona; ties name everyone tied). The beat
+// (beats/ceremony.loom) reads the Night.lang_* vars; the TV slide
+// (`award_language`) reads them through the screen state.
+when language_report:
+  if Night.ceremony != true:
+    broadcast "🔑 Start the ceremony (G1) first: no Language Report." to channel(hosts)
+  else if Night.resurrected == true:
+    broadcast "🔑 The show is over (G11): no Language Report." to channel(hosts)
+  else:
+    set Night.lang_cursers = count([p for p in Persons where p.cleared == true and p.gone != true and p.persona != true and p.lang_flagged > 0])
+    if Night.lang_cursers > 0:
+      set Night.lang_curses = max([p.lang_flagged for p in Persons where p.cleared == true and p.gone != true and p.persona != true])
+      set Night.lang_curser = names([p for p in Persons where p.cleared == true and p.gone != true and p.persona != true and p.lang_flagged == Night.lang_curses])
+    else:
+      set Night.lang_curses = 0
+      set Night.lang_curser = "none"
+    set Night.lang_reported += 1
+    -> Language Report
+
 // ── The players' game (wave 21) ──────────────────────────
 // Clippy and the four Antivirus (TRAIT Player, cast/kit.loom).
 
@@ -6800,6 +6849,15 @@ set Night.bath_least_s = 0
 set Night.bath_least_m = 0
 set Night.bath_toggler = "none"
 set Night.bath_toggles = 0
+// Wave 48: the Password Manager's filter, counted live; the report (G14)
+// fills the rest when it is read.
+set Night.lang_flagged = 0
+set Night.lang_censored = 0
+set Night.lang_words = "none"
+set Night.lang_reported = 0
+set Night.lang_cursers = 0
+set Night.lang_curser = "none"
+set Night.lang_curses = 0
 // Wave 21: the players' game.
 set Night.judge_now = 1
 set Night.defector = "none"

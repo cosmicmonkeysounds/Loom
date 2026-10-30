@@ -32,6 +32,13 @@ export interface PopGuest {
   seen?: string | null;
 }
 
+/** Wave 48 (C5): one run of a quoted line; `mark` runs are highlighted
+ *  (the language filter's flagged stems). */
+export interface PopQuotePart {
+  text: string;
+  mark?: boolean;
+}
+
 /** One button. */
 export interface PopAction {
   /** Unique within the pop-out. */
@@ -65,6 +72,9 @@ export interface PopOutSpec {
   guest?: PopGuest;
   /** Up to 4 extra guest lines (a burst). */
   rows?: PopGuest[];
+  /** Wave 48 (C5): a line quoted under the body, its marked runs
+   *  highlighted (🔑 LANGUAGE: the flagged stems). Plain text only. */
+  quote?: PopQuotePart[];
   /** ≤ 4, in visual order; the shell adds "Later" unless `noLater`. */
   actions: PopAction[];
   noLater?: boolean;
@@ -327,6 +337,7 @@ export function parseStored(v: unknown): StoredPopOuts {
           body: typeof sp.body === "string" || Array.isArray(sp.body) ? sp.body : "",
           ...(sp.guest !== undefined ? { guest: sp.guest } : {}),
           ...(Array.isArray(sp.rows) ? { rows: sp.rows } : {}),
+          ...(Array.isArray(sp.quote) ? { quote: quoteOf(sp.quote) } : {}),
           tone: sp.tone === "alarm" || sp.tone === "win" ? sp.tone : "info",
           sticky: sp.sticky === true,
           priority: typeof sp.priority === "number" ? sp.priority : 50,
@@ -339,6 +350,21 @@ export function parseStored(v: unknown): StoredPopOuts {
       });
     }
   return out;
+}
+
+/** A stored quote, defensively: only `{text}` runs survive. */
+function quoteOf(v: readonly unknown[]): PopQuotePart[] {
+  const out: PopQuotePart[] = [];
+  for (const q of v) {
+    const x = q as { text?: unknown; mark?: unknown } | null;
+    if (typeof x?.text === "string") out.push(x.mark === true ? { text: x.text, mark: true } : { text: x.text });
+  }
+  return out;
+}
+
+/** A quote's plain text (the 🔔 Waiting row of a pop-out with no body). */
+export function quoteText(quote: readonly PopQuotePart[] | undefined): string {
+  return (quote ?? []).map((q) => q.text).join("");
 }
 
 /** "deferred 3 min ago" (the tray's rows). */

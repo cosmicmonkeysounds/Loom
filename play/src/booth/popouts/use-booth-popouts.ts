@@ -5,6 +5,11 @@
 //! that just became live, a caller's *Call it?*. "First seen" memory persists
 //! per sign-in (`loom.booth.seen.<token>`), so a reload never re-pops a mark
 //! someone else already claimed.
+//!
+//! Wave 48 (C5): the censor's 🔑 LANGUAGE (`DriverOpts.filter`): one at a
+//! time, only while no filter pop-out is up or held and the filter window
+//! is closed; lines that arrive meanwhile only count (`filter/model.ts`
+//! `filterPlan`, memory `loom.booth.filter.<token>`).
 
 import { useEffect, useMemo, useRef } from "react";
 import { usePlayHost } from "../../host.ts";
@@ -14,6 +19,8 @@ import { boothView, callsOf, mayPress, wantedOf, type BoothGuest, type BoothMess
 import { countdownRunning, cueAtEnd, cueSpecs, cueWaitsFor, doorQueue, doorSpec, pickLayout, pickReadySpec, reconcilePopOuts, rememberCountdowns, targetSpec, wantedSpecs, type BoothDo, type CountdownMemo, type Draft, type SeenMap } from "./model.ts";
 import { playTone, usePopOuts, type PopOutSpec } from "./rung.ts";
 import { newMissionSpec } from "../mission-model.ts";
+import { filterDraft, filterPlan, filterPopSeq } from "../filter/model.ts";
+import type { FilterApi } from "../filter/use-filter.ts";
 
 /** What a bound pop-out's buttons may open in the booth. */
 export interface BoothOpeners {
@@ -28,6 +35,12 @@ export interface BoothOpeners {
   mission?: () => void;
   /** A claim was pressed on this guest (the race line). */
   tried?: (guest: string) => void;
+  /** Wave 48 (C5): ✂ a flagged line; rejects on a refusal (the pop-out stays, saying why). */
+  censor?: (seq: number) => Promise<unknown>;
+  /** Wave 48 (C5): Let it go (this phone only). */
+  letGo?: (seq: number) => void;
+  /** Wave 48 (C5): open the filter window. */
+  filter?: () => void;
 }
 
 /** Bind a draft's buttons to the booth. */
@@ -59,6 +72,12 @@ export function bindDraft(d: Draft, open: BoothOpeners, defer: (key: string) => 
         return () => open.cue(x.id);
       case "mission":
         return () => open.mission?.();
+      case "censor":
+        return () => open.censor?.(x.seq);
+      case "letGo":
+        return () => open.letGo?.(x.seq);
+      case "filter":
+        return () => open.filter?.();
       case "later":
         return () => defer(d.key);
       case "ok":
@@ -91,9 +110,13 @@ export interface DriverOpts {
   missionShown?: (objectiveId: string) => boolean;
   /** Wave 37 (C7): a NEW MISSION said by the title bar, not a pop-out. */
   onMissionNews?: (o: { id: string; title: string }) => void;
+  /** Wave 48 (C5): the censor's filter (`filter/use-filter.ts`); absent: no 🔑 pop-outs. */
+  filter?: FilterApi;
+  /** Wave 48 (C5): the filter window is open (it owns every flagged line then). */
+  filterOpen?: boolean;
 }
 
-export function useBoothPopOuts({ session, open, now, placeTitle, ownFireAt, targetKey, missionShown, onMissionNews }: DriverOpts): void {
+export function useBoothPopOuts({ session, open, now, placeTitle, ownFireAt, targetKey, missionShown, onMissionNews, filter, filterOpen = false }: DriverOpts): void {
   const host = usePlayHost();
   const rung = usePopOuts();
   const token = session.auth?.token ?? "";
@@ -121,6 +144,9 @@ export function useBoothPopOuts({ session, open, now, placeTitle, ownFireAt, tar
       cue: (id) => openRef.current.cue(id),
       mission: () => openRef.current.mission?.(),
       tried: (g) => tried.current.add(g),
+      censor: (seq) => openRef.current.censor?.(seq) ?? Promise.resolve(),
+      letGo: (seq) => openRef.current.letGo?.(seq),
+      filter: () => openRef.current.filter?.(),
     }),
     [],
   );
@@ -256,6 +282,27 @@ export function useBoothPopOuts({ session, open, now, placeTitle, ownFireAt, tar
     onMissionNews?.({ id: game ? headId : mootKey.slice("mission:".length), title: game ? (nowObj?.title ?? moot.spec.title) : moot.spec.title });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mootKey]);
+
+  // Wave 48 (C5): the censor's 🔑 LANGUAGE. A new line pops once, one at a
+  // time; while one is up (on screen, queued, quiet) or the window is open,
+  // new lines only count. One put off with Later never blocks: a new line
+  // pops and retires it (still on the 🔑 list). A held one whose line left
+  // the list (censored, let go, hidden) retires; one still waiting is raised
+  // again in place (its 🔑 All flagged count, a refusal, buttons after a reload).
+  const heldFilter = rung.held.filter((e) => filterPopSeq(e.spec.key) !== null);
+  const heldFilterKey = heldFilter.map((e) => `${e.spec.key}:${e.restored === true ? 1 : 0}:${e.deferredAt !== undefined ? 1 : 0}`).join("|");
+  const filterKey = filter === undefined || session.view === null ? null : filter.key;
+  useEffect(() => {
+    if (filter === undefined || filterKey === null) return;
+    const deferred = new Set(heldFilter.filter((e) => e.deferredAt !== undefined).map((e) => e.spec.key));
+    const plan = filterPlan(filter.waiting, filter.seen, heldFilter.map((e) => e.spec.key), { windowOpen: filterOpen, deferred });
+    if (plan.seen.length > 0) filter.markSeen(plan.seen);
+    for (const k of plan.retire) rung.retire(k);
+    const n = filter.waiting.length;
+    for (const line of plan.refresh) rung.raise(bind(filterDraft(line, n, filter.refusal(line.seq))));
+    if (plan.raise !== null) rung.raise(bind(filterDraft(plan.raise, n, filter.refusal(plan.raise.seq))));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterKey, heldFilterKey, filterOpen]);
 
   // A caller: *Call it?* when one of its cues turns live after the first look.
   const calls = callsOf(view);

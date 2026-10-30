@@ -135,6 +135,10 @@ export interface ChatMessage {
   /** `with ack: none` (wave 26, R1): the big moment has no acknowledge
    *  button; only its exits close it. Absent = the usual OK. */
   noAck?: true;
+  /** Wave 48 (C2): the Password Manager censored this line; `text` is
+   *  already masked (`p***word`). It arrives as a `message` frame with the
+   *  same seq, so the stream's upsert by seq shows it with no other change. */
+  censored?: true;
   /** The story's `Night.phase` when the server composed this message (null
    *  = set to nothing). Only on what can be a moment, and only once the
    *  story has a phase; absent → the moments layer uses the phase it knows
@@ -474,6 +478,49 @@ export interface PrimeView {
    *  sender (C6) Trabolta's letter comes from (null: the server has no mail
    *  set up). Absent from an older server, and for a booth with no character. */
   letter?: PrimeLetter;
+  /** Wave 48 (C2): the language filter's lines still to judge, only on the
+   *  censor's booth (the story's `censor:` header). Absent elsewhere and
+   *  from an older server. */
+  filter?: FilterView;
+}
+
+/** `PrimeView.filter` (wave 48, C2; core's `server/views.ts`). */
+export interface FilterView {
+  /** Words flagged tonight (every guest line). */
+  flagged: number;
+  /** Of them, censored. */
+  censored: number;
+  /** Still to judge: not censored, not hidden; oldest first, the newest 40. */
+  lines: FilterLine[];
+}
+
+/** One flagged guest line (wave 48, C2). */
+export interface FilterLine {
+  /** The chat line. */
+  seq: number;
+  /** The program's id. */
+  guest: string;
+  /** The program's name. */
+  name: string;
+  /** Its picture key. */
+  avatar?: string;
+  /** "# lobby", "DM to Trabolta", "to Microsoft Excel", a room's title. */
+  where: string;
+  /** The line as typed. */
+  text: string;
+  /** Every stem in `text` (UTF-16 offsets), to highlight. */
+  hits: Array<{ start: number; end: number }>;
+  /** The flagged words, lower case, in order. */
+  words: string[];
+  /** Story ms. */
+  ts: number;
+}
+
+/** `POST /api/prime/censor`'s 200 (wave 48, C2): the masked text. */
+export interface CensorResult {
+  ok: true;
+  seq: number;
+  text: string;
 }
 
 /** `PrimeView.letter` (wave 41, C3). */

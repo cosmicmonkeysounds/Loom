@@ -86,6 +86,19 @@ describe("the player's frame (P1)", () => {
 
 describe("the player's Mission (P2)", () => {
   const list = [ch("loc:Desktop", { kind: "location", title: "The Desktop" }), ch("quests", { kind: "quests" }), ch("codex", { kind: "codex" })];
+  it("gives the censor a 🔑 Filter tile after Wanted (wave 48), never anyone else", () => {
+    const m = boothMissionOf(view(), { list, claimer: true, loose: 2, filter: 3 });
+    expect(m.tiles.map((t) => [t.id, t.status, t.dot])).toEqual([
+      ["wanted", "2 loose", true],
+      ["filter", "3 to judge", true],
+      ["quests", "1 active", false],
+      ["codex", "1 known", false],
+    ]);
+    expect(m.tiles[1]!.nav).toEqual({ to: "room", id: "__filter" });
+    expect(boothMissionOf(view(), { list, claimer: true, loose: 2, filter: 0 }).tiles[1]).toMatchObject({ id: "filter", status: "nothing to judge", dot: false });
+    expect(boothMissionOf(view(), { list, claimer: true, loose: 2, filter: null }).tiles.some((t) => t.id === "filter")).toBe(false);
+  });
+
   it("is the NOW objective with its Where, buttons, score tiles, desk tiles, and Also now (the evergreen kept out)", () => {
     const m = boothMissionOf(view(), { list, claimer: true, loose: 2 });
     expect(m.glyph).toBe("🛡");

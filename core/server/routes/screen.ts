@@ -762,11 +762,22 @@ export const SCREEN_NIGHT_VARS = {
   bath_least_s: "Night.bath_least_s",
   bath_toggler: "Night.bath_toggler",
   bath_toggles: "Night.bath_toggles",
+  // Wave 48: the Language Report (G14), only while its slide is up.
+  lang_flagged: "Night.lang_flagged",
+  lang_censored: "Night.lang_censored",
+  lang_curser: "Night.lang_curser",
+  lang_curses: "Night.lang_curses",
+  lang_words: "Night.lang_words",
 } as const;
 /** (wave 45) The longest tie the Bathroom Report's slide carries. */
 const MAX_TIE_NAMES = 120;
 /** (wave 45) The slide the Bathroom Report (G13) cues. */
 export const BATHROOM_SLIDE = "award_bathroom";
+/** (wave 48) The slide the Language Report (G14) cues. */
+export const LANGUAGE_SLIDE = "award_language";
+/** (wave 48) The most censored words the slide lists, and the longest one. */
+export const LANGUAGE_WORDS_MAX = 60;
+const LANGUAGE_WORD_CHARS = 40;
 /** A story var holding this names nobody / nothing yet (the show's "none"). */
 const NIGHT_NONE = "none";
 
@@ -821,6 +832,23 @@ export interface ScreenNight {
   /** (wave 45) The Bathroom Report's numbers, only while its slide
    *  (`award_bathroom`) is up on this target; absent otherwise. */
   bathroom?: ScreenBathroom;
+  /** (wave 48) The Language Report's numbers, only while its slide
+   *  (`award_language`) is up on this target; absent otherwise. */
+  language?: ScreenLanguage;
+}
+
+/** (wave 48, `docs/loom-w48-contract.md` C4) The Language Report (G14), as
+ *  the story read it: words the Password Manager's filter caught tonight,
+ *  of them censored, the program with the most caught (a tie "A and B";
+ *  null for nobody) and its count, and the censored words (each once, first
+ *  censored first; `more` past the ones listed). */
+export interface ScreenLanguage {
+  flagged: number;
+  censored: number;
+  curser: string | null;
+  curses: number;
+  words: string[];
+  more: number;
 }
 
 /** (wave 45) The Bathroom Report (G13), as the story read it. Times are
@@ -1730,6 +1758,20 @@ export class ScreenWatch {
         least_s: goers > 1 ? count(SCREEN_NIGHT_VARS.bath_least_s) : 0,
         toggler: tied(SCREEN_NIGHT_VARS.bath_toggler),
         toggles: count(SCREEN_NIGHT_VARS.bath_toggles),
+      };
+    }
+    if (slideUp === LANGUAGE_SLIDE) {
+      const count = (path: string): number => Math.max(0, Math.floor(num(path) ?? 0));
+      const curser = peek(SCREEN_NIGHT_VARS.lang_curser);
+      const raw = peek(SCREEN_NIGHT_VARS.lang_words);
+      const all = raw === null || raw === NIGHT_NONE ? [] : raw.split(",").map((w) => w.trim()).filter((w) => w !== "");
+      night.language = {
+        flagged: count(SCREEN_NIGHT_VARS.lang_flagged),
+        censored: count(SCREEN_NIGHT_VARS.lang_censored),
+        curser: curser === null || curser.trim() === "" || curser === NIGHT_NONE ? null : clip(curser, MAX_TIE_NAMES),
+        curses: count(SCREEN_NIGHT_VARS.lang_curses),
+        words: all.slice(0, LANGUAGE_WORDS_MAX).map((w) => clip(w, LANGUAGE_WORD_CHARS)),
+        more: Math.max(0, all.length - LANGUAGE_WORDS_MAX),
       };
     }
 

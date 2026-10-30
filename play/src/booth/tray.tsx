@@ -15,6 +15,8 @@
 //! the bar) lays the tray out in priority order (`boothTrayOrder`: 🔔 → 🚨
 //! → held receipt → countdown → ⭐ / act → clock), so the guest-style cap
 //! (two items under 430 px, `css/booth.css`) drops the least important.
+//! Wave 48 (C5): the censor's `🔑 n` (flagged lines to judge → the filter
+//! window) follows 🚨, only while n > 0.
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { storyNow } from "../director.tsx";
@@ -26,6 +28,7 @@ import { BoothIcon } from "./icons.tsx";
 import type { PrimeView } from "../types.ts";
 import { heldCount, soonest, trayAct, trayClock, viewPaused } from "./model.ts";
 import { isPlayer, statsOf } from "./wire.ts";
+import { FILTER_COPY } from "./filter/model.ts";
 
 /** Seconds a countdown reads red under (the director phone's `URGENT_S`). */
 const URGENT = 60;
@@ -36,13 +39,14 @@ export function ledDigits(n: number): string {
 }
 
 /** A tray item's id, in the order `boothTrayOrder` gives. */
-export type TrayId = "waiting" | "loose" | "held" | "countdown" | "stat" | "act" | "clock";
+export type TrayId = "waiting" | "loose" | "filter" | "held" | "countdown" | "stat" | "act" | "clock";
 
 /** Wave 26 (P2): the windowed booth's tray, most important first; the show
- *  clock always last (the Win95 place), and only what is present. */
-export function boothTrayOrder(o: { waiting: boolean; loose: boolean; held: boolean; soon: boolean; stat: boolean; act: boolean; clock: boolean }): TrayId[] {
-  const order: TrayId[] = ["waiting", "loose", "held", "countdown", "stat", "act", "clock"];
-  const has: Record<TrayId, boolean> = { waiting: o.waiting, loose: o.loose, held: o.held, countdown: o.soon, stat: o.stat, act: o.act, clock: o.clock };
+ *  clock always last (the Win95 place), and only what is present. Wave 48:
+ *  the censor's 🔑 after 🚨. */
+export function boothTrayOrder(o: { waiting: boolean; loose: boolean; filter?: boolean; held: boolean; soon: boolean; stat: boolean; act: boolean; clock: boolean }): TrayId[] {
+  const order: TrayId[] = ["waiting", "loose", "filter", "held", "countdown", "stat", "act", "clock"];
+  const has: Record<TrayId, boolean> = { waiting: o.waiting, loose: o.loose, filter: o.filter === true, held: o.held, countdown: o.soon, stat: o.stat, act: o.act, clock: o.clock };
   return order.filter((id) => has[id]);
 }
 
@@ -53,6 +57,8 @@ export function BoothTray({
   waiting = 0,
   onBoard,
   onWaiting,
+  filter = null,
+  onFilter,
   windowed = false,
 }: {
   view: PrimeView | null;
@@ -63,6 +69,9 @@ export function BoothTray({
   waiting?: number;
   onBoard?: () => void;
   onWaiting?: () => void;
+  /** Wave 48 (C5): the censor's flagged lines to judge — `🔑 n` while n > 0; null = not the censor. */
+  filter?: number | null;
+  onFilter?: () => void;
   /** Wave 26 (P2): a windowed booth — priority order, the clock last. */
   windowed?: boolean;
 }) {
@@ -98,6 +107,8 @@ export function BoothTray({
       </button>
     ) : null;
   const bell = waiting > 0 ? <TrayItem key="waiting" text={`🔔 ${waiting}`} title={`${waiting} waiting for you`} onClick={onWaiting} tone="alarm" /> : null;
+  // Wave 48 (C5): calm, no alarm tone: a flood of flags is expected.
+  const flagged = filter !== null && filter > 0 ? <TrayItem key="filter" text={`${FILTER_COPY.glyph} ${filter}`} title={FILTER_COPY.trayTitle(filter)} onClick={onFilter} /> : null;
   const receipt = held > 0 ? <TrayItem key="held" icon={<BoothIcon name="receipt" />} text={String(held)} title={`${held} held transfer${held === 1 ? "" : "s"} to approve — open the Wallet`} onClick={onWallet} tone="alarm" /> : null;
   const actChip = (yields: boolean) =>
     act !== null ? (
@@ -122,15 +133,16 @@ export function BoothTray({
       />
     ) : null;
   if (windowed) {
-    const ids = boothTrayOrder({ waiting: bell !== null, loose: led !== null, held: receipt !== null, soon: countdown !== null, stat: statChip !== null, act: act !== null, clock: clock !== null && clock !== undefined });
+    const ids = boothTrayOrder({ waiting: bell !== null, loose: led !== null, filter: flagged !== null, held: receipt !== null, soon: countdown !== null, stat: statChip !== null, act: act !== null, clock: clock !== null && clock !== undefined });
     const others = ids.some((id) => id !== "clock");
-    const item: Record<TrayId, ReactNode> = { waiting: bell, loose: led, held: receipt, countdown, stat: statChip, act: actChip(false), clock: <ShowClockTray key="clock" clock={clock} yields={others} /> };
+    const item: Record<TrayId, ReactNode> = { waiting: bell, loose: led, filter: flagged, held: receipt, countdown, stat: statChip, act: actChip(false), clock: <ShowClockTray key="clock" clock={clock} yields={others} /> };
     return <>{ids.map((id) => item[id])}</>;
   }
   return (
     <>
       {led}
       {bell}
+      {flagged}
       <ShowClockTray clock={clock} yields={soon !== null} />
       {receipt ?? actChip(soon !== null) ?? statChip}
       {countdown}

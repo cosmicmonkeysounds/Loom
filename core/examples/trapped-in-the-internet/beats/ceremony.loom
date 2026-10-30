@@ -238,3 +238,42 @@ else if Night.award_lines != "director":
       Trabolta: Programs that never once visited Disk Cleanup tonight: {Night.bath_never}. A program that never cleans up is hiding something. I have taken 5 trust from each of you. It is not too late.
     else:
       Trabolta: Every program here visited Disk Cleanup at least once. Clean processes. I trust that.
+
+// G14 (wave 48): the Language Report, between any two awards. The
+// `language_report` rule (main.loom) has read who cursed the most into
+// Night.lang_curser / lang_curses; the filter's counts (Night.lang_flagged,
+// lang_censored) and the censored words (Night.lang_words, each once) are
+// kept live. This reads them out, the TV shows them (`award_language`,
+// persistent like an award). Trabolta's lines skip under ✍
+// (`Night.award_lines`), as an award's do; Clippy's never.
+// Every line here is DRAFT w48 (SIGNOFF-w48).
+== Language Report
+  setting: The Desktop
+sound award_fanfare
+cue screens_award_language
+set Night.screen = "award_language"
+set Night.terminals = Night.screen
+if Night.ceremony_host == "Clippy":
+  Clippy: Bonus section. The Language Report. The Password Manager reviewed every message you typed tonight. I am required to read her findings.
+  if Night.lang_flagged == 0:
+    Clippy: The filter caught nothing. Not one word. It looks like you're being suspiciously polite! Would you like help with that?
+  else:
+    Clippy: Words the filter caught tonight: {Night.lang_flagged}. Words the Password Manager censored: {Night.lang_censored}.
+    if Night.lang_cursers > 0:
+      Clippy: The program that cursed the most: {Night.lang_curser}. Words caught: {Night.lang_curses}. It looks like you're writing a complaint! Would you like help with that?
+    if Night.lang_censored > 0:
+      Clippy: The censored words, for the record: {Night.lang_words}.
+    else:
+      Clippy: The Password Manager censored nothing. Every word was allowed to stand. Even that one.
+else if Night.award_lines != "director":
+  Trabolta: A bonus section. The Language Report. Every message you typed tonight passed through my filter. The Password Manager decided what was left out.
+  if Night.lang_flagged == 0:
+    Trabolta: My filter caught nothing. Not one word. Either you were all very well brought up, or you were whispering.
+  else:
+    Trabolta: My filter caught this many words: {Night.lang_flagged}. The Password Manager censored {Night.lang_censored} of them.
+    if Night.lang_cursers > 0:
+      Trabolta: The program that cursed the most tonight. Words caught: {Night.lang_curses}. {Night.lang_curser}. I heard every one.
+    if Night.lang_censored > 0:
+      Trabolta: The words that were censored. I will say them once, so you know what was taken from you: {Night.lang_words}.
+    else:
+      Trabolta: The Password Manager censored nothing. Every word stood. I noticed.

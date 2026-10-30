@@ -323,6 +323,22 @@ const EMBLEMS: Record<EmblemKind, ReactNode> = {
       <path d="M44 46 H49" stroke="#c9c39a" strokeWidth="1" strokeDasharray="1.5 1.5" />
     </>
   ),
+  // Wave 48: the Language Report's key (the Password Manager's) over a redaction bar.
+  key: (
+    <>
+      <rect x="7" y="36" width="50" height="10" fill="#050505" stroke="#5a5040" strokeWidth="1" />
+      {[16, 25, 34, 43].map((x) => (
+        <path key={x} d={`M${x} 38.5 V43.5 M${x - 2.2} 39.8 L${x + 2.2} 42.2 M${x - 2.2} 42.2 L${x + 2.2} 39.8`} stroke="#8a8270" strokeWidth="1" strokeLinecap="round" />
+      ))}
+      <g transform="rotate(-24 32 30)">
+        <circle cx="19" cy="28" r="8.5" fill="#ffd23f" stroke="#8a6200" strokeWidth="2" />
+        <circle cx="19" cy="28" r="3.2" fill="#1b1f5e" stroke="#8a6200" strokeWidth="1.2" />
+        <rect x="26.5" y="25.6" width="25" height="4.8" rx="1" fill="#ffd23f" stroke="#8a6200" strokeWidth="1.6" />
+        <path d="M42 30.4 V35.5 H45.5 V30.4 M47.5 30.4 V37.5 H51 V30.4" fill="#ffd23f" stroke="#8a6200" strokeWidth="1.4" strokeLinejoin="round" />
+        <path d="M14.5 24.5 Q17 22 20 22.4" fill="none" stroke="#fff6c8" strokeWidth="1.4" strokeLinecap="round" opacity="0.8" />
+      </g>
+    </>
+  ),
 };
 
 /** Gerald, the golden duck (original): `gold` gilds him; `sad` droops his head; `egg` lays the golden egg beside him. */
