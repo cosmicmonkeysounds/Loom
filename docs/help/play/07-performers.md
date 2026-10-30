@@ -143,7 +143,8 @@ back.
 
 Pop-outs survive a reload, and one that no longer applies (the program
 was caught, the arrival was cleared, the objective moved on) goes away by
-itself.
+itself. The censor's **🔑 LANGUAGE** pop-outs and its **🔑 n** count are
+in [The language filter](language-filter.md).
 
 ## Scanning guests
 

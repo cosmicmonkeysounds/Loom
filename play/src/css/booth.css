@@ -408,6 +408,25 @@
 .wanted-banner-row { display: flex; align-items: center; justify-content: space-between; padding: 4px 8px; font: 14px var(--ui-font); }
 .wanted-banner-row .wanted-btn { margin-left: 8px; }
 
+/* Wave 48 (C5): the censor's filter window (booth/filter/window.tsx): one
+   card per flagged line, its stems marked, ✂ Censor and Let it go. */
+.filter-window { display: flex; flex-direction: column; gap: 8px; }
+.filter-head { margin: 0; font: 700 14px var(--ui-font); }
+.filter-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
+.filter-row { display: flex; flex-direction: column; gap: 6px; padding: 8px; background: var(--white); color: var(--ink); box-shadow: var(--raised); }
+.filter-who { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.filter-who-words { display: flex; flex-direction: column; min-width: 0; }
+.filter-name { font: 700 15px/1.2 var(--ui-font); overflow-wrap: anywhere; }
+.filter-where { color: var(--dim-ink); font: 12px var(--ui-font); }
+.filter-line { margin: 0; padding: 6px 8px; box-shadow: var(--sunken); font: 16px/1.4 var(--chat-font); overflow-wrap: anywhere; white-space: pre-wrap; }
+.filter-hit { padding: 0 1px; background: var(--highlight); color: var(--ink); font-weight: 700; }
+.filter-actions { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; }
+.filter-btn { min-height: var(--tap); flex-direction: column; gap: 0; font: 700 14px var(--ui-font); }
+.filter-btn.armed { background: var(--black); color: var(--white); }
+.filter-arm { font: 400 11px var(--ui-font); }
+.filter-refused { margin: 0; color: var(--bad); font: 700 13px var(--ui-font); }
+.filter-none { padding: 16px 0; text-align: center; }
+
 /* The CAPTURED rubber stamp: −12°, a double border, static under Reduce Motion. */
 .stamp {
   position: absolute; left: 50%; top: 50%; z-index: 1; padding: 2px 8px; white-space: nowrap;

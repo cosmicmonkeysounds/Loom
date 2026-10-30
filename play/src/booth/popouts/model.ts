@@ -27,6 +27,12 @@ export type BoothDo =
   | { kind: "cue"; id: string }
   /** Wave 21 (P5): open the player's Mission window. */
   | { kind: "mission" }
+  /** Wave 48 (C5): ✂ a flagged line (`/api/prime/censor`). */
+  | { kind: "censor"; seq: number }
+  /** Wave 48 (C5): Let it go (this phone only). */
+  | { kind: "letGo"; seq: number }
+  /** Wave 48 (C5): open the filter window (🔑 All flagged). */
+  | { kind: "filter" }
   /** Later, as a button ("Not yet"). */
   | { kind: "later" }
   | { kind: "ok" };

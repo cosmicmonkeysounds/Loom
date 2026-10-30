@@ -447,6 +447,9 @@
 .popout-guest-where { color: var(--dim-ink); font: 13px var(--ui-font); }
 .popout-row { min-height: var(--tap); display: flex; align-items: center; }
 .popout-text { margin: 0; font: 14px/1.4 var(--ui-font); overflow-wrap: anywhere; }
+/* Wave 48 (C5): 🔑 LANGUAGE's quoted line, its flagged stems marked. */
+.popout-quote { margin: 0; padding: 6px 8px; background: var(--white); color: var(--ink); box-shadow: var(--sunken); font: 16px/1.4 var(--chat-font); overflow-wrap: anywhere; white-space: pre-wrap; }
+.popout-mark { padding: 0 1px; background: var(--highlight); color: var(--ink); font-weight: 700; }
 .popout-actions { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 10px 10px; }
 .popout-btn { flex: 1 1 auto; flex-direction: column; font-weight: 700; }
 .popout-btn.primary { flex-basis: 100%; min-height: 56px; font-size: 15px; box-shadow: 0 0 0 1px var(--ink), var(--raised); }

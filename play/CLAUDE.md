@@ -349,6 +349,48 @@ Clippy) through `scripts/sim` evenings at 390x700 and in Chrome.
   `while:` says when (the show: every program after the Bingo round, wave
   46). `test/w47-av-send.test.ts`.
 
+### Wave 48: the Password Manager's filter
+
+The story's `censor:` header names a CHARACTER (the show: Password
+Manager); only that booth gets `PrimeView.filter` (`FilterView`:
+`flagged`, `censored`, `lines` — the guest lines with a swear stem still to
+judge, oldest first, the newest 40; contract `docs/loom-w48-contract.md`
+C2, C5). Everything is booth chunk only, in `booth/filter/`:
+
+- `model.ts` (pure, copy `FILTER_COPY`, `DRAFT w48`): `waitingLines` (not
+  let go on this phone, not censored here while the view catches up),
+  `filterPlan` (a line not seen before pops once, the newest of a batch,
+  only while no `filter:<seq>` pop-out is up or held — on screen, queued,
+  quiet or in 🔔 Waiting — and the window is closed; lines that land
+  meanwhile only count; a held one whose line left retires, one still
+  waiting is raised again in place), `filterDraft` (🔑 LANGUAGE: picture,
+  name, `whereLine`, the line as `PopOutSpec.quote` with each `hits` range
+  marked, ✂ Censor `arm: true`, Let it go, 🔑 All flagged (n) when more
+  wait, the shell's Later; info, priority 35, `yields`, not sticky; its
+  status line is the hint or the last refusal), `markSegments` /
+  `hitRanges` / `clipLine` (clamped, merged, never splitting a surrogate
+  pair), `censorRefusal` (409 *already censored* → gone quietly; doors,
+  404, 403, timeout, offline → plain words).
+- `use-filter.ts`: `useFilter(session, storage)`, one per booth
+  (`booth/app.tsx`), shared by the driver, the tray and the window. Memory
+  in host storage `loom.booth.filter.<token>` (`{seen, let}`, each capped
+  at 400, reads / writes in try/catch); Let it go never reaches the
+  server. ✂ is `PrimeSession.censor(seq)` → `POST
+  /e/:eventId/api/prime/censor {seq}` (token header, 15 s timeout).
+- `window.tsx`: the `{ kind: "filter" }` layer (`booth/model.ts`): header
+  *Censored c of f flagged words*, every waiting line with ✂ Censor (two
+  taps) and Let it go, a refusal under its line, *Nothing to judge.*
+  × / Escape / Back go through `closeTo`.
+- The driver (`popouts/use-booth-popouts.ts`, `DriverOpts.filter` /
+  `filterOpen`) runs `filterPlan`; `BoothDo` has `censor` / `letGo` /
+  `filter`. The tray's `🔑 n` (`BoothTray filter`, calm, no alarm tone)
+  follows 🚨 in `boothTrayOrder`. A guest needs no change: a censored line
+  is a `message` frame with the same seq (`ChatMessage.censored`).
+- Help: `docs/help/play/22-language-filter.md` (`role: performer`). Tests:
+  `test/w48-filter.test.ts` (the rules, a flood through the real reducer),
+  `test/w48-filter-booth.test.tsx` (the hook, the real driver over the
+  real store, the pop-out, the tray, the window, the first-load fence).
+
 ### Host windows (wave 25; the contract is `docs/loom-house-desk.md` §6.2)
 
 A host booth (`isHostBooth` in `host/dock.tsx`, never a player) has three
@@ -459,7 +501,7 @@ src/
   client.ts              api() POST + useChatStream / openChatFeed (SSE)
   host.ts · embed.tsx · embed-css.ts   the host seam and the shadow-root embed
   guest/                 guest app, frame, Mission, Chats, Me, register, nav
-  booth/                 booth app, player booth, card, NOW card, pick/, popouts/, wanted/, door, confront, cue bar
+  booth/                 booth app, player booth, card, NOW card, pick/, popouts/, wanted/, filter/ (wave 48), door, confront, cue bar
   host/                  host windows: console + slim bar (dock), Show, Desk (lazy), the old tabs as sections, allowlist API, caller claim
   chrome/                title bar, taskbar, Start menu, tray, full-screen pass, balloons, icons
   stream/                message bubbles, crawl tiers, card tray, settled cards, ticker, notices, codex room, composer
@@ -495,7 +537,7 @@ Node imports, or the play build breaks.
 Help works the same way: `help.tsx` bundles the guest articles of
 `../../docs/help/play/*.md` with `import.meta.glob(…, ?raw)` and parses
 them with `docs/help/helpdoc.ts`. The `role: performer` articles (07, 13,
-14, 19, 20, 21) are left out of that glob and bundled by `help-staff.tsx`
+14, 19, 20, 21, 22) are left out of that glob and bundled by `help-staff.tsx`
 (`articlesFor`, `StaffHelpSheet`), which only the booth and the director
 import, so a guest never downloads them (wave 26). A new performer-only
 article goes in both globs; `test/help-chunks.test.ts` fails until it

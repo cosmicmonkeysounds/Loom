@@ -14,7 +14,7 @@ import { roomOrder } from "../rooms/order.ts";
 import { useThreads, type Threads } from "../rooms/threads-state.ts";
 import { unreadOf } from "../stream/badges.ts";
 import { questSummary } from "../stream/runs.ts";
-import type { Channel, ChatMessage, GuestCardView, PrimeActResult, PrimeView, ScanResult } from "../types.ts";
+import type { CensorResult, Channel, ChatMessage, GuestCardView, PrimeActResult, PrimeView, ScanResult } from "../types.ts";
 import { useTyping } from "../typing.ts";
 import { queueSummary } from "../wallet.tsx";
 import type { WidgetResult } from "../widgets.tsx";
@@ -313,6 +313,11 @@ export interface PrimeSession {
    *  letter (`POST /api/prime/letter`), or take it off (`null`). Optional so
    *  a test's fake session needs none. */
   letter?: (email: string | null) => Promise<{ ok: true; email: string | null }>;
+  /** Wave 48 (C2): the censor's ✂ on a flagged line (`POST
+   *  /api/prime/censor {seq}`): 200 is the masked text; 403 / 404 / 409
+   *  throw an `ApiError` with the server's reason. Optional so a test's
+   *  fake session needs none. */
+  censor?: (seq: number) => Promise<CensorResult>;
   leave: () => void;
   /** A notification's room link is waiting to open (SW-PLAY-20). */
   roomLinkPending: boolean;
@@ -608,6 +613,8 @@ export function usePrimeSession(): PrimeSession {
     (email: string | null) => post<{ ok: true; email: string | null }>("/api/prime/letter", { email }, auth!.token),
     [post, auth],
   );
+  // Wave 48 (C2): a hung POST must not leave ✂ on "…" for good.
+  const censor = useCallback((seq: number) => withTimeout(post<CensorResult>("/api/prime/censor", { seq }, auth!.token), SAY_TIMEOUT_MS), [post, auth]);
   const leave = useCallback(() => {
     // Sign out frees the part on the server too, so the same performer can
     // sign in from another phone (the iPhone Home Screen icon) without a
@@ -641,5 +648,5 @@ export function usePrimeSession(): PrimeSession {
   const roomLinkPending = useRoomLinks(threads, auth !== null && ready && view !== null, true);
   const landing = useLandingBrand();
   useTheme(auth === null ? landing.theme : view?.theme);
-  return { auth, view, alert: alerts.alert, dismissAlert: alerts.dismiss, alerts, messages, connected, ready, notice, threads, login, scan, card, say, inviteToChannel, leaveChannel, becomeAdmin, act, lastPressedOn, cue, shareCodex, walletApprove, walletDeny, moderate, setHidden, answerWidget, widgetAnswers, letter, leave, roomLinkPending };
+  return { auth, view, alert: alerts.alert, dismissAlert: alerts.dismiss, alerts, messages, connected, ready, notice, threads, login, scan, card, say, inviteToChannel, leaveChannel, becomeAdmin, act, lastPressedOn, cue, shareCodex, walletApprove, walletDeny, moderate, setHidden, answerWidget, widgetAnswers, letter, censor, leave, roomLinkPending };
 }

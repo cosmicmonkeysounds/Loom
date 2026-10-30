@@ -17,6 +17,10 @@
 //! the room list; the Desk (`host/windows.tsx`, lazy) is the house desk.
 //! The slim NEXT bar shows only while Show is off screen; Guests is in
 //! Show's People.
+//!
+//! Wave 48 (C5): the censor's booth (`PrimeView.filter`) gets the 🔑
+//! LANGUAGE pop-out (the driver), the tray's `🔑 n` and the filter window
+//! (`booth/filter/`), sharing one `useFilter`.
 
 import { useEffect, useMemo, useRef, useState, type ReactElement, type ReactNode, type RefObject } from "react";
 import { ActionRow, InviteSheet, PickerSheet, SessionEnded, useWide } from "../ui/primitives.tsx";
@@ -86,6 +90,8 @@ import { hostWindowShown, type HostWindow } from "../host/show-model.ts";
 import { LazyDeskWindow, hostTaskbarButtons } from "../host/windows.tsx";
 import { NowJobs } from "./now-card.tsx";
 import { CreditsSlot, creditsStartItem, useCredits } from "../credits/lazy.tsx";
+import { useFilter } from "./filter/use-filter.ts";
+import { FilterWindow } from "./filter/window.tsx";
 
 /**
  * A guest's thread as the booth shows it: its rows come from several rooms,
@@ -251,6 +257,8 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
   // title bar (the driver plays the chime), not a pop-out over the card.
   const [missionNews, setMissionNews] = useState<{ id: string; title: string } | null>(null);
   const wake = useWakeLock(host.storage);
+  // Wave 48 (C5): the censor's flagged lines, shared by the pop-out, the tray and the window.
+  const filter = useFilter(s, host.storage);
   // The just-closed pass, ignored for a moment: kept for the sign-in, not
   // per scanner opening, so leaving and reopening the scanner with the pass
   // still held up never re-fires its scan.
@@ -524,6 +532,13 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
       setPwin("mission");
       if (t.activeId !== null) t.back();
     },
+    // Wave 48 (C5): a refusal keeps the pop-out up (its status line says why).
+    censor: (seq) =>
+      filter.censor(seq).then((o) => {
+        if (o.kind === "refused") throw new Error(o.text);
+      }),
+    letGo: (seq) => filter.letGo(seq),
+    filter: () => setLayer({ kind: "filter" }),
   };
   const pressGlobal = (id: string) =>
     s.act(id, null).then(
@@ -845,7 +860,7 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
                     { id: "scan", label: "Scan", icon: <Icon name="scan" />, primary: true, title: "Scan a guest's pass", tour: "scan", onClick: () => setLayer({ kind: "scan" }), active: layer?.kind === "scan" },
                     { id: "guests", label: "Guests", icon: <Icon name="people" />, title: `Every guest (${guests.length}), searchable`, tour: "guests", badge: waiting, onClick: () => setLayer({ kind: "guests" }), active: layer?.kind === "guests" },
                   ]}
-                  tray={<BoothTray view={s.view} onWallet={() => t.open(WALLET_ROOM)} loose={wanted !== null && (!player || claimer) ? loose : null} waiting={popOutWaiting(rung)} onBoard={openBoard} onWaiting={() => setLayer({ kind: "waiting" })} windowed={player || hostWins} />}
+                  tray={<BoothTray view={s.view} onWallet={() => t.open(WALLET_ROOM)} loose={wanted !== null && (!player || claimer) ? loose : null} waiting={popOutWaiting(rung)} onBoard={openBoard} onWaiting={() => setLayer({ kind: "waiting" })} filter={filter.view !== null ? filter.waiting.length : null} onFilter={() => setLayer({ kind: "filter" })} windowed={player || hostWins} />}
                   conn={s.connected ? "live" : "reconnecting"}
                 />
               )}
@@ -862,6 +877,8 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
               // C7: Mission on screen (or this objective's PLAYER SELECT) is the instruction: no pop-out, a blink + chime.
               missionShown={(id) => (player && pwin === "mission" && layer === null && t.activeId === null) || (layer?.kind === "pick" && layer.objective === id)}
               onMissionNews={(o) => setMissionNews({ id: o.id, title: o.title })}
+              filter={filter}
+              filterOpen={layer?.kind === "filter"}
             />
             {layer?.kind === "scan" && (
               <ScannerScreen session={s} admin={admin} gate={passGate} caption={layer.caption} onBoard={openBoard} onClose={closeLayer} onOpenThread={openThread} onPress={noteOwnFire}
@@ -925,6 +942,7 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
               />
             )}
             {layer?.kind === "waiting" && <WaitingWindow onClose={closeLayer} />}
+            {layer?.kind === "filter" && <FilterWindow api={filter} now={storyMs} onClose={closeLayer} />}
             {picking && t.active && (
               <InviteSheet
                 title={`Invite to ${t.active.title}`}

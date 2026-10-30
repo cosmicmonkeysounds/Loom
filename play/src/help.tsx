@@ -4,7 +4,7 @@
 //! `docs/help/helpdoc.ts` parses + searches it, this file only renders.
 //!
 //! Wave 26 (integration): this chunk bundles the **guest** articles only.
-//! The `role: performer` ones (07, 13, 14, 19, 20, 21) are left out of the glob
+//! The `role: performer` ones (07, 13, 14, 19, 20, 21, 22) are left out of the glob
 //! below and live in `help-staff.tsx`, which only the booth and the
 //! director import, so no guest path ever downloads them.
 //! `test/help-chunks.test.ts` keeps both lists equal to the front matter.
@@ -29,6 +29,7 @@ export const GUEST_FILES = import.meta.glob(
     "!../../docs/help/play/19-house-workings.md",
     "!../../docs/help/play/20-house-desk.md",
     "!../../docs/help/play/21-talk-back.md",
+    "!../../docs/help/play/22-language-filter.md",
   ],
   {
     query: "?raw",

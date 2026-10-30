@@ -179,6 +179,20 @@ describe("play help", () => {
     expect(articlesFor("guest").some((a) => a.slug === "talk-back")).toBe(false);
     for (const q of ["talk card", "talk scene", "canned lines", "relaying"]) expect(searchHelp(prime, q)[0]?.article.slug, q).toBe("talk-back");
   });
+
+  it("wave 48: the language filter has its own performer article, in the booth's own words, linked from the performers' pop-outs", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { FILTER_COPY } = await import("../src/booth/filter/model.ts");
+    const text = readFileSync(new URL("../../docs/help/play/22-language-filter.md", import.meta.url), "utf8").replace(/\s+/gu, " ");
+    for (const h of ["## The 🔑 LANGUAGE pop-out", "## The filter window", "## When ✂ doesn't go through"]) expect(text).toContain(h);
+    // The booth's copy (play/src/booth/filter/model.ts, DRAFT w48).
+    for (const t of [FILTER_COPY.censor, FILTER_COPY.letGo, "🔑 All flagged (n)", FILTER_COPY.empty, FILTER_COPY.refused.doors, FILTER_COPY.refused.notFlagged, FILTER_COPY.refused.notCensor, FILTER_COPY.refused.noAnswer, FILTER_COPY.refused.offline, "Tap again to fire", FILTER_COPY.head(3, 12)]) expect(text).toContain(t);
+    expect(readFileSync(new URL("../../docs/help/play/07-performers.md", import.meta.url), "utf8")).toContain("(language-filter.md)");
+    const prime = articlesFor("performer");
+    expect(prime.find((a) => a.slug === "language-filter")?.role).toBe("performer");
+    expect(articlesFor("guest").some((a) => a.slug === "language-filter")).toBe(false);
+    for (const q of ["censor", "language filter", "swear", "flagged words", "password manager", "starred out"]) expect(searchHelp(prime, q)[0]?.article.slug, q).toBe("language-filter");
+  });
 });
 
 describe("wave 26 G2: the guest guide never explains the machinery", () => {

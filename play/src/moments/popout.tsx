@@ -47,6 +47,7 @@ import {
   popReducer,
   preemptDueAt,
   queuedOf,
+  quoteText,
   storedOf,
   stripText,
   trayLine,
@@ -61,7 +62,7 @@ import { registerPopSink } from "./popout-registry.ts";
 import { useMomentsEngineContext } from "./provider.tsx";
 import { typingIn } from "../ui/focus.ts";
 
-export type { PopAction, PopGuest, PopOutAdapter, PopOutSpec, PopOutVerdict, PopTone } from "./popout-model.ts";
+export type { PopAction, PopGuest, PopOutAdapter, PopOutSpec, PopOutVerdict, PopQuotePart, PopTone } from "./popout-model.ts";
 export { raisePopOut, retirePopOut } from "./popout-registry.ts";
 /** Wave 37 (C7): the booth's driver chimes a NEW MISSION it does not pop. */
 export { playTone } from "../alerts.ts";
@@ -453,6 +454,20 @@ export function PopOut({ entry, api, docked = false }: { entry: PopEntry; api: P
             {p}
           </p>
         ))}
+        {/* Wave 48 (C5): the quoted line, its flagged runs marked. */}
+        {spec.quote !== undefined && spec.quote.length > 0 && (
+          <p className="popout-quote">
+            {spec.quote.map((q, i) =>
+              q.mark === true ? (
+                <mark key={i} className="popout-mark">
+                  {q.text}
+                </mark>
+              ) : (
+                <span key={i}>{q.text}</span>
+              ),
+            )}
+          </p>
+        )}
       </div>
       <div className="popout-actions">
         {actions.map((a, i) => {
@@ -573,7 +588,8 @@ export function PopOutTrayList({ onPick }: { onPick?: (key: string) => void }) {
   return (
     <ul className="popout-tray">
       {api.trayEntries.map((e) => {
-        const line = trayLine(e.spec.body);
+        // Wave 48: a pop-out whose words are its quote (🔑 LANGUAGE) shows the quote.
+        const line = trayLine(e.spec.body) ?? trayLine(quoteText(e.spec.quote));
         return (
           <li key={e.spec.key}>
             <button
