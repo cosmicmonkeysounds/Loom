@@ -656,6 +656,7 @@ export function partsOf(id: string, w: number, h: number, d: number): ModelPart[
       cyl("body", "y", 0, h * 0.26, 0, r * 0.8, h * 0.36, r * 0.8);
       cyl("trim", "y", 0, h * 0.5, 0, r * 0.66, h * 0.14, r * 0.66);
       box("trim", 0, h * 0.42, -r * 0.36, r * 0.4, h * 0.22, 0.03);
+      cyl("neon", "y", 0, h * 0.2, 0, r * 0.84, 0.01, r * 0.84);
       cyl("alert", "y", 0, h * 0.62, 0, r * 0.68, h * 0.1, r * 0.68);
       cyl("alert", "y", 0, h * 0.72, 0, r * 0.46, h * 0.1, r * 0.46);
       cyl("alert", "y", 0, h * 0.82, 0, r * 0.28, h * 0.1, r * 0.28);
@@ -864,8 +865,9 @@ export function partsOf(id: string, w: number, h: number, d: number): ModelPart[
       for (let i = 0; i < n; i++) {
         const a = i * 0.7854;
         const y = 0.18 + i * ((h - 0.2) / n);
-        box(i % 8 === 7 ? "neon" : "body", Math.sin(a) * r * 0.55, y, -Math.cos(a) * r * 0.55, Math.abs(Math.sin(a)) * r * 0.5 + 0.22, 0.03, Math.abs(Math.cos(a)) * r * 0.5 + 0.22);
+        box("body", Math.sin(a) * r * 0.55, y, -Math.cos(a) * r * 0.55, Math.abs(Math.sin(a)) * r * 0.5 + 0.22, 0.03, Math.abs(Math.cos(a)) * r * 0.5 + 0.22);
       }
+      cyl("neon", "y", 0, h - 0.04, 0, 0.14, 0.08, 0.14);
       break;
     }
     case "mirror": {
