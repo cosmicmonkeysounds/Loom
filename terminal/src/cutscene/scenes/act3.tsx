@@ -14,7 +14,7 @@
 //! Strikes narration, main.loom's broadcasts) and the slide copy.
 
 import "./act3.css";
-import { useEffect, useLayoutEffect, useRef, useState, type ComponentType, type CSSProperties, type RefObject } from "react";
+import { useEffect, useRef, type ComponentType, type CSSProperties } from "react";
 import { HISTORY_T } from "../clock.ts";
 import type { SceneDef, SceneProps } from "../types.ts";
 import type { ScreenNight, ScreenResultQuestion } from "../../screen.ts";
@@ -41,7 +41,6 @@ import {
   between,
   blink,
   clamp01,
-  confettiEmitters,
   countdownParts,
   ease,
   eased,

@@ -17,7 +17,8 @@
 //!   snap       scissors cross the screen, cutting the heap away; the window
 //!              switches off like an old CRT
 //!   summary    held: who cursed the most, c of f censored, the filter's
-//!              strength, the Password Manager's ⭐, the closed log
+//!              strength, the Password Manager's ⭐, the closed log (no
+//!              confetti: nothing falls over the numbers)
 //!
 //! The numbers and words are the story's (`night.language`, read when G14
 //! was pressed). Nobody flagged: one line. Flagged but none censored: the
@@ -34,8 +35,9 @@ import "./language.css";
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import type { SceneProps } from "../types.ts";
 import type { ScreenLanguage } from "../../screen.ts";
+import { releaseCanvas } from "../../canvas-release.ts";
 import { useCanvas } from "../kit/canvas.ts";
-import { BigNumber, Particles, Stage, Typewriter, Win98Dialog, Win98Window, clamp01, confettiEmitters, ease, eased, lerp, progress, pulse, useSfxCues, type Emitter } from "../kit/index.ts";
+import { BigNumber, Particles, Stage, Typewriter, Win98Dialog, Win98Window, clamp01, ease, eased, lerp, progress, pulse, useSfxCues, type Emitter } from "../kit/index.ts";
 import { AwardEmblem, SpotCones } from "../kit/tv3-parts.tsx";
 import { awardOf } from "../kit/tv3-time.ts";
 import {
@@ -285,6 +287,8 @@ function BreachTide({ t, tm, sched, plan, ring, lite, reduced }: BreachParts) {
   const incremental = lite || reduced;
   const tq = stepT(t, lite, reduced);
   const st = useRef<TideState>({ lines: null, packKey: "", pack: null, sizeKey: "", upTo: Number.NEGATIVE_INFINITY, layer: null });
+  // The offscreen layer goes with the heap (its memory back at once, like every kit canvas).
+  useEffect(() => () => releaseCanvas(st.current.layer), []);
   const ref = useCanvas(
     (ctx, { w, h, dpr }) => {
       const s = st.current;
@@ -532,11 +536,6 @@ function twinkles(n: number, seed: number): Emitter[] {
 const TWINKLE_TV = twinkles(14, 181);
 const TWINKLE_WALL = twinkles(6, 183);
 
-/** One pop from the lower corners when the summary lands (the cannons only, nothing falls over the cards). */
-export function langPop(at: number, lite: boolean): Emitter[] {
-  return confettiEmitters(at, 500, lite ? 0.5 : 1, 181).slice(0, 2);
-}
-
 /** The summary's start: after the snap, or (no breach) straight after the title. */
 export const LANG_SUMMARY_PLAIN = BREACH.cmd + 200;
 
@@ -553,8 +552,8 @@ export function LanguageScene({ t, value, night, sfx, reduced, target }: ScenePr
   const sched = useMemo(() => breachSchedule(tm, !lite && !reduced), [tm, lite, reduced]);
   const ring = useMemo(() => ringOf(plan?.lines ?? []), [plan]);
   const sumAt = breach ? tm.summary : LANG_SUMMARY_PLAIN;
-  const pop = useMemo(() => langPop(sumAt, lite), [sumAt, lite]);
   const parts: BreachParts | null = plan === null ? null : { t, tm, sched, plan, ring, lite, reduced };
+  // The breach's own stretch: the room's cones and stars rest while it runs.
   const during = breach && t >= tm.flow && t < tm.cut;
   useSfxCues(t, sfx, [
     [200, "drumroll", { gain: 0.55 }],
@@ -603,14 +602,13 @@ export function LanguageScene({ t, value, night, sfx, reduced, target }: ScenePr
       ) : (
         <>
           {breach && parts !== null && t >= BREACH.cmd && t < tm.snap + 1200 && <BreachWindow {...parts} portrait={portrait} />}
-          {during && parts !== null && <BreachTide {...parts} />}
+          {breach && parts !== null && t >= tm.leak - 100 && t < tm.cut && <BreachTide {...parts} />}
           {breach && parts !== null && t < tm.snap && <BreachNotes {...parts} portrait={portrait} />}
           {breach && parts !== null && <BreachAsk {...parts} portrait={portrait} />}
           {breach && parts !== null && <BreachCut {...parts} />}
           {t >= sumAt && <Summary t={t} at={sumAt} plan={plan} reduced={reduced} breach={breach} />}
         </>
       )}
-      {!reduced && plan !== null && plan.none === null && t >= sumAt && <Particles t={t} emitters={pop} />}
     </Stage>
   );
 }

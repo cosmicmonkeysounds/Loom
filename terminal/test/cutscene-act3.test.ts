@@ -12,7 +12,7 @@ import { fakeState } from "../src/cutscene/fake.ts";
 import { componentFor } from "../src/cutscene/pick.ts";
 import { previewBeats } from "../src/cutscene/preview.tsx";
 import { ADVICE_CHAT, CEREMONY_ROLL, SCENES as ACT3, bathRows } from "../src/cutscene/scenes/act3.tsx";
-import { LANG_COPY, LANG_SUMMARY_PLAIN, langPop, languagePlan } from "../src/cutscene/scenes/language.tsx";
+import { LANG_COPY, languagePlan } from "../src/cutscene/scenes/language.tsx";
 import { fakeLanguage, FAKE_CENSORED_WORDS, FAKE_FLAGGED_WORDS } from "../src/cutscene/fake.ts";
 import { BREACH, BREACH_NOTES, breachTimes, noteAt, noteLife } from "../src/cutscene/kit/lang-breach.ts";
 import { LANGUAGE_WORDS_MAX, nightOf, type ScreenBathroom, type ScreenLanguage } from "../src/screen.ts";
@@ -223,8 +223,9 @@ describe("every tv3 scene draws", () => {
     const at = (t: number, target: SceneTarget = "tv", reduced = false) => draw(def, target, t, { value: "award_language", night: { language }, reduced });
     expect(at(BREACH.cmd - 1)).not.toContain("tv3-lb-win");
     expect(at(BREACH.cmd + 500)).toContain(LANG_COPY.window);
-    expect(at(tm.flow - 1)).not.toContain("tv3-lb-tide");
-    expect(at(tm.flow + 100)).toContain("tv3-lb-tide");
+    // The heap's canvas only from the leak (nothing lands before it).
+    expect(at(tm.flow + 100)).not.toContain("tv3-lb-tide");
+    expect(at(tm.leak)).toContain("tv3-lb-tide");
     // The status bar counts up; the buffer overflows at the leak.
     expect(at(tm.leak - 1)).not.toContain(LANG_COPY.status.overflow);
     expect(at(tm.leak + 10)).toContain(LANG_COPY.status.overflow);
@@ -318,17 +319,6 @@ describe("every tv3 scene draws", () => {
     expect(draw(def, "wall", HISTORY_T, { value: "award_language", night: { language } })).toContain("471 lines");
     // A pathological word is clipped in the log and the heap, never run off them.
     expect(languagePlan({ ...language, words: ["fuuuuuuuuuuuuuuuuuuuuuuudge", ...language.words.slice(1)] }).lines[0]).toMatchObject({ kind: "word", text: "fuuuuuuuuuuuuuuuu…" });
-  });
-
-  it("the Language Report's one pop is the corner cannons only, when the summary lands", () => {
-    for (const lite of [false, true]) {
-      const pop = langPop(LANG_SUMMARY_PLAIN, lite);
-      expect(pop).toHaveLength(2);
-      for (const e of pop) {
-        expect(e.y).toBeGreaterThan(1);
-        expect(e.start).toBe(LANG_SUMMARY_PLAIN);
-      }
-    }
   });
 
   it("the Language Report off the wire: wave 48b's shape, and a wave 48 server's; a malformed block reads as absent", () => {
