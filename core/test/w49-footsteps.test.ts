@@ -123,6 +123,29 @@ describe("SpatialHub: the footsteps (C3.1)", () => {
     expect(f.told).toEqual([]);
   });
 
+  it("the network's jitter barely moves the pace: walking windows are averaged", () => {
+    // A steady 1.4 m/s, sent every 100 ms, each pose landing up to 80 ms late
+    // (a seeded walk: the same one every run).
+    let seed = 12345;
+    const late = () => (seed = (seed * 1664525 + 1013904223) >>> 0) / 2 ** 32;
+    const speeds = new Set<number>();
+    for (let walk = 0; walk < 8; walk++) {
+      const r = rig();
+      const a = r.begin("ann");
+      let clock = 0;
+      for (let k = 1; k <= 40; k++) {
+        const lands = Math.max(clock, k * 100 + late() * 80);
+        r.wait(lands - clock);
+        clock = lands;
+        r.hub.pose(a.token, pose([2 + (1.4 * k) / 10, 0, 2]));
+        r.hub.flush();
+      }
+      // Past the first window or two, which have nothing to average with.
+      for (const c of r.told.slice(2)) speeds.add(c.walkers[0]!.speed);
+    }
+    expect([...speeds].sort()).toEqual([1.25, 1.5]);
+  });
+
   it("the speakers are judged by the presence room, not the raw one", () => {
     const r = rig();
     const a = r.begin("ann");

@@ -264,7 +264,9 @@ describe("what was told (C3.3)", () => {
     r.hub.forceDescent(3);
     r.hub.reset("reset");
     expect(r.hub.forcedLevel).toBeNull();
-    expect(r.begin("ann")).toMatchObject({ told: {}, descent: 0 });
+    const after = r.begin("ann");
+    expect(after.told).toEqual({});
+    expect(after.descent).toBe(0);
   });
 });
 
@@ -479,7 +481,9 @@ describe("/api/mod/spatial/descent (C3.3)", () => {
     await call(rt, "POST", "/api/mod/spatial/descent", { level: 4 }, { moderator: true });
     rt.restart();
     expect((await call(rt, "GET", "/api/mod/spatial/descent", {}, { moderator: true })).json).toEqual({ forced: null });
-    expect(begin(rt)).toMatchObject({ descent: 0, told: {} });
+    const after = begin(rt);
+    expect(after.told).toEqual({});
+    expect(after.descent).toBe(0);
     rt.dispose();
   });
 
@@ -494,7 +498,9 @@ describe("/api/mod/spatial/descent (C3.3)", () => {
     const next = runtime({ store: new Store(dir) });
     next.restore();
     expect((await call(next, "GET", "/api/mod/spatial/descent", {}, { moderator: true })).json).toEqual({ forced: null });
-    expect(begin(next)).toMatchObject({ descent: 0, told: {} });
+    const after = begin(next);
+    expect(after.told).toEqual({});
+    expect(after.descent).toBe(0);
     next.dispose();
   });
 });
