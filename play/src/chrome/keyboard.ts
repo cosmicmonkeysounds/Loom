@@ -1,23 +1,23 @@
-//! The keyboard rule (wave 13; frozen signature): while the phone's
-//! on-screen keyboard is up for a text field inside the frame, the taskbar
-//! and the NEXT bar step aside so a guest typing to Trabolta keeps the
-//! stream.
-//!
-//! - **The viewport decides, where it can.** With `visualViewport` the
-//!   keyboard is open once the viewport has shrunk ≥ `KEYBOARD_MIN_PX` below
-//!   its height at rest with a text field focused, and closed again when it
-//!   grows back (Android's back key, iOS's ⌄) with the field still focused.
-//!   Without one (an old tablet) focus alone decides.
-//! - **No on-screen keyboard, no hiding**: a fine pointer that can hover (a
-//!   laptop, an editor pane) never hides the taskbar; nor does a focused
-//!   field that never shrinks the viewport (a hardware keyboard).
-//! - **A tap in the footer never moves its own target.** Tapping Send, File
-//!   it or Say it moves focus off the field first; if the taskbar came back
-//!   then, everything anchored to the bottom would jump 44 px and the tap
-//!   would land on nothing. So while a pointer is down inside a
-//!   `.stream-foot` the open layout is held, and focus moving to a button in
-//!   that footer keeps it too; it is let go after the click (or when the
-//!   viewport grows back).
+// The keyboard rule (wave 13; frozen signature): while the phone's
+// on-screen keyboard is up for a text field inside the frame, the taskbar
+// and the NEXT bar step aside so a guest typing to Trabolta keeps the
+// stream.
+//
+// - **The viewport decides, where it can.** With `visualViewport` the
+//   keyboard is open once the viewport has shrunk ≥ `KEYBOARD_MIN_PX` below
+//   its height at rest with a text field focused, and closed again when it
+//   grows back (Android's back key, iOS's ⌄) with the field still focused.
+//   Without one (an old tablet) focus alone decides.
+// - **No on-screen keyboard, no hiding**: a fine pointer that can hover (a
+//   laptop, an editor pane) never hides the taskbar; nor does a focused
+//   field that never shrinks the viewport (a hardware keyboard).
+// - **A tap in the footer never moves its own target.** Tapping Send, File
+//   it or Say it moves focus off the field first; if the taskbar came back
+//   then, everything anchored to the bottom would jump 44 px and the tap
+//   would land on nothing. So while a pointer is down inside a
+//   `.stream-foot` the open layout is held, and focus moving to a button in
+//   that footer keeps it too; it is let go after the click (or when the
+//   viewport grows back).
 
 import { useEffect, useRef, useState, type RefObject } from "react";
 

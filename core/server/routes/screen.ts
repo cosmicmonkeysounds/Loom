@@ -390,7 +390,7 @@ export const ANNOUNCE_RING = 3;
 export function spokenAnnounce(raw: string): string {
   return raw
     .replace(/^[!~]+/u, "")
-    .replace(/[\p{Extended_Pictographic}\u{1F1E6}-\u{1F1FF}\u{FE0F}\u{200D}]/gu, "")
+    .replace(/[\p{Extended_Pictographic}\u{1F1E6}-\u{1F1FF}\u{1F3FB}-\u{1F3FF}\u{FE0F}\u{200D}\u{20E3}]/gu, "")
     .replace(/\s+/gu, " ")
     .trim()
     .slice(0, MAX_ANNOUNCE_TEXT);

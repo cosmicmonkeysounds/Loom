@@ -16,6 +16,8 @@ import { CardActionsProvider } from "../stream/bubble.tsx";
 import { ChannelView, MessageThread } from "../stream/channel-view.tsx";
 import { codexUnseen } from "../stream/codex-seen.ts";
 import { CutsceneStage } from "../cutscene.tsx";
+import { usePhoneVoice } from "../phone-voice.ts";
+import { voiceStartItem } from "../chrome/start-menu.tsx";
 import { useOfflineFor } from "../client.ts";
 import { LazyHelpSheet as HelpSheet } from "../help-lazy.tsx";
 import { usePlayHost } from "../host.ts";
@@ -200,6 +202,7 @@ export function GuestApp({ onLeave, badgeLink = null }: { onLeave: () => void; b
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [badgeWant, s.ready]);
   const wake = useStartWake();
+  const voice = usePhoneVoice();
   // A codex / check-in link opened with no session here: the landing says
   // to type it in the app the guest joined with, unless they pick Join.
   const [landing] = useState(() => (host.ownsPage ? landingLink(window.location.search) : null));
@@ -713,6 +716,7 @@ export function GuestApp({ onLeave, badgeLink = null }: { onLeave: () => void; b
   const now = objectives[0] ?? null;
   const frozen = st.wallet !== undefined && frozenUntil(st.wallet, walletClock) !== null;
   const start = guestStartItems({
+    voice: voiceStartItem(voice),
     name: meName,
     faction: st.faction,
     interactions,

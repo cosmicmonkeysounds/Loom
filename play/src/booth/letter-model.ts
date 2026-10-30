@@ -33,12 +33,13 @@ export function saveLetterDismissed(storage: SessionStorage, key: string): void 
 export type LetterCardState = "none" | "ask" | "onFile";
 
 /** What the card shows: nothing without `letter`; the form while changing
- *  the address; the receipt with one on file; nothing once dismissed. */
+ *  the address; the receipt with one on file; nothing once dismissed or
+ *  skipped at the upload (wave 53). */
 export function letterCardState(letter: PrimeLetter | undefined, email: string | null, dismissed: boolean, editing: boolean): LetterCardState {
   if (letter === undefined) return "none";
   if (editing) return "ask";
   if (email !== null) return "onFile";
-  return dismissed ? "none" : "ask";
+  return dismissed || letter.asked === true ? "none" : "ask";
 }
 
 /** A refused save, in plain words. */

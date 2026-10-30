@@ -48,6 +48,7 @@ export function boothStartItems({
   onSheet,
   onSignOut,
   filter = null,
+  voice = null,
 }: {
   character: string;
   admin: boolean;
@@ -61,12 +62,15 @@ export function boothStartItems({
   onSignOut: () => void;
   /** Wave 48b (C13): the censor's `🔑 Filter strength` (`filterStartItem`), else null. */
   filter?: StartItem | null;
+  /** Wave 53 (C4): the phone's voice switch (`voiceStartItem`), else null. */
+  voice?: StartItem | null;
 }): StartItem[] {
   const items: StartItem[] = [{ id: "help", icon: <Icon name="help" />, label: "Help", onClick: onHelp }];
   if (!embedded && wake.supported) {
     items.push({ id: "wake", icon: <Icon name={wake.on ? "screen-on" : "screen-off"} />, label: wake.on ? "Screen stays on (tap to allow sleep)" : "Keep my screen on", onClick: wake.toggle });
   }
   if (!embedded) items.push({ id: "alerts", icon: <Icon name="bell" />, label: "Get alerts", onClick: () => onSheet("alerts") });
+  if (voice !== null) items.push(voice);
   if (filter !== null) items.push(filter);
   if (knows > 0) items.push({ id: "knows", icon: <BoothIcon name="lore" />, label: `What ${character} knows`, onClick: () => onSheet("knows") });
   if (!admin && !host) items.push({ id: "powers", icon: <BoothIcon name="powers" />, label: "Add moderator powers", onClick: () => onSheet("powers") });
@@ -91,6 +95,7 @@ export function playerStartItems({
   onSignOut,
   credits = null,
   filter = null,
+  voice = null,
 }: {
   character: string;
   wake: Pick<WakeLock, "supported" | "on" | "toggle">;
@@ -103,6 +108,8 @@ export function playerStartItems({
   credits?: StartItem | null;
   /** Wave 48b (C13): the censor's `🔑 Filter strength` (`filterStartItem`), else null. */
   filter?: StartItem | null;
+  /** Wave 53 (C4): the phone's voice switch (`voiceStartItem`), else null. */
+  voice?: StartItem | null;
 }): StartItem[] {
   const items: StartItem[] = credits !== null ? [credits] : [];
   items.push({ id: "help", icon: <Icon name="help" />, label: "Help", onClick: onHelp });
@@ -110,6 +117,7 @@ export function playerStartItems({
     items.push({ id: "wake", icon: <Icon name={wake.on ? "screen-on" : "screen-off"} />, label: wake.on ? "Screen stays on (tap to allow sleep)" : "Keep my screen on", onClick: wake.toggle });
   }
   if (!embedded) items.push({ id: "alerts", icon: <Icon name="bell" />, label: "Get alerts", onClick: () => onSheet("alerts") });
+  if (voice !== null) items.push(voice);
   if (filter !== null) items.push(filter);
   items.push({ id: "people", icon: <Icon name="people" />, label: "People", onClick: onPeople });
   items.push({ id: "signout", icon: <Icon name="leave" />, label: "Sign out", danger: true, confirm: `Sign out of ${character}? The part is freed for another phone.`, onClick: onSignOut });

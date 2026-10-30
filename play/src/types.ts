@@ -399,6 +399,13 @@ export interface PrimeCalls {
 
 export interface PrimeView {
   character: string;
+  /** Wave 53 (C1): this part's arrival is due: report in (`/api/prime/arrive`). */
+  arrive?: boolean;
+  /** Wave 53 (C2): the part is on rails (its upload): the booth is the stage. */
+  cutscene?: boolean;
+  /** Wave 53 (C2): on rails, where it stands and the menus waiting on it. */
+  location?: string;
+  choices?: Array<{ id: number; beat: string; options: string[] }>;
   /** Wave 32 (C5): the talk scene that is on, as the host view carries it
    *  (core's `talk-back.ts` `TalkView`); the host console reads the host
    *  view's copy. Absent from an older server; null when none is on. */
@@ -565,6 +572,8 @@ export interface FilterLevelResult {
 export interface PrimeLetter {
   email: string | null;
   from: string | null;
+  /** Wave 53: the part answered the upload's inbox card: no second ask. */
+  asked?: boolean;
 }
 
 /** One `stat:` line on a booth (wave 21, C3). */

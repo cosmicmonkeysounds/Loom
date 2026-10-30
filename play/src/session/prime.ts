@@ -6,6 +6,7 @@ import { boothAlertFilter, unsolicitedReadout, useAlerts, type Alert, type Alert
 import { ApiError, api, useChatStream, withTimeout } from "../client.ts";
 import { shareErrorText } from "../codex.ts";
 import { usePlayHost } from "../host.ts";
+import { phoneAnnounce } from "../phone-voice.ts";
 import { BOOTH_SIGNED_OUT, SessionRole, eventGone, lifecycleDropsSession, lifecycleNotice, lifecycleStartsNewRun, performerSessionDead } from "../lifecycle.ts";
 import { locationOfRoom, occupantsByLocation, type Presence } from "../presence.ts";
 import { CODEX_ROOM, PINNED_SPACE, QUEST_LOG, STORY_SPACE, WALLET_ROOM } from "../rooms/spaces.ts";
@@ -309,6 +310,13 @@ export interface PrimeSession {
   answerWidget: (seq: number, result: WidgetResult) => Promise<void>;
   /** Cards (by seq) this booth has answered — rendered resolved, never re-asked. */
   widgetAnswers: ReadonlyMap<number, WidgetResult>;
+  /** Wave 53 (C1): report this booth in while `view.arrive` says it is due
+   *  (`POST /api/prime/arrive`). Optional so a test's fake session needs none. */
+  arrive?: () => Promise<unknown>;
+  /** Wave 53 (C2): answer the menu waiting on a part on rails (`POST
+   *  /api/prime/choose`, the guest's `chooseBody`; a 409 `moved` throws and
+   *  the next view has the menu as it is now). Optional, as `arrive`. */
+  choose?: (index: number, menu: { id: number; text: string }) => Promise<unknown>;
   /** Wave 41 (C3): put this character's address on file for Trabolta's
    *  letter (`POST /api/prime/letter`), or take it off (`null`). Optional so
    *  a test's fake session needs none. */
@@ -383,6 +391,7 @@ export function usePrimeSession(): PrimeSession {
   const { messages, connected } = useChatStream(url, {
     onSnapshot: (v) => setView(v as PrimeView),
     onTyping,
+    onAnnounce: (n) => phoneAnnounce(host, n),
     // The crawl decides at arrival (wave 13: a no-op until the stream lane)
     // and the backlog sets its baseline (stream-handlers.ts).
     ...primeStreamHandlers(crawl, auth, (list) => {
@@ -653,5 +662,7 @@ export function usePrimeSession(): PrimeSession {
   const roomLinkPending = useRoomLinks(threads, auth !== null && ready && view !== null, true);
   const landing = useLandingBrand();
   useTheme(auth === null ? landing.theme : view?.theme);
-  return { auth, view, alert: alerts.alert, dismissAlert: alerts.dismiss, alerts, messages, connected, ready, notice, threads, login, scan, card, say, inviteToChannel, leaveChannel, becomeAdmin, act, lastPressedOn, cue, shareCodex, walletApprove, walletDeny, moderate, setHidden, answerWidget, widgetAnswers, letter, censor, filterLevel, leave, roomLinkPending };
+  const arrive = useCallback(() => post("/api/prime/arrive", {}, auth!.token), [post, auth]);
+  const choose = useCallback((index: number, menu: { id: number; text: string }) => post("/api/prime/choose", { index, choice: menu.id, text: menu.text }, auth!.token), [post, auth]);
+  return { auth, view, alert: alerts.alert, dismissAlert: alerts.dismiss, alerts, messages, connected, ready, notice, threads, login, scan, card, say, inviteToChannel, leaveChannel, becomeAdmin, act, lastPressedOn, cue, shareCodex, walletApprove, walletDeny, moderate, setHidden, answerWidget, widgetAnswers, letter, censor, filterLevel, arrive, choose, leave, roomLinkPending };
 }

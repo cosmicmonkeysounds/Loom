@@ -9,6 +9,7 @@ import { rememberClaim, withoutClaim } from "../claim.ts";
 import { ApiError, RequestTimeout, api, useChatStream, withTimeout } from "../client.ts";
 import { pmChannelId, shareErrorText, unlockFromSearch, withoutUnlock } from "../codex.ts";
 import { usePlayHost } from "../host.ts";
+import { phoneAnnounce } from "../phone-voice.ts";
 import { SessionRole, eventGone, guestSessionDead, lifecycleDropsSession, lifecycleNotice, performerSessionDead } from "../lifecycle.ts";
 import { CODEX_ROOM, channelHead } from "../rooms/spaces.ts";
 import { roomOrder } from "../rooms/order.ts";
@@ -460,6 +461,7 @@ export function useGuestSession(): GuestSession {
     onTyping,
     onAgentWait,
     onWaitsReset,
+    onAnnounce: (n) => phoneAnnounce(host, n),
     // The crawl decides at arrival (wave 13: a no-op until the stream lane)
     // and the backlog sets its baseline (stream-handlers.ts).
     ...guestStreamHandlers(crawl, me, (list) => {

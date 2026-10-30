@@ -101,7 +101,7 @@ describe("Trapped in the Internet — wave 21: who plays (S1, S2)", () => {
     const m = Sim.fromSources(SRC).model;
     for (const p of PLAYERS) {
       expect(m.characters.get(p)?.player, p).toBe(true);
-      expect(m.characters.get(p)?.privateSlots, p).toEqual(["covert", "caught"]);
+      expect(m.characters.get(p)?.privateSlots, p).toEqual(expect.arrayContaining(["covert", "caught"])); // wave 53: TRAIT Staff lists them
       expect(isCaller(m, p), p).toBe(false);
     }
     for (const h of HOSTS) {

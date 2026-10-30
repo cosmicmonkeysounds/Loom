@@ -92,14 +92,14 @@ const countdowns = (sim: Sim) => boardFor(sim).countdowns.map((c) => c.label);
 describe("Trapped in the Internet — wave 10 (the Director page's acts and board)", () => {
   it("every admin cue has an act", () => {
     const rows = rowsOf(Sim.fromSources(SRC));
-    expect(rows).toHaveLength(81); // wave 50: 🌀 appended last, rejoining Anytime; wave 48: 🔑 G14 appended last, rejoining G; wave 45: 🚻 G13 appended last, rejoining G; wave 44: 🎬 G12 appended last, rejoining G; wave 32: ⚡ ad_burst appended to Anytime; wave 26: the games' three moments appended to Anytime; wave 11: 👑 and 🔧 appended to Anytime; wave 18b: −☎️ −🪅; wave 20: 🚪 closed / trust + 🕊 autoend appended to E; wave 21: the three staff awards in G, before G11; wave 22: 🔌 Trust the patch bay appended to E
+    expect(rows).toHaveLength(82); // wave 53: ⏭ appended last, rejoining Anytime; wave 50: 🌀 appended last, rejoining Anytime; wave 48: 🔑 G14 appended last, rejoining G; wave 45: 🚻 G13 appended last, rejoining G; wave 44: 🎬 G12 appended last, rejoining G; wave 32: ⚡ ad_burst appended to Anytime; wave 26: the games' three moments appended to Anytime; wave 11: 👑 and 🔧 appended to Anytime; wave 18b: −☎️ −🪅; wave 20: 🚪 closed / trust + 🕊 autoend appended to E; wave 21: the three staff awards in G, before G11; wave 22: 🔌 Trust the patch bay appended to E
     for (const r of rows) expect(r.act, r.id).not.toBe(null);
     // `act:` rides admin cues only — never a performer's or a guest's button.
     const others = (modView(Sim.fromSources(SRC), "open", "x").interactions ?? []).filter((i) => i.who !== "admin");
     for (const i of others) expect(i.act, i.id).toBeUndefined();
   });
 
-  it("the act split is B10 C5 D8 E17 Anytime11 F12 G18 with 44 spine and 37 asides", () => {
+  it("the act split is B10 C5 D8 E17 Anytime12 F12 G18 with 44 spine and 38 asides", () => {
     const acts = cueActs(rowsOf(Sim.fromSources(SRC)));
     const shape = (a: CueAct) => [a.code ?? a.title, a.rows.length, a.spine.length, a.asides.length];
     expect(acts.map(shape)).toEqual([
@@ -107,16 +107,16 @@ describe("Trapped in the Internet — wave 10 (the Director page's acts and boar
       ["C", 5, 2, 3],
       ["D", 8, 5, 3],
       ["E", 17, 2, 15], // wave 20: three door / heart asides appended (no cue number moved); w20b: 🕊 talked_down joins the spine (NEXT while a stand-down waits); wave 22: 🔌 Trust the patch bay
-      ["Anytime", 11, 0, 11], // wave 26: the games' three moments (escape, heart, pickup); wave 32: ⚡ ad_burst; wave 50: 🌀 dream_toggle
+      ["Anytime", 12, 0, 12], // wave 26: the games' three moments (escape, heart, pickup); wave 32: ⚡ ad_burst; wave 50: 🌀 dream_toggle; wave 53: ⏭ wave_staff_through
       ["F", 12, 12, 0],
       ["G", 18, 14, 4], // wave 21: G10a–c before G11; wave 44: 🎬 G12, an aside; wave 45: 🚻 G13, an aside; wave 48: 🔑 G14, an aside
     ]);
     expect(acts.reduce((s, a) => s + a.spine.length, 0)).toBe(44);
-    expect(acts.reduce((s, a) => s + a.asides.length, 0)).toBe(37);
+    expect(acts.reduce((s, a) => s + a.asides.length, 0)).toBe(38);
     // The two `act: Anytime` lines are one act (💡, the reinstallation cues,
     // and wave 11's 👑 / 🔧, appended last so no cue number moved).
     const anytime = acts.find((a) => a.state === "anytime")!;
-    expect(anytime.rows.map((r) => r.id)).toEqual(["restore_the_lights", "the simulation completed", "the golden duck", "reinstallation begun", "restore_the_king", "crew_through_the_door", "simulation escape attempt", "simulation heart reached", "simulation pickup taken", "ad_burst", "dream_toggle"]);
+    expect(anytime.rows.map((r) => r.id)).toEqual(["restore_the_lights", "the simulation completed", "the golden duck", "reinstallation begun", "restore_the_king", "crew_through_the_door", "simulation escape attempt", "simulation heart reached", "simulation pickup taken", "ad_burst", "dream_toggle", "wave_staff_through"]);
     // Titles keep the README's wording.
     expect(acts.map((a) => a.title)).toEqual([
       "Act I: the Desktop, Bingo and the first truth",
@@ -316,7 +316,7 @@ describe("Trapped in the Internet — wave 10 (the Director page's acts and boar
     pressAll(sim, TO_Y2K);
     const watch = boardFor(sim).watch;
     const kernel = watch.filter((w) => w.path?.startsWith("Kernel."));
-    expect(kernel.map((w) => w.label)).toEqual(["Majority", "Lies accepted", "Door code", "Combo A", "Combo B"]);
+    expect(kernel.map((w) => w.label)).toEqual(["Majority", "Lies accepted", "Door code", "Combo A", "Combo B", "Staff uploaded"]);
     for (const w of kernel) expect(w.secret, w.label).toBe(true);
     for (const w of watch.filter((x) => !x.path?.startsWith("Kernel."))) expect(w.secret, w.label).toBeUndefined();
     // The roles count over guests; the featured programs are person rows.
@@ -333,7 +333,7 @@ describe("Trapped in the Internet — wave 10 (the Director page's acts and boar
   it("the board has no throwing lines", { timeout: SLOW }, () => {
     const sim = boot();
     // Every header line was read (all of them sit above the first item).
-    expect(sim.model.watch).toHaveLength(14); // wave 13: the booth card's ROLE flags; wave 20: the heart's talker
+    expect(sim.model.watch).toHaveLength(15); // wave 13: the booth card's ROLE flags; wave 20: the heart's talker; wave 53: Staff uploaded
     expect(sim.model.countdowns).toHaveLength(9);
     const check = (when: string) => {
       for (const l of [...sim.model.watch, ...sim.model.countdowns]) {

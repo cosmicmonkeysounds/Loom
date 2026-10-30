@@ -60,7 +60,8 @@ describe("wave 44: the video card at the upload (C1)", () => {
     const n = new Night();
     const up = n.upload("g1", "Calculator");
     const cards = widgets(up).filter((w) => w.widget !== "captcha");
-    expect(cards.map((w) => w.widget)).toEqual(["poll", "email", "pass"]);
+    // Wave 53 (C4): the voice card comes between the video card and the inbox.
+    expect(cards.map((w) => w.widget)).toEqual(["poll", "poll", "email", "pass"]);
     const card = cards[0]!;
     expect(card.text).toBe("🎥 May video of you from tonight be used?");
     expect(card.params["options"]).toBe("Yes, use video of me | No, leave me out");

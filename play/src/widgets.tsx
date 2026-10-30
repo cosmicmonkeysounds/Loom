@@ -10,6 +10,8 @@
 import { createElement, useMemo, useState, type ComponentType, type ReactNode } from "react";
 import { PassQr } from "./pass-qr.tsx";
 import { lazyPart } from "./guest/lazy-part.tsx";
+import { usePlayHost } from "./host.ts";
+import { setPhoneVoice } from "./phone-voice.ts";
 import type { ChatMessage, WidgetCard } from "./types.ts";
 
 export type WidgetResult = Record<string, string | number | boolean>;
@@ -202,6 +204,10 @@ function Image({ card }: WidgetProps) {
 function Poll({ card, onAnswer, answered }: WidgetProps) {
   const options = (card.params["options"] ?? "Yes | No").split("|").map((o) => o.trim()).filter(Boolean);
   const done = answered !== null && answered !== undefined;
+  const host = usePlayHost();
+  // Wave 53 (C4): `voice: true`, the upload's 🔊 card: the first option turns
+  // the phone's voice on, inside this tap, whichever the story hears.
+  const voice = card.params["voice"] === "true" && !host.embedded;
   return (
     <div className={`widget poll ${done ? "done" : ""}`} role="group" aria-label={card.text}>
       <div className="widget-head">
@@ -219,7 +225,10 @@ function Poll({ card, onAnswer, answered }: WidgetProps) {
             type="button"
             className={`choice ${done && answered["choice"] === o ? "primary" : "ghost"}`}
             disabled={done || !onAnswer}
-            onClick={() => onAnswer?.({ choice: o, index: i })}
+            onClick={() => {
+              if (voice) setPhoneVoice(host.storage, i === 0);
+              onAnswer?.({ choice: o, index: i });
+            }}
           >
             {o}
           </button>

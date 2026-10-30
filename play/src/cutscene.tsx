@@ -1,13 +1,13 @@
-//! The cutscene — the app on rails. While the story has a guest standing in
-//! a `cutscene: true` location (the Optical Drive login of *Trapped in the
-//! Internet*), there is no sidebar, no rooms, no HUD to be overwhelmed by:
-//! one dark stage carrying exactly what is said *to them*, in order, with
-//! the story's cards (a CAPTCHA) and their decision docked underneath.
-//!
-//! When the story moves them on, the stage does not vanish mid-line: a
-//! Continue button appears and the guest steps into the app themselves.
+// The cutscene — the app on rails. While the story has a guest standing in
+// a `cutscene: true` location (the Optical Drive login of *Trapped in the
+// Internet*), there is no sidebar, no rooms, no HUD to be overwhelmed by:
+// one dark stage carrying exactly what is said *to them*, in order, with
+// the story's cards (a CAPTCHA) and their decision docked underneath.
+//
+// When the story moves them on, the stage does not vanish mid-line: a
+// Continue button appears and the guest steps into the app themselves.
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { PERSONAL_STREAM } from "./crawl.ts";
 import { usePlayHost } from "./host.ts";
 import { useNowMoment } from "./moments/provider.tsx";
@@ -78,6 +78,7 @@ export function CutsceneStage({
   over,
   onContinue,
   onPass,
+  corner,
   offline = false,
 }: {
   /** What has been said to this guest, oldest first (`personalStream`). */
@@ -93,8 +94,10 @@ export function CutsceneStage({
   over: boolean;
   onContinue: () => void;
   /** Open the guest's pass (the QR) — the one thing a performer may need
-   *  from them while the app is on rails. */
-  onPass: () => void;
+   *  from them while the app is on rails. A booth (wave 53) has no pass. */
+  onPass?: () => void;
+  /** Wave 53: what stands where My pass does when there is none. */
+  corner?: ReactNode;
   /** The stream has been down a while (`useOfflineFor`): say so, since the
    *  stage has no header dot. */
   offline?: boolean;
@@ -124,16 +127,19 @@ export function CutsceneStage({
   const passLit = now.moment !== null && now.moment.pass === true;
   const openPass = () => {
     if (passLit) now.seen(true);
-    onPass();
+    onPass?.();
   };
   return (
     <div className="cutscene" role="region" aria-label={where ?? "Story"}>
       <header className="cut-head">
         <span className="cut-where">{where ?? ""}</span>
         <span className="cut-title">{title ?? ""}</span>
-        <button type="button" className={`cut-pass${passLit ? " lit" : ""}`} onClick={openPass} title="Your pass — hold it up to be scanned">
-          <span aria-hidden>🎟️</span> My pass
-        </button>
+        {onPass !== undefined && (
+          <button type="button" className={`cut-pass${passLit ? " lit" : ""}`} onClick={openPass} title="Your pass — hold it up to be scanned">
+            <span aria-hidden>🎟️</span> My pass
+          </button>
+        )}
+        {corner}
       </header>
       {offline && (
         <div className="cut-offline" role="status">

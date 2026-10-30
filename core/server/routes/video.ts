@@ -54,8 +54,9 @@ export function videoConsentView(sim: Sim, opts: { isPersona: (id: string) => bo
     rows.push({ id: p.id, name: p.name, video, avatar: opts.avatarOf(p.name), ...(featured !== null && featured !== "none" && featured !== "" ? { featured } : {}) });
   }
   for (const c of sim.model.characters.values()) {
+    // `peek`: only a slot the part declares (`get` reads ROLE's default too).
+    if (sim.world.peek(`${c.id}.${VIDEO_SLOT}`) === null) continue;
     const raw = text(sim, `${c.id}.${VIDEO_SLOT}`);
-    if (raw === null) continue;
     const video: VideoAnswer = raw === "ok" || raw === "out" ? raw : "unasked";
     counts[video] += 1;
     rows.push({ id: c.id, name: c.id, video, avatar: opts.avatarOf(c.id), staff: true });
