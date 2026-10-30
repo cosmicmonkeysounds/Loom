@@ -3736,8 +3736,11 @@ INTERACTION send to the internet
   // w18 (A6): on a marked program's card only (the hook still captures anyone).
   // w21: and on every card while the patch-bay alarm is on (whoever is
   // at the cables goes to the Internet; there is no All buttons… fold now).
-  while: program.corrupted != true and (program.marked == true or Night.alarm_on == true)
-  description: Antivirus. A marked program, found: drag them through the Tube for reinstallation.
+  // And on every card once the Bingo round is over (the first
+  // reinstallation moment): from then on an Antivirus can always send any
+  // program to the Internet, marked or not.
+  while: program.corrupted != true and (program.marked == true or Night.alarm_on == true or Night.bingo_done == true or Night.first_reinstall_done == true)
+  description: Antivirus. A marked program (any program, once the Bingo round is over): drag them through the Tube for reinstallation.
 
 INTERACTION mark as reinstalled
   label: ✅ Mark as reinstalled

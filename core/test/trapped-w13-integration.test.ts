@@ -360,13 +360,14 @@ describe("Trapped in the Internet — wave 13 integration: a host is offered onl
     expect(primeView(sim, "Task Manager", undefined, { host: true }).interactions.find((i) => i.id === "radio_beans")?.hostHeard).toBe(false);
     const norton = guestCardView(sim, [], "Norton Anti-Virus", "g1", false)!.live;
     for (const b of ["accuse", ...PATCH]) expect(norton, b).toContain(b);
-    // Wave 18 (A6): 🛡 only on a marked program's card, ✅ only on a captured one's
+    // Wave 18 (A6): ✅ only on a captured program's card. 🛡 is on a marked
+    // one's, and on every program's once the Bingo round is over, as here
     // (g1 missed the summons in this walk, so it is marked: late).
     expect((sim.world.get("g1.marked") as { value: unknown }).value).toBe(true);
     expect(norton).toContain("send to the internet");
     expect(norton).not.toContain("mark as reinstalled");
     sim.signal("unmark_for_reinstallation", "g1", undefined, "Norton Anti-Virus");
-    expect(guestCardView(sim, [], "Norton Anti-Virus", "g1", false)!.live).not.toContain("send to the internet");
+    expect(guestCardView(sim, [], "Norton Anti-Virus", "g1", false)!.live).toContain("send to the internet");
     sim.signal("mark_for_reinstallation", "g1");
     sim.signal("send to the internet", "g1", undefined, "Norton Anti-Virus");
     expect(guestCardView(sim, [], "Norton Anti-Virus", "g1", false)!.live).toContain("mark as reinstalled");

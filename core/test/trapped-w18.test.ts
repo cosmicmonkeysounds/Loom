@@ -310,17 +310,30 @@ describe("Trapped in the Internet — wave 18: marked is not hindered; the confr
     expect(bigFor(out, "g6").map((m) => m.text)).toContain("🦆 Reinstallation complete. You can follow instructions. Welcome back to the computer.");
   }, SLOW);
 
-  it("🛡 and ✅ are on a card only when they apply (A6)", () => {
+  it("🛡 and ✅ are on a card only when they apply (A6); after the Bingo round 🛡 is on every program's", () => {
     const n = boot();
-    for (const c of TO_TRUTH_1) n.press(c);
+    for (const c of TO_BINGO) n.press(c);
     const live = (g: string) => guestCardView(n.sim, n.chat.all(), "Norton Anti-Virus", g, false)!.live;
+    // Before the first reinstallation moment: only on a marked program.
     expect(live("g1")).not.toContain("send to the internet");
     expect(live("g1")).not.toContain("mark as reinstalled");
-    n.signal("uncertain_answer", "g1", undefined, "Clippy");
+    n.signal("mark_for_reinstallation", "g1", { reason: "a test" });
     expect(live("g1")).toContain("send to the internet");
+    n.signal("unmark_for_reinstallation", "g1", undefined, "Norton Anti-Virus");
+    expect(live("g1")).not.toContain("send to the internet");
+    // Once the Bingo round is over, on every program's card, marked or not.
+    for (const c of TO_TRUTH_1.slice(TO_BINGO.length)) n.press(c);
+    expect(v(n.sim, "Night.bingo_done")).toBe(true);
+    expect(v(n.sim, "g1.marked")).not.toBe(true);
+    expect(live("g1")).toContain("send to the internet");
+    expect(live("g2")).toContain("send to the internet");
     n.signal("send to the internet", "g1", undefined, "Norton Anti-Virus");
+    expect(n.sim.isCaptured("g1")).toBe(true);
     expect(live("g1")).not.toContain("send to the internet");
     expect(live("g1")).toContain("mark as reinstalled");
+    n.signal("mark as reinstalled", "g1", undefined, "Norton Anti-Virus");
+    expect(n.sim.isCaptured("g1")).toBe(false);
+    expect(live("g1")).toContain("send to the internet");
   }, SLOW);
 });
 
