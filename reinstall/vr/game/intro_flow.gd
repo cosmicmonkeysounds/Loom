@@ -107,6 +107,11 @@ func abort() -> void:
 	step = Step.DONE
 
 
+## The test code ([TestCombo]): straight to the end, whoever this is.
+func skip_all() -> Array:
+	return _enter(Step.DONE) if running() else []
+
+
 ## Whether the guest walks and turns in this step (off for the video and
 ## the pointing steps).
 func locomotion() -> bool:

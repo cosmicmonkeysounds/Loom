@@ -25,6 +25,7 @@ import { whyNoStart } from "./no-start.ts";
 import { Joystick } from "./joystick.tsx";
 import { Scare } from "./Scare.tsx";
 import { Talk } from "./Talk.tsx";
+import { useTestCode } from "./test-code.ts";
 import { introSkippable, tutorialCopy, type TutorialHud } from "./tutorial.ts";
 
 export type PlayExit = { kind: "found"; name: string; outcome: FindOutcome } | { kind: "over"; reason: string } | { kind: "idle" } | { kind: "quit" };
@@ -63,6 +64,7 @@ export function Play({
   sfx,
   held = false,
   resume,
+  skipIntro = false,
   takeMic,
   help = null,
   onExit,
@@ -75,6 +77,8 @@ export function Play({
   /** The shared King off the dealt map's GET (absent: an old server — no ⚔). */
   king?: KingState | null;
   sfx: Sfx;
+  /** The test code was typed during the video: no training either. */
+  skipIntro?: boolean;
   /** (wave 40) Resuming a held walk: respawn at `pose`, and skip the intro
    *  when it was already done (`ready`). */
   resume?: { pose: PlayerPose; ready: boolean };
@@ -96,9 +100,10 @@ export function Play({
   // The intro tutorial (wave 33) teaches the controls; with it off, the
   // old help card does. A walk resumed after its intro was done skips it
   // (wave 40) and drops straight back in-house.
-  const tutorialOn = config.intro !== false && resume?.ready !== true;
-  const [helpOpen, setHelpOpen] = useState(!tutorialOn);
+  const tutorialOn = config.intro !== false && resume?.ready !== true && !skipIntro;
+  const [helpOpen, setHelpOpen] = useState(!tutorialOn && !skipIntro);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  useTestCode(hud?.tutorial != null, () => game.current?.skipTutorial());
   const exit = useRef(onExit);
   exit.current = onExit;
   const heldRef = useRef(held);

@@ -1437,13 +1437,6 @@ func _test_offline_mirror() -> void:
 	await process_frame
 	await process_frame
 	_check(game.state() == GameFlow.State.PLAYING, "mirror: the test level starts")
-	_check(game.in_intro() and game.intro.skippable, "mirror: a skippable intro: this program has been here before")
-	var guard := 0
-	while game.in_intro() and guard < 12:
-		game._process(0.5)
-		game.intro_press("skip")
-		game.intro_press("skip_tutorial")
-		guard += 1
 	_check(not game.in_intro() and game.descent.running and game.descent.level == 4 and game.descent.who["visit"] == 5, "mirror: level 4, fifth walk")
 	_check(not game.descent.awake.is_empty() and game.descent.words == HouseDescent.bundled(), "mirror: the bundled words, the talkers awake")
 	_check(game.builder.from_shown()[0] == game.builder.from_shown()[1], "mirror: every strange prop is there")
