@@ -130,8 +130,6 @@ var _grin: Node3D
 var _grin_mat: StandardMaterial3D
 var _grin_eyes_mat: StandardMaterial3D
 var _self: Node3D
-var _self_mat: StandardMaterial3D
-var _self_visor: StandardMaterial3D
 var _door: Dictionary = {}
 ## Where the follower's steps and the growl come from.
 var _behind: AudioStreamPlayer3D
@@ -497,11 +495,10 @@ func _draw(delta: float) -> void:
 				game.sfx.play_at(_behind, "growl", 0.9)
 		"self":
 			var alpha := fade_at(_v_t, _v_dur)
-			_self_mat.albedo_color.a = 0.5 * alpha
-			_self_visor.albedo_color.a = 0.8 * alpha
 			Ghosts.set_pale_alpha(_self, 0.9 * alpha)
 			var f := clampf(_v_t / SELF_WALK_S, 0.0, 1.0)
 			_self.position = (_v["from"] as Vector3) + (_v["dir"] as Vector3) * float(_v["walk"]) * f
+			Ghosts.place_pale(_self)
 			if _v_t >= SELF_WALK_S:
 				# It stops and looks back.
 				var turn := clampf(_v_t - SELF_WALK_S, 0.0, 1.0)
@@ -867,9 +864,7 @@ func _ensure_built() -> void:
 	_duck.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(_duck)
 	_build_grin()
-	_self_mat = fade_material(Color(0.85, 0.95, 0.95))
-	_self_visor = fade_material(Color("#e8fbff"))
-	_self = Ghosts.make_pale(_self_mat, _self_visor)
+	_self = Ghosts.make_pale()
 	_self.name = "PaleSelf"
 	add_child(_self)
 	_door = make_door()

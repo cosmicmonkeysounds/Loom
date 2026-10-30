@@ -257,21 +257,9 @@ function dressPale(duck: Duck): void {
   });
 }
 
-/** The program's copy: pale, with nobody behind the visor. */
+/** The program's copy: its own swarm, untouched by the fog, nameless. */
 function dressSelf(avatar: Avatar): void {
-  avatar.object.traverse((o) => {
-    if (o.name === "avatar:ring") o.visible = false;
-    const m = (o as Mesh).material as MeshLambertMaterial | undefined;
-    if (m === undefined) return;
-    m.fog = false;
-    m.needsUpdate = true;
-    if (o.name === "avatar:body") {
-      m.color.set("#e9eef2");
-      m.emissive?.set("#6c747e");
-      m.userData["full"] = 0.85;
-    }
-    if (o.name === "avatar:visor") m.color.set("#050508");
-  });
+  if (avatar.tag !== null) avatar.tag.visible = false;
 }
 
 export class Visions {
@@ -509,7 +497,7 @@ export class Visions {
     const first = this.track[0]!;
     this.copy.setPose(first.p, first.yaw, 0);
     this.copy.object.visible = true;
-    fadeAll(this.copy.object, 0);
+    this.copy.setPresence(0);
     return true;
   }
 
@@ -617,7 +605,7 @@ export class Visions {
         this.updateDark(run, v);
         return;
       case "self":
-        this.updateCopy(run, v);
+        this.updateCopy(dt, run, v);
         return;
       case "door":
         this.door.setOpacity(envelope(run.s, run.length, 1.2, 1.5));
@@ -687,7 +675,7 @@ export class Visions {
     if (eyes !== null && eyes.visible) eyes.material.opacity = envelope(after, 4.5, 0.5, 1.2);
   }
 
-  private updateCopy(run: VisionRun, v: VisionView): void {
+  private updateCopy(dt: number, run: VisionRun, v: VisionView): void {
     const walked = (Math.min(run.s, SELF_WALKS_S) / SELF_WALKS_S) * (this.track.length - 1);
     const at = this.track[Math.round(walked)];
     if (at === undefined) return;
@@ -695,7 +683,8 @@ export class Visions {
     const turn = smooth((run.s - SELF_WALKS_S) / SELF_TURNS_S);
     const yaw = wrapYaw(at.yaw + wrapYaw(toward - at.yaw) * turn);
     this.copy.setPose(at.p, yaw, 0);
-    fadeAll(this.copy.object, envelope(run.s, SELF_GONE_S, 0.9, 0.22));
+    this.copy.setPresence(envelope(run.s, SELF_GONE_S, 0.9, 0.22));
+    this.copy.update(dt);
   }
 
   private updateFaces(dt: number, v: VisionView, hidden: boolean): void {

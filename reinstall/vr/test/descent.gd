@@ -742,13 +742,13 @@ func _test_self() -> void:
 	_check(not d._begin("self", 1, house, hall), "self: a picture not here yet is skipped too")
 	var url: String = link.avatar_url("k1")
 	var img := Image.create(8, 8, false, Image.FORMAT_RGBA8)
-	game.ghosts.avatars.get("_textures")[url] = ImageTexture.create_from_image(img)
+	game.ghosts.avatars.get("_bares")[url] = ImageTexture.create_from_image(img)
 	game.speech.stop()
 	_check(d._begin("self", 1, house, hall), "self: the player's own picture")
 	var pale := d.pale_self()
 	var start := pale.position
 	var yaw0 := pale.rotation.y
-	_check(pale.visible and (pale.get_node("Picture") as Sprite3D).texture != null, "self: a pale copy, wearing it")
+	_check(pale.visible and Ghosts.pale_picture(pale) != null and pale.get_node_or_null("Swarm") != null, "self: a swarm of the program, wearing it")
 	_frames(game, int(3.7 * 72))
 	_check(pale.position.distance_to(start) > 0.5, "self: it walks on ahead")
 	var stopped := pale.position
