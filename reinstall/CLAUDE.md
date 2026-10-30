@@ -22,7 +22,7 @@ and is played only at a wall terminal, never in these games.
 ```bash
 pnpm --filter loom-reinstall dev          # :5176, proxies /api + /e to LOOM_SERVER (default :7000)
 pnpm --filter loom-reinstall build        # dist/ (base /reinstall/)
-pnpm --filter loom-reinstall test         # vitest: 678 tests, 51 files
+pnpm --filter loom-reinstall test         # vitest: 700 tests, 55 files
 pnpm --filter loom-reinstall typecheck
 pnpm dev --reinstall                      # repo root: the dev stack + this Vite on :5176
 pnpm test:vr                              # = reinstall/vr/test/run.sh [godot]: 1237 checks + quest.sh 42
