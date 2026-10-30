@@ -11,8 +11,9 @@ Wire contract (core/server/event-runtime.ts):
   - alexa: `POST /api/mod/tts {text, voice?, speed?}` → audio bytes (mp3/wav)
   - audio: `GET /api/mod/audio?after=&tests=&stops=&plays=&wait=` (a
     long-poll: the event's audio.json + speaker tests, stops and the house
-    desk's plays), `POST /api/mod/audio/report {health?, acks?}` (wave 25)
-    and `GET /api/spatial/house`
+    desk's plays), `POST /api/mod/audio/report {health?, acks?}` (wave 25),
+    `GET /api/mod/audio/walkers` (SSE, wave 49: who walks in the games, and
+    on which speakers) and `GET /api/spatial/house`
   - agents: `GET /api/agent/stream?characters=…&name=…` (SSE) and
     `POST /api/agent/reply {id, say, adjust, worker}`
 
@@ -81,6 +82,10 @@ class ModClient:
     def feed_url(self, client_id: str = "stagehand") -> str:
         """The lean mod feed, named `client_id` in the server's presence."""
         return f"{self.base_url}{self.path('/events')}?role=mod&id={client_id}&lean=1"
+
+    def stream_url(self, p: str) -> str:
+        """An event route's full URL, for `stream` / `run_stream`."""
+        return f"{self.base_url}{self.path(p)}"
 
     async def ensure_token(self) -> None:
         """Exchange the mod passcode for a session token if needed."""
@@ -203,9 +208,15 @@ async def run_stream(
     label: str,
     on_connect=None,  # Callable[[], None] | None
     max_backoff: float = 30.0,
+    stop_on: tuple[int, ...] = (),
 ) -> None:
     """Hold an SSE stream forever: reconnect with exponential backoff, and
-    drop a refused token so the next attempt logs in again."""
+    drop a refused token so the next attempt logs in again.
+
+    `stop_on` lists the statuses that mean this route will never answer (a
+    404 from a server older than it): `run_stream` then returns, quietly,
+    and the caller says what that means. A failed login is no such answer
+    (no event yet is not an old server): with no token in hand it retries."""
     backoff = 1.0
 
     def opened() -> None:
@@ -224,6 +235,8 @@ async def run_stream(
                     await result
             log.warning("%s stream closed — reconnecting in %.0fs", label, backoff)
         except ModApiError as err:
+            if err.status in stop_on and client.token is not None:
+                return
             if err.status in (401, 403):
                 client.forget_token()
             log.warning("%s stream refused (%s) — retrying in %.0fs", label, err, backoff)

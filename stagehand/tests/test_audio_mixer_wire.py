@@ -235,7 +235,7 @@ def test_the_meters_body(tmp_path):
     assert set(body) == {"outputs", "inputs", "sources", "buses", "music"}
     assert len(body["outputs"]) == 16 and body["outputs"]["1"] == pytest.approx(20 * np.log10(0.2), abs=0.2)
     assert body["outputs"]["16"] == -120.0 and body["inputs"]["3"] == -120.0
-    assert set(body["buses"]) == {"music", "tracks", "sfx", "announce"}
+    assert set(body["buses"]) == {"music", "tracks", "sfx", "steps", "announce"}
     assert body["buses"]["music"]["1"] == pytest.approx(20 * np.log10(0.2), abs=0.2) and body["buses"]["sfx"]["1"] == -120.0
     assert body["sources"]["announce"] == 0.0
     music = body["music"]

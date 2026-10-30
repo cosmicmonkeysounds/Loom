@@ -192,7 +192,8 @@ game), or use the bundled script (VR).
 ## C4. stagehand (lane `stagehand`)
 
 Files: `stagehand/src/stagehand/audio/footsteps.py` (new), `audio/module.py`,
-`audio/mixer.py` (a strip), `stagehand/tests/`, `stagehand/README.md`.
+`audio/mixer.py` (a strip), `audio/mix.py`, `modapi.py` (`run_stream(stop_on=)`,
+`ModClient.stream_url`), `stagehand/tests/`, `stagehand/README.md`.
 
 - `FootstepBank`: synthesised at the device rate with numpy, seeded, no files:
   at least 6 takes each of `floor`, `tile`, `grass`, each take a heel thump
@@ -204,7 +205,8 @@ Files: `stagehand/src/stagehand/audio/footsteps.py` (new), `audio/module.py`,
   twice running, every `stepPaceS(speed)` seconds with ±8 % jitter (a Python
   mirror of `stepPaceS`, pinned by a test against the constants). Each step is
   one or two `mixer.play` voices: the clear outputs, the muffled outputs, per
-  speaker gain from `db` plus the file's trims (`output_gains`). A walker gone
+  speaker gain from `db` (`output_gains`; the speakers' trims stay the outputs',
+  `set_trim`, as for every sound). A walker gone
   from the frame stops after its current step. No frame for
   `FOOTSTEPS_STALE_MS`: everyone stops.
 - `_walkers_loop`: `run_stream` on `/api/mod/audio/walkers`, as `_feed_loop`. A

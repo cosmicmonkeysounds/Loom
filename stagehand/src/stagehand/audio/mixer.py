@@ -27,7 +27,8 @@ the interface's outputs from
     over 50 ms so a trim edit is heard at once, even on an hour-long bed;
   - the house **mix** (wave 40, `set_mix`): each voice's **strip** (`music`
     the beds, `tracks` the soundtrack's songs, `sfx` every other sound,
-    `announce` the announcements and their chime, `test` the speaker tests)
+    `steps` the programs' footsteps (wave 49, sfx-bus voices), `announce`
+    the announcements and their chime, `test` the speaker tests)
     has a linear gain per output, applied to its chunk after the duck and
     ramped over `TRIM_S`; `test` is never mixed (a muted room can still be
     walked). The matrix's target is `routes × input gain` (the same
@@ -67,10 +68,11 @@ import numpy as np
 
 BUSES = ("sfx", "music", "announce", "test")
 #: The mix's strips (wave 40): a voice's own, by default its bus's; `tracks`
-#: is an sfx-bus voice the soundtrack lists under `tracks:`.
-STRIPS = ("music", "tracks", "sfx", "announce", "test")
+#: is an sfx-bus voice the soundtrack lists under `tracks:`, `steps` one of
+#: the programs' footsteps (wave 49, `footsteps.py`).
+STRIPS = ("music", "tracks", "sfx", "steps", "announce", "test")
 #: The strips the mix moves (in its gain table's order); `test` never is.
-MIXED = STRIPS[:4]
+MIXED = STRIPS[:-1]
 #: The strip metering stops this long after the last `take_live`.
 LIVE_IDLE_S = 2.0
 #: The buses priority ducking acts on (in the depth vectors' order).

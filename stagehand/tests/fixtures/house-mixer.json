@@ -10,6 +10,8 @@
     { "name": "the floor is silent", "levels": { "spk:living-sub": { "db": -60, "mute": false } }, "target": { "source": "music", "room": "desktop", "speaker": "living-sub" }, "want": null },
     { "name": "an input source", "levels": { "src:in:trabolta": { "db": 4, "mute": false }, "room:optical-drive/src:in:trabolta": { "db": -10, "mute": false } }, "target": { "source": "in:trabolta", "room": "optical-drive", "speaker": "optical-drive" }, "want": -6 },
     { "name": "an output with no speaker reads master and source", "levels": { "master": { "db": -1, "mute": false }, "src:tracks": { "db": 3, "mute": false }, "room:desktop": { "db": -20, "mute": false } }, "target": { "source": "tracks", "room": null, "speaker": null }, "want": 2 },
+    { "name": "the footsteps have their own strip", "levels": { "master": { "db": -1, "mute": false }, "src:sfx": { "db": -20, "mute": false }, "src:steps": { "db": 4, "mute": false }, "room:start-bar/src:steps": { "db": -5, "mute": false } }, "target": { "source": "steps", "room": "start-bar", "speaker": "kitchen-l" }, "want": -2 },
+    { "name": "muted footsteps leave the sound effects", "levels": { "src:steps": { "db": 0, "mute": true } }, "target": { "source": "sfx", "room": "desktop", "speaker": "living-l" }, "want": 0 },
     { "name": "the sum may pass the range", "levels": { "master": { "db": 10, "mute": false }, "src:sfx": { "db": 10, "mute": false } }, "target": { "source": "sfx", "room": "desktop", "speaker": "living-l" }, "want": 20 }
   ]
 }

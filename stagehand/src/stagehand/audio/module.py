@@ -4,6 +4,7 @@
                                        the house mix, music commands, mixWatch)
                   POST /api/mod/audio/report  (acks for plays + tests, the health)
                   POST /api/mod/audio/meters  (live meters while a mixer panel watches)
+                  GET /api/mod/audio/walkers  (SSE: who walks in the games, and where)
                   GET /api/spatial/house  (rooms → LOCATIONs)
                   mod feed  sim directive sfx / announce, lifecycle
          │
@@ -16,6 +17,7 @@
                    ├─ stops: Run's ■ Stop house sounds (`stops=`) / show/audio/stop
                    ├─ plays: the house desk's sound / say steps (`plays=`, wave 25) / show/audio/play
                    ├─ the soundtrack: music beds per scene (`cue music_<scene>`, wave 38)
+                   ├─ the footsteps: the games' programs, heard walking (wave 49)
                    └─ the matrix: inputs (mics, the TV, a line) → outputs, audio.json `routes`;
                       every input metered, a `role` input ducks the music (its sidechain)
 
@@ -91,6 +93,15 @@ catch-up now). While `mixWatch` is true (or the last meters answer said
 peak per output, and the soundtrack's status); `watch: false` stops it, a
 404 (an older server) stops it for good.
 
+The footsteps (wave 49, `footsteps.py`, docs/loom-w49-contract.md C4): the
+server decides which speakers carry each program walking in the games, and
+how loud, and streams that as `walkers` frames (`GET /api/mod/audio/walkers`,
+on every change, every 2 s while anyone walks). The router plays the steps
+itself on a clock of its own (`_walkers_clock`, on this thread, never the
+audio callback), so nothing crosses the wire per step. They are sfx-bus
+voices on the mix's `steps` strip, and need `play_sounds`. A 404 (an older
+server) is logged once and the loop stops until a restart.
+
 Survives the uplink: the last audio.json, house.json and mix are kept in
 `cache_dir`, so a restart with the internet down still routes; sounds are
 local files; MQTT (`show/announce`, `show/chime`, `show/audio/test`,
@@ -124,6 +135,7 @@ from ..show.config import MqttConfig
 from ..show.directives import parse_directive, unquote
 from .config import AudioConfig, parse_audio_section
 from .engine import Engine, device_name, enable_host_api, layout_problem, probe, with_host_api
+from .footsteps import WALKERS_TICK_S, FootstepBank, StepRig, Walkers
 from .mix import MixGains, mix_gains, mix_levels_of
 from .mixer import Mixer, SidechainSource, lin_to_db
 from .mp3len import length_problem as mp3_length_problem
@@ -186,6 +198,8 @@ MUSIC_STATUS_EVERY_S = 1.0
 MUSIC_STALE_S = 10.0
 #: The mix in force, kept beside audio.json in `cache_dir`.
 MIX_CACHE = "mix.json"
+#: (wave 49) The stream of who is walking in the games.
+WALKERS_PATH = "/api/mod/audio/walkers"
 
 
 def play_gain(value: Any) -> float:
@@ -442,6 +456,10 @@ class AudioRouter:
         self._meters_warned = 0.0
         self.meters_sent = 0
         self._music_status: tuple[float, dict[str, Any] | None] | None = None
+        #: The footsteps (wave 49): who walks, and the takes at the stream's
+        #: rate (built when the first walker comes, off this thread).
+        self.walkers = Walkers(self._step_rig)
+        self.steps: FootstepBank | None = None
 
     # -- describe / check ----------------------------------------------------
 
@@ -457,6 +475,7 @@ class AudioRouter:
             f"config   : the server's audio.json (long-poll {cfg.poll_wait:.0f}s)" + (f"; local {cfg.config_file}" if cfg.config_file else "") + f"; cache {cfg.cache_dir}",
             f"desk     : plays the house desk's sound / say steps; acks + health (every {cfg.health_s:g}s) to {REPORT_PATH}",
             f"mixer    : the server's live mix (cached in {MIX_CACHE}); music commands; meters every {METERS_EVERY_S:g}s to {METERS_PATH} while a panel watches",
+            f"steps    : {f'the walkers on {WALKERS_PATH}, synthesised here; footstep_<surface>_<n>.wav in sounds_dir outranks a take' if cfg.play_sounds else 'not here: play_sounds is false'}",
             f"mqtt     : {f'{cfg.mqtt.host}:{cfg.mqtt.port} ← {cfg.test_topic}, {cfg.stop_topic}, {cfg.play_topic}' + (f', {cfg.music_topic}' if cfg.soundtrack is not None else '') + (f', {cfg.announce_topic}, {cfg.chime_topic}' if cfg.announce else '') if cfg.mqtt else '— (tests, stops + announcements from the server only)'}",
             f"levels   : master {cfg.master_db:+.0f} dB, limit {cfg.limit_db:+.0f} dBFS",
             "priority : "
@@ -1044,6 +1063,7 @@ class AudioRouter:
         (nothing was playing to stop)."""
         mixer = self.mixer
         log.info("🔇 audio: %s stopped the house sounds%s", by or "someone", " and the announcements" if announce else "")
+        self.walkers.clear()  # the next step would land in the fade; a new frame brings them back
         if mixer is not None:
             mixer.stop(bus="sfx", fade_s=STOP_FADE_S)
             mixer.stop(bus="test", fade_s=STOP_FADE_S)
@@ -1249,6 +1269,7 @@ class AudioRouter:
         kind = str(doc.get("kind", "")) if isinstance(doc, dict) else ""
         if kind not in RESTART_KINDS:
             return
+        self.walkers.clear()
         if self.mixer is not None:
             log.info("lifecycle %s: every sound fades out", kind)
             self.mixer.stop(bus="sfx", fade_s=RESTART_FADE_S)
@@ -1686,6 +1707,60 @@ class AudioRouter:
 
         await run_stream(mod, mod.feed_url("stagehand-audio"), on_frame, label="audio feed", on_connect=lambda: self.schedule_music_catch_up("feed"))
 
+    # -- the footsteps (wave 49) -----------------------------------------------------
+
+    def _step_rig(self) -> StepRig | None:
+        """What a step plays through, or None: no stream, no speakers, or
+        the takes not built yet (`Walkers` then skips the step, silently)."""
+        mixer = self.mixer
+        if mixer is None or self.doc is None or not self.doc.speakers or self.steps is None or not self.engine_running():
+            return None
+        return StepRig(mixer, self.doc, self.steps)
+
+    def _build_steps(self, rate: int) -> FootstepBank:
+        return FootstepBank(self.cfg.sounds_dir, rate, **({"decode": self._decode} if self._decode else {}))
+
+    async def _walkers_clock(self) -> None:
+        """The steps' clock, on this thread and never in the audio callback:
+        a step is a `Mixer.play`, which only queues. The takes are built
+        once someone walks, and off this thread. A failing tick is logged
+        once: at this rate it would otherwise be the whole log."""
+        failed = False
+        while True:
+            await asyncio.sleep(WALKERS_TICK_S)
+            try:
+                mixer = self.mixer
+                if self.walkers.count and mixer is not None and (self.steps is None or self.steps.rate != mixer.rate):
+                    self.steps = await asyncio.to_thread(self._build_steps, mixer.rate)
+                self.walkers.tick(time.monotonic())
+            except Exception:  # noqa: BLE001 — a bad step must not end the walkers
+                if not failed:
+                    log.exception("footsteps tick failed")
+                failed = True
+
+    async def _walkers_loop(self, mod: ModClient) -> None:
+        """Hold `GET /api/mod/audio/walkers`, as `_feed_loop` holds the feed.
+        A router that plays no sounds plays no steps; a 404 (an older server)
+        is logged once and the loop stops until a restart."""
+        if not self.cfg.play_sounds:
+            return
+
+        def on_frame(event: str, data: str) -> None:
+            if event != "walkers":
+                return
+            try:
+                doc = json.loads(data)
+            except ValueError:
+                return
+            self.walkers.apply(doc)
+
+        clock = asyncio.ensure_future(self._walkers_clock())
+        try:
+            await run_stream(mod, mod.stream_url(WALKERS_PATH), on_frame, label="walkers", stop_on=(404,))
+        finally:
+            clock.cancel()
+        log.info("the server has no %s (an older release) — no footsteps until this router restarts", WALKERS_PATH)
+
     def check_stream(self) -> bool:
         """One watchdog look: reopen a closed stream, or one whose callback
         stopped (a replugged interface can leave PortAudio "active" but
@@ -1755,6 +1830,8 @@ class AudioRouter:
             "music": self.music_status(),
             # Wave 40: the house mix in force (`stagehand music status` prints it).
             "mix": {"seq": self.mix_seq, "levels": mix_wire(self.mix_levels)},
+            # Wave 49: how many programs are heard walking now.
+            "walkers": self.walkers.count,
         }
 
     def sound_lengths(self) -> dict[str, int]:
@@ -1798,6 +1875,7 @@ class AudioRouter:
                 (" | LAYOUT MOVED (device.expect)" if h["layout"] == "moved" else "")
                 + (f" | {len(h['placeholders'])} placeholder(s)" if h["placeholders"] else "")
                 + (f" | underruns {h['underruns']}" if h["underruns"] else "")
+                + (f" | {h['walkers']} walking" if h["walkers"] else "")
                 + (f" | ducking: {', '.join(f'{k} {v:.0%}' for k, v in h['sources'].items() if v > 0)}" if any(v > 0 for v in h["sources"].values()) else "")
                 + (f" | music {h['music']['scene'] or '—'}: " + (", ".join(f"{b['playlist']} {b['track'] or '—'}" for b in h["music"]["beds"]) or "no bed") if h.get("music") else ""),
                 f" | no file: {', '.join(h['missing'])}" if h["missing"] else "",
@@ -1973,6 +2051,7 @@ class AudioRouter:
             asyncio.ensure_future(self._health_loop()),
             asyncio.ensure_future(self._announce_worker()),
             asyncio.ensure_future(self._meters_loop()),
+            asyncio.ensure_future(self._walkers_loop(ctx.mod)),
         ]
         if self.cfg.announce and self.lock_fd is None:
             tasks.append(asyncio.ensure_future(self._voice_lock_loop()))
