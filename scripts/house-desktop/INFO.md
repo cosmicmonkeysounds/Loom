@@ -53,10 +53,9 @@ tools are elsewhere:
 1. **The Zigbee2MQTT frontend: http://localhost:8080.** Only on this
    Desktop (Z2M runs here, not on the VPS). Rename a bulb (its device page
    → ✏) and set *Exposes → Power-on behavior → `on`*.
-2. **The map editor: https://app.mapsandducks.com/reinstall/map.** Not
-   linked from the editor's sidebar; open the URL directly. It asks for
-   the **mod passcode** once per device. Its **💡 Lights** tab is the main
-   lights page:
+2. **The map editor: Run → House → 🗺 Map** in the editor (the Run page's
+   **🗺 Edit the map** goes there, signed in by your run; it asks for no
+   passcode). Its **💡 Lights** tab is the main lights page:
    - a "getting a bulb working" checklist;
    - **📡 Pair new device**, with a countdown;
    - **Devices**, where a newly joined bulb is marked **★ new**;

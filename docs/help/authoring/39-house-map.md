@@ -2,15 +2,28 @@
 title: The house map — drawing the house from a survey
 section: Live Shows
 order: 39
-keywords: house map, house desk, map editor, voice link, microphone, mic, floor plan, survey, measure, rooms, doors, yard, outdoor, tent, shed, stairs, floors, basement, upstairs, duck spot, spawn, terminal, location, reinstall, house.json, walkable, unreachable, undo, speaker, speakers, house speakers, audio, audio.json, Audio tab, interface, MOTU, 828x, ADAT, expander, expect, layout, inputs, ducks as, reach, sidechain, subwoofer, outputs, routing, matrix, zone, cue, announcements, TV voice, tablets, terminals, announce, test, router, stagehand, placeholder, stop, light, lights, bulb, lights.json, Lights tab, Zigbee, Zigbee2MQTT, Z2M, pair, pairing, permit join, device, identify, colour, look, looks, cue, safety light, WLED, zone
+keywords: house map, house desk, map editor, Run → House, open in a new tab, open in browser, descent, level, voice link, microphone, mic, floor plan, survey, measure, rooms, doors, yard, outdoor, tent, shed, stairs, floors, basement, upstairs, duck spot, spawn, terminal, location, reinstall, house.json, walkable, unreachable, undo, speaker, speakers, house speakers, audio, audio.json, Audio tab, interface, MOTU, 828x, ADAT, expander, expect, layout, inputs, ducks as, reach, sidechain, subwoofer, outputs, routing, matrix, zone, cue, announcements, TV voice, tablets, terminals, announce, test, router, stagehand, placeholder, stop, light, lights, bulb, lights.json, Lights tab, Zigbee, Zigbee2MQTT, Z2M, pair, pairing, permit join, device, identify, colour, look, looks, cue, safety light, WLED, zone
 ---
 
 The reinstallation games and the wall terminals share one **house map**
 (`house.json` — see [live verbs](33-live-verbs.md)): every room a
 rectangle (or a rectilinear polygon) on a floor, doors in the walls
 between them, stairs, the terminals where they hang, and the spots the
-golden duck may hide. You draw it at **`/reinstall/map`** on a device set
-up with the moderator passcode. Tick **Edit** to change it.
+golden duck may hide. You draw it in **Run → House → 🗺 Map**, with a
+rehearsal running: your own run signs you in, so nothing asks for a
+passcode. Tick **Edit** to change it.
+
+Three ways lead there: **🗺 Edit the map** on the Run page's House map card,
+*Open the house map* in the command palette (⌘⇧P), and the banner on a
+`house*.json` open in Writing. With no run they tell you to start a
+rehearsal. Your edits are kept while you visit another page or mode, until
+the run ends; save before you leave for long.
+
+**Open in a new tab ↗** beside the map opens the same editor on its own page
+(`/reinstall/map`), for a second screen. The desktop app can't show the map's
+questions, so there it opens in your browser instead. A device that goes
+straight to `/reinstall/map` with no link is set up with the moderator
+passcode, and asks for it again before its first save.
 
 ## Measuring
 

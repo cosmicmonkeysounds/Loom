@@ -99,7 +99,7 @@ Path alias `@/*` → `src/*`. Keep components small and put logic in pure
 | `terminals.ts` | Run → Terminals heartbeat list, chimes, the house map for the setup builder |
 | `house-audio.ts` | The router status and *Stop house sounds* |
 | `cue-designer.ts` | Run → House → Cue designer (wave 30): reads `/api/mod/lights` + the map every 15 s while not editing, the lights draft (`base`, 409 `stale` → ask), selection, save / save to project, ▶ Test (save first when dirty), ▶ Try a step, auditions; every test asks first while live. `createCueDesignerStore(deps)` takes fakes in tests |
-| `house-view.ts` | Run → House's view (Desk / Cue designer / Setup / Mixer) and the Desk's right column |
+| `house-view.ts` | Run → House's view (Desk / Cue designer / Setup / Mixer / Map), the Desk's right column, and the Map's two flags (`mapEvent`: the run it was opened for; `mapShown`: on screen now) |
 | `house-mixer.ts` | Run → House → 🎚 Mixer (wave 40): `GET /api/mod/audio/mixer` every 1 s only while the view is shown (`watch`) and the tab visible (404 / 403 stop it), optimistic faders held per key until a GET's `mix.seq` reaches the post's answer, posts ≤ 10 / s per fader with the trailing value sent, column Reset / Reset all (asks), the music commands. `createHouseMixerStore(deps)` takes fakes in tests |
 | `house-desk.ts` | Run → House: the long poll on `GET /api/mod/desk` (`rev`, `stream-retry` backoff), the draft desk (`base`, 409 `stale` → ask), selection, GO with the playhead shown (409 `moved` → a note), stop / panic, the checks' tests (live: confirm first), marks, Zigbee pairing. `createHouseDeskStore(deps)` takes the api, sleep and clock (tests pass fakes) |
 | `dialog.ts` | Promise-based `promptText` / `confirmAction` / `confirmTyped` / `notify` |
@@ -243,6 +243,29 @@ World, Director, Mind and House close under a lens.
   Follow the story, each bed with ⏭ Skip, Skip all, Stop music) and the
   console, one column per scope (`mixerScopes` / `scopeStrips`). Contract
   `docs/loom-w40-contract.md` C4; Help `51-house-mixer.md`.
+  Wave 49 adds the **🗺 Map** (`house/HouseMapPanel.tsx`,
+  `house/HouseMapHost.tsx`; pure `lib/house-map-view.ts`; contract
+  `docs/loom-w49-contract.md` C7; Help `39-house-map.md`): the real map
+  editor, `@loom/reinstall/map` (`reinstall/web/src/map/embed.tsx`), in a
+  shadow root like `@loom/play/embed`, a lazy chunk (three.js is another, for
+  the 3D preview). No iframe: the server sends `frame-ancestors 'none'`.
+  `HouseMapPanel` trades the run's `codes.mod` for a token (`mapApi.login`)
+  so nothing asks for a passcode; a token the server refused, or new codes,
+  signs in again on the same mounted editor, which keeps its draft. It adds
+  **Open in a new tab ↗** (`mapPageUrl`: the map's own page on the event
+  server, off `joinUrl`, never this page's origin), and in the Tauri shell
+  *Open in browser* in place of the embed (the map's `window.confirm`s
+  return false there; `opener:default` in the desktop's capabilities is
+  what lets the link leave). **Kept alive:** `HouseMapKeeper` (in
+  `StudioShell`, above the per-mode layout) holds the panel from the first
+  open until the run ends, in one DOM node that `HouseMapSlot` (in
+  `HouseTab`) puts on the page; so a draft outlives a hop to Chat, the Desk or
+  ⌘1. Off the page it takes no keys and holds no connections (`shown`).
+  **Ways in** all call `lib/open-house-map.ts` `openHouseMap` (with no run:
+  a dialog says to start a rehearsal): 🗺 Edit the map on the Run page's
+  card, *Open the house map* in the palette, and the `house*.json` banner
+  (`editor/HouseMapBanner.tsx`). The card also has the **descent select**
+  (`DescentRow`: `GET` / `POST /api/mod/spatial/descent`, hidden on a 404).
 
 ### Run → Terminals
 
@@ -295,7 +318,11 @@ source through aliases in `vite.config.ts` and `tsconfig.app.json`: no
 wasm, no build step. The aliases are `parser`, `lsp`, `sim`, `runtime`
 (for `@loom/bank`), `chat`, `views`, `mod-patch`, `cue-sheet`,
 `host-board`, `house-desk`, `house-mixer`, `credits`, then bare `@loom/core`, plus `@loom/house`
-(wave 30, the Cue designer), `@loom/bank` and `@loom/play/embed`.
+(wave 30, the Cue designer; `/three` above it for the map's 3D preview), `@loom/bank`,
+`@loom/play/embed`, `@loom/play` (by path: `lazy-chunk.tsx`, the map's `client.ts`) and
+`@loom/reinstall/map` (wave 49). Everything those reach is typechecked by this
+package's stricter `tsconfig.app.json` too (no parameter properties, no unused
+imports), so a reinstall or play source can break `pnpm --filter loom-app typecheck`.
 
 - `lib/loom-language.ts`: the highlighter, built on the parser's keyword
   tables so it cannot drift. Reserved words light up only in expression
@@ -367,6 +394,18 @@ while every file still holds the text it expects.
   rooms mirror play's `buildPrimeChannels`. Change both sides together.
 - **Panes clip to width 0** in the shell; in Playwright assert with
   `toBeInViewport`, not visibility.
+- **Keys and shadow roots.** A window listener sees a key from inside an
+  embed with `e.target` = the shadow host, so a "not in a text field" check
+  passes there. Play's embed stops every key at its host. The map can't: it
+  must also take keys that landed on `document.body` after a click on its
+  plan, so it listens at window capture and stops what it answers to
+  (`reinstall/web/src/map/unlock.ts` `mapAnswersKey`). Only ⌘Z in `StudioShell`
+  actually collided.
+- **Six sockets.** HTTP/1.1 gives an origin six, and this page already holds
+  the mod and collab streams and the desk's long poll. Dev (Vite) and plain
+  `http://` LAN are HTTP/1.1; Caddy's HTTPS is HTTP/2. Don't add a held
+  connection to something that stays mounted: the embedded map's polls hold
+  none, and with long polls every fetch stalled for up to 25 s.
 
 ## Tests
 
@@ -382,8 +421,11 @@ while every file still holds the text it expects.
   `sim` (Run on a local folder), `director`, `help`, `grants`,
   `booth-lens`.
 - `e2e-live/` (opt-in, a running server + `loom_dev`): `live-collab`
-  (launch, restart banner, push draft, go live, end) and `mind` (a real
-  stagehand worker).
+  (launch, restart banner, push draft, go live, end), `mind` (a real
+  stagehand worker) and `house-map` (the map embedded: sign-in, styles, keys,
+  a draft across tabs and modes, save, restart, 3D, the new tab, the ways in).
+  `LOOM_E2E_BASE` (+ `LOOM_E2E_EDIT=/edit/` for a built bundle) points them at
+  a scratch stack; use one, and never the dev database.
 
 ## Desktop
 
