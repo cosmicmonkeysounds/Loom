@@ -480,7 +480,7 @@ export class Game {
         if (on) this.voice?.holdFor(SPEAKING_HOLD_MS);
       },
     });
-    if (this.descentLevel > 0) this.buildDescent();
+    if (this.descentLevel > 0) this.descentSafely(() => this.buildDescent());
   }
 
   /** Start rendering, listening and streaming. */
@@ -610,6 +610,35 @@ export class Game {
       held: this.held,
       kingNear: king !== null && Math.hypot(king.pos[0] - this.body.p[0], king.pos[2] - this.body.p[2]) <= KING_HOLD_M,
     });
+  }
+
+  /** Nothing here can stop a walk, a bug included: it drops the descent, and the game goes on clean. */
+  private descentSafely(step: () => void): void {
+    try {
+      step();
+    } catch (e) {
+      console.warn("reinstall: the descent gave way", e);
+      this.dropDescent();
+    }
+  }
+
+  private dropDescent(): void {
+    const hall = this.pocket;
+    this.pocket = null;
+    this.pocketDoor = null;
+    hall?.leave();
+    for (const group of this.house.floors.values()) group.visible = true;
+    this.trail.object.visible = true;
+    this.lamps.borrow(null);
+    this.o.sfx.drone(false);
+    this.descentLines?.stop();
+    this.descentSpeaker?.stop();
+    this.descentCaption = null;
+    this.talkLine = null;
+    this.director = null;
+    this.hallway = null;
+    this.visions?.calm(this.house);
+    this.visions = null;
   }
 
   /** Key 1–4, or a button: an answer to the prop talking. */
@@ -1090,7 +1119,7 @@ export class Game {
         this.end({ kind: "idle" });
         return;
       }
-      if (this.tutorial === null) this.tickDescent(dt);
+      if (this.tutorial === null && this.director) this.descentSafely(() => this.tickDescent(dt));
       if (step?.far === true) {
         this.director?.hallwayFar();
         this.visions?.hallwayFollower();
@@ -1122,7 +1151,7 @@ export class Game {
     this.trail.update(dt);
     this.house.update(dt, this.camera);
     if (this.pocket) this.lamps.borrow(this.pocket.light());
-    if (this.visions) this.visions.update(dt, this.director?.run ?? null, this.pocket ? { light: this.pocket.walk.light, body: this.pocket.body } : null);
+    if (this.visions) this.descentSafely(() => this.visions?.update(dt, this.director?.run ?? null, this.pocket ? { light: this.pocket.walk.light, body: this.pocket.body } : null));
     if (now - this.lastLampsAt >= LAMPS_EVERY_MS) {
       this.lastLampsAt = now;
       this.lamps.repick(this.body.p, locate(this.map, this.body.p).floor);

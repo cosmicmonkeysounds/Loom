@@ -781,6 +781,18 @@ export class Visions {
     this.o.setExposure(shown);
   }
 
+  /** Everything back as the game had it: the descent gave way (a bug, never a walk's end). */
+  calm(house: HouseScene): void {
+    this.object.visible = false;
+    const fog = this.o.scene.fog as FogExp2;
+    fog.density = this.fogBase;
+    fog.color.copy(this.fogColor);
+    (this.o.scene.background as Color).copy(this.fogColor);
+    this.o.lamps.setGrade(1, this.tint, 0);
+    house.tuneNeon(1, 1);
+    this.o.setExposure(1);
+  }
+
   dispose(): void {
     for (const f of this.faces) f.object.removeFromParent();
     this.faces = [];

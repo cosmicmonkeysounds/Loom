@@ -500,3 +500,36 @@ describe("what a walk is not", () => {
     spy.mockRestore();
   });
 });
+
+describe("a bug in the descent", () => {
+  it("drops it and leaves the walk alone", async () => {
+    const { Game } = await import("../src/game/engine.ts");
+    const h = TWO_ROOMS();
+    const calls: string[] = [];
+    const g = Object.create(Game.prototype) as Record<string, unknown> & { descentSafely(step: () => void): void };
+    Object.assign(g, {
+      pocket: { leave: () => calls.push("left") },
+      pocketDoor: { pos: [0, 0, 0], yaw: 0 },
+      house: { floors: new Map() },
+      trail: { object: { visible: false } },
+      lamps: { borrow: (l: unknown) => calls.push(`borrow ${String(l)}`) },
+      o: { sfx: { drone: (on: boolean) => calls.push(`drone ${on}`) } },
+      descentLines: { stop: () => calls.push("lines") },
+      descentSpeaker: { stop: () => calls.push("voice") },
+      director: {},
+      hallway: {},
+      visions: { calm: () => calls.push("calm") },
+      map: h,
+    });
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    g.descentSafely(() => {
+      throw new Error("a bug");
+    });
+    warn.mockRestore();
+    expect(g["director"]).toBeNull();
+    expect(g["visions"]).toBeNull();
+    expect(g["pocket"]).toBeNull();
+    expect((g["trail"] as { object: { visible: boolean } }).object.visible).toBe(true);
+    expect(calls).toEqual(expect.arrayContaining(["left", "borrow null", "drone false", "lines", "voice", "calm"]));
+  });
+});
