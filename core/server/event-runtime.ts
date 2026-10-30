@@ -5421,6 +5421,9 @@ export class EventRuntime {
     this.pairing.clear();
     this.rejoin.clear();
     this.personaOwners.clear();
+    // Wave 53: a guest's id dies with the run, a part's name does not, and
+    // seqs start over: `10:Clippy` must not answer the new run's card 10.
+    this.answeredWidgets.clear();
     this.caller = null; // C8: the caller claim is memory only, cut by every restart
     // Operator play-as sessions follow the sessions they stand in for: a
     // guest's dies with every restart, a booth's only when the show goes live.

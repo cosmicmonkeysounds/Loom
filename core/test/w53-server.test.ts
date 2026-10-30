@@ -202,6 +202,26 @@ describe("wave 53: on rails (C2)", () => {
     expect(again.liveSim!.cutsceneFor("Clippy")).toBe(true);
   });
 
+  it("deals a story restart's upload fresh: last run's answers are not this run's", async () => {
+    const rt = show();
+    const t = await booth(rt, "Clippy");
+    const first = await stream(rt, "prime", t);
+    await post(rt, "/api/prime/arrive", { token: t });
+    const seq = nextCard(first, "captcha").seq;
+    await post(rt, "/api/prime/widget", { token: t, seq, result: { passed: false } });
+    expect((await view(rt, t)).answered).toContain(seq);
+    rt.restart();
+    // The sign-in is kept and the part is due again.
+    expect((await view(rt, t)).arrive).toBe(true);
+    const second = await stream(rt, "prime", t);
+    await post(rt, "/api/prime/arrive", { token: t });
+    const again = nextCard(second, "captcha").seq;
+    expect(again).toBe(seq); // the seqs start over, which is the whole trap
+    expect((await view(rt, t)).answered ?? []).not.toContain(again);
+    expect((await post(rt, "/api/prime/widget", { token: t, seq: again, result: { passed: false } })).status).toBe(200);
+    expect((await view(rt, t)).choices![0]!.options[0]).toBe("My debt.");
+  });
+
   it("frees every part with the director's ⏭", async () => {
     const rt = show();
     const t = await booth(rt, "Clippy");
