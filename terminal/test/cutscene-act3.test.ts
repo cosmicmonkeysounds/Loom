@@ -38,13 +38,6 @@ const STORY = loomFiles(SHOW)
 
 const ALL: SceneDef[] = [...ACT3, ...MOMENTS];
 
-// Wave 48: G14's story (`cue screens_award_language`) is the core lane's
-// (docs/loom-w48-contract.md C3), merged beside this one. Until it is in the
-// show, the contract stands in for the story for that one cue; once the story
-// cues it, the story alone is checked.
-const W48_CONTRACT = readFileSync(join(__dirname, "../../docs/loom-w48-contract.md"), "utf8");
-const W48_PENDING = new Set(["award_language"]);
-
 // --- the triggers, against the show -------------------------------------------------------
 
 describe("tv3 triggers name the story's real cues, beats and signals", () => {
@@ -55,7 +48,7 @@ describe("tv3 triggers name the story's real cues, beats and signals", () => {
   it("every trigger is real", () => {
     for (const s of ALL)
       for (const w of s.when) {
-        if ("slide" in w) expect(W48_PENDING.has(w.slide) && !screenCue(w.slide).test(STORY) ? W48_CONTRACT : STORY, `${s.id}: slide ${w.slide}`).toMatch(screenCue(w.slide));
+        if ("slide" in w) expect(STORY, `${s.id}: slide ${w.slide}`).toMatch(screenCue(w.slide));
         else if ("room" in w) throw new Error(`${s.id}: unexpected room trigger ${w.room}`);
         else if (w.moment === "beat") expect(beatNames.has(w.name), `${s.id}: beat ${w.name}`).toBe(true);
         else if (w.moment === "signal") expect(adminCues.has(w.name), `${s.id}: admin cue ${w.name}`).toBe(true);

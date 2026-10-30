@@ -52,9 +52,6 @@ import { FAKE_FLAGGED_WORDS } from "../src/cutscene/fake.ts";
 const SHOW = join(__dirname, "../../core/examples/trapped-in-the-internet");
 const FINALE = readFileSync(join(SHOW, "beats/finale.loom"), "utf8");
 const CEREMONY = readFileSync(join(SHOW, "beats/ceremony.loom"), "utf8");
-// Wave 48: G14's beat is the core lane's (docs/loom-w48-contract.md C3); until
-// it is in the show, the contract stands in for it for that one cue.
-const W48_CONTRACT = readFileSync(join(__dirname, "../../docs/loom-w48-contract.md"), "utf8");
 
 // --- the pure timelines -----------------------------------------------------------------
 
@@ -64,7 +61,7 @@ describe("tv3 timelines — the awards", () => {
     expect(programs.map((a) => a.id)).toEqual(["most_trusted", "least_trusted", "frequent_flyer", "lore_hoarder", "truthcoin_tycoon", "best_liar", "duck_speedrun", "quest_completionist", "the_painting", "bathroom", "language"]);
     for (const a of programs) {
       const cue = `cue screens_award_${a.id}`;
-      expect(a.id === "language" && !CEREMONY.includes(cue) ? W48_CONTRACT : CEREMONY, a.id).toContain(cue);
+      expect(CEREMONY, a.id).toContain(cue);
     }
   });
 
