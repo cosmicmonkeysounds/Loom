@@ -88,6 +88,27 @@ agents:
   #     capacity: 2
   #     api_key_env: LOOM_OVERFLOW_KEY   # the NAME of an env var holding the key; the key
   #                            # itself never goes in a YAML, a log or the trace
+  #
+  # (wave 52) Claude as the voice, Ollama standing by (docs/agents.md, "Claude as
+  # the voice"). PRIVACY as above. `llm:` becomes Claude, `concurrency` fills the
+  # stream so the overflow is only a standby, and the overflow carries Ollama's
+  # settings (it inherits the voice's otherwise). The key: ANTHROPIC_API_KEY, or
+  # ~/.config/loom/anthropic.key (a launchd job has no shell).
+  # concurrency: 16
+  # llm:
+  #   api: anthropic
+  #   model: claude-haiku-5-5
+  #   reasoning_effort: low    # `effort`: low | medium | high. Thinking counts in max_tokens
+  #   max_tokens: 1000
+  #   timeout_s: 12            # twice this (one SDK retry) before the line moves to Ollama
+  # overflow:
+  #   - name: macbook
+  #     endpoint: http://localhost:11434/v1
+  #     model: gpt-oss:20b
+  #     api: ollama
+  #     capacity: 4            # = OLLAMA_NUM_PARALLEL (trabolta-reset.sh keeps them equal)
+  #     keep_alive: 60m
+  #     timeout_s: 90
   orchestrator:                # the SLOW model — grows each character's mind (classic only;
     enabled: true              #   never started in mind_mode: new) between turns; never on the reply path
     llm:

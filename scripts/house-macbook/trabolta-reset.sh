@@ -6,8 +6,9 @@
 #   scripts/house-macbook/trabolta-reset.sh [--check] [--no-reset] [--no-restart]
 #                                           [--persist] [--unpersist] [--config FILE]
 #
-#   1. Ollama's launchctl environment: OLLAMA_NUM_PARALLEL = the worker's
-#      `concurrency` (wave 42) and OLLAMA_KEEP_ALIVE=-1. `launchctl setenv`
+#   1. Ollama's launchctl environment: OLLAMA_NUM_PARALLEL = the slots on
+#      Ollama (the worker's `concurrency`, wave 42; off a hosted voice, the
+#      standby's `capacity`, wave 52) and OLLAMA_KEEP_ALIVE=-1. `launchctl setenv`
 #      does not survive a reboot (2026-10-29: the MacBook rebooted mid-show-
 #      prep), so a changed value quits and reopens the Ollama app.
 #   2. The voice model is pulled, then loaded with the worker's own context

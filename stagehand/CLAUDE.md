@@ -84,7 +84,8 @@ stagehand/
 ```bash
 cd stagehand
 uv sync                                            # once; makes .venv
-uv run pytest                                      # 2922 passed + 4 skipped, ~90 s, no hardware, no network
+uv run --extra anthropic pytest                    # 2997 passed + 4 skipped, ~90 s, no hardware, no network
+                                                   # (without the extra the SDK's few tests skip)
 uv run pytest tests/test_trapped_house.py -q       # after any story or rig change
 uv run stagehand modules
 uv run stagehand check --config trapped.desktop.yaml --only show,lights,audio
@@ -334,6 +335,15 @@ module docstrings that explain the why).
   `brief_applies` (no stage, no heart, lean only), caps `max_tokens` at
   `brief_max_tokens` and `reminder` adds `BRIEF_NOTE`. Tests:
   `tests/test_engines.py`, `tests/test_brief.py`.
+- **Claude as the voice** (wave 52, `docs/agents.md` "Claude as the
+  voice"). `api: anthropic` in `llm.py`: `anthropic_request` and
+  `anthropic_completion` are pure, `complete_anthropic` takes the client as
+  an argument and is the only caller of the SDK, an optional extra imported
+  inside the call (the Desktop never installs it, and `test_windows_import`
+  must keep passing). A refusal is `LlmRefused`: `EngineCall.complete` moves
+  the line and does not `mark_down`. `config.parse_agents` keeps the
+  orchestrator on Ollama off a hosted voice. Tests:
+  `tests/test_llm_anthropic.py`.
 - **The DM guards** (wave 42c, `docs/agents.md` "The guards" 0, 2, 3, 3b,
   4). A private line (never a stage line: `voice.dm_check` is None there)
   gets `guards.DmCheck` (the guest's line, at the heart or not, the cap,
