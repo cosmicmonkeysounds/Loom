@@ -72,6 +72,8 @@ const SELF_WALK_S := 3.5
 const FADE_S := 1.0
 ## After [constant HouseDescent.VISION_S] the door fades over this (s).
 const DOOR_FADE_S := 1.5
+## How far the red under the door spills out on the floor (m).
+const SPILL_M := 0.3
 ## The Hallway's fog and how little of the house's light reaches it.
 const POCKET_FOG := 0.05
 const POCKET_LIGHT := 0.04
@@ -229,6 +231,7 @@ func stop() -> void:
 	var b := game.builder
 	b.neon_rate = 1.0
 	b.neon_scale = 1.0
+	b.set_haze_scale(1.0)
 	b.set_descent(0)
 	var l := game.lamps
 	l.ambient_scale = 1.0
@@ -353,6 +356,7 @@ func _shade() -> void:
 	l.tint = tint
 	l.tint_by = by
 	b.neon_scale = dip * lerpf(1.0, DARK_NEON, _dark)
+	b.set_haze_scale(1.0 - _dark)
 	if env != null:
 		env.fog_density = lerpf(HouseLook.FOG_DENSITY * float(look["fog"]), DARK_FOG, _dark)
 		env.fog_light_color = HouseLook.HAZE.lerp(Color.BLACK, _dark)
@@ -984,9 +988,13 @@ static func make_door() -> Dictionary:
 		var role := str(part["role"])
 		var c := Color(model["neon"]) if role == "neon" else (Color(model["color"]) if role == "body" else Color(HouseModels.ROLE_COLORS[role]))
 		HouseBuilder.add_box(slit if role == "neon" else frame, Transform3D.IDENTITY, part["c"], part["s"], c)
+	# The model's slit is a centimetre tall; what reads from across a room is
+	# the red it lets out onto the floor.
+	var spill := float(size[0]) * 0.84
+	HouseBuilder.add_box(slit, Transform3D.IDENTITY, Vector3(0, 0.03, -float(size[2]) / 2.0 - SPILL_M / 2.0), Vector3(spill, 0.004, SPILL_M), Color(model["neon"]))
 	var node := Node3D.new()
 	var mat := fade_material(Color.WHITE, true)
-	var glow := fade_material(Color(2.2, 2.2, 2.2), true)
+	var glow := fade_material(Color.WHITE, true)
 	for pair: Array in [[frame, mat, "Frame"], [slit, glow, "Slit"]]:
 		var mi := MeshInstance3D.new()
 		mi.name = pair[2]

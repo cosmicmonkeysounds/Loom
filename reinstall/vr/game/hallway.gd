@@ -26,8 +26,8 @@ const SEGMENT := 2.0
 const THICK := 0.2
 ## The light: over the player's head, a little ahead of them.
 const LIGHT_AT := Vector3(0, 2.0, -0.6)
-const LIGHT_ENERGY := 1.6
-const LIGHT_RANGE := 6.5
+const LIGHT_ENERGY := 0.7
+const LIGHT_RANGE := 5.5
 ## How far the far door may back away, and how far under the floor is a fall (m).
 const FAR_LIMIT := 56.0
 const FELL_BELOW := 3.0

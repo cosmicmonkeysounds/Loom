@@ -30,6 +30,7 @@ func _run() -> void:
 	_test_config()
 	_test_combo()
 	_test_server_link()
+	await _test_lobby_combos()
 	await _test_level_zero()
 	await _test_level_choice()
 	await _test_look()
@@ -297,6 +298,31 @@ func _test_combo() -> void:
 		if _press(deep, k):
 			fired.append("deep")
 	_check(fired == ["deep"], "combo: fed together, only the one typed fires (%s)" % [fired])
+
+
+## The lobby's two combos, through the game.
+func _test_lobby_combos() -> void:
+	var got: Array = await _game()
+	var main: Node = got[0]
+	var game: Game = got[1]
+	var link: LinkBase = got[2]
+	var house: Dictionary = got[3]
+	var typed := func(seq: String) -> bool:
+		var hit := false
+		for k: String in seq:
+			hit = game.feed_combos(k == "A", k == "B", 0.3) or hit
+			hit = game.feed_combos(false, false, 0.0) or hit
+		return hit
+	_check(typed.call(TestCombo.MIRROR), "lobby: the mirror starts the test level")
+	_check(link.get("offline_chosen") == 1 and link.get("begun") == ["g-000001"], "lobby: offline, the captured program")
+	link.assignment_received.emit(_assignment(house, "offline-1"))
+	_check(game.descent.level == 4 and game.descent.who["visit"] == 5, "lobby: at level 4, its fifth walk")
+	link.session_over.emit("test")
+	_check(typed.call(TestCombo.SEQUENCE), "lobby: the plain combo starts it too")
+	link.assignment_received.emit(_assignment(house, "offline-2"))
+	_check(game.descent.level == 0 and not game.descent.running, "lobby: … as ever, the clean game")
+	link.session_over.emit("test")
+	await _end(main)
 
 
 func _test_server_link() -> void:
@@ -625,7 +651,7 @@ func _test_visions() -> void:
 	var smile: float = d.get("_grin_mat").albedo_color.a
 	var eyes: float = d.get("_grin_eyes_mat").albedo_color.a
 	_check(eyes <= 0.01 and smile > 0.5, "grin: the eyes go first (%.2f), the smile stays (%.2f)" % [eyes, smile])
-	_check(HouseDescent.bundled()["grin"].has(game.speech.caption_text()) or game.speech.busy() or true, "grin: one line")
+	_check(HouseDescent.bundled()["grin"].has(lines.back()["text"]), "grin: one line (%s)" % lines.back()["text"])
 	_frames(game, int(3.2 * 72))
 	_check(d.vision == "" and not grin.visible, "grin: gone last")
 	game.speech.stop()
@@ -633,12 +659,15 @@ func _test_visions() -> void:
 	# dark: the fog closes in, a growl behind, and it lifts again.
 	game.sfx.log.clear()
 	var look_fog := HouseLook.FOG_DENSITY * float(HouseDescent.descent_look(4)["fog"])
-	var dark := {"max": 0.0, "color": 1.0}
+	var dark := {"max": 0.0, "color": 1.0, "haze": 1.0}
 	_check(_play(game, house, "dark", hall, func(_t: float) -> void:
 		dark["max"] = maxf(dark["max"], env.fog_density)
+		dark["haze"] = minf(dark["haze"], game.builder.get("_haze_scale"))
 		dark["color"] = minf(dark["color"], env.fog_light_color.v)), "dark: runs")
+	_check(dark["haze"] <= 0.01, "dark: the unfogged haze goes too (%.2f)" % dark["haze"])
 	_check(_near(dark["max"], Descent.DARK_FOG) and dark["color"] < 0.02, "dark: black fog (%.2f /m): at 3 m %d %% gets through" % [dark["max"], int(100.0 * exp(-3.0 * dark["max"]))])
 	_check(game.sfx.log.count("growl") == 1, "dark: one growl")
+	_check(game.builder.get("_haze_scale") == 1.0, "dark: the haze is back")
 	var behind := game.descent.get("_behind") as Node3D
 	var c := game.player.camera.global_position
 	var fwd := -game.player.camera.global_basis.z
@@ -1167,6 +1196,13 @@ func _test_hallway() -> void:
 	game.player.teleport(HouseFrames.vec(game.flow.assignment["duck"]["pos"]), 0.0)
 	game._process(DT)
 	_check(link.found_calls == claims + 1, "hallway: and the find is back on")
+	link.session_over.emit("test")
+	# A find claimed on the way in lands inside: they come out to it.
+	var at2: Array = _at_the_door(game, house, "h-1b")
+	_go_through(game, at2[1])
+	_check(h.active(), "hallway: inside again")
+	link.found_answered.emit(true, {"ok": true, "released": true})
+	_check(game.state() == GameFlow.State.FOUND and not h.active() and game.builder.visible, "hallway: a find that lands inside brings them out")
 	link.session_over.emit("test")
 	await _end(main)
 

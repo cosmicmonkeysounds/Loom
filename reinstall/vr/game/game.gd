@@ -822,6 +822,8 @@ func _on_found_answered(ok: bool, data: Dictionary) -> void:
 	var still_captured: bool = data.get("captured") == true if data.get("captured") is bool else flow.assignment.get("captured") == true
 	var refused: bool = not released and still_captured
 	var who := str(flow.assignment.get("name", ""))
+	if flow.state == GameFlow.State.PLAYING and hallway.active():
+		_leave_hallway()  # claimed on the way in: out to the find
 	if not flow.found(released):
 		return
 	if autopilot != null:
@@ -1106,6 +1108,16 @@ func start_test_level(level := -1) -> void:
 	link.begin("g-000001")
 
 
+## One frame of the lobby's test combos; true when one started the test level:
+## the plain one as ever, its mirror (wave 49) at the deepest level.
+func feed_combos(a_down: bool, b_down: bool, delta: float) -> bool:
+	var plain := _combo.feed(a_down, b_down, delta)
+	var deep := _combo_deep.feed(a_down, b_down, delta)
+	if plain or deep:
+		start_test_level(HouseDescent.DESCENT_MAX if deep else -1)
+	return plain or deep
+
+
 func _tick_lobby(delta: float) -> void:
 	# (wave 40) While a resume is offered the lobby shows its own card (YES /
 	# NO), so the normal pointer + stick path drives it; a program begin
@@ -1118,12 +1130,7 @@ func _tick_lobby(delta: float) -> void:
 	var stick := Vector2(l.x if absf(l.x) >= absf(r.x) else r.x, l.y if absf(l.y) >= absf(r.y) else r.y)
 	var chosen := lobby.tick(stick, delta)
 	var hands := [player.left_hand, player.right_hand]
-	var ax := TestCombo.held(hands, "ax_button")
-	var by := TestCombo.held(hands, "by_button")
-	var plain := _combo.feed(ax, by, delta)
-	var deep := _combo_deep.feed(ax, by, delta)
-	if plain or deep:
-		start_test_level(HouseDescent.DESCENT_MAX if deep else -1)
+	if feed_combos(TestCombo.held(hands, "ax_button"), TestCombo.held(hands, "by_button"), delta):
 		return
 	if not chosen.is_empty():
 		lobby.flash("Starting %s…" % chosen.get("name", chosen.get("id", "")), 3.0)

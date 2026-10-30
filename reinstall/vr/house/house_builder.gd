@@ -96,8 +96,9 @@ var _pickups := {}
 var _taken := {}
 ## The beat's / the disk's clock (s).
 var _t := 0.0
-## The haze sheets ([method _build_haze]): `{mat, drift}` each.
+## The haze sheets ([method _build_haze]): `{mat, alpha, drift}` each.
 var _haze: Array = []
+var _haze_scale := 1.0
 ## The props' merged meshes while building: role → SurfaceTool.
 var _role_tools := {}
 ## (wave 49) The descent level the `from` props are shown at
@@ -779,7 +780,20 @@ func _build_haze() -> void:
 			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 			_floor_node(str(fl["id"])).add_child(mi)
 			var drift: Array = HouseModels.HAZE_DRIFT[i]
-			_haze.append({"mat": mat, "drift": Vector2(float(drift[0]), float(drift[1])) / HouseModels.HAZE_TILE_M})
+			mat.albedo_color.a *= _haze_scale
+			_haze.append({"mat": mat, "alpha": float(HouseModels.HAZE_OPACITY[i]), "drift": Vector2(float(drift[0]), float(drift[1])) / HouseModels.HAZE_TILE_M})
+
+
+## (wave 49) Thin the haze to `k` of itself (the `dark` vision: it is unfogged,
+## and would glow on through the black). The sheets are few; only a change
+## touches them.
+func set_haze_scale(k: float) -> void:
+	if is_equal_approx(k, _haze_scale):
+		return
+	_haze_scale = k
+	for h: Dictionary in _haze:
+		var mat: StandardMaterial3D = h["mat"]
+		mat.albedo_color.a = float(h["alpha"]) * k
 
 
 ## How many haze sheets were built (for the tests).
