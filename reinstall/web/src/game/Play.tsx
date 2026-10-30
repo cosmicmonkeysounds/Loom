@@ -4,13 +4,15 @@
 //! (wave 26, R3: his bar is drawn over his head only, never on the HUD), the twin sticks on a touch screen, the 🎤 voice link toggle (when
 //! this device has it on), and the celebration when Gerald is found.
 //! Wave 39: the ⚙ graphics setting (Auto / Low / Medium / High, remembered on
-//! the device, never above the URL's `quality` cap).
+//! the device, never above the URL's `quality` cap). Wave 49: a prop's talk
+//! (`Talk.tsx`), and in the Hallway no HUD at all but the clock and the way out.
 
 import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
+import { descentOf } from "@loom/house";
 import type { Assignment, HouseMap, KingState, PlayerPose } from "@loom/house";
 import { postEnd, postSuspend, type FoundAnswer } from "../api.ts";
-import { baseOf, qualityHint, type ReinstallConfig } from "../config.ts";
+import { baseOf, descentHint, qualityHint, type ReinstallConfig } from "../config.ts";
 import { ProgressBar, Window } from "../wizard.tsx";
 import type { Sfx } from "./audio.ts";
 import { Game, type GameEnd, type HudState, type KingHud, type QualityHud } from "./engine.ts";
@@ -22,6 +24,7 @@ import { CENTRED, type StickVector } from "./input.ts";
 import { whyNoStart } from "./no-start.ts";
 import { Joystick } from "./joystick.tsx";
 import { Scare } from "./Scare.tsx";
+import { Talk } from "./Talk.tsx";
 import { introSkippable, tutorialCopy, type TutorialHud } from "./tutorial.ts";
 
 export type PlayExit = { kind: "found"; name: string; outcome: FindOutcome } | { kind: "over"; reason: string } | { kind: "idle" } | { kind: "quit" };
@@ -40,6 +43,11 @@ function qualityCap(config: ReinstallConfig) {
 /** `?lightsDemo=1` on the dev server: a synthetic lights frame (no server lane needed). */
 function lightsDemo(): boolean {
   return import.meta.env.DEV && typeof location !== "undefined" && new URLSearchParams(location.search).get("lightsDemo") === "1";
+}
+
+/** The walk's descent level: the page's `?descent=N` (rehearsals), else the assignment's. */
+function descentLevelOf(assignment: Assignment): number {
+  return (typeof location === "undefined" ? null : descentHint(location.search)) ?? descentOf(assignment);
 }
 
 function touchDevice(): boolean {
@@ -123,6 +131,7 @@ export function Play({
         ...(resume !== undefined ? { resumeAt: resume.pose } : {}),
         quality: { choice: loadQuality(), cap: qualityCap(config) },
         lightsDemo: lightsDemo(),
+        descent: descentLevelOf(assignment),
       });
     } catch (e) {
       void mic?.then((s) => s?.getTracks().forEach((t) => t.stop()));
@@ -218,16 +227,21 @@ export function Play({
       {hud !== null && found === null && (
         <>
           <div className="hud-top">
-            <div className="hud-where w98-raised">
-              <div className="hud-where-title">
-                <span className="hud-icon" aria-hidden="true">
-                  ⌂
-                </span>
-                {hud.room}
+            {/* Wave 49: the Hallway is on no map, and no way leads to Gerald from it. */}
+            {!hud.hallway && (
+              <div className="hud-where w98-raised">
+                <div className="hud-where-title">
+                  <span className="hud-icon" aria-hidden="true">
+                    ⌂
+                  </span>
+                  {hud.room}
+                </div>
+                {hud.location !== null && <div className="hud-where-loc">{hud.location}</div>}
               </div>
-              {hud.location !== null && <div className="hud-where-loc">{hud.location}</div>}
-            </div>
-            {hud.path ? (
+            )}
+            {hud.hallway ? (
+              <span className="spacer" />
+            ) : hud.path ? (
               <div className={`hud-heat heat-${hud.heat}`}>
                 <span>{HEAT_LABEL[hud.heat]}</span>
                 <small>{hud.heat === "steady" || hud.heat === "cold" ? `${Math.round(hud.distance)} m to Gerald` : "follow the golden arrows"}</small>
@@ -253,7 +267,7 @@ export function Play({
               </button>
             </div>
           </div>
-          <Compass yaw={hud.yaw} pip={hud.pip} />
+          {!hud.hallway && <Compass yaw={hud.yaw} pip={hud.pip} />}
           <div className="hud-status">
             <span className={`led${hud.live ? " on" : ""}`} />
             {assignment.name} · {hud.others > 0 ? `${hud.others} other program${hud.others === 1 ? "" : "s"} in here` : "alone in the simulation"}
@@ -279,6 +293,7 @@ export function Play({
               <p>{hud.caption.text}</p>
             </Window>
           )}
+          {hud.talk !== null && <Talk talk={hud.talk} touch={showSticks} onPick={(i) => game.current?.talkPick(i)} />}
           {hud.idleLeft !== null && (
             <div className="hud-idle w98-raised">
               Still there? Move to stay connected — <b>{hud.idleLeft}</b>
@@ -289,7 +304,7 @@ export function Play({
 
       {hud?.tutorial != null && found === null && <TutorialCard tutorial={hud.tutorial} touch={showSticks} onSkip={() => game.current?.skipTutorial()} />}
 
-      {hud !== null && hud.tutorial === null && hud.mouseHint && !showSticks && found === null && hud.caption === null && (
+      {hud !== null && hud.tutorial === null && hud.mouseHint && !showSticks && found === null && hud.caption === null && hud.talk === null && (
         <div className="mouse-hint w98-raised" aria-hidden="true">
           🖱 Click the picture to look around with the mouse
         </div>
@@ -355,6 +370,7 @@ export function Play({
               <div>
                 <h1>{copy.heading}</h1>
                 <p>{copy.line}</p>
+                {hud?.foundLine != null && <p className="found-line">{hud.foundLine}</p>}
                 <ProgressBar value={1} label={copy.progress} />
                 <p className="muted">{hud?.elapsed !== undefined ? `Time in the simulation: ${hud.elapsed}` : ""}</p>
               </div>

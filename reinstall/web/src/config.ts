@@ -12,8 +12,10 @@
 //! resolves (via `/api/resolve-code`) to the event and is traded for a
 //! **moderator token** (`/api/mod/login`) — what lets this device `begin` a
 //! scanned program's simulation, list the VR stations, and (on the map page)
-//! save the house map. The passcode itself is never stored.
+//! save the house map. The passcode itself is never stored. `?descent=N` (wave
+//! 49, `descentHint`) stays on the URL: it is for rehearsals, never provisioned.
 
+import { clampDescent } from "@loom/house";
 import { api, ApiError } from "@loom/play/client.ts";
 import { parseQuality, type QualityChoice } from "./game/quality.ts";
 
@@ -155,6 +157,15 @@ export function hintsFromSearch(search: string): UrlHints {
  *  flow with a config of its own, under its own page's URL). */
 export function qualityHint(search: string): QualityChoice | null {
   return parseQuality(new URLSearchParams(search).get("quality"));
+}
+
+/** (wave 49) `?descent=N` on a page's URL (dev and rehearsal): this device
+ *  plays at that level whatever the server says, null when none. Like
+ *  `quality` it stays on the URL: the tent terminal's flow reads its own page's. */
+export function descentHint(search: string): number | null {
+  const raw = new URLSearchParams(search).get("descent");
+  if (raw === null || !/^[0-9]+$/u.test(raw.trim())) return null;
+  return clampDescent(Number(raw));
 }
 
 /** The URL with the passcode (and the other provisioning hints) scrubbed. */

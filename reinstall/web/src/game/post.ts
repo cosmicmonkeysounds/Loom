@@ -86,6 +86,8 @@ export interface Post {
   render(dt: number): void;
   /** The canvas's CSS size (the pixel ratio is the renderer's). */
   setSize(w: number, h: number): void;
+  /** (wave 49) The tone map's exposure, as `renderer.toneMappingExposure` on `low`. */
+  setExposure(exposure: number): void;
   dispose(): void;
 }
 
@@ -134,6 +136,9 @@ export function createPost(renderer: WebGLRenderer, scene: Scene, camera: Camera
     setSize(w: number, h: number) {
       composer.setPixelRatio(renderer.getPixelRatio());
       composer.setSize(w, h);
+    },
+    setExposure(exposure: number) {
+      u["exposure"]!.value = exposure;
     },
     dispose() {
       bloom?.dispose();

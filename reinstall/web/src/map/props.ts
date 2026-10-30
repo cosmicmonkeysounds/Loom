@@ -94,7 +94,7 @@ export function placingLabel(placing: string): string {
 }
 
 /** The model picker's groups, in order. */
-export const MODEL_GROUP_LABELS: Record<ModelGroup, string> = { structure: "Structure", computer: "Computer", office: "Office" };
+export const MODEL_GROUP_LABELS: Record<ModelGroup, string> = { structure: "Structure", computer: "Computer", office: "Office", home: "Home", studio: "Studio", strange: "Strange" };
 
 export function modelGroups(): { group: ModelGroup; label: string; models: PropModel[] }[] {
   return (Object.keys(MODEL_GROUP_LABELS) as ModelGroup[]).map((group) => ({ group, label: MODEL_GROUP_LABELS[group], models: PROP_MODELS.filter((m) => m.group === group) }));

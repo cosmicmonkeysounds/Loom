@@ -3,7 +3,9 @@
 //! falling, two syllables), the celebration fanfare, the failure buzz,
 //! the King's thud, and (wave 26) the void's jump-scare screech and the
 //! disk's pickup blip. Needs one user gesture first (`resume` on the tap that
-//! starts the game); without WebAudio every call is a no-op. The voice link
+//! starts the game); without WebAudio every call is a no-op. Wave 49 adds the
+//! descent's: the steps behind you, the growl, a wrong quack, a prop's mumble,
+//! a breath, mains hum, a slide, a door, the Hallway's drone. The voice link
 //! (`voice.ts`) plays and captures on this same context (`context()`): one
 //! context to unlock, never two.
 //!
@@ -28,6 +30,26 @@ export interface Sfx {
   scare(): void;
   /** A disk picked up (wave 26, R7): a short rising blip. */
   pickup(): void;
+  /** (wave 49) One heavy step, low and close, at `volume` 0…1. */
+  step(volume: number, pan?: number): void;
+  /** (wave 49) Something large, low, and behind you: ~3 s. */
+  growl(pan?: number): void;
+  /** (wave 49) A quack that rises where Gerald's falls, in two voices. */
+  wrongQuack(volume: number, pan?: number): void;
+  /** (wave 49) An awake prop muttering to itself, words just out of reach. */
+  mumble(volume: number, pan?: number): void;
+  /** (wave 49) A breath at the ear, from no direction. */
+  breath(): void;
+  /** (wave 49) The mains sagging: a buzz and two relays (`flicker`). */
+  mains(): void;
+  /** (wave 49) A low chord going sour (`tint`). */
+  sour(): void;
+  /** (wave 49) A slow slide down or up (`small`, `big`). */
+  slide(up: boolean): void;
+  /** (wave 49) A door arriving where there was none. */
+  doorArrives(): void;
+  /** (wave 49) The Hallway's drone, on or off. */
+  drone(on: boolean): void;
   /** The shared context and the effects' master bus (made on first use),
    *  null without WebAudio or once closed. */
   context(): { ctx: AudioContext; out: AudioNode } | null;
@@ -43,7 +65,27 @@ export type SfxOutput = () => { ctx: AudioContext; out: AudioNode } | null;
 /** The game's master level. */
 const GAME_LEVEL = 0.7;
 
-const SILENT: Sfx = { resume() {}, quack() {}, fanfare() {}, buzz() {}, thud() {}, scare() {}, pickup() {}, context: () => null, dispose() {} };
+const SILENT: Sfx = {
+  resume() {},
+  quack() {},
+  fanfare() {},
+  buzz() {},
+  thud() {},
+  scare() {},
+  pickup() {},
+  step() {},
+  growl() {},
+  wrongQuack() {},
+  mumble() {},
+  breath() {},
+  mains() {},
+  sour() {},
+  slide() {},
+  doorArrives() {},
+  drone() {},
+  context: () => null,
+  dispose() {},
+};
 
 /** The game's sounds: on a context of their own, or (`output`) on a host's. */
 export function createSfx(output?: SfxOutput): Sfx {
@@ -101,6 +143,8 @@ export function createSfx(output?: SfxOutput): Sfx {
 /** The sounds over `get` (the context + the node they play into); `close`
  *  releases what `get` owns (nothing, for a borrowed output). */
 function sfxOn(get: () => { ctx: Ctx; out: AudioNode } | null, close: () => void): Sfx {
+  /** The running drone's nodes, to stop. */
+  let droning: { stop: () => void } | null = null;
 
   const syllable = (c: Ctx, out: AudioNode, at: number, f0: number, f1: number, len: number, vol: number): void => {
     const osc = c.createOscillator();
@@ -153,6 +197,53 @@ function sfxOn(get: () => { ctx: Ctx; out: AudioNode } | null, close: () => void
     src.connect(env).connect(out);
     src.start(at);
     src.stop(at + len + 0.01);
+  };
+
+  /** Where a sound at `pan` plays into. */
+  const panned = (a: { ctx: Ctx; out: AudioNode }, pan: number): AudioNode => {
+    if (typeof a.ctx.createStereoPanner !== "function") return a.out;
+    const p = a.ctx.createStereoPanner();
+    p.pan.value = Math.max(-1, Math.min(1, pan));
+    p.connect(a.out);
+    return p;
+  };
+
+  /** White noise through a filter, swept from `f0` to `f1`, in and out over `len`. */
+  const breathOf = (c: Ctx, out: AudioNode, at: number, len: number, vol: number, f0: number, f1: number, q: number, type: BiquadFilterType = "bandpass"): void => {
+    const frames = Math.max(1, Math.floor(c.sampleRate * len));
+    const buffer = c.createBuffer(1, frames, c.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < frames; i++) data[i] = Math.random() * 2 - 1;
+    const src = c.createBufferSource();
+    src.buffer = buffer;
+    const filter = c.createBiquadFilter();
+    filter.type = type;
+    filter.Q.value = q;
+    filter.frequency.setValueAtTime(f0, at);
+    filter.frequency.exponentialRampToValueAtTime(f1, at + len);
+    const env = c.createGain();
+    env.gain.setValueAtTime(0.0001, at);
+    env.gain.exponentialRampToValueAtTime(vol, at + len * 0.35);
+    env.gain.exponentialRampToValueAtTime(0.0001, at + len);
+    src.connect(filter).connect(env).connect(out);
+    src.start(at);
+    src.stop(at + len + 0.01);
+  };
+
+  /** A held tone with a slow rise and fall, gliding `f0` → `f1`. */
+  const glide = (c: Ctx, out: AudioNode, at: number, len: number, vol: number, f0: number, f1: number, type: OscillatorType): void => {
+    const osc = c.createOscillator();
+    osc.type = type;
+    osc.frequency.setValueAtTime(f0, at);
+    osc.frequency.exponentialRampToValueAtTime(f1, at + len);
+    const env = c.createGain();
+    env.gain.setValueAtTime(0.0001, at);
+    env.gain.exponentialRampToValueAtTime(vol, at + len * 0.25);
+    env.gain.setValueAtTime(vol, at + len * 0.7);
+    env.gain.exponentialRampToValueAtTime(0.0001, at + len);
+    osc.connect(env).connect(out);
+    osc.start(at);
+    osc.stop(at + len + 0.02);
   };
 
   return {
@@ -239,8 +330,192 @@ function sfxOn(get: () => { ctx: Ctx; out: AudioNode } | null, close: () => void
       tone(a.ctx, a.out, t, 660, 0.09, 0.12, "square");
       tone(a.ctx, a.out, t + 0.08, 990, 0.16, 0.12, "square");
     },
+    step(volume, pan = 0) {
+      const a = get();
+      if (a === null) return;
+      const v = Math.max(0, Math.min(1, volume));
+      const out = panned(a, pan);
+      const t = a.ctx.currentTime + 0.005;
+      // The heel, then the boot's weight coming down on a board.
+      const osc = a.ctx.createOscillator();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(92, t);
+      osc.frequency.exponentialRampToValueAtTime(48, t + 0.13);
+      const env = a.ctx.createGain();
+      env.gain.setValueAtTime(0.0001, t);
+      env.gain.exponentialRampToValueAtTime(0.5 * v, t + 0.008);
+      env.gain.exponentialRampToValueAtTime(0.0001, t + 0.17);
+      osc.connect(env).connect(out);
+      osc.start(t);
+      osc.stop(t + 0.19);
+      breathOf(a.ctx, out, t, 0.09, 0.12 * v, 620, 240, 0.8, "lowpass");
+    },
+    growl(pan = 0) {
+      const a = get();
+      if (a === null) return;
+      const out = panned(a, pan);
+      const t = a.ctx.currentTime + 0.01;
+      const len = 3.1;
+      const low = a.ctx.createBiquadFilter();
+      low.type = "lowpass";
+      low.frequency.setValueAtTime(180, t);
+      low.frequency.exponentialRampToValueAtTime(520, t + len * 0.45);
+      low.frequency.exponentialRampToValueAtTime(140, t + len);
+      // The rattle in it: the level shaken at 26 Hz.
+      const shake = a.ctx.createGain();
+      shake.gain.value = 0.55;
+      const lfo = a.ctx.createOscillator();
+      lfo.frequency.value = 26;
+      const depth = a.ctx.createGain();
+      depth.gain.value = 0.45;
+      lfo.connect(depth).connect(shake.gain);
+      const env = a.ctx.createGain();
+      env.gain.setValueAtTime(0.0001, t);
+      env.gain.exponentialRampToValueAtTime(0.5, t + len * 0.4);
+      env.gain.exponentialRampToValueAtTime(0.0001, t + len);
+      low.connect(shake).connect(env).connect(out);
+      for (const f of [46, 69.5]) {
+        const osc = a.ctx.createOscillator();
+        osc.type = "sawtooth";
+        osc.frequency.setValueAtTime(f, t);
+        osc.frequency.linearRampToValueAtTime(f * 1.18, t + len * 0.45);
+        osc.frequency.linearRampToValueAtTime(f * 0.86, t + len);
+        osc.connect(low);
+        osc.start(t);
+        osc.stop(t + len + 0.02);
+      }
+      lfo.start(t);
+      lfo.stop(t + len + 0.02);
+    },
+    wrongQuack(volume, pan = 0) {
+      const a = get();
+      if (a === null) return;
+      const v = Math.max(0, Math.min(1, volume)) * 0.42;
+      if (v < 0.01) return;
+      const out = panned(a, pan);
+      const t = a.ctx.currentTime + 0.01;
+      // Gerald's two syllables backwards: rising, slower, a tritone apart.
+      for (const k of [1, 0.707]) {
+        syllable(a.ctx, out, t, 300 * k, 430 * k, 0.24, v * (k === 1 ? 1 : 0.7));
+        syllable(a.ctx, out, t + 0.31, 250 * k, 540 * k, 0.42, v * (k === 1 ? 1 : 0.7));
+      }
+    },
+    mumble(volume, pan = 0) {
+      const a = get();
+      if (a === null) return;
+      const v = Math.max(0, Math.min(1, volume)) * 0.14;
+      if (v < 0.004) return;
+      const out = panned(a, pan);
+      const base = a.ctx.currentTime + 0.01;
+      const grains = 4 + Math.floor(Math.random() * 4);
+      let at = base;
+      for (let i = 0; i < grains; i++) {
+        const len = 0.07 + Math.random() * 0.11;
+        const f = 105 + Math.random() * 70;
+        const osc = a.ctx.createOscillator();
+        osc.type = "sawtooth";
+        osc.frequency.setValueAtTime(f, at);
+        osc.frequency.exponentialRampToValueAtTime(f * (0.8 + Math.random() * 0.3), at + len);
+        const mouth = a.ctx.createBiquadFilter();
+        mouth.type = "bandpass";
+        mouth.Q.value = 4;
+        mouth.frequency.value = 420 + Math.random() * 560;
+        const env = a.ctx.createGain();
+        env.gain.setValueAtTime(0.0001, at);
+        env.gain.exponentialRampToValueAtTime(v, at + len * 0.3);
+        env.gain.exponentialRampToValueAtTime(0.0001, at + len);
+        osc.connect(mouth).connect(env).connect(out);
+        osc.start(at);
+        osc.stop(at + len + 0.01);
+        at += len + 0.02 + Math.random() * 0.09;
+      }
+    },
+    breath() {
+      const a = get();
+      if (a === null) return;
+      const t = a.ctx.currentTime + 0.01;
+      breathOf(a.ctx, a.out, t, 0.9, 0.05, 2400, 3600, 1.4);
+      breathOf(a.ctx, a.out, t + 0.95, 1.2, 0.035, 3200, 1500, 1.2);
+    },
+    mains() {
+      const a = get();
+      if (a === null) return;
+      const t = a.ctx.currentTime + 0.01;
+      const len = 2.3;
+      const band = a.ctx.createBiquadFilter();
+      band.type = "bandpass";
+      band.frequency.value = 480;
+      band.Q.value = 1.6;
+      band.connect(a.out);
+      glide(a.ctx, band, t, len, 0.09, 120, 96, "square");
+      noise(a.ctx, a.out, t + 0.02, 0.03, 0.14);
+      noise(a.ctx, a.out, t + len - 0.1, 0.03, 0.1);
+    },
+    sour() {
+      const a = get();
+      if (a === null) return;
+      const t = a.ctx.currentTime + 0.01;
+      for (const [f, to] of [[55, 53], [82.4, 77.8], [116.5, 110]] as const) glide(a.ctx, a.out, t, 7, 0.06, f, to, "triangle");
+    },
+    slide(up) {
+      const a = get();
+      if (a === null) return;
+      const t = a.ctx.currentTime + 0.01;
+      if (up) glide(a.ctx, a.out, t, 3.6, 0.07, 130, 620, "sine");
+      else glide(a.ctx, a.out, t, 3.6, 0.07, 620, 95, "sine");
+    },
+    doorArrives() {
+      const a = get();
+      if (a === null) return;
+      const t = a.ctx.currentTime + 0.01;
+      glide(a.ctx, a.out, t, 0.9, 0.26, 62, 34, "sine");
+      const band = a.ctx.createBiquadFilter();
+      band.type = "bandpass";
+      band.frequency.value = 900;
+      band.Q.value = 7;
+      band.connect(a.out);
+      glide(a.ctx, band, t + 0.12, 1.3, 0.05, 92, 141, "sawtooth");
+    },
+    drone(on) {
+      if (!on) {
+        droning?.stop();
+        droning = null;
+        return;
+      }
+      const a = get();
+      if (a === null || droning !== null) return;
+      const t = a.ctx.currentTime + 0.01;
+      const bus = a.ctx.createGain();
+      bus.gain.setValueAtTime(0.0001, t);
+      bus.gain.exponentialRampToValueAtTime(0.2, t + 2.5);
+      bus.connect(a.out);
+      const low = a.ctx.createBiquadFilter();
+      low.type = "lowpass";
+      low.frequency.value = 220;
+      low.connect(bus);
+      const oscs = [41.2, 43.65, 61.9].map((f) => {
+        const osc = a.ctx.createOscillator();
+        osc.type = "sawtooth";
+        osc.frequency.value = f;
+        osc.connect(low);
+        osc.start(t);
+        return osc;
+      });
+      const { ctx } = a;
+      droning = {
+        stop() {
+          const end = ctx.currentTime;
+          bus.gain.cancelScheduledValues(end);
+          bus.gain.setValueAtTime(Math.max(0.0001, bus.gain.value), end);
+          bus.gain.exponentialRampToValueAtTime(0.0001, end + 0.8);
+          for (const o of oscs) o.stop(end + 0.85);
+        },
+      };
+    },
     context: () => get(),
     dispose() {
+      droning?.stop();
+      droning = null;
       close();
     },
   };
