@@ -41,8 +41,8 @@ test/
 |---|---|
 | Adafruit Grand Central M4 Express (ATSAMD51P20) | USB to Steph's laptop; it powers the LED and LDR too. **3.3 V logic: no pin takes 5 V** |
 | LDR (CdS photocell, GL5528 or similar, 10–20 kΩ at 10 lux) | on the frame, facing the LED |
-| 10 kΩ resistor | A0 → GND, the divider's bottom half |
-| A bright LED (5 mm) + its resistor | on the door edge or the opposite jamb, aimed at the LDR. Today: on the board's **5V** (the steady wiring below) |
+| 10 kΩ resistor | A14 → GND, the divider's bottom half |
+| A bright LED (5 mm) + its resistor | on the door edge or the opposite jamb, aimed at the LDR. Today: switched by **D23** (the pulsed wiring below) |
 | **A shroud tube**: 2–3 cm of black heat-shrink or a black straw | over the LDR, open end toward the LED: keeps room light off the cell (the most important part for a stable reading, and the only defence the steady wiring has) |
 | For the pulsed wiring: an NPN (2N3904 / PN2222 / 2N2222) + 1 kΩ, **or** a red LED + 220 Ω | B below: keeps today's 5 V LED and its resistor; A: a red LED straight off D2 |
 | Optional: 47 Ω | the LED sense resistor (A1), below |
@@ -54,7 +54,7 @@ The LDR side is the same in every wiring, and always on **3V3, never 5V**
 (the SAMD51's analog pins are not 5 V tolerant):
 
 ```
-   3V3 ──[LDR in its shroud]──┬── A0
+   3V3 ──[LDR in its shroud]──┬── A14
                               │
                            [10 kΩ]
                               │
@@ -70,7 +70,10 @@ The LED has two wirings. The firmware is built for one of them with
 on 5V, actually, but it could be on a digital pin to allow pulsing for
 better light/dark detection"*).
 
-### Steady: the LED on 5V (today's rig, `LED_MODE LED_STEADY`, the default)
+The pins are `PIN_DOOR_LDR` (A14) and `PIN_DOOR_LED` (D23) in `config.h`;
+D2 below means `PIN_DOOR_LED`.
+
+### Steady: the LED on 5V (`LED_MODE LED_STEADY`)
 
 ```
    5V ──[its resistor]──►|── GND          (always lit; D2 is driven high and unused)
@@ -83,7 +86,7 @@ in a bright room can read **shut**. The server room's own RGB bulb (the
 heart looks, up to full red) is the light to worry about: aim the shroud
 away from it and calibrate with it at its brightest.
 
-### Pulsed: the LED switched by D2 (`LED_MODE LED_PULSED`)
+### Pulsed: the LED switched by D2 (today's rig, `LED_MODE LED_PULSED`, the default)
 
 The firmware turns the LED on, waits `settle`, reads (`lit`); off, waits,
 reads (`dark`); the door is judged on `level = lit − dark` (`mode` `mod` on
@@ -152,8 +155,8 @@ build's `LED_MODE`:
 
 | `LED_MODE` | `mode` | |
 |---|---|---|
-| `LED_STEADY` (default) | `steady` | `level = lit`, `dark = 0`, one frame per 50 ms. Nothing touches D2 after boot |
-| `LED_PULSED` | `mod` | LED on, wait `settle`, average 8 reads → `lit`; off, wait, average 8 → `dark`; `level = max(0, lit − dark)`; one frame per ≈ 2 × `settle` (300 ms at the default 150), so the LED blinks at ≈ 3 Hz inside the shroud |
+| `LED_STEADY` | `steady` | `level = lit`, `dark = 0`, one frame per 50 ms. Nothing touches D2 after boot |
+| `LED_PULSED` (default) | `mod` | LED on, wait `settle`, average 8 reads → `lit`; off, wait, average 8 → `dark`; `level = max(0, lit − dark)`; one frame per ≈ 2 × `settle` (300 ms at the default 150), so the LED blinks at ≈ 3 Hz inside the shroud |
 | `LED_AUTO` | probed | the wave 20 behaviour: at boot D2 low / high three times, a mean difference ≥ 200 → `mod`, else `steady`; while it runs `steady` it re-probes on every close (≈ 0.9 s with the loop blocked) |
 
 `hello` / `cfg` report the running `mode` (`mod` or `steady`) and `auto`.
@@ -257,13 +260,13 @@ line; then green shut, amber open.
 
 ```bash
 test/run.sh            # host tests of the logic (plain c++17, ~1 s)
-test/run.sh compile    # + compile for the Grand Central M4, the shipped (steady) build and a pulsed one
+test/run.sh compile    # + compile for the Grand Central M4, the shipped (pulsed) build and a steady one
                        #   (installs the core + 2 libraries on first run)
 ```
 
-The pulsed build by hand: edit `#define LED_MODE LED_STEADY` in
-`config.h` to `LED_PULSED`, or add
-`--build-property "compiler.cpp.extra_flags=-DLED_MODE=LED_PULSED" --clean`
+The steady build by hand: edit `#define LED_MODE LED_PULSED` in
+`config.h` to `LED_STEADY`, or add
+`--build-property "compiler.cpp.extra_flags=-DLED_MODE=LED_STEADY" --clean`
 to the compile and upload below.
 
 By hand (contract §5.3 step 6), on the laptop the board plugs into:

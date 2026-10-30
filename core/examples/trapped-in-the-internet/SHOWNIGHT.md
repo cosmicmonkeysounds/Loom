@@ -173,8 +173,8 @@ Quest APK). Verify what runs with
     `uv run stagehand check --config trapped.desktop.yaml --only lights` is
     green.
 13. **Steph's laptop:** flash the wave 22 firmware from
-    `hardware/server-room-m4` (door + patch bay; `LED_STEADY` while the LED
-    is on 5V); `scripts/accept/N-20.sh` (the door) and `N-21.sh` (the bay:
+    `hardware/server-room-m4` (door + patch bay; `LED_PULSED`, the LED on
+    D23); `scripts/accept/N-20.sh` (the door) and `N-21.sh` (the bay:
     learns V1–V8, then `pb save`); open the terminal once without
     `--kiosk`, grant the camera and the port, **calibrate the door in ⚙**
     (always after a reflash), check the patch bay's live table, relaunch in

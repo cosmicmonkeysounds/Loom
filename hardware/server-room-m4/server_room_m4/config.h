@@ -12,36 +12,38 @@
 
 // ── How the LED is wired (Q5, 2026-10-23) ─────────────────────────────────
 // LED_STEADY  the LED on the board's 5V (or 3V3) through its own resistor,
-//             always lit: today's rig. level = the raw LDR reading. Room
-//             light that reaches the cell reads as "shut", so the shroud
-//             is what keeps it honest. Nothing probes or toggles D2.
-// LED_PULSED  the LED switched by D2 (through a resistor, or an NPN for the
-//             5 V LED: README). The firmware pulses it and reads lit − dark
-//             each frame, so steady room light (the red heart bulb, a hall
-//             lamp) cancels out and can't fake "shut". Wire name: `mod`.
-// LED_AUTO    probe D2 at boot and pick one of the two (the wave 20 default;
-//             a re-probe blocks ≈ 0.9 s on every close while it runs steady).
+//             always lit. level = the raw LDR reading. Room light that
+//             reaches the cell reads as "shut", so the shroud is what keeps
+//             it honest. Nothing probes or toggles PIN_DOOR_LED.
+// LED_PULSED  the LED switched by PIN_DOOR_LED (through a resistor, or an NPN
+//             for the 5 V LED: README): today's rig. The firmware pulses it
+//             and reads lit − dark each frame, so steady room light (the red
+//             heart bulb, a hall lamp) cancels out and can't fake "shut".
+//             Wire name: `mod`.
+// LED_AUTO    probe PIN_DOOR_LED at boot and pick one of the two (the wave 20
+//             default; a re-probe blocks ≈ 0.9 s on every close while it runs
+//             steady).
 // This is only the first-boot / `reset` mode: `set mode …` + `save` still
-// override it on the bench. Build another with -DLED_MODE=LED_PULSED, or edit
+// override it on the bench. Build another with -DLED_MODE=LED_STEADY, or edit
 // the line below. The values are dl::Mode's (and the flash record's).
 #define LED_AUTO 0
 #define LED_PULSED 1
 #define LED_STEADY 2
 #ifndef LED_MODE
-#define LED_MODE LED_STEADY
+#define LED_MODE LED_PULSED
 #endif
 
 // ── Pins (Adafruit Grand Central M4 Express) ──────────────────────────────
-// LDR from 3V3 to A0, 10 kΩ from A0 to GND: more light → a higher reading,
+// LDR from 3V3 to A14, 10 kΩ from A14 to GND: more light → a higher reading,
 // near 4095 with the LED shining straight into it. Always 3V3, never 5V: the
 // SAMD51's pins are not 5 V tolerant.
-#define PIN_DOOR_LDR A0
+#define PIN_DOOR_LDR A14
 // LED_PULSED: the pin that switches the LED (3.3 V logic). A red LED straight
 // off the pin through 220 Ω (≈ 6 mA), or the 5 V LED through an NPN whose
 // base takes this pin through 1 kΩ (README). LED_STEADY drives it high and
 // leaves it there (harmless with nothing on it).
 // (Not PIN_LED: the board's variant.h already names pin 13 that.)
-#define PIN_DOOR_LED 2
+#define PIN_DOOR_LED 23
 // Optional: the LED's cathode → 47 Ω → GND, with A1 on the cathode. Set
 // LED_SENSE to 1 once it is wired: a reading under 20 while the LED is
 // driven is the blocking fault `led_dead`. Without it a dead LED reads as an
@@ -78,7 +80,7 @@
 #define PB_INPUTS 7
 #endif
 #define PB_SOURCES 8
-// D1 … D7 in order (A0 is the LDR, A1 the optional LED sense; A9–A15 spare).
+// D1 … D7 in order (A14 is the LDR, A1 the optional LED sense; A0, A9–A13, A15 spare).
 #define PB_PINS {A2, A3, A4, A5, A6, A7, A8}
 // The sources' nominal levels (12-bit counts, V<k> = k · 3.3 / 9 off the
 // E24 dividers in the README, as read through the 220 kΩ / 1 kΩ input), the

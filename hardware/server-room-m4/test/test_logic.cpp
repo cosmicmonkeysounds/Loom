@@ -437,13 +437,27 @@ static int edgeAfter(Rig& r, bool shut, uint32_t limit) {
   return r.until(!shut, limit);
 }
 
-static void test_the_shipped_build_is_steady_with_the_led_on_5v() {
-  // Today's rig: the LED on the board's 5V, always lit. The shipped build
-  // runs `steady` from a blank board without probing or touching D2.
-  CHECK(dl::kBuildMode == dl::kSteady && dl::Settings().mode == dl::kSteady);
-  CHECK(LED_MODE == LED_STEADY);
+static void test_the_shipped_build_is_pulsed() {
+  // Today's rig: the LED on PIN_DOOR_LED. The shipped build runs `mod` from a
+  // blank board without probing, and `reset` goes back to it.
+  CHECK(dl::kBuildMode == dl::kMod && dl::Settings().mode == dl::kMod);
+  CHECK(LED_MODE == LED_PULSED);
   erase();
   Rig r(false, dl::kBuildMode);
+  r.begin();
+  CHECK(r.e.mode() == dl::kMod);
+  CHECK(r.d.now == 0);  // no boot probe: nothing waited
+  CHECK(r.out.last().find("\"mode\":\"mod\",\"auto\":false") != std::string::npos);
+  r.say("reset");
+  r.say("get");
+  CHECK(r.out.last().find("\"mode\":\"mod\",\"auto\":false") != std::string::npos);
+}
+
+static void test_a_steady_build_with_the_led_on_5v() {
+  // The other wiring: the LED on the board's 5V, always lit. A steady build
+  // runs `steady` from a blank board without probing or touching the pin.
+  erase();
+  Rig r(false, dl::kSteady);
   r.d.ledOnPin = false;
   r.begin();
   CHECK(r.e.mode() == dl::kSteady);
@@ -1431,7 +1445,8 @@ int main(int argc, char** argv) {
   test_mod_frames_take_two_settles_and_blink_the_led();
   test_auto_picks_mod_with_the_led_on_d2_else_steady();
   test_auto_booted_with_the_door_open_moves_to_mod_once_it_shuts();
-  test_the_shipped_build_is_steady_with_the_led_on_5v();
+  test_the_shipped_build_is_pulsed();
+  test_a_steady_build_with_the_led_on_5v();
   test_the_pulsed_build_rejects_room_light();
   test_a_dead_led_in_either_build();
   test_a_saturated_ldr_is_a_blocking_fault_after_2_s();

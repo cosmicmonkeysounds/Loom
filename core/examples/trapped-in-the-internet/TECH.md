@@ -190,8 +190,8 @@ camera (and in the server room, the serial port), then relaunch with
 
 - **The door.** An LED shines into an LDR (in a black shroud tube) only while
   the door is shut. The M4 classifies it; the terminal posts
-  `door_sensor_opened` / `door_sensor_closed`. Firmware `LED_STEADY` while
-  the LED is on 5V (today's wiring); `LED_PULSED` once it moves to D2.
+  `door_sensor_opened` / `door_sensor_closed`. Firmware `LED_PULSED`: the
+  LED is on D23 (today's wiring), the LDR on A14.
   **Calibrate in ⚙ after every reflash** (⚙ reads *⚠ calibrate again*
   otherwise). A 🚪 button press puts the story on the buttons until
   🚪 *Trust the door sensor again*.
