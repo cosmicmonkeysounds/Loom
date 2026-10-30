@@ -469,8 +469,9 @@ audio:
   idle, read input 1 in `stagehand music status`, set it ~6 dB over.
   The MacBook fallback is output-only: no TV route and no input ducks.
 - **The soundtrack** (`media/soundtrack.yaml`; the file's header is the
-  guide): a playlist per act (`media/music/doors/`, `act-1/`, `malware/`,
-  `act-2/`, `act-3/`, `final/`, `ceremony/`, `afterparty/`; git-ignored,
+  guide; wave 52: the acts from the TIDAL app, `audio/tidal.py`, the folders
+  their fallback): a playlist per act (`media/music/act-1/`,
+  `act-2/`, `act-3/`, `ceremony/`, `afterparty/`; git-ignored,
   any of mp3 / wav / flac / ogg / aiff), shuffled and crossfaded,
   streamed (never decoded whole). The story's `cue music_<scene>` picks
   the scene; after a restart the router catches up from the screen

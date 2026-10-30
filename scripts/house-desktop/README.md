@@ -467,23 +467,24 @@ volume up, or Trabolta is not heard at all.
 ### 3.6 The soundtrack and who ducks what
 
 The router plays **music all night** on its `music` bus, under every story
-sound and announcement: one set per act, shuffled (a new order each pass,
-never the same track twice in a row), crossfading over 3 s, at −10 dB
+sound and announcement: one set per act, at −10 dB, from John's TIDAL
+playlists (§3.7), or from a folder of files: shuffled (a new order each pass,
+never the same track twice in a row), crossfading over 3 s
 (`media\soundtrack.yaml`, tracked; `docs/loom-w38-contract.md` C3). The
 story picks the set: `cue music_<scene>` at each act change, mirrored in
 `Night.music`, which the router reads back after a restart or a reconnect.
 
-| Scene | Folder | Starts at |
+| Scene | Plays | Starts at |
 |---|---|---|
-| `doors` | `music\doors\` | Power On (🚪 Open the doors) |
-| `act_1` | `music\act-1\` | the call to the Desktop (or an early Bingo) |
-| `malware` | `music\malware\` | the Ad Hijack (`ad_jingle` takes the speakers first) |
-| `act_2` | `music\act-2\` | the five-minute warning (or an early Truth Pong) |
-| `act_3` | `music\act-3\` | the Y2K clock |
-| `final` | `music\final\` | the final reveal |
-| `off` | — | every ending: silence |
+| `doors` | TITI - Act 1 | Power On (🚪 Open the doors) |
+| `act_1` | TITI - Act 1, playing on | the call to the Desktop (or an early Bingo) |
+| `malware` | TITI - Act 2 | the Ad Hijack (`ad_jingle` takes the speakers first) |
+| `act_2` | TITI - Act 2, playing on | the five-minute warning (or an early Truth Pong) |
+| `act_3` | TITI - Act 3 | the Y2K clock |
+| `final` | TITI - Act 3, playing on | the final reveal |
+| `off` | — | every ending: silence, TIDAL paused |
 | `ceremony` | `music\ceremony\` | the ceremony (`ceremony_bed` takes the living room while it plays) |
-| `afterparty` | `music\afterparty\` | the resurrection, to the end of the night |
+| `afterparty` | TITI - Rave / Ending | the resurrection, to the end of the night |
 
 **Per room.** Each scene says which playlist each speaker plays: today
 every scene is its act's playlist everywhere, plus the dryer loop
@@ -562,6 +563,61 @@ install. Speaker tests ignore it. Clippy's mic shows as a meter only (it
 lives in CueMix). Muting the TV *everywhere* also stops it ducking the
 music; a featured track muted somewhere takes nothing over there.
 `pnpm showctl doctor`'s Mixer row lists what is off 0 dB.
+
+### 3.7 The soundtrack from the TIDAL app
+
+The acts and the ending are John's TIDAL playlists, **played by the TIDAL
+app on this PC** and heard like the TV: through VoiceMeeter, on a bus of
+their own. Custom songs stay MP3s (below). Proven on this PC on 2026-10-30:
+every scene change against the real app, stereo at full level, and 4 minutes
+on the 828x's own clock (the numbers are in `docs/loom-w52-contract.md`).
+
+    TIDAL -> VoiceMeeter Aux Input -> the AUX strip, B2 only
+          -> VoiceMeeter Aux Output -> the router's music bus
+
+1. **VoiceMeeter's AUX strip** (the second virtual input): **B2 on, every A
+   button off**, fader at 0 dB. A1 stays as in §3.5, so this bus runs on the
+   MOTU's clock. The strip stays clear of Trabolta's VAIO / B1.
+2. **Sign in to TIDAL once by hand.** Then start it for the show:
+   `.\tidal.ps1`, and `.\tidal.ps1 -InstallTask` to do that at every
+   sign-in. Started any other way (the Start menu, a tray click after a
+   quit) it has no control port, and the router can't reach it.
+3. **Nothing else to set in TIDAL.** The router picks **VoiceMeeter Aux
+   Input** in the app's Sound output menu, sets Repeat, and plays the
+   playlist in TIDAL's own order. Keep the app's volume at full; the level
+   is the mixer's. Don't use the app during the show: it belongs to the
+   router, and a stray pause resumes within a second.
+4. **`.\tidal.ps1 -Check`** (part of `preflight.ps1`), then `uv run
+   stagehand music scene act_1 --config trapped.desktop.yaml`: `music
+   status` names the track, and Run -> House -> 🎚 Mixer shows it with ⏭.
+   The audio log's health line ends `| tidal playing <track>, capture peak N
+   dBFS`, or `| tidal PROBLEM: <why>`.
+
+**What it does by itself.** A scene change fades the old act out, changes
+playlist and fades the new one in (about 3 s; two playlists can't crossfade
+through one app). The `off` scene and Stop house sounds pause the app after
+their fade, and the same act coming back resumes. A TIDAL that restarts
+is put back on the wanted playlist, from its top. A router that restarts
+finds the app playing and leaves it alone. Ducking, the mixer's strips and
+⏭ work as on any bed.
+
+**The fallback.** If the app doesn't answer, the playlist won't start or
+the cable carries nothing for 20 s, the bed crossfades to that act's folder
+(`media\music\act-1\`, `act-2\`, `act-3\`, `afterparty\`) if it holds
+files; the next scene tries TIDAL again. With an empty folder it stays
+silent and keeps trying. So the night depends on this PC's internet unless
+those folders are filled.
+
+**Custom songs.** A song the story fires (`sound dance_song`, `hand_jive`, …)
+goes in `media\sounds\` as `<name>.mp3`, as before, and takes the speakers
+over; the story cues `music_off` first, so TIDAL pauses under it. A folder
+playlist can't be mixed into a TIDAL one, but any scene can be a folder
+instead: point its `play:` at one in `media\soundtrack.yaml`, as `ceremony`
+does. Playlist ids are in that file; renaming a playlist in TIDAL changes
+nothing, and a new one needs the id from the end of its share link.
+
+**In the MacBook fallback** (§11) the router has no `tidal:` section, so
+every act plays its folder: copy them over.
 
 ## 4. Zigbee2MQTT on the CC2652P
 
@@ -1047,6 +1103,7 @@ output back to VoiceMeeter Input with the TV's volume down (§3.5).
 | A job keeps dying | `.\start-stagehand.ps1 -Status` (the log) | `.\start-stagehand.ps1 -Stop <job>`, then `-Foreground <job>` to watch it in a window |
 | `config error` / CHANGE-ME | `.\start-stagehand.ps1 -Check` | `stagehand\trapped.house.local.yaml` (§7) |
 | The TV is silent | Run → Terminals (muted?); the house speakers (Trabolta plays there, not on the TV, §3.5) | `M` unmutes; Chrome's output on VoiceMeeter Input, VoiceMeeter running; reopen with `.\tv-kiosk.ps1` (autoplay flag) |
+| No music, TIDAL | The audio log: `tidal PROBLEM: <why>`, `falls back to its files`; TIDAL's clock moving? | `.\tidal.ps1 -Check`; `.\tidal.ps1` (restarts the app; it picks the playlist up from its top); AUX strip on B2 only (§3.7) |
 | No music | `uv run stagehand music status --config trapped.desktop.yaml`: the scene, `no files :` | no scene (■ Stop house sounds, or no act cue yet): `music scene <the current act>`; an empty folder: copy the MP3s into `media\music\<act>\` (they join at the next pass, or `music next`); `stagehand check --only audio` for a VBR MP3 that stops early |
 | The music doesn't duck under Trabolta | `music status`: input 3 on the `inputs` line after he talks (`—` means an output-only stream) | VoiceMeeter running; Chrome's output on VoiceMeeter Input; the VAIO strip on B1; the health line's `tap` part (`NOT OPEN`? its peak?) (§3.5); the level over −45 dBFS; `passthrough: true` (the house file; the MacBook fallback never ducks) |
 | The music doesn't duck under Clippy, or stays ducked in the living room | `music status`: input 1's peak with the lav idle | the receiver into Mic/Gtr 1; `audio.sidechain.roles.clippy.threshold_db` about 6 dB over the idle peak (§3.6), then `-Restart audio` |

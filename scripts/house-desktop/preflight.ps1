@@ -119,8 +119,10 @@ if (-not $NoAudio) {
             $n = @(Get-ChildItem -LiteralPath $d -File -ErrorAction SilentlyContinue | Where-Object { $script:MusicExtensions -contains $_.Extension.ToLower() }).Count
         }
         if ($n -gt 0) { Write-Ok ('music\' + $act + ': ' + $n + ' track(s)') }
-        else { Write-Warn ('music\' + $act + ' is empty or missing: that act plays no music (copy the MP3s in, README section 3.4)') }
+        elseif ($act -eq 'ceremony') { Write-Warn 'music\ceremony is empty or missing: the ceremony has no bed (README section 3.4)' }
+        else { Write-Note ('music\' + $act + ' is empty: no fallback if TIDAL fails in that act (README section 3.7)') }
     }
+    & (Join-Path $PSScriptRoot 'tidal.ps1') -Check
     $dryer = Join-Path $media 'library\ambient\dryer-tumble.wav'
     if (Test-Path -LiteralPath $dryer) { Write-Ok 'the SFX library is rendered (the Fan Closet''s dryer loop is there)' }
     else { Write-Warn 'the SFX library is not rendered: .\start-stagehand.ps1, or uv run stagehand sounds library --story --config trapped.desktop.yaml' }
