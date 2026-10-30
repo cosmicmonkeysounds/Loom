@@ -26,10 +26,11 @@
     voice (Run -> Terminals shows it).
 
     The TV's sound (wave 38) goes to the house speakers, not the TV's own:
-    Chrome's output device is the PC's line out (Settings -> System ->
+    Chrome's output device is VoiceMeeter Input (Settings -> System ->
     Sound -> Volume mixer; on Windows 10, App volume and device
-    preferences), cabled into the 828x's rear Analog In 1, where the audio
-    router routes it to every speaker and ducks the music under it. The
+    preferences; this PC has no line out). VoiceMeeter's B1 is summed into
+    the 828x's input 3 by the router's audio.tap (wave 46), which routes it
+    to every speaker and ducks the music under it. The
     TV's own volume stays down, or Trabolta plays twice. This script does
     not set the output device; Windows keeps it per program (every Chrome
     window on this PC). In the MacBook fallback the router does not route

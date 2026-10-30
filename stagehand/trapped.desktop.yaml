@@ -71,8 +71,9 @@ lights:
 #     trapped.desktop.local.yaml → audio: { device: "<that>" } (audio.json
 #     says "828x"; MOTU's Windows driver may call it otherwise). Then
 #     `stagehand check --only audio` must show 32 in / 30 out (device.expect),
-#     and every speaker needs a fresh 🔈 Test: ASIO's channel order may not
-#     be CoreAudio's.
+#     and every speaker needs a fresh 🔈 Test: ASIO's channel order is not
+#     CoreAudio's (Main L/R 1-2, Analog 1-8 3-10, S/PDIF 11-12, Phones
+#     13-14; audio.json follows it since wave 46).
 #   - the voice: Windows SAPI (voice_engine: auto picks it here), female.
 #   Run it from the logged-in session only (`tasks install --job audio`),
 #   never as a service: ASIO drivers are unreliable from session 0. Never

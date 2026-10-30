@@ -9,7 +9,7 @@
          │
          ▼
     this module ── ONE sounddevice stream on the interface (the MOTU 828x on its
-                   │  own outs: audio.json 10 in / 12 out, device.expect 32 / 30)
+                   │  own outs: audio.json 10 in / 14 out, device.expect 32 / 30)
                    ├─ voices: `sound X` → sounds_dir/X.wav → its speakers' outputs
                    ├─ announcements: chime + `say` → audio.json `announce.to`
                    ├─ tests: a 1.5 s tone + the spoken label on one speaker / output

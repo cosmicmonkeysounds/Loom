@@ -143,7 +143,7 @@ if ($tv.Count -eq 0) { Write-Bad 'the TV Chrome is not running: .\tv-kiosk.ps1' 
 elseif (@($tv | Where-Object { $_.CommandLine.Contains('--kiosk') }).Count -gt 0) { Write-Ok 'the TV Chrome runs in kiosk mode' }
 else { Write-Warn 'the TV Chrome runs, but not in kiosk mode (still -Setup?)' }
 Write-Note 'by hand: Run -> Terminals shows TV live; the TV voice unmuted (M); Do not disturb on; Windows system sounds off'
-if (-not $NoAudio) { Write-Note 'by hand: Chrome''s output on the line out into the 828x (Volume mixer), the TV''s own volume down; a TEST VOICE plays on the house speakers, once (README section 3.5)' }
+if (-not $NoAudio) { Write-Note 'by hand: VoiceMeeter Potato running (VAIO strip on B1 only), Chrome''s output on VoiceMeeter Input (Volume mixer), the TV''s own volume down; a TEST VOICE plays on the house speakers, once (README section 3.5)' }
 else { Write-Note 'by hand (the MacBook fallback): Chrome''s output back on the TV''s HDMI and the TV''s volume up - the fallback router does not route the TV (README section 11)' }
 
 # -- showctl ------------------------------------------------------------------
