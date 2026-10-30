@@ -13,6 +13,9 @@
         timeout_s: 90
         json_mode: false
         api_key_env: OPENAI_API_KEY   # hosted endpoints only
+        api: anthropic             # (wave 52) Claude: `uv sync --extra anthropic`; the endpoint defaults to
+                                   #   Anthropic's, the key to ANTHROPIC_API_KEY or ~/.config/loom/anthropic.key,
+                                   #   temperature is ignored, reasoning_effort is the `effort`
         num_ctx: 32768             # api: ollama only — the default: a late-night line is ≈ 14k tokens
       orchestrator:                # the slow model that grows each character's mind
         enabled: true              #   (off → the persona alone, as before)
@@ -67,7 +70,7 @@ from pathlib import Path
 from typing import Any
 
 from ..module import ConfigError
-from .llm import LlmConfig
+from .llm import ANTHROPIC_ENDPOINT, LlmConfig
 from .orchestrator import OrchestratorConfig
 from .persona import Persona, load_persona
 from .slots import PRIMARY
@@ -240,8 +243,10 @@ def _llm(raw: Any, base: LlmConfig, where: str) -> LlmConfig:
         )
     except (TypeError, ValueError) as err:
         raise ConfigError(f"{where}: {err}") from err
-    if out.api not in ("openai", "ollama"):
-        raise ConfigError(f"{where}: api must be 'openai' or 'ollama'")
+    if out.api not in ("openai", "ollama", "anthropic"):
+        raise ConfigError(f"{where}: api must be 'openai', 'ollama' or 'anthropic'")
+    if out.api == "anthropic" and out.endpoint == LlmConfig.endpoint:
+        out = replace(out, endpoint=ANTHROPIC_ENDPOINT)
     if out.num_ctx is not None and out.num_ctx < 0:
         raise ConfigError(f"{where}: num_ctx must be a positive number of tokens (0 = the server's default)")
     return out
@@ -382,16 +387,19 @@ def parse_agents(doc: Any, base_dir: str = ".") -> AgentsConfig:
     except (TypeError, ValueError) as err:
         raise ConfigError(f"agents.orchestrator: {err}") from err
     # The orchestrator inherits the section's endpoint etc., swaps the model,
-    # thinks less, and gets room to write a whole mind update.
+    # thinks less, and gets room to write a whole mind update. Off a hosted
+    # voice it stays on this machine's Ollama, and the key stays behind: it
+    # reads the whole house between turns and nobody is waiting on it.
+    hosted = llm.api == "anthropic"
     orch_base = LlmConfig(
-        endpoint=llm.endpoint,
+        endpoint=LlmConfig.endpoint if hosted else llm.endpoint,
         model=ORCHESTRATOR_MODEL,
         temperature=0.4,
         max_tokens=1200,
         reasoning_effort=None,
         json_mode=False,
         timeout_s=max(llm.timeout_s, 120.0),
-        api_key_env=llm.api_key_env,
+        api_key_env=None if hosted else llm.api_key_env,
         extra={"think": False},
         api="ollama",
         keep_alive="30m",

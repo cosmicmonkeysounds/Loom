@@ -65,6 +65,8 @@ def job_plist(
             "run",
             "--project",
             str(stagehand_dir),
+            # The Claude SDK: only this job may need it (wave 52).
+            *(["--extra", "anthropic"] if job == "agents" else []),
             "stagehand",
             "run",
             "--config",

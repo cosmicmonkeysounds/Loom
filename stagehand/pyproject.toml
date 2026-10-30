@@ -18,6 +18,11 @@ dependencies = [
 [project.scripts]
 stagehand = "stagehand.cli:main"
 
+[project.optional-dependencies]
+anthropic = [
+    "anthropic>=2.3.0",
+]
+
 [dependency-groups]
 dev = ["pytest>=8"]
 

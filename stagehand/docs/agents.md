@@ -167,6 +167,52 @@ also reads `launchctl getenv OLLAMA_NUM_PARALLEL` and warns when it is
 unset or below `concurrency` (it cannot see an `ollama serve` started from
 a shell, nor whether a running Ollama was reopened since).
 
+### Claude as the voice (wave 52)
+
+`api: anthropic` makes Claude an engine like any other, so a hosted voice and
+the MacBook's Ollama share one worker and one mind. Claude is the primary with
+`concurrency: 16`, which fills the stream, so the Ollama overflow never takes
+a line by spill: it is a standby, for an outage and for a refused line. The
+config is in `agents.example.yaml`.
+
+Measured 2026-10-30 on scratch servers (`pnpm sim:trabolta`, the same persona
+on both): 50 bots at the intro waited 1.9 s at the median and 7.1 s at worst, at
+190 replies a minute (gpt-oss on this MacBook: 99 s, 20.5 a minute). The
+54-scenario battery passed 42 on Claude Haiku 5.5 and 39 on gpt-oss, with 14
+fallback lines against 18; no refusal or API error in about 600 calls. Reading the transcripts
+found no leak, stand-down, promise or broken fiction. Its three `no-secrets`
+failures are false positives: he read `Night.clock` aloud, and its hour is
+also an accepted form of a hunt answer. Claude also does what the phase cards
+say where gpt-oss did not ("Count the minutes left": he counts, in his own
+estimate). A line costs about $0.0006 with the cache working (P1, 3.2k tokens,
+is served from it).
+
+- **The SDK** is an optional extra: `uv sync --extra anthropic`. The `agents`
+  launchd job asks for it (`--extra anthropic` in its plist, so a machine that
+  ran `launchd install` before wave 52 installs again); the Desktop's jobs
+  never do.
+- **The key:** `ANTHROPIC_API_KEY` (or the variable `api_key_env` names), else
+  `~/.config/loom/anthropic.key`. Never a YAML or a plist. `check` says `key
+  set` or `key NOT SET`, never the key, and warns when there is none.
+- **The prompt** (`llm.anthropic_request`): the system messages before the
+  first turn are `system` blocks, each but the last with a cache breakpoint
+  (the lean layout's P1 and P2 are cached, P3 is not); later system messages
+  go last as one mid-conversation `system` message, or as a `user` turn after
+  the lookup round's JSON (a prompt may not end on an assistant turn). The
+  warm head is skipped: the API has its own cache.
+- **`temperature` is never sent:** Claude Haiku 5.5 answers a 400 to anything
+  else. A ruling's low temperature and a retry's hotter one only reach an
+  Ollama engine. `reasoning_effort` is `output_config.effort`; thinking counts
+  against `max_tokens` (`LlmTruncated` on an answer it ate, as with gpt-oss).
+- **A refusal** (`stop_reason: refusal`, an HTTP 200, `LlmRefused`) is about one
+  prompt: the line is retried once on Ollama and the engine stays up. Claude
+  Haiku 5.5 has no server-side fallback. Everything else that fails is an
+  ordinary `LlmError`: down for 30 s, the line moves. The SDK retries once
+  first (`ANTHROPIC_RETRIES`), so a hung call costs `timeout_s` twice.
+- **The orchestrator stays on this machine's Ollama** and never gets the key.
+  Quiet summaries, letters and Rewrite stay on the primary, so they have no
+  fallback: a director runs them again.
+
 ### Overflow engines: more compute for one mind (wave 42b)
 
 One laptop GPU tops out near 17 replies a minute. `agents.overflow` adds
@@ -202,8 +248,9 @@ agents:
   primary's name), a capacity outside 1..16, or an `api_key_env` that is
   not an environment-variable name fails at load.
 - **Capacity** is the sum: the stream announces `concurrency` + every
-  engine's `capacity` (at most 16; `check` warns past it), so the server
-  hands the worker that many lines at once.
+  engine's `capacity` (at most 16; `check` warns past it, unless the primary
+  alone fills the stream, which keeps the overflow as a standby), so the
+  server hands the worker that many lines at once.
 - **Which engine:** a line takes a primary slot when one is free, else the
   first listed engine with a free slot; a waiting line takes the first slot
   any engine frees (lanes as before: the stage, the heart, DMs and rulings,

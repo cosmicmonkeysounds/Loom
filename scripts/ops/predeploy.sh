@@ -58,7 +58,7 @@ if [ "$skip_tests" = 0 ]; then
   run "typecheck (pnpm -r)" pnpm -r typecheck
   run "tests (pnpm -r)" pnpm -r test
   run "play: the guest's first load ≤ 149 kB gzip" bash -c 'pnpm --filter loom-play build && node play/scripts/first-load.mjs --max-kb 149'
-  run "stagehand pytest" bash -c 'cd stagehand && uv run pytest -q'
+  run "stagehand pytest" bash -c 'cd stagehand && uv run --extra anthropic pytest -q'
   [ "$vr" = 1 ] && run "Godot VR suite" pnpm test:vr
 fi
 

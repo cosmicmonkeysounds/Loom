@@ -1,5 +1,8 @@
-"""The model call — one chat request, in one of two dialects.
+"""The model call — one chat request, in one of three dialects.
 
+`api: anthropic` (wave 52) is Claude's Messages API through the official
+SDK, an optional extra (`uv sync --extra anthropic`) so the Desktop's jobs
+never install it. See `anthropic_request` for how the prompt maps.
 `api: openai` (the default) is an OpenAI-compatible `chat/completions`
 request: Ollama (`ollama serve`, default `http://localhost:11434/v1`),
 llama.cpp's server, LM Studio and vLLM all speak it, so a local model
@@ -26,6 +29,7 @@ import re
 import time
 from contextvars import ContextVar
 from dataclasses import dataclass, field, replace
+from pathlib import Path
 from typing import Any
 
 import httpx
@@ -52,6 +56,24 @@ class LlmTruncated(LlmError):
     """The model produced no answer because `max_tokens` ran out (reasoning)."""
 
 
+class LlmRefused(LlmError):
+    """(wave 52) A safety classifier declined this one prompt. The engine is
+    fine: the line tries another engine, and nothing is marked down."""
+
+
+#: (wave 52) `api: anthropic`'s endpoint, the SDK's own default.
+ANTHROPIC_ENDPOINT = "https://api.anthropic.com"
+#: (wave 52) Where the key lives when `api_key_env` is not set: a launchd job
+#: has no shell environment, and a plist or a YAML must never hold a key.
+ANTHROPIC_KEY_ENV = "ANTHROPIC_API_KEY"
+ANTHROPIC_KEY_FILE = Path.home() / ".config/loom/anthropic.key"
+#: (wave 52) The SDK's own retries per call (a 429, a 529, a dropped
+#: connection): one quick try, so a blip doesn't take the engine down for
+#: `ENGINE_DOWN_S`. A hung call costs `timeout_s` twice before the failover.
+ANTHROPIC_RETRIES = 1
+#: The turn the API needs when a prompt has none in that place.
+WAITING_TURN = "(they are waiting)"
+
 _THINK_INLINE = re.compile(r"<think>(.*?)</think>", re.DOTALL | re.IGNORECASE)
 
 
@@ -73,6 +95,9 @@ class Completion:
     #: `prompt_eval_duration`, in ms) — low when the prompt cache held. None
     #: on the OpenAI dialect, which does not say.
     prompt_ms: int | None = None
+    #: (wave 52) Of `prompt_tokens`, how many the prompt cache served. None
+    #: off `api: anthropic`.
+    cached_tokens: int | None = None
 
     @classmethod
     def of(cls, value: "str | Completion | None") -> "Completion":
@@ -216,8 +241,129 @@ def _redacted(text: str, cfg: LlmConfig) -> str:
     hosted endpoint's 401 may echo the key it was sent, and an LlmError's
     text reaches the log, `stagehand ask` and the trace (the Mind page).
     Redacted before any clipping, so no prefix of the key survives."""
-    key = os.environ.get(cfg.api_key_env) if cfg.api_key_env else None
+    key = anthropic_key(cfg) if cfg.api == "anthropic" else os.environ.get(cfg.api_key_env) if cfg.api_key_env else None
     return text.replace(key, "[key]") if key else text
+
+
+def anthropic_key(cfg: LlmConfig) -> str:
+    """(wave 52) The key for `api: anthropic`: the variable `api_key_env`
+    names (else `ANTHROPIC_API_KEY`), else `ANTHROPIC_KEY_FILE`. "" when
+    there is none."""
+    key = os.environ.get(cfg.api_key_env or ANTHROPIC_KEY_ENV)
+    if key:
+        return key.strip()
+    try:
+        return ANTHROPIC_KEY_FILE.read_text(encoding="utf-8").strip()
+    except OSError:
+        return ""
+
+
+def anthropic_request(messages: list[dict[str, str]], cfg: LlmConfig) -> dict[str, Any]:
+    """(wave 52) Our chat list as the Messages API's arguments. Pure.
+
+    The system messages before the first turn become `system` blocks, and
+    every block but the last gets a cache breakpoint: in the lean layout
+    that caches P1 (byte-identical all night) and P2 (the phase's), and
+    leaves P3 (this person, this moment) out. Every later system message
+    (lookup results, the steer, the closing reminder, a retry's note) goes
+    last, as one message: after a user turn that is a mid-conversation
+    `system` message, so a guest's line never carries our instructions;
+    after an assistant turn (the lookup round's JSON) it has to be a `user`
+    turn, because the API neither takes a system message there nor lets a
+    prompt end on an assistant turn (a prefill is a 400).
+
+    `temperature` is never sent (Claude Haiku 5.5 answers a 400 to any
+    other value), so a ruling's low temperature and a retry's hotter one
+    only reach the other engines. `reasoning_effort` is the `effort`.
+    Thinking counts against `max_tokens`. An empty turn is a 400: dropped."""
+    head: list[str] = []
+    turns: list[dict[str, str]] = []
+    notes: list[str] = []
+    for message in messages:
+        role, text = message["role"], str(message.get("content") or "")
+        if not text.strip():
+            continue
+        if role != "system":
+            turns.append({"role": role, "content": text})
+        elif turns:
+            notes.append(text)
+        else:
+            head.append(text)
+    note = "\n\n".join(notes)
+    if not turns or turns[0]["role"] != "user":
+        turns.insert(0, {"role": "user", "content": WAITING_TURN})
+    if turns[-1]["role"] == "assistant":
+        turns.append({"role": "user", "content": note or WAITING_TURN})
+    elif note:
+        turns.append({"role": "system", "content": note})
+    body: dict[str, Any] = {"model": cfg.model, "max_tokens": cfg.max_tokens, "messages": turns}
+    if head:
+        body["system"] = [
+            {"type": "text", "text": text, **({"cache_control": {"type": "ephemeral"}} if i < len(head) - 1 else {})}
+            for i, text in enumerate(head)
+        ]
+    if cfg.reasoning_effort:
+        body["output_config"] = {"effort": cfg.reasoning_effort}
+    if cfg.extra:
+        body["extra_body"] = dict(cfg.extra)
+    return body
+
+
+def anthropic_completion(response: Any, cfg: LlmConfig, ms: int) -> Completion:
+    """(wave 52) The API's answer as a `Completion`. Pure. Blocks are read by
+    their type: an answer may open with `thinking` blocks. A refusal comes
+    back as an HTTP 200, so it has to be caught here."""
+    stop = str(getattr(response, "stop_reason", "") or "")
+    if stop == "refusal":
+        details = getattr(response, "stop_details", None)
+        raise LlmRefused(f"{cfg.model} declined this prompt ({getattr(details, 'category', None) or 'no category'})")
+    blocks = list(getattr(response, "content", None) or [])
+    text = "".join(str(b.text) for b in blocks if b.type == "text")
+    thinking = "\n\n".join(str(b.thinking).strip() for b in blocks if b.type == "thinking" and b.thinking)
+    if not text.strip() and stop == "max_tokens":
+        raise LlmTruncated(f"{cfg.model} hit max_tokens={cfg.max_tokens} before answering")
+    usage = getattr(response, "usage", None)
+    fresh = getattr(usage, "input_tokens", 0) or 0
+    read = getattr(usage, "cache_read_input_tokens", 0) or 0
+    written = getattr(usage, "cache_creation_input_tokens", 0) or 0
+    base = _completion(text, thinking, {"end_turn": "stop", "max_tokens": "length"}.get(stop, stop), fresh + read + written, getattr(usage, "output_tokens", None), ms)
+    return replace(base, cached_tokens=read)
+
+
+#: One client per endpoint + key, for its connection pool: a line must not
+#: pay for a TLS handshake.
+_anthropic_clients: dict[tuple[str, str], Any] = {}
+
+
+def _anthropic_client(cfg: LlmConfig) -> Any:
+    key = anthropic_key(cfg)
+    if not key:
+        raise LlmError(f"api: anthropic has no key ({cfg.api_key_env or ANTHROPIC_KEY_ENV}, or {ANTHROPIC_KEY_FILE})")
+    client = _anthropic_clients.get((cfg.endpoint, key))
+    if client is None:
+        import anthropic
+
+        client = anthropic.AsyncAnthropic(api_key=key, base_url=cfg.endpoint, max_retries=ANTHROPIC_RETRIES)
+        _anthropic_clients[(cfg.endpoint, key)] = client
+    return client
+
+
+async def complete_anthropic(messages: list[dict[str, str]], cfg: LlmConfig, client: Any = None) -> Completion:
+    """(wave 52) Claude's Messages API. Everything that goes wrong is an
+    `LlmError`, so `engines.EngineCall` fails over as for any engine."""
+    try:
+        import anthropic
+    except ImportError as err:
+        raise LlmError("api: anthropic needs the SDK: uv sync --extra anthropic") from err
+    started = time.monotonic()
+    try:
+        call = client or _anthropic_client(cfg)
+        response = await call.with_options(timeout=cfg.timeout_s).messages.create(**anthropic_request(messages, cfg))
+    except anthropic.APIStatusError as err:
+        raise LlmError(f"model endpoint → HTTP {err.status_code}: {_redacted(str(err), cfg)[:200]}") from err
+    except anthropic.APIConnectionError as err:
+        raise LlmError(_redacted(f"model endpoint {cfg.endpoint} unreachable: {err!r}", cfg)) from err
+    return anthropic_completion(response, cfg, int((time.monotonic() - started) * 1000))
 
 
 async def complete(
@@ -228,6 +374,8 @@ async def complete(
     """Ask the model; returns the answer (its text may be empty)."""
     if cfg.api == "ollama":
         return await complete_ollama(messages, cfg, transport)
+    if cfg.api == "anthropic":
+        return await complete_anthropic(messages, cfg)
     started = time.monotonic()
     body: dict[str, Any] = {
         "model": cfg.model,

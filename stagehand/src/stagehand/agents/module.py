@@ -72,7 +72,7 @@ from .facts import Facts, FactsClient
 from .guards import dm_problems, outside_guard, situation_guard, voice_cut
 from .judge import JUDGE_DEADLINE_S, Ruling, judge_messages, judge_model, parse_ruling
 from .letter import LETTER_ATTEMPTS, LETTER_DEADLINE_S, RETRY_NOTE, Letter, letter_messages, letter_model, letter_problem, parse_letter
-from .llm import Completion, LlmConfig, LlmError, LlmTruncated, complete
+from .llm import Completion, LlmConfig, LlmError, LlmTruncated, anthropic_key, complete
 from .mind import Mind, mind_path
 from .orchestrator import Job, Orchestrator, reflect_tokens_needed, voice_tokens_needed
 from .persona import Persona
@@ -153,6 +153,15 @@ def leaves_the_house(endpoint: str) -> bool:
     except ValueError:
         return True  # a name on the internet
     return not (ip.is_private or ip.is_loopback or ip.is_link_local)
+
+
+def key_state(m: LlmConfig) -> str:
+    """Whether an engine's key is there, for `check` (never the key)."""
+    if m.api == "anthropic":
+        return f"key {'set' if anthropic_key(m) else 'NOT SET'}"
+    if not m.api_key_env:
+        return "no key"
+    return f"key {m.api_key_env} {'set' if os.environ.get(m.api_key_env) else 'NOT SET'}"
 
 
 def build_agents(section: Any, base_dir: str) -> "Agents":
@@ -431,7 +440,7 @@ class Agents:
             f"agents   : {self.cfg.name} · concurrency {self.cfg.concurrency} · capacity {self.capacity} "
             f"(the server hands this worker at most {self.capacity} line(s) at once){' · DRY RUN' if self.cfg.dry_run else ''}"
         ]
-        if self.cfg.concurrency > 1:
+        if self.cfg.concurrency > 1 and self.cfg.llm.api != "anthropic":
             n = self.cfg.concurrency
             lines.append(
                 f"  note     : concurrency {n} needs Ollama running with OLLAMA_NUM_PARALLEL >= {n}, or the calls queue inside Ollama "
@@ -491,12 +500,9 @@ class Agents:
         voice = self.cfg.llm
         lines = [f"  engines  : {len(self.cfg.engines)} · {self._slots.capacity} slot(s) in all · one mind (a line takes the primary first, then each overflow in order)"]
 
-        def key_state(m: LlmConfig) -> str:
-            if not m.api_key_env:
-                return "no key"
-            return f"key {m.api_key_env} {'set' if os.environ.get(m.api_key_env) else 'NOT SET'}"
-
         lines.append(f"    {PRIMARY:<9}: ×{self.cfg.concurrency} {voice.model} @ {voice.endpoint} ({voice.api}; {key_state(voice)}) · lines, rulings, summaries, letters")
+        if leaves_the_house(voice.endpoint):
+            lines.append("      note   : not on this machine or the LAN: the guests' lines and his whole prompt leave the house")
         for e in self.cfg.overflow:
             m = e.model(voice)
             lines.append(f"    {e.name:<9}: ×{e.capacity} {m.model} @ {m.endpoint} ({m.api}; {key_state(m)}) · lines and rulings")
@@ -536,7 +542,11 @@ class Agents:
                     )
             if e.api_key_env and not os.environ.get(e.api_key_env):
                 out.append(f"overflow engine {e.name}: api_key_env {e.api_key_env} is not set in this environment (its calls go without a key)")
-        if self._slots.capacity > CAPACITY_MAX:
+        for m in (self.cfg.llm, *(e.model(self.cfg.llm) for e in self.cfg.overflow)):
+            if m.api == "anthropic" and not anthropic_key(m):
+                out.append(f"{m.model}: api: anthropic has no key (ANTHROPIC_API_KEY, or ~/.config/loom/anthropic.key): every call on it fails")
+        # A primary that fills the stream keeps its overflow as a standby (wave 52).
+        if self._slots.capacity > CAPACITY_MAX and self.cfg.concurrency < CAPACITY_MAX:
             out.append(f"the engines have {self._slots.capacity} slots but a worker may announce at most {CAPACITY_MAX}: the server sends {CAPACITY_MAX} lines at once")
         if not self._orchestrator_configured:
             return out

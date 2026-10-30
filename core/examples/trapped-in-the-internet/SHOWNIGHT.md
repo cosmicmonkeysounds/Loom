@@ -275,8 +275,12 @@ $env:LOOM_MOD_CODE = '<mod>'                # Windows
 **John's MacBook** (Trabolta, a Run console)
 
 - On the charger, `caffeinate -dims` in a terminal for the night, sleep off.
+- Claude Haiku is his voice (wave 52) and Ollama is the standby: `stagehand
+  check` says `key set`, and Run → Mind shows no `engine macbook` on his
+  thoughts unless Claude refused a line or is down. To go back to Ollama alone:
+  `scripts/house-macbook/trabolta.md` §7.
 - Ollama with `OLLAMA_KEEP_ALIVE=-1`; `ollama ps` shows `gpt-oss:20b` alone
-  (warm it: `ollama run gpt-oss:20b hi`).
+  (warm it: `ollama run gpt-oss:20b hi`). Keep it warm: it is the fallback.
 - `cd stagehand && uv run stagehand launchd status`: `agents` running;
   `show`, `lights` and `audio` not installed (they run on the Desktop; in
   the router fallback `audio` runs here too, and the preflight takes
@@ -489,9 +493,11 @@ stays at or under 3 Hz; no open flames; VR is played seated with a spotter.
 3. **Sun Nov 1: change the mod passcode** and rotate anything printed.
 4. **Trabolta's letters, before End** (wave 41; End stops the event and
    the letters go with it). With the MacBook's `agents` job running: Run →
-   **Letters** → ✍ Ask Trabolta to write them (about 20 s a letter, so
-   ~15 min for 40), read every draft (gpt-oss pads a thin night with
-   made-up detail: cut it), edit or ↻ Rewrite any that miss, then ✉ Send. The card
+   **Letters** → ✍ Ask Trabolta to write them (on gpt-oss about 20 s a letter,
+   so ~15 min for 40; Claude is faster), read every draft (a model pads a thin
+   night with made-up detail: cut it), edit or ↻ Rewrite any that miss, then ✉
+   Send. Letters run on Claude only, with no fallback: a failed one is written
+   again. The card
    says Send is off when the VPS has no `LOOM_RESEND_API_KEY` /
    `LOOM_WEBMASTER_FROM`. Help: `docs/help/authoring/52-letters.md`.
 5. **The credits** (wave 44). G11 🎃 rolls them by itself on the TV,

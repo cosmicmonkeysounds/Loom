@@ -4,6 +4,7 @@ __pycache__/
 show.yaml
 desktop.yaml
 laptop.yaml
+laptop.ollama.yaml
 stagehand.yaml
 .stagehand-minds/
 house.yaml
