@@ -459,7 +459,10 @@ the line at *not yet* and *leave*.
 - **Spoken answers.** `VoiceComposer` replaces `Composer`. Each listen has a
   `turn`, and B moves it on, so a late transcript is dropped. Whisper stays on
   127.0.0.1: an https page may fetch it once the site has Chrome's device-
-  access grant, and CORS is whisper-server's own `*`.
+  access grant, and CORS is whisper-server's own `*`. **The served page can't
+  yet:** the server's `TERMINAL_CSP` is `connect-src 'self'`, and Vite sends no
+  CSP, so a local test passes where the live page is blocked (root
+  `CLAUDE.md`, Release status).
 - **Local tests.** Vite against a scratch server, `door=sim`:
   `LOOM_SERVER=http://127.0.0.1:7391 pnpm --filter loom-terminal dev`. Vite's
   watcher misses rapid writes in the OneDrive folder on Steph's laptop: if a
