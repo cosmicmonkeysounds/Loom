@@ -667,7 +667,6 @@ export class Visions {
     const talking = s > 2.2 && s < 4.6;
     const open = talking ? 1 + 0.16 * Math.abs(Math.sin(s * 7)) : 1;
     g.smile.scale.set(0.9, 0.45 * open, 1);
-    g.object.position.y += Math.sin(s * 1.1) * 0.0006;
   }
 
   private updateDark(run: VisionRun, v: VisionView): void {

@@ -24,11 +24,13 @@ function setup(level: number, map: HouseMap = house(), told?: Record<string, str
   const log: string[] = [];
   const said: string[][] = [];
   const told2: [string, string][] = [];
+  const beats: number[] = [];
   let release: (() => void)[] = [];
   const host: DirectorHost = {
-    start(kind) {
+    start(kind, n) {
       if (!canDraw(kind)) return false;
       log.push(`start ${kind}`);
+      beats.push(n);
       return true;
     },
     stop: (kind) => void log.push(`stop ${kind}`),
@@ -51,7 +53,7 @@ function setup(level: number, map: HouseMap = house(), told?: Record<string, str
     await Promise.resolve();
     await Promise.resolve();
   };
-  return { d, log, said, told: told2, flush };
+  return { d, log, said, told: told2, beats, flush };
 }
 
 /** Run the clock to `until` in 0.1 s frames. */
@@ -111,10 +113,10 @@ describe("the holds", () => {
   }
 
   it("a beat held past DESCENT_LATE_S is dropped, not saved up", () => {
-    const { d, log } = setup(4);
+    const { d, beats } = setup(4);
     run(d, first.at + DESCENT_LATE_S + 1, now(far, { held: true }));
     d.tick(0.1, now(far));
-    expect(log.some((l) => l === `start ${first.vision}`) && plan[1]!.at > first.at + DESCENT_LATE_S + 1).toBe(false);
+    expect(beats).not.toContain(first.n);
   });
 
   it("one vision at a time: the next waits for this one to end", () => {
