@@ -58,3 +58,20 @@ describe("YOUR GAME IS ON on Mission (wave 47)", () => {
     expect(src).toMatch(/e\.spec\.key\.startsWith\("game:"\) && headId !== "" && missionShown\?\.\(headId\) === true/u);
   });
 });
+
+describe("a line about an objective that ended (wave 47)", () => {
+  // Seen in Chrome: "🚨 You are marked for reinstallation…" waited behind
+  // CORRUPTION DETECTED and the release, and showed after Collect.
+  it("leaves the queue (and the missed list) when its objective ends", async () => {
+    const { EMPTY_MOMENTS, momentsReducer, sharesTitle } = await import("../src/moments/model.ts");
+    const marked = { key: "m:7", seq: 7, severity: "minor", kind: "alert", caption: "For you", text: "🚨 You are marked for reinstallation (flagged by a host). Nothing is switched off: carry on.", channel: "dm:Antivirus", at: 1, phase: null } as const;
+    const coins = { ...marked, key: "m:8", seq: 8, text: "🪙 +5 Truthcoin from Clippy." };
+    const s0 = { ...EMPTY_MOMENTS, queue: [{ moment: marked, level: "balloon", queuedAt: 0 }, { moment: coins, level: "balloon", queuedAt: 0 }], missed: [marked] } as never;
+    const s1 = momentsReducer(s0, { type: "objectives", live: new Set(["explore"]), ended: ["You are marked for reinstallation"] });
+    expect(s1.queue.map((q) => q.moment.key)).toEqual(["m:8"]);
+    expect(s1.missed).toEqual([]);
+    expect(sharesTitle(coins.text, "You are marked for reinstallation")).toBe(false);
+    // Nothing ended: nothing goes.
+    expect(momentsReducer(s0, { type: "objectives", live: new Set(["explore"]) })).toBe(s0);
+  });
+});

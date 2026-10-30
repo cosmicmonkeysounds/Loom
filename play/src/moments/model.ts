@@ -509,8 +509,9 @@ export type MomentsAction =
   | { type: "phase"; phase: string | null }
   /** `!` pins taken down since (`retractedPinSeqs`): drop them wherever they wait. */
   | { type: "retract"; seqs: ReadonlySet<number> }
-  /** The objectives live now: a loud objective's moment (`o:<id>`) whose objective has ended leaves wherever it waits (a cleared guest is never told to show their pass). */
-  | { type: "objectives"; live: ReadonlySet<string> }
+  /** The objectives live now: a loud objective's moment (`o:<id>`) whose objective has ended leaves wherever it waits (a cleared guest is never told to show their pass).
+   *  Wave 47: `ended` (the titles of the ones that just ended): so does a line that announced one. */
+  | { type: "objectives"; live: ReadonlySet<string>; ended?: readonly string[] }
   /** The story restarted: nothing queued is news any more. */
   | { type: "reset" };
 
@@ -695,9 +696,15 @@ function echoWords(s: string): Set<string> {
  */
 export function echoesMission(m: Pick<Moment, "text" | "at">, now: { title: string; since: number } | null): boolean {
   if (now === null || Math.abs(m.at - now.since) > MISSION_ECHO_MS) return false;
-  const title = echoWords(now.title);
+  return sharesTitle(m.text, now.title);
+}
+
+/** Wave 47: does a line share at least two words (four letters or more, not
+ *  filler) with an objective's title? */
+export function sharesTitle(text: string, title: string): boolean {
+  const words = echoWords(title);
   let shared = 0;
-  for (const w of echoWords(m.text)) if (title.has(w)) shared += 1;
+  for (const w of echoWords(text)) if (words.has(w)) shared += 1;
   return shared >= 2;
 }
 
@@ -905,7 +912,13 @@ export function momentsReducer(s: MomentsState, a: MomentsAction): MomentsState 
       return { ...s, queue, missed, burst: queue.some((q) => isModal(q.level)) ? s.burst : 0 };
     }
     case "objectives": {
-      const gone = (m: Moment) => m.kind === "objective" && m.key.startsWith("o:") && !a.live.has(m.key.slice(2));
+      // Wave 47: so does a line that announced an objective now ended (its
+      // words echo the title): "🚨 You are marked…" waiting behind CORRUPTION
+      // DETECTED never shows once the guest is in the Internet.
+      const ended = a.ended ?? [];
+      const gone = (m: Moment) =>
+        (m.kind === "objective" && m.key.startsWith("o:") && !a.live.has(m.key.slice(2))) ||
+        (ended.length > 0 && m.kind !== "objective" && m.kind !== "card" && m.severity !== "big" && ended.some((t) => sharesTitle(m.text, t)));
       const queue = s.queue.some((q) => gone(q.moment)) ? s.queue.filter((q) => !gone(q.moment)) : s.queue;
       const missed = s.missed.some(gone) ? s.missed.filter((m) => !gone(m)) : s.missed;
       if (queue === s.queue && missed === s.missed) return s;

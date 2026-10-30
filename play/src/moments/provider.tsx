@@ -642,13 +642,18 @@ function useMomentsEngine(input: MomentsInput): Engine {
   }, [input.messages]);
 
   // A loud objective going live: one major moment per sign-in (persisted).
+  const lastObjectives = useRef<readonly ObjectiveView[]>([]);
   useEffect(() => {
     if (session === null || input.objectives === undefined) return;
     const fresh = announceLoud(host.storage, role, session, input.objectives, storyNow([], input.clock), live.current.phase);
     for (const m of fresh) keepExtra(mem, m);
     arrive(fresh, false);
     // An objective that ended takes its moment with it.
-    dispatch({ type: "objectives", live: new Set(input.objectives.map((o) => o.id)) });
+    // Wave 47: and a line that announced one that ended (`sharesTitle`).
+    const liveIds = new Set(input.objectives.map((o) => o.id));
+    const ended = lastObjectives.current.filter((o) => !liveIds.has(o.id)).map((o) => o.title);
+    lastObjectives.current = input.objectives;
+    dispatch({ type: "objectives", live: liveIds, ended });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [input.objectives, session]);
 
