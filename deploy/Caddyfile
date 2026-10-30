@@ -18,6 +18,15 @@
 		file_server
 	}
 
+	# The house media (Clippy's dream, wave 50): a host folder, never in an
+	# image, and never through the event server. file_server answers byte
+	# ranges, so a terminal seeks straight to its own place in the hour.
+	handle_path /media/* {
+		root * /srv/media
+		header Cache-Control "public, max-age=86400"
+		file_server
+	}
+
 	# Everything else — the play app at /, /api/*, /e/:eventId/* —
 	# goes to the event server. The play/terminal/reinstall bundles and
 	# JSON are compressed; the SSE streams are not:

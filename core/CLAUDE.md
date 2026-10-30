@@ -77,7 +77,9 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   lights' presence pulses, the module's `shown` report and the server's
   lights estimate (wave 39), the house mixer's music commands, the
   router's meters packet and a panel's watch lease (wave 40: the mix
-  itself is in the state dir), and
+  itself is in the state dir), when Clippy's dream takes over and whether
+  the TV has named the bug (`ScreenWatch` `dreamAt` / `dreamHeard`, wave 50: a
+  restart replays the cue as history and the dream is simply on), and
   most hub timers live in memory and are lost on a process restart.
   Document a new one the same way.
 - **Server changes are additive.** Old clients (terminals on old
@@ -359,6 +361,17 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   `extras.language`). Tests:
   `test/w48-language-filter.test.ts`, `test/w48-filter-server.test.ts`,
   `test/trapped-w48-language.test.ts`.
+- **Clippy's dream** (wave 50,
+  [`docs/loom-w50-contract.md`](../docs/loom-w50-contract.md)). `Night.dream`
+  (`SCREEN_NIGHT_VARS.dream`) is on from `y2k_clock`; `cue dream_begin` (the
+  `DREAM_CUE`, never a screen family) arms `ScreenState.dream {at}`: the cue +
+  `DREAM_FALLBACK_MS`, or a TV's `bug=1` + `DREAM_LEAD_MS`, once, only sooner.
+  `ScreenWatch.dreamOf` is the one reader. While it runs `DreamFeed`
+  (`dream-feed.ts`, frames off `LOOM_MEDIA_DIR`) answers
+  `/api/spatial/cams` and `/cam`, so the games need no code. The media is
+  never in git or an image: `scripts/ops/dream-media.sh`; Caddy serves
+  `/media/`, and `server.ts` does only with no proxy. Tests:
+  `test/w50-dream.test.ts`.
 - **Hub files have one owner at a time.** `event-runtime.ts`,
   `views.ts`, `chat.ts` and `sim.ts` are touched by almost every
   feature; when several agents work in parallel, give each of these to

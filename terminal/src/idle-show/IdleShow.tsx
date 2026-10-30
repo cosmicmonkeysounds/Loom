@@ -15,6 +15,12 @@
 //! most, no storms, no ad-like windows), then the flood. `quiet` (T3) makes
 //! it a dimmed backdrop behind the tent's scan kiosk.
 //!
+//! Wave 50: from the Y2K bug Clippy's dream replaces all of it (`dream/`):
+//! the show stops where it stands under the dream, every timer and sound
+//! with it, and the scan box, a line, the tent's card keep their places over
+//! it. It is here, not in the app, so it has the show's own place on every
+//! kind of screen.
+//!
 //! Sound: only the page's own accents through `sfx()` (D4) — quiet, rationed,
 //! dropped while a voice speaks; the TV's are quieter still (the bus's TV
 //! level), and its director mute cuts them.
@@ -22,6 +28,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent, type PointerEvent, type RefObject } from "react";
 import { useReducedMotion } from "../cutscene/clock.ts";
 import { useMomentUp } from "../cutscene/moment-bus.ts";
+import { DreamView, useDreamPhase } from "../dream/DreamView.tsx";
 import type { ScreenState } from "../screen.ts";
 import { sfx } from "../sound/bus.ts";
 import type { SfxName } from "../sound/library.ts";
@@ -84,7 +91,8 @@ export function IdleShow({ name, state, asleep, character, target, active, regio
   // A moment's scene over the show pauses it where it stands (still drawn —
   // a popup moment shows what is under it — but nothing moves or rings).
   const moment = useMomentUp();
-  const running = active && !moment;
+  const dream = useDreamPhase(state) === "through";
+  const running = active && !moment && !dream;
   const ctx: IdleContext = idleContextOf({ state, asleep, character, target, scan: reserveRef !== undefined, region, now: Date.now(), quiet });
   const ctxKey = `${ctx.pool}|${ctx.phase}|${ctx.names}|${ctx.target}|${ctx.scan}|${ctx.face}|${ctx.character}|${ctx.calm === true}|${ctx.quiet === true}`;
   // The pools only change with the context (not with every poll).
@@ -348,6 +356,7 @@ export function IdleShow({ name, state, asleep, character, target, active, regio
       )}
       {thanks !== null && now < thanks.until && <div className="idle-thanks">{thanks.text}</div>}
       {ripple !== null && <span className="idle-ripple" key={ripple.k} style={{ left: ripple.x, top: ripple.y }} />}
+      {dream && <DreamView active={active} />}
     </div>
   );
 }

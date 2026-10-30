@@ -17,6 +17,7 @@
 import "./act2.css";
 import type { CSSProperties } from "react";
 import { CHART_STEP_MS, STAFF_TAG, chartCallouts, chartLines, chartRankedLine, chartReveal, slideCopy, y2kClock } from "../../slides.ts";
+import { dreamThrough } from "../../dream/DreamView.tsx";
 import type { ScreenChart, ScreenResults } from "../../screen.ts";
 import { ReadingRows, filedCount, useHeldResults } from "../kit/results-parts.tsx";
 import { tallyGauge, tallyPageAt, tallyPages, totalsLine, type TallyPage } from "../kit/results.ts";
@@ -1257,12 +1258,15 @@ function Y2kTv(p: SceneProps) {
   const tone = LEVEL_TONE[level];
   const shake = level >= 3 && !reduced ? (level === 4 ? 0.18 : 0.06) : 0;
   const closed = y2kRaceClosed(p.night);
+  // Wave 50: from the Y2K bug Clippy's dream fills the screen behind this: the
+  // clock shrinks to its tray in the corner, and the popups are gone with the ads.
+  const dream = dreamThrough(state, now);
   return (
-    <Stage bg="#000" fit className="tv2" style={{ ["--tv2-tone" as string]: tone } as CSSProperties}>
-      <Grid t={t} reduced={reduced} speed={0.4 + level * 0.35} color={`${tone}55`} bg={level >= 3 ? "radial-gradient(ellipse at 50% 45%, #2a0a00 0%, #050000 75%)" : "radial-gradient(ellipse at 50% 40%, #071a33 0%, #01040a 75%)"} />
+    <Stage bg={dream ? "transparent" : "#000"} fit className={`tv2${dream ? " tv2-y2k-dream" : ""}`} style={{ ["--tv2-tone" as string]: tone } as CSSProperties}>
+      {!dream && <Grid t={t} reduced={reduced} speed={0.4 + level * 0.35} color={`${tone}55`} bg={level >= 3 ? "radial-gradient(ellipse at 50% 45%, #2a0a00 0%, #050000 75%)" : "radial-gradient(ellipse at 50% 40%, #071a33 0%, #01040a 75%)"} />}
       <Shake t={t} amount={shake} seed={44} reduced={reduced} className="kit-fill">
-        <Win98Window title="Date/Time Properties" icon="computer" x={50} y={46} center width="50em" open={eased(t, 0, 380, ease.outCubic)} reduced={reduced} className="tv2-y2k-win" tone={level >= 4 ? "red" : "navy"} status={level >= 5 ? "Time zone: unknown. Year: unknown." : `Time zone: (GMT-04:00) Atlantic Time · ${remaining === null ? "" : `${Math.floor(remaining / 60)}:${String(secs).padStart(2, "0")} to midnight`}`}>
-          <div className="tv2-y2k-body">
+        <Win98Window title="Date/Time Properties" icon="computer" x={dream ? 80 : 50} y={dream ? 22 : 46} center width={dream ? "27em" : "50em"} open={eased(t, 0, 380, ease.outCubic)} reduced={reduced} className="tv2-y2k-win" tone={level >= 4 ? "red" : "navy"} status={level >= 5 ? "Time zone: unknown. Year: unknown." : `Time zone: (GMT-04:00) Atlantic Time · ${remaining === null ? "" : `${Math.floor(remaining / 60)}:${String(secs).padStart(2, "0")} to midnight`}`}>
+          {!dream && <div className="tv2-y2k-body">
             <div className="tv2-y2k-cal" style={{ opacity: progress(t, 600, 400) }}>
               <div className="tv2-y2k-cal-head">December {year}</div>
               <div className="tv2-y2k-cal-grid">
@@ -1290,13 +1294,13 @@ function Y2kTv(p: SceneProps) {
               <line x1="50" y1="56" x2="50" y2="10" stroke="#c00000" strokeWidth="1.2" transform={`rotate(${hand.toFixed(2)} 50 50)`} />
               <circle cx="50" cy="50" r="3" fill="#c00000" />
             </svg>
-          </div>
+          </div>}
           <div className="tv2-y2k-tray">
             <span className="tv2-y2k-time">{time}</span>
             <span className="tv2-y2k-date">{date}</span>
           </div>
         </Win98Window>
-        {level >= 1 && level < 5 && <DriftingPopups t={t} messages={closed ? Y2K_POPS_CLOSED : Y2K_POPS} count={level >= 3 ? 4 : level === 2 ? 3 : 2} seed={61 + level} life={level >= 3 ? 4500 : 6500} gap={level >= 3 ? 1500 : 5000} area={{ x0: 0.02, x1: 0.7, y0: 0.04, y1: 0.66 }} width="21em" reduced={reduced} />}
+        {!dream && level >= 1 && level < 5 && <DriftingPopups t={t} messages={closed ? Y2K_POPS_CLOSED : Y2K_POPS} count={level >= 3 ? 4 : level === 2 ? 3 : 2} seed={61 + level} life={level >= 3 ? 4500 : 6500} gap={level >= 3 ? 1500 : 5000} area={{ x0: 0.02, x1: 0.7, y0: 0.04, y1: 0.66 }} width="21em" reduced={reduced} />}
       </Shake>
       {level === 4 && remaining !== null && (
         <div className="tv2-y2k-last" style={{ transform: reduced ? "translate(-50%, -50%)" : `translate(-50%, -50%) scale(${(1 + 0.08 * (1 - (t % 1000) / 1000)).toFixed(3)})` }}>
@@ -1316,8 +1320,8 @@ function Y2kTv(p: SceneProps) {
           {closed ? Y2K_TICKER_CLOSED : Y2K_TICKER}
         </Marquee>
       </div>
-      {level >= 2 && !reduced && <Noise t={t} alpha={0.04 + level * 0.03} />}
-      <Glass t={t} reduced={reduced} />
+      {!dream && level >= 2 && !reduced && <Noise t={t} alpha={0.04 + level * 0.03} />}
+      {!dream && <Glass t={t} reduced={reduced} />}
     </Stage>
   );
 }
@@ -1340,8 +1344,10 @@ function Y2kWall(p: SceneProps) {
   const clock = y2kClock(remaining);
   const now = liveNow(state, Date.now());
   const flash = chimeFlash(state.moments, p.at, now);
+  // Wave 50: the clock floats on Clippy's dream, out of the scan box's way.
+  const dream = dreamThrough(state, now);
   return (
-    <Stage bg={level >= 3 ? "#2a0800" : "#000814"} className="tv2 tv2-wall tv2-wall-y2k">
+    <Stage bg={dream ? "transparent" : level >= 3 ? "#2a0800" : "#000814"} className={`tv2 tv2-wall tv2-wall-y2k${dream ? " tv2-wall-y2k-dream" : ""}`}>
       <Shake t={t} amount={level >= 4 && !reduced ? 0.12 : 0} reduced={reduced} className="kit-fill">
         <div className="tv2-wall-y2k-clock" style={{ color: LEVEL_TONE[level] }}>
           <div className="tv2-wall-y2k-time">{clock.time}</div>
