@@ -426,3 +426,45 @@ export function partsOf(id: string, w: number, h: number, d: number): ModelPart[
   }
   return out;
 }
+
+// ── The games' neon and haze (wave 47) ───────────────────────────────
+// Shared numbers for the web game (`@loom/house/three`, `neon: true`) and
+// VR (`HouseBuilder`, `HouseLook`); the terminals' world view and the map
+// editor draw neither.
+
+/** The neon strips along every `wall` segment (both faces): a skirting
+ *  strip `[0]` m over the floor and a cove strip `[1]` m under the top,
+ *  each `NEON_STRIP_H` tall and `NEON_STRIP_PROUD` off the face. */
+export const NEON_STRIP_AT: readonly [number, number] = [0.06, 0.05];
+export const NEON_STRIP_H = 0.012;
+export const NEON_STRIP_PROUD = 0.006;
+/** The skirting's and the cove's colours. */
+export const NEON_SKIRT = CYAN;
+export const NEON_COVE = MAGENTA;
+/** Neon is drawn this many times its colour (unlit, unfogged), so it blooms. */
+export const NEON_GAIN = 2.2;
+
+/** The haze layers: soft drifting sheets per floor, `[0]` m over its floor
+ *  and `[1]` m under its ceiling, at these opacities, tiling every
+ *  `HAZE_TILE_M` and drifting `HAZE_DRIFT` m/s (x, z) each; a game draws
+ *  none on `low`, the floor one on `medium`, both on `high`. */
+export const HAZE_AT: readonly [number, number] = [0.3, 0.35];
+export const HAZE_OPACITY: readonly [number, number] = [0.11, 0.07];
+export const HAZE_TILE_M = 4;
+export const HAZE_DRIFT: readonly [readonly [number, number], readonly [number, number]] = [
+  [0.03, 0.012],
+  [-0.018, 0.022],
+];
+export const HAZE_COLOR = "#9a8cff";
+/** The games' fog: the colour (the background too) and an exponential density per metre. */
+export const HAZE_FOG = "#15123a";
+export const HAZE_FOG_DENSITY = 0.055;
+
+/** The neon's brightness at `t` s (0 … 1): steady, but every
+ *  `NEON_FLICKER_S` it stutters for a third of a second. */
+export const NEON_FLICKER_S = 9.7;
+export function neonFlicker(t: number): number {
+  const p = ((t % NEON_FLICKER_S) + NEON_FLICKER_S) % NEON_FLICKER_S;
+  if (p >= 0.35) return 1;
+  return Math.sin(p * 90) > 0 ? 1 : 0.35;
+}
