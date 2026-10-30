@@ -1112,11 +1112,18 @@ if it changes (`SRC` = the source file):
 
 ```bash
 VF="scale=1280:720:flags=lanczos,format=yuv420p10le,colorspace=all=bt709:iall=bt2020:itrc=bt2020-10:format=yuv420p"
-ffmpeg -i "$SRC" -map 0:v:0 -map 0:a:0 -vf "$VF" -c:v libx264 -profile:v high -level 4.0 -preset slow -crf 27 \
-  -pix_fmt yuv420p -color_primaries bt709 -color_trc bt709 -colorspace bt709 -c:a aac -b:a 96k -ac 2 \
+# The recording is quiet (−39 LUFS): compress it, then bring it to −14 LUFS
+# (−1.5 dBTP). For an exact level run loudnorm twice: once with
+# print_format=json, then with its measured_* values and linear=true.
+AF="highpass=f=60,acompressor=threshold=-36dB:ratio=4:attack=10:release=250:makeup=12dB:knee=6,loudnorm=I=-14:TP=-1.5:LRA=7"
+ffmpeg -i "$SRC" -map 0:a:0 -af "$AF" -ar 48000 -ac 2 loud.wav
+ffmpeg -i "$SRC" -i loud.wav -map 0:v:0 -map 1:a:0 -vf "$VF" -c:v libx264 -profile:v high -level 4.0 -preset slow -crf 27 \
+  -pix_fmt yuv420p -color_primaries bt709 -color_trc bt709 -colorspace bt709 -c:a aac -b:a 128k -ac 2 \
   -movflags +faststart reinstall/web/public/intro/reinstallation.mp4
-ffmpeg -i "$SRC" -map 0:v:0 -map 0:a:0 -vf "$VF" -r 30 -c:v libtheora -b:v 1400k -c:a libvorbis -q:a 3 \
-  -ac 2 -ar 44100 reinstall/vr/media/reinstallation.ogv
+# The Ogg's audio comes from the WAV too: filtering inside the Ogg mux
+# leaves non-monotonic audio timestamps.
+ffmpeg -i "$SRC" -i loud.wav -map 0:v:0 -map 1:a:0 -vf "$VF" -r 30 -c:v libtheora -b:v 1400k -c:a libvorbis -q:a 4 \
+  -ac 2 -ar 44100 -shortest reinstall/vr/media/reinstallation.ogv
 ```
 
 Play: first-person, eye height 1.6 m, walk 1.8 m/s (run ×1.6 with Shift),
