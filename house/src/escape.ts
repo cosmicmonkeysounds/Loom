@@ -75,3 +75,28 @@ export function voidDistance(house: HouseMap, p: Vec3): number | null {
   }
   return best;
 }
+
+/**
+ * The floors the games hide around a player in `room` (null: in no room).
+ * Seen from outside, the house is only its outside floor: every floor above
+ * `outsideGround`'s is hidden unless the player stands on one of them or in
+ * a room a stair climbs out of to one (looking up the stairwell). On a
+ * floor below, nothing changes. Ids in `house.floors` order; empty with no
+ * exterior door.
+ */
+export function hiddenFloors(house: HouseMap, room: string | null): string[] {
+  const out = outsideGround(house);
+  if (out === null) return [];
+  const upper = house.floors.filter((f) => f.elevation > out.y + 1e-6).map((f) => f.id);
+  if (upper.length === 0) return [];
+  const r = room === null ? undefined : roomById(house, room);
+  if (r !== undefined) {
+    if (upper.includes(r.floor)) return [];
+    for (const s of house.stairs) {
+      if (s.from !== r.id) continue;
+      const to = roomById(house, s.to);
+      if (to !== undefined && upper.includes(to.floor)) return [];
+    }
+  }
+  return upper;
+}

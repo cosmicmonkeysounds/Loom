@@ -43,7 +43,7 @@ import {
 } from "three";
 import type { Camera, Material, Object3D, Scene, Texture } from "three";
 import { forward } from "../frames.ts";
-import { breakpoints, buildFloors, buildRamps, buildWalls, doorGap, pointInPolyStrict, roomById, roomElevation, roomHeight, styleOf } from "../geometry.ts";
+import { breakpoints, buildFloors, buildRamps, buildWalls, doorGap, pointInPolyStrict, roomById, roomElevation, roomHeight, stairWells, styleOf } from "../geometry.ts";
 import type { FloorPlane, HouseMap, Ramp, TerminalSpot, Vec2, WallKind, WallSegment } from "../types.ts";
 import { Bin, DEG, merge, paint, projectUvs } from "./dispose.ts";
 import { outsideGround } from "../escape.ts";
@@ -297,6 +297,32 @@ export function buildHouseScene(house: HouseMap, opts: HouseSceneOptions = {}): 
       ceilings.set(floorId, mesh);
       group.add(mesh);
     }
+  }
+
+  // The band between a ceiling and the floor above it, round each stair's
+  // hole (`stairWells`): thin skins just outside the rect, a hair past both
+  // planes so no crack shows at either edge.
+  const SKIN = 0.02;
+  for (const [floorId, group] of floors) {
+    const geoms: BufferGeometry[] = [];
+    for (const w of stairWells(house)) {
+      if (w.floor !== floorId) continue;
+      const [x0, z0, x1, z1] = w.rect;
+      const lo = w.bottom - 0.01;
+      const h = w.top + 0.01 - lo;
+      const sides: [number, number, number, number][] = [
+        [x1 - x0 + 2 * SKIN, SKIN, (x0 + x1) / 2, z0 - SKIN / 2],
+        [x1 - x0 + 2 * SKIN, SKIN, (x0 + x1) / 2, z1 + SKIN / 2],
+        [SKIN, z1 - z0, x0 - SKIN / 2, (z0 + z1) / 2],
+        [SKIN, z1 - z0, x1 + SKIN / 2, (z0 + z1) / 2],
+      ];
+      for (const [sx, sz, cx, cz] of sides) geoms.push(projectUvs(new BoxGeometry(sx, h, sz).translate(cx, lo + h / 2, cz)));
+    }
+    const merged = bin.add(merge(geoms));
+    if (!merged) continue;
+    const mesh = new Mesh(merged, mats.wall);
+    mesh.name = `wells:${floorId}`;
+    group.add(mesh);
   }
 
   // ── Props ─────────────────────────────────────────────────────────

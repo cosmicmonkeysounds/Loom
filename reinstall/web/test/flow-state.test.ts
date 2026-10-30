@@ -265,7 +265,7 @@ describe("a held frame — no find and no quack under an overlay", () => {
       doorOpen: false,
       kingState: null,
       kingProp: null,
-      duck: { state: "idle", update: () => {} },
+      duck: { state: "idle", update: () => {}, object: { visible: true } },
       map: house,
       duckSpot: { id: "d1", room: house.rooms[0]!.id, pos: at },
       foundRefusals: 0,
@@ -274,7 +274,7 @@ describe("a held frame — no find and no quack under an overlay", () => {
       nextQuackAt: 0,
       camera: { position: noop, rotation: noop },
       trail: { update: () => {} },
-      house: { update: () => {} },
+      house: { update: () => {}, floors: new Map() },
       lamps: { repick: () => {}, update: () => {} }, // wave 39
       ghosts: new Map(),
       renderer: { render: () => {} },
