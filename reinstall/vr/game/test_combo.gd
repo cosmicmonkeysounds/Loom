@@ -3,7 +3,9 @@
 ## duck picked here) and starts the captured offline program, so a headset
 ## can be tried without a server. A pause longer than [constant GAP] starts
 ## the sequence over. Its mirror, A A B B A B A B B A A (wave 49), does the
-## same at the descent's deepest level.
+## same at the descent's deepest level. Neither test level plays the intro,
+## and the plain sequence typed during an intro skips the rest of it. The web
+## game takes the same code on its keyboard (`web/src/game/test-code.ts`).
 class_name TestCombo
 extends RefCounted
 

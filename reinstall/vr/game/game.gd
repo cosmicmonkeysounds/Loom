@@ -217,6 +217,8 @@ var _combo := TestCombo.new()
 var _combo_deep := TestCombo.new(TestCombo.MIRROR)
 ## The level the test level plays at (< 0: not a test level).
 var _test_level := -1
+## This walk is a test level: no intro.
+var _test_walk := false
 ## Seconds to Gerald's next quack look ([method Sfx.quack_plan]).
 var _quack_in := Sfx.QUACK_FIRST
 ## Seconds to the found screen's fanfare (< 0: none due).
@@ -418,6 +420,7 @@ func enter_lobby() -> void:
 	_close_hallway()  # the house back first: nobody stays in there
 	descent.stop()
 	_test_level = -1
+	_test_walk = false
 	flow.abort()
 	intro.abort()
 	intro_space.close()
@@ -653,7 +656,7 @@ func _enter_walk(a: Dictionary, resume_pose: Dictionary) -> void:
 ## Whether a walk starts with the intro: the station's `intro` (default
 ## on), never for the autopilot.
 func intro_wanted() -> bool:
-	return autopilot == null and bool(link.config.get("intro", true))
+	return autopilot == null and not _test_walk and bool(link.config.get("intro", true))
 
 
 ## This walk's level of the descent: the test level's, the headset's own
@@ -737,6 +740,9 @@ func _start_intro(a: Dictionary) -> void:
 ## One frame of the intro: the spawn pose (the session stays alive, and in
 ## the house), the laser on the cinema or the panel, the guest's progress.
 func _tick_intro(delta: float) -> void:
+	var hands := [player.left_hand, player.right_hand]
+	if feed_intro_code(TestCombo.held(hands, "ax_button"), TestCombo.held(hands, "by_button"), delta):
+		return
 	var spawn: Dictionary = flow.assignment["spawn"]
 	link.send_pose(spawn["pos"], float(spawn.get("yaw", 0.0)), 0.0)
 	var aim := pointer.poll()
@@ -754,6 +760,14 @@ func _tick_intro(delta: float) -> void:
 	_intro_events(intro.tick(delta, inp))
 	if intro.running():
 		intro_space.render(intro)
+
+
+## One frame of the test code during an intro; true when it skipped the rest.
+func feed_intro_code(a_down: bool, b_down: bool, delta: float) -> bool:
+	if not _combo.feed(a_down, b_down, delta):
+		return false
+	_intro_events(intro.skip_all())
+	return true
 
 
 ## Press intro button `id` as the laser would (tests, the screenshot tool).
@@ -1113,6 +1127,7 @@ var falls := 0
 ## offline program, no server needed ([TestCombo]).
 func start_test_level(level := -1) -> void:
 	_test_level = level
+	_test_walk = true
 	link.play_offline()
 	lobby.flash(TEST_DEEP if level > 0 else "Test level (offline)…", 3.0)
 	link.begin("g-000001")

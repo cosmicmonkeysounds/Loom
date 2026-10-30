@@ -249,8 +249,14 @@ the reverse: run the server again (or `adb reverse tcp:7642 tcp:7642`).
 B A B A A B B** on either controller (X counts as A, Y as B; at most 1.5 s
 between presses). The headset plays offline for this run (the bundled
 house, the duck picked here) as the captured *Offline Program*
-(`game/test_combo.gd`, [method Game.start_test_level]). It works on every
-build, a station's too.
+(`game/test_combo.gd`, [method Game.start_test_level]), straight in the
+house with no intro. It works on every build, a station's too.
+
+**The same code skips an intro.** Typed during the video or the training on
+a real walk, it jumps to the end of the intro, as if the program had finished
+it, whatever its `reinstalled`. The web game takes the same code on the
+keyboard (A and B): during the video it skips the video and the training,
+during the training the rest of it (`web/src/game/test-code.ts`).
 
 **Run arguments from the editor.** *Debug → Customize Run Instances…* →
 *Main Run Args*, everything after `--` (the command-line flags below):

@@ -36,6 +36,7 @@ import { findFlash } from "./game/hud.ts";
 import { requestMic, stopStream } from "./game/voice.ts";
 import { primeSpeech } from "./game/lines.ts";
 import { NO_WEBGL2, Play, type PlayExit } from "./game/Play.tsx";
+import { useTestCode } from "./game/test-code.ts";
 import { introSkippable } from "./game/tutorial.ts";
 import { IntroVideo } from "./IntroVideo.tsx";
 import { beginErrorText, NOT_MARKED, programPitch, programState, programStatus, startingHeading, type Program } from "./program.ts";
@@ -168,10 +169,18 @@ export function ReinstallFlow({
       releaseMic();
       mic.current = requestMic();
     }
+    testCoded.current = false;
     // The intro video first (wave 33): no session is live while it plays.
     if (config.intro !== false) setStep({ kind: "video" });
     else void beginHere();
   };
+
+  // The test code during the video: no video, no training.
+  const testCoded = useRef(false);
+  useTestCode(step.kind === "video", () => {
+    testCoded.current = true;
+    void beginHere();
+  });
 
   const beginHere = async () => {
     setStep({ kind: "starting", label: "Copying files…" });
@@ -247,6 +256,7 @@ export function ReinstallFlow({
         {...(step.king !== undefined ? { king: step.king } : {})}
         sfx={sfx}
         held={held}
+        skipIntro={testCoded.current}
         {...(resuming !== undefined ? { resume: { pose: resuming.pose, ready: resuming.ready } } : {})}
         takeMic={takeMic}
         {...(offerHelp ? { help: <HelpMeButton help={help} place="hud" /> } : {})}

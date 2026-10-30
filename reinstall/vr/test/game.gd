@@ -4888,6 +4888,34 @@ func _test_intro_game() -> void:
 	_check(player.feet().distance_to(Lobby.SPOT) < 0.01 and game.lobby.visible, "intro: … standing in the lobby")
 	_check(link.get("readies") == 2, "intro: … no ready for it")
 
+	# The test code: a first-timer's intro gone, wherever it is, ready posted;
+	# a wrong code doesn't touch it; the test levels never had one.
+	var typed := func(code: String) -> bool:
+		var hit := false
+		for k: String in code:
+			hit = game.feed_intro_code(k == "A", k == "B", 0.3) or hit
+			hit = game.feed_intro_code(false, false, 0.0) or hit
+		return hit
+	var readies_before: int = link.get("readies")
+	link.assignment_received.emit(_assignment(house, "in-code", true))
+	game._process(0.5)
+	_check(not typed.call("AAAA") and game.in_intro(), "intro: a wrong code does nothing")
+	game._combo = TestCombo.new()
+	_check(typed.call(TestCombo.SEQUENCE) and not game.in_intro() and not game.intro_space.video_on() and not game.intro_space.visible, "intro: the test code ends a first-timer's video and tutorial")
+	_check(game.state() == GameFlow.State.PLAYING and link.get("readies") == readies_before + 1, "intro: … into the walk, ready posted")
+	link.session_over.emit("test")
+	link.assignment_received.emit(_assignment(house, "in-code2", true))
+	game.intro.step = IntroFlow.Step.WALK
+	_check(typed.call(TestCombo.SEQUENCE) and not game.in_intro(), "intro: … and from the middle of the tutorial")
+	link.session_over.emit("test")
+	game.start_test_level()
+	link.assignment_received.emit(_assignment(house, "in-test", true))
+	_check(game.state() == GameFlow.State.PLAYING and not game.in_intro(), "intro: the test level goes straight in the house")
+	link.session_over.emit("test")
+	link.assignment_received.emit(_assignment(house, "in-after", true))
+	_check(game.in_intro(), "intro: … and the next real walk has its intro again")
+	link.session_over.emit("over")
+
 	# (wave 40) The headset off mid-tutorial holds the walk and offers a
 	# resume in the lobby (the intro cinema gone), rather than ending it.
 	link.assignment_received.emit(_assignment(house, "in-4", true))
@@ -4906,7 +4934,7 @@ func _test_intro_game() -> void:
 	# The intro config off: straight to the house.
 	link.config["intro"] = false
 	link.assignment_received.emit(_assignment(house, "in-5", true))
-	_check(not game.in_intro() and _v3(player.feet(), HouseFrames.vec(spawn)) and link.get("readies") == 2, "intro: intro false → straight to the spawn, no ready")
+	_check(not game.in_intro() and _v3(player.feet(), HouseFrames.vec(spawn)) and link.get("readies") == readies_before + 2, "intro: intro false → straight to the spawn, no ready")
 	link.session_over.emit("test")
 	main.queue_free()
 	await process_frame

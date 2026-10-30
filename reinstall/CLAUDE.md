@@ -25,7 +25,7 @@ pnpm --filter loom-reinstall build        # dist/ (base /reinstall/)
 pnpm --filter loom-reinstall test         # vitest: 788 tests, 60 files
 pnpm --filter loom-reinstall typecheck
 pnpm dev --reinstall                      # repo root: the dev stack + this Vite on :5176
-pnpm test:vr                              # = reinstall/vr/test/run.sh [godot]: 1261 checks + 300 descent + quest.sh 42
+pnpm test:vr                              # = reinstall/vr/test/run.sh [godot]: 1267 checks + 300 descent + quest.sh 42
 pnpm house:sync                           # after any show-map or house geometry change
 reinstall/vr/tools/quest.sh setup|build --station vr-N|install   # the Quest APKs
 ```
@@ -104,6 +104,9 @@ presence rooms and `moment`), `spatial-cams.ts`, `spatial-voice.ts` and the
   one right controller. VR turns smoothly only (wave 33b: the snap turn
   and its saved setting are gone; the server's `POST /api/spatial/prefs`
   stays, unused).
+  The test code (B B A A B A B A A B B: VR `test_combo.gd`, web
+  `game/test-code.ts`) skips them for anyone; the guests' help never
+  mentions it.
   Both post `POST /api/spatial/ready` when the intro ends (the run clock
   restarts). Off with `?intro=0` (web) / `intro: false` (VR); the VR
   autopilot never plays it. Re-encode both videos from the source if it
