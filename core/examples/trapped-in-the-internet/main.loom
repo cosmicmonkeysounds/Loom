@@ -614,12 +614,14 @@ ROLE Program
     // w18b (R18): his owner's title.
     Trabolta: Hello, {self.name}. I am Jean Trabolta, Sole Owner and Founder of Maps and Ducks, and proud to be the world's first AI small business owner. Your requests have been logged. Personal queries are routed to Clippy.
 
-  // ── The Password Manager's filter (wave 48) ──
-  // The server fires this after every line this program types that holds a
-  // swear stem (core/src/language-filter.ts: over-eager on purpose,
-  // "password" is caught for "ass"): `words` caught, `list` the words. It
-  // only counts; the Password Manager's booth gets the alert itself, and her
-  // ✂ is `swear_censored` (cast/antivirus.loom).
+  // ── The Password Manager's filter (wave 48, 48b) ──
+  // The server fires this after every line this program types that the
+  // filter catches at her strength (core/src/language-filter.ts: at 100,
+  // over-eager on purpose, "password" is caught for "ass"): `words` caught,
+  // `list` the words (`[slur]` for a slur), `level` the strength. It only
+  // counts (the report's "out of how many" is words caught at the time);
+  // the Password Manager's booth gets the alert itself, and her ✂ is
+  // `swear_censored` (cast/antivirus.loom).
   when swear_flagged for program:
     set program.lang_flagged += words
     set Night.lang_flagged += words
@@ -3727,7 +3729,7 @@ INTERACTION language_report
   who: admin
   act: G · The awards ceremony
   sequence: false
-  description: Any time after G1, between two awards. The host reads the night's Language Report off the story and the TV shows it: the program that cursed the most (the most words the Password Manager's filter caught in what they typed), how many words she censored out of every word the filter caught, and every word she censored. Press again to read it again with the newest numbers.
+  description: Any time after G1, between two awards. The host reads the night's Language Report off the story and the TV shows it: the program that cursed the most (the most words the Password Manager's filter caught in what they typed), how many words she censored out of every word the filter caught, the words she censored most, how many she will not repeat, her ⭐ and where she left the filter's strength. The TV then lets every censored word out at once. Press again to read it again with the newest numbers.
   while: Night.ceremony == true and Night.resurrected != true
 
 // Performer buttons (on every guest card). Every hook guards its phase
@@ -6520,13 +6522,14 @@ when bathroom_report:
     set Night.bath_reported += 1
     -> Bathroom Report
 
-// G14 (wave 48): the Language Report. The filter's counts are kept live
-// (`swear_flagged` in ROLE Program, `swear_censored` on the Password
-// Manager, which also keeps `Night.lang_words`, every censored word once);
-// this reads who cursed the most off the programs at the party (cleared,
-// not gone, not a Run persona; ties name everyone tied). The beat
-// (beats/ceremony.loom) reads the Night.lang_* vars; the TV slide
-// (`award_language`) reads them through the screen state.
+// G14 (wave 48, 48b): the Language Report. The filter's counts are kept
+// live (`swear_flagged` in ROLE Program; `swear_censored` on the Password
+// Manager, which also keeps Night.lang_top / lang_distinct / lang_unsaid /
+// lang_stars; `swear_filter` below); this reads who cursed the most off the
+// programs at the party (cleared, not gone, not a Run persona; ties name
+// everyone tied). The beat (beats/ceremony.loom) reads the Night.lang_*
+// vars; the TV slide (`award_language`) reads them, and every censored
+// word from the server's book, through the screen state.
 when language_report:
   if Night.ceremony != true:
     broadcast "🔑 Start the ceremony (G1) first: no Language Report." to channel(hosts)
@@ -6542,6 +6545,11 @@ when language_report:
       set Night.lang_curser = "none"
     set Night.lang_reported += 1
     -> Language Report
+
+// Wave 48b: the Password Manager's strength slider (her ⊞ Start menu, the
+// server's `swear_filter`): the report says where she left it.
+when swear_filter:
+  set Night.lang_level = level
 
 // ── The players' game (wave 21) ──────────────────────────
 // Clippy and the four Antivirus (TRAIT Player, cast/kit.loom).
@@ -6853,7 +6861,11 @@ set Night.bath_toggles = 0
 // fills the rest when it is read.
 set Night.lang_flagged = 0
 set Night.lang_censored = 0
-set Night.lang_words = "none"
+set Night.lang_top = "none"
+set Night.lang_distinct = 0
+set Night.lang_unsaid = 0
+set Night.lang_stars = 0
+set Night.lang_level = 100
 set Night.lang_reported = 0
 set Night.lang_cursers = 0
 set Night.lang_curser = "none"

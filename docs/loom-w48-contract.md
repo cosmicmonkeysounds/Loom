@@ -195,6 +195,10 @@ flagged: one line. `?preview=language[&lang=none|tie]`.
 > a lower multiplier. It should feel like a little mini-game. perhaps there
 > is an external lib for language filtering?"*
 
+And, a little later: *"oh, and Password Manager censoring a word shouldn't
+trigger reinstallation; suspicion is raised, though, and the guest gets an
+automated message."*
+
 All new show text is `DRAFT w48b` (the 48b section of `SIGNOFF-w48.md`).
 Lanes: `oct31-w48b/core` (C7–C12, the story, docs), `oct31-w48b/play`
 (C13), `oct31-w48b/terminal` (C14), merged `--no-ff` via
@@ -261,8 +265,8 @@ Between two tiers a strength catches what the lower one does (40% = 25%).
 - **✂ Censor** censors the line's hits at the current strength (409
   `{error: "the filter no longer catches it"}` when none): masks them,
   scores them (C10) and journals `signal(swear_censored, <guest>,
-  { message, words, list, fresh, unsaid, points, mult, stars, top, heat,
-  heat_at }, <censor>)`. `list` / `fresh` never hold a slur: `list` says
+  { message, words, list, fresh, unsaid, points, mult, stars, top,
+  distinct, heat, heat_at }, <censor>)`. `list` / `fresh` never hold a slur: `list` says
   `[slur]`, `fresh` leaves it out and `unsaid` counts it. `top` is the
   five words censored most tonight (no slurs), most first. The answer:
   `{ ok, seq, text, points, mult, stars }`.
@@ -272,7 +276,7 @@ Between two tiers a strength catches what the lower one does (40% = 25%).
 With a `censor:` header, a slur in a guest's line is starred **before the
 line is stored**: the room, the booth, Run, Trabolta and the journal only
 ever have `****`. It still pops up in the booth (at every strength,
-tier 0) as `[slur]`, and ✂ still marks the program and pays the most. The
+tier 0) as `[slur]`, and ✂ still raises their suspicion and pays the most. The
 report counts them (`unsaid`) and never names them; the TV draws a
 redaction bar for each. Nobody has to hide anything by hand.
 
@@ -320,6 +324,12 @@ The multiplier now (client side, from the view's arrival):
 
 ## C12 The story and the screen state
 
+- **✂ no longer marks anyone** (this replaces C3's mark). It raises the
+  program's suspicion, the story's `doubt` (the Antivirus' 👁 watchlist
+  number): +5 a ✂, capped at 100. The guest gets an automated notice
+  (`broadcast … to participant(program)`): their message was censored for
+  language, with the words (`[slur]` for a slur), and it is logged. The
+  booth's reply says how much suspicion they are at.
 - `swear_filter` (the Password Manager's rule) sets `Night.lang_level`.
 - `swear_censored` also adds `stars` to her score (`self.score`) and
   `Night.lang_stars` while the night is on, `unsaid` to

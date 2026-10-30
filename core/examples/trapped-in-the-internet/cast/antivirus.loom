@@ -83,28 +83,33 @@ CHARACTER Password Manager is Enforcer
       Self (quietly): This message will not be saved. The Antivirus have your name. Bathroom Mode excuses a summons, and nobody follows you into Disk Cleanup.
       reply 🤫 You tipped off {program.name}. Nobody saw.
 
-  // ✂ The filter (wave 48, `censor: Password Manager` in main.loom's
-  // header). Every guest line the filter catches pops up in this booth; ✂
-  // Censor masks it for everyone (p***word) and fires this: `words` caught
-  // in the line, `list` them, `fresh` the ones nobody censored before
-  // tonight. It counts for the Language Report (G14) and marks the program
-  // for reinstallation, while the night is on and they are loose. DRAFT w48
+  // ✂ The filter (wave 48, 48b; `censor: Password Manager` in main.loom's
+  // header). Every guest line the filter catches at her strength pops up in
+  // this booth; ✂ Censor masks it for everyone (p***word) and fires this:
+  // `words` censored (`unsaid` of them slurs, never named: `list` says
+  // [slur]), what it paid (`points` × `mult` = `stars`: the heat game in
+  // core/src/language-filter.ts), `top` the words censored most tonight and
+  // `distinct` how many different ones. Since 48b it marks nobody (the
+  // user's ask): it raises the program's suspicion (doubt +5) and they get
+  // an automated notice. No ⭐ after the ending. DRAFT w48b
   when swear_censored for program:
     set program.lang_censored += words
     set Night.lang_censored += words
-    if fresh != "" and Night.lang_words == "none":
-      set Night.lang_words = fresh
-    else if fresh != "":
-      set Night.lang_words = Night.lang_words + ", " + fresh
-    if Night.ended == true:
-      reply ✂ Censored {program.name}: {list}. The night is over, so no mark; it counts for the Language Report.
-    else if program.corrupted == true:
-      reply ✂ Censored {program.name}: {list}. They are already in the Internet.
-    else if program.marked == true:
-      reply ✂ Censored {program.name}: {list}. They were already marked for reinstallation.
+    set Night.lang_unsaid += unsaid
+    set Night.lang_distinct = distinct
+    if top != "":
+      set Night.lang_top = top
+    if program.doubt > 95:
+      set program.doubt = 100
     else:
-      fire mark_for_reinstallation for program with reason: "censored: " + list
-      reply ✂ Censored {program.name}: {list}. Marked for reinstallation.
+      set program.doubt += 5
+    broadcast "🔑 Automated notice: a message you sent was censored for language ({list}). This incident has been logged." to participant(program)
+    if Night.ended == true:
+      reply ✂ Censored {program.name}: {list}. The night is over: no ⭐. It counts for the Language Report.
+    else:
+      set self.score += stars
+      set Night.lang_stars += stars
+      reply ✂ Censored {program.name}: {list}. {points} × {mult} = ⭐ +{stars}. Their suspicion: {program.doubt}/100.
 
   when who joins Unlimited Power:
     reply 🔑 {who.name} joined Unlimited Power.
