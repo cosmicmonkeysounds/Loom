@@ -25,7 +25,7 @@ pnpm --filter loom-reinstall build        # dist/ (base /reinstall/)
 pnpm --filter loom-reinstall test         # vitest: 678 tests, 51 files
 pnpm --filter loom-reinstall typecheck
 pnpm dev --reinstall                      # repo root: the dev stack + this Vite on :5176
-pnpm test:vr                              # = reinstall/vr/test/run.sh [godot]: 1227 checks + quest.sh 42
+pnpm test:vr                              # = reinstall/vr/test/run.sh [godot]: 1207 checks + quest.sh 42
 pnpm house:sync                           # after any show-map or house geometry change
 reinstall/vr/tools/quest.sh setup|build --station vr-N|install   # the Quest APKs
 ```
@@ -155,6 +155,16 @@ presence rooms and `moment`), `spatial-cams.ts`, `spatial-voice.ts` and the
 - **Station config.** VR reads `user://station.json` (written by the
   in-headset setup) over the committed `config/station.json` (which must
   keep `CHANGEME`; a test checks it). Never write `res://`.
+- **No text in the VR house** (wave 46). VR draws no room names, terminal
+  captions, prop captions, signs or player name tags, and its HUD has no
+  room line, hint or mic line; only the found screen, notices, captions of
+  game lines and the King's own bar remain. A guest cannot mute the mic.
+- **Seen from outside** (wave 46). Outdoors, both games hide every floor
+  above the outside one (`hiddenFloors` / `HouseEscape.hidden_floors`),
+  with Gerald and the ghosts on it; they show again on that floor or at
+  the foot of a stair up. `stairWells` closes the band between a ceiling
+  and the floor above round each stair's hole; VR draws floors on the bare
+  grid (`cells(…, false)`: no T-junction cracks).
 - **Fiction.** The wizard and the HUD never promise the real server-room
   door; the King's stakes line belongs to the chess terminal. The HUD has
   no King bar (wave 26, R3): the bar over his head is his only display.

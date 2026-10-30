@@ -1,6 +1,6 @@
 ## Other players as ghosts (§2.2 stream → `hello` / `join` / `poses` /
 ## `found` / `leave` / `reset` / `avatar`): a translucent teal capsule with
-## a visor showing where they look and a name tag, eased toward each new
+## a visor showing where they look (no name over it), eased toward each new
 ## pose. A guest with a profile picture (`avatar`: the avatar key) also
 ## wears it as a head — a Win98-bevelled billboard square over the capsule
 ## ("Picture"), fetched through [member avatars]; no key, or a picture that
@@ -11,12 +11,9 @@ extends Node3D
 
 ## Seconds to ease halfway toward a new pose (~10 Hz updates).
 const EASE := 0.06
-## The picture head: its side (m) and its centre's height; the name tag
-## rises above it.
+## The picture head: its side (m) and its centre's height.
 const PICTURE_SIZE := 0.42
 const PICTURE_Y := 1.78
-const TAG_Y := 1.85
-const TAG_Y_PICTURE := 2.1
 
 var builder: HouseBuilder
 ## Our own session id (never drawn).
@@ -27,8 +24,18 @@ var url_of: Callable = func(_key: String) -> String: return ""
 ## The picture fetcher (made on first use when not given).
 var avatars: AvatarCache
 
-## session → {node, target: Vector3, yaw: float, url: String}
+## session → {node, target: Vector3, yaw: float, url: String, p: house [x, y, z]}
 var _ghosts := {}
+## Whether a ghost at a house point stands on a hidden floor ([method hide_on]).
+var _hidden_at: Callable = func(_p: Array) -> bool: return false
+
+
+## Hide every ghost for which `hidden_at` (house `[x, y, z]` → bool) says
+## so — the ones on a floor [HouseBuilder] hides — now and as they move.
+func hide_on(hidden_at: Callable) -> void:
+	_hidden_at = hidden_at
+	for g: Dictionary in _ghosts.values():
+		(g["node"] as Node3D).visible = not hidden_at.call(g["p"])
 
 
 func _ready() -> void:
@@ -94,17 +101,17 @@ func _upsert(p: Dictionary) -> void:
 	var pos := builder.to_world(p["p"])
 	var yaw := builder.yaw_to_world(float(p.get("yaw", 0.0)))
 	if not _ghosts.has(sid):
-		var node := _make(str(p.get("name", "")))
+		var node := _make()
 		add_child(node)
 		node.global_position = pos
-		_ghosts[sid] = {"node": node, "target": pos, "yaw": yaw, "url": ""}
+		_ghosts[sid] = {"node": node, "target": pos, "yaw": yaw, "url": "", "p": p["p"]}
 		_set_avatar(sid, p.get("avatar"))
 		return
 	var g: Dictionary = _ghosts[sid]
 	g["target"] = pos
 	g["yaw"] = yaw
-	if p.has("name"):
-		(g["node"].get_node("Tag") as Label3D).text = str(p["name"])
+	g["p"] = p["p"]
+	g["node"].visible = not _hidden_at.call(p["p"])
 	if p.has("avatar"):
 		_set_avatar(sid, p["avatar"])
 
@@ -136,12 +143,10 @@ func _on_picture(url: String, tex: Texture2D) -> void:
 ## Put `tex` on the ghost's head (null: take it off).
 func _show_picture(node: Node3D, tex: Texture2D) -> void:
 	var pic := node.get_node_or_null("Picture") as Sprite3D
-	var tag := node.get_node("Tag") as Label3D
 	if tex == null:
 		if pic != null:
 			node.remove_child(pic)
 			pic.queue_free()
-		tag.position.y = TAG_Y
 		return
 	if pic == null:
 		pic = Sprite3D.new()
@@ -154,7 +159,6 @@ func _show_picture(node: Node3D, tex: Texture2D) -> void:
 		node.add_child(pic)
 	pic.texture = tex
 	pic.pixel_size = PICTURE_SIZE / float(maxi(1, maxi(tex.get_width(), tex.get_height())))
-	tag.position.y = TAG_Y_PICTURE
 
 
 ## The URL a ghost's picture is (or would be) from ("" = none).
@@ -176,7 +180,7 @@ func _remove(sid: String) -> void:
 	node.queue_free()
 
 
-func _make(display: String) -> Node3D:
+func _make() -> Node3D:
 	var root := Node3D.new()
 	var mat := StandardMaterial3D.new()
 	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
@@ -203,11 +207,6 @@ func _make(display: String) -> Node3D:
 	head.name = "Head"
 	head.add_child(visor)
 	root.add_child(head)
-	var tag := HouseLook.label(display, 0.1, HouseLook.TEAL_GLOW)
-	tag.name = "Tag"
-	tag.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	tag.position.y = TAG_Y
-	root.add_child(tag)
 	return root
 
 

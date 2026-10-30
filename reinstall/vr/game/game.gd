@@ -68,7 +68,7 @@
 ##
 ## - **Voice** (wave 19, [VoiceLink]): while playing, the terminals near
 ##   the player are heard at their screens and the player on the terminals
-##   near them; B / Y (M on the desktop rig) mutes the mic. Off with
+##   near them. A guest cannot mute it (no button, no HUD line). Off with
 ##   `--voice false`, listen-only with `--mic false`; never offline.
 ## - **Sound** (wave 26, R8, [Sfx]): Gerald quacks from where he sits (the
 ##   web game's schedule), the find quacks and plays the fanfare (none for a
@@ -624,9 +624,10 @@ func _start_play() -> void:
 	# over from the lobby or the intro (the trigger that pulled START; B / Y
 	# does nothing there).
 	_hit_was = player.hit_button
-	_mute_was = player.mute_button
 	_update_route_house()
-	hud.show_play(_room_label(HouseLocate.locate(builder.house, start_pos)["room"]))
+	_sight_room = null
+	_tick_sight(start_pos)
+	hud.show_play()
 	if link.map_warning_text != "":
 		_notice(link.map_warning_text)  # raised in the lobby, still in force
 	if autopilot != null:
@@ -1099,7 +1100,7 @@ func _tick_play(delta: float) -> void:
 		_start_escape()
 		return
 	var here := HouseLocate.locate(house, feet)
-	hud.set_room(_room_label(here["room"]))
+	_tick_sight(feet)
 	cams.tick(delta, house, feet, link.cams_url(), link.cams_token())
 	_tick_voice()
 
@@ -1354,8 +1355,6 @@ func _tick_quack(feet: Array, duck_p: Array, delta: float) -> void:
 
 # --- voice ---
 
-## The mute button on the last frame (a toggle is the press, not the hold).
-var _mute_was := false
 
 
 func _setup_voice() -> void:
@@ -1372,8 +1371,7 @@ func _prime_mic() -> void:
 	voice.prime_permission(bool(link.config.get("voice", true)) and bool(link.config.get("mic", true)))
 
 
-## While playing: run the voice link on the session (unless `voice` is off),
-## toggle the mic on a press of the mute button, keep the HUD's mic line.
+## While playing: run the voice link on the session (unless `voice` is off).
 func _tick_voice() -> void:
 	# R8: while a terminal listens the mic may send, so no game sound plays —
 	# the hum (which holds nothing) pauses; one-shots hold the mic instead.
@@ -1383,19 +1381,10 @@ func _tick_voice() -> void:
 	if not voice.is_running():
 		voice.mic_enabled = bool(link.config.get("mic", true))  # a reconfigured headset
 	voice.want(link.voice_stream_url(), link.voice_upload_url(), link.voice_token())
-	var pressed := player.mute_button and not _mute_was
-	_mute_was = player.mute_button
-	if pressed:
-		var was := voice.muted
-		voice.toggle_mute()
-		if voice.muted != was:
-			player.pulse(0.3, 0.05)  # felt: the press took
-	hud.set_mic(voice.hud_text(player.xr_active))
 
 
 func _stop_voice() -> void:
 	voice.stop()
-	hud.set_mic("")
 
 
 ## Near the King (a `king` prop, with a shared King on the server): say
@@ -1663,6 +1652,23 @@ func _clear_trail() -> void:
 	trail.clear()
 
 
-func _room_label(room_id: Variant) -> String:
-	var room: Variant = HouseGeometry.room_by_id(builder.house, room_id)
-	return str(room["label"]) if room != null else ""
+## The room the floors are drawn for ([method HouseLocate.presence_room],
+## every tick while playing).
+var _sight_room: Variant = null
+
+
+## Outside, the house is only its outside floor
+## ([method HouseEscape.hidden_floors]): the floors above it hide, and so do
+## Gerald and the other programs standing on them — nothing floats in the
+## sky. `feet` in house coordinates.
+func _tick_sight(feet: Array) -> void:
+	var house := builder.house
+	_sight_room = HouseLocate.presence_room(house, feet, _sight_room)
+	var hidden := HouseEscape.hidden_floors(house, _sight_room)
+	builder.hide_floors(hidden)
+	duck.set_floor_hidden(not hidden.is_empty() and _on_floor(hidden, flow.assignment.get("duck", {}).get("pos")))
+	ghosts.hide_on(func(p: Array) -> bool: return not hidden.is_empty() and _on_floor(hidden, p))
+
+
+func _on_floor(floors: Array, p: Variant) -> bool:
+	return p is Array and floors.has(str(HouseLocate.locate(builder.house, p)["floor"]))

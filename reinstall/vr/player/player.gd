@@ -28,10 +28,9 @@
 ##   a first-timer knows why they stopped.
 ## - **Hit** ([member hit_button]): either trigger, or A / X — the King's
 ##   hit (the game takes the press, not the hold).
-## - **Mute** ([member mute_button]): B / Y — the voice link's mic.
 ##
 ## Without OpenXR (a Mac, the tests) it is a desktop rig: WASD / ↑↓ walk,
-## Q/E / ←→ turn, Space / F hit, M mute, mouse look (click to capture, Esc to
+## Q/E / ←→ turn, Space / F hit, mouse look (click to capture, Esc to
 ## release; never in the lobby, where the mouse points — [member
 ## capture_mouse]) — all feeding the same sticks and button, so the game
 ## logic can't tell the difference.
@@ -77,9 +76,6 @@ var right_stick := Vector2.ZERO
 ## The hit button held (a trigger, A / X; Space / F on the desktop rig),
 ## refreshed with the sticks.
 var hit_button := false
-## The mute button held (B / Y; M on the desktop rig), refreshed with the
-## sticks — the game toggles the voice link's mic on the press.
-var mute_button := false
 ## Read the devices each tick (off in tests that drive the sticks).
 var read_input := true
 ## Desktop rig: a click captures the mouse for looking around (off in the
@@ -307,14 +303,12 @@ func _read_sticks() -> void:
 		for hand: XRController3D in [right_hand, left_hand]:
 			if hand.is_button_pressed("trigger_click") or hand.is_button_pressed("ax_button") or hand.get_float("trigger") > 0.8:
 				hit_button = true
-		mute_button = right_hand.is_button_pressed("by_button") or left_hand.is_button_pressed("by_button")
 		return
 	var k := func(a: Key, b: Key) -> float:
 		return 1.0 if Input.is_physical_key_pressed(a) or Input.is_physical_key_pressed(b) else 0.0
 	left_stick = Vector2(k.call(KEY_D, KEY_NONE) - k.call(KEY_A, KEY_NONE), k.call(KEY_W, KEY_UP) - k.call(KEY_S, KEY_DOWN)).limit_length(1.0)
 	right_stick = Vector2(k.call(KEY_E, KEY_RIGHT) - k.call(KEY_Q, KEY_LEFT), 0.0)
 	hit_button = k.call(KEY_SPACE, KEY_F) > 0.0
-	mute_button = k.call(KEY_M, KEY_NONE) > 0.0
 
 
 ## Room scale (each frame): move the body under the head with a slide of its own (floor

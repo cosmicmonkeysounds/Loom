@@ -13,7 +13,6 @@ Thumbsticks, plus one button for the King (and a laser in the lobby):
 | **Left stick** | walk where you look (dead zone 0.15, 1.4 m/s) |
 | **Right stick** | turn smoothly (a small push turns slowly, at most 70°/s; no snap turn since wave 33b — it made people dizzy) |
 | **Trigger** (either hand) or **A / X** | hit the King, near and facing him — once per visit |
-| **B / Y** (either hand) | mute / unmute the microphone (a short haptic tick when it takes) |
 | **Lobby** | point a controller at your program's tile and pull the **trigger** (either hand: a thin beam shows where), or walk the tiles with the stick and hold **right** for 1 s; then **START** (trigger, or hold right again) or **BACK** |
 | **The intro** | the same beam and **trigger** (or **A**) on the panel's buttons; the stick walks and turns once the tutorial says so |
 
@@ -189,7 +188,7 @@ panel) opens it with no session and shows a level meter.
 ## Run it on a desktop
 
 Without an OpenXR runtime (a Mac) the game runs on the desktop rig. WASD or
-↑↓ walk, Q/E or ←→ turn, Space or F hits the King, M mutes the microphone,
+↑↓ walk, Q/E or ←→ turn, Space or F hits the King,
 and the mouse looks (click to capture it, Esc to release it). In the lobby
 the mouse points instead: click a tile, then START. The keys drive the stick picker there:
 W/S a row up / down, A or a quick D a tile left / right, holding D or E
@@ -470,15 +469,9 @@ with `released: true` while you walk to Gerald.
   Quest's speakers stays home, but a player who speaks up is heard at once,
   and the terminal then holds its own mic, so the room pauses for them. A
   faint, far terminal (gain under 0.2) raises nothing. It only uploads
-  while some terminal can hear it. **B / Y** (either hand; **M** on a Mac) mutes and unmutes the
-  mic — only while it is open (a press while it is asking, refused or
-  missing does nothing, so it never comes up muted unseen). The HUD's
-  bottom line (wave 26, no emoji) says **MIC ON · B or Y mutes** (*MIC ON ·
-  someone can hear you* while a terminal listens), **MIC MUTED · press B
-  or Y**, **MIC STARTING…** (until the mic hands over a real sample),
-  **MIC · allow it in the headset's prompt** (the Android prompt is up),
-  **NO MIC · not allowed · ASK AGAIN in the lobby** (the prompt was
-  refused) or **NO MIC** (no device, or only zeros). The tent's terminal
+  while some terminal can hear it. A guest cannot mute it, and the HUD
+  carries no mic line (the lobby's MICROPHONE box still says what the mic
+  is doing). The tent's terminal
   (the tent laptop beside the headsets) is never in the link. A Quest asks
   to allow recording audio (Android's microphone prompt) **in the lobby**,
   before the first session (the dialog pauses the app; in a session that

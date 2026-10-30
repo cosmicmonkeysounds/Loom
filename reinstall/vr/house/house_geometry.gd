@@ -573,10 +573,30 @@ static func build_ramps(house: Dictionary) -> Array:
 	return out
 
 
+## `{stair, floor, rect, bottom, top}` per stair whose `to` floor sits above
+## its (indoor) `from` room's ceiling: the band between them round the hole
+## (port of `stairWells`; render only).
+static func stair_wells(house: Dictionary) -> Array:
+	var out: Array = []
+	for stair: Dictionary in house.get("stairs", []):
+		var from: Variant = room_by_id(house, stair["from"])
+		var to: Variant = room_by_id(house, stair["to"])
+		if from == null or to == null or from.get("outdoor") == true:
+			continue
+		var bottom := room_elevation(house, from) + room_height(house, from)
+		var top := room_elevation(house, to)
+		if top - bottom > 1e-6:
+			out.append({"stair": str(stair["id"]), "floor": str(from["floor"]), "rect": stair["rect"].duplicate(), "bottom": bottom, "top": top})
+	return out
+
+
 ## Rectangular cells covering a rectilinear polygon minus rect holes, as
 ## `[x0, z0, x1, z1]` — the builder's "triangulation" (each cell is two
 ## triangles and one box collider), exact for every map the validator accepts.
-static func cells(poly: Array, holes: Array) -> Array:
+## Runs are merged along x (fewer colliders); a mesh asks `merge = false` for
+## the bare grid, whose cells share whole edges — merged runs leave
+## T-junctions that crack open into the void at a distance.
+static func cells(poly: Array, holes: Array, merge := true) -> Array:
 	var xs_in: Array = []
 	var zs_in: Array = []
 	for p: Array in poly:
@@ -602,7 +622,7 @@ static func cells(poly: Array, holes: Array) -> Array:
 						inside = false
 			if inside and start < 0:
 				start = i
-			elif not inside and start >= 0:
+			elif start >= 0 and (not inside or not merge):
 				out.append([xs[start], zs[j], xs[i], zs[j + 1]])
-				start = -1
+				start = i if inside else -1
 	return out

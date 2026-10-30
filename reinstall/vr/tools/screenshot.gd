@@ -1,7 +1,8 @@
 ## Render the game (desktop rig, offline link) and save screenshots: the
 ## lobby, the intro (the cinema with the real video, then each tutorial
 ## step), the spawn, a look at the duck, and a 3x terminal with a test
-## camera feed (wave 33b) — a quick visual check without
+## camera feed (wave 33b), the stairwell's band between floors and the
+## house from outside (the ground floor only) — a quick visual check without
 ## a headset. Needs a display (not --headless).
 ##
 ##   godot --path . --xr-mode off --script res://tools/screenshot.gd -- --offline --out /tmp/shots
@@ -75,7 +76,7 @@ func _run() -> void:
 	await _shot("spawn")
 	var duck_p: Array = game.flow.assignment["duck"]["pos"]
 	var room: Dictionary = HouseGeometry.room_by_id(game.builder.house, game.flow.assignment["duck"]["room"])
-	var spot := HouseBuilder.label_spot(room)
+	var spot := _room_middle(room)
 	var from := [spot[0], duck_p[1], spot[1]]
 	game.player.teleport(HouseFrames.vec(from), HouseRoute.yaw_toward(from, duck_p))
 	game.player.camera.rotation.x = deg_to_rad(-20.0)
@@ -90,9 +91,26 @@ func _run() -> void:
 	game.player.teleport(HouseFrames.vec([0.0, 0.0, 4.0]), -90.0)
 	game.player.camera.rotation.x = 0.0
 	await _shot("hall")
+	# Climbing the stairs up: the band between the floors is closed.
+	for st: Dictionary in stairs:
+		if str(st["id"]) != "upstairs":
+			continue
+		var r: Array = st["rect"]
+		var mid := [(r[0] + r[2]) / 2.0, 0.0, (r[1] + r[3]) / 2.0]
+		var at := HouseFrames.vec(mid)
+		at.y = HouseGeometry.ramp_height(game.builder.house, st, [mid[0], mid[2]])
+		game.player.teleport(at, 0.0)
+		game.player.camera.rotation.x = deg_to_rad(10.0)
+		await _shot("stairwell")
+	# From the backyard, looking at the house: only the ground floor.
+	game.player.teleport(HouseFrames.vec([-11.0, 0.0, 24.0]), HouseRoute.yaw_toward([-11.0, 0.0, 24.0], [1.0, 0.0, 14.0]))
+	game.player.camera.rotation.x = deg_to_rad(12.0)
+	game._tick_sight([-11.0, 0.0, 24.0])
+	await _shot("outside")
+	game._tick_sight([0.0, 0.0, 4.0])
 	# A terminal at 3x with a test feed (a gradient), seen from 2.5 m.
 	for id: String in ["hall", "steam-room"]:
-		var term := game.builder.get_node_or_null("Terminal_%s" % id) as Node3D
+		var term := game.builder.part("Terminal_%s" % id) as Node3D
 		if term == null:
 			continue
 		var img := Image.create(320, 240, false, Image.FORMAT_RGB8)
@@ -113,3 +131,15 @@ func _run() -> void:
 	game.player.set_physics_process(false)
 	await _shot("vignette")
 	quit(0)
+
+
+## The centre of a room's largest cell (inside even an L-shaped room).
+static func _room_middle(room: Dictionary) -> Array:
+	var best: Array = []
+	var best_area := -1.0
+	for c: Array in HouseGeometry.cells(room["poly"], []):
+		var area: float = (c[2] - c[0]) * (c[3] - c[1])
+		if area > best_area:
+			best_area = area
+			best = [(c[0] + c[2]) / 2.0, (c[1] + c[3]) / 2.0]
+	return best if not best.is_empty() else [room["poly"][0][0], room["poly"][0][1]]

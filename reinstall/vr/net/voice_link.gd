@@ -29,10 +29,8 @@
 ##   persistent keep-alive [HTTPClient] (`request_raw`; [HTTPRequest]
 ##   closes per request), one POST in flight, at most
 ##   [constant UPLINK_QUEUE] chunks (1 s) waiting — older ones are dropped.
-## - **Mute** ([method toggle_mute], B / Y or M): the mic's chunks are
-##   dropped. A press only toggles while the mic is open (a press while it
-##   is asking, refused or missing changes nothing, so it can never come up
-##   muted later). On Android the RECORD_AUDIO grant is asked in the lobby
+## - **No mute.** A guest cannot mute the headset: whoever stands in a
+##   room with a terminal is heard there. On Android the RECORD_AUDIO grant is asked in the lobby
 ##   ([method prime_permission]: the system dialog pauses the app, which in
 ##   a session would end it) and again at a start if it is still missing;
 ##   the mic is re-opened once it is given. A refusal is its own state
@@ -56,7 +54,7 @@ extends Node
 
 ## "off" (not running, or the mic is off in the config) · "asking" (the
 ## Android grant is up) · "opening" (no real sample yet) · "live" ·
-## "muted" · "denied" (the grant was refused, or the OS refused the input)
+## "denied" (the grant was refused, or the OS refused the input)
 ## · "nomic" (no device, or only silence from either route — a dead mic
 ## hands over zeros).
 signal mic_changed(state: String)
@@ -84,7 +82,6 @@ const GRANT_RECHECK_MS := 1000
 
 ## The mic may be used (config `mic`); off = listen only.
 var mic_enabled := true
-var muted := false
 ## Someone can hear this headset.
 var listen_on := false
 var mic_state := "off"
@@ -217,25 +214,8 @@ func stop() -> void:
 	_resampler = null
 	_compatible = true
 	_heard_sample = false
-	muted = false  # the next session (the next wearer, maybe) starts live
 	_set_listen(false)
 	_set_mic("off")
-
-
-## Mute or unmute the mic (B / Y, M) — only while it is open (opening,
-## live or muted): a press while it is off, asking, refused or missing
-## changes nothing, so the mic never comes up muted by a press nobody saw
-## take effect.
-func toggle_mute() -> void:
-	if not mic_enabled or _route == "" or not mic_state in ["opening", "live", "muted"]:
-		return
-	muted = not muted
-	if muted:
-		_gate.reset()
-		_chunks.reset()
-		uplink.drop_queue()
-	if _route != "":
-		_set_mic("muted" if muted else ("live" if _heard_sample else "opening"))
 
 
 ## Ask for the Android microphone grant ahead of any session — in the lobby,
@@ -290,28 +270,6 @@ func permission_state() -> String:
 	if _asking_grant:
 		return "asking"
 	return "denied" if _refused_grant else "unknown"
-
-
-## The HUD's mic line ("" while off), emoji-free and saying what to do
-## (C12); `xr` names the mute button (B or Y on the controllers, M on the
-## desktop rig).
-func hud_text(xr: bool) -> String:
-	match mic_state:
-		"live":
-			if listen_on:
-				return "MIC ON · someone can hear you"
-			return "MIC ON · B or Y mutes" if xr else "MIC ON · M mutes"
-		"muted":
-			return "MIC MUTED · press B or Y" if xr else "MIC MUTED · press M"
-		"asking":
-			return "MIC · allow it in the headset's prompt" if xr else "MIC · allow it in the system prompt"
-		"denied":
-			return "NO MIC · not allowed · ASK AGAIN in the lobby"
-		"opening":
-			return "MIC STARTING…"
-		"nomic":
-			return "NO MIC"
-	return ""
 
 
 ## The lobby's mic line (`voice` / `mic`: the config's): what the headset's
@@ -616,8 +574,8 @@ func _process(delta: float) -> void:
 	else:
 		_quiet_for = 0.0
 		_heard_sample = true
-		_set_mic("muted" if muted else "live")  # a real sample: a mic (the fallback's too)
-	if muted or mic_state != "live" or _testing:
+		_set_mic("live")  # a real sample: a mic (the fallback's too)
+	if mic_state != "live" or _testing:
 		return
 	feed(frames, _rate)
 
@@ -633,9 +591,9 @@ static func _level_dbfs(frames: PackedVector2Array) -> float:
 	return VoiceCodec.rms_dbfs(mono)
 
 
-## Something to send up: someone listens, not muted, a live mic, not refused.
+## Something to send up: someone listens, a live mic, not refused.
 func _uplink_wanted() -> bool:
-	return listen_on and not muted and _route != "" and mic_state == "live" and not _refused
+	return listen_on and _route != "" and mic_state == "live" and not _refused
 
 
 ## Whether `frames` hold any real sample (not the zeros a dead input mixes).
@@ -686,7 +644,7 @@ func _start_mic() -> void:
 	if frame_source.is_valid():
 		_route = "test"
 		_rate = source_rate
-		_set_mic("muted" if muted else "opening")
+		_set_mic("opening")
 		return
 	if platform == "Android" and not _granted():
 		_set_mic("asking")
@@ -702,7 +660,7 @@ func _start_mic() -> void:
 		return
 	_route = "server"
 	_rate = AudioServer.get_input_mix_rate()
-	_set_mic("muted" if muted else "opening")
+	_set_mic("opening")
 
 
 func _granted() -> bool:
@@ -766,7 +724,7 @@ func _fallback() -> void:
 	_route = "capture"
 	_rate = AudioServer.get_mix_rate()
 	_quiet_for = 0.0
-	if not muted and not _heard_sample:
+	if not _heard_sample:
 		_set_mic("opening")
 	push_warning("voice: no frames from AudioServer.get_input_frames — trying an AudioStreamMicrophone")
 
