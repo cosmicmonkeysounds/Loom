@@ -2,6 +2,7 @@
 //! client renders. Kept dependency-free and side-effect-free so they're
 //! unit-testable without standing up the HTTP/SSE server.
 
+import type { FilterView } from "./language-filter.ts";
 import { DEFAULT_SPACE_ID } from "../src/runtime/sim/model.ts";
 import { asNumber, display, type Value } from "../src/runtime/expr.ts";
 import { alertLevelOf, type AlertLevel } from "../src/delivery.ts";
@@ -2208,6 +2209,10 @@ export interface PrimeView {
    *  or a plain performer's); null when no talk scene is on; absent from an
    *  older server. */
   talk?: TalkView | null;
+  /** Wave 48 (C2): the censor's flagged guest lines — only on the booth of
+   *  the header's `censor:` part, runtime-filled; absent elsewhere and from
+   *  an old server. */
+  filter?: FilterView;
   /** Wave 41 (C3): this part's inbox for Trabolta's letter (`email` on
    *  file or null) and the From line it would come from (null: mail is off).
    *  Absent from an old server and from the bare sim projection. */

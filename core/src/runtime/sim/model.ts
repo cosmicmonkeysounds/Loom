@@ -579,6 +579,11 @@ export interface SimModel {
    *  id, only when it names a `mind: external` CHARACTER (lint L1206 says
    *  why not otherwise). Null = no key: the near miss waits for a director. */
   judge: string | null;
+  /** Header `censor: <Character>` (wave 48, `docs/loom-w48-contract.md`
+   *  C2): the part whose booth gets the language filter's alerts and its ✂
+   *  Censor — the canonical id of a declared CHARACTER, else null (no key,
+   *  or an unknown name: no filter at all). */
+  censor: string | null;
   /** Declared OBJECTIVEs, in model order (file order: main.loom first, then
    *  by path; source order within a file). */
   objectives: Map<string, ObjectiveDef>;
@@ -716,6 +721,7 @@ export function compileModel(bundle: Bundle): SimModel {
     watch: [],
     countdowns: [],
     judge: null,
+    censor: null,
     objectives: new Map(),
     alerts: DEFAULT_ALERTS_PATH,
     wanted: null,
@@ -735,6 +741,8 @@ export function compileModel(bundle: Bundle): SimModel {
   }
   /** The raw `judge:` header value (first file that has one). */
   let judgeName: string | null = null;
+  /** Wave 48: the raw `censor:` header value (first file that has one). */
+  let censorName: string | null = null;
   /** Wave 18 header lines resolved once every name is known. */
   let wantedRaw: string | null = null;
   const archiveRaw: string[] = [];
@@ -757,6 +765,8 @@ export function compileModel(bundle: Bundle): SimModel {
     if (model.currency === null && curProp !== undefined) model.currency = parseCurrency(curProp.value);
     const judgeProp = entry.file.header.properties.get("judge");
     if (judgeName === null && judgeProp !== undefined && judgeProp.value.trim() !== "") judgeName = judgeProp.value.trim();
+    const censorProp = entry.file.header.properties.get("censor");
+    if (censorName === null && censorProp !== undefined && censorProp.value.trim() !== "") censorName = censorProp.value.trim();
     for (const line of entry.file.header.lines ?? []) {
       if (line.key === "watch") {
         const b = parseBoardLine(line.value);
@@ -957,6 +967,7 @@ export function compileModel(bundle: Bundle): SimModel {
     }
   }
   model.judge = judgeOf(model, judgeName);
+  model.censor = censorOf(model, censorName);
   model.wanted = wantedRaw === null ? null : parseWanted(model, wantedRaw);
   for (const raw of archiveRaw) {
     const a = parseArchive(model, raw);
@@ -974,6 +985,14 @@ export function judgeOf(model: Pick<SimModel, "characters" | "entityIndex">, nam
   const id = model.characters.has(name) ? name : model.entityIndex.get(name);
   const def = id === null ? undefined : model.characters.get(id);
   return def !== undefined && def.mind === "external" ? def.id : null;
+}
+
+/** The header `censor:` value as a declared CHARACTER's canonical id
+ *  (names fold: `password manager` is Password Manager); null otherwise. */
+export function censorOf(model: Pick<SimModel, "characters" | "entityIndex">, name: string | null): string | null {
+  if (name === null) return null;
+  const id = model.characters.has(name) ? name : model.entityIndex.get(name);
+  return id === null || id === undefined ? null : (model.characters.get(id)?.id ?? null);
 }
 
 function channelDef(body: ChannelBody, spaceId: string): ChannelDef {

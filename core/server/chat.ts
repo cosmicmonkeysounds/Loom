@@ -113,6 +113,9 @@ export interface ChatMessage {
   answers?: number;
   /** Hidden by a moderator. Withheld from guests, greyed for admins. */
   hidden: boolean;
+  /** Wave 48: the censor's ✂ masked this guest line (`text` is the masked
+   *  copy, `p***word`). Rebuilt from the journal on restore. */
+  censored?: true;
   /** The director who posted this *as* a participant (a mod `say` whose
    *  `as` names a person). Stripped for guest clients — never shown to them. */
   via?: string;
@@ -1105,6 +1108,16 @@ export class ChatStore {
     m.hidden = hidden;
     if (hidden) this.hidden.add(seq);
     else this.hidden.delete(seq);
+    return m;
+  }
+
+  /** Wave 48: mask a line (the censor's ✂). Returns the updated message,
+   *  or null if absent. */
+  censor(seq: number, text: string): ChatMessage | null {
+    const m = this.msgs[seq];
+    if (m === undefined) return null;
+    m.text = text;
+    m.censored = true;
     return m;
   }
 

@@ -84,6 +84,8 @@ import { CreditsSource } from "./credits.ts"; // w44
 import { CREDITS_ROUTE, creditsAnswer, sendCredits } from "./routes/credits.ts"; // w44
 import { VIDEO_ROUTE, sendVideoConsent, videoConsentView } from "./routes/video.ts"; // w44
 import { CREDITS_FILE } from "../src/credits.ts"; // w44
+import { SWEAR_CENSORED, SWEAR_FLAGGED, filterHits, hitList, maskText, type FilterHit } from "../src/language-filter.ts"; // w48
+import { FilterBook, type FilterView } from "./language-filter.ts"; // w48
 import { forBooth, hostSeen, seenCues, seenName } from "./unseen-directors.ts";
 import { guestSide } from "./routes/sides.ts";
 import { CrewRoutes, answeredInviteCards, crewDrafts } from "./routes/crews.ts"; // w18 crews
@@ -851,6 +853,9 @@ export class EventRuntime {
   private readonly agentTrace = new AgentTraceLog();
   /** Wave 41 (C4): the inboxes, drafts and sends (state dir, never journaled). */
   private readonly letters: LettersBook;
+  /** Wave 48 (C2): the censor's flagged guest lines, rebuilt from the
+   *  journal (`swear_flagged` / `swear_censored`); forgotten with the run. */
+  private readonly filter = new FilterBook();
   private readonly lettersMailer: LettersMailer | null;
   private readonly lettersTimer: ReturnType<typeof setInterval>;
   /** The recap the writer's frames read, per log length (a write asks for
@@ -1527,7 +1532,91 @@ export class EventRuntime {
       ...(host ? { talk: this.talkViewNow() } : {}),
       // Wave 41 (C3): this part's inbox for Trabolta's letter.
       letter: { email: this.letters.get(`p:${character}`)?.email ?? null, from: this.lettersMailer?.from ?? null },
+      // Wave 48 (C2): the censor's flagged lines, on its own booth only.
+      ...(this.sim !== null && this.sim.model.censor === character ? { filter: this.filterView() } : {}),
     };
+  }
+
+  /** Wave 48 (C2): the censor booth's `filter` block. */
+  private filterView(): FilterView {
+    const sim = this.sim;
+    return this.filter.view({
+      hidden: (seq) => this.chat.get(seq)?.hidden === true,
+      nameOf: (g) => sim?.persons.get(g)?.name ?? g,
+      avatarOf: (g) => {
+        const name = sim?.persons.get(g)?.name;
+        return name === undefined ? null : this.avatars.keyFor(name);
+      },
+    });
+  }
+
+  /** Wave 48 (C2): where a guest's line was said, as the censor reads it. */
+  private filterWhere(m: ChatMessage, guest: string): string {
+    if (m.channel.startsWith("dm:")) return `DM to ${m.channel.slice("dm:".length)}`;
+    if (m.channel.startsWith("pm:")) {
+      const other = Sim.pmParties(m.channel).find((id) => id !== guest);
+      return `to ${other === undefined ? "themselves" : (this.sim?.persons.get(other)?.name ?? other)}`;
+    }
+    return m.title;
+  }
+
+  /** Wave 48 (C2): index a flagged line (live, and on restore). */
+  private indexFlag(guest: string, m: ChatMessage, hits: FilterHit[]): void {
+    this.filter.flag({ seq: m.seq, guest, where: this.filterWhere(m, guest), text: m.text, hits, ts: m.ts });
+  }
+
+  /** Wave 48 (C2): after a person's own line is stored (`stored`, the say's
+   *  fanout), run the filter over it; with hits, index it and journal
+   *  `swear_flagged` (no actor), whose fanout pushes the censor's snapshot.
+   *  Never a character's line, and nothing without a `censor:` header. */
+  private flagGuestLine(guest: string, stored: readonly ChatMessage[]): void {
+    const sim = this.sim;
+    if (sim === null || sim.model.censor === null) return;
+    const name = sim.persons.get(guest)?.name;
+    if (name === undefined) return;
+    const line = stored.find((m) => m.kind === "line" && m.from === name && m.pick !== true);
+    if (line === undefined) return;
+    const hits = filterHits(line.text);
+    if (hits.length === 0) return;
+    this.indexFlag(guest, line, hits);
+    this.fanout(this.commit("signal", SWEAR_FLAGGED, guest, { message: line.seq, words: hits.length, list: hitList(hits) }));
+  }
+
+  /** Wave 48 (C2): a journaled `swear_flagged` / `swear_censored` signal,
+   *  replayed (`signal(name, guest, { message, … })`): re-index the line, or
+   *  mask it again. The line itself was replayed earlier in the journal. */
+  private replayFilter(a: readonly unknown[]): void {
+    const guest = a[1];
+    const message = (a[2] as { message?: unknown } | null | undefined)?.message;
+    if (typeof guest !== "string" || typeof message !== "number") return;
+    if (a[0] === SWEAR_CENSORED) {
+      this.applyCensor(message, false);
+      return;
+    }
+    const m = this.chat.get(message);
+    if (m === undefined) return;
+    const hits = filterHits(m.text);
+    if (hits.length > 0) this.indexFlag(guest, m, hits);
+  }
+
+  /** Wave 48 (C2): mask a censored line in the chat store; live, re-send it
+   *  (a silent upsert: `messageModerated` with the whole message, which
+   *  every client already takes by seq). */
+  private applyCensor(seq: number, live: boolean): ChatMessage | null {
+    const e = this.filter.censor(seq);
+    if (e === null) return null;
+    const m = this.chat.censor(seq, maskText(e.text, e.hits));
+    if (m === null || !live) return m;
+    for (const c of this.clients) {
+      if (c.role === "guest") {
+        if (!m.hidden && visibleTo(m, c.id)) sseSend(c.res, "messageModerated", forGuest(m, this.sim, c.id));
+      } else if (c.role === "prime") {
+        if (visibleToPrime(m, c, this.agentVoiced, this.sim?.model)) sseSend(c.res, "messageModerated", forBooth(m));
+      } else {
+        sseSend(c.res, "messageModerated", m);
+      }
+    }
+    return m;
   }
 
   /** Wave 18 additions to a booth's view the bare sim cannot know: each
@@ -4874,6 +4963,7 @@ export class EventRuntime {
 
   private loadScenario(source: string, name: string): void {
     this.sim = Sim.fromSources(source);
+    this.filter.clear(); // w48: the journal about to be replayed (or none) refills it
     // The screens fold this sim from its (empty) start, so the entry beat
     // the doors play next is a live moment, not history (wave 17).
     this.screens.adopt(this.sim);
@@ -5362,6 +5452,8 @@ export class EventRuntime {
             // A widget answer — `signal(<kind> answered, guest, {…, card: seq})`.
             const card = (e.a[2] as { card?: unknown } | null | undefined)?.card;
             if (typeof e.a[1] === "string" && typeof card === "number") this.answeredWidgets.add(`${card}:${e.a[1]}`);
+            // Wave 48 (C2): the filter's flags and censors, from the journal.
+            if (e.a[0] === SWEAR_FLAGGED || e.a[0] === SWEAR_CENSORED) this.replayFilter(e.a);
             // An agent's own use of a power counts against its `limit:` again.
             if (e.by === `${AGENT_BY}${String(e.a[3])}` && Array.isArray(out) && powerSpent(out as SimEvent[])) {
               const def = this.sim!.model.interactions.get(String(e.a[0]));
@@ -6613,7 +6705,8 @@ export class EventRuntime {
         const parentSeq = this.sim!.threadableOf(channel) && body["parentSeq"] != null ? Number(body["parentSeq"]) : null;
         // A director typing through a play-as pane: the room sees the guest,
         // the mod feed sees who really typed it — like `/api/mod/say`.
-        this.fanout(this.commit("say", id, channel, text, parentSeq), this.actingBy);
+        const said = this.fanout(this.commit("say", id, channel, text, parentSeq), this.actingBy);
+        this.flagGuestLine(id, said); // w48
         this.agentHeard(channel, [id]);
         sendJson(res, 200, { ok: true });
         return true;
@@ -7142,6 +7235,40 @@ export class EventRuntime {
         if (email !== null) this.letters.set("performer", character, email);
         this.fanout(this.commit("signal", `${m.widget.kind} answered`, character, { ...args, card: seq }, character));
         sendJson(res, 200, { ok: true });
+        return true;
+      }
+      case "/api/prime/censor": {
+        // Wave 48 (C2): the censor's ✂ on a flagged guest line. Journals
+        // `swear_censored` as the censor (the story counts it and marks the
+        // program), masks the line and re-sends it to everyone who has it.
+        const token = tokenOf(req, body);
+        const character = this.characterOf(token);
+        if (!character || !this.canScan(token)) {
+          sendJson(res, 403, { error: "no performer capability — sign in" });
+          return true;
+        }
+        if (this.sim === null || this.sim.model.censor !== character) {
+          sendJson(res, 403, { error: "not the censor" });
+          return true;
+        }
+        if (!open) {
+          sendJson(res, 409, { error: "doors are closed" });
+          return true;
+        }
+        const seq = Number(body["seq"]);
+        const flagged = Number.isInteger(seq) ? this.filter.get(seq) : undefined;
+        if (flagged === undefined || this.chat.get(seq)?.hidden !== false) {
+          sendJson(res, 404, { error: "not flagged" });
+          return true;
+        }
+        if (flagged.censored) {
+          sendJson(res, 409, { error: "already censored" });
+          return true;
+        }
+        const args = { message: seq, words: flagged.hits.length, list: hitList(flagged.hits), fresh: this.filter.fresh(seq).join(", ") };
+        const m = this.applyCensor(seq, true);
+        this.fanout(this.commit("signal", SWEAR_CENSORED, flagged.guest, args, character));
+        sendJson(res, 200, { ok: true, seq, text: m?.text ?? "" });
         return true;
       }
       case "/api/prime/say": {
@@ -8000,10 +8127,11 @@ export class EventRuntime {
         const byHand = isCharacter && speaker === TALK_AGENT && channel === `loc:${TALK_ROOM}` && audience === undefined;
         const owed = byHand ? this.agents.openOn(this.talkThread()) : null;
         const aloud = byHand && (owed !== null || this.talkSceneNow() !== null);
-        this.fanout(
+        const said = this.fanout(
           aloud ? this.commit("say", speaker, channel, text, parentSeq, "all", owed === null ? null : answeredSeq(owed.req)) : this.commit("say", speaker, channel, text, parentSeq, audience),
           isPerson ? by : undefined,
         );
+        if (isPerson) this.flagGuestLine(speaker, said); // w48
         // A director's persona messaging an agent gets an answer, exactly as
         // the guest would — that's what makes a rehearsal of the bot real.
         if (isPerson) this.agentHeard(channel, [speaker]);
