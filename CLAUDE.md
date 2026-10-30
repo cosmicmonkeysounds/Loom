@@ -231,7 +231,7 @@ TRUST FORMULA's `- no_bath * 5`); a first trip after gives it back. Run's
 recap lists the minutes, the switches and who never went. Help:
 `docs/help/authoring/54-bathroom-report.md`.
 
-**The Password Manager's filter** (waves 48 and 48b, not shipped;
+**The Password Manager's filter** (waves 48 and 48b, shipped in `w50`;
 `docs/loom-w48-contract.md`, show text `DRAFT w48` / `DRAFT w48b` on
 `SIGNOFF-w48.md`): `censor: Password Manager` in the header. Every line a
 guest sends that the filter catches at her strength pops up in her booth
@@ -247,7 +247,7 @@ top five; the TV lets every censored word out (`award_language`, the
 screen state's `night.language`). Help:
 `docs/help/authoring/55-language-filter.md`.
 
-**The descent** (wave 49, not shipped; `docs/loom-w49-contract.md`, show text
+**The descent** (wave 49, shipped in `w50`; `docs/loom-w49-contract.md`, show text
 `DRAFT w49` on `SIGNOFF-w49.md`): the more often a program is reinstalled, the
 less the simulation holds together (House of Leaves, Alice). Its first walk is
 clean; each find after adds a level, capped at 4 (`descentLevel`), or a director
@@ -261,11 +261,10 @@ which speakers carry each walker (same room clear, another room or floor
 muffled, `audio.json` `footsteps`), and the router synthesises the steps
 (`stagehand audio`, a 🎚 Footsteps strip). The map editor is now **Run → House →
 🗺 Map**, signed in by the run; `/reinstall/map` still works. The catalogue has
-58 prop models, and both show maps were redrawn with them, so shipping needs
-`sync-show --replace-maps` (Download JSON any project edits first). Help:
+58 prop models, and both show maps were redrawn with them. Help:
 `docs/help/play/19-house-workings.md` (staff; the guests' help never describes it).
 
-**Clippy's dream** (wave 50, not shipped; `docs/loom-w50-contract.md`): when
+**Clippy's dream** (wave 50, shipped in `w50`; `docs/loom-w50-contract.md`): when
 Trabolta says *"…the Y2K BUG."* (the TV reports it; 42 s after 🕚 without one)
 every terminal melts at one instant into an hour-long video, replacing the idle
 show until an ending, each at its own place in it. The clock floats on it; a
@@ -278,8 +277,20 @@ never in git or an image (`scripts/ops/dream-media.sh`; already on the VPS).
 
 ### Release status
 
-The VPS runs **`w45`** (master `d7c52aef`, shipped 2026-10-29; rollback
-`w44`): wave 45 (the Bathroom Report, G13) and the merged
+The VPS runs **`w50`** (master `03d09bf7`, shipped 2026-10-30; rollback
+`w45`): waves 46 to 50 (the Quest fixes and the new look, nothing twice, the
+Password Manager's filter, the descent with the footsteps and Run → House →
+🗺 Map, Clippy's dream). The preview was synced (`--replace-maps --keep-audio
+--keep-lights --keep-desk`) and reloaded; the project's maps were replaced on
+the user's word, so its three survey edits are gone (duck spots `cpu-desk`
+`[-6.8, 0.75, 14.3]`, `start-bar-counter` `[6.65, 0.9, 16.85]`, the `router`
+prop `[3.3, 0.9, 15.25]`). The project's `audio.json` is still the wave 31
+layout (no sub, the living room on outs 1–2). Still owed: on the Desktop
+`git pull` and `start-stagehand.ps1 -Restart audio` (the router was offline
+at the ship, and the footsteps need it), reload every phone, terminal and the
+TV, re-export and sideload the Quest APK, sign off `SIGNOFF-w48.md` and
+`SIGNOFF-w49.md`. Before it, `w45` (master `d7c52aef`, shipped 2026-10-29;
+rollback `w44`): wave 45 (the Bathroom Report, G13) and the merged
 `oct31-w40/reinstall-resume` branch (the reinstall walk resumes across
 devices; the Desktop's lights fixes and `scripts/house-desktop/INFO.md`;
 the Quest export presets and `reinstall/vr/tools/quest-win.ps1`). The
