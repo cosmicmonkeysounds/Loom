@@ -1,17 +1,21 @@
-//! The Run → Print sheet (K-12): turns `/api/mod/codes` into the cards a
-//! director prints — the join poster, the iPhone door sign (SW-QR-11), one
-//! poster per codex entry (title + QR + the typed code; sorted and banded
-//! by fact stack, K-12-stacks), one check-in sign per room (QR + room name
-//! only — no typed code), one business-card cast card per performer part
-//! (wave 23: that part's own `castLinks` QR, which signs in as it and takes
-//! it back from a lost phone; the performer passcode QR on an older server,
-//! SW-QR-11), on their own page one invitation per reserved program (wave
-//! 11 C5: the claim QR, no typed code — the claim is secret) and, from
-//! `/api/mod/badges`, the blank ID **badges** (wave 23, `B001`…: QR + the
-//! printed badge code + a write-in Program line; a guest links one when
-//! they join and it gets them back in on any phone). QRs are drawn here,
-//! in the browser (`qrcode` → inline SVG): `/api/qr` allows 60/min per IP
-//! and a full sheet needs 60–80. Pure, unit-tested in `print-sheet.test.ts`.
+//! The Run → Print sheet (K-12, wave 54): turns `/api/mod/codes` and
+//! `/api/mod/badges` into what a director prints on Letter paper.
+//!
+//! **Badges** (3 × 2 in, 10 to a sheet) are one QR per person: a staff badge
+//! per performer part (`castLinks`: signs in as it and takes it back from a
+//! lost phone, no typed code: the part code is a credential), an invited
+//! badge per reserved program (`claims`: the claim and a badge in one link)
+//! and the numbered blank badges (`B001`…, for everyone else, with a write-in
+//! Program line). **Location cards** (3 × 2 in) are a check-in card per room
+//! (QR + room name, no typed code) and the signs the story's `qr:` lines ask
+//! for (the show: 🚻 Bathroom Mode, one per bathroom). **Fact cards** (four
+//! to a row, 20 to a sheet) are the codex entries by fact stack, banded in the
+//! stack's colour; a digit clue prints its title + QR only. The **join
+//! poster** and the iPhone **door sign** stay posters.
+//!
+//! QRs are drawn here, in the browser (`qrcode` → inline SVG): `/api/qr`
+//! allows 60/min per IP and a full run needs over 200. Pure, unit-tested in
+//! `print-sheet.test.ts`.
 
 import QRCode from 'qrcode'
 
@@ -26,16 +30,15 @@ export interface PrintCodes {
   codex: Array<{ id: string; title: string; about: string | null; code: string; url: string }>
   /** Room check-in signs (K-12 → K-13's `?checkin=`). */
   checkin?: Array<{ id: string; label: string; slug: string; url: string; hidden: boolean }>
-  /** The performer parts (SW-QR-11). Absent on an older server → no cast cards. */
-  cast?: string[]
+  /** Signs that press a guest's button (wave 54: the story's `qr:`). */
+  actions?: Array<{ name: string; label: string; line: string; url: string }>
   /** Codex id → its fact stack (`facts.json`). Absent → posters unsorted. */
   stacks?: Record<string, PrintStack>
-  /** Wave 11 C5: one claim link per reserved program (`?code=<guest
-   *  code>&claim=<token>`) — the invitations. Absent on an older server. */
-  claims?: Array<{ character: string; claim: string; url: string }>
-  /** Wave 23: each part's own cast-card link (`?code=<prime code>&part=
-   *  <code>`) — signs in as that part, taking it from a lost phone. Absent
-   *  on an older server → the cast cards carry the performer passcode link. */
+  /** Each reserved program's invited badge (`?code=<guest code>&claim=
+   *  <token>&badge=<code>`, wave 54). */
+  claims?: Array<{ character: string; claim: string; url: string; ref: string; code: string }>
+  /** Each part's staff badge (`?code=<guest code>&part=<code>`, wave 54):
+   *  signs in as that part, taking it from a lost phone. */
   castLinks?: Array<{ character: string; part: string; url: string }>
 }
 
@@ -76,13 +79,19 @@ export interface PrintOptions {
   /** `/api/push/config`'s `homescreen` (K-31b on): the door sign tells an
    *  iPhone to Add to Home Screen first. Absent / false → "Scan to join". */
   homescreen?: boolean
+  /** How many of each sign to print (`SIGN_DEFAULT_COPIES`). */
+  signCopies?: number
 }
+
+/** The show's signs go on two bathroom doors. */
+export const SIGN_DEFAULT_COPIES = 2
 
 export const PrintKind = {
   Join: 'join',
   Door: 'door',
   Codex: 'codex',
   Room: 'room',
+  Sign: 'sign',
   Cast: 'cast',
   Invite: 'invite',
   Badge: 'badge',
@@ -90,7 +99,7 @@ export const PrintKind = {
 export type PrintKind = (typeof PrintKind)[keyof typeof PrintKind]
 
 export interface PrintItem {
-  /** Small id printed in the corner (`J1`, `D1`, `C07`, `R03`, `P02`, `I04`, `B001`) — "which poster?". */
+  /** Small id printed in the corner (`J1`, `D1`, `C07`, `R03`, `S1`, `P02`, `F04`, `B001`) — "which card?". */
   ref: string
   kind: PrintKind
   title: string
@@ -108,8 +117,38 @@ export interface PrintItem {
   steps?: string[]
   /** A codex poster's fact stack: a coloured band + the pile, printed. */
   stack?: PrintStack | null
-  /** An invitation's reserved program (the screen-only 🔓 unlock names it). */
+  /** An invited badge's reserved program (the screen-only 🔓 unlock names it). */
   character?: string
+}
+
+/** Every 3 × 2 in badge kind, in print order. */
+export const BADGE_KINDS: readonly PrintKind[] = [PrintKind.Cast, PrintKind.Invite, PrintKind.Badge]
+/** The location sheet's kinds, in print order. */
+export const LOCATION_KINDS: readonly PrintKind[] = [PrintKind.Room, PrintKind.Sign]
+/** A 3 × 2 in card sheet: two across, five down. */
+export const SHEET_3X2 = 10
+/** A fact card sheet: four across, five down. */
+export const SHEET_FACTS = 20
+
+/** `items` cut into sheets of `per`. */
+export function sheetsOf<T>(items: readonly T[], per: number): T[][] {
+  const out: T[][] = []
+  for (let i = 0; i < items.length; i += per) out.push(items.slice(i, i + per))
+  return out
+}
+
+/** Why these codes won't work on a phone at the party, or null. A printed
+ *  QR can't be fixed later, so a console opened against a local server says
+ *  so before anyone prints. */
+export function printBaseProblem(joinUrl: string): string | null {
+  let url: URL
+  try {
+    url = new URL(joinUrl)
+  } catch {
+    return `These codes point at "${joinUrl}", which is no address.`
+  }
+  const local = url.hostname === 'localhost' || url.hostname === '127.0.0.1' || /^\d+\.\d+\.\d+\.\d+$/u.test(url.hostname)
+  return url.protocol !== 'https:' || local ? `These codes point at ${url.origin}. Phones at the party can't count on that: print from the live server.` : null
 }
 
 const pad = (n: number) => String(n).padStart(2, '0')
@@ -183,17 +222,9 @@ export function stackInk(colour: string): string {
   }
 }
 
-/** The printed pile line: `GOLD · hunt answers · <where>`. On the
- *  digit-clue stack any part holding a digit is left off (a hiding place
- *  like "shelf 9" must not read as a digit of the code). */
-export function stackLine(stack: PrintStack): string {
-  const parts = [stack.colour.toUpperCase(), stack.stack, stack.where].filter((s): s is string => s !== null && s !== '')
-  return (isDigitClue(stack) ? parts.filter((p) => !/\d/u.test(p)) : parts).join(' · ')
-}
-
-/** Every card, in print order: join poster, door sign, codex posters (by
- *  stack: `STACK_ORDER`, then the rest, model order within one),
- *  room signs, cast cards. */
+/** Every card but the blank badges, in print order: join poster, door sign,
+ *  fact cards (by stack: `STACK_ORDER`, then the rest, model order within
+ *  one), room cards, signs, staff badges, invited badges. */
 export function buildPrintItems(codes: PrintCodes, opts: PrintOptions = {}): PrintItem[] {
   const join = codes.joinLink ?? `${codes.joinUrl.replace(/\/+$/u, '')}/?code=${encodeURIComponent(codes.eventPass)}`
   const items: PrintItem[] = [
@@ -220,7 +251,7 @@ export function buildPrintItems(codes: PrintCodes, opts: PrintOptions = {}): Pri
       ref: `C${pad(i + 1)}`,
       kind: PrintKind.Codex,
       title: e.title,
-      hint: clue ? 'Scan it into your Codex.' : 'Scan, or type the code into your Codex.',
+      hint: '',
       // A digit clue prints its title + QR only (`DIGIT_CLUE_STACK`).
       code: clue ? '' : e.code,
       url: e.url,
@@ -239,38 +270,47 @@ export function buildPrintItems(codes: PrintCodes, opts: PrintOptions = {}): Pri
       note: r.hidden ? 'hidden until the story opens it' : null,
     }),
   )
-  // A cast card prints the performer passcode. On an older server its QR
-  // is the `?code=` link with the performer code: it opens the booth's
-  // sign-in straight away (play's `roleForBrand`), pre-filled, and lists
-  // the parts. Wave 23: the QR is the part's own link instead — it signs in
-  // as that part and takes it back from a lost phone, so each card is one
-  // performer's (its part code is never printed as text). Keep them with the cast.
-  const castLink = `${codes.joinUrl.replace(/\/+$/u, '')}/?code=${encodeURIComponent(codes.primePass)}`
-  const links = codes.castLinks
-  const partLink = new Map((links ?? []).map((l) => [l.character, l.url]))
-  ;(codes.cast ?? links?.map((l) => l.character) ?? []).forEach((name, i) => {
-    const own = partLink.get(name)
+  // A sign presses a guest's button. The story's `qr:` line is its hint.
+  const copies = opts.signCopies ?? SIGN_DEFAULT_COPIES
+  ;(codes.actions ?? []).forEach((a, i) => {
+    for (let n = 0; n < copies; n++) {
+      items.push({
+        ref: `S${(codes.actions ?? []).length > 1 ? `${i + 1}-` : ''}${n + 1}`,
+        kind: PrintKind.Sign,
+        title: a.label,
+        hint: a.line,
+        code: '',
+        url: a.url,
+        note: null,
+      })
+    }
+  })
+  // A staff badge is its performer's only: the QR signs in as that part and
+  // takes it back from a lost phone, and it carries the guest code, so new
+  // performer + moderator codes leave it good. No typed code: the part code
+  // is a credential.
+  ;(codes.castLinks ?? []).forEach((c, i) =>
     items.push({
       ref: `P${pad(i + 1)}`,
       kind: PrintKind.Cast,
-      title: name,
-      hint: own !== undefined ? `Scan to sign in as ${name}. Lost your phone? Scan it again to take ${name} back.` : `Scan, then pick ${name}.`,
-      code: codes.primePass,
-      url: own ?? castLink,
-      note: own !== undefined ? `signs in as ${name} — this performer's only` : 'performer passcode — never post it',
-    })
-  })
-  // An invitation's QR claims one reserved program (C5). The claim is
-  // secret: no typed code, and the link is shown on screen only.
-  ;(codes.claims ?? []).forEach((c, i) =>
-    items.push({
-      ref: `I${pad(i + 1)}`,
-      kind: PrintKind.Invite,
       title: c.character,
-      hint: `You're invited — scan to join as ${c.character}. This card is yours alone.`,
+      hint: 'Scan to sign in. Lost your phone? Scan it again.',
       code: '',
       url: c.url,
-      note: `invitation for ${c.character} — the QR claims the name`,
+      note: `signs in as ${c.character} — this performer's only`,
+    }),
+  )
+  // An invited badge opens one reserved program and links at join. The code
+  // under it is the badge's own: the claim stays in the QR.
+  ;(codes.claims ?? []).forEach((c) =>
+    items.push({
+      ref: c.ref,
+      kind: PrintKind.Invite,
+      title: c.character,
+      hint: 'Scan to start. Lost your phone? Scan it again.',
+      code: c.code,
+      url: c.url,
+      note: `invited badge — the QR claims ${c.character}`,
       character: c.character,
     }),
   )
@@ -288,16 +328,16 @@ export function badgeRange(from: number, count: number, max = 600): { from: numb
   return { from: f, count: Math.min(c, max - f + 1) }
 }
 
-/** The badge cards (wave 23): the event title, the QR, the printed code (a
- *  guest can type it on the join screen), a write-in Program line (the
- *  component draws it) and the ref. A badge is blank until a guest links
- *  it; who holds one is a screen-only note. */
-export function buildBadgeItems(badges: PrintBadge[], title: string): PrintItem[] {
+/** The blank badges (wave 23): the QR, the printed code (a guest can type
+ *  it on the join screen), a write-in Program line (the component draws it)
+ *  and the ref. A badge is blank until a guest links it; who holds one is a
+ *  screen-only note. */
+export function buildBadgeItems(badges: PrintBadge[]): PrintItem[] {
   return badges.map((b) => ({
     ref: b.ref,
     kind: PrintKind.Badge,
-    title,
-    hint: 'Scan when you join. Lost your phone? Scan this to get back in.',
+    title: 'Program',
+    hint: 'Scan to start. Lost your phone? Scan it again.',
     code: b.code,
     url: b.url,
     note: b.holder !== null ? `linked to ${b.name ?? b.holder}` : null,
@@ -309,8 +349,57 @@ export function nextBadgeFrom(badges: PrintBadge[]): number {
   return badges.reduce((m, b) => Math.max(m, b.n), 0) + 1
 }
 
-/** Cards per printed page (8 = business cards, 2 × 4). */
-export type PerPage = 1 | 2 | 4 | 8
+/** A fact stack's row in the toolbar: how many it holds, how many to print. */
+export interface FactStackRow {
+  colour: string
+  label: string
+  total: number
+}
+
+/** The fact stacks, in print order. */
+export function factStacks(items: readonly PrintItem[]): FactStackRow[] {
+  const rows = new Map<string, FactStackRow>()
+  for (const i of items) {
+    if (i.kind !== PrintKind.Codex) continue
+    const colour = i.stack?.colour ?? 'none'
+    const row = rows.get(colour)
+    if (row === undefined) rows.set(colour, { colour, label: i.stack?.colour ?? 'unstacked', total: 1 })
+    else row.total += 1
+  }
+  return [...rows.values()]
+}
+
+/** A few of each stack: the hunt answers and the digit notes are the show's,
+ *  so they all print; a sample of the rest. */
+export const FACT_SAMPLE = 4
+export function defaultFactCount(colour: string, total: number): number {
+  return colour.toLowerCase() === 'gold' || colour.toLowerCase() === DIGIT_CLUE_STACK ? total : Math.min(FACT_SAMPLE, total)
+}
+
+/** `items` with only the first `counts[colour]` cards of each fact stack
+ *  (its default when unset); everything else passes through. */
+export function limitFacts(items: readonly PrintItem[], counts: Readonly<Record<string, number>>): PrintItem[] {
+  const totals = new Map(factStacks(items).map((r) => [r.colour, r.total]))
+  const seen = new Map<string, number>()
+  return items.filter((i) => {
+    if (i.kind !== PrintKind.Codex) return true
+    const colour = i.stack?.colour ?? 'none'
+    const n = seen.get(colour) ?? 0
+    seen.set(colour, n + 1)
+    return n < (counts[colour] ?? defaultFactCount(colour, totals.get(colour) ?? 0))
+  })
+}
+
+/** The small line on a fact card: the colour, and the card's own hiding
+ *  place when it has one. As on a poster, a digit clue keeps nothing that
+ *  holds a digit. */
+export function factLine(stack: PrintStack): string {
+  const parts = [stack.colour.toUpperCase(), stack.where].filter((s): s is string => s !== null && s !== '')
+  return (isDigitClue(stack) ? parts.filter((p) => !/\d/u.test(p)) : parts).join(' · ')
+}
+
+/** Cards per printed page, for the two posters. */
+export type PerPage = 1 | 2 | 4
 
 /** An inline SVG QR for `text` — black on white, a 2-module quiet zone,
  *  level M (a poster survives a crease or a thumb). */
