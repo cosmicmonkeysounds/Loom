@@ -333,6 +333,23 @@ func _golden_wave26(name: String, house: Dictionary) -> void:
 		_report("golden %s.moments" % name, mismatches, want.size())
 
 
+## Every merged mesh named `node_name` (one per floor, and the builder's own).
+func _per_floor(b: HouseBuilder, node_name: String) -> Array:
+	var out: Array = []
+	for parent: Node in [b] + b.get_children().filter(func(c: Node) -> bool: return c.name.begins_with("Floor_")):
+		var m := parent.get_node_or_null(node_name)
+		if m is MeshInstance3D:
+			out.append(m)
+	return out
+
+
+func _faces(b: HouseBuilder, node_name: String) -> int:
+	var n := 0
+	for m: MeshInstance3D in _per_floor(b, node_name):
+		n += m.mesh.get_faces().size()
+	return n
+
+
 ## Wave 47: model props drawn from their parts (merged per role), plain
 ## props merged too and still colliding, the walls' neon, the haze sheets per
 ## tier and the hazy environment.
@@ -341,10 +358,10 @@ func _test_wave47_look() -> void:
 	var b := HouseBuilder.new()
 	b.build(house)
 	var colliders := (b.get_node("Colliders") as Node).get_child_count()
-	_check(b.get_node_or_null("Props_body") is MeshInstance3D, "wave 47: the plain props are one merged body mesh")
-	_check(b.get_node_or_null("Neon_walls") is MeshInstance3D and (b.get_node("Neon_walls") as MeshInstance3D).material_override == HouseLook.neon(), "wave 47: the walls carry neon strips in the shared neon")
+	_check(not _per_floor(b, "Props_body").is_empty(), "wave 47: the plain props are one merged body mesh")
+	_check(_per_floor(b, "Neon_walls").size() > 0 and _per_floor(b, "Neon_walls").all(func(m: MeshInstance3D) -> bool: return m.material_override == HouseLook.neon()), "wave 47: the walls carry neon strips in the shared neon")
 	var boxes := HouseBuilder.wall_boxes(b.walls, HouseGeometry.style_of(house)["wallThickness"]).filter(func(x: Dictionary) -> bool: return x["kind"] == "wall" and (x["hi"] as Vector3).y - (x["lo"] as Vector3).y >= 0.5)
-	var strip_tris := (b.get_node("Neon_walls") as MeshInstance3D).mesh.get_faces().size() / 3 if b.get_node_or_null("Neon_walls") != null else 0
+	var strip_tris := _faces(b, "Neon_walls") / 3
 	_check(strip_tris == boxes.size() * 4 * 12, "wave 47: a skirting and a cove strip on both faces of every wall (%d tris, %d walls)" % [strip_tris, boxes.size()])
 	b.free()
 	var modelled: Dictionary = house.duplicate(true)
@@ -358,18 +375,18 @@ func _test_wave47_look() -> void:
 	_check((b2.get_node("Colliders") as Node).get_child_count() == colliders + 3, "wave 47: a model prop still collides as its plain shape (one collider each)")
 	var roles_built: Array = []
 	for r: String in HouseModels.PART_ROLES:
-		if b2.get_node_or_null("Props_%s" % r) is MeshInstance3D:
+		if not _per_floor(b2, "Props_%s" % r).is_empty():
 			roles_built.append(r)
 	_check(roles_built.has("body") and roles_built.has("neon") and roles_built.has("trim") and roles_built.has("dark") and roles_built.has("alert"), "wave 47: a rack draws its parts in their roles (%s)" % [roles_built])
-	_check((b2.get_node("Props_neon") as MeshInstance3D).material_override == HouseLook.neon() and (HouseLook.neon() as StandardMaterial3D).disable_fog, "wave 47: model neon is the shared, unfogged neon")
-	_check(b2.get_node_or_null("Prop_w47-rack") != null and b2.get_node_or_null("Prop_w47-odd") != null, "wave 47: every prop keeps its Prop_<id> root")
-	var neon_faces := (b2.get_node("Props_neon") as MeshInstance3D).mesh.get_faces().size()
+	_check((_per_floor(b2, "Props_neon")[0] as MeshInstance3D).material_override == HouseLook.neon() and (HouseLook.neon() as StandardMaterial3D).disable_fog, "wave 47: model neon is the shared, unfogged neon")
+	_check(b2.part("Prop_w47-rack") != null and b2.part("Prop_w47-odd") != null, "wave 47: every prop keeps its Prop_<id> root")
+	var neon_faces := _faces(b2, "Props_neon")
 	var plain: Dictionary = house.duplicate(true)
 	for pr: Dictionary in plain["props"]:
 		pr.erase("model")
 	var b3 := HouseBuilder.new()
 	b3.build(plain)
-	_check(b3.get_node_or_null("Props_neon") == null and neon_faces > 0, "wave 47: plain props add no neon; models do")
+	_check(_per_floor(b3, "Props_neon").is_empty() and neon_faces > 0, "wave 47: plain props add no neon; models do")
 	_check((b3.get_node("Colliders") as Node).get_child_count() == colliders, "wave 47: the same colliders with or without models")
 	b3.free()
 	b2.free()
@@ -411,8 +428,8 @@ func _test_wave26_props() -> void:
 	_check(HouseMoment.pickup_reach(house, disk["pos"], disk), "wave 26: standing on the disk reaches it")
 	var b := HouseBuilder.new()
 	b.build(house)
-	var hn := b.get_node_or_null("Prop_server-heart")
-	var dn := b.get_node_or_null("Prop_virus-disk")
+	var hn := b.part("Prop_server-heart")
+	var dn := b.part("Prop_virus-disk")
 	# Stage B (vr lane, R6 / R7): the builder draws both — no label, no collider.
 	_check(hn != null and hn.get_node_or_null("Core") != null and hn.get_node_or_null("Front") != null and hn.get_node_or_null("Glow") is OmniLight3D, "wave 26: the heart is a rack with a core, a smoked front and a glow")
 	_check(dn != null and dn.get_node_or_null("Disk/Shell") != null and dn.get_node_or_null("Disk/Sticker") != null and dn.get_node_or_null("Disk/Glow") is OmniLight3D, "wave 26: the pickup is a floppy disk with a glow")
@@ -1295,6 +1312,8 @@ func _test_locomotion() -> void:
 	_check(Locomotion.axis_lock(Vector2(-0.8, 0.2)) == Vector2(-0.8, 0), "loco: … a crooked turn doesn't creep")
 	_check(Locomotion.axis_lock(Vector2(0.6, 0.7)) == Vector2(0.6, 0.7), "loco: … a real diagonal walks and turns")
 	_check(Locomotion.axis_lock(Vector2.ZERO) == Vector2.ZERO, "loco: … centred stays centred")
+	_check(Locomotion.axis_lock(Vector2(0.4, 0.9), Vector2(0.5, 0.9)) == Vector2(0.4, 0.9) and Locomotion.axis_lock(Vector2(0.4, 0.9), Vector2(0, 0.9)) == Vector2(0, 0.9), "loco: … a turn already in holds past the lock's edge (no on / off flicker)")
+	_check(Locomotion.axis_lock(Vector2(0.2, 0.9), Vector2(0.5, 0.9)) == Vector2(0, 0.9), "loco: … and lets go below AXIS_RELEASE")
 
 	var t := Locomotion.rotate_about(Transform3D(Basis.IDENTITY, Vector3(2, 0, 0)), Vector3(1, 3, 0), 90.0)
 	_check(_v3(t.origin, Vector3(1, 0, -1)), "loco: rotate_about turns about the pivot")
@@ -1354,6 +1373,7 @@ func _test_autopilot_physics() -> void:
 	var game: Game = main.get("game")
 	game.autopilot_exit = false
 	var player := game.player
+	player.set_process(false)
 	player.set_physics_process(false)
 	_check(game.autopilot != null and not player.read_input, "autopilot: --autopilot drives the sticks")
 	_check(bool(link.config["intro"]) and not game.intro_wanted(), "autopilot: never plays the intro, whatever the config says")
@@ -1371,7 +1391,7 @@ func _test_autopilot_physics() -> void:
 		var steps := 0
 		while link.found_calls == calls and steps < 90 * 60:
 			game._process(dt)
-			player._physics_process(dt)
+			player.step(dt)
 			steps += 1
 		if link.found_calls == calls:
 			missed.append("%s stuck at %s (waypoint %d/%d)" % [spot["id"], game.builder.to_house(player.feet()), game.autopilot.index, game.autopilot.path.size()])
@@ -1391,7 +1411,7 @@ func _test_autopilot_physics() -> void:
 	var steps := 0
 	while link.get("king_hits") == hits_before and steps < 90 * 60:
 		game._process(dt)
-		player._physics_process(dt)
+		player.step(dt)
 		steps += 1
 	var at := game.builder.to_house(player.feet())
 	var kp: Dictionary = HouseKing.king_prop(house)
@@ -1403,7 +1423,7 @@ func _test_autopilot_physics() -> void:
 	steps = 0
 	while link.found_calls == found_before and steps < 90 * 60:
 		game._process(dt)
-		player._physics_process(dt)
+		player.step(dt)
 		steps += 1
 	_check(link.found_calls == found_before + 1, "autopilot: … and it finds the duck after the hit")
 	link.session_over.emit("test")
@@ -1430,6 +1450,7 @@ func _test_room_scale() -> void:
 	var game: Game = main.get("game")
 	var player := game.player
 	var b := game.builder
+	player.set_process(false)
 	player.set_physics_process(false)
 	player.read_input = false
 	player.set_xr(true)
@@ -1445,7 +1466,7 @@ func _test_room_scale() -> void:
 		player.teleport(b.to_world(spawn), b.yaw_to_world(float(house["spawn"]["yaw"])))
 		for i in 360:
 			player.camera.global_position += dir * (4.0 / 360.0)
-			player._physics_process(dt)
+			player.step(dt)
 		var feet := b.to_house(player.feet())
 		var room: Variant = HouseLocate.locate(house, feet)["room"]
 		if str(room) != spawn_room or player.head_gap() > VrPlayer.MAX_HEAD_GAP + 0.01:
@@ -1456,7 +1477,7 @@ func _test_room_scale() -> void:
 	player.teleport(b.to_world([-2.4, -2.7, 10.8]), b.yaw_to_world(0.0))
 	for i in 180:
 		player.camera.global_position += Vector3(0, 0, -2.0 / 180.0)
-		player._physics_process(dt)
+		player.step(dt)
 	var up := b.to_house(player.feet())
 	_check(up[2] < 9.0 and up[1] > -2.3 and player.head_gap() <= VrPlayer.MAX_HEAD_GAP + 0.01, "room scale: a real step up the stairs climbs them (feet %s, head %.2f m off)" % [up, player.head_gap()])
 	var eye: float = b.to_house(player.camera.global_position)[1] - up[1]
@@ -1617,7 +1638,7 @@ func _test_cam_panels() -> void:
 	_check(asked.size() == 1, "cams: one frame request per spot in flight")
 	(asked[0][2] as Callable).call(200, PackedStringArray(["x-cam-at: 1"]), _jpeg(160, 120, Color.RED))
 	_check(c.is_shown("optical-drive") and b.cam_shown("optical-drive") and not b.cam_shown("hall"), "cams: a frame puts the feed on the terminal")
-	var root_node := b.get_node("Terminal_optical-drive") as Node3D
+	var root_node := b.part("Terminal_optical-drive") as Node3D
 	_check(not (root_node.get_node("Glass") as Node3D).visible and (root_node.get_node("Feed/Video") as MeshInstance3D).mesh.size == HouseBuilder.CAM_SIZE, "cams: … a 4:3 panel in place of the screen")
 	var mat := (root_node.get_node("Feed/Video") as MeshInstance3D).material_override as StandardMaterial3D
 	_check(mat.shading_mode == BaseMaterial3D.SHADING_MODE_UNSHADED and is_same(mat.albedo_texture, c.texture("optical-drive")), "cams: … unshaded, showing the feed's texture")
@@ -1640,7 +1661,7 @@ func _test_cam_panels() -> void:
 	asked.clear()
 	c.tick(0.4, house, feet, base, "sess")
 	(asked[0][2] as Callable).call(404, PackedStringArray(), PackedByteArray())
-	_check(not c.is_shown("optical-drive") and not b.cam_shown("optical-drive") and (b.get_node("Terminal_optical-drive/Glass") as Node3D).visible, "cams: a 404 puts the terminal's screen back")
+	_check(not c.is_shown("optical-drive") and not b.cam_shown("optical-drive") and (b.part("Terminal_optical-drive/Glass") as Node3D).visible, "cams: a 404 puts the terminal's screen back")
 	asked.clear()
 	c.tick(0.5, house, feet, base, "sess")
 	_check(asked.is_empty(), "cams: … backed off")
@@ -1723,8 +1744,8 @@ func _test_builder_geometry(b: HouseBuilder, house: Dictionary) -> void:
 	var wt: float = HouseGeometry.style_of(house)["wallThickness"]
 	var buried: Array = []
 	for t: Dictionary in house["terminals"]:
-		var root_node := b.get_node_or_null("Terminal_%s" % t["id"]) as Node3D
-		var glass := b.get_node_or_null("Terminal_%s/Glass" % t["id"]) as Node3D
+		var root_node := b.part("Terminal_%s" % t["id"]) as Node3D
+		var glass := b.part("Terminal_%s/Glass" % t["id"]) as Node3D
 		if root_node == null or glass == null:
 			buried.append("%s: no glass" % t["id"])
 			continue
@@ -1736,7 +1757,7 @@ func _test_builder_geometry(b: HouseBuilder, house: Dictionary) -> void:
 		if glass_out <= wt / 2.0 + 0.01 or back_out <= wt / 2.0:
 			buried.append("%s: glass %.3f, back %.3f m out" % [t["id"], glass_out, back_out])
 	_check(buried.is_empty(), "builder: every terminal screen stands clear of its wall box %s" % [buried])
-	var kitchen := b.get_node_or_null("Terminal_start-bar/Glass") as Node3D
+	var kitchen := b.part("Terminal_start-bar/Glass") as Node3D
 	if kitchen != null:
 		var kz: float = b.to_house(kitchen.global_position)[2]
 		_check(kz > 6.0 + wt / 2.0, "builder: the Start Bar (kitchen) screen is in front of its wall (z %.3f)" % kz)
@@ -1889,9 +1910,9 @@ func _test_game_king(game: Game, link: LinkBase, house: Dictionary) -> void:
 	link.session_over.emit("test")
 
 	link.give_king({"id": kid, "hp": 15, "max": 15, "fallen": false})
-	var text := b.get_node("Prop_%s/Health/HealthText" % kid) as Label3D
-	var bar := b.get_node("Prop_%s/Health/HealthBar" % kid) as Sprite3D
-	_check((b.get_node("Prop_%s/Health" % kid) as Node3D).visible and text.text == "THE KING  15 / 15" and bar.texture != null, "game king: the shared bar over him (%s)" % text.text)
+	var text := b.part("Prop_%s/Health/HealthText" % kid) as Label3D
+	var bar := b.part("Prop_%s/Health/HealthBar" % kid) as Sprite3D
+	_check((b.part("Prop_%s/Health" % kid) as Node3D).visible and text.text == "THE KING  15 / 15" and bar.texture != null, "game king: the shared bar over him (%s)" % text.text)
 	_check(not b.king_kneeling(kid) and b.door_shut("server-door"), "game king: … standing, his door shut")
 
 	link.assignment_received.emit(_assignment(house, "s-3k", true))
@@ -1986,7 +2007,7 @@ func _test_game_king(game: Game, link: LinkBase, house: Dictionary) -> void:
 	player.teleport(b.to_world(east), west_yaw)
 	player.left_stick = Vector2(0, 1)
 	for i in 110:
-		player._physics_process(1.0 / 90.0)
+		player.step(1.0 / 90.0)
 	var room: Variant = HouseLocate.locate(house, b.to_house(player.feet()))["room"]
 	_check(str(room) == "server-room", "game king: fallen, the body walks through his door (in %s at %s)" % [room, b.to_house(player.feet())])
 	player.left_stick = Vector2.ZERO
@@ -2016,7 +2037,7 @@ func _test_game_king(game: Game, link: LinkBase, house: Dictionary) -> void:
 	player.teleport(b.to_world(in_server), b.yaw_to_world(-90.0))
 	player.left_stick = Vector2(0, 1)
 	for i in 220:
-		player._physics_process(1.0 / 90.0)
+		player.step(1.0 / 90.0)
 		game._process(1.0 / 90.0)
 	player.left_stick = Vector2.ZERO
 	var out: Array = b.to_house(player.feet())
@@ -2033,7 +2054,7 @@ func _test_game_king(game: Game, link: LinkBase, house: Dictionary) -> void:
 	player.teleport(b.to_world(east), west_yaw)
 	player.left_stick = Vector2(0, 1)
 	for i in 110:
-		player._physics_process(1.0 / 90.0)
+		player.step(1.0 / 90.0)
 	room = HouseLocate.locate(house, b.to_house(player.feet()))["room"]
 	_check(str(room) == "basement-hall", "game king: standing, he blocks the body (in %s at %s)" % [room, b.to_house(player.feet())])
 	player.left_stick = Vector2.ZERO
@@ -2071,29 +2092,43 @@ func _test_main_and_game() -> void:
 	_check(b.walls.size() == HouseGeometry.build_walls(house).size() and not b.walls.is_empty(), "main: the walls are built (%d)" % b.walls.size())
 	var colliders := b.get_node_or_null("Colliders")
 	_check(colliders != null and colliders.get_child_count() > b.walls.size(), "main: walls, floors and props collide")
-	_check(b.get_node_or_null("Floor") != null and b.get_node_or_null("Ceilings") != null and b.get_node_or_null("Walls_wall") != null, "main: floor, ceiling and wall meshes")
+	_check(b.part("Floor") != null and b.part("Ceilings") != null and b.part("Walls_wall") != null, "main: floor, ceiling and wall meshes")
 	for s: Dictionary in house["stairs"]:
-		_check(b.get_node_or_null("Ramp_%s" % s["id"]) != null, "main: ramp %s" % s["id"])
+		_check(b.part("Ramp_%s" % s["id"]) != null, "main: ramp %s" % s["id"])
 	for t: Dictionary in house["terminals"]:
-		_check(b.get_node_or_null("Terminal_%s" % t["id"]) != null, "main: terminal screen %s" % t["id"])
+		_check(b.part("Terminal_%s" % t["id"]) != null, "main: terminal screen %s" % t["id"])
 	# The King (a `king` prop) stands at the cold door, solid, with a crown;
 	# with no shared King (an old server) he has no bar; his door's leaf is shut.
 	var king_prop: Dictionary = {}
 	for pr: Dictionary in house["props"]:
 		if str(pr.get("kind", "")) == "king":
 			king_prop = pr
-	_check(not king_prop.is_empty() and b.get_node_or_null("Prop_%s" % king_prop.get("id", "")) != null, "main: the king stands at the cold door")
+	_check(not king_prop.is_empty() and b.part("Prop_%s" % king_prop.get("id", "")) != null, "main: the king stands at the cold door")
 	_check(not king_prop.is_empty() and HouseGeometry.prop_solid(king_prop), "house: the king is solid")
-	_check(not king_prop.is_empty() and b.get_node_or_null("Prop_%s" % king_prop.get("id", "")).get_child_count() >= 3, "main: the king has a body, a crown and his name")
-	var health := b.get_node_or_null("Prop_%s/Health" % king_prop.get("id", "")) as Node3D
+	_check(not king_prop.is_empty() and b.part("Prop_%s" % king_prop.get("id", "")).get_child_count() >= 3, "main: the king has a body, a crown and his name")
+	var health := b.part("Prop_%s/Health" % king_prop.get("id", "")) as Node3D
 	_check(health != null and not health.visible, "main: no shared King, no health bar over him")
-	_check(b.door_shut("server-door") and b.get_node_or_null("Door_server-door") != null, "main: the door he guards has a shut leaf")
-	for r: Dictionary in house["rooms"]:
-		_check(b.get_node_or_null("Label_%s" % r["id"]) != null, "main: room label %s" % r["id"])
+	_check(b.door_shut("server-door") and b.part("Door_server-door") != null, "main: the door he guards has a shut leaf")
+	# No text hangs in the house: no room names, terminal captions or signs —
+	# only the King's own bar.
+	var texts: Array = b.find_children("*", "Label3D", true, false).filter(func(l: Node) -> bool: return l.name != "HealthText")
+	_check(texts.is_empty(), "main: no text in the house (%s)" % [texts.map(func(l: Node) -> String: return (l as Label3D).text)])
+	# Every floor has its node; the stairwells' band between floors is closed.
+	for f: Dictionary in house["floors"]:
+		_check(b.get_node_or_null("Floor_%s" % f["id"]) != null and b.floor_shown(str(f["id"])), "main: floor node %s, drawn" % f["id"])
+	for w: Dictionary in HouseGeometry.stair_wells(house):
+		var wells := b.get_node_or_null("Floor_%s/Wells" % w["floor"]) as MeshInstance3D
+		var aabb := wells.get_aabb() if wells != null else AABB()
+		_check(wells != null and aabb.position.y < float(w["bottom"]) and aabb.end.y > float(w["top"]), "main: stairwell %s closed between %.2f and %.2f" % [w["stair"], w["bottom"], w["top"]])
+	b.hide_floors(["top"])
+	_check(not b.floor_shown("top") and b.floor_shown("main") and b.part("Terminal_%s" % house["terminals"][0]["id"]) != null, "main: a floor hides (the rest stay, parts still found)")
+	b.hide_floors([])
+	_check(b.floor_shown("top"), "main: … and comes back")
 	_test_builder_geometry(b, house)
 	_check(game.state() == GameFlow.State.LOBBY, "game: starts in the lobby")
 
 	var player := game.player
+	player.set_process(false)
 	player.set_physics_process(false)
 	player.read_input = false
 	_check(player.global_position.distance_to(Lobby.SPOT) < 0.01, "game: the player waits in the lobby")
@@ -2148,8 +2183,18 @@ func _test_main_and_game() -> void:
 	game._process(0.016)
 	_check(not link.poses.is_empty() and _diff(link.poses.back()["p"], spawn) == "", "game: poses go out as house-frame feet")
 	_check(game.trail.count() > 0, "game: the golden trail is laid (%d chevrons)" % game.trail.count())
-	var spawn_room: Dictionary = HouseGeometry.room_by_id(house, house["spawn"]["room"])
-	_check(game.hud.room_text() == str(spawn_room["label"]), "game: the HUD names the room")
+	# On a headset the route runs on a worker thread and lands a frame later.
+	game._clear_trail()
+	player.xr_active = true
+	game.refresh_trail(spawn, a["duck"]["pos"])
+	_check(game.trail.count() == 0, "game: a headset's trail route goes to a worker thread (not laid at once)")
+	for i in 60:
+		await process_frame
+		if game.trail.count() > 0:
+			break
+	player.xr_active = false
+	_check(game.trail.count() > 0, "game: … and is laid when it lands (%d chevrons)" % game.trail.count())
+	_check(game.hud.big_text() == "" and game.hud.notice_text() == "" and game.hud.get("_room") == null, "game: walking, the HUD is clear (no room name, no hint)")
 	_check(link.found_calls == 0, "game: no claim far from the duck")
 	# The terminals' camera feeds are asked for while playing.
 	var cam_calls: Array = []
@@ -2348,6 +2393,12 @@ func _test_main_and_game() -> void:
 	game.lobby.press("resume:yes")
 	link.resume_failed.emit()
 	_check(game.state() == GameFlow.State.LOBBY and game._resume_offer.is_empty() and not game.lobby.resuming(), "game: a refused resume starts fresh")
+	# The safety net: a body under the lobby's floor goes back on it.
+	player.global_position = Lobby.SPOT - Vector3(0, 50, 0)
+	game._process(0.016)
+	_check(game.falls == 1 and absf(player.feet().y - Lobby.SPOT.y) < 0.01, "game: a fall through the lobby's floor is caught and put back (%.1f m)" % player.feet().y)
+	game._process(0.016)
+	_check(game.falls == 1, "game: … and standing on it is not a fall")
 
 	# Sent while the headset is still off (a past deadline in the lobby): plays.
 	game.presence_changed(false)
@@ -2363,19 +2414,47 @@ func _test_main_and_game() -> void:
 	# Turning is smooth only (wave 33b) and closes the vignette fast.
 	link.assignment_received.emit(_assignment(house, "s-4g", true))
 	player.right_stick = Vector2.ZERO
-	player._physics_process(1.0 / 72.0)
+	player.step(1.0 / 72.0)
 	var yaw0 := player.head_yaw()
 	player.right_stick = Vector2(1, 0)
-	player._physics_process(1.0 / 72.0)
+	player.step(1.0 / 72.0)
 	var step1 := HouseFrames.wrap_yaw(player.head_yaw() - yaw0)
 	_check(step1 < 0.0 and step1 > -2.0, "player: a full push turns a little each frame, never a jump (%.2f°)" % step1)
 	for i in 17:
-		player._physics_process(1.0 / 72.0)
+		player.step(1.0 / 72.0)
 	_check(_near(HouseFrames.wrap_yaw(player.head_yaw() - yaw0), -Locomotion.TURN_RATE * 0.25, 0.5) and player.vignette_strength() >= 0.8, "player: a quarter second of turning: %.0f°, the vignette closed (%.2f)" % [Locomotion.TURN_RATE * 0.25, player.vignette_strength()])
 	player.right_stick = Vector2.ZERO
 	for i in 72:
-		player._physics_process(1.0 / 72.0)
+		player.step(1.0 / 72.0)
 	_check(player.vignette_strength() < 0.05, "player: … and it opens again within a second (%.2f)" % player.vignette_strength())
+	# A hitch (the first frame after a load) never jumps the view round.
+	var yaw1 := player.head_yaw()
+	player.right_stick = Vector2(1, 0)
+	player._process(2.0)
+	player.right_stick = Vector2.ZERO
+	var jump := absf(HouseFrames.wrap_yaw(player.head_yaw() - yaw1))
+	_check(_near(jump, Locomotion.TURN_RATE * VrPlayer.MAX_STEP, 0.1), "player: a 2 s frame turns one MAX_STEP at most (%.1f°)" % jump)
+	# After a teleport the body waits two physics ticks (a floor built that
+	# frame is not in the physics space yet), then walks every frame.
+	player.teleport(player.feet(), player.head_yaw())
+	var at := player.feet()
+	player.left_stick = Vector2(0, 1)
+	player._process(1.0 / 72.0)
+	_check(player.feet().distance_to(at) < 1e-4, "player: after a teleport the body waits for the physics ticks")
+	player._physics_process(1.0 / 72.0)
+	player._physics_process(1.0 / 72.0)
+	player._process(1.0 / 72.0)
+	player.left_stick = Vector2.ZERO
+	_check(player.feet().distance_to(at) > 0.01, "player: … then walks on a frame, no tick needed (%.3f m)" % player.feet().distance_to(at))
+	# On a headset a frame near the display interval moves exactly one.
+	var ticks := Engine.physics_ticks_per_second
+	Engine.physics_ticks_per_second = 72
+	player.xr_active = true
+	_check(_near(player.frame_step(0.0131), 1.0 / 72.0, 1e-6) and _near(player.frame_step(0.0152), 1.0 / 72.0, 1e-6), "player: a headset frame near the interval moves exactly one interval")
+	_check(_near(player.frame_step(0.03), 0.03, 1e-6) and _near(player.frame_step(0.5), VrPlayer.MAX_STEP, 1e-6), "player: … a long one moves its own time, at most MAX_STEP")
+	player.xr_active = false
+	Engine.physics_ticks_per_second = ticks
+	_check(_near(player.frame_step(0.0131), 0.0131, 1e-6), "player: … the desktop rig moves the measured time")
 
 	link.session_over.emit("test")
 
@@ -2600,6 +2679,7 @@ func _test_lobby_picker() -> void:
 	var game: Game = main.get("game")
 	var lobby := game.lobby
 	var player := game.player
+	player.set_process(false)
 	player.set_physics_process(false)
 	player.read_input = false
 	var asked: Array = []
@@ -2727,10 +2807,10 @@ func _test_lobby_picker() -> void:
 	lobby.flash("Starting Old News…", 3.0)
 	link.assignment_received.emit(_assignment(game.builder.house, "s-tab", true))
 	_check(game.state() == GameFlow.State.PLAYING and link.begun.size() == 2, "lobby: the tablet's program still lands with the card up")
-	_check(game.hud.room_text() != "", "lobby: … and the HUD shows the room while playing")
+	_check(game.hud.notice_text() == "", "lobby: … and the HUD is clear while playing")
 	link.session_over.emit("over")
 	_check(game.state() == GameFlow.State.LOBBY and lobby.view() == "pick" and lobby.confirming().is_empty(), "lobby: … and the lobby comes back to the tiles, no card")
-	_check(game.hud.room_text() == "" and game.hud.notice_text() == "" and game.hud.mic_text() == "", "lobby: back from a session, no HUD line floats over the tiles")
+	_check(game.hud.big_text() == "" and game.hud.notice_text() == "", "lobby: back from a session, no HUD line floats over the tiles")
 	_check(message.text == "Session ended." and message.modulate == Lobby.MESSAGE_NEWS, "lobby: … the session's end is the lobby's own line, in place of a stale flash (%s)" % message.text)
 	_check(Game.session_over_text("reset") == "The story restarted — session ended." and Game.session_over_text("event ended") == "The event is over." and Game.session_over_text("reconfigured") == "" and Game.session_over_text("headset") == "Session ended (headset).", "lobby: the session's end in words, never a bare code")
 	link.begin_failed.emit("Nobody has that pass.")
@@ -2771,6 +2851,7 @@ func _test_setup_panel() -> void:
 	await process_frame
 	var game: Game = main.get("game")
 	var lobby := game.lobby
+	game.player.set_process(false)
 	game.player.set_physics_process(false)
 	game.player.read_input = false
 	game._process(0.016)
@@ -2853,6 +2934,7 @@ func _test_lobby_mic() -> void:
 	var game: Game = main.get("game")
 	var lobby := game.lobby
 	var v := game.voice
+	game.player.set_process(false)
 	game.player.set_physics_process(false)
 	game.player.read_input = false
 	v.client_factory = func() -> Object: return FakeHttp.new()
@@ -2905,7 +2987,7 @@ func _test_lobby_mic() -> void:
 	_check(v.is_testing(), "lobby mic: a test again, with no voice link")
 	link.assignment_received.emit(_assignment(link.house, "mic-2", true))
 	game._process(0.016)
-	_check(game.state() == GameFlow.State.PLAYING and not v.is_testing() and not v.is_running() and v.mic_state == "off" and game.hud.mic_text() == "", "lobby mic: … and a program starting closes it (%s)" % v.mic_state)
+	_check(game.state() == GameFlow.State.PLAYING and not v.is_testing() and not v.is_running() and v.mic_state == "off", "lobby mic: … and a program starting closes it (%s)" % v.mic_state)
 	link.session_over.emit("test")
 	# Android without the grant: ASK AGAIN, which asks.
 	v.platform = "Android"
@@ -3361,7 +3443,6 @@ func _test_voice_link() -> void:
 	var upload := "http://127.0.0.1:7600/e/e1/api/spatial/voice"
 	v.want(upload + "/stream?token=tok", upload, "tok")
 	_check(v.is_running() and v.mic_state == "opening" and not v.listen_on, "voice: running, the mic opening (no sample yet), nobody listening")
-	_check(v.hud_text(true) == "MIC STARTING…", "voice: the HUD says MIC STARTING… until a real sample lands (%s)" % v.hud_text(true))
 	# Zeros are no mic: still opening.
 	mic[0] = _mic_tone(9600, 0.0)
 	v._process(0.016)
@@ -3370,11 +3451,11 @@ func _test_voice_link() -> void:
 	# Nobody can hear us: a loud word goes nowhere, no connection.
 	mic[0] = _mic_tone(9600, 0.3)
 	v._process(0.016)
-	_check(v.mic_state == "live" and v.hud_text(true) == "MIC ON · B or Y mutes" and v.hud_text(false) == "MIC ON · M mutes", "voice: a real sample → MIC ON (%s)" % v.hud_text(true))
+	_check(v.mic_state == "live", "voice: a real sample → live (%s)" % v.mic_state)
 	_check(v.uplink.queue.is_empty() and clients.is_empty(), "voice: nobody listening → nothing queued, no connection")
 	v.on_frame("hello", {"codec": "mulaw", "rate": 16000, "chunkMs": 200, "as": "player", "session": "s1", "listen": false})
 	v.on_frame("listen", {"on": true})
-	_check(v.listen_on and v.hud_text(true) == "MIC ON · someone can hear you" and v.hud_text(false) == "MIC ON · someone can hear you", "voice: listen {on} → someone can hear you")
+	_check(v.listen_on, "voice: listen {on} → someone can hear us")
 	mic[0] = _mic_tone(9600, 0.3)
 	v._process(0.016)
 	_check(clients.size() == 1 and v.uplink.queue.size() == 1, "voice: … a loud chunk is queued, the connection opening (%d queued)" % v.uplink.queue.size())
@@ -3402,7 +3483,7 @@ func _test_voice_link() -> void:
 	# A terminal's voice: under Terminal_hall, at the server's gain, the
 	# jitter target ahead of it, faded in.
 	v.on_frame("voice", _voice_frame("hall", 1, 0.5))
-	var e := b.get_node_or_null("Terminal_hall/Voice") as AudioStreamPlayer3D
+	var e := b.part("Terminal_hall/Voice") as AudioStreamPlayer3D
 	_check(e != null and b.voice_attached("hall") and v.sources() == ["t:hall"], "voice: a voice frame hangs an emitter under Terminal_hall")
 	if e == null:
 		v.stop()
@@ -3464,7 +3545,7 @@ func _test_voice_link() -> void:
 
 	# A rebuild (a map edit): the emitter is re-made and the source carries on.
 	b.build(house)
-	var e2 := b.get_node_or_null("Terminal_hall/Voice") as AudioStreamPlayer3D
+	var e2 := b.part("Terminal_hall/Voice") as AudioStreamPlayer3D
 	_check(e2 != null and not is_same(e2, e) and v.sources() == ["t:hall"], "voice: a rebuilt house re-attaches the emitter")
 	if e2 != null:
 		var pb2: FakePlayback = pbs[e2.get_instance_id()]
@@ -3474,19 +3555,11 @@ func _test_voice_link() -> void:
 		v.on_frame("bye", {"from": "t:hall"})
 		_check(v.sources().is_empty() and pb2.queued.size() == VoiceLink.FADE_OUT_MS * 16 and pb2.queued[pb2.queued.size() - 1].length() < 0.001, "voice: bye fades the queued voice out and forgets the source (%d frames left)" % pb2.queued.size())
 
-	# Mute: the mic's chunks are dropped; the HUD says so.
-	v.toggle_mute()
-	_check(v.mic_state == "muted" and v.hud_text(true) == "MIC MUTED · press B or Y" and v.hud_text(false) == "MIC MUTED · press M", "voice: mute → MIC MUTED (%s)" % v.hud_text(true))
-	var q := c.requests.size() + v.uplink.queue.size() + (clients.back() as FakeHttp).requests.size()
-	now[0] += 1000.0
-	mic[0] = _mic_tone(9600, 0.3)
-	v._process(0.016)
-	_check(c.requests.size() + v.uplink.queue.size() + (clients.back() as FakeHttp).requests.size() == q, "voice: muted, nothing goes up")
-	v.toggle_mute()
-	_check(v.mic_state == "live", "voice: unmute → live")
+	# No mute: a guest is always heard while someone listens.
+	_check(not v.has_method("toggle_mute") and not "muted" in v, "voice: no mute to press")
 	# The server stops listening.
 	v.on_frame("listen", {"on": false})
-	_check(not v.listen_on and v.uplink.queue.is_empty() and v.hud_text(true) == "MIC ON · B or Y mutes", "voice: listen {on: false} → nothing queued, the HUD drops the line")
+	_check(not v.listen_on and v.uplink.queue.is_empty(), "voice: listen {on: false} → nothing queued")
 	# The same URLs again change nothing; stop ends everything.
 	v.on_frame("voice", _voice_frame("hall", 5, 1.0))
 	v.want(upload + "/stream?token=tok", upload, "tok")
@@ -3502,7 +3575,7 @@ func _test_voice_link() -> void:
 	v.on_frame("hello", {"codec": "mulaw", "rate": 16000, "chunkMs": 200, "as": "player", "session": "s1", "listen": false})
 	_check(v.sources().is_empty(), "voice: a hello lets every voice it had go")
 	v.stop()
-	_check(not v.is_running() and v.sources().is_empty() and not b.voice_attached("hall") and v.mic_state == "off" and v.hud_text(true) == "", "voice: stop ends the stream, the mic and every voice")
+	_check(not v.is_running() and v.sources().is_empty() and not b.voice_attached("hall") and v.mic_state == "off", "voice: stop ends the stream, the mic and every voice")
 	# A server speaking another wire is not played.
 	v.want(upload + "/stream?token=tok", upload, "tok")
 	v.on_frame("hello", {"codec": "opus", "rate": 48000, "listen": false})
@@ -3515,7 +3588,7 @@ func _test_voice_link() -> void:
 	v.on_frame("listen", {"on": true})
 	mic[0] = _mic_tone(9600, 0.3)
 	v._process(0.016)
-	_check(v.mic_state == "off" and v.uplink.queue.is_empty() and v.hud_text(true) == "", "voice: --mic false listens only")
+	_check(v.mic_state == "off" and v.uplink.queue.is_empty(), "voice: --mic false listens only")
 	v.on_frame("voice", _voice_frame("hall", 1, 1.0))
 	_check(v.sources() == ["t:hall"], "voice: … and still hears the terminals")
 	v.stop()
@@ -3538,9 +3611,9 @@ func _test_voice_silent_mic() -> void:
 	mic[0] = _mic_tone(4800, 0.0)
 	for i in 3:
 		v._process(0.5)
-	_check(v.mic_state == "opening" and v.hud_text(true) == "MIC STARTING…" and not v.uplink.wanted, "voice: zeros for 1.5 s → still opening, no uplink wanted (%s)" % v.mic_state)
+	_check(v.mic_state == "opening" and not v.uplink.wanted, "voice: zeros for 1.5 s → still opening, no uplink wanted (%s)" % v.mic_state)
 	v._process(1.0)
-	_check(v.mic_state == "nomic" and v.hud_text(true) == "NO MIC" and not v.uplink.wanted, "voice: zeros past MIC_FALLBACK_AFTER → NO MIC")
+	_check(v.mic_state == "nomic" and not v.uplink.wanted, "voice: zeros past MIC_FALLBACK_AFTER → nomic")
 	mic[0] = _mic_tone(4800, 0.01)
 	v._process(0.016)
 	_check(v.mic_state == "live" and v.uplink.wanted, "voice: … a real sample → LIVE, the uplink wanted")
@@ -3572,13 +3645,9 @@ func _test_voice_mic_states() -> void:
 	_check(v.permission_state() == "denied" and v.lobby_text(true, true).begins_with("MIC · not allowed · ASK AGAIN"), "mic: refused in the lobby → denied, ASK AGAIN (%s)" % v.lobby_text(true, true))
 	var upload := "http://127.0.0.1:7600/e/e1/api/spatial/voice"
 	v.want(upload + "/stream?token=tok", upload, "tok")
-	_check(v.mic_state == "asking" and asked[0] == 2 and v.hud_text(true) == "MIC · allow it in the headset's prompt" and v.hud_text(false) == "MIC · allow it in the system prompt", "mic: a session without the grant asks again (%s)" % v.hud_text(true))
-	v.toggle_mute()
-	_check(not v.muted and v.mic_state == "asking", "mic: B / Y while asking changes nothing (never muted unseen)")
+	_check(v.mic_state == "asking" and asked[0] == 2, "mic: a session without the grant asks again (%s)" % v.mic_state)
 	v._on_permission("android.permission.RECORD_AUDIO", false)
-	_check(v.mic_state == "denied" and v.hud_text(true) == "NO MIC · not allowed · ASK AGAIN in the lobby" and v.hud_text(false) == v.hud_text(true), "mic: refused → denied, not NO MIC (%s)" % v.hud_text(true))
-	v.toggle_mute()
-	_check(not v.muted, "mic: B / Y while refused changes nothing")
+	_check(v.mic_state == "denied", "mic: refused → denied, not nomic (%s)" % v.mic_state)
 	_check(v.mic_log.any(func(l: String) -> bool: return l.begins_with("reinstall-vr: mic — denied") and l.contains("granted denied")), "mic: every state change logs a line (%s)" % [v.mic_log])
 	_check(v.mic_log.any(func(l: String) -> bool: return l == "reinstall-vr: mic — RECORD_AUDIO refused"), "mic: … and every answer to the grant")
 	v.stop()
@@ -3691,13 +3760,14 @@ func _test_voice_game() -> void:
 	v.client_factory = func() -> Object: return FakeHttp.new()
 	v.frame_source = func() -> PackedVector2Array: return _mic_tone(800, 0.001)  # a quiet room, under the gate
 	var player := game.player
+	player.set_process(false)
 	player.set_physics_process(false)
 	player.read_input = false
 
 	# Offline (no voice URLs): playing starts no voice.
 	link.assignment_received.emit(_assignment(house, "v-0", true))
 	game._process(0.016)
-	_check(game.state() == GameFlow.State.PLAYING and not v.is_running() and game.hud.mic_text() == "", "voice game: no voice URLs (offline) → no voice")
+	_check(game.state() == GameFlow.State.PLAYING and not v.is_running(), "voice game: no voice URLs (offline) → no voice")
 	game.enter_lobby()
 
 	link.set("voice_base", "http://127.0.0.1:7600/e/e1/api/spatial")
@@ -3706,45 +3776,25 @@ func _test_voice_game() -> void:
 	v._process(0.016)  # the mic's first real sample
 	game._process(0.016)
 	_check(v.is_running() and v.stream_url == "http://127.0.0.1:7600/e/e1/api/spatial/voice/stream?token=tok-v-1" and v.upload_url.ends_with("/api/spatial/voice"), "voice game: playing starts the voice on the session's token (%s)" % v.stream_url)
-	_check(game.hud.mic_text() == "MIC ON · M mutes", "voice game: the HUD shows MIC ON (%s)" % game.hud.mic_text())
-	var pulses := player.pulses
-	player.mute_button = true
-	game._process(0.016)
-	game._process(0.016)
-	_check(v.muted and game.hud.mic_text() == "MIC MUTED · press M", "voice game: a press of the mute button mutes (once, held) (%s)" % game.hud.mic_text())
-	_check(player.pulses == pulses + 1, "voice game: … with a haptic tick")
-	player.mute_button = false
-	game._process(0.016)
-	player.mute_button = true
-	game._process(0.016)
-	_check(not v.muted, "voice game: … a second press unmutes")
-	player.mute_button = false
+	_check(game.hud.notice_text() == "" and game.hud.big_text() == "", "voice game: no mic line on the HUD (a guest cannot mute)")
 	v.on_frame("voice", _voice_frame("optical-drive", 1, 1.0))
 	_check(game.builder.voice_attached("optical-drive"), "voice game: a terminal's voice hangs in the game's house")
 	link.session_over.emit("reset")
-	_check(game.state() == GameFlow.State.LOBBY and not v.is_running() and not game.builder.voice_attached("optical-drive") and game.hud.mic_text() == "", "voice game: the lobby stops the voice, the emitters and the HUD line")
+	_check(game.state() == GameFlow.State.LOBBY and not v.is_running() and not game.builder.voice_attached("optical-drive"), "voice game: the lobby stops the voice and the emitters")
 
-	# B / Y held in the lobby does nothing there, and a press held over into
-	# play (the hand still on it when the program starts) is not a toggle.
-	player.mute_button = true
+	# A hit held over from the lobby into play is not a press.
 	player.hit_button = true
 	for i in 3:
 		game._process(0.016)
-	_check(game.state() == GameFlow.State.LOBBY and not v.is_running() and not v.muted, "voice game: B / Y in the lobby does nothing")
 	link.assignment_received.emit(_assignment(house, "v-3", true))
 	game._process(0.016)
 	v._process(0.016)
 	game._process(0.016)
-	_check(v.is_running() and not v.muted and game.hud.mic_text() == "MIC ON · M mutes", "voice game: … nor when it is still held as play starts (%s)" % game.hud.mic_text())
-	player.mute_button = false
+	_check(v.is_running(), "voice game: a new program starts the voice again")
 	player.hit_button = false
 	game._process(0.016)
-	player.mute_button = true
-	game._process(0.016)
-	_check(v.muted, "voice game: … a fresh press while playing mutes")
-	player.mute_button = false
 	game.enter_lobby()
-	_check(not v.is_running() and not v.muted and game.lobby.visible and game.lobby.view() != "confirm", "voice game: back in the lobby the voice is off, unmuted, the lobby reset")
+	_check(not v.is_running() and game.lobby.visible and game.lobby.view() != "confirm", "voice game: back in the lobby the voice is off, the lobby reset")
 
 	# The Android microphone dialog (mic "asking") pauses / unfocuses the app:
 	# that ends no session. Taking the headset off still does.
@@ -3921,6 +3971,7 @@ func _test_sfx_game() -> void:
 	await process_frame
 	var game: Game = main.get("game")
 	var player := game.player
+	player.set_process(false)
 	player.set_physics_process(false)
 	player.read_input = false
 	link.config["trail_delay"] = 0.0
@@ -4028,15 +4079,15 @@ func _test_path_reveal() -> void:
 	await process_frame
 	var game: Game = main.get("game")
 	var player := game.player
+	player.set_process(false)
 	player.set_physics_process(false)
 	player.read_input = false
 	var sub: Label3D = game.hud.get("_sub")
-	var hint: Label3D = game.hud.get("_hint")
 	_check(_near(float(link.config["trail_delay"]), HouseRoute.PATH_REVEAL_MS / 1000.0), "reveal: a minute by default")
 	for i in 30:
 		game._process(1.0)  # the lobby never counts
 	link.assignment_received.emit(_assignment(house, "rv-1", true))
-	_check(hint.text == "find Gerald" and game.trail.count() == 0 and not game.trail_revealed, "reveal: the walk starts with no trail, the HUD says find Gerald (%s)" % hint.text)
+	_check(game.trail.count() == 0 and not game.trail_revealed, "reveal: the walk starts with no trail")
 	for i in 59:
 		game._process(1.0)
 	_check(game.trail.count() == 0 and not game.trail_revealed, "reveal: no trail after 59 s")
@@ -4052,13 +4103,12 @@ func _test_path_reveal() -> void:
 	_check(game.trail_revealed and game.trail.count() > 0 and sub.text == "A golden trail flickers on.", "reveal: after a minute the trail draws at once, with a notice (%d chevrons, %s)" % [game.trail.count(), sub.text])
 	link.duck_changed.emit(moved.duplicate())
 	_check(sub.text == "Gerald moved — follow the arrows.", "reveal: after it, the old line (%s)" % sub.text)
-	_check(hint.text == "find Gerald", "reveal: the hint never says follow the arrows")
 	# R3: whatever the King, the HUD carries no health.
 	link.give_king({"id": "cold-lock-king", "hp": 7, "max": 15, "fallen": false})
 	game._process(0.1)
-	var hud_texts: Array = [game.hud.room_text(), hint.text, sub.text, game.hud.big_text(), game.hud.mic_text()]
+	var hud_texts: Array = [sub.text, game.hud.big_text()]
 	_check(not hud_texts.any(func(t: String) -> bool: return t.contains("KING") or t.contains("/ 15") or t.contains("7")), "R3: the HUD never carries the King's health (%s)" % [hud_texts])
-	var bar := game.builder.get_node_or_null("Prop_cold-lock-king/Health/HealthText") as Label3D
+	var bar := game.builder.part("Prop_cold-lock-king/Health/HealthText") as Label3D
 	_check(bar != null and bar.text == "THE KING  7 / 15", "R3: … it hangs over him (%s)" % (bar.text if bar != null else "none"))
 	# A re-scan restarts the minute.
 	link.session_over.emit("test")
@@ -4102,6 +4152,7 @@ func _game_on_show() -> Array:
 	main.add_child(link)
 	await process_frame
 	var game: Game = main.get("game")
+	game.player.set_process(false)
 	game.player.set_physics_process(false)
 	game.player.read_input = false
 	game.speech.set_process(false)
@@ -4406,6 +4457,7 @@ func _test_wall_bump() -> void:
 	solid.call(Vector3(20, 0.2, 20), Vector3(0, -0.1, 0))
 	solid.call(Vector3(4, 2, 0.2), Vector3(0, 1, -3))  # 3 m north
 	var player: VrPlayer = Game.PLAYER_SCENE.instantiate()
+	player.set_process(false)
 	player.set_physics_process(false)
 	player.read_input = false
 	world.add_child(player)
@@ -4413,12 +4465,12 @@ func _test_wall_bump() -> void:
 	player.teleport(Vector3(0, 0, 0), 180.0)  # facing south: open floor
 	player.left_stick = Vector2(0, 1)
 	for i in 72:
-		player._physics_process(1.0 / 72.0)
+		player.step(1.0 / 72.0)
 	_check(player.wall_bumps == 0 and player.feet().z > 1.0, "player: walking in the open never buzzes (%d, walked to z %.2f)" % [player.wall_bumps, player.feet().z])
 	player.teleport(Vector3(0, 0, -1.5), 0.0)  # facing north, the wall 1.4 m ahead
 	var pulses0 := player.pulses
 	for i in 144:
-		player._physics_process(1.0 / 72.0)
+		player.step(1.0 / 72.0)
 	_check(player.feet().z > -2.9 and player.wall_bumps >= 2 and player.wall_bumps <= 3 and player.pulses > pulses0, "player: into a wall: a buzz, at most every %.1f s (%d in 2 s, stopped at z %.2f)" % [VrPlayer.WALL_BUMP_EVERY, player.wall_bumps, player.feet().z])
 	world.queue_free()
 	await process_frame
@@ -4572,6 +4624,7 @@ func _test_intro_game() -> void:
 	await process_frame
 	var game: Game = main.get("game")
 	var player := game.player
+	player.set_process(false)
 	player.set_physics_process(false)
 	player.read_input = false
 	game.speech.set_process(false)
@@ -4596,7 +4649,7 @@ func _test_intro_game() -> void:
 	_check(link.poses.size() >= poses_before + 30 and _diff(link.poses.back()["p"], spawn) == "" and _near(float(link.poses.back()["yaw"]), float(house["spawn"]["yaw"])), "intro: the spawn pose goes out every frame (the session stays alive, in the house)")
 	_check(link.moments.is_empty() and link.found_calls == 0 and link.king_hits == 0, "intro: no void, no find, no King on the practice floor")
 	_check(not game.voice.is_running() and not game.sfx.hum_on() and not game.sfx.log.has("quack"), "intro: no voice link, hum or quack during the video")
-	_check(not game.trail_revealed and game.trail.count() == 0 and game.hud.room_text() == "", "intro: no walk, no HUD")
+	_check(not game.trail_revealed and game.trail.count() == 0 and game.hud.big_text() == "", "intro: no walk, no HUD")
 	_check(game.intro.step == IntroFlow.Step.VIDEO and link.get("readies") == 0, "intro: the video holds (3 s in)")
 	# News from the house while the video plays: nothing on the HUD.
 	link.duck_changed.emit(HouseDuck.pick_duck_spot(house, "in-1b"))
@@ -4638,7 +4691,7 @@ func _test_intro_game() -> void:
 	_intro_click(game, "start")
 	_check(not game.in_intro() and not game.intro_space.visible and link.get("readies") == 1, "intro: START → the walk, ready posted once")
 	_check(_v3(player.feet(), HouseFrames.vec(spawn)) and player.locomotion_enabled, "intro: … at the spawn, walking")
-	_check(game.hud.room_text() != "" and game.sfx.hum_on() and not game.trail_revealed, "intro: … the HUD and the hum on, the trail hidden")
+	_check(game.state() == GameFlow.State.PLAYING and game.sfx.hum_on() and not game.trail_revealed, "intro: … the walk and the hum on, the trail hidden")
 	_check(float(game.get("_played_for")) < 0.1 and _near(float(game.get("_quack_in")), Sfx.QUACK_FIRST, 0.05), "intro: the walk's clocks start now (played %.2f s)" % float(game.get("_played_for")))
 	for i in 5:
 		game._process(0.1)
@@ -4942,6 +4995,7 @@ func _test_house_lamps_game() -> void:
 	await process_frame
 	var game: Game = main.get("game")
 	var player := game.player
+	player.set_process(false)
 	player.set_physics_process(false)
 	player.read_input = false
 	game.clock = func() -> float: return _now

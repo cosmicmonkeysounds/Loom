@@ -8,7 +8,15 @@
 ##   left stick idle (the show's headsets have only the right controller),
 ##   its forward / back walks too, each axis locked out unless the push is
 ##   a real diagonal ([method Locomotion.axis_lock]).
-## - **Room scale**: each physics tick the head's horizontal offset from the
+## - **Every rendered frame** (`_process`): the sticks, the turn, walking,
+##   gravity and room scale. On a headset each frame moves by exactly one
+##   display interval ([method frame_step]): physics ticks drift against
+##   the display (a frame with no tick, then one with two) and the measured
+##   frame time is noisy, and either snaps the view while walking or
+##   turning. After a [method teleport] the body waits two physics ticks
+##   before it moves (a floor built that frame is not in the physics space
+##   yet).
+## - **Room scale**: each frame the head's horizontal offset from the
 ##   body is folded into the body with its own slide (so a real step climbs a
 ##   stair and slides along a wall like a stick step) and taken back out of
 ##   the origin. Whatever the walls refused is pushed back too (past a few
@@ -20,10 +28,9 @@
 ##   a first-timer knows why they stopped.
 ## - **Hit** ([member hit_button]): either trigger, or A / X — the King's
 ##   hit (the game takes the press, not the hold).
-## - **Mute** ([member mute_button]): B / Y — the voice link's mic.
 ##
 ## Without OpenXR (a Mac, the tests) it is a desktop rig: WASD / ↑↓ walk,
-## Q/E / ←→ turn, Space / F hit, M mute, mouse look (click to capture, Esc to
+## Q/E / ←→ turn, Space / F hit, mouse look (click to capture, Esc to
 ## release; never in the lobby, where the mouse points — [member
 ## capture_mouse]) — all feeding the same sticks and button, so the game
 ## logic can't tell the difference.
@@ -46,6 +53,15 @@ const MAX_HEAD_GAP := 0.05
 const TURN_VIGNETTE := 0.85
 const VIGNETTE_CLOSE := 10.0
 const VIGNETTE_OPEN := 2.5
+## The longest step (s): a hitch (the first frame after the house loads can
+## last a second) must not jump the view round or drop the body through a
+## floor.
+const MAX_STEP := 1.0 / 30.0
+## A headset frame within this share of the display interval counts as
+## exactly one interval ([method frame_step]).
+const FRAME_SNAP := 0.5
+## Frame-timing stats go to the log this often (s) on a headset.
+const STATS_EVERY := 10.0
 ## Walking into a wall buzzes the controllers at most this often (s).
 const WALL_BUMP_EVERY := 0.6
 ## False in the lobby: the sticks drive the picker, not the body.
@@ -53,16 +69,13 @@ const WALL_BUMP_EVERY := 0.6
 
 ## Whether the rig runs on a headset (set by `main.gd` before play).
 var xr_active := false
-## The sticks after the dead zone, refreshed every physics tick (the lobby
+## The sticks after the dead zone, refreshed every rendered frame (the lobby
 ## picker reads them). Tests write them directly with [member read_input] off.
 var left_stick := Vector2.ZERO
 var right_stick := Vector2.ZERO
 ## The hit button held (a trigger, A / X; Space / F on the desktop rig),
 ## refreshed with the sticks.
 var hit_button := false
-## The mute button held (B / Y; M on the desktop rig), refreshed with the
-## sticks — the game toggles the voice link's mic on the press.
-var mute_button := false
 ## Read the devices each tick (off in tests that drive the sticks).
 var read_input := true
 ## Desktop rig: a click captures the mouse for looking around (off in the
@@ -80,6 +93,11 @@ var _gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity", 
 var _vignette := 0.0
 var _turn_flash := 0.0
 var _pitch := 0.0
+## Physics ticks still to wait before the body moves (after a teleport).
+var _settle := 0
+var _fall := 0.0
+var _ticks := 0
+var _stats := {"t": 0.0, "frames": 0, "snapped": 0, "long": 0, "dt_min": 1.0, "dt_max": 0.0, "ticks0": 0, "ticks2": 0}
 
 
 func _ready() -> void:
@@ -131,6 +149,8 @@ func feet() -> Vector3:
 ## physical offset in the play space.
 func teleport(pos: Vector3, yaw: float) -> void:
 	velocity = Vector3.ZERO
+	_fall = 0.0
+	_settle = 2
 	global_position = pos
 	if xr_active:
 		var turn := yaw - head_yaw()
@@ -171,26 +191,91 @@ func face(yaw: float) -> void:
 # --- the loop ----------------------------------------------------------------
 
 
-func _physics_process(delta: float) -> void:
+## Every rendered frame: the sticks, the turn, room scale, walking, gravity
+## and the vignette.
+func _process(frame: float) -> void:
+	var delta := frame_step(frame)
+	if xr_active:
+		_count(frame)
 	if read_input:
 		_read_sticks()
-	if xr_active:
-		_fold_head()
-	if locomotion_enabled and delta > 0.0:
+	if delta <= 0.0:
+		return
+	if locomotion_enabled:
 		var turn := Locomotion.smooth_turn(right_stick.x, delta)
 		if turn != 0.0:
 			origin.global_transform = Locomotion.rotate_about(origin.global_transform, camera.global_position, turn)
 			_turn_flash = maxf(_turn_flash, absf(turn) / (Locomotion.TURN_RATE * delta))
 	var walk := Locomotion.head_relative(left_stick, head_yaw()) * Locomotion.WALK_SPEED if locomotion_enabled else Vector3.ZERO
-	velocity.x = walk.x
-	velocity.z = walk.z
+	if _settle == 0:
+		if xr_active:
+			_fold_head()
+		_walk(walk, delta)
+		_wall_bump(delta, Vector2(walk.x, walk.z).length())
+	_update_vignette(delta, Vector2(walk.x, walk.z).length())
+
+
+## The walk and gravity over `delta`. move_and_slide moves velocity × the
+## engine's own frame time, so the velocity is scaled to cover `delta`.
+func _walk(walk: Vector3, delta: float) -> void:
+	var engine_dt := get_physics_process_delta_time() if Engine.is_in_physics_frame() else get_process_delta_time()
+	var k := delta / engine_dt if engine_dt > 0.0 else 1.0
 	if is_on_floor():
-		velocity.y = 0.0
+		_fall = 0.0
 	else:
-		velocity.y -= _gravity * delta
+		_fall -= _gravity * delta
+	velocity = Vector3(walk.x, _fall, walk.z) * k
 	move_and_slide()
-	_wall_bump(delta, Vector2(walk.x, walk.z).length())
-	_update_vignette(delta, Vector2(velocity.x, velocity.z).length())
+	velocity /= k
+
+
+## Physics ticks: only the wait after a teleport, and the stats' count.
+func _physics_process(_delta: float) -> void:
+	_ticks += 1
+	_settle = maxi(_settle - 1, 0)
+
+
+## How far (s) this frame moves the rig: the frame's time, but at most
+## [constant MAX_STEP], and on a headset exactly one display interval when
+## it is near one (the compositor shows frames one interval apart; the
+## measured time only adds noise).
+func frame_step(frame: float) -> float:
+	var step_s := minf(frame, MAX_STEP)
+	if xr_active and Engine.physics_ticks_per_second > 0:
+		var interval := 1.0 / Engine.physics_ticks_per_second
+		if absf(frame - interval) < interval * FRAME_SNAP:
+			return interval
+	return step_s
+
+
+## One tick and one frame of `delta` (the tests' and the autopilot's clock).
+func step(delta: float) -> void:
+	_physics_process(delta)
+	_process(delta)
+
+
+## Frame-timing stats for the log: frames, their time range, how many were
+## snapped to the interval or ran long, and frames with 0 or 2+ physics ticks.
+func _count(frame: float) -> void:
+	var s := _stats
+	s["t"] += frame
+	s["frames"] += 1
+	s["dt_min"] = minf(s["dt_min"], frame)
+	s["dt_max"] = maxf(s["dt_max"], frame)
+	var interval := 1.0 / maxi(Engine.physics_ticks_per_second, 1)
+	if absf(frame - interval) < interval * FRAME_SNAP:
+		s["snapped"] += 1
+	else:
+		s["long"] += 1
+	if _ticks == 0:
+		s["ticks0"] += 1
+	elif _ticks >= 2:
+		s["ticks2"] += 1
+	_ticks = 0
+	if s["t"] < STATS_EVERY:
+		return
+	print("reinstall-vr: frames %d in %.1f s (%.1f–%.1f ms; %d on the interval, %d long), physics %d Hz: %d frames without a tick, %d with 2+" % [s["frames"], s["t"], s["dt_min"] * 1000.0, s["dt_max"] * 1000.0, s["snapped"], s["long"], Engine.physics_ticks_per_second, s["ticks0"], s["ticks2"]])
+	_stats = {"t": 0.0, "frames": 0, "snapped": 0, "long": 0, "dt_min": 1.0, "dt_max": 0.0, "ticks0": 0, "ticks2": 0}
 
 
 ## A light buzz when a walk is held up by a wall (not on every frame of it).
@@ -209,7 +294,7 @@ func _wall_bump(delta: float, wanted: float) -> void:
 func _read_sticks() -> void:
 	if xr_active:
 		left_stick = Locomotion.dead_zone(left_hand.get_vector2("primary"))
-		right_stick = Locomotion.axis_lock(Locomotion.dead_zone(right_hand.get_vector2("primary")))
+		right_stick = Locomotion.axis_lock(Locomotion.dead_zone(right_hand.get_vector2("primary")), right_stick)
 		# One controller: with the left stick idle (or no left controller),
 		# the right stick's forward / back walks while its sideways turns.
 		if left_stick == Vector2.ZERO:
@@ -218,17 +303,15 @@ func _read_sticks() -> void:
 		for hand: XRController3D in [right_hand, left_hand]:
 			if hand.is_button_pressed("trigger_click") or hand.is_button_pressed("ax_button") or hand.get_float("trigger") > 0.8:
 				hit_button = true
-		mute_button = right_hand.is_button_pressed("by_button") or left_hand.is_button_pressed("by_button")
 		return
 	var k := func(a: Key, b: Key) -> float:
 		return 1.0 if Input.is_physical_key_pressed(a) or Input.is_physical_key_pressed(b) else 0.0
 	left_stick = Vector2(k.call(KEY_D, KEY_NONE) - k.call(KEY_A, KEY_NONE), k.call(KEY_W, KEY_UP) - k.call(KEY_S, KEY_DOWN)).limit_length(1.0)
 	right_stick = Vector2(k.call(KEY_E, KEY_RIGHT) - k.call(KEY_Q, KEY_LEFT), 0.0)
 	hit_button = k.call(KEY_SPACE, KEY_F) > 0.0
-	mute_button = k.call(KEY_M, KEY_NONE) > 0.0
 
 
-## Room scale: move the body under the head with a slide of its own (floor
+## Room scale (each frame): move the body under the head with a slide of its own (floor
 ## snap, slopes and walls all apply — `move_and_collide` would stop dead at
 ## the foot of a stair), take the horizontal part of that move back out of
 ## the origin (the climb stays, so the head rises with the body), then push

@@ -5,7 +5,7 @@
 import { describe, expect, it } from "vitest";
 import { BufferGeometry, DoubleSide, Group, InstancedMesh, LineSegments, Matrix4, Mesh, MeshLambertMaterial, Object3D, Vector3 } from "three";
 import type { Material } from "three";
-import { buildRamps, buildWalls, doorGap, forward, outsideGround, pointInPoly, pointInPolyStrict, roomById, route, toSpace } from "../src/index.ts";
+import { buildRamps, buildWalls, doorGap, forward, outsideGround, pointInPoly, pointInPolyStrict, roomById, route, stairWells, toSpace } from "../src/index.ts";
 import type { SpaceTransform, Vec3 } from "../src/index.ts";
 import {
   buildHouseScene,
@@ -123,6 +123,21 @@ describe("buildHouseScene (the show's map, headless)", () => {
       expect((ramp.material as Material).side).toBe(DoubleSide);
     }
     expect(scene.floors.get("top")!.getObjectByName("ramps:top")).toBeUndefined();
+    scene.dispose();
+  });
+
+  it("a stairwell's band between the floors is closed, on the lower floor (no seam to the void)", () => {
+    const scene = buildHouseScene(show, { labels: false });
+    for (const floor of ["basement", "main"]) {
+      const well = scene.floors.get(floor)!.getObjectByName(`wells:${floor}`) as Mesh;
+      expect(well, floor).toBeDefined();
+      well.geometry.computeBoundingBox();
+      const box = well.geometry.boundingBox!;
+      const w = stairWells(show).find((x) => x.floor === floor)!;
+      expect(box.min.y).toBeLessThan(w.bottom);
+      expect(box.max.y).toBeGreaterThan(w.top);
+    }
+    expect(scene.floors.get("top")!.getObjectByName("wells:top")).toBeUndefined();
     scene.dispose();
   });
 

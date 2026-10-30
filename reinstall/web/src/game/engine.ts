@@ -53,7 +53,7 @@
 
 import { ACESFilmicToneMapping, PerspectiveCamera, Scene, Vector3, WebGLRenderer } from "three";
 import type { Group } from "three";
-import { buildWalls, heartProps, locate, heartReached, outsideGround, pathLength, pickupProps, pickupReach, presenceRoom, spaceOf, toSpace, wrapYaw, yawFromSpace, yawToSpace } from "@loom/house";
+import { buildWalls, heartProps, hiddenFloors, locate, heartReached, outsideGround, pathLength, pickupProps, pickupReach, presenceRoom, spaceOf, toSpace, wrapYaw, yawFromSpace, yawToSpace } from "@loom/house";
 import type { Assignment, DuckSpot, GameLights, HouseMap, KingState, PlayerPose, PlayerState, Prop, Spawn, SpatialFrame, Vec3 } from "@loom/house";
 import { applySpace, buildHouseScene, createAvatar, createDuck, createTrail, GAME_TERMINAL_SCALE, houseAtmosphere, PoseBuffer, spaceGroup } from "@loom/house/three";
 import type { Avatar, Duck, HouseScene, King, Trail } from "@loom/house/three";
@@ -306,6 +306,8 @@ export class Game {
   // The moments (wave 26, C6).
   /** The player's presence room (`presenceRoom`, re-read with the trail): the camera feeds follow it (C7). */
   private presence: string | null = null;
+  /** The room the floors are shown for (`presenceRoom` every frame): outside, the house is only its outside floor (`hiddenFloors`). */
+  private sightRoom: string | null = null;
   /** An escape is under way (the scare, then the teleport): no input, no other moment. */
   private escaping = false;
   /** The jump scare is on screen. */
@@ -909,6 +911,13 @@ export class Game {
     // The game is speaking: the terminals must never hear it back.
     if (this.speaking) this.voice?.holdFor(SPEAKING_HOLD_MS);
 
+    this.sightRoom = presenceRoom(this.map, this.body.p, this.sightRoom);
+    const hidden = hiddenFloors(this.map, this.sightRoom);
+    for (const [id, group] of this.house.floors) group.visible = !hidden.includes(id);
+    // Nothing on a hidden floor floats in the sky: Gerald and the other programs hide with it.
+    const onHidden = (p: Vec3): boolean => hidden.length > 0 && hidden.includes(locate(this.map, p).floor);
+    this.duck.object.visible = !onHidden(this.duckSpot.pos);
+
     this.duck.update(dt);
     this.trail.update(dt);
     this.house.update(dt, this.camera);
@@ -919,7 +928,10 @@ export class Game {
     this.lamps.update(now / 1000, dt);
     for (const g of this.ghosts.values()) {
       const s = g.buffer.sample(now);
-      if (s !== null) g.avatar.setPose(s.p, s.yaw, s.pitch);
+      if (s !== null) {
+        g.avatar.setPose(s.p, s.yaw, s.pitch);
+        g.avatar.object.visible = !onHidden(s.p);
+      }
       g.avatar.update(dt);
     }
     if (this.post) this.post.render(dt);
@@ -1489,6 +1501,7 @@ export class Game {
     this.kingProp = king;
     this.world = buildPhysicsWorld(house, walls, this.physicsOptions());
     this.presence = null;
+    this.sightRoom = null;
     this.bindMoments();
     this.bindKing();
     this.lastTrailAt = Number.NEGATIVE_INFINITY;

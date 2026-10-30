@@ -1121,11 +1121,18 @@ if it changes (`SRC` = the source file):
 
 ```bash
 VF="scale=1280:720:flags=lanczos,format=yuv420p10le,colorspace=all=bt709:iall=bt2020:itrc=bt2020-10:format=yuv420p"
-ffmpeg -i "$SRC" -map 0:v:0 -map 0:a:0 -vf "$VF" -c:v libx264 -profile:v high -level 4.0 -preset slow -crf 27 \
-  -pix_fmt yuv420p -color_primaries bt709 -color_trc bt709 -colorspace bt709 -c:a aac -b:a 96k -ac 2 \
+# The recording is quiet (−39 LUFS): compress it, then bring it to −14 LUFS
+# (−1.5 dBTP). For an exact level run loudnorm twice: once with
+# print_format=json, then with its measured_* values and linear=true.
+AF="highpass=f=60,acompressor=threshold=-36dB:ratio=4:attack=10:release=250:makeup=12dB:knee=6,loudnorm=I=-14:TP=-1.5:LRA=7"
+ffmpeg -i "$SRC" -map 0:a:0 -af "$AF" -ar 48000 -ac 2 loud.wav
+ffmpeg -i "$SRC" -i loud.wav -map 0:v:0 -map 1:a:0 -vf "$VF" -c:v libx264 -profile:v high -level 4.0 -preset slow -crf 27 \
+  -pix_fmt yuv420p -color_primaries bt709 -color_trc bt709 -colorspace bt709 -c:a aac -b:a 128k -ac 2 \
   -movflags +faststart reinstall/web/public/intro/reinstallation.mp4
-ffmpeg -i "$SRC" -map 0:v:0 -map 0:a:0 -vf "$VF" -r 30 -c:v libtheora -b:v 1400k -c:a libvorbis -q:a 3 \
-  -ac 2 -ar 44100 reinstall/vr/media/reinstallation.ogv
+# The Ogg's audio comes from the WAV too: filtering inside the Ogg mux
+# leaves non-monotonic audio timestamps.
+ffmpeg -i "$SRC" -i loud.wav -map 0:v:0 -map 1:a:0 -vf "$VF" -r 30 -c:v libtheora -b:v 1400k -c:a libvorbis -q:a 4 \
+  -ac 2 -ar 44100 -shortest reinstall/vr/media/reinstallation.ogv
 ```
 
 Play: first-person, eye height 1.6 m, walk 1.8 m/s (run ×1.6 with Shift),
@@ -1789,7 +1796,18 @@ Provision: `/terminal/?code=…&name=Kitchen&character=Trabolta&spot=start-bar&v
   setting). With the left stick idle (the show's headsets have only the
   right controller) the right stick's forward / back walks too, its weaker
   axis dropped unless the push is a real diagonal (`Locomotion.axis_lock`,
-  0.5). A comfort vignette closes while moving or turning (turning to
+  0.5; once in, an axis holds down to 0.3, so a push near the edge never
+  flickers turning on and off). The rig (turn, walk, gravity, room
+  scale) moves every rendered frame, on a headset by exactly one display
+  interval per frame (`VrPlayer.frame_step`; physics ticks drift against
+  the display, and the measured frame time is noisy: both snap the view);
+  after a teleport the body waits two physics ticks for new floors.
+  `main.gd` asks for the offered rate nearest 90 Hz (start, session begun,
+  focus) and sets the physics tick to the display's rate; the Quest 3 has
+  so far stayed at 72 Hz. The game logs its frame timing every 10 s. Foveation stays level 3; MSAA on
+  `medium` drew a black void on the Quest 3 (2026-10-29). A body under the lobby's or the
+  intro's floor is put back on it (`Game._catch_fall`, logged).
+  A comfort vignette closes while moving or turning (turning to
   0.85); walking into a wall gives a light haptic buzz (at most every
   0.6 s); room-scale head offset folded into the body. The buttons are the King's
   hit (trigger, or A / X; on a Mac, Space or F) and the voice link's mute

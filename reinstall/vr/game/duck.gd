@@ -103,12 +103,25 @@ func place(pos: Vector3, yaw := 0.0) -> void:
 	_model.scale = Vector3.ONE
 	_egg.visible = false
 	_flying = -1.0
-	visible = true
+	_placed = true
+	visible = not _floor_hidden
 
 
 func remove() -> void:
+	_placed = false
 	visible = false
 	_flying = -1.0
+
+
+## Hide him while his floor is hidden ([method HouseBuilder.hide_floors]),
+## wherever he sits; he comes back once it is drawn again (if still placed).
+func set_floor_hidden(on: bool) -> void:
+	_floor_hidden = on
+	visible = _placed and not on
+
+
+var _placed := false
+var _floor_hidden := false
 
 
 func is_flying() -> bool:

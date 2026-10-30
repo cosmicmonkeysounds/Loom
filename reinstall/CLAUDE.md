@@ -142,12 +142,29 @@ presence rooms and `moment`), `spatial-cams.ts`, `spatial-voice.ts` and the
   that standard: most players have never worn a headset.
 - **Graphics tiers** (wave 39). VR's `graphics` (`low | medium | high`,
   default `medium`) sets the house lights' pool (2 / 4 / 5), the shading
-  (per vertex on `low`), and glow + 2× MSAA (`high` only); ACES on all.
+  (per vertex on `low`), and glow + 2× MSAA (`high` only; MSAA on
+  `medium` drew a black void on the Quest 3); ACES on all. The rig moves every rendered frame (turn, walk,
+  gravity, room scale), each headset frame by exactly one display interval
+  (`VrPlayer.frame_step`): physics ticks drift against the display and
+  snap the view. After a teleport the body waits two physics ticks (new
+  floors). The physics tick is matched to the display's rate (72 Hz on the
+  Quest 3: it ignores the 90 Hz request so far). `Game._catch_fall` puts a
+  body fallen out of the lobby or the intro back.
   Quest 3 must hold its frame rate on `medium`: keep SSAO / SSR / SSIL /
   volumetric fog off, ≤ 8 omni lights on a mesh (5 pool + the duck, heart and disk), and the pool fixed.
 - **Station config.** VR reads `user://station.json` (written by the
   in-headset setup) over the committed `config/station.json` (which must
   keep `CHANGEME`; a test checks it). Never write `res://`.
+- **No text in the VR house** (wave 46). VR draws no room names, terminal
+  captions, prop captions, signs or player name tags, and its HUD has no
+  room line, hint or mic line; only the found screen, notices, captions of
+  game lines and the King's own bar remain. A guest cannot mute the mic.
+- **Seen from outside** (wave 46). Outdoors, both games hide every floor
+  above the outside one (`hiddenFloors` / `HouseEscape.hidden_floors`),
+  with Gerald and the ghosts on it; they show again on that floor or at
+  the foot of a stair up. `stairWells` closes the band between a ceiling
+  and the floor above round each stair's hole; VR draws floors on the bare
+  grid (`cells(…, false)`: no T-junction cracks).
 - **Fiction.** The wizard and the HUD never promise the real server-room
   door; the King's stakes line belongs to the chess terminal. The HUD has
   no King bar (wave 26, R3): the bar over his head is his only display.

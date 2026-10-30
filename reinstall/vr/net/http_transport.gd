@@ -18,7 +18,10 @@ func _ready() -> void:
 	for i in POOL:
 		var r := HTTPRequest.new()
 		r.timeout = TIMEOUT
-		r.use_threads = false
+		# Off the main thread: each call's connect + TLS handshake took a
+		# frame on the Quest (the 1 s station poll, the 10 Hz poses), and a
+		# missed frame snaps the view while walking or turning.
+		r.use_threads = true
 		add_child(r)
 		_free.append(r)
 
