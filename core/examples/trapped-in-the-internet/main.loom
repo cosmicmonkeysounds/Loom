@@ -3348,14 +3348,6 @@ INTERACTION y2k_clock
   description: Fire only after the patch-bay watch radios IN (inside the server room, door shut). From here the patch bay judges its own cables (the bay on the server-room terminal posts each full patch); the watch stays inside as the fallback, with the 🔌 💥 ❌ buttons.
   while: Night.step < 14 and Night.scenario != 0 and Night.clock == "--:--"
 
-INTERACTION dream_toggle
-  label: 🌀 Clippy's dream: on / off
-  who: admin
-  act: E · Act III: the Y2K hour and the server room
-  sequence: false
-  description: The dream starts by itself on "…the Y2K BUG." and runs until an ending. Press it to put every terminal and the games' terminals back on their usual screens (the house wifi can't carry it, or a scene must read clean), and again to bring it back.
-  while: Night.clock != "--:--" and Night.ended != true
-
 INTERACTION y2k_midnight
   label: 🎆 Midnight (auto at 60 min)
   who: admin
@@ -3739,6 +3731,16 @@ INTERACTION language_report
   sequence: false
   description: Any time after G1, between two awards. The host reads the night's Language Report off the story and the TV shows it: the program that cursed the most (the most words the Password Manager's filter caught in what they typed), how many words she censored out of every word the filter caught, the words she censored most, how many she will not repeat, her ⭐ and where she left the filter's strength. The TV then lets every censored word out at once. Press again to read it again with the newest numbers.
   while: Night.ceremony == true and Night.resurrected != true
+
+// Wave 49: the dream's switch, appended so no cue number moves. It rides
+// Anytime: an aside, never on the running order.
+INTERACTION dream_toggle
+  label: 🌀 Clippy's dream: on / off
+  who: admin
+  act: Anytime
+  sequence: false
+  description: The dream starts by itself on "…the Y2K BUG." and runs until an ending. Press it to put every terminal and the games' terminals back on their usual screens (the house wifi can't carry it, or a scene must read clean), and again to bring it back.
+  while: Night.clock != "--:--" and Night.ended != true
 
 // Performer buttons (on every guest card). Every hook guards its phase
 // and ignores a wrong-phase press — except `send to the internet` and
