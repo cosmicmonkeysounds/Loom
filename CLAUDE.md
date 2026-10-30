@@ -287,8 +287,7 @@ median (99 s on the GPU) at 190 replies a minute, and a line costs about
 $0.0006. To go back: `cp stagehand/laptop.ollama.yaml stagehand/laptop.yaml`,
 then `scripts/house-macbook/trabolta-reset.sh`.
 
-**Everyone uploads, and the phones speak** (wave 53, branch
-`oct31-w53/everyone-uploads`, not merged, not shipped;
+**Everyone uploads, and the phones speak** (wave 53, shipped in `w53`;
 `docs/loom-w53-contract.md`, show text `DRAFT w53` on `SIGNOFF-w53.md`): Clippy,
 the Antivirus and the hosts run the guests' own Login, Upload and Upload Deposit
 beats on their characters (`TRAIT Staff`): a character bound as the subject in a
@@ -303,10 +302,18 @@ a real phone: run `SIGNOFF-w53.md` §3 first. Help:
 
 ### Release status
 
-Wave 52 (master, 2026-10-30) changes only the MacBook's `agents` job, so the VPS
-stays on its release below; it is live on that worker.
+The VPS runs **`w53`** (master `a27da927`, shipped 2026-10-30; rollback `w51`):
+wave 53 (everyone uploads, the phones speak) on top of wave 52, which changes
+only the MacBook's `agents` job. The preview was synced (`--keep-maps --keep-audio
+--keep-lights --keep-desk`) and reloaded. On the live server with the doors open,
+a phone profile took McAfee and CRA Agent through the whole upload and the staff
+door to a working booth, with no scan; the parts were released and the preview
+reloaded clean after. Still owed: reload every phone (a booth on the old bundle
+never reports in, so it skips the upload), every staff member uploads before the
+doors, run `SIGNOFF-w53.md` §3 on a real iPhone and Android phone (the voice was
+logged in Chromium, never heard), sign off `SIGNOFF-w53.md`.
 
-The VPS runs **`w51`** (master `a033840b`, shipped 2026-10-30; rollback
+Before it, `w51` (master `a033840b`, shipped 2026-10-30; rollback
 `w50`): the ghosts as glitchy swarms of their profile pictures, VR's right
 hand as the player's own swarm with no left hand, the underside of an upper
 floor, the reinstall test code; for the house, Zigbee flow control with
