@@ -18,7 +18,7 @@ code and that file disagree, fix one of them in the same change.
 ## Commands
 
 ```bash
-pnpm --filter @loom/house test        # vitest: 432 passed + 4 skipped, 20 files
+pnpm --filter @loom/house test        # vitest: 488 passed + 4 skipped, 21 files
 pnpm --filter @loom/house typecheck
 pnpm --filter @loom/house goldens     # regenerate test/golden/ after a deliberate geometry/route/king change
 pnpm --filter @loom/house sync        # copy the show's house.json, goldens and voice vectors into reinstall/vr/
@@ -140,12 +140,36 @@ export function gameLightsOf(raw): GameLights | null; pulseFactor(t, period?);
   the last program left. A safety fixture never pulses (a firmware breathe
   goes dark). Tests: `test/lights-presence.test.ts`.
 
+## Wave 47 API (prop models, the games' neon and haze)
+
+```ts
+// models.ts
+Prop.model?: string; Prop.neon?: string;            // box / cylinder only; validate refuses them elsewhere
+export const PROP_MODELS: readonly PropModel[];     // {id, label, group, kind, size, color, neon}
+export function modelParts(prop): ModelPart[] | null; partsOf(id, w, h, d): ModelPart[];
+// ModelPart {role: body|trim|dark|neon|screen|glass|leaf|alert, shape: box|cyl, axis, c, s} in the prop's frame
+export const NEON_STRIP_AT, NEON_STRIP_H, NEON_STRIP_PROUD, NEON_SKIRT, NEON_COVE, NEON_GAIN, NEON_FLICKER_S;
+export const HAZE_AT, HAZE_OPACITY, HAZE_TILE_M, HAZE_DRIFT, HAZE_COLOR, HAZE_FOG, HAZE_FOG_DENSITY;
+export function neonFlicker(t): number;
+// three/
+buildHouseScene(house, { neon?: boolean }); HouseScene.setHaze(layers); houseAtmosphere(scene, { haze: true });
+```
+
+- A model is drawing only: `propSolid`, routes, locate and every geometry
+  golden ignore it, so giving a prop a model never moves a golden. Old
+  servers ignore the field; old games draw the plain shape.
+- Every renderer draws models (the terminals' world view and the map
+  editor too); only the games pass `neon: true` (glossy props, wall neon,
+  unfogged flickering neon, the haze sheets).
+- GDScript port: `reinstall/vr/house/house_models.gd`, diffed against
+  `test/golden/models.json` (`goldens` writes it; change both together).
+
 ## Test layout
 
 | Path | What |
 |---|---|
 | `test/fixtures/*.json` | small maps (`two-rooms`, `l-room`, `hole`, `stair`, `yard`, `tie`, `props`, `three-floors`) + `audio-*`, `lights-*` (shared with stagehand's Python tests) + `voice-mulaw.json` (μ-law vectors, copied to VR) |
-| `test/golden/<map>.{walls,routes,locate,escape,presence}.json` | the GDScript port's reference; `show.king.json` / `show.fallen.json` for the King, `show.moments.json` for the heart and the disk, `constants.json` for the wave 26 constants |
+| `test/golden/<map>.{walls,routes,locate,escape,presence}.json` | the GDScript port's reference; `models.json` every model's parts (wave 47); `show.king.json` / `show.fallen.json` for the King, `show.moments.json` for the heart and the disk, `constants.json` for the wave 26 constants |
 | `test/maps/` | frozen older show maps (`two-floor*`, `three-floor*`) for tests that pin mechanics, so a show-map edit never breaks them |
 | `test/show.test.ts` | the real show maps (`house.json` + `house.shed.json`) validate and route; the heart's placement and the disk's distance from the duck spots and the trails |
 

@@ -125,6 +125,10 @@ interface Prop {
   health?: string;              // king only: the story world path holding his CURRENT hit points ("Night.king_hp");
                                 //   absent = the spatial hub counts them in memory, starting at `hp`
   item?: string;                // pickup only, and required there: what it is ("virus"), the moment's `item` arg
+  model?: string;               // (wave 47) box / cylinder only: what it is drawn as (`PROP_MODELS`: "wall",
+                                //   "cabinet", "rack", "crt", …); drawing only, it collides as its plain shape;
+                                //   an unknown well-formed id draws plain
+  neon?: string;                // (wave 47) a model's neon colour, "#rrggbb" (default: the model's)
   signals?: { won?: string; lost?: string; drawn?: string; hit?: string; fallen?: string; reached?: string; taken?: string };
                                 // the story signals a prop posts, keys checked per kind: a king's won / lost /
                                 //   drawn (the chess terminal) and hit / fallen (the server; defaults "chess won" /
@@ -172,6 +176,11 @@ Validation (`validateHouse`) returns `{ ok, problems: string[], house? }`
   on any other kind; a `label` on a heart or a pickup (an older game would
   draw it). An older server or bundle refuses both new kinds, so the
   server ships before a map that has them.
+- **Models** (wave 47): a `model` that is not a lowercase id
+  (`PROP_MODEL_PATTERN`), a `neon` that is not `#rrggbb`, or either on a
+  kind other than `box` / `cylinder`. An older server ignores both fields
+  and an older game draws the plain shape, so a map with models needs no
+  deploy order.
 - **Stairs:** an unknown room; a rect that is not `x0 < x1`, `z0 < z1` by
   at least 1 mm; `from` and `to` on one floor, or `from` not the lower; a
   rect not inside both rooms; less than 0.3 m (`STAIR_CLEARANCE`) of `to`
