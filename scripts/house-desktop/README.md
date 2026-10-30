@@ -23,7 +23,7 @@ cross-machine diagnostics (`pnpm showctl …`) in
 
 | Machine | Runs |
 |---|---|
-| **John's Desktop** (Windows, this folder) | the **sound**: stagehand **`audio`** (the router) on the **MOTU 828x** (its own outs, no ADAT expander) over USB 2, through ASIO: every story sound, the announcements, the house soundtrack (wave 38) and Trabolta's TV voice on every speaker (the TV's sound is cabled into the 828x, §3.5) · the **lights**: **Zigbee2MQTT** on the CC2652P stick (`COMn`) with the Hue and ZL1 bulbs, the living room's **WLED** strip on its ESP32 controller (Wi-Fi), stagehand **`lights`** (`lights.json`: every bulb, the strip and the story's `lights_*` looks) · stagehand **`show`** (Trabolta's room cuts and the flicker bulb by bulb, the sensors back, the `do announce` relay) · **Mosquitto**, the house broker (anonymous `127.0.0.1:1883`, password-only `props` on the LAN at `:1884`) · the **TV**: Chrome kiosk over HDMI, spot `desktop-tv` |
+| **John's Desktop** (Windows, this folder) | the **sound**: stagehand **`audio`** (the router) on the **MOTU 828x** (its own outs, no ADAT expander) over USB 2, through ASIO: every story sound, the announcements, the house soundtrack (wave 38) and Trabolta's TV voice on every speaker (the TV's sound reaches input 3 through VoiceMeeter and the router's `audio.tap`, §3.5) · the **lights**: **Zigbee2MQTT** on the CC2652P stick (`COMn`) with the Hue and ZL1 bulbs, the living room's **WLED** strip on its ESP32 controller (Wi-Fi), stagehand **`lights`** (`lights.json`: every bulb, the strip and the story's `lights_*` looks) · stagehand **`show`** (Trabolta's room cuts and the flicker bulb by bulb, the sensors back, the `do announce` relay) · **Mosquitto**, the house broker (anonymous `127.0.0.1:1883`, password-only `props` on the LAN at `:1884`) · the **TV**: Chrome kiosk over HDMI, spot `desktop-tv` |
 | **John's MacBook** (macOS) | **Trabolta**: Ollama `gpt-oss:20b` + stagehand `agents` (`stagehand/laptop.yaml`) · a director's Run console · `scripts/ops/` · the router only as the fallback (`stagehand/trapped.macbook.yaml`) |
 | Steph's laptop | the server-room terminal (Chrome) + the Grand Central M4 on USB |
 | John's old laptop | the tent: `/terminal/?…&spot=tent&announce=1` |
@@ -170,9 +170,9 @@ show's `showctl` diagnostics.
 - **Windows' default playback device is never the MOTU** (leave it on the
   TV's HDMI): a notification or a stray app must never land on the 828x
   (Analog 1 is the living-room sub). The router opens the MOTU itself,
-  through ASIO, whatever the default is. Chrome is the exception: since wave
-  38 its output goes to the PC's line out, which is cabled into the 828x
-  (§3.5).
+  through ASIO, whatever the default is. Chrome is the exception: its
+  output is **VoiceMeeter Input** (wave 46; this PC has no line out), which
+  the router sums into the 828x's input 3 (§3.5).
 
 ## 2. Mosquitto (the house broker)
 
@@ -247,35 +247,45 @@ on the MacBook (§11) and move on.
   now **Main L/R**: if the old mix sent the mic to Analog 1–2, move it to
   Main L/R (Analog 1 is the sub now). **Input 3 (the TV) is never in a
   CueMix mix**: the router routes it, and CueMix would play it a second
-  time. CueMix sums the computer's playback with its mix on each output.
+  time (since wave 46 nothing is plugged into Analog In 1: the TV arrives
+  in software, §3.5, so CueMix's input-3 meter stays flat). CueMix sums the
+  computer's playback with its mix on each output.
 - **The router opens a duplex stream** (`passthrough: true` since wave 38):
-  10 in / 12 out of the device's 32 / 30, through ASIO. It plays to the
-  outputs, routes the TV's input to the speakers and meters every input,
-  so the music ducks under Trabolta and under Clippy's mic (§3.6).
+  10 in / 14 out of the device's 32 / 30, through ASIO (`stagehand check`
+  prints `(10 in / 14 out) duplex`). It plays to the outputs, routes the
+  TV's input to the speakers and meters every input, so the music ducks
+  under Trabolta and under Clippy's mic (§3.6). Next to it, `audio.tap`
+  opens VoiceMeeter's output as a second, capture-only stream and sums it
+  into input 3 (§3.5).
 
-**Our channel numbers are the 828x's own** (no channel map), as in
-`audio.json`:
+**Our channel numbers are the ASIO driver's own** (no channel map), in the
+order MOTU's Windows driver names them (read from its channel names on
+2026-10-30; not the Core Audio order the docs assumed before wave 46), as
+in `audio.json`:
 
 | Output | On the 828x | Show use |
 |---|---|---|
-| 1 | Analog 1 (back) | the living-room **subwoofer** (speaker `living-sub`, its own trim) |
-| 2 | Analog 2 (back) | spare |
-| 3–4 | Analog 3–4 (back) | the kitchen L/R |
-| 5–7 | Analog 5–7 (back) | the hall (The Tube), the Steam Room, the CPU: no speaker yet |
-| 8 | Analog 8 (back) | The Optical Drive (the mud room) |
-| 9–10 | **Main L/R** | the living room L/R (`living-l`, `living-r`) |
-| 11–12 | **Phones L/R**, a front headphone jack | unused |
+| 1–2 | **Main Out L/R** | the living room L/R (`living-l`, `living-r`) |
+| 3 | Analog 1 (back) | the living-room **subwoofer** (speaker `living-sub`, its own trim) |
+| 4 | Analog 2 (back) | spare |
+| 5–6 | Analog 3–4 (back) | the kitchen L/R |
+| 7–9 | Analog 5–7 (back) | the hall (The Tube), the Steam Room, the CPU: no speaker yet |
+| 10 | Analog 8 (back) | The Optical Drive (the mud room) |
+| 11–12 | S/PDIF L/R | unused |
+| 13–14 | **Phones L/R**, a front headphone jack | unused |
+
+The ADAT channels (15–30) are not opened.
 
 | Input | On the 828x | Show use |
 |---|---|---|
 | 1 | Mic/Gtr 1 (front) | Clippy's wireless receiver: mixed in CueMix to the living room; the router only meters it (role `clippy`) |
 | 2 | Mic/Gtr 2 (front) | spare |
-| 3 | **Analog In 1** (back) | **the TV**: Chrome's sound from the PC's line out (role `trabolta`, §3.5) |
+| 3 | **Analog In 1** (back, nothing plugged in) | **the TV**: Chrome's sound through VoiceMeeter, summed in by `audio.tap` (role `trabolta`, §3.5) |
 | 4–10 | Analog In 2–8 (back) | unused |
 
-S/PDIF and the ADAT channels are left unused. The 6 placed speakers are
-the living room L/R on 9–10 and its sub on 1, the kitchen L/R on 3–4 and
-The Optical Drive on 8. The zone `living` is all three living-room
+Then S/PDIF, ADAT, Return 1–2 (29–30) and Reverb 1–2 (31–32), unused. The
+6 placed speakers are the living room L/R on 1–2 and its sub on 3, the
+kitchen L/R on 5–6 and The Optical Drive on 10. The zone `living` is all three living-room
 speakers. The Fan Closet's speaker is placed later (§8).
 
 ### 3.3 Prove it: one ASIO device, 32 in / 30 out
@@ -304,8 +314,8 @@ fails to load. The real event id and passcode come from
 `trapped.house.local.yaml`, §7.)
 
 **The counts must be 32 in / 30 out**, `audio.json`'s `device.expect`
-(the show uses 10 in / 12 out of them; `check` prints `828x on ASIO (10 in
-/ 12 out) duplex`). `stagehand check --only audio`
+(the show uses 10 in / 14 out of them; `check` prints `828x on ASIO (10 in
+/ 14 out) duplex`). `stagehand check --only audio`
 (§7) fails, and the router logs `LAYOUT MOVED`, when they differ. Other
 counts mean the sample rate, mirroring or an optical port's format is
 wrong (§3.2): fix the 828x, never the file. If MOTU's ASIO
@@ -379,50 +389,76 @@ would stop early: *plays only the first 236 s of 600 s*); re-encode that
 one with the `ffmpeg` line the warning prints (`ffmpeg -i in.mp3 -c:a
 libmp3lame -q:a 2 out.mp3`) and replace the file.
 
-### 3.5 The TV's sound into the 828x (Trabolta on every speaker)
+### 3.5 The TV's sound into input 3 through VoiceMeeter (Trabolta on every speaker)
 
 Trabolta speaks from the TV page (Chrome, spot `desktop-tv`). Since wave 38
-he is heard on the TV **and** on every house speaker: Chrome's sound goes
-out of the PC's line out into the 828x, and the router routes it to the
-speakers and ducks the music under it (§3.6). There is no server round
-trip: the router hears the signal itself.
+he is heard on every house speaker, not the TV's own: the router routes
+input 3 to the speakers and ducks the music under it (§3.6). There is no
+server round trip: the router hears the signal itself.
 
-1. **Chrome's output to the line out.** Windows 11: Settings → System →
-   Sound → **Volume mixer**; Windows 10: Settings → System → Sound → **App
-   volume and device preferences**. Chrome shows there only while it plays
-   something: open the TV with `.\tv-kiosk.ps1 -Setup` and press ⚙ → TEST
-   VOICE. Set Chrome's **Output device** to the motherboard's line out (the
-   green jack), or any spare output that is neither HDMI nor the MOTU.
-2. **Cable** the line out (3.5 mm stereo) into the 828x's **rear Analog In
-   1** (input 3) with a 3.5 mm stereo to two 1/4" TS cable: the left plug
-   into Analog In 1, the right one stays loose (Trabolta's voice is the
-   same on both sides).
-3. **The level.** Chrome and the line out near full volume. A TEST VOICE
-   should peak well above −45 dBFS on input 3 (the duck opens over it) and
-   never clip: CueMix's input meter, or `uv run stagehand music status
-   --config trapped.desktop.yaml` (`inputs   : … 3 -18 dBFS …`; it reads the
-   router's health, sent once a minute, and shows the loudest moment since
-   the one before).
-4. **The TV's own speakers get nothing from Chrome.** Chrome is off HDMI
-   (step 1) and the TV's volume is down. Otherwise **Trabolta plays twice**:
+This PC has **no line out**, so since wave 46 there is no cable: Chrome
+plays into **VoiceMeeter** (a virtual cable), and the router's
+**`audio.tap`** (`trapped.desktop.yaml`: `tap: { device: "VoiceMeeter
+Output", host_api: mme, ch: 3 }`) opens VoiceMeeter's B1 bus ("VoiceMeeter
+Output", MME) as a second, capture-only stream and sums it into input 3
+inside the ASIO callback. The matrix routes it, the meters read it and the
+music ducks under Trabolta exactly as with a cable. A ring buffer absorbs
+the two clocks (VoiceMeeter's and the MOTU's; it adds ~10–30 ms): a `slip`
+drops frames when it runs full, an `underrun` pads silence. Proven here on
+2026-10-30: a tone into VoiceMeeter Input reached input 3 at full level,
+the `trabolta` duck opened fully and released after the hold, with no
+underruns, slips or xruns.
+
+1. **VoiceMeeter Potato**, installed (VB-Audio), and **running at
+   sign-in**: Menu → **Run on Windows Startup**. Closed, its virtual cable
+   passes nothing and input 3 is silent. Menu → System Settings →
+   **Preferred Main SampleRate 48000**.
+2. **A1, its hardware out: an unused MOTU WDM pair**
+   (`WDM: MOTU ADAT Optical B 7-8`, silent), so VoiceMeeter runs on the
+   MOTU's clock. Never a pair that reaches a speaker.
+3. **The Voicemeeter VAIO strip** (the first virtual input): **B1 on,
+   every A button off**, fader at 0 dB. An A button on plays Trabolta
+   twice, or straight to a MOTU out without the duck.
+4. **Chrome's output to VoiceMeeter Input.** Windows 11: Settings → System
+   → Sound → **Volume mixer**; Windows 10: Settings → System → Sound →
+   **App volume and device preferences**. Chrome shows there only while it
+   plays something: open the TV with `.\tv-kiosk.ps1 -Setup` and press ⚙ →
+   TEST VOICE. Set Chrome's **Output device** to **"VoiceMeeter Input
+   (VB-Audio VoiceMeeter VAIO)"**.
+5. **The router sees the tap.** `uv run stagehand check --config
+   trapped.desktop.yaml --only audio` prints `audio tap: VoiceMeeter Output
+   … → input 3` (or fails naming the device). The audio log's health line
+   ends `| tap VoiceMeeter Output … → in 3 peak N dBFS, underruns N, slips
+   N`, or `… NOT OPEN (why)`. A tap that fails to open never stops the
+   router: it logs `audio tap failed to open (...) — playing on without
+   it`, and then Trabolta is not on the house speakers and nothing ducks
+   under him.
+6. **The level.** Chrome near full volume. A TEST VOICE should peak well
+   above −45 dBFS on input 3 (the duck opens over it) and never clip: `uv
+   run stagehand music status --config trapped.desktop.yaml` (`inputs   :
+   … 3 -18 dBFS …`; it reads the router's health, sent once a minute, and
+   shows the loudest moment since the one before), or VoiceMeeter's own
+   VAIO meter.
+7. **The TV's own speakers get nothing from Chrome.** Chrome is off HDMI
+   (step 4) and the TV's volume is down. Otherwise **Trabolta plays twice**:
    once from the TV, once from the living-room speakers a moment later.
-5. **CueMix: input 3 is in no mix** (§3.2). The router routes it: the TV
-   row of the map editor's Audio-tab matrix (input 3) feeds outputs 3, 4,
-   8, 9 and 10 (the kitchen, The Optical Drive, the living room L/R; not
-   the sub). A new speaker (the Fan Closet's) needs its cell ticked on that
-   row, then Save to project.
-6. **No other Chrome on this PC during the show.** Windows' per-app output
-   is per program: every Chrome window on this PC plays through the line
-   out into every house speaker. The director's Run console is on the
-   MacBook.
+8. **CueMix: input 3 is in no mix** (§3.2; with no cable it carries nothing
+   in hardware anyway). The router routes it: the TV row of the map
+   editor's Audio-tab matrix (input 3) feeds outputs 1, 2, 5, 6 and 10 (the
+   living room L/R, the kitchen L/R, The Optical Drive; not the sub). A new
+   speaker (the Fan Closet's) needs its cell ticked on that row, then Save
+   to project.
+9. **No other Chrome on this PC during the show.** Windows' per-app output
+   is per program: every Chrome window on this PC plays through VoiceMeeter
+   into every house speaker. The director's Run console is on the MacBook.
 
 **Unverified on this PC:** that the TV page's device voice (Microsoft
 David or Mark) follows Chrome's per-app output. TEST VOICE must come out of
 the house speakers and not the TV; if it still comes out of the TV, set
-Windows' default output to the line out instead (and keep notifications
-and system sounds off, §1). The TV page's own sound effects are silent
-since wave 38 (only its voice reaches the line out), so a click on the page
-never ducks the music.
+Windows' default output to VoiceMeeter Input instead (and keep
+notifications and system sounds off, §1). The TV page's own sound effects
+are silent since wave 38 (only its voice reaches VoiceMeeter), so a click
+on the page never ducks the music.
 
 In the **MacBook fallback** (§11) the router is output-only: nothing is
 routed from input 3, so set Chrome's output back to HDMI and the TV's
@@ -856,8 +892,8 @@ project:
 - **Speakers**: the map editor's **🔊 Audio** tab. Place each speaker in its
   room on its 828x output channel, then **🔈 Test** each one: a tone and its
   name come out of exactly that speaker. Walk every speaker once on this PC
-  even if it was tested on the Mac: ASIO's channel order may not be Core
-  Audio's. **The sub** (`living-sub`, output 1): its 🔈 Test is a tone
+  even if it was tested on the Mac: ASIO's channel order is not Core
+  Audio's (§3.2). **The sub** (`living-sub`, output 3): its 🔈 Test is a tone
   around 440 Hz and the speaker's name, which the sub's own low-pass
   mostly removes, so expect little from it. Test it with music instead:
   a track in `music\act-1\`, `music scene act_1`, and the bass comes from
@@ -937,8 +973,9 @@ needed:
 If the kiosk opens on the wrong screen (display scaling can shift Chrome's
 window position), make the TV the main display (Settings → System → Display
 → *Make this my main display*) and use `-Display 1`. Sound: Chrome's
-output is the PC's line out, cabled into the 828x, so Trabolta plays on
-the house speakers and not on the TV's own (§3.5; the TV's volume down).
+output is VoiceMeeter Input, summed into the 828x's input 3 by the
+router's `audio.tap`, so Trabolta plays on the house speakers and not on
+the TV's own (§3.5; VoiceMeeter running, the TV's volume down).
 `M` mutes the TV voice; Run → Terminals shows it.
 
 ## 10. Show night
@@ -993,7 +1030,7 @@ router: two would each speak every announcement.
 
 To come back: `uv run stagehand launchd uninstall --job audio` on the
 MacBook, then `.\start-stagehand.ps1 -Restart audio` here, and Chrome's
-output back to the line out with the TV's volume down (§3.5).
+output back to VoiceMeeter Input with the TV's volume down (§3.5).
 
 ## 12. When something is wrong
 
@@ -1009,14 +1046,14 @@ output back to the line out with the TV's volume down (§3.5).
 | The WLED strip ignores the story | `mosquitto_sub … -t 'wled/#' -v`; its page → Info | MQTT connected (Info shows it); broker `192.168.8.10`, port `1884`, user `props`; the device topic = the light's `device` |
 | A job keeps dying | `.\start-stagehand.ps1 -Status` (the log) | `.\start-stagehand.ps1 -Stop <job>`, then `-Foreground <job>` to watch it in a window |
 | `config error` / CHANGE-ME | `.\start-stagehand.ps1 -Check` | `stagehand\trapped.house.local.yaml` (§7) |
-| The TV is silent | Run → Terminals (muted?); the house speakers (Trabolta plays there, not on the TV, §3.5) | `M` unmutes; Chrome's output on the line out; reopen with `.\tv-kiosk.ps1` (autoplay flag) |
+| The TV is silent | Run → Terminals (muted?); the house speakers (Trabolta plays there, not on the TV, §3.5) | `M` unmutes; Chrome's output on VoiceMeeter Input, VoiceMeeter running; reopen with `.\tv-kiosk.ps1` (autoplay flag) |
 | No music | `uv run stagehand music status --config trapped.desktop.yaml`: the scene, `no files :` | no scene (■ Stop house sounds, or no act cue yet): `music scene <the current act>`; an empty folder: copy the MP3s into `media\music\<act>\` (they join at the next pass, or `music next`); `stagehand check --only audio` for a VBR MP3 that stops early |
-| The music doesn't duck under Trabolta | `music status`: input 3 on the `inputs` line after he talks (`—` means an output-only stream) | Chrome's output on the line out and the cable in Analog In 1 (§3.5); the level over −45 dBFS; `passthrough: true` (the house file; the MacBook fallback never ducks) |
+| The music doesn't duck under Trabolta | `music status`: input 3 on the `inputs` line after he talks (`—` means an output-only stream) | VoiceMeeter running; Chrome's output on VoiceMeeter Input; the VAIO strip on B1; the health line's `tap` part (`NOT OPEN`? its peak?) (§3.5); the level over −45 dBFS; `passthrough: true` (the house file; the MacBook fallback never ducks) |
 | The music doesn't duck under Clippy, or stays ducked in the living room | `music status`: input 1's peak with the lav idle | the receiver into Mic/Gtr 1; `audio.sidechain.roles.clippy.threshold_db` about 6 dB over the idle peak (§3.6), then `-Restart audio` |
-| Trabolta heard twice (an echo in the living room) | the TV's volume; Windows' Volume mixer; CueMix | Chrome off HDMI and the TV's volume down; input 3 in no CueMix mix (§3.5) |
-| Trabolta not heard on the house speakers | Volume mixer: Chrome's output; CueMix's input 3 meter | Chrome to the line out, the cable into Analog In 1; the TV row of the Audio-tab matrix ticked for each speaker |
+| Trabolta heard twice (an echo in the living room) | the TV's volume; Windows' Volume mixer; VoiceMeeter's VAIO strip; CueMix | Chrome off HDMI and the TV's volume down; every A button off on the VAIO strip (B1 only); input 3 in no CueMix mix (§3.5) |
+| Trabolta not heard on the house speakers | Volume mixer: Chrome's output; VoiceMeeter's VAIO meter; the audio log's `tap` part (`NOT OPEN`, peak) | VoiceMeeter running (Run on Windows Startup); Chrome to VoiceMeeter Input; the VAIO strip on B1; `stagehand check --only audio` finds the tap, then `.\start-stagehand.ps1 -Restart audio`; the TV row of the Audio-tab matrix ticked for each speaker |
 | The Fan Closet is silent | the map's Audio tab; `music status` (`no files : fan_closet`) | place its speaker (§8); render the library (`sounds library --story`, or `.\start-stagehand.ps1`) |
-| A howl, a hum or a buzz on every speaker (the TV route) | pull the cable out of Analog In 1: if it stops, it is the TV's line (while it is out Trabolta is heard nowhere: Chrome back to HDMI and the TV's volume up) | a hum: a ground-loop isolator on the line-out cable; a howl: Chrome's output must not be the MOTU, input 3 in no CueMix mix, and in Windows' Sound → Recording no device has *Listen to this device* ticked. To cut the route without the cable: untick the TV row (input 3) on the map's Audio tab and 💾 Save speakers (the router follows at once). ■ Stop house sounds never touches the route |
+| A howl, a hum or a buzz on every speaker (the TV route) | mute the VAIO strip in VoiceMeeter: if it stops, it is the TV's route (while it is muted Trabolta is heard nowhere: Chrome back to HDMI and the TV's volume up) | no ground loop any more (no cable); a howl: Chrome's output must not be the MOTU, VoiceMeeter's A1 an unused MOTU pair and every A button off on the VAIO strip, input 3 in no CueMix mix, and in Windows' Sound → Recording no device has *Listen to this device* ticked. To cut the route: untick the TV row (input 3) on the map's Audio tab and 💾 Save speakers (the router follows at once), or mute the VAIO strip. ■ Stop house sounds never touches the route |
 | Every house sound must stop now | — | Run → ■ Stop house sounds; or `uv run stagehand sounds stop --announce --config trapped.desktop.yaml` here (the music too, until the next act's cue or `music scene <name>`). The TV's voice still plays through the house: mute it with `M` on the TV page or Run → Terminals |
 
 The tasks by hand: `uv run stagehand tasks status|restart|stop|uninstall

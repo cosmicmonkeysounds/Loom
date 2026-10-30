@@ -86,7 +86,10 @@ Where everything is:
 3. **Our channel numbers are the 828x's own** (no channel map): outputs
    Analog 1–8 (the line outs on the back), **Main L/R 9–10** and **Phones
    L/R 11–12** (each pair from a front headphone jack); inputs Mic/Gtr 1–2,
-   Analog 3–10. S/PDIF 13–14 and the ADAT channels stay unused.
+   Analog 3–10. S/PDIF 13–14 and the ADAT channels stay unused. (Since
+   wave 46 `audio.json` follows MOTU's Windows ASIO order instead: Main L/R
+   1–2, Analog 1–8 3–10, S/PDIF 11–12, Phones 13–14; on this Mac, fix each
+   speaker's output on the map's Audio tab after its 🔈 Test.)
 4. **Live mics are mixed in CueMix FX** (hardware: no latency, no microphone
    permission for a launchd job): Clippy's mic (input 1) to the living
    room, which is Main L/R (9–10) plus the sub on Analog 1 since wave 38.

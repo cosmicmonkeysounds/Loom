@@ -82,14 +82,17 @@ Quest APK). Verify what runs with
    `-Check`. The 828x: MOTU's Windows driver, the ASIO proof, both optical
    ports on ADAT and Main / Phones not mirrored (`scripts/house-desktop/README.md` §3), the MOTU's ASIO name in
    `stagehand\trapped.desktop.local.yaml`, and the sound files copied into
-   `stagehand\media\sounds\`. Wave 38's cabling (README §3.2, §3.5): the
-   living room on **Main L/R** (outs 9–10) and the **sub** on Analog Out 1;
-   in CueMix, Clippy's mic (input 1) mixed to the living room as before (to
+   `stagehand\media\sounds\`. The cabling (README §3.2, §3.5; the
+   channels in the ASIO driver's order since wave 46): the living room on
+   **Main L/R** (outs 1–2) and the **sub** on Analog Out 1 (out 3); in
+   CueMix, Clippy's mic (input 1) mixed to the living room as before (to
    Main L/R now) and input 3 in no mix. The TV:
    `.\scripts\house-desktop\tv-kiosk.ps1 -Setup`, then `-InstallTask`;
-   then Chrome's output to the Desktop's line out (Windows' Volume mixer),
-   the line out cabled into the 828x's rear **Analog In 1** (input 3), and
-   the TV's own volume down, or Trabolta plays twice.
+   then **VoiceMeeter Potato** running at sign-in (A1 on an unused MOTU
+   WDM pair, the VAIO strip on B1 only), Chrome's output to **VoiceMeeter
+   Input** (Windows' Volume mixer; the Desktop has no line out, so the
+   router's `audio.tap` sums VoiceMeeter into input 3, no cable), and the
+   TV's own volume down, or Trabolta plays twice.
 7. **Desktop, before the sync:** put the real event id and the mod passcode
    in `stagehand\trapped.house.local.yaml` (git-ignored; the tracked file
    says `CHANGE-ME`), `git pull`, then
@@ -103,7 +106,11 @@ Quest APK). Verify what runs with
    `LOOM_SSH=loom-vps LOOM_PROJECT="trapped in the internet" pnpm sync-show --replace-audio`.
    Wave 38's `audio.json` (the living room on Main L/R + the sub, the TV
    and Clippy's inputs with their ducking roles, the TV's route) reaches
-   the project only this way: the router plays the project's copy.
+   the project only this way: the router plays the project's copy. So do
+   wave 46's channel numbers (the 828x's ASIO order: the living room 1–2,
+   the sub 3, the kitchen 5–6, The Optical Drive 10): until then the
+   project keeps the old ones (or fix them on the map's Audio tab), and
+   every speaker needs a fresh 🔈 Test after.
    **Add `--replace-lights`** (wave 31): the project's `lights.json` holds
    only the server-room bulb, and the repo's now holds every house bulb,
    the living-room strip and the `lights_*` looks. First Download JSON any
@@ -299,9 +306,9 @@ $env:LOOM_MOD_CODE = '<mod>'                # Windows
 - `uv run stagehand music status --config trapped.desktop.yaml` answers
   with no `no files :` line; its `inputs` line has a level for 1 and 3
   (an output-only stream shows `—`).
-- The TV's sound: Chrome on the line out into the 828x, the TV's own
-  volume down; a TEST VOICE plays once, on the house speakers, and ducks
-  the music.
+- The TV's sound: VoiceMeeter running, Chrome on VoiceMeeter Input (the
+  router's `audio.tap` into input 3), the TV's own volume down; a TEST
+  VOICE plays once, on the house speakers, and ducks the music.
 - Run → House → Setup: 🔊 Sound and 💡 Lights green; the WLED strip and
   every placed bulb answer 💡 Identify.
 - The TV kiosk on spot `desktop-tv`, **clicked once after its last boot**
@@ -435,8 +442,8 @@ stays at or under 3 Hz; no open flames; VR is played seated with a spotter.
 | No announcements anywhere | On the Desktop: `.\scripts\house-desktop\preflight.ps1` (`health/stagehand`, `health/audio`); restart `show` and the router (`.\scripts\house-desktop\start-stagehand.ps1 -Restart show`, `-Restart audio`); check the broker (`.\scripts\house-desktop\setup-mosquitto.ps1 -Check`). In the router fallback, on the MacBook: `uv run stagehand launchd status --job audio`. |
 | Every house sound must stop now | ■ Stop house sounds; or on the Desktop `uv run stagehand sounds stop --announce --config trapped.desktop.yaml` (the fallback: on the MacBook with `--config trapped.macbook.yaml`). It stops the music too, until the next act's music cue. The TV's voice still plays on the speakers: mute it with `M` on the TV page or Run → Terminals |
 | The music stopped (after ■ Stop house sounds, or none at all) | On the Desktop: `uv run stagehand music status --config trapped.desktop.yaml`; bring it back with `uv run stagehand music scene <the current act> --config trapped.desktop.yaml` (`doors`, `act_1`, `malware`, `act_2`, `act_3`, `final`, `ceremony`, `afterparty`). A hand scene holds until the next act's cue. `music next` skips a bad track. From the MacBook the same commands take `--config trapped.macbook.yaml` (they go through the Desktop's broker). |
-| Trabolta heard twice (an echo in the living room) | Turn the TV's volume down; Chrome's output must be the line out, not HDMI (`scripts/house-desktop/README.md` §3.5) |
-| A howl or a hum on every speaker | Pull the cable out of the 828x's Analog In 1 (the TV's line): the music plays on, but Trabolta is then heard nowhere: meanwhile set Chrome's output back to HDMI (Volume mixer) and turn the TV's volume up. Then `scripts/house-desktop/README.md` §12 (a ground-loop isolator for a hum; CueMix and Windows' *Listen to this device* for a howl) |
+| Trabolta heard twice (an echo in the living room) | Turn the TV's volume down; Chrome's output must be VoiceMeeter Input, not HDMI; every A button off on VoiceMeeter's VAIO strip (`scripts/house-desktop/README.md` §3.5) |
+| A howl or a hum on every speaker | Mute the VAIO strip in VoiceMeeter, or untick the TV row (input 3) on the map's Audio tab and Save: the music plays on, but Trabolta is then heard nowhere: meanwhile set Chrome's output back to HDMI (Volume mixer) and turn the TV's volume up. Then `scripts/house-desktop/README.md` §12 (VoiceMeeter's A buttons, CueMix and Windows' *Listen to this device* for a howl) |
 | The server-room bulb ignores the story | On the Desktop: `.\scripts\house-desktop\start-stagehand.ps1 -Restart lights`; `.\scripts\house-desktop\zigbee2mqtt.ps1 -Check` (a moved stick has a new COM port) |
 | House internet down | Guests turn Wi-Fi off and use cellular. Keep firing cues from Run on a phone hotspot. Stagehand catches the lights up once it reconnects. |
 | Server restarted | Nothing to press. Everything reconnects; the server answers 503 `starting` until the events are back. Reinstallation walks end (rescan in the tent). |

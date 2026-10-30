@@ -37,11 +37,11 @@ folder. Every stagehand job and config: `stagehand/README.md`.
    (one ASIO device, 32 in / 30 out: both optical ports set to ADAT even
    with nothing plugged in, Main and Phones not mirrored). The living
    room is Main L/R plus the sub on Analog Out 1. Chrome's sound (the
-   TV's Trabolta) goes to the Desktop's line out, cabled into the 828x's
-   Analog In 1, and the TV's own speakers get nothing from Chrome (or he
-   plays twice). In CueMix, Clippy's mic stays mixed to the living room
-   and Analog In 1 goes to no output: the router sends it to every
-   speaker.
+   TV's Trabolta) goes to VoiceMeeter (the Desktop has no line out;
+   VoiceMeeter must be running), and the router sums it into the 828x's
+   input 3; the TV's own speakers get nothing from Chrome (or he plays
+   twice). In CueMix, Clippy's mic stays mixed to the living room and
+   input 3 goes to no output: the router sends it to every speaker.
 3. **Zigbee2MQTT** on the USB stick, then the **lights job**, then pair
    each bulb (a Hue bulb needs a reset first: Touchlink, its serial
    number, a Hue dimmer or the Hue app, never its switch), give it its

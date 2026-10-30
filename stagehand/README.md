@@ -47,7 +47,7 @@ stagehand: they are terminals in Chrome.
    │   the Desktop's :1884)                 │  Zigbee2MQTT ── CC2652P ── Hue + ZL1 bulbs
    └────────────────────────────────────────┘  Mosquitto (:1884 for the LAN) ◄── WLED controller (Wi-Fi)
                                                Chrome kiosk ── HDMI ── the TV (picture)
-                                               Chrome's sound ── line out ── 828x Analog In 1 (input 3)
+                                               Chrome's sound ── VoiceMeeter ── audio.tap ── 828x input 3
 ```
 
 **Announcements.** `do announce "…"` reaches the speakers as: the
@@ -421,6 +421,7 @@ audio:
   play_sounds: true          # the router plays `sound X` (the show module then skips OSC sound cues)
   announce: true             # the router plays `do announce` (no alexa: section allowed beside it)
   passthrough: true          # duplex: the TV's input is routed and every input is metered
+  tap: { device: "VoiceMeeter Output", host_api: mme, ch: 3 }  # wave 46: a capture device summed into an input
   priority:                  # dB at full activity, per bus (sfx = story sounds, music = the beds)
     trabolta: { music: -18, sfx: -8 }
     announce: { music: -15, sfx: -12 }
@@ -435,14 +436,28 @@ audio:
   voices laid out per speaker, the matrix, priority ducking, a per-output
   trim (the speakers' gain, heard at once on a long bed), a master gain
   and a per-output limiter. A stream that dies is reopened every 2 s.
-- **The rig** (wave 38): the living room is the 828x's Main L/R (outs
-  9–10) plus the sub on Analog Out 1 (its own speaker `living-sub`, its
-  own trim). Chrome's sound on the Desktop (the TV's Trabolta) leaves the
-  PC's line out into the 828x's Analog In 1 (input 3), and the router
-  sends it to every placed speaker but the sub (`audio.json` `routes`); the TV's own speakers
-  get nothing, or he plays twice. Clippy's wireless mic (input 1) stays
+- **The rig** (wave 38; channels in the 828x's Windows ASIO order since
+  wave 46: Main L/R 1–2, Analog 1–8 3–10, S/PDIF 11–12, Phones 13–14): the
+  living room is the 828x's Main L/R (outs 1–2) plus the sub on Analog Out
+  1 (out 3; its own speaker `living-sub`, its own trim). Chrome's sound on
+  the Desktop (the TV's Trabolta) reaches input 3 through VoiceMeeter and
+  `audio.tap` (below), and the router sends it to every placed speaker but
+  the sub (`audio.json` `routes`); the TV's own speakers get nothing, or
+  he plays twice. Clippy's wireless mic (input 1) stays
   mixed in CueMix to the living room; the router only meters it. In
   CueMix, input 3 goes to no output (the router routes it).
+- **The tap** (`audio.tap`, wave 46, `audio/tap.py`): a capture device
+  summed into one of the interface's inputs, as if it were cabled there.
+  The Desktop has no line out, so Chrome plays into VoiceMeeter ("VoiceMeeter
+  Input", the VAIO strip on B1 only) and the tap opens "VoiceMeeter Output"
+  on MME as a second, capture-only stream and adds it into input 3 in the
+  ASIO callback: routed, metered and ducking the music like a cable. A ring
+  buffer absorbs the two clocks (~10–30 ms; a `slip` drops frames when it
+  runs full, an `underrun` pads silence). `check` prints `audio tap:
+  <device> → input 3` or fails naming the device; the health line ends `|
+  tap … → in 3 peak N dBFS, underruns N, slips N` (or `NOT OPEN (why)`).
+  A tap that fails to open never stops the router (`audio tap failed to
+  open (...) — playing on without it`). VoiceMeeter must be running.
 - **Priority ducking**: an `audio.json` input with a `role` (`trabolta`,
   `clippy`) is a sidechain: its level over `sidechain.threshold_db` (or
   the role's own) ducks the buses its `priority` row names on the
