@@ -21,7 +21,8 @@ export const TOOLS: { id: Tool; label: string; key: string; hint: string }[] = [
 ];
 
 /** What the next click on the plan places: a palette prop, a 🔊 speaker or a 💡 light. */
-export type Placing = PropKind | "speaker" | "light";
+/** A plain prop kind, a model (wave 47: `model:<id>`), a speaker or a light. */
+export type Placing = PropKind | `model:${string}` | "speaker" | "light";
 
 /** `push`: a new undo step. `replace`: the running drag's next frame (its step was pushed when it started changing). */
 export type EditMode = "push" | "replace";

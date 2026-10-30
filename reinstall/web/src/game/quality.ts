@@ -36,12 +36,14 @@ export interface QualitySettings {
   chroma: boolean;
   /** MSAA samples on the post-processing's render target (WebGL2); 0: none. */
   msaa: number;
+  /** (wave 47) The haze sheets per floor (`HouseScene.setHaze`): 0, 1 (over the floor) or 2 (under the ceiling too). */
+  haze: number;
 }
 
 export const TIERS: Readonly<Record<QualityTier, Readonly<QualitySettings>>> = {
-  low: { tier: "low", pixelRatio: 1, pointLights: 2, bloom: "off", post: false, film: false, chroma: false, msaa: 0 },
-  medium: { tier: "medium", pixelRatio: 1, pointLights: 4, bloom: "half", post: true, film: true, chroma: false, msaa: 0 },
-  high: { tier: "high", pixelRatio: 1.5, pointLights: 8, bloom: "full", post: true, film: true, chroma: true, msaa: 4 },
+  low: { tier: "low", pixelRatio: 1, pointLights: 2, bloom: "off", post: false, film: false, chroma: false, msaa: 0, haze: 0 },
+  medium: { tier: "medium", pixelRatio: 1, pointLights: 4, bloom: "half", post: true, film: true, chroma: false, msaa: 0, haze: 1 },
+  high: { tier: "high", pixelRatio: 1.5, pointLights: 8, bloom: "full", post: true, film: true, chroma: true, msaa: 4, haze: 2 },
 };
 
 /** `low` under pressure (auto only): the pixel ratio drops to this. */

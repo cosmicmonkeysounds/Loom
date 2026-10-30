@@ -9,7 +9,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import { DEFAULT_SPOT_FOV, DUCK_MAX_RISE, floorById, propSolid, roomById, voiceOn } from "@loom/house";
+import { DEFAULT_SPOT_FOV, DUCK_MAX_RISE, floorById, modelBodyColor, modelNeonColor, propModel, propSolid, roomById, voiceOn } from "@loom/house";
 import { LIGHT_KINDS, LIGHT_SAFETY_MIN } from "@loom/house";
 import type { AudioConfig, Compass, HouseMap, LightKind, LightsConfig, PropKind, Vec3 } from "@loom/house";
 import { addLight, addLightZone, capsText, defaultLightY, deviceChoices, dimSet, heightBand, LIGHT_HEIGHT, LIGHT_SWATCHES, lightById, lightIdError, lightsDropped, lightZonesOf, moveLight, moveLightToRoom, patchLight, removeLight, removeLightConfirm, renameLight, safetyOffText, setLightDevice, setLightHeight, setLightZoneMember, swatchSet, testable, withLightsText } from "./lights.ts";
@@ -19,7 +19,7 @@ import type { StoryLocation } from "./check.ts";
 import { DOOR_WIDTH, openEdge, patchDoor, resolveDoor } from "./doors.ts";
 import { addDuckSpot, addTerminal, moveTo, patchRoom, patchTerminal, positionOf, provisionLink, removeThing, setHeight, setYaw, yawOf, type Selection } from "./edit.ts";
 import { metres, rectOf } from "./plan.ts";
-import { guardableDoors, guardedBy, isRoomlessView, momentSignalOf, onFloor, patchProp, PROP_KINDS, rotateBy, setGuard, snapTerminalToWall, TERMINAL_VIEW_HINTS, TERMINAL_VIEWS, YAW_STEP, type TerminalViewName } from "./props.ts";
+import { guardableDoors, guardedBy, isRoomlessView, modelGroups, momentSignalOf, onFloor, patchProp, PROP_KINDS, takesModel, rotateBy, setGuard, snapTerminalToWall, TERMINAL_VIEW_HINTS, TERMINAL_VIEWS, YAW_STEP, type TerminalViewName } from "./props.ts";
 import { cascadeOf, cascadeText, deleteRoomText, deletesWith, patchFloor, patchStair, removeFloor, removeRoom, renameRoom, setRoomRect, stairCandidates } from "./structure.ts";
 import { fillYard, patchYard, yardClash, yardOf } from "./yards.ts";
 import { commitPending, isStep, parseNum } from "./tools.ts";
@@ -454,7 +454,7 @@ function PropInspector({ house, edit, commit, id, posFields, yawField, floorButt
         </label>
         <label className="num">
           colour
-          <input className="w98-input" type="color" value={p.color ?? "#999999"} disabled={!edit} onChange={(e) => commit(patchProp(house, p.id, { color: e.target.value }))} />
+          <input className="w98-input" type="color" value={p.color ?? (takesModel(p.kind) && p.model !== undefined ? modelBodyColor(p) : "#999999")} disabled={!edit} onChange={(e) => commit(patchProp(house, p.id, { color: e.target.value }))} />
         </label>
         <label className="radio checkbox">
           <input type="checkbox" checked={propSolid(p)} disabled={!edit} onChange={(e) => {
@@ -464,6 +464,42 @@ function PropInspector({ house, edit, commit, id, posFields, yawField, floorButt
             }} /> solid
         </label>
       </div>
+      {takesModel(p.kind) && (
+        <div className="num-row">
+          <label className="field">
+            model
+            <select className="w98-input" value={p.model ?? ""} disabled={!edit} onChange={(e) => commit(patchProp(house, p.id, { model: e.target.value === "" ? undefined : e.target.value }))}>
+              <option value="">(none: a plain {p.kind})</option>
+              {p.model !== undefined && propModel(p.model) === null && <option value={p.model}>{p.model} (unknown: drawn plain)</option>}
+              {modelGroups().map((g) => (
+                <optgroup key={g.group} label={g.label}>
+                  {g.models.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.label}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+          </label>
+          {p.model !== undefined && (
+            <label className="num">
+              neon
+              <input className="w98-input" type="color" value={modelNeonColor(p)} disabled={!edit} onChange={(e) => commit(patchProp(house, p.id, { neon: e.target.value }))} />
+              {p.neon !== undefined && edit && (
+                <button className="w98-button small" title="Back to the model's own neon colour" onClick={() => commit(patchProp(house, p.id, { neon: undefined }))}>
+                  ↺
+                </button>
+              )}
+            </label>
+          )}
+          {p.model !== undefined && p.color !== undefined && edit && (
+            <button className="w98-button small" title="Back to the model's own body colour (its clean white)" onClick={() => commit(patchProp(house, p.id, { color: undefined }))}>
+              ↺ colour
+            </button>
+          )}
+        </div>
+      )}
       {p.kind !== "heart" && p.kind !== "pickup" && (
         <CommitText label="label" value={p.label ?? ""} disabled={!edit} placeholder="(none)" onCommit={(v) => commit(patchProp(house, p.id, { label: v.trim() === "" ? undefined : v }))} />
       )}

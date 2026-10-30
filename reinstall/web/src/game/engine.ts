@@ -53,7 +53,7 @@
 
 import { ACESFilmicToneMapping, PerspectiveCamera, Scene, Vector3, WebGLRenderer } from "three";
 import type { Group } from "three";
-import { buildWalls, heartProps, locate, heartReached, outsideGround, pathLength, pickupProps, pickupReach, presenceRoom, spaceOf, toSpace, wrapYaw, yawFromSpace, yawToSpace } from "@loom/house";
+import { buildWalls, heartProps, hiddenFloors, locate, heartReached, outsideGround, pathLength, pickupProps, pickupReach, presenceRoom, spaceOf, toSpace, wrapYaw, yawFromSpace, yawToSpace } from "@loom/house";
 import type { Assignment, DuckSpot, GameLights, HouseMap, KingState, PlayerPose, PlayerState, Prop, Spawn, SpatialFrame, Vec3 } from "@loom/house";
 import { applySpace, buildHouseScene, createAvatar, createDuck, createTrail, GAME_TERMINAL_SCALE, houseAtmosphere, PoseBuffer, spaceGroup } from "@loom/house/three";
 import type { Avatar, Duck, HouseScene, King, Trail } from "@loom/house/three";
@@ -306,6 +306,8 @@ export class Game {
   // The moments (wave 26, C6).
   /** The player's presence room (`presenceRoom`, re-read with the trail): the camera feeds follow it (C7). */
   private presence: string | null = null;
+  /** The room the floors are shown for (`presenceRoom` every frame): outside, the house is only its outside floor (`hiddenFloors`). */
+  private sightRoom: string | null = null;
   /** An escape is under way (the scare, then the teleport): no input, no other moment. */
   private escaping = false;
   /** The jump scare is on screen. */
@@ -383,7 +385,7 @@ export class Game {
     this.auto = this.makeAuto(coarse, performance.now());
     this.settings = settingsAt(this.auto.level, window.devicePixelRatio || 1);
     this.renderer.setPixelRatio(this.settings.pixelRatio);
-    houseAtmosphere(this.scene);
+    houseAtmosphere(this.scene, { haze: true });
     this.camera.rotation.order = "YXZ";
 
     this.map = opts.house;
@@ -397,8 +399,9 @@ export class Game {
     const root = spaceGroup(spaceOf(opts.house, "web"));
     this.root = root;
     this.scene.add(root);
-    this.house = buildHouseScene(opts.house, { walls, ground: true, pickups: true, terminalScale: GAME_TERMINAL_SCALE });
+    this.house = buildHouseScene(opts.house, { walls, ground: true, pickups: true, terminalScale: GAME_TERMINAL_SCALE, neon: true });
     root.add(this.house.root);
+    this.house.setHaze(this.settings.haze);
     for (const id of opts.assignment.picked ?? []) this.taken.add(id);
     this.heartDone = opts.assignment.heartHeard === true;
     this.bindMoments();
@@ -513,6 +516,7 @@ export class Game {
     this.settings = s;
     if (s.pixelRatio !== this.renderer.getPixelRatio()) this.renderer.setPixelRatio(s.pixelRatio);
     this.lamps.setPool(s.pointLights);
+    this.house.setHaze(s.haze);
     this.lastLampsAt = Number.NEGATIVE_INFINITY;
     const samePost = this.post !== null && was.post && s.post && was.bloom === s.bloom && was.film === s.film && was.chroma === s.chroma && was.msaa === s.msaa;
     if (!samePost) {
@@ -907,6 +911,13 @@ export class Game {
     // The game is speaking: the terminals must never hear it back.
     if (this.speaking) this.voice?.holdFor(SPEAKING_HOLD_MS);
 
+    this.sightRoom = presenceRoom(this.map, this.body.p, this.sightRoom);
+    const hidden = hiddenFloors(this.map, this.sightRoom);
+    for (const [id, group] of this.house.floors) group.visible = !hidden.includes(id);
+    // Nothing on a hidden floor floats in the sky: Gerald and the other programs hide with it.
+    const onHidden = (p: Vec3): boolean => hidden.length > 0 && hidden.includes(locate(this.map, p).floor);
+    this.duck.object.visible = !onHidden(this.duckSpot.pos);
+
     this.duck.update(dt);
     this.trail.update(dt);
     this.house.update(dt, this.camera);
@@ -917,7 +928,10 @@ export class Game {
     this.lamps.update(now / 1000, dt);
     for (const g of this.ghosts.values()) {
       const s = g.buffer.sample(now);
-      if (s !== null) g.avatar.setPose(s.p, s.yaw, s.pitch);
+      if (s !== null) {
+        g.avatar.setPose(s.p, s.yaw, s.pitch);
+        g.avatar.object.visible = !onHidden(s.p);
+      }
       g.avatar.update(dt);
     }
     if (this.post) this.post.render(dt);
@@ -1464,12 +1478,13 @@ export class Game {
 
   private swapMap(house: HouseMap, version: string, incoming?: KingState | null): void {
     const walls = buildWalls(house);
-    const scene = buildHouseScene(house, { walls, ground: true, pickups: true, terminalScale: GAME_TERMINAL_SCALE });
+    const scene = buildHouseScene(house, { walls, ground: true, pickups: true, terminalScale: GAME_TERMINAL_SCALE, neon: true });
     this.house.root.removeFromParent();
     this.house.dispose();
     this.house = scene;
     this.feeds?.forget();
     this.root.add(scene.root);
+    scene.setHaze(this.settings.haze);
     applySpace(this.root, spaceOf(house, "web"));
     this.lamps.bindHouse(house, scene.root);
     this.lastLampsAt = Number.NEGATIVE_INFINITY;
@@ -1486,6 +1501,7 @@ export class Game {
     this.kingProp = king;
     this.world = buildPhysicsWorld(house, walls, this.physicsOptions());
     this.presence = null;
+    this.sightRoom = null;
     this.bindMoments();
     this.bindKing();
     this.lastTrailAt = Number.NEGATIVE_INFINITY;

@@ -41,7 +41,7 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { polyBounds, validateAudio, validateHouse, validateLights } from "@loom/house";
-import type { AudioConfig, HouseMap, LightsConfig, PlayerState, Vec2 } from "@loom/house";
+import type { AudioConfig, HouseMap, LightsConfig, PlayerState, PropKind, Vec2 } from "@loom/house";
 import { audioDownload, audioProblemList, duplicateSpeaker, followHouse, moveSpeaker, normalizeAudio, placeSpeaker, planOf, rebaseHistory, removeSpeaker, rotateSpeaker, sameAudio, speakerById, speakerSavePlan, speakersDropped, withSpeakersText, type Doc } from "./audio.ts";
 import { fetchAudio, routerOf, saveAudio, saveAudioToProject, testAudio, testRefusal, testSentText, type AudioView } from "./audio-api.ts";
 import { runAudioPoll } from "./audio-poll.ts";
@@ -65,7 +65,7 @@ import { emptyHistory, pushed, redone, undone, type History } from "./history.ts
 import { Inspector } from "./Inspector.tsx";
 import { JsonTab, PlayersTab, ProblemsPanel, TerminalsTab } from "./Panels.tsx";
 import { snap2, SNAP_STEPS } from "./plan.ts";
-import { addProp, duplicate, rotateBy, YAW_STEP } from "./props.ts";
+import { addModelProp, addProp, duplicate, MODEL_PLACING_PREFIX, placingLabel, placingModel, rotateBy, YAW_STEP } from "./props.ts";
 import { addFloor, addRoom, blankHouse, cascadeOf, deleteRoomText, deletesWith, floorDefaults, moveStair, placeRect, removeRoom } from "./structure.ts";
 import { flapsAdded, yardOf } from "./yards.ts";
 import { Toolbar } from "./Toolbar.tsx";
@@ -1190,8 +1190,9 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
                 select({ kind: "speaker", id: r.id });
                 return;
               }
-              const r = addProp(house, placing, floor, at);
-              if (r === null) return setNotice(`Click inside a room on this floor to place the ${placing}.`);
+              const model = placingModel(placing);
+              const r = model !== null ? addModelProp(house, model.id, floor, at) : placing.startsWith(MODEL_PLACING_PREFIX) ? null : addProp(house, placing as PropKind, floor, at);
+              if (r === null) return setNotice(`Click inside a room on this floor to place the ${placingLabel(placing)}.`);
               apply(r.house);
               setPlacing(null);
               select({ kind: "prop", id: r.id });

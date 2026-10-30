@@ -24,16 +24,33 @@ var _home := Vector3.ZERO
 func _ready() -> void:
 	_model = Node3D.new()
 	add_child(_model)
+	# Wave 47: smoother and shaped — a rounded body with a chest, a neck into
+	# the head, a two-part beak, glinting eyes, an upturned tail and swept
+	# wings, still all primitives — on a thin golden ring.
 	var gold := HouseLook.gilded()
-	_part(_sphere(0.22), Vector3(0, 0.2, 0.02), Vector3(1.0, 0.75, 1.3), gold)       # body
-	_part(_sphere(0.13), Vector3(0, 0.42, -0.17), Vector3.ONE, gold)                 # head
-	_part(_sphere(0.09), Vector3(0, 0.27, 0.27), Vector3(1.2, 0.6, 1.0), gold)       # tail
-	var beak := BoxMesh.new()
-	beak.size = Vector3(0.1, 0.04, 0.12)
-	_part(beak, Vector3(0, 0.4, -0.31), Vector3.ONE, HouseLook.paint("#e8851c"))
+	var beak := HouseLook.paint("#f0902a")
+	_part(_sphere(0.22), Vector3(0, 0.2, 0.03), Vector3(1.0, 0.72, 1.32), gold)          # body
+	_part(_sphere(0.15), Vector3(0, 0.22, -0.13), Vector3(1.0, 0.85, 0.9), gold)          # chest
+	_part(_sphere(0.075), Vector3(0, 0.33, -0.15), Vector3(1.0, 1.4, 1.0), gold)          # neck
+	_part(_sphere(0.125), Vector3(0, 0.45, -0.17), Vector3(1.0, 0.95, 1.05), gold)        # head
+	_part(_sphere(0.1), Vector3(0, 0.29, 0.27), Vector3(1.1, 0.55, 1.2), gold, Vector3(deg_to_rad(-30.0), 0, 0))  # tail
+	_part(_sphere(0.06), Vector3(0, 0.425, -0.3), Vector3(0.95, 0.32, 1.25), beak)        # upper beak
+	_part(_sphere(0.05), Vector3(0, 0.405, -0.285), Vector3(0.85, 0.24, 1.1), beak)       # lower beak
 	for side: float in [-1.0, 1.0]:
-		_part(_sphere(0.022), Vector3(0.075 * side, 0.46, -0.27), Vector3.ONE, HouseLook.paint("#101010"))
-		_part(_sphere(0.1), Vector3(0.17 * side, 0.22, 0.04), Vector3(0.35, 0.6, 1.0), gold)  # wings
+		_part(_sphere(0.024), Vector3(0.072 * side, 0.48, -0.265), Vector3.ONE, HouseLook.paint("#0b0b10"))
+		_part(_sphere(0.008), Vector3(0.08 * side, 0.488, -0.284), Vector3.ONE, HouseLook.glow_gold())  # glint
+		_part(_sphere(0.11), Vector3(0.165 * side, 0.23, 0.05), Vector3(0.32, 0.55, 1.15), gold, Vector3(deg_to_rad(-12.0), deg_to_rad(8.0 * side), 0))  # wings
+	var ring := TorusMesh.new()
+	ring.inner_radius = 0.34
+	ring.outer_radius = 0.36
+	ring.rings = 32
+	ring.ring_segments = 6
+	var halo := MeshInstance3D.new()
+	halo.name = "Ring"
+	halo.mesh = ring
+	halo.position.y = 0.01
+	halo.material_override = HouseLook.glow_gold()
+	add_child(halo)
 	var light := OmniLight3D.new()
 	light.light_color = HouseLook.GOLD
 	light.light_energy = 1.4
@@ -61,15 +78,16 @@ static func _sphere(r: float) -> SphereMesh:
 	var s := SphereMesh.new()
 	s.radius = r
 	s.height = r * 2.0
-	s.radial_segments = 10
-	s.rings = 6
+	s.radial_segments = 24
+	s.rings = 12
 	return s
 
 
-func _part(mesh: Mesh, pos: Vector3, scl: Vector3, mat: Material) -> void:
+func _part(mesh: Mesh, pos: Vector3, scl: Vector3, mat: Material, rot := Vector3.ZERO) -> void:
 	var mi := MeshInstance3D.new()
 	mi.mesh = mesh
 	mi.position = pos
+	mi.rotation = rot
 	mi.scale = scl
 	mi.material_override = mat
 	_model.add_child(mi)
@@ -85,12 +103,25 @@ func place(pos: Vector3, yaw := 0.0) -> void:
 	_model.scale = Vector3.ONE
 	_egg.visible = false
 	_flying = -1.0
-	visible = true
+	_placed = true
+	visible = not _floor_hidden
 
 
 func remove() -> void:
+	_placed = false
 	visible = false
 	_flying = -1.0
+
+
+## Hide him while his floor is hidden ([method HouseBuilder.hide_floors]),
+## wherever he sits; he comes back once it is drawn again (if still placed).
+func set_floor_hidden(on: bool) -> void:
+	_floor_hidden = on
+	visible = _placed and not on
+
+
+var _placed := false
+var _floor_hidden := false
 
 
 func is_flying() -> bool:

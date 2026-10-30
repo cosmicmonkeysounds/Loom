@@ -68,7 +68,7 @@
 ##
 ## - **Voice** (wave 19, [VoiceLink]): while playing, the terminals near
 ##   the player are heard at their screens and the player on the terminals
-##   near them; B / Y (M on the desktop rig) mutes the mic. Off with
+##   near them. A guest cannot mute it (no button, no HUD line). Off with
 ##   `--voice false`, listen-only with `--mic false`; never offline.
 ## - **Sound** (wave 26, R8, [Sfx]): Gerald quacks from where he sits (the
 ##   web game's schedule), the find quacks and plays the fanfare (none for a
@@ -94,6 +94,9 @@ signal state_changed(state: GameFlow.State)
 const PLAYER_SCENE := preload("res://player/player.tscn")
 ## The trail is re-routed this often (twice a second).
 const TRAIL_INTERVAL := 0.5
+## The lobby and the intro float in the sky: feet this far (m) under their
+## floor have fallen through it, and go back on it.
+const FELL_BELOW := 3.0
 const CANDIDATE_INTERVAL := 5.0
 ## After a "not near the duck" answer, wait this long before claiming again.
 const FOUND_RETRY := 1.0
@@ -173,12 +176,20 @@ var _intro_ring := Vector3.ZERO
 var _intro_duck := Vector3.ZERO
 
 var _trail_in := 0.0
+## The trail's route on a worker thread (a headset only): the task in flight
+## (-1: none), its route map's copy, and a generation that a clear bumps so
+## a late answer for an old trail is dropped.
+var _trail_task := -1
+var _route_copy: Dictionary = {}
+var _trail_gen := 0
 ## Seconds of this walk played so far (PLAYING only), and when the trail
 ## comes on ([member trail_revealed]); the minute restarts on a re-scan.
 var _played_for := 0.0
 var _reveal_after := HouseRoute.PATH_REVEAL_MS / 1000.0
 var trail_revealed := false
 var _cand_in := 0.0
+## B B A A B A B A A B B in the lobby: the offline test level ([TestCombo]).
+var _combo := TestCombo.new()
 ## Seconds to Gerald's next quack look ([method Sfx.quack_plan]).
 var _quack_in := Sfx.QUACK_FIRST
 ## Seconds to the found screen's fanfare (< 0: none due).
@@ -366,7 +377,7 @@ func enter_lobby() -> void:
 	intro_space.close()
 	_update_route_house()
 	duck.remove()
-	trail.clear()
+	_clear_trail()
 	cams.stop()
 	_stop_voice()
 	sfx.set_hum(false)
@@ -439,6 +450,9 @@ func _update_route_house() -> bool:
 	var moved := open != king_door_open
 	king_door_open = open
 	route_house = HouseKing.trail_map(builder.house, id, open)
+	# The trail's worker thread reads its own copy (the builder's map can
+	# change under it on this thread).
+	_route_copy = route_house.duplicate(true)
 	return moved
 
 
@@ -607,14 +621,15 @@ func _start_play() -> void:
 	_escape_answer = {}
 	_reveal_after = maxf(0.0, float(link.config.get("trail_delay", HouseRoute.PATH_REVEAL_MS / 1000.0)))
 	trail_revealed = false
-	trail.clear()
+	_clear_trail()
 	# The play buttons act on a press made while playing, never on one held
 	# over from the lobby or the intro (the trigger that pulled START; B / Y
 	# does nothing there).
 	_hit_was = player.hit_button
-	_mute_was = player.mute_button
 	_update_route_house()
-	hud.show_play(_room_label(HouseLocate.locate(builder.house, start_pos)["room"]))
+	_sight_room = null
+	_tick_sight(start_pos)
+	hud.show_play()
 	if link.map_warning_text != "":
 		_notice(link.map_warning_text)  # raised in the lobby, still in force
 	if autopilot != null:
@@ -759,7 +774,7 @@ func _on_found_answered(ok: bool, data: Dictionary) -> void:
 	if not refused:
 		duck.celebrate()
 		_fanfare_in = Sfx.FANFARE_AFTER
-	trail.clear()
+	_clear_trail()
 	if released:
 		hud.show_found("REINSTALLATION COMPLETE", who)
 	elif refused:
@@ -980,6 +995,7 @@ func _process(delta: float) -> void:
 			hud.notice("")
 	if check_away():
 		return
+	_catch_fall()
 	match flow.state:
 		GameFlow.State.LOBBY:
 			_tick_lobby(delta)
@@ -998,6 +1014,35 @@ func _process(delta: float) -> void:
 				enter_lobby()
 
 
+## The safety net under the lobby and the intro: a body that fell through
+## their floor (it never should) is put back on it, and the log says so.
+func _catch_fall() -> void:
+	var spot: Vector3
+	if flow.state == GameFlow.State.LOBBY:
+		spot = Lobby.SPOT
+	elif flow.state == GameFlow.State.PLAYING and intro.running():
+		spot = IntroSpace.SPOT
+	else:
+		return
+	if player.feet().y > spot.y - FELL_BELOW:
+		return
+	falls += 1
+	print("reinstall-vr: fell through the floor at %.1f m; back on it" % player.feet().y)
+	player.teleport(spot, player.head_yaw())
+
+
+## How often [method _catch_fall] caught a fall (for the tests).
+var falls := 0
+
+
+## The test level: play offline (the bundled house) as the captured
+## offline program, no server needed ([TestCombo]).
+func start_test_level() -> void:
+	link.play_offline()
+	lobby.flash("Test level (offline)…", 3.0)
+	link.begin("g-000001")
+
+
 func _tick_lobby(delta: float) -> void:
 	# (wave 40) While a resume is offered the lobby shows its own card (YES /
 	# NO), so the normal pointer + stick path drives it; a program begin
@@ -1009,6 +1054,10 @@ func _tick_lobby(delta: float) -> void:
 	var r := player.right_stick
 	var stick := Vector2(l.x if absf(l.x) >= absf(r.x) else r.x, l.y if absf(l.y) >= absf(r.y) else r.y)
 	var chosen := lobby.tick(stick, delta)
+	var hands := [player.left_hand, player.right_hand]
+	if _combo.feed(TestCombo.held(hands, "ax_button"), TestCombo.held(hands, "by_button"), delta):
+		start_test_level()
+		return
 	if not chosen.is_empty():
 		lobby.flash("Starting %s…" % chosen.get("name", chosen.get("id", "")), 3.0)
 		link.begin(str(chosen["id"]))
@@ -1065,7 +1114,7 @@ func _tick_play(delta: float) -> void:
 		_start_escape()
 		return
 	var here := HouseLocate.locate(house, feet)
-	hud.set_room(_room_label(here["room"]))
+	_tick_sight(feet)
 	cams.tick(delta, house, feet, link.cams_url(), link.cams_token())
 	_tick_voice()
 
@@ -1079,7 +1128,7 @@ func _tick_play(delta: float) -> void:
 		if trail_revealed:
 			refresh_trail(feet, duck_p)
 		else:
-			trail.clear()
+			_clear_trail()
 
 	_tick_quack(feet, duck_p, delta)
 	_tick_props(house, feet, delta)
@@ -1104,7 +1153,7 @@ func escaping() -> bool:
 ## The player is [constant HouseEscape.ESCAPE_M] into the void: scare them
 ## and post the escape — or, within the cooldown, put them back quietly.
 func _start_escape() -> void:
-	trail.clear()
+	_clear_trail()
 	var now := float(clock.call())
 	if _escaped_at >= 0.0 and (now - _escaped_at) * 1000.0 < HouseEscape.ESCAPE_COOLDOWN_MS:
 		_back_to_spawn({})
@@ -1320,8 +1369,6 @@ func _tick_quack(feet: Array, duck_p: Array, delta: float) -> void:
 
 # --- voice ---
 
-## The mute button on the last frame (a toggle is the press, not the hold).
-var _mute_was := false
 
 
 func _setup_voice() -> void:
@@ -1338,8 +1385,7 @@ func _prime_mic() -> void:
 	voice.prime_permission(bool(link.config.get("voice", true)) and bool(link.config.get("mic", true)))
 
 
-## While playing: run the voice link on the session (unless `voice` is off),
-## toggle the mic on a press of the mute button, keep the HUD's mic line.
+## While playing: run the voice link on the session (unless `voice` is off).
 func _tick_voice() -> void:
 	# R8: while a terminal listens the mic may send, so no game sound plays —
 	# the hum (which holds nothing) pauses; one-shots hold the mic instead.
@@ -1349,19 +1395,10 @@ func _tick_voice() -> void:
 	if not voice.is_running():
 		voice.mic_enabled = bool(link.config.get("mic", true))  # a reconfigured headset
 	voice.want(link.voice_stream_url(), link.voice_upload_url(), link.voice_token())
-	var pressed := player.mute_button and not _mute_was
-	_mute_was = player.mute_button
-	if pressed:
-		var was := voice.muted
-		voice.toggle_mute()
-		if voice.muted != was:
-			player.pulse(0.3, 0.05)  # felt: the press took
-	hud.set_mic(voice.hud_text(player.xr_active))
 
 
 func _stop_voice() -> void:
 	voice.stop()
-	hud.set_mic("")
 
 
 ## Near the King (a `king` prop, with a shared King on the server): say
@@ -1587,14 +1624,65 @@ static func stair_step_out(house: Dictionary, stair: Dictionary, p: Array) -> Va
 	return null
 
 
-## Re-route the chevrons from `from` to the duck (house frame).
+## Re-route the chevrons from `from` to the duck (house frame). On a
+## headset the route runs on a worker thread: it rebuilds the house's whole
+## visibility graph (13 ms a call on a desktop, several frames on a Quest),
+## and twice a second on this thread it snapped the view while walking.
+## One route in flight at a time; the desktop rig and the tests route here.
 func refresh_trail(from: Array, to: Array) -> void:
+	if player == null or not player.xr_active:
+		_lay_trail(HouseRoute.sample_trail(trail_path(route_house, from, to)), _trail_gen)
+		return
+	if _trail_task != -1:
+		return
+	if _route_copy.is_empty():
+		_route_copy = route_house.duplicate(true)
+	var house := _route_copy
+	var gen := _trail_gen
+	_trail_task = WorkerThreadPool.add_task(func() -> void:
+		var samples := HouseRoute.sample_trail(Game.trail_path(house, from, to))
+		_trail_done.call_deferred(samples, gen))
+
+
+func _trail_done(samples: Array, gen: int) -> void:
+	if _trail_task != -1:
+		WorkerThreadPool.wait_for_task_completion(_trail_task)
+		_trail_task = -1
+	_lay_trail(samples, gen)
+
+
+func _lay_trail(samples: Array, gen: int) -> void:
+	if gen != _trail_gen:
+		return
 	var points: Array = []
-	for s: Dictionary in HouseRoute.sample_trail(trail_path(route_house, from, to)):
+	for s: Dictionary in samples:
 		points.append({"pos": builder.to_world(s["p"]), "yaw": builder.yaw_to_world(s["yaw"])})
 	trail.show_points(points)
 
 
-func _room_label(room_id: Variant) -> String:
-	var room: Variant = HouseGeometry.room_by_id(builder.house, room_id)
-	return str(room["label"]) if room != null else ""
+## Hide the trail, and drop any route still on its way for it.
+func _clear_trail() -> void:
+	_trail_gen += 1
+	trail.clear()
+
+
+## The room the floors are drawn for ([method HouseLocate.presence_room],
+## every tick while playing).
+var _sight_room: Variant = null
+
+
+## Outside, the house is only its outside floor
+## ([method HouseEscape.hidden_floors]): the floors above it hide, and so do
+## Gerald and the other programs standing on them — nothing floats in the
+## sky. `feet` in house coordinates.
+func _tick_sight(feet: Array) -> void:
+	var house := builder.house
+	_sight_room = HouseLocate.presence_room(house, feet, _sight_room)
+	var hidden := HouseEscape.hidden_floors(house, _sight_room)
+	builder.hide_floors(hidden)
+	duck.set_floor_hidden(not hidden.is_empty() and _on_floor(hidden, flow.assignment.get("duck", {}).get("pos")))
+	ghosts.hide_on(func(p: Array) -> bool: return not hidden.is_empty() and _on_floor(hidden, p))
+
+
+func _on_floor(floors: Array, p: Variant) -> bool:
+	return p is Array and floors.has(str(HouseLocate.locate(builder.house, p)["floor"]))

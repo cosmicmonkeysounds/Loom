@@ -568,3 +568,35 @@ export function buildRamps(house: HouseMap): Ramp[] {
     };
   });
 }
+
+/** The open band of a stairwell between two floors (`stairWells`). */
+export interface StairWell {
+  stair: string;
+  /** The floor of the stair's `from` room (the well belongs to it). */
+  floor: string;
+  /** The stair's rect, `[x0, z0, x1, z1]`: the hole in both planes. */
+  rect: [number, number, number, number];
+  /** The `from` room's ceiling. */
+  bottom: number;
+  /** The `to` room's floor. */
+  top: number;
+}
+
+/**
+ * Per stair whose `to` floor sits above the `from` room's ceiling, the band
+ * between them: the ceiling's hole and the floor's hole are the same rect,
+ * so without four faces round it a climber sees through the gap between
+ * the floors into the void. Render-only (no collider).
+ */
+export function stairWells(house: HouseMap): StairWell[] {
+  const out: StairWell[] = [];
+  for (const stair of house.stairs) {
+    const from = roomById(house, stair.from);
+    const to = roomById(house, stair.to);
+    if (!from || !to || from.outdoor === true) continue;
+    const bottom = roomElevation(house, from) + roomHeight(house, from);
+    const top = roomElevation(house, to);
+    if (top - bottom > 1e-6) out.push({ stair: stair.id, floor: from.floor, rect: [...stair.rect], bottom, top });
+  }
+  return out;
+}

@@ -24,6 +24,10 @@ const TURN_CURVE := 1.6
 ## this share of the stronger one, so a slightly crooked push forward walks
 ## straight and a crooked turn doesn't creep.
 const AXIS_LOCK := 0.5
+## … and once in, it stays in down to this share (hysteresis): a push held
+## near [constant AXIS_LOCK] would otherwise flick turning on and off frame
+## by frame, a stutter the eyes feel at once.
+const AXIS_RELEASE := 0.3
 
 
 ## Zero inside the dead zone; outside it, rescaled so the edge of the zone is
@@ -37,13 +41,14 @@ static func dead_zone(v: Vector2, dz := DEAD_ZONE) -> Vector2:
 
 ## A stick that both walks (y) and turns (x): the weaker axis is dropped
 ## unless it is at least [constant AXIS_LOCK] of the stronger (a deliberate
-## diagonal still walks and turns).
-static func axis_lock(v: Vector2) -> Vector2:
+## diagonal still walks and turns). `held` is last frame's answer: an axis
+## already in counts down to [constant AXIS_RELEASE].
+static func axis_lock(v: Vector2, held := Vector2.ZERO) -> Vector2:
 	var ax := absf(v.x)
 	var ay := absf(v.y)
-	if ax < ay * AXIS_LOCK:
+	if ax < ay * (AXIS_RELEASE if held.x != 0.0 else AXIS_LOCK):
 		return Vector2(0.0, v.y)
-	if ay < ax * AXIS_LOCK:
+	if ay < ax * (AXIS_RELEASE if held.y != 0.0 else AXIS_LOCK):
 		return Vector2(v.x, 0.0)
 	return v
 

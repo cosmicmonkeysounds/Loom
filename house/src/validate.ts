@@ -23,6 +23,7 @@ import {
   styleOf,
 } from "./geometry.ts";
 import { BODY_CLEAR, FLOOR_SLACK, STEP_UP, floorOf, locate, solidPropAt } from "./locate.ts";
+import { MODEL_KINDS, PROP_MODEL_PATTERN } from "./models.ts";
 import type { HouseMap, Room, SpaceTransform, TerminalViewName, Validation, Vec2, Vec3 } from "./types.ts";
 
 /** Every screen type a terminal spot may name (`TerminalSpot.view`) — the
@@ -262,6 +263,8 @@ function checkShape(raw: unknown, problems: string[]): void {
     ["yaw", isNum, NUM, true],
     ["color", (v) => isStr(v) && COLOR.test(v), '"#rrggbb"', true],
     ["label", isStr, "a string", true],
+    ["model", (v) => isStr(v) && PROP_MODEL_PATTERN.test(v), "a model id (\"wall\", \"rack\", …)", true],
+    ["neon", (v) => isStr(v) && COLOR.test(v), '"#rrggbb"', true],
     ["solid", (v) => typeof v === "boolean", "a boolean", true],
     ["hp", (v) => Number.isInteger(v) && (v as number) >= 1 && (v as number) <= KING_MAX_HP, `an integer 1–${KING_MAX_HP}`, true],
     ["health", (v) => isStr(v) && WORLD_PATH.test(v), 'a world path ("Night.king_hp")', true],
@@ -297,6 +300,8 @@ function checkShape(raw: unknown, problems: string[]): void {
         }
       }
     }
+    // A model is drawn on a box or a cylinder only.
+    if ((item["model"] !== undefined || item["neon"] !== undefined) && !(isStr(kind) && MODEL_KINDS.includes(kind))) problems.push(`${at}: "model" / "neon" are only for kind "box" or "cylinder"`);
     // A pickup says what it is; nothing else does.
     if (kind === "pickup" && item["item"] === undefined) problems.push(`${at}: a "pickup" needs an "item" ("virus")`);
     if (kind !== "pickup" && item["item"] !== undefined) problems.push(`${at}: "item" is only for kind "pickup"`);

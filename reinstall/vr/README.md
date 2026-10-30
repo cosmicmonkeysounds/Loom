@@ -13,7 +13,6 @@ Thumbsticks, plus one button for the King (and a laser in the lobby):
 | **Left stick** | walk where you look (dead zone 0.15, 1.4 m/s) |
 | **Right stick** | turn smoothly (a small push turns slowly, at most 70°/s; no snap turn since wave 33b — it made people dizzy) |
 | **Trigger** (either hand) or **A / X** | hit the King, near and facing him — once per visit |
-| **B / Y** (either hand) | mute / unmute the microphone (a short haptic tick when it takes) |
 | **Lobby** | point a controller at your program's tile and pull the **trigger** (either hand: a thin beam shows where), or walk the tiles with the stick and hold **right** for 1 s; then **START** (trigger, or hold right again) or **BACK** |
 | **The intro** | the same beam and **trigger** (or **A**) on the panel's buttons; the stick walks and turns once the tutorial says so |
 
@@ -133,6 +132,16 @@ or bake / push it: `tools/quest.sh build --station vr-1 --graphics low`
 (or `provision` / `station … --graphics`). If a headset drops frames on
 `medium`, try `low`. There is no in-headset control (a guest could reach it).
 
+Wave 47's look (computer horror, squeaky clean): a prop with a `model`
+(`house_models.gd`, the port of `@loom/house` `models.ts`, golden-tested)
+is drawn from its parts, and every prop is merged into one mesh per role
+(glossy white bodies, chrome trim, black gloss, screens, red alarms); neon
+skirting and cove strips run along every wall; the neon is unlit, unfogged
+and stutters now and then; the fog is a violet exponential haze, thicker
+near the floor, with drifting haze sheets per floor (none on `low`, one on
+`medium`, two on `high`). The King is a turned chess king, Gerald a smoother
+duck on a gold ring, the terminals carry a neon rim.
+
 ## Run it from the Godot editor
 
 Open `reinstall/vr/project.godot` in Godot 4.7 and press **F5**. No headset,
@@ -174,6 +183,25 @@ serve`, plus `LOOM_DB_WAIT=off` with no database): name it with
 first. Only a marked or captured program has a tile (`/api/mod/set
 {id, field: "captured", value: true}` makes one).
 
+**A quick test on the headset** (Windows). `node tools/test-server.mjs`
+starts a scratch server on this computer (`:7642`, dead database, fresh
+state, the show's story from disk), opens the doors, registers a few
+programs and captures one (the lobby's tile), and points the plugged-in
+headset's `127.0.0.1:7642` at it over USB (`adb reverse`). In another
+terminal, `tools\quest-win.ps1 -TestServer -Install -Launch` builds station
+`vr-test` with that server's passcode and no intro, sideloads and starts it.
+The passcodes live in the git-ignored `build/test-server.json`, so a built
+test APK keeps working with the next server. Unplugging the headset drops
+the reverse: run the server again (or `adb reverse tcp:7642 tcp:7642`).
+`-NoIntro` alone bakes `"intro": false` into any station's APK.
+
+**The test level, with no server at all.** In the lobby, press **B B A A
+B A B A A B B** on either controller (X counts as A, Y as B; at most 1.5 s
+between presses). The headset plays offline for this run (the bundled
+house, the duck picked here) as the captured *Offline Program*
+(`game/test_combo.gd`, [method Game.start_test_level]). It works on every
+build, a station's too.
+
 **Run arguments from the editor.** *Debug → Customize Run Instances…* →
 *Main Run Args*, everything after `--` (the command-line flags below):
 `-- --offline`, `-- --server http://127.0.0.1:7641`, or a whole station
@@ -189,7 +217,7 @@ panel) opens it with no session and shows a level meter.
 ## Run it on a desktop
 
 Without an OpenXR runtime (a Mac) the game runs on the desktop rig. WASD or
-↑↓ walk, Q/E or ←→ turn, Space or F hits the King, M mutes the microphone,
+↑↓ walk, Q/E or ←→ turn, Space or F hits the King,
 and the mouse looks (click to capture it, Esc to release it). In the lobby
 the mouse points instead: click a tile, then START. The keys drive the stick picker there:
 W/S a row up / down, A or a quick D a tile left / right, holding D or E
@@ -278,8 +306,10 @@ any of them. The preset `export_presets.cfg` → **Quest**: Android, Gradle buil
 OpenXR, the **Meta vendor plugin** (`com.oculus.intent.category.VR`,
 `supportedDevices = quest3|quest3s`), arm64-v8a only, `INTERNET`,
 package `com.mapsandducks.reinstall`, immersive. There is **no cleartext
-opt-in**: Android refuses plain `http://`, so a headset talks to the VPS over
-HTTPS (`https://app.mapsandducks.com`, the committed `config/station.json`).
+opt-in**; a show headset talks to the VPS over HTTPS
+(`https://app.mapsandducks.com`, the committed `config/station.json`). Godot's
+own sockets do reach a plain `http://` server (the quick test server over
+`adb reverse` proved it on a Quest 3, 2026-10-30).
 
 ### What you run, once (≈ 15 min)
 
@@ -470,15 +500,9 @@ with `released: true` while you walk to Gerald.
   Quest's speakers stays home, but a player who speaks up is heard at once,
   and the terminal then holds its own mic, so the room pauses for them. A
   faint, far terminal (gain under 0.2) raises nothing. It only uploads
-  while some terminal can hear it. **B / Y** (either hand; **M** on a Mac) mutes and unmutes the
-  mic — only while it is open (a press while it is asking, refused or
-  missing does nothing, so it never comes up muted unseen). The HUD's
-  bottom line (wave 26, no emoji) says **MIC ON · B or Y mutes** (*MIC ON ·
-  someone can hear you* while a terminal listens), **MIC MUTED · press B
-  or Y**, **MIC STARTING…** (until the mic hands over a real sample),
-  **MIC · allow it in the headset's prompt** (the Android prompt is up),
-  **NO MIC · not allowed · ASK AGAIN in the lobby** (the prompt was
-  refused) or **NO MIC** (no device, or only zeros). The tent's terminal
+  while some terminal can hear it. A guest cannot mute it, and the HUD
+  carries no mic line (the lobby's MICROPHONE box still says what the mic
+  is doing). The tent's terminal
   (the tent laptop beside the headsets) is never in the link. A Quest asks
   to allow recording audio (Android's microphone prompt) **in the lobby**,
   before the first session (the dialog pauses the app; in a session that
@@ -513,7 +537,7 @@ with `released: true` while you walk to Gerald.
 ```
 
 On 2026-10-28 (wave 39, branch `oct31-w39/vr`, Godot 4.7.1) it reports
-1208 checks and `quest.sh` 42, all passing.
+1236 checks and `quest.sh` 42, all passing.
 
 The runner refreshes the import, compiles every script and loads every
 scene, then runs `test/game.gd` headless with `--offline`:

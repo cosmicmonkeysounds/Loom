@@ -10,7 +10,7 @@ import type { HouseMap, PlayerState } from "@loom/house";
 import type { LoadedHouse } from "../api.ts";
 import { SNAP_STEPS } from "./plan.ts";
 import { sourceLabel } from "./project.ts";
-import { PROP_PALETTE } from "./props.ts";
+import { modelGroups, modelPlacing, placingModel, PROP_PALETTE } from "./props.ts";
 import { TOOLS, type Placing, type Tool } from "./tools.ts";
 
 export interface ToolbarProps {
@@ -148,6 +148,27 @@ export function Toolbar(p: ToolbarProps) {
                 {k.label}
               </button>
             ))}
+          </span>
+          <span className="prop-palette" role="group" aria-label="Add a model">
+            <span className="muted">+ model</span>
+            <select
+              className="w98-input"
+              aria-label="Add a model: pick one, then click inside a room on the plan"
+              title="Add a wall, a cabinet, a server rack, a CRT…: pick one, then click inside a room on the plan (Esc cancels; R turns it)"
+              value={placingModel(p.placing)?.id ?? ""}
+              onChange={(e) => p.onPlacing(e.target.value === "" ? null : modelPlacing(e.target.value))}
+            >
+              <option value="">(pick a model)</option>
+              {modelGroups().map((g) => (
+                <optgroup key={g.group} label={g.label}>
+                  {g.models.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.label}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
           </span>
           {p.speakers !== false && (
             <span className="prop-palette" role="group" aria-label="Add a speaker">

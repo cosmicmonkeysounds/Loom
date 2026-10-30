@@ -21,7 +21,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
-import { buildWalls, polyArea, polyBounds, roomById, voiceOn, wallEnds } from "@loom/house";
+import { buildWalls, modelBodyColor, modelNeonColor, polyArea, polyBounds, propModel, roomById, voiceOn, wallEnds } from "@loom/house";
 import type { AudioConfig, HouseMap, LightsConfig, PlayerState, Vec2, WallSegment } from "@loom/house";
 import { aimSpeaker, coverageRadius, moveSpeaker, rotateSpeaker, speakerFloor } from "./audio.ts";
 import { lightFloor, moveLight } from "./lights.ts";
@@ -54,7 +54,7 @@ import {
   type Bounds,
   type Edge,
 } from "./plan.ts";
-import { snapTerminalToWall, WALL_SNAP, YAW_STEP } from "./props.ts";
+import { placingLabel, snapTerminalToWall, takesModel, WALL_SNAP, YAW_STEP } from "./props.ts";
 import { addRoom, addStair, moveStair, rectFrom } from "./structure.ts";
 import type { EditMode, Placing, Tool } from "./tools.ts";
 import { yardOf, yardsOn } from "./yards.ts";
@@ -465,6 +465,8 @@ export function Canvas({ house, floor, edit, tool, snapStep, sel, players, onSel
           const yaw = p.yaw ?? 0;
           const front = along([p.pos[0], p.pos[2]], yaw, p.size[2] / 2);
           const knob = along([p.pos[0], p.pos[2]], yaw, p.size[2] / 2 + 0.35);
+          const model = takesModel(p.kind) ? propModel(p.model) : null;
+          const modelStroke = model ? { stroke: modelNeonColor(p), strokeWidth: 0.035 } : {};
           return (
             <g
               key={p.id}
@@ -472,9 +474,15 @@ export function Canvas({ house, floor, edit, tool, snapStep, sel, players, onSel
               onPointerDown={(e) => pick(e, ps, { kind: "move", sel: ps, base: house, grab: toPlan(e), origin: [p.pos[0], p.pos[2]] })}
             >
               {p.kind === "cylinder" ? (
-                <ellipse cx={p.pos[0]} cy={p.pos[2]} rx={p.size[0] / 2} ry={p.size[2] / 2} transform={`rotate(${-yaw} ${p.pos[0]} ${p.pos[2]})`} fill={p.color ?? "#999"} />
+                <ellipse cx={p.pos[0]} cy={p.pos[2]} rx={p.size[0] / 2} ry={p.size[2] / 2} transform={`rotate(${-yaw} ${p.pos[0]} ${p.pos[2]})`} fill={model ? modelBodyColor(p) : (p.color ?? "#999")} {...modelStroke} />
               ) : (
-                <polygon points={pointsAttr(propCorners(p))} fill={p.kind === "label" ? "#ffffe0" : (p.color ?? "#999")} />
+                <polygon points={pointsAttr(propCorners(p))} fill={p.kind === "label" ? "#ffffe0" : model ? modelBodyColor(p) : (p.color ?? "#999")} {...modelStroke} />
+              )}
+              {model && p.label === undefined && (
+                // Wave 47: a model reads by its neon outline and its name.
+                <text x={p.pos[0]} y={p.pos[2]} fontSize={Math.max(0.07, Math.min(0.16, Math.min(p.size[0], p.size[2]) * 0.6, p.size[0] / Math.max(1, model.label.length) * 1.6))} textAnchor="middle" dominantBaseline="middle" fill="#333" pointerEvents="none">
+                  {model.label}
+                </text>
               )}
               {p.kind === "king" && (
                 <text x={p.pos[0]} y={p.pos[2]} className="king-glyph">
@@ -734,7 +742,7 @@ export function Canvas({ house, floor, edit, tool, snapStep, sel, players, onSel
           · wheel zooms · drag empty ground (or Space-drag) pans
           {edit &&
             (placing !== null
-              ? ` · click inside a room to place the ${placing} · Esc cancels`
+              ? ` · click inside a room to place the ${placingLabel(placing)} · Esc cancels`
               : tool === "select"
                 ? " · drag to move (⌥ no snap) · the round handle, R / ⇧R or ⌥-wheel turns · arrows nudge · ⌘D duplicates · Delete removes · ⌘Z / ⇧⌘Z"
                 : " · Esc back to Select")}

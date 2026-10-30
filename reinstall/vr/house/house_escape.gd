@@ -65,3 +65,30 @@ static func void_distance(house: Dictionary, p: Array) -> Variant:
 			continue
 		best = minf(best, HouseGeometry.distance_to_boundary(room["poly"], plan))
 	return best
+
+
+## The floors the games hide around a player in `room` (null: in no room):
+## every floor above [method outside_ground]'s, unless the player stands on
+## one or in a room a stair climbs out of to one. Seen from outside, the
+## house is only its outside floor. Port of `hiddenFloors`.
+static func hidden_floors(house: Dictionary, room: Variant) -> Array:
+	var out: Variant = outside_ground(house)
+	if out == null:
+		return []
+	var upper: Array = []
+	for f: Dictionary in house.get("floors", []):
+		if float(f["elevation"]) > float(out["y"]) + 1e-6:
+			upper.append(str(f["id"]))
+	if upper.is_empty():
+		return []
+	var r: Variant = HouseGeometry.room_by_id(house, room) if room != null else null
+	if r != null:
+		if upper.has(str(r["floor"])):
+			return []
+		for s: Dictionary in house.get("stairs", []):
+			if str(s["from"]) != str(r["id"]):
+				continue
+			var to: Variant = HouseGeometry.room_by_id(house, s["to"])
+			if to != null and upper.has(str(to["floor"])):
+				return []
+	return upper

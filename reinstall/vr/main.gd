@@ -7,6 +7,9 @@ extends Node3D
 var link: LinkBase = null
 var xr_interface: OpenXRInterface = null
 
+## The display rate to ask a headset for (Hz).
+const REFRESH_RATE := 90.0
+
 @onready var game: Game = $Game
 
 
@@ -24,6 +27,7 @@ func _ready() -> void:
 	HouseLook.set_tier(tier)
 	$WorldEnvironment.environment = HouseLook.environment(tier)
 	get_viewport().msaa_3d = HouseLook.msaa(tier)
+	print("reinstall-vr: picture — tier %s, msaa %d, foveation %s, xr %s" % [tier, get_viewport().msaa_3d, ProjectSettings.get_setting("xr/openxr/foveation_level"), xr_on])
 	$Sun.rotation_degrees = Vector3(-55.0, 35.0, 0.0)
 	$Sun.light_energy = HouseLights.DAY_SUN
 	game.world_env = $WorldEnvironment.environment
@@ -39,15 +43,42 @@ func _start_xr() -> bool:
 	get_viewport().use_xr = true
 	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
 	if xr_interface != null:
-		# Quest 3 runs 72 / 90 / 120 Hz; physics is 90 Hz, so ask for 90.
-		var rates := xr_interface.get_available_display_refresh_rates()
-		if rates.has(90.0):
-			xr_interface.display_refresh_rate = 90.0
+		# Quest 3 runs 72 / 90 / 120 Hz (72 unless asked). The rates are only
+		# known once the session has begun, so ask for 90 then.
+		xr_interface.session_begun.connect(_ask_refresh_rate)
+		xr_interface.display_refresh_rate_changed.connect(_match_physics)
+		if not xr_interface.get_available_display_refresh_rates().is_empty():
+			_ask_refresh_rate()
 		xr_interface.user_presence_changed.connect(game.presence_changed)
 		xr_interface.session_focussed.connect(func() -> void: game.focus_changed(true))
+		# … and again on focus: asked only before it, the Quest 3 stayed at
+		# 72 Hz (2026-10-29).
+		xr_interface.session_focussed.connect(_ask_refresh_rate)
 		xr_interface.session_visible.connect(func() -> void: game.focus_changed(false))
 		xr_interface.session_stopping.connect(game.headset_gone)
 	return true
+
+
+## The display at the offered rate nearest [constant REFRESH_RATE] (the
+## runtime's floats need not be exactly 90.0, so never match them exactly).
+func _ask_refresh_rate() -> void:
+	var want := 0.0
+	for r: float in xr_interface.get_available_display_refresh_rates():
+		if want == 0.0 or absf(r - REFRESH_RATE) < absf(want - REFRESH_RATE):
+			want = r
+	if want > 0.0 and absf(xr_interface.display_refresh_rate - want) > 0.5:
+		print("reinstall-vr: asking for %.3f Hz" % want)
+		xr_interface.display_refresh_rate = want
+	_match_physics(xr_interface.display_refresh_rate)
+
+
+## One physics tick per displayed frame, whatever rate the runtime settled
+## on (the player moves per frame anyway; this keeps the collision world in
+## step with it and spends no ticks the display never shows).
+func _match_physics(rate: float) -> void:
+	if rate >= 60.0:
+		Engine.physics_ticks_per_second = roundi(rate)
+	print("reinstall-vr: display %.3f Hz (offered %s), physics %d Hz" % [rate, xr_interface.get_available_display_refresh_rates(), Engine.physics_ticks_per_second])
 
 
 ## A Quest pauses the app when the headset sleeps: no frame runs until it
