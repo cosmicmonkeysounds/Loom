@@ -120,6 +120,9 @@ export interface HouseSceneOptions {
   /** (wave 26, R7) `pickup` props as spinning disks (default false: only the
    *  games draw them — never the terminals or the map editor's preview). */
   pickups?: boolean;
+  /** (wave 49) The descent level to draw: a prop with `from` above it is left
+   *  out. Default 0: only the games pass one (`DESCENT_MAX` draws them all). */
+  descent?: number;
   /** (wave 47) The games' look: glossy props, neon strips along every wall,
    *  flickering unfogged neon and the haze sheets (`setHaze`) — default
    *  false: the terminals' world view and the map editor stay plain. A
@@ -427,6 +430,8 @@ export function buildHouseScene(house: HouseMap, opts: HouseSceneOptions = {}): 
     const room = roomById(house, prop.room);
     const group = roomFloor(prop.room);
     if (!room || !group) continue;
+    // (wave 49) What only a program this far gone sees.
+    if ((prop.from ?? 0) > (opts.descent ?? 0)) continue;
     const place = (g: BufferGeometry) => g.rotateY((prop.yaw ?? 0) * DEG).translate(prop.pos[0], prop.pos[1], prop.pos[2]);
     const [w, h, d] = prop.size;
     if (prop.kind === "heart") {
@@ -461,7 +466,7 @@ export function buildHouseScene(house: HouseMap, opts: HouseSceneOptions = {}): 
       for (const part of modelParts(prop)!) {
         const g = place(partGeometry(part));
         if (part.role === "neon") pushGlow(room.floor, paint(g, glow));
-        else if (part.role === "screen" || part.role === "alert") pushGlow(room.floor, paint(g, ROLE_COLORS[part.role]));
+        else if (part.role === "screen" || part.role === "alert" || part.role === "flame") pushGlow(room.floor, paint(g, ROLE_COLORS[part.role]));
         else push(propGeoms, room.floor, paint(g, part.role === "body" ? body : ROLE_COLORS[part.role]));
       }
     } else if (prop.kind === "box") {

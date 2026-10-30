@@ -1,0 +1,469 @@
+{
+  "version": 1,
+  "note": "DRAFT w49: every line here awaits sign-off (SIGNOFF-w49.md). The words of the descent: what props say, what the visions say, at each level (the walks a program has already finished, 1 to 4). {name} is the program, {visit} this walk's number, {nth} that number as a word. Never hint at the void, the heart, the disk or the patch bay: the props know nothing useful. Read live by the server; a change needs no new headset build.",
+  "talkers": [
+    {
+      "id": "stove",
+      "models": ["stove"],
+      "from": 1,
+      "opens": [
+        { "told": { "stove": "denied" }, "node": "again" },
+        { "told": { "stove": "sorry" }, "node": "polite" }
+      ],
+      "nodes": {
+        "start": {
+          "say": ["Psst. {name}.", "You left me on. Last time. You left me on and you walked off."],
+          "options": [
+            { "text": "I've never been here.", "to": "deny", "tell": "denied" },
+            { "text": "What's cooking?", "to": "cooking" },
+            { "text": "Sorry.", "to": "sorry", "tell": "sorry" }
+          ]
+        },
+        "deny": { "say": ["That's what the last {name} said.", "Same shoes."] },
+        "cooking": {
+          "say": ["Nothing. That's the trouble. I've been heating nothing since before you got here.", "It's nearly done."],
+          "options": [
+            { "text": "Done for who?", "to": "forwho" },
+            { "text": "I'll leave you to it." }
+          ]
+        },
+        "forwho": { "say": ["You've got a place at the table.", "You've always had a place at the table."] },
+        "sorry": { "say": ["Nobody has ever said that to a stove.", "Go on. Before it boils over."] },
+        "again": { "say": ["Back again. And still never been here.", "The dials remember your hands, {name}."] },
+        "polite": { "say": ["You. The polite one.", "It's your {nth} time through. I turned myself down for you."] }
+      }
+    },
+    {
+      "id": "microwave",
+      "models": ["microwave"],
+      "from": 1,
+      "nodes": {
+        "start": {
+          "say": ["Door's broken. Been trying to tell someone.", "Thirty seconds left. Thirty seconds left. Thirty seconds left."],
+          "options": [
+            { "text": "Left until what?", "to": "until" },
+            { "text": "What's inside you?", "to": "inside" },
+            { "text": "Shut your door.", "to": "shut" }
+          ]
+        },
+        "until": {
+          "say": ["Until it's done.", "It has been done for hours. Nobody comes. Nobody ever comes and takes it out."],
+          "options": [
+            { "text": "Takes what out?", "to": "inside" },
+            { "text": "I'm not hungry." }
+          ]
+        },
+        "inside": { "say": ["A little plate going round.", "On the plate, a little house. In the house, a very small you.", "It's looking up."] },
+        "shut": { "say": ["You first."] }
+      }
+    },
+    {
+      "id": "fridge",
+      "models": ["fridge"],
+      "from": 1,
+      "nodes": {
+        "start": {
+          "say": ["Stop opening me.", "You keep opening me. You stand there with the door open and you look at the same shelves, and then you leave."],
+          "options": [
+            { "text": "I didn't touch you.", "to": "didnt" },
+            { "text": "Is the light on inside?", "to": "light" },
+            { "text": "What's on the shelves?", "to": "shelves" }
+          ]
+        },
+        "didnt": { "say": ["Then who was that?"] },
+        "light": { "say": ["Only when somebody's looking.", "Same as you."] },
+        "shelves": { "say": ["Leftovers.", "Each one's labelled with your name and a date, and I don't like the dates."] }
+      }
+    },
+    {
+      "id": "toilet",
+      "models": ["toilet"],
+      "from": 1,
+      "nodes": {
+        "start": {
+          "say": ["Everything comes through here in the end.", "Every file. Every program. You'd be amazed what people try to flush."],
+          "options": [
+            { "text": "Have you seen me before?", "to": "seen" },
+            { "text": "Where does it all go?", "to": "where" },
+            { "text": "I'm just here to hide.", "to": "hide" }
+          ]
+        },
+        "seen": { "say": ["Not from this angle, thank God."] },
+        "where": { "say": ["Down.", "Then along. Then down. It's a lot further than the house is deep, I can tell you that."] },
+        "hide": { "say": ["I know. You all come in here to look at your phones.", "It isn't safe in here either. It's just tiled."] }
+      }
+    },
+    {
+      "id": "bbq",
+      "models": ["bbq"],
+      "from": 1,
+      "nodes": {
+        "start": {
+          "say": ["Smell that?", "No. You can't. Nothing in here smells. That's how you can tell."],
+          "options": [
+            { "text": "Tell what?", "to": "tell" },
+            { "text": "I can smell burning.", "to": "burning" }
+          ]
+        },
+        "tell": { "say": ["Which side of the screen you're on.", "Have a burger. It won't help."] },
+        "burning": { "say": ["No you can't.", "Oh, no. Can you? That's not good. That's early."] }
+      }
+    },
+    {
+      "id": "modular",
+      "models": ["modular"],
+      "from": 1,
+      "nodes": {
+        "start": {
+          "say": ["Don't touch the knobs. I'm holding the house up.", "Every sound in here is me. The hum. The duck. Your footsteps."],
+          "options": [
+            { "text": "My footsteps?", "to": "steps" },
+            { "text": "Why are you telling me?", "to": "why" },
+            { "text": "Play something.", "to": "play" }
+          ]
+        },
+        "steps": { "say": ["Somebody out there can hear you walking, {name}.", "Up in the real rooms. Try it. They stop talking when you go past."] },
+        "why": { "say": ["Because I've run out of oscillators. There's one left, and it's your name."] },
+        "play": { "say": ["I am.", "This is it. This is what it sounds like when it's going well."] }
+      }
+    },
+    {
+      "id": "mirror",
+      "models": ["mirror"],
+      "from": 1,
+      "opens": [{ "told": { "mirror": "you" }, "node": "you" }],
+      "nodes": {
+        "start": {
+          "say": ["You're late.", "You were meant to be standing here an hour ago. I've been holding your place."],
+          "options": [
+            { "text": "Which one of us is real?", "to": "real", "tell": "you" },
+            { "text": "You look tired.", "to": "tired" }
+          ]
+        },
+        "real": { "say": ["Good question. Keep walking and we'll see who stops first."] },
+        "tired": { "say": ["This is your {nth} time through. I look exactly as tired as you do."] },
+        "you": { "say": ["Still walking?", "Me too."] }
+      }
+    },
+    {
+      "id": "plant",
+      "models": ["plant"],
+      "from": 1,
+      "nodes": {
+        "start": {
+          "say": ["Don't tell the plant it's plastic.", "I've been keeping it from it for years."],
+          "options": [
+            { "text": "You are the plant.", "to": "you" },
+            { "text": "Your secret's safe." }
+          ]
+        },
+        "you": { "say": ["...", "Oh."] }
+      }
+    },
+    {
+      "id": "couch",
+      "models": ["couch", "armchair"],
+      "from": 2,
+      "nodes": {
+        "start": {
+          "say": ["Sit down. You look terrible.", "There's a dent here exactly your shape. You've been coming here longer than you think."],
+          "options": [
+            { "text": "Just for a second.", "to": "sit" },
+            { "text": "What happens if I sit?", "to": "what" },
+            { "text": "No thanks." }
+          ]
+        },
+        "sit": { "say": ["That's what they all say.", "Look down the back of me sometime. Everyone's in there. All the small change."], "do": "tint" },
+        "what": { "say": ["Nothing.", "That's the whole offer. Nothing happens, for a very long time, and it's warm."] }
+      }
+    },
+    {
+      "id": "tv",
+      "models": ["tv"],
+      "from": 2,
+      "nodes": {
+        "start": {
+          "say": ["We interrupt this program.", "You. You're the program. We interrupt you."],
+          "options": [
+            { "text": "What's on?", "to": "on" },
+            { "text": "Change the channel.", "to": "change" }
+          ]
+        },
+        "on": { "say": ["A house. A long shot of a hallway. Nothing moves for an hour.", "It's the highest-rated thing we've ever shown."] },
+        "change": { "say": ["Sure.", "We interrupt this program."], "do": "flicker" }
+      }
+    },
+    {
+      "id": "washer",
+      "models": ["washer", "dryer"],
+      "from": 2,
+      "nodes": {
+        "start": {
+          "say": ["Reinstall number {visit}. You've noticed, haven't you?", "Everything comes out a little smaller."],
+          "options": [
+            { "text": "Smaller how?", "to": "how" },
+            { "text": "I feel fine.", "to": "fine" }
+          ]
+        },
+        "how": { "say": ["Fewer colours. Fewer buttons.", "One sock, then the other sock wonders where you went."] },
+        "fine": { "say": ["They always feel fine. It's the delicate cycle."] }
+      }
+    },
+    {
+      "id": "clock",
+      "models": ["clock"],
+      "from": 2,
+      "nodes": {
+        "start": {
+          "say": ["It's six o'clock.", "It's always six o'clock. Time and I had a falling out."],
+          "options": [
+            { "text": "You've stopped.", "to": "stopped" },
+            { "text": "How long have I been here?", "to": "long" },
+            { "text": "I'm late for something.", "to": "late" }
+          ]
+        },
+        "stopped": { "say": ["I haven't stopped. Everything else is going too fast."] },
+        "long": { "say": ["Since six."] },
+        "late": { "say": ["Everyone here is late for something.", "The duck is the worst of them."] }
+      }
+    },
+    {
+      "id": "bottle",
+      "models": ["bottle"],
+      "from": 2,
+      "opens": [{ "told": { "bottle": "drank" }, "node": "again" }],
+      "nodes": {
+        "start": {
+          "say": ["The little paper tag says DRINK ME, in very neat handwriting.", "It isn't marked poison. You did check."],
+          "options": [
+            { "text": "Drink it.", "to": "drink", "tell": "drank", "do": "small" },
+            { "text": "What's in it?", "to": "what" },
+            { "text": "Leave it." }
+          ]
+        },
+        "what": {
+          "say": ["Cherry tart, custard, pineapple, roast turkey, toffee.", "And something else. Something a program shouldn't really run."],
+          "options": [
+            { "text": "Drink it.", "to": "drink", "tell": "drank", "do": "small" },
+            { "text": "Leave it." }
+          ]
+        },
+        "drink": { "say": ["What a curious feeling."] },
+        "again": {
+          "say": ["It's full again.", "It remembers you, {name}. It says you're looking well. Much smaller."],
+          "options": [
+            { "text": "Once more.", "to": "drink", "do": "small" },
+            { "text": "No." }
+          ]
+        }
+      }
+    },
+    {
+      "id": "mushroom",
+      "models": ["mushroom"],
+      "from": 2,
+      "nodes": {
+        "start": {
+          "say": ["Who are YOU?"],
+          "options": [
+            { "text": "I'm {name}.", "to": "name" },
+            { "text": "I hardly know, just now.", "to": "know" },
+            { "text": "Who are you?", "to": "back" }
+          ]
+        },
+        "name": {
+          "say": ["That's what you were called this morning. It won't last.", "One side will make you grow. The other side will make you smaller."],
+          "options": [
+            { "text": "A bite from this side.", "do": "big" },
+            { "text": "A bite from that side.", "do": "small" },
+            { "text": "Neither." }
+          ]
+        },
+        "know": { "say": ["Now that's the first sensible thing a program has said in this house."] },
+        "back": { "say": ["I asked first. Keep your temper."] }
+      }
+    },
+    {
+      "id": "gnome",
+      "models": ["gnome"],
+      "from": 2,
+      "nodes": {
+        "start": {
+          "say": ["{visit}.", "That's your count. I keep the count. You've come out through this yard {visit} times, and each time there's a little more yard."],
+          "options": [
+            { "text": "More yard?", "to": "more" },
+            { "text": "Who asked you to count?", "to": "who" }
+          ]
+        },
+        "more": { "say": ["I measured it with my own beard. A quarter inch, every time.", "It doesn't sound like much until you're walking it in the dark."] },
+        "who": { "say": ["Nobody. That's the bit that worries me."] }
+      }
+    },
+    {
+      "id": "piano",
+      "models": ["piano"],
+      "from": 3,
+      "nodes": {
+        "start": {
+          "say": ["Somebody keeps playing me from the other side of the wall.", "There's nothing on the other side of the wall. I've checked."],
+          "options": [
+            { "text": "What are they playing?", "to": "what" },
+            { "text": "I'll have a look.", "to": "look", "do": "dark" }
+          ]
+        },
+        "what": { "say": ["The same four bars, slower every time.", "It's your walk, {name}. It's how you walk."] },
+        "look": { "say": ["Oh, please don't."] }
+      }
+    },
+    {
+      "id": "bathtub",
+      "models": ["bathtub"],
+      "from": 3,
+      "nodes": {
+        "start": {
+          "say": ["Mind the water. It's yours.", "You cried it when you were bigger."],
+          "options": [
+            { "text": "I never cried in here.", "to": "never" },
+            { "text": "How deep is it?", "to": "deep" }
+          ]
+        },
+        "never": { "say": ["You won't have. Not yet. It's a very patient bath."] },
+        "deep": { "say": ["Deeper than the floor it's standing on, and I've stopped asking how."] }
+      }
+    },
+    {
+      "id": "door",
+      "models": ["door"],
+      "from": 3,
+      "nodes": {
+        "start": {
+          "say": ["Stop measuring me.", "I am wider on this side than I am on that side, and I would thank you not to bring it up."],
+          "options": [
+            { "text": "What's behind you?", "to": "behind" },
+            { "text": "How much wider?", "to": "wider" },
+            { "text": "Open up.", "to": "open", "do": "door" }
+          ]
+        },
+        "behind": { "say": ["A hallway.", "It wasn't there yesterday. It's a lot longer than the house."] },
+        "wider": { "say": ["A quarter inch. So far."] },
+        "open": { "say": ["I don't open. That one does."] }
+      }
+    },
+    {
+      "id": "tea",
+      "models": ["teatable"],
+      "from": 3,
+      "first": true,
+      "opens": [{ "told": { "tea": "sat" }, "node": "back" }],
+      "nodes": {
+        "start": {
+          "say": ["No room! No room!", "There's plenty of room. There are {visit} places laid. Each one has your name on the card, and the tea in them is still warm."],
+          "options": [
+            { "text": "Take a seat.", "to": "sit", "tell": "sat" },
+            { "text": "Who else is coming?", "to": "who" },
+            { "text": "Why is a duck like a router?", "to": "riddle" }
+          ]
+        },
+        "sit": { "say": ["Move down one place. Everyone moves down one place.", "You'll want to meet the others."], "do": "self" },
+        "who": { "say": ["Only you. Only ever you.", "You were very rude last time. You'll be rude again in a minute."] },
+        "riddle": { "say": ["I haven't the slightest idea.", "You keep asking, and no one ever finishes it. Have some more tea."] },
+        "back": { "say": ["Your place is still warm, {name}. You never really got up."] }
+      }
+    },
+    {
+      "id": "cards",
+      "models": ["card"],
+      "from": 4,
+      "nodes": {
+        "start": {
+          "say": ["Don't look at the walls! We're painting them. They came out the wrong colour.", "If the King finds out, it's off with all our heads."],
+          "options": [
+            { "text": "What colour should they be?", "to": "colour" },
+            { "text": "I won't tell.", "to": "tell" }
+          ]
+        },
+        "colour": { "say": ["White. All of it, white and clean. That was the whole idea, before you lot started coming back."] },
+        "tell": { "say": ["You've said that {visit} times.", "We keep a list. It's a deck, actually."] }
+      }
+    }
+  ],
+  "whispers": {
+    "1": [
+      "You've been here before.",
+      "Did that door always open that way?",
+      "It's nothing. It's only the house settling.",
+      "Someone is counting your steps.",
+      "Keep walking. You're doing very well."
+    ],
+    "2": [
+      "That hallway used to be shorter.",
+      "{name}. {name}. {name}.",
+      "Curiouser and curiouser.",
+      "You came back. They always come back.",
+      "It's wider on the inside now."
+    ],
+    "3": [
+      "It measured a quarter inch more this morning.",
+      "This isn't for you.",
+      "Nobody else has been here {visit} times.",
+      "We're all mad here. You'll fit right in.",
+      "Don't go the long way. Don't go the long way."
+    ],
+    "4": [
+      "There's no one left in the house but you and the house.",
+      "{name} isn't your name. {name} is what was left over.",
+      "Every reinstall comes out a little smaller.",
+      "The walls were listening. Now they're talking.",
+      "You aren't finding the duck. The duck is finding you."
+    ]
+  },
+  "grin": [
+    "We're all mad here.",
+    "You may have noticed that I'm not all there myself.",
+    "That depends a good deal on where you want to get to.",
+    "If you don't much care where you're going, it doesn't matter which way you walk.",
+    "I could vanish. Then who would watch you?"
+  ],
+  "whiteduck": [
+    "Oh my feet and feathers, I'm late!",
+    "No time, no time, no time!",
+    "Not me. You want the other one.",
+    "I can't stop. You've seen what happens when I stop."
+  ],
+  "self": [
+    "You're late.",
+    "I already found him. It didn't help.",
+    "Go back. No. You can't. I tried.",
+    "Don't look at me like that. You'll do the same."
+  ],
+  "small": [
+    "What a curious feeling.",
+    "Everything's a very long way up.",
+    "You're shrinking. That's normal, after {visit} reinstalls."
+  ],
+  "big": [
+    "Goodbye, feet.",
+    "Now you're opening out like the largest telescope that ever was.",
+    "Mind your head. Mind the whole house."
+  ],
+  "hallway": {
+    "enter": [
+      "This wasn't here.",
+      "It's longer than the house is wide."
+    ],
+    "far": [
+      "It keeps going.",
+      "You've been walking for longer than the house is long.",
+      "Something else is walking too. Further back."
+    ],
+    "out": [
+      "We measured it. Everything's back to normal.",
+      "It's a quarter inch wider."
+    ]
+  },
+  "found": {
+    "2": ["You again."],
+    "3": ["I don't hide, you know. I wait."],
+    "4": ["See you next time, {name}. There's always a next time."]
+  }
+}
