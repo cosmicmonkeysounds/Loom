@@ -89,5 +89,9 @@ lights:
 audio:
   host_api: asio
   tap: { device: "VoiceMeeter Output", host_api: mme, ch: 3 }
+  # The soundtrack from the TIDAL app (wave 52; scripts/house-desktop/README.md
+  # 3.7): TIDAL plays into "VoiceMeeter Aux Input", VoiceMeeter's AUX strip is
+  # on B2 only, and the router hears B2 as the music bus's stereo bed.
+  tidal: { device: "VoiceMeeter Aux Output", host_api: mme }
   voice_engine: auto                # SAPI on this PC (System.Speech through Windows PowerShell)
   say_voice: Microsoft Zira Desktop # the female desktop voice; the default female voice if absent

@@ -16,6 +16,10 @@
     the speakers that share a playlist are one **bed**: one stream laid out
     per speaker (a stereo file's L / R as a story sound's), crossfading
     between its tracks over `crossfade_s`.
+    A playlist may be a **TIDAL** one (`tidal: <uuid>`, wave 52, `tidal.py`):
+    the app plays it and the bed is the app's sound. Its `dir` / `files`
+    are then the fallback, played when the app can't: it does not answer,
+    the playlist won't start, or the cable carries nothing for `SILENT_S`.
   - **tracks**: story `sound X` names that play as a stream with
     `takeover: true` (the mixer's `takeover` source: the beds on their
     speakers fall silent while they play). The router reads this; the
@@ -39,9 +43,17 @@ director uses that, and a track that ends before its crossfade was due (or
 fails) has the next one started at once. At most the current and the next
 track of each bed are open.
 
+One app plays one playlist, so a scene holds at most one TIDAL playlist, and
+two of them never crossfade: both voices would hear the same cable, the
+switch a hard cut under a level that never moves. The old bed fades out over
+`scene_fade_s` first, then the app changes playlist and the new bed fades in
+over `LIVE_FADE_S`, `LIVE_SWITCH_S` later. A TIDAL bed that leaves for no
+other pauses the app when its fade ends.
+
 Everything the director touches is injectable: `stream_factory(path, rate,
-loop=, offset=)` (default: a `stream.Stream`), `rng` (a `random.Random`),
-and the clock is the mixer's own, so the tests drive it block by block.
+loop=, offset=)` (default: a `stream.Stream`), `live` (a `tidal.Tidal`), `rng`
+(a `random.Random`), and the clock is the mixer's own, so the tests drive it
+block by block.
 """
 
 from __future__ import annotations
@@ -82,9 +94,17 @@ CUT_FADE_S = 0.05
 #: whole pass of the playlist does that, the bed waits RETRY_S instead of
 #: reopening the file every tick.
 SHORT_S = 1.0
+#: A live bed's cable carrying nothing this long: the fallback, if it has one.
+SILENT_S = 20.0
+#: The app's time from the Play click to the new playlist's first sound.
+LIVE_SWITCH_S = 1.0
+#: A live bed's fade-in after a playlist change.
+LIVE_FADE_S = 1.5
 
 _TOP = ("version", "level_db", "crossfade_s", "scene_fade_s", "playlists", "scenes", "tracks")
-_PLAYLIST = ("dir", "files", "shuffle", "loop", "level_db")
+_PLAYLIST = ("dir", "files", "tidal", "shuffle", "loop", "level_db")
+#: A TIDAL playlist's id: the last part of its share link.
+TIDAL_ID = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
 
 
 @dataclass(frozen=True)
@@ -97,6 +117,8 @@ class Playlist:
     shuffle: bool = True
     loop: bool = False
     level_db: float = 0.0
+    #: A TIDAL playlist's id (wave 52): `dir` / `files` are then its fallback.
+    tidal: str | None = None
 
     def tracks(self) -> list[str]:
         """The files it plays now (a folder is listed again each call;
@@ -110,7 +132,10 @@ class Playlist:
         return [f for f in self.files if Path(f).is_file()]
 
     def where(self) -> str:
-        return self.dir if self.dir is not None else ", ".join(self.files)
+        folder = self.dir if self.dir is not None else ", ".join(self.files)
+        if self.tidal is None:
+            return folder
+        return f"TIDAL {self.tidal}" + (f", else {folder}" if folder else "")
 
 
 @dataclass(frozen=True)
@@ -153,9 +178,10 @@ class Soundtrack:
         key = fold(name)
         return next((t for n, t in self.tracks.items() if fold(n) == key), None)
 
-    def missing(self) -> list[str]:
-        """The playlists with no file to play (their beds are silent)."""
-        return sorted(name for name, p in self.playlists.items() if not p.tracks())
+    def missing(self, live: bool = False) -> list[str]:
+        """The playlists with nothing to play (their beds are silent). `live`:
+        this machine has the TIDAL app, so a TIDAL playlist needs no file."""
+        return sorted(name for name, p in self.playlists.items() if not p.tracks() and not (live and p.tidal))
 
     def bed_level(self, playlist: str) -> float:
         p = self.playlists.get(playlist)
@@ -171,10 +197,10 @@ class Soundtrack:
             lines.append(f"  {name:<12} {n} file(s){' (loop)' if p.loop and n == 1 else ''} — {p.where()}")
         return lines
 
-    def warnings(self, doc: AudioDoc | None, house: Any) -> list[str]:
+    def warnings(self, doc: AudioDoc | None, house: Any, live: bool = False) -> list[str]:
         """`stagehand check` (C3): an empty playlist, a scene entry that
         reaches no speaker (the Fan Closet's until its speaker is placed)."""
-        out = [f"music: playlist {name} has no file ({self.playlists[name].where()}) — its bed is silent" for name in self.missing()]
+        out = [f"music: playlist {name} has no file ({self.playlists[name].where()}) — its bed is silent" for name in self.missing(live)]
         if doc is not None:
             # One line per condition: every scene repeating the same entry
             # (the Fan Closet's, in all eight) is one warning, not eight.
@@ -228,15 +254,18 @@ def _playlist(name: Any, raw: Any, base: Path, where: str) -> Playlist:
     if not isinstance(raw, dict):
         raise ConfigError(f"{where}: a mapping ({{dir: …}} or {{files: […]}})")
     _unknown(raw, _PLAYLIST, where)
-    if ("dir" in raw) == ("files" in raw):
-        raise ConfigError(f"{where}: exactly one of dir or files")
+    tidal = raw.get("tidal")
+    if tidal is not None and (not isinstance(tidal, str) or not TIDAL_ID.match(tidal)):
+        raise ConfigError(f"{where}.tidal: a playlist id, the last part of its share link (got {tidal!r})")
+    if ("dir" in raw and "files" in raw) or (tidal is None and "dir" not in raw and "files" not in raw):
+        raise ConfigError(f"{where}: exactly one of dir or files" + (" (a tidal playlist's fallback)" if tidal else ""))
     folder: str | None = None
     files: tuple[str, ...] = ()
     if "dir" in raw:
         if not isinstance(raw["dir"], str) or not raw["dir"].strip():
             raise ConfigError(f"{where}.dir: a folder (relative to the soundtrack's own)")
         folder = _resolve(base, raw["dir"].strip())
-    else:
+    elif "files" in raw:
         listed = raw["files"]
         if not isinstance(listed, list) or not listed or not all(isinstance(f, str) and f.strip() for f in listed):
             raise ConfigError(f"{where}.files: a non-empty list of file paths")
@@ -248,6 +277,7 @@ def _playlist(name: Any, raw: Any, base: Path, where: str) -> Playlist:
         shuffle=_bool(raw.get("shuffle", True), f"{where}.shuffle"),
         loop=_bool(raw.get("loop", False), f"{where}.loop"),
         level_db=_num(raw.get("level_db", 0), f"{where}.level_db", -60, 12),
+        tidal=tidal,
     )
 
 
@@ -284,6 +314,9 @@ def _scene(name: Any, raw: Any, playlists: dict[str, Playlist], where: str) -> t
         if play is not None and (not isinstance(play, str) or play not in playlists):
             raise ConfigError(f"{at}.play: no playlist {play!r} (known: {', '.join(playlists) or 'none'})")
         out.append(Entry(to=_targets(e["to"], f"{at}.to"), play=play))
+    on_app = sorted({e.play for e in out if e.play is not None and playlists[e.play].tidal})
+    if len(on_app) > 1:
+        raise ConfigError(f"{where}: one TIDAL app plays one playlist (got {', '.join(on_app)})")
     return tuple(out)
 
 
@@ -471,15 +504,25 @@ class Bed:
     retry_at: int = 0
     #: Tracks in a row that ended with (almost) no audio (`SHORT_S`).
     short: int = 0
+    #: The bed is the TIDAL app's sound, not its files (wave 52).
+    live: bool = False
+    #: Mixer frame a live bed begins on (the bed before it has faded out).
+    live_at: int = 0
+    #: Mixer frame the live bed asked the app to play.
+    live_since: int = 0
 
 
 class Director:
     """Plays a `Soundtrack`'s scenes on a mixer (see the module docstring).
     Not thread-safe: the router calls it from its event loop only."""
 
-    def __init__(self, soundtrack: Soundtrack, *, stream_factory: Callable[..., Any] | None = None, rng: random.Random | None = None) -> None:
+    def __init__(self, soundtrack: Soundtrack, *, stream_factory: Callable[..., Any] | None = None, rng: random.Random | None = None, live: Any = None) -> None:
         self.st = soundtrack
         self._open_stream = stream_factory or _default_stream
+        #: The TIDAL app (`tidal.Tidal`, wave 52); None: its playlists play files.
+        self.live = live
+        #: Mixer frame to pause the app on (a live bed's fade-out ends).
+        self._live_off_at: int | None = None
         self.rng = rng or random.Random()
         self.mixer: Any = None
         self.doc: AudioDoc | None = None
@@ -508,6 +551,8 @@ class Director:
                         v.stream.close(wait=False)
             self.beds = {}
             self.mixer = mixer
+            if self.live is not None:
+                self.live.open(mixer.rate)
         self.doc, self.house = doc, house
         if self.scene is not None:
             self._enter(self.scene)
@@ -543,6 +588,8 @@ class Director:
         story restart): the next scene cue, even the same one, starts again."""
         if self.beds:
             log.info("🎵 soundtrack: every bed fades out over %gs%s", fade_s, f" ({why})" if why else "")
+        if any(bed.live for bed in self.beds.values()):
+            self._pause_app_after(fade_s)
         for bed in self.beds.values():
             self._fade_out(bed, fade_s)
         if self.mixer is not None:
@@ -562,6 +609,10 @@ class Director:
         now = self.mixer.frames
         for bed in self.beds.values():
             if playlist is not None and bed.playlist != playlist:
+                continue
+            if bed.live:
+                self.live.next()
+                moved += 1
                 continue
             cur = bed.cur
             if cur is None or cur.looping:
@@ -587,10 +638,14 @@ class Director:
         for n in notes:
             self._note(n)
         fade = self.st.scene_fade_s
+        if self.live is not None and any(self.st.playlists[p].tidal for p in wanted):
+            self.live.open(self.mixer.rate)  # a capture that failed: try again
         beds: dict[str, Bed] = {}
+        left_app = False
         for playlist, bed in self.beds.items():
             speakers = wanted.get(playlist)
             if speakers is None:
+                left_app = left_app or bed.live
                 self._fade_out(bed, fade)
                 continue
             if speakers == bed.speakers and speaker_layout(self.doc, speakers) == bed.layout:
@@ -600,9 +655,22 @@ class Director:
         for playlist, speakers in wanted.items():
             if playlist not in beds:
                 bed = self._bed(playlist, speakers)
-                self._begin(bed, fade)
+                if not self._on_app(playlist):
+                    self._begin(bed, fade)
+                elif left_app:
+                    bed.live = True
+                    bed.live_at = self.mixer.frames + self._frames(fade)
+                else:
+                    bed.live = True
+                    self._begin_live(bed, fade)
                 beds[playlist] = bed
         self.beds = beds
+        if any(bed.live for bed in beds.values()):
+            self._live_off_at = None
+        elif left_app:
+            self._pause_app_after(fade)
+        elif self.live is not None and self._live_off_at is None:
+            self.live.want(None)  # a router restarted into a scene without the app
 
     def _bed(self, playlist: str, speakers: tuple[str, ...]) -> Bed:
         assert self.doc is not None
@@ -621,6 +689,12 @@ class Director:
         new = self._bed(playlist=bed.playlist, speakers=speakers)
         new.pending = bed.pending
         now = self.mixer.frames
+        if bed.live:
+            new.live, new.live_at, new.live_since = True, bed.live_at, bed.live_since
+            if bed.cur is not None:
+                self.mixer.stop(vid=bed.cur.vid, fade_s=self.st.scene_fade_s)
+                new.cur = self._play(new, (bed.cur.path, self.live.reader()), fade_s=self.st.scene_fade_s, looping=True)
+            return new
         # The voice heard now: a crossfade's incoming track once it has begun.
         cur = bed.nxt if bed.nxt is not None and (bed.nxt.start is None or now >= bed.nxt.start) else bed.cur
         fade = self.st.scene_fade_s
@@ -658,6 +732,59 @@ class Director:
             except Exception:  # noqa: BLE001
                 pass
             bed.pending = None
+
+    # -- the TIDAL app --------------------------------------------------------------
+
+    def _on_app(self, playlist: str) -> bool:
+        """Does this bed start on the app? With no fallback it always does:
+        waiting for the app beats silence, and the app is put right by itself."""
+        p = self.st.playlists[playlist]
+        if p.tidal is None or self.live is None:
+            return False
+        return self.live.reachable() or not p.tracks()
+
+    def _pause_app_after(self, fade_s: float) -> None:
+        if self.mixer is None:
+            self.live.want(None)
+        else:
+            self._live_off_at = self.mixer.frames + self._frames(fade_s)
+
+    def _begin_live(self, bed: Bed, fade_s: float, start_at: int | None = None) -> None:
+        p = self.st.playlists[bed.playlist]
+        self.live.want(p.tidal, shuffle=p.shuffle)
+        bed.live_since = self.mixer.frames
+        try:
+            reader = self.live.reader()
+        except Exception as err:  # noqa: BLE001 — no capture: `_tick_live` retries or falls back
+            self._note(f"playlist {bed.playlist}: {err}")
+            return
+        bed.cur = self._play(bed, (f"TIDAL {p.tidal}", reader), fade_s=fade_s, start_at=start_at, looping=True)
+
+    def _tick_live(self, bed: Bed, now: int) -> None:
+        mixer = self.mixer
+        if bed.cur is not None and not mixer.playing(bed.cur.vid):
+            bed.cur = None
+        if bed.cur is None and now >= max(bed.live_at, bed.retry_at):
+            bed.retry_at = now + self._frames(RETRY_S)
+            self._begin_live(bed, LIVE_FADE_S, now + self._frames(LIVE_SWITCH_S))
+        if bed.cur is None and now < bed.live_at:
+            return  # the bed before it is still fading: the app was not asked yet
+        problem = self.live.problem()
+        if problem is None and bed.cur is not None and (now - bed.live_since) >= self._frames(SILENT_S) and self.live.silent_s() >= SILENT_S:
+            problem = f"no sound on the cable for {SILENT_S:g}s"
+        if problem is None:
+            return
+        if not self.st.playlists[bed.playlist].tracks():
+            self._note(f"playlist {bed.playlist}: {problem} — silent, it has no fallback files")
+            return
+        log.warning("🎵 soundtrack: playlist %s falls back to its files: %s", bed.playlist, problem)
+        if bed.cur is not None:
+            mixer.stop(vid=bed.cur.vid, fade_s=self.st.crossfade_s)
+            bed.cur = None
+        bed.live = False
+        bed.retry_at = 0
+        self.live.want(None)
+        self._begin(bed, self.st.crossfade_s)
 
     # -- tracks ----------------------------------------------------------------------
 
@@ -719,10 +846,16 @@ class Director:
         clock, and start a track at once where one ended early."""
         if self.mixer is None:
             return
+        if self._live_off_at is not None and self.mixer.frames >= self._live_off_at:
+            self._live_off_at = None
+            self.live.want(None)
         for bed in self.beds.values():
             self._tick(bed, self.mixer.frames)
 
     def _tick(self, bed: Bed, now: int) -> None:
+        if bed.live:
+            self._tick_live(bed, now)
+            return
         mixer = self.mixer
         if bed.nxt is not None and (bed.nxt.start is None or now >= bed.nxt.start):
             if bed.out is not None and mixer.playing(bed.out.vid):
@@ -800,12 +933,18 @@ class Director:
             end = cur.end() if cur is not None and not cur.looping and rate else None
             if end is not None and end > 0:
                 row["dur_s"] = round(end / rate, 1)
+            if bed.live:
+                now = self.live.now()
+                row["track"] = now.get("track") or None
+                row["pos_s"] = now.get("pos_s") or 0.0
+                if now.get("dur_s"):
+                    row["dur_s"] = now["dur_s"]
             beds.append(row)
         counts = {name: len(p.tracks()) for name, p in self.st.playlists.items()}
         return {
             "scene": self.scene,
             "beds": beds,
-            "missing": sorted(name for name, n in counts.items() if n == 0),
+            "missing": self.st.missing(self.live is not None),
             "scenes": [*self.st.scenes, *([] if OFF in self.st.scenes else [OFF])],
             "playlists": [{"name": name, "tracks": counts[name], "loop": p.loop} for name, p in self.st.playlists.items()],
         }
