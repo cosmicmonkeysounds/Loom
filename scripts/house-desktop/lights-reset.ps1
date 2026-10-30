@@ -66,7 +66,7 @@ function Show-Chain {
     $stats = Get-LightsStats
     if ($null -eq $stats) { Write-Warn 'no health/lights/stats yet' }
     else {
-        Write-Note ('look ' + $stats.last_look + ', ' + $stats.devices + ' Zigbee devices, Z2M ' + $stats.z2m + ', restarted by the job ' + $stats.z2m_restarts + ' time(s)')
+        Write-Note ('look ' + $stats.last_look + ', ' + $stats.devices + ' Zigbee devices, restarted by the job ' + $stats.z2m_restarts + ' time(s)')
         if (@($stats.dark).Count -gt 0) { Write-Warn ('not answering Zigbee: ' + (@($stats.dark) -join ', ') + ' (power? a wall switch?)') }
         else { Write-Ok 'every paced bulb answers' }
     }
