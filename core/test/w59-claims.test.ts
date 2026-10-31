@@ -11,7 +11,7 @@ import { afterAll, describe, expect, it } from "vitest";
 
 import { EventRuntime } from "../server/event-runtime.ts";
 import { Store } from "../server/store.ts";
-import { HELD_ERROR, RejoinDesk } from "../server/routes/rejoin.ts";
+import { HELD_ERROR, REJOIN_RETRY_MS, RejoinDesk } from "../server/routes/rejoin.ts";
 import { SIGNED_OUT } from "../server/routes/n02.ts";
 
 const CODES = { event: "EVT559", prime: "PRM559", mod: "MOD559" };
@@ -393,11 +393,11 @@ describe("a lost phone", () => {
     // …a host does read it, and is told a phone holds them.
     const row = await approve(rt, request);
     expect(row).toMatchObject({ name: "Calculator", held: true });
-    expect(feed.ended).toBe(true);
-    expect((await guestState(rt, a.token)).status).toBe(401);
 
     const got = await post(rt, "/api/guest/rejoin/poll", { request });
     expect(got.json).toMatchObject({ state: "approved", id: a.id, name: "Calculator" });
+    expect(feed.ended).toBe(true);
+    expect((await guestState(rt, a.token)).status).toBe(401);
     const view = await guestState(rt, got.json.token);
     expect(view.json).toMatchObject({ id: a.id, name: "Calculator", score: 7 });
     expect(view.json.codex.map((e: { id: string }) => e.id)).toEqual(["The Secret"]);
@@ -406,13 +406,13 @@ describe("a lost phone", () => {
     expect((await enter(rt, { badge: code }, got.json.token)).json.token).toBe(got.json.token);
   });
 
-  it("asking by a program's name still works, and an approve signs the old phone out", async () => {
+  it("asking by a program's name still works, and collecting it signs the old phone out", async () => {
     const rt = open();
     const a = await register(rt, "Winamp");
     const ask = await post(rt, "/api/guest/rejoin", { passcode: CODES.event, name: "Winamp" });
     await approve(rt, ask.json.request);
-    expect((await guestState(rt, a.token)).status).toBe(401);
     const got = await post(rt, "/api/guest/rejoin/poll", { request: ask.json.request });
+    expect((await guestState(rt, a.token)).status).toBe(401);
     expect((await guestState(rt, got.json.token)).json.id).toBe(a.id);
   });
 
@@ -435,11 +435,11 @@ describe("a lost phone", () => {
     expect(ask.json).toMatchObject({ ok: true, name: "Clippy" });
     const row = await approve(rt, ask.json.request);
     expect(row).toMatchObject({ name: "Clippy", held: true, part: true });
+    const got = await post(rt, "/api/guest/rejoin/poll", { request: ask.json.request });
+    expect(got.json).toMatchObject({ state: "approved", part: true, character: "Clippy", host: false });
     expect(feed.ended).toBe(true);
     expect(feed.frames.join("")).toContain('"kind":"released"');
     expect((await boothState(rt, a.json.token)).status).not.toBe(200);
-    const got = await post(rt, "/api/guest/rejoin/poll", { request: ask.json.request });
-    expect(got.json).toMatchObject({ state: "approved", part: true, character: "Clippy", host: false });
     expect((await boothState(rt, got.json.token)).status).toBe(200);
     // Held again: by the new phone.
     expect((await staffBadge(rt, part)).status).toBe(409);
@@ -452,9 +452,9 @@ describe("a lost phone", () => {
     const ask = await post(rt, "/api/guest/rejoin", { passcode: CODES.event, part });
     const decided = await mod(rt, "/api/mod/guest/rejoin", { request: ask.json.request, approve: true });
     expect(decided.json.state).toBe("approved");
-    expect((await boothState(rt, a.json.token)).status).not.toBe(200);
     const got = await post(rt, "/api/guest/rejoin/poll", { request: ask.json.request });
     expect(got.json).toMatchObject({ character: "Task Manager", host: true });
+    expect((await boothState(rt, a.json.token)).status).not.toBe(200);
     expect((await state(rt, `role=mod&host=1&token=${got.json.token}`)).status).toBe(200);
   });
 
@@ -481,9 +481,23 @@ describe("a lost phone", () => {
     const desk = new RejoinDesk(() => now, () => "r");
     desk.open("g-1", "Calculator");
     now = 9 * 60_000;
-    expect(desk.decide("r", true, "Task Manager", () => "t")?.token).toBe("t");
+    expect(desk.decide("r", true, "Task Manager")?.state).toBe("approved");
     now = 12 * 60_000;
+    expect(desk.get("r")?.state).toBe("approved");
+    now = 20 * 60_000;
+    expect(desk.get("r")).toBeNull();
+  });
+
+  it("a collected ask answers a retry for a minute, not for ten", () => {
+    let now = 0;
+    const desk = new RejoinDesk(() => now, () => "r");
+    const r = desk.open("g-1", "Calculator");
+    desk.decide("r", true, "Task Manager");
+    r.token = "t";
+    now = REJOIN_RETRY_MS - 1;
     expect(desk.get("r")?.token).toBe("t");
+    now = REJOIN_RETRY_MS;
+    expect(desk.get("r")).toBeNull();
   });
 });
 
@@ -515,5 +529,262 @@ describe("a host's or a director's own sign-ins", () => {
     expect((await post(rt, "/api/prime/login", { passcode: CODES.prime, character: "Clippy" })).status).toBe(200);
     // The director is still a director.
     expect((await state(rt, `role=mod&cues=1&token=${m.json.token}`)).status).toBe(200);
+  });
+});
+
+describe("an ask nobody collects", () => {
+  const approve = (rt: EventRuntime, request: string) => mod(rt, "/api/mod/guest/rejoin", { request, approve: true });
+  const asks = async (rt: EventRuntime) => {
+    const res = fakeRes();
+    const url = new URL("http://x/api/state?role=mod&cues=1");
+    await rt.handle(fakeReq({}), res, "GET", url.pathname, url, { moderator: true, moderatorName: "Ada" });
+    return (JSON.parse(res.body).rejoins ?? []) as Array<{ request: string; name: string; held?: boolean }>;
+  };
+
+  it("an Approve moves nothing until the waiting phone collects it", async () => {
+    const rt = open();
+    const code = await blank(rt, 20);
+    const a = await register(rt, "Calculator", { badge: code });
+    const ask = await post(rt, "/api/guest/rejoin", { passcode: CODES.event, badge: code });
+    const request = ask.json.request as string;
+    expect((await approve(rt, request)).json).toMatchObject({ ok: true, state: "approved" });
+    // Nobody has collected: the phone in use carries on, and the card still refuses.
+    expect((await guestState(rt, a.token)).status).toBe(200);
+    expect((await enter(rt, { badge: code })).status).toBe(409);
+    const got = await post(rt, "/api/guest/rejoin/poll", { request });
+    expect(got.json).toMatchObject({ state: "approved", id: a.id });
+    expect((await guestState(rt, a.token)).status).toBe(401);
+    expect((await guestState(rt, got.json.token)).status).toBe(200);
+  });
+
+  it("a poll answered into thin air is asked again: the same token, not a holder no phone has", async () => {
+    const rt = open();
+    const code = await blank(rt, 21);
+    await register(rt, "Calculator", { badge: code });
+    const request = (await post(rt, "/api/guest/rejoin", { passcode: CODES.event, badge: code })).json.request as string;
+    await approve(rt, request);
+    const first = await post(rt, "/api/guest/rejoin/poll", { request });
+    const again = await post(rt, "/api/guest/rejoin/poll", { request });
+    expect(again.json).toMatchObject({ state: "approved", token: first.json.token });
+    expect((await guestState(rt, first.json.token)).status).toBe(200);
+  });
+
+  it("Cancel takes the ask off Needs; a stale Approve is refused and touches nobody", async () => {
+    const rt = open();
+    const code = await blank(rt, 22);
+    const a = await register(rt, "Calculator", { badge: code });
+    const request = (await post(rt, "/api/guest/rejoin", { passcode: CODES.event, badge: code })).json.request as string;
+    expect(await asks(rt)).toHaveLength(1);
+    expect((await post(rt, "/api/guest/rejoin/cancel", { request })).status).toBe(200);
+    expect(await asks(rt)).toHaveLength(0);
+    expect((await approve(rt, request)).status).toBe(404);
+    expect((await guestState(rt, a.token)).status).toBe(200);
+    expect((await post(rt, "/api/guest/rejoin/poll", { request })).json.state).toBe("expired");
+  });
+
+  it("Cancel after an Approve still changes nothing", async () => {
+    const rt = open();
+    const part = await partOf(rt, "Clippy");
+    const a = await staffBadge(rt, part);
+    const request = (await post(rt, "/api/guest/rejoin", { passcode: CODES.event, part })).json.request as string;
+    await approve(rt, request);
+    await post(rt, "/api/guest/rejoin/cancel", { request });
+    expect((await post(rt, "/api/guest/rejoin/poll", { request })).json.state).toBe("expired");
+    expect((await boothState(rt, a.json.token)).status).toBe(200);
+  });
+
+  it("a release closes the Person's open ask, and the waiting phone hears it's free", async () => {
+    const rt = open();
+    const code = await blank(rt, 23);
+    const a = await register(rt, "Calculator", { badge: code });
+    const request = (await post(rt, "/api/guest/rejoin", { passcode: CODES.event, badge: code })).json.request as string;
+    await post(rt, "/api/guest/logout", {}, a.token);
+    expect(await asks(rt)).toHaveLength(0);
+    expect((await approve(rt, request)).status).toBe(404);
+    expect((await post(rt, "/api/guest/rejoin/poll", { request })).json.state).toBe("closed");
+    // Once: the phone has gone back to its card.
+    expect((await post(rt, "/api/guest/rejoin/poll", { request })).json.state).toBe("expired");
+    expect((await enter(rt, { badge: code })).json).toMatchObject({ resumed: true, id: a.id });
+  });
+
+  it("a plain sign-in closes an ask made before it, and a stale Approve can't sign that phone out", async () => {
+    const rt = open();
+    const code = await blank(rt, 24);
+    const a = await register(rt, "Calculator", { badge: code });
+    const request = (await post(rt, "/api/guest/rejoin", { passcode: CODES.event, badge: code })).json.request as string;
+    await mod(rt, "/api/mod/guest/release", { id: a.id });
+    const b = await enter(rt, { badge: code });
+    expect((await approve(rt, request)).status).toBe(404);
+    expect((await guestState(rt, b.json.token)).status).toBe(200);
+  });
+
+  it("the same for a part: an old ask can't sign out the phone that took it plainly", async () => {
+    const rt = open();
+    const part = await partOf(rt, "Clippy");
+    const a = await staffBadge(rt, part);
+    const request = (await post(rt, "/api/guest/rejoin", { passcode: CODES.event, part })).json.request as string;
+    await post(rt, "/api/prime/logout", {}, a.json.token);
+    const b = await staffBadge(rt, part);
+    expect(b.status).toBe(200);
+    expect((await approve(rt, request)).status).toBe(404);
+    expect((await boothState(rt, b.json.token)).status).toBe(200);
+  });
+
+  it("a booth moving to a free part frees the old one's ask too", async () => {
+    const rt = open();
+    const a = await staffBadge(rt, await partOf(rt, "Clippy"));
+    const request = (await post(rt, "/api/guest/rejoin", { passcode: CODES.event, part: await partOf(rt, "Clippy") })).json.request as string;
+    await staffBadge(rt, await partOf(rt, "Task Manager"), a.json.token);
+    expect((await post(rt, "/api/guest/rejoin/poll", { request })).json.state).toBe("closed");
+  });
+
+  it("the holder's own re-scan is no sign-in: the ask stands", async () => {
+    const rt = open();
+    const code = await blank(rt, 25);
+    const a = await register(rt, "Calculator", { badge: code });
+    const request = (await post(rt, "/api/guest/rejoin", { passcode: CODES.event, badge: code })).json.request as string;
+    await enter(rt, { badge: code }, a.token);
+    expect((await post(rt, "/api/guest/rejoin/poll", { request })).json.state).toBe("pending");
+  });
+});
+
+describe("an invited badge is its own program's", () => {
+  it("a signed-in stranger can't link it: refused by name, and the real invitee still joins", async () => {
+    const rt = open();
+    const l = await invited(rt, "Microsoft Excel");
+    const stranger = await register(rt, "Calculator");
+    const r = await post(rt, "/api/guest/badge", { badge: l.badge }, stranger.token);
+    expect(r.status).toBe(409);
+    expect(r.json).toMatchObject({ reserved: true, name: "Microsoft Excel" });
+    expect(r.json.holder).toBeUndefined();
+    const real = await register(rt, "Microsoft Excel", { claim: l.claim, badge: l.badge });
+    expect((await enter(rt, { badge: l.badge }, real.token)).json).toMatchObject({ resumed: true, id: real.id });
+  });
+
+  it("no claim behaves as a claim: a joined program signs in or refuses, never `fresh`", async () => {
+    const rt = open();
+    const l = await invited(rt, "OpenOffice");
+    const g = await register(rt, "OpenOffice", { claim: l.claim });
+    const refused = await enter(rt, { badge: l.badge });
+    expect(refused.status).toBe(409);
+    expect(refused.json).toMatchObject({ held: true, name: "OpenOffice", ref: l.ref });
+    await post(rt, "/api/guest/logout", {}, g.token);
+    expect((await enter(rt, { badge: l.badge })).json).toMatchObject({ resumed: true, id: g.id });
+  });
+
+  it("no claim on a program nobody has joined hands the join its invitation", async () => {
+    const rt = open();
+    const l = await invited(rt, "Microsoft Excel");
+    expect((await enter(rt, { badge: l.badge })).json).toMatchObject({ resumed: false, claim: l.claim });
+    const g = await register(rt, "Microsoft Excel", { badge: l.badge });
+    expect((await enter(rt, { badge: l.badge }, g.token)).json).toMatchObject({ resumed: true, id: g.id });
+  });
+
+  it("register refuses it for any other program and creates nobody", async () => {
+    const rt = open();
+    const l = await invited(rt, "Microsoft Excel");
+    const r = await post(rt, "/api/guest/register", { name: "Calculator", passcode: CODES.event, badge: l.badge });
+    expect(r.status).toBe(409);
+    expect(r.json).toMatchObject({ reserved: true, name: "Microsoft Excel" });
+    expect(rt.liveSim!.persons.size).toBe(0);
+  });
+
+  it("a mod's list and a pass still read it once its program has joined", async () => {
+    const rt = open();
+    const l = await invited(rt, "OpenOffice");
+    const g = await register(rt, "OpenOffice", { claim: l.claim, badge: l.badge });
+    const stranger = await register(rt, "Calculator");
+    const seen = await post(rt, "/api/guest/badge", { badge: l.badge }, stranger.token);
+    expect(seen.json).toMatchObject({ holder: g.id, name: "OpenOffice" });
+  });
+
+  it("a program that joined by a bare invitation can link its own badge later, and only it", async () => {
+    const rt = open();
+    const l = await invited(rt, "OpenOffice");
+    const g = await register(rt, "OpenOffice", { claim: l.claim });
+    const stranger = await register(rt, "Calculator");
+    expect((await post(rt, "/api/guest/badge", { badge: l.badge }, stranger.token)).json).toMatchObject({ holder: g.id, name: "OpenOffice" });
+    expect((await post(rt, "/api/guest/badge", { badge: l.badge }, g.token)).status).toBe(200);
+  });
+});
+
+describe("register with a card", () => {
+  it("the loser of a blank badge is refused the plain way, naming only the badge", async () => {
+    const rt = open();
+    const code = await blank(rt, 30);
+    await register(rt, "Calculator", { badge: code });
+    const r = await post(rt, "/api/guest/register", { name: "Winamp", passcode: CODES.event, badge: code });
+    expect(r.status).toBe(409);
+    expect(r.json).toEqual({ error: HELD_ERROR, held: true, ref: "B030" });
+    expect(rt.liveSim!.persons.size).toBe(1);
+  });
+
+  it("the loser of an invitation gets the refused screen, and a held program's name", async () => {
+    const rt = open();
+    const l = await invited(rt, "Microsoft Excel");
+    await register(rt, "Microsoft Excel", { claim: l.claim, badge: l.badge });
+    const byBadge = await post(rt, "/api/guest/register", { name: "Microsoft Excel", passcode: CODES.event, claim: l.claim, badge: l.badge });
+    expect(byBadge.status).toBe(409);
+    expect(byBadge.json).toMatchObject({ held: true, name: "Microsoft Excel", ref: l.ref });
+    const byClaim = await post(rt, "/api/guest/register", { name: "Microsoft Excel", passcode: CODES.event, claim: l.claim });
+    expect(byClaim.json).toMatchObject({ held: true, name: "Microsoft Excel" });
+  });
+
+  it("a claim for one program doesn't stop a phone picking another", async () => {
+    const rt = open();
+    const l = await invited(rt, "Microsoft Excel");
+    await register(rt, "Microsoft Excel", { claim: l.claim });
+    expect((await post(rt, "/api/guest/register", { name: "Calculator", passcode: CODES.event, claim: l.claim })).status).toBe(200);
+  });
+
+  it("a card whose Person a release freed signs in as that Person, never as a second one", async () => {
+    const rt = open();
+    const code = await blank(rt, 31);
+    const a = await register(rt, "Calculator", { badge: code });
+    await post(rt, "/api/guest/logout", {}, a.token);
+    const r = await post(rt, "/api/guest/register", { name: "Winamp", passcode: CODES.event, badge: code });
+    expect(r.status).toBe(200);
+    expect(r.json).toMatchObject({ id: a.id, name: "Calculator" });
+    expect(rt.liveSim!.persons.size).toBe(1);
+  });
+
+  it("a program picked with no card keeps its plain taken answer", async () => {
+    const rt = open();
+    await register(rt, "Calculator");
+    const r = await post(rt, "/api/guest/register", { name: "Calculator", passcode: CODES.event });
+    expect(r.status).toBe(409);
+    expect(r.json.held).toBeUndefined();
+  });
+
+  it("two phones racing a picture wiki call can't both become one program", async () => {
+    const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
+    const wiki = { lookup: async () => null, avatarFor: async () => null, pictures: async () => (await delay(20), [{ url: "https://x.test/p.png", file: "File:p.png" }]) };
+    const rt = new EventRuntime({ eventId: "evt", store: new Store(freshDir()), codes: CODES, scenarioName: "claims", scenarioSource: SOURCE, joinBase: () => "https://app.example.com", wiki: wiki as never });
+    rt.openDoors();
+    const key = (await post(rt, "/api/identities/pictures", { passcode: CODES.event, name: "Calculator" })).json.options[0].key as string;
+    const [a, b] = await Promise.all([post(rt, "/api/guest/register", { name: "Calculator", passcode: CODES.event, picture: key }), post(rt, "/api/guest/register", { name: "Calculator", passcode: CODES.event, picture: key })]);
+    expect([a.status, b.status].sort()).toEqual([200, 409]);
+    expect(rt.liveSim!.persons.size).toBe(1);
+  });
+});
+
+describe("a Home Screen nonce and a move", () => {
+  it("an approved ask voids the old phone's nonces, so one Person has one holder", async () => {
+    const before = process.env["LOOM_HOMESCREEN"];
+    process.env["LOOM_HOMESCREEN"] = "on";
+    try {
+      const rt = open();
+      const code = await blank(rt, 32);
+      const a = await register(rt, "Calculator", { badge: code });
+      const nonce = await post(rt, "/api/guest/homescreen", {}, a.token);
+      expect(nonce.status).toBe(200);
+      const request = (await post(rt, "/api/guest/rejoin", { passcode: CODES.event, badge: code })).json.request as string;
+      await mod(rt, "/api/mod/guest/rejoin", { request, approve: true });
+      await post(rt, "/api/guest/rejoin/poll", { request });
+      expect((await post(rt, "/api/guest/resume", { pair: nonce.json.pair })).status).toBe(410);
+    } finally {
+      if (before === undefined) delete process.env["LOOM_HOMESCREEN"];
+      else process.env["LOOM_HOMESCREEN"] = before;
+    }
   });
 });

@@ -223,7 +223,7 @@ describe("the route walk: every guest route is open or refused", () => {
     }
     // The open set is exactly the session housekeeping the contract lists.
     expect([...LOCKED_OPEN].sort()).toEqual(
-      ["/api/guest/register", "/api/guest/resume", "/api/guest/enter", "/api/guest/rejoin", "/api/guest/rejoin/names", "/api/guest/rejoin/poll", "/api/guest/badge", "/api/guest/homescreen", "/api/guest/logout", "/api/prime/logout", "/api/push/subscribe", "/api/push/unsubscribe", "/api/push/visible"].sort(),
+      ["/api/guest/register", "/api/guest/resume", "/api/guest/enter", "/api/guest/rejoin", "/api/guest/rejoin/names", "/api/guest/rejoin/poll", "/api/guest/rejoin/cancel", "/api/guest/badge", "/api/guest/homescreen", "/api/guest/logout", "/api/prime/logout", "/api/push/subscribe", "/api/push/unsubscribe", "/api/push/visible"].sort(),
     );
   });
 

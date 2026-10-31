@@ -105,6 +105,8 @@ export interface PairingHost {
   persistSessions(): void;
   /** Close the real booth streams for a character (not directors' panes). */
   endBooths(character: string): void;
+  /** A release: the Person's or part's open asks end (wave 59). */
+  closeAsks?(id: string): void;
   joinBase(): string;
   eventCode(): string;
   /** Mint a token (injected for tests). */
@@ -161,10 +163,7 @@ export class Pairing {
       sendJson(res, 410, { error: "that re-pair code has expired — ask the director for a new one" });
       return true;
     }
-    if (hit.kind === "pair") {
-      this.host.revokeGuest(hit.id);
-      this.sweep(hit.id, "homescreen");
-    }
+    if (hit.kind === "pair") this.cut(hit.id);
     const token = (this.host.mint ?? randomUUID)();
     this.host.addGuestToken(token, hit.id);
     sendJson(res, 200, { ok: true, id: hit.id, name: person.name, token });
@@ -216,6 +215,7 @@ export class Pairing {
     if (token !== undefined && s !== undefined && s.character !== null) {
       this.host.sessions.dropCharacter(token);
       this.host.persistSessions();
+      this.host.closeAsks?.(s.character);
     }
     sendJson(res, 200, { ok: true });
     return true;
@@ -230,10 +230,12 @@ export class Pairing {
     return true;
   }
 
-  /** Sign guest `id`'s phone out: its tokens, and the nonce that would bring
-   *  it back. A director's re-pair QR stays good. */
-  private cut(id: string): number {
+  /** Sign guest `id`'s phone out: its tokens, the nonce that would bring it
+   *  back, and the asks made while it held them. A director's re-pair QR
+   *  stays good. Every release of a guest comes through here. */
+  cut(id: string): number {
     this.sweep(id, "homescreen");
+    this.host.closeAsks?.(id);
     return this.host.revokeGuest(id);
   }
 
@@ -269,7 +271,7 @@ export class Pairing {
     if (guest === null) return true;
     const { id, name } = guest;
     const revokeOthers = body["revokeOthers"] === true;
-    const revoked = revokeOthers ? this.host.revokeGuest(id) : 0;
+    const revoked = revokeOthers ? this.cut(id) : 0;
     // Only the newest QR for a guest works; expired codes are swept here.
     // Cutting the lost phone also voids any Home Screen code it minted.
     this.sweep(id, revokeOthers ? null : "pair");
@@ -298,6 +300,7 @@ export class Pairing {
     const released = releasePart(this.host.sessions, character);
     if (released > 0) this.host.persistSessions();
     this.host.endBooths(character);
+    this.host.closeAsks?.(character);
     sendJson(res, 200, { ok: true, character, released });
     return true;
   }

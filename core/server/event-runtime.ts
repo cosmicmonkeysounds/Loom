@@ -65,7 +65,7 @@ import { StoryMarks, huntsFor } from "./wanted.ts";
 import { canonicalPlaceArgs } from "./place-args.ts";
 import { CHECKIN_ROUTE, GuestCheckin } from "./routes/k13.ts";
 import { GUEST_LOGOUT_ROUTE, LOGOUT_ROUTE, Pairing, RESUME_ROUTE, SIGNED_OUT, releasePart } from "./routes/n02.ts";
-import { BADGES_ROUTE, BADGE_ROUTE, ENTER_ROUTE, REJOIN_DECIDE_ROUTE, REJOIN_NAMES_ROUTE, REJOIN_POLL_ROUTE, REJOIN_ROUTE, Rejoin, heldAnswer, partCode, partUrl, type BoothGrant } from "./routes/rejoin.ts";
+import { BADGES_ROUTE, BADGE_ROUTE, ENTER_ROUTE, REJOIN_CANCEL_ROUTE, REJOIN_DECIDE_ROUTE, REJOIN_NAMES_ROUTE, REJOIN_POLL_ROUTE, REJOIN_ROUTE, Rejoin, heldAnswer, partCode, partUrl, reservedAnswer, type BoothGrant } from "./routes/rejoin.ts";
 import { HOMESCREEN_ROUTE } from "./routes/k31b.ts";
 import { PushRoutes } from "./routes/k31.ts";
 import { PushHub, aloudPush, boothOwner, guestOwner, messagePush, pushConfigFromEnv, readoutPush, webPushSender, type PushSender } from "./push.ts";
@@ -351,6 +351,7 @@ export const LOCKED_OPEN: readonly string[] = [
   REJOIN_ROUTE,
   REJOIN_NAMES_ROUTE,
   REJOIN_POLL_ROUTE,
+  REJOIN_CANCEL_ROUTE,
   BADGE_ROUTE,
   HOMESCREEN_ROUTE,
   LOGOUT_ROUTE,
@@ -1233,6 +1234,7 @@ export class EventRuntime {
       sessions: this.sessions,
       persistSessions: () => this.persistSessions(),
       endBooths: (character) => this.endBooths(character),
+      closeAsks: (id) => this.rejoin.closeAsks(id),
       joinBase: () => this.joinBase(),
       eventCode: () => this.codes.event,
       now: () => this.clock(),
@@ -1248,9 +1250,11 @@ export class EventRuntime {
       },
       guestHeld: (id) => this.guestHeld(id),
       tokenGuest: (token) => this.phoneGuest(token) ?? null,
-      revokeGuest: (id) => this.revokeGuest(id),
+      revokeGuest: (id) => this.pairing.cut(id),
       isPersona: (id) => this.personaOwners.has(id) || id.startsWith("p-"),
       claimed: (claim) => this.claims.characterOf(this.sim?.model ?? this.declaredModel, claim),
+      invitedProgram: (n) => this.claims.programOfBadge(this.sim?.model ?? this.declaredModel, n),
+      claimFor: (character) => this.claims.tokenFor(character),
       partOfCode: (code) => this.partOfCode(code),
       partNamed: (name) => (this.declaredModel !== null && performerRefusal(this.declaredModel, name, new Set()) === null ? name : null),
       partHeld: (character) => heldCharacters(this.sessions.entries()).has(foldName(character)),
@@ -6637,12 +6641,31 @@ export class EventRuntime {
         }
         // A reserved (featured) program needs its invitation's claim, or a
         // director's open window (`/api/mod/claim/unlock`) — 409 `reserved`.
-        const claim = str(body, "claim").trim() || null;
-        const refusal = guestNameRefusal(this.sim!.model, name, takenNames(this.sim!.persons.values()), (c) => this.claims.mayClaim(c, claim));
-        if (refusal !== null) {
-          sendJson(res, 409, { error: refusal });
-          return true;
-        }
+        // An invited badge carries its own invitation (wave 59).
+        const rawBadge = str(body, "badge").trim();
+        const claim = str(body, "claim").trim() || this.rejoin.claimOn(rawBadge);
+        // Wave 59: a sent card speaks first (`Rejoin.joinCard`), so the loser
+        // of a race reads the refused screen, then the name. Null once it has
+        // answered. Asked again after every await below, or two phones could
+        // both pass and become one program.
+        const mayJoin = (): { badge: number | null } | null => {
+          const card = this.rejoin.joinCard(rawBadge, claim, name);
+          if (card.kind === "person") {
+            this.rejoin.resume(res, card, undefined);
+            return null;
+          }
+          if (card.kind === "reserved") {
+            sendJson(res, 409, reservedAnswer(card.name));
+            return null;
+          }
+          const refusal = guestNameRefusal(this.sim!.model, name, takenNames(this.sim!.persons.values()), (c) => this.claims.mayClaim(c, claim));
+          if (refusal !== null) {
+            sendJson(res, 409, { error: refusal });
+            return null;
+          }
+          return card;
+        };
+        if (mayJoin() === null) return true;
         // Typed in another case (`bugdom`): the guest is the story's own
         // `Bugdom`, so its `program.name ==` checks (the featured parts) hear them.
         name = canonicalGuestName(this.sim!.model, name);
@@ -6655,6 +6678,8 @@ export class EventRuntime {
           }
           chosen = this.avatars.urlFor(chosenKey);
         }
+        const joining = mayJoin();
+        if (joining === null) return true;
         const id = `g-${randomUUID().slice(0, 6)}`;
         const token = randomUUID();
         this.guestTokens.set(token, id);
@@ -6670,9 +6695,8 @@ export class EventRuntime {
         }
         this.fanout(this.commit("createPerson", id, name));
         this.seen(id, true);
-        // Wave 23: the badge they scanned on the way in is theirs now (a
-        // badge someone else holds, or no badge at all, is just ignored).
-        const badge = str(body, "badge").trim() === "" ? null : this.rejoin.freeBadge(str(body, "badge"));
+        // Wave 23: the badge they scanned on the way in is theirs now.
+        const { badge } = joining;
         if (badge !== null) this.rejoin.link(badge, id);
         sendJson(res, 200, { id, name, token, avatar: this.avatars.keyFor(name), ...(badge !== null ? { badge } : {}) });
         return true;
@@ -7250,6 +7274,13 @@ export class EventRuntime {
           const answer = held.has(foldName(character)) ? heldAnswer({ name: character }, refusal) : { error: refusal };
           sendJson(res, refusal === "unknown character" ? 404 : 409, answer);
           return true;
+        }
+        // A sign-in ends the asks on this part; a booth moving on frees its
+        // old one, which ends those too. Its own re-scan is neither.
+        const was = this.sessions.characterOf(token);
+        if (was !== character) {
+          this.rejoin.closeAsks(character);
+          if (was !== null) this.rejoin.closeAsks(was);
         }
         token = token !== undefined && this.sessions.has(token) ? token : randomUUID();
         sendJson(res, 200, { token, character, ...this.signInPart(token, character, model) });

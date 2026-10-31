@@ -103,14 +103,24 @@ export class Claims {
     return identityDefs(model).find((d) => d.reserved && claimMatches(this.host.secret, d.name, claim))?.name ?? null;
   }
 
-  /** Every reserved program a guest could be, with its invited badge, in
-   *  declaration order: a program added later takes the next number and
-   *  leaves every printed one alone. */
-  links(model: SimModel | null, base: string, guestCode: string): ClaimLink[] {
-    if (model === null) return [];
+  /** The reserved programs with an invited badge, in declaration order: a
+   *  program added later takes the next number and leaves every printed one
+   *  alone. */
+  private invited(model: SimModel) {
     return identityDefs(model)
       .filter((d) => d.reserved && guestPickable(d))
-      .slice(0, INVITED_BADGES)
+      .slice(0, INVITED_BADGES);
+  }
+
+  /** The program invited badge `n` was printed for, or null (wave 59). */
+  programOfBadge(model: SimModel | null, n: number): string | null {
+    return model === null ? null : (this.invited(model)[n - invitedBadge(0)]?.name ?? null);
+  }
+
+  /** Every reserved program a guest could be, with its invited badge. */
+  links(model: SimModel | null, base: string, guestCode: string): ClaimLink[] {
+    if (model === null) return [];
+    return this.invited(model)
       .map((d, i) => {
         const claim = this.tokenFor(d.name);
         const code = badgeCode(this.host.secret, invitedBadge(i));

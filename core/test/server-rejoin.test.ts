@@ -256,7 +256,7 @@ describe("invitations", () => {
 });
 
 describe("ask a host", () => {
-  it("lists joined programs, waits, and hands the token over once on approve", async () => {
+  it("lists joined programs, waits, and hands one token over when the phone collects it", async () => {
     const rt = runtimeAt(freshDir());
     rt.openDoors();
     const ana = await register(rt, "Calculator");
@@ -280,8 +280,9 @@ describe("ask a host", () => {
     const got = await post(rt, "/api/guest/rejoin/poll", { request });
     expect(got.json).toMatchObject({ state: "approved", id: ana.id, by: "Task Manager" });
     expect((await get(rt, `role=guest&token=${got.json.token}`)).json).toMatchObject({ id: ana.id });
-    // Once.
-    expect((await post(rt, "/api/guest/rejoin/poll", { request })).json.state).toBe("expired");
+    // One hand-over: a retried poll is the same token, not a second one.
+    expect((await post(rt, "/api/guest/rejoin/poll", { request })).json.token).toBe(got.json.token);
+    expect((await get(rt, `role=guest&token=${got.json.token}`)).status).toBe(200);
   });
 
   it("a deny says so; the director phone sees asks too", async () => {
