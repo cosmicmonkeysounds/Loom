@@ -243,7 +243,7 @@ describe("skipping his voice (review)", () => {
     expect(html).not.toContain("TO SKIP");
     const { readFileSync } = await import("node:fs");
     const app = readFileSync(new URL("../src/app.tsx", import.meta.url), "utf8");
-    expect(app).toContain("onSkip={roomBusy ? undefined : skipVoice}");
+    expect(app).toContain("onSkip={roomBusy || heartTerminal ? undefined : skipVoice}");
   });
 });
 

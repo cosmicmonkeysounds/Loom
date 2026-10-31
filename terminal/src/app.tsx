@@ -1296,7 +1296,8 @@ function Terminal({
   }, [pilot, sessionReady, pinFloor, visits]);
 
   // Skip his voice to the end (a click or Space on a waiting panel): the
-  // queue drops what it owes, every line shows whole. Never over the room's voice.
+  // queue drops what it owes, every line shows whole. Never over the room's voice,
+  // and never on a heart terminal, where only the door and the bay stop him.
   const skipVoice = useCallback(() => {
     if (roomBusy) return;
     queue.stop();
