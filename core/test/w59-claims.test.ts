@@ -849,12 +849,52 @@ describe("the house is one IP", () => {
     await lockOut(rt);
     expect((await post(rt, "/api/mod/login", { passcode: CODES.mod })).status).toBe(429);
     expect((await post(rt, "/api/prime/login", { passcode: CODES.prime, character: "Clippy" })).status).toBe(429);
-    expect((await post(rt, "/api/prime/login", { passcode: CODES.event, part })).status).toBe(429);
-    // Right and wrong read alike, so a locked-out guesser learns nothing here.
-    expect((await post(rt, "/api/guest/rejoin", { passcode: CODES.event, part })).status).toBe(429);
+    expect((await post(rt, "/api/prime/login", { passcode: CODES.prime, part })).status).toBe(429);
+    expect((await post(rt, "/api/prime/login", { passcode: CODES.event, character: "Clippy" })).status).toBe(429);
+    expect((await post(rt, "/api/prime/login", { passcode: CODES.event, part: "wrongpart" })).status).toBe(429);
     expect((await post(rt, "/api/guest/rejoin", { passcode: CODES.event, part: "wrongpart" })).status).toBe(429);
     expect((await enter(rt, { claim: "wrongclaim" })).status).toBe(429);
     expect((await post(rt, "/api/guest/enter", { passcode: "WRONG", badge: WRONG_BADGE })).status).toBe(429);
+    expect((await post(rt, "/api/guest/enter", { passcode: "WRONG", badge: WRONG_BADGE, claim: "wrongclaim" })).status).toBe(429);
+    expect((await post(rt, "/api/guest/rejoin", { passcode: "WRONG", part })).status).toBe(429);
+    // A real card with a wrong one beside it is still a guess.
+    expect((await post(rt, "/api/guest/rejoin", { passcode: CODES.event, part, claim: "wrongclaim" })).status).toBe(429);
+  });
+
+  it("a lost staff badge's phone is never stranded by a lockout: a sign-in, a refusal, and Ask a host to the end", async () => {
+    const rt = open();
+    const free = await partOf(rt, "Clippy");
+    const heldPart = await partOf(rt, "Task Manager");
+    const old = (await post(rt, "/api/prime/login", { passcode: CODES.event, part: heldPart })).json.token as string;
+    await lockOut(rt);
+    expect(await locked(rt)).toBe(true);
+    expect((await post(rt, "/api/prime/login", { passcode: CODES.event, part: free })).status).toBe(200);
+    expect(await post(rt, "/api/prime/login", { passcode: CODES.event, part: heldPart })).toMatchObject({ status: 409, json: { held: true } });
+    const ask = await post(rt, "/api/guest/rejoin", { passcode: CODES.event, part: heldPart });
+    expect(ask.status).toBe(200);
+    const request = ask.json.request as string;
+    await mod(rt, "/api/mod/guest/rejoin", { request, approve: true });
+    const got = await post(rt, "/api/guest/rejoin/poll", { request });
+    expect(got).toMatchObject({ status: 200, json: { state: "approved", part: true } });
+    expect(got.json.token).not.toBe(old);
+    expect(await locked(rt)).toBe(true);
+  });
+
+  it("nor an invited badge's: a fresh one joins, a held one is refused, and its ask goes through", async () => {
+    const rt = open();
+    const held = await invited(rt, "Microsoft Excel");
+    const free = await invited(rt, "OpenOffice");
+    const a = await register(rt, "Microsoft Excel", { badge: held.badge, claim: held.claim });
+    await lockOut(rt);
+    expect(await locked(rt)).toBe(true);
+    expect((await enter(rt, { badge: free.badge, claim: free.claim })).status).toBe(200);
+    expect((await enter(rt, { claim: free.claim })).status).toBe(200);
+    expect(await enter(rt, { badge: held.badge, claim: held.claim })).toMatchObject({ status: 409, json: { held: true } });
+    const ask = await post(rt, "/api/guest/rejoin", { passcode: CODES.event, badge: held.badge, claim: held.claim });
+    expect(ask.status).toBe(200);
+    const request = ask.json.request as string;
+    await mod(rt, "/api/mod/guest/rejoin", { request, approve: true });
+    expect(await post(rt, "/api/guest/rejoin/poll", { request })).toMatchObject({ status: 200, json: { state: "approved", id: a.id } });
   });
 
   it("a wrong part is a guess at a performer's credential, and still counts", async () => {

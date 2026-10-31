@@ -7713,7 +7713,8 @@ export class EventRuntime {
 
       // --- performer (prime) login: grants the `character` capability ---
       case "/api/prime/login": {
-        if (this.throttled(req, res)) return true;
+        // A staff badge at a lockout is a printed card, not a guess (routes/rejoin.ts).
+        if (this.throttled(req, res, normalizeCode(str(body, "part")) !== "" && this.rejoin.passesLockout(path, body))) return true;
         let character = str(body, "character");
         // Wave 54: a printed staff badge carries the guest code (the performer
         // code can rotate), which is good only beside a valid `part` below.

@@ -62,12 +62,15 @@
 //! against nobody: it is 40 bits against a few hundred printed, a typo is the
 //! likely reason, and what a lucky guess opens is one guest, who is refused if
 //! a phone holds them. The lockout itself passes what guesses at nothing it
-//! guards (`passesLockout`): the guest code with a badge or a name, so Ask a
-//! host always works, and a poll or a cancel, so a waiting phone can collect. A
-//! wrong event code, a wrong part (a performer's credential) and a wrong claim
-//! still count, and a part or a claim stays behind the lockout. The join boxes
-//! never send a guess here: a typed code goes to `/api/resolve-code` first, and
-//! *Get back in* sends only a badge's shape.
+//! guards (`passesLockout`): the guest code with a badge, a name, or a part or
+//! a claim that is **real**, so a staff or invited badge and Ask a host on one
+//! always work, and a poll or a cancel, so a waiting phone can collect. A wrong
+//! event code, a wrong part and a wrong claim still count and stay locked. Right
+//! and wrong read apart in a lockout, on purpose: a part or a claim is 50 bits
+//! (`secretCode`), not a speakable code, and this answer takes the guest code to
+//! ask. The performer and mod codes stay behind it, right or wrong. The join
+//! boxes never send a guess here: a typed code goes to `/api/resolve-code`
+//! first, and *Get back in* sends only a badge's shape.
 //!
 //! **Cast cards.** Each part's cast card carries `…/?code=<prime
 //! code>&part=<code>`, `code` = `secretCode(secret, "part:<folded name>")`.
@@ -528,11 +531,15 @@ export class Rejoin {
 
   /** Does this public call pass a lockout on its IP (**The house is one IP**,
    *  above)? A poll or a cancel carries its request id, 96 random bits. A call
-   *  with the guest code and only a badge or a name has nothing in it the
-   *  lockout guards. A part or a claim does, and stays behind it. */
+   *  with the guest code and a badge or a name has nothing in it the lockout
+   *  guards, and one with a real part or a real claim is a printed card, not a
+   *  guess. A wrong part or claim is one, and stays behind it. */
   passesLockout(path: string, body: Record<string, unknown>): boolean {
     if (path === REJOIN_POLL_ROUTE || path === REJOIN_CANCEL_ROUTE) return true;
-    return this.host.guestCode(str(body, "passcode")) && normalizeCode(str(body, "part")) === "" && str(body, "claim") === "";
+    if (!this.host.guestCode(str(body, "passcode"))) return false;
+    const part = normalizeCode(str(body, "part"));
+    const claim = str(body, "claim");
+    return (part === "" || this.host.partOfCode(part) !== null) && (claim === "" || this.host.claimed(claim) !== null);
   }
 
   /** Public routes (a phone's own `token`, if it has one, only proves it is

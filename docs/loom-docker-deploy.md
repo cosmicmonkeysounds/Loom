@@ -245,8 +245,9 @@ domain's MX points (e.g. ImprovMX → your Gmail) — Resend only sends.
   `LOOM_RL_RESOLVE=600`, `LOOM_RL_REGISTER=400`,
   `LOOM_RL_LOGIN_FAILURES=100/300`. A locked-out IP still lets the right
   **guest** event code through (a house full of phones shares the IP),
-  a badge or Ask a host on it too, and a wrong badge counts against nobody;
-  wrong codes, parts, claims and the performer and mod codes stay locked out.
+  with a badge, a real staff or invited badge, or Ask a host on any of them,
+  and a wrong badge counts against nobody; wrong codes, wrong parts, wrong
+  claims and the performer and mod codes stay locked out.
 - **Check them**: `deploy/release.sh --check-env` (on the VPS, in the
   checkout) warns about any of those three below the night's value, a
   blank VAPID key and a `LOOM_BASE_URL` that isn't `https://`, and ends
