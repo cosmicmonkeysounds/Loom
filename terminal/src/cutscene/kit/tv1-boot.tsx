@@ -560,6 +560,7 @@ export function IntroWall({ t, sfx, reduced, done }: SceneProps) {
           <Typewriter text="TRABOLTA IS ONLINE" t={t} start={4400} cps={20} caret={false} />
         </div>
         <div className="a1w-line">
+          {/* DRAFT w58 (digital conference) */}
           <Typewriter text="Jean Trabolta, Sole Owner and Founder of Maps and Ducks, is speaking at the Desktop by digital conference. His thread is open: say hello." t={t} start={5600} cps={45} />
         </div>
       </Win98Window>

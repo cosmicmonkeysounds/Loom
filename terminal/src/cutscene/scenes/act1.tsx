@@ -323,6 +323,7 @@ function BingoTv({ t, at, state, sfx, reduced }: SceneProps) {
           <Countdown ms={left} warn={300_000} label="TIME LEFT" reduced={reduced} />
         </div>
       )}
+      {/* DRAFT w58 (the name in the square, the marked lines) */}
       <Marquee t={reduced ? 0 : t} speed={120} className="a1-ticker gold a1-bingo-ticker" style={{ opacity: progress(t, B.card, 600) }}>
         ★ MINGLE ★ FIND A PROGRAM FOR EVERY SQUARE ★ WRITE THEIR NAME IN THE SQUARE ★ A ROW, A COLUMN OR A DIAGONAL THROUGH THE CENTRE IS A BINGO ★
       </Marquee>

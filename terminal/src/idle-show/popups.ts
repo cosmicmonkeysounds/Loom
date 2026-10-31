@@ -65,6 +65,7 @@ export const POPUP_KINDS: readonly PopupKind[] = [
   { id: "pop-wallet", style: "toast", icon: "coin", title: "Wallet", text: "Your Truthcoin misses you. Check your phone's Wallet.", buttons: OK, sound: "coin" },
   { id: "pop-scan-hint", style: "toast", icon: "info", title: "Got a pass?", text: "Open 🎟 Pass on your phone and hold it to the camera in the corner.", buttons: OK, sound: "blip", scan: true },
   // --- the doors ----------------------------------------------------------------------
+  // DRAFT w58 (the name in the square)
   { id: "pop-bingo", style: "toast", icon: "info", title: "Computer Bingo", text: "Found a program that matches a square? Write their name in it.", buttons: OK, sound: "chord", pools: ["early"] },
   { id: "pop-captcha", style: "dialog", icon: "question", title: "Are You Human?", text: "Please select every square containing a program.", buttons: [{ label: "Verify", gag: "more" }, { label: "Skip" }], sound: "ding", pools: ["early"] },
   // --- the hijack -----------------------------------------------------------------

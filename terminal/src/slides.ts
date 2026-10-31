@@ -562,6 +562,7 @@ export interface SlideCopy {
 }
 
 /** The owner's line on the bingo slide (D19: third person, before the introduction). */
+// DRAFT w58 (digital conference)
 export const OWNER_LINE = "Jean Trabolta joins by digital conference later tonight.";
 /** The only lines that may name him on a slide that can show before the introduction. */
 export const OWNER_LINES: readonly string[] = [OWNER_LINE];

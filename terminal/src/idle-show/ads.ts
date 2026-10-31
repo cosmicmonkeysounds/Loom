@@ -113,8 +113,10 @@ export const IDLE_ADS: readonly IdleAd[] = [
   { id: "ad-fan-closet", skin: "warning", art: "bolt", title: "CPU TEMPERATURE: SPICY", body: "Cool down in The Fan Closet, downstairs by the laundry. Your thermal paste will thank you.", button: "Cool off", pools: ["hunt", "malware", "late", "y2k", "finale"] },
   { id: "ad-wallet", skin: "tycoon", art: "coin", kicker: "PERSONAL FINANCE", title: "INVEST IN TRUTHCOIN", body: "Send it, request it, trade a file for it. Past performance is not a fact. Check your phone's Wallet.", button: "Open wallet" },
   // --- the doors and the first games ------------------------------------------
+  // DRAFT w58 (the name in the square, the marked lines)
   { id: "ad-bingo", skin: "lottery", art: "star", kicker: "AT THE DESKTOP", title: "COMPUTER BINGO", body: "Find a program for every square and write their name in it. A row, a column or a diagonal through the centre is a Bingo.", button: "B-I-N-G-O", pools: ["early"] },
   // D19: the owner, in the third person (from the Desktop on, never at the doors).
+  // DRAFT w58 (digital conference, no AI line; the Truth Scavenger Hunt)
   { id: "ad-owner-founder", skin: "fundraiser", art: "map", kicker: "TONIGHT'S HOST", title: "MAPS AND DUCKS", body: "Sole Owner & Founder: Jean Trabolta. He joins us by digital conference later tonight.", button: "Learn more", pools: ["early"], owner: true },
   { id: "ad-owner-hunt", skin: "lottery", art: "map", kicker: "COMING SOON", title: "Jean Trabolta's Truth Scavenger Hunt", body: "Facts are hidden all over this house. The owner of Maps and Ducks will explain, by digital conference.", button: "Get ready", pools: ["early"], owner: true },
   { id: "ad-welcome", skin: "win98", art: "face", title: "Welcome to this house", body: "You have been uploaded. Please remain calm. An Antivirus program will scan your pass shortly.", button: "Get started", pools: ["early"] },

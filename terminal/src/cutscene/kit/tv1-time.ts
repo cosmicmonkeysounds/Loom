@@ -280,6 +280,7 @@ export const INTRO_POST: readonly BootLine[] = [
   { at: 360, text: "Detecting Primary Master ..... THE DESKTOP", status: "OK", after: 30 },
   { at: 420, text: "Detecting Primary Slave ...... THE INTERNET", status: "OK", after: 30 },
   { at: 480, text: "Detecting Programs ...........", status: "FOUND", after: 30 },
+  // DRAFT w58 (digital conference)
   { at: 540, text: "Connecting digital conference ", status: "OK", after: 30 },
 ];
 

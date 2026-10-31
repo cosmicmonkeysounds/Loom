@@ -795,7 +795,7 @@ ROLE Program
       unlock Computer Bingo for program
       // Wave 18 (B7): the winner's medal is a big moment; the house cheer is
       // a big one that closes itself (the story rule `ribbon_cheer`).
-      // Wave 58: the Bingo Floppy Disk in words; the id, the 🎀 and the TV's art stay.
+      // DRAFT w58 (the Bingo Floppy Disk in words; the id, the 🎀 and the TV's art stay)
       reply "!!🎀 You won the Bingo Floppy Disk. Take a bow." with go: codex: Computer Bingo
       set Night.ribbon_winner = program.name
       fire ribbon_cheer
@@ -4456,6 +4456,7 @@ when Night.bingo_done == true and Night.bingo_closed != true:
 // winner (ROLE Program). A story rule, so the big moment to the whole house
 // is the cue's own (lint L1218); it closes itself after six seconds.
 when ribbon_cheer:
+  // DRAFT w58
   broadcast "!!🎀 {Night.ribbon_winner} won the Bingo Floppy Disk! Cheer for them at the Desktop." to everyone with close: 6s
 
 // Wave 58: Clippy's script at the results, one beat per button, each reached the
@@ -4519,6 +4520,7 @@ when introduce_trabolta:
     cue terminals_trabolta_online
     set Night.terminals = "trabolta"
     // w18b (R18)
+    // DRAFT w58 (digital conference)
     broadcast "!🤖 TRABOLTA IS ONLINE. Jean Trabolta, Sole Owner and Founder of Maps and Ducks, is speaking at the Desktop by digital conference. His thread is open: say hello." to everyone with go: Trabolta
     // Wave 58: the first talk scene stays open behind his speech until 🔎, for a
     // short live exchange after his sign-off (the card says when to start). No

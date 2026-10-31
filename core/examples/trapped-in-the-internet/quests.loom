@@ -27,6 +27,7 @@ QUEST Orientation
     finish it go on a list. A good list.
     - Bathroom Mode: open Start and tap 🚻 Bathroom Mode before you leave for Disk Cleanup. Tap Back from the bathroom in Start when you're back.
 
+// DRAFT w58 (the name in the square, the marked lines)
 QUEST The Bingo Card
   title: Computer Bingo
   from: Clippy
@@ -177,11 +178,12 @@ QUEST Run The Bingo
     Instructions 1/X are in your Codex. Welcome everyone, introduce the
     hosts, hand out the cards. Twenty minutes. Press 🎱 on every winner.
 
+// DRAFT w58 (he has read them by the time this lands)
 QUEST Host The Hunt
   title: Per the agenda: the Truth Scavenger Hunt
   from: Task Manager
   text:
-    Trabolta reads the questions; you keep the room. When time is up,
+    Trabolta has read the questions; you keep the room. When time is up,
     judge every answer from your booth by its question number.
 
 QUEST Keep Everyone Calm
