@@ -652,7 +652,9 @@ bar shows is pure in `host/show-model.ts` (`hostWindowShown`,
   wave 37, `.host-show-strip`), Who's calling, a big NEXT
   (`tab-cues.tsx` `NextBox`), the console's last word, LAST + `did:`, then
   folding sections (`showSections`): *Needs you* (`NeedsTab`; first since
-  wave 37, open while something waits), *Your jobs* (`booth/now-card.tsx`
+  wave 37, open while something waits; wave 59: while an ask waits, one line
+  above NEXT, `asksLine` *🔁 n want back in*, jumps to it, since the prompter's
+  strip and the Talk card can push it two screens down), *Your jobs* (`booth/now-card.tsx`
   `NowJobs`, the NOW card laid open — the pinned card steps aside while
   Show is up), *Coming up* (`comingUp`), Judge,
   Cue sheet (`CueSheet`), People, More (the old tab components,
@@ -851,9 +853,12 @@ copy. Any new guest line must pass it.
   buttons wrap inside the box (`css/moments.css`).
 - **Lazy chunks** go through `lazy-chunk.tsx` (`retryImport` once, then a
   `ChunkBoundary` with Reload), so a page left open across a deploy never
-  goes white. `main.tsx` wraps the whole app in one more `ChunkBoundary`
-  (wave 26): any throw, in a render or an effect cleanup, shows Reload,
-  never a blank page.
+  goes white. A chunk loaded by hand has no boundary, so it goes through
+  `chunkOrDown` (wave 59, `ui.tsx`'s `rejoin-calls`): a second failure throws
+  `ChunkDown` and the page shows `ChunkFailed`, never the browser's own error,
+  which names the asset's URL. `main.tsx` wraps the whole app in one more
+  `ChunkBoundary` (wave 26): any throw, in a render or an effect cleanup, shows
+  Reload, never a blank page.
 - **Barrels.** `chat.tsx`, `guest.tsx`, `performer.tsx`, `session.ts`,
   `threads.ts` re-export every name they had before wave 13
   (`test/barrels.test.ts`). Add new code to the lane modules, not the
