@@ -510,7 +510,11 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   never links to another Person (409 `{reserved: true, name}`). `/api/scan` and
   `/api/mod/scan` only read a badge. A director's play-as holds nothing and is refused nothing.
   A Home Screen nonce (K-31b, off by default) is the one sign-in that adds a
-  token: the same phone. Tests: `test/w59-claims.test.ts`.
+  token: the same phone. The house is one IP, so a wrong badge at `enter` or
+  `rejoin` counts against nobody, and `Rejoin.passesLockout` lets the guest code
+  with a badge or a name, and any poll or cancel, past a lockout; a wrong part or
+  claim still counts and stays behind it (`routes/rejoin.ts` header). Tests:
+  `test/w59-claims.test.ts`.
 - **Text codes and in-world names** (wave 59, `routes/printed.ts`, `routes/k12.ts`).
   Every printed QR has a text code: the guest code, a badge's, a staff badge's
   (the part code, printed: wave 54's "no typed code" is overruled), `R-` + four

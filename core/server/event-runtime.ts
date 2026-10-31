@@ -6620,7 +6620,7 @@ export class EventRuntime {
       // Wave 23: enter by badge / invitation, ask a host (routes/rejoin.ts).
       // The cheap check first: only a rejoin path is throttled here.
       if (path.startsWith("/api/guest/enter") || path.startsWith("/api/guest/rejoin")) {
-        if (this.throttled(req, res)) return true;
+        if (this.throttled(req, res, this.rejoin.passesLockout(path, body))) return true;
         const r = this.rejoin.handlePublic(path, res, body, tokenOf(req, body));
         if (r.handled) {
           if (r.failed) this.loginFailures.record(ipOf(req));

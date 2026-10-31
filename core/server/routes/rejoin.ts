@@ -56,6 +56,19 @@
 //! Requests live in memory (`REJOIN_TTL_MS`, ten minutes; a newer one for the
 //! same Person replaces the older; a story restart clears them).
 //!
+//! **The house is one IP** (wave 59). A phone's wrong code must never lock the
+//! whole house out of here, as ten misses in five minutes would (the default;
+//! `LOOM_RL_LOGIN_FAILURES`). So a wrong badge answers its 404 and counts
+//! against nobody: it is 40 bits against a few hundred printed, a typo is the
+//! likely reason, and what a lucky guess opens is one guest, who is refused if
+//! a phone holds them. The lockout itself passes what guesses at nothing it
+//! guards (`passesLockout`): the guest code with a badge or a name, so Ask a
+//! host always works, and a poll or a cancel, so a waiting phone can collect. A
+//! wrong event code, a wrong part (a performer's credential) and a wrong claim
+//! still count, and a part or a claim stays behind the lockout. The join boxes
+//! never send a guess here: a typed code goes to `/api/resolve-code` first, and
+//! *Get back in* sends only a badge's shape.
+//!
 //! **Cast cards.** Each part's cast card carries `…/?code=<prime
 //! code>&part=<code>`, `code` = `secretCode(secret, "part:<folded name>")`.
 //! `/api/prime/login {passcode, part}` signs in as that part.
@@ -115,7 +128,7 @@ export const BADGES_ROUTE = "/api/mod/badges";
 export const BADGE_MAX = 600;
 /** Numbers past the blank stack, one per reserved program (wave 54). */
 export const INVITED_BADGES = 40;
-/** Characters in a badge code (40 bits; wrong guesses are throttled). */
+/** Characters in a badge code (40 bits against a few hundred printed). */
 export const BADGE_LENGTH = 8;
 /** How long a rejoin request waits for a host. */
 export const REJOIN_TTL_MS = 10 * 60_000;
@@ -513,9 +526,19 @@ export class Rejoin {
     this.host.linked?.();
   }
 
+  /** Does this public call pass a lockout on its IP (**The house is one IP**,
+   *  above)? A poll or a cancel carries its request id, 96 random bits. A call
+   *  with the guest code and only a badge or a name has nothing in it the
+   *  lockout guards. A part or a claim does, and stays behind it. */
+  passesLockout(path: string, body: Record<string, unknown>): boolean {
+    if (path === REJOIN_POLL_ROUTE || path === REJOIN_CANCEL_ROUTE) return true;
+    return this.host.guestCode(str(body, "passcode")) && normalizeCode(str(body, "part")) === "" && str(body, "claim") === "";
+  }
+
   /** Public routes (a phone's own `token`, if it has one, only proves it is
    *  the holder). Returns false when `path` isn't one. The caller throttles;
-   *  `failed` says a wrong code was presented. */
+   *  `failed` says a wrong code was presented: a wrong event code, part or
+   *  claim, never a wrong badge. */
   handlePublic(path: string, res: ServerResponse, body: Record<string, unknown>, token?: string): { handled: boolean; failed: boolean } {
     switch (path) {
       case ENTER_ROUTE:
@@ -562,7 +585,7 @@ export class Rejoin {
     const card = this.cardOf(rawBadge, claim);
     if (card.kind === "unknown") {
       sendJson(res, 404, { error: card.error });
-      return true;
+      return rawBadge === "";
     }
     if (card.kind === "fresh") sendJson(res, 200, { ok: true, resumed: false, ...(card.badge !== undefined ? { badge: card.badge } : {}), ...(card.program !== undefined ? { claim: this.host.claimFor(card.program) } : {}) } satisfies EnterAnswer);
     else this.resume(res, card, token);
@@ -650,7 +673,7 @@ export class Rejoin {
       const card = this.cardOf(rawBadge, claim);
       if (card.kind === "unknown") {
         sendJson(res, 404, { error: card.error });
-        return true;
+        return rawBadge === "";
       }
       if (card.kind === "fresh") {
         sendJson(res, 404, { error: "nobody has joined on that card" });
