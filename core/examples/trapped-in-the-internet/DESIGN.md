@@ -1,5 +1,10 @@
 # Trapped in the Internet: rewrite design spec
 
+> **Wave 58 (2026-10-31).** What follows on the talk-down (`talked_down`,
+> `stand_down_by`, Heart Shutdown, Layer Four) and on Trabolta Recounts is
+> history: both are gone. The heart's talk ends nothing, Combo A's Trabolta
+> never returns, and the monologue follows every ending (`beats/truth.loom`).
+
 > **Design record (2026-10-24).** Where this spec and the story files
 > disagree, the story files and their tests win. The night's runbook is
 > [`SHOWNIGHT.md`](./SHOWNIGHT.md), the machines are in

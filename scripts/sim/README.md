@@ -67,7 +67,7 @@ needed. Build `play` and `terminal` first if you want to watch in a browser.
 | 18 | 🗳 Sides | Every guest joins a side (founders can't); forced only if no majority | step 15 |
 | 19 | 🫀 Thrown out | Door open → shut; a program flatters, then threatens his cables until he ejects it; 🔄 | marked, then forgiven |
 | 20 | 🫀 The chosen | A featured program: ⟦CHOSEN⟧ → *What weak place* → *I need to go* | Layer 2, not thrown out |
-| 21 | 🫀 The full talk | ⟦PROMISE⟧; every Layer Two question incl. ⟦THE WAY OUT⟧ and ⟦SPEAK FREELY⟧ (a line said); *listen*; Evidence ⟦FORCE⟧ ⟦SMALL TYPE⟧; ⟦PROOF⟧; Reasons ⟦EARN IT⟧, the bluff, ⟦WEAKNESS⟧; *let me finish*; Layer Four's two warm picks and the *tell her* trap; back; *never going to answer* | `heart_stage` done, `stand_down_by` (heart ending); every menu ≤ 9 options |
+| 21 | 🫀 The full talk | ⟦PROMISE⟧; every Layer Two question incl. ⟦THE WAY OUT⟧ and ⟦SPEAK FREELY⟧ (a line said); *listen*; Evidence ⟦FORCE⟧ ⟦SMALL TYPE⟧; ⟦PROOF⟧; Reasons ⟦EARN IT⟧, the bluff, ⟦WEAKNESS⟧; *That's all I came to say* | `heart_heard`, Layer 3, the heart not done, the night not ended |
 | 22 | The ending | 🌑 → 🍎 → the bag → 📄 → ⚖ (song, or Grok Prom → 💌 → the poll → 🗳, or the road `--ending` names); or 🔌 → the dance; or 💥 → 🪦 | `Night.ending`, `ended` |
 | 22b | 📜 The full truth | `tell_the_truth`, read by Trabolta or Task Manager by the ending | `truth_told`, `truth_reader`, `finale_truth` on his |
 | 23 | 🏆 Ceremony | G1's ask, G1, the eight awards on their winners (from trust, score, quests…), 🖌 on MS Paint, the staff awards, 🎃 | `ceremony_done`, `resurrected`, `Night.talk` none |

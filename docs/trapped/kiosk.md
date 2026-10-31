@@ -421,12 +421,11 @@ powershell -ExecutionPolicy Bypass -File scripts\server-room\start-terminal.ps1 
   reports the door on its heartbeat (Run → Terminals: 🚪 *shut* / *open*
   with the level, red *fault*). The first opening once Trabolta is awake
   plays **The Heart**: he asks for the door shut, the program scans their
-  pass with the door shut, and the four layers of the conversation (wave 27:
+  pass with the door shut, and the three layers of the conversation (wave 27:
   Layer Three's ⟦SHOW HIM⟧ / ⟦TELL HIM⟧ open short sub-menus) dock as
   a choice panel (click, or `1`–`9`), greyed under *CLOSE THE DOOR* while
-  the door is open. ⟦SPEAK FREELY⟧ opens the keyboard for a free talk. A
-  convince ends in Heart Shutdown at any hour, and the night ends when a
-  director presses 🕊 `talked_down`. Help → *Running the server room*
+  the door is open. ⟦SPEAK FREELY⟧ opens the keyboard for a free talk. The
+  talk ends nothing (wave 58). Help → *Running the server room*
   (`docs/help/authoring/38-server-room.md`) is the director's side.
 - **The patch bay.** In the Y2K hour the page posts `patch_changed
   {combo}` when four cables settle into a new set, and the story judges it.

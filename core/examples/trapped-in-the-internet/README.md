@@ -77,7 +77,7 @@ beats/overshare.loom   Overshare One–Four · The Y2K Clock · Excel / OpenOffi
                        Final Round · Clock Strikes
 beats/server-room.loom Act III: Majority Reached · The Whole Truth · The Heart · Server
                        Room Alarm · Chess Lost · Chess Drawn · Patch Rejected · Trabolta
-                       Disabled · Trabolta Recounts · Computer Destroyed · Purgatory
+                       Disabled · Computer Destroyed · Purgatory
                        (wave 18b deleted Back To The Heart); wave 20's heart: Heart Nag ·
                        Heart Door Again · Heart Door Shut · Heart Sealed · Heart Shut It ·
                        Heart Talk · Heart Layers · Heart Layer One–Four · Heart Evidence ·
@@ -114,7 +114,7 @@ cast/pool.loom         22 more guest programs: bare names + avatars
 cast/props.loom        The Uploader · The Router · The Screensaver · The Tablet · Kernel (the
                        hidden secret state)
 cast/trabolta.loom     the AI: his vars, hooks, and 11 agent powers (wave 20 deleted stand_down: the
-                       heart's talk replaced it; the_line_works retired 2026-10-19)
+                       heart's talk ends nothing since wave 58; the_line_works retired 2026-10-19)
 codex/1-world.loom …   267 CODEX entries: 259 in nine numbered files + the 8 hunt answers
                        in generated/questions.loom (9-facts.loom is GENERATED from
                        facts.json; 3-hunt.loom is gone; 85-ties.loom holds the 16
@@ -213,8 +213,8 @@ the performer copies of the room's fallbacks. Wave 8 split ⚖ `the_verdict` off
 rules. Wave 7 added The Heart and Back To
 The Heart, turned *The Cold Lock* into the secret riddle *The Cold Door*,
 generated the secret *The Door Code* from `facts.json`, added `stand_down`
-(deleted again in wave 20, D13: the heart's four-layer talk replaced it)
-and `talked_down`, dropped `server_unlock` and renamed `rearm_server_room`
+(deleted again in wave 20, D13) and `talked_down` (deleted in wave 58: the
+heart's talk ends nothing), dropped `server_unlock` and renamed `rearm_server_room`
 to `reset_server_room`.
 
 ## Before the doors open
@@ -459,7 +459,7 @@ why. The glance column beside it (Needs you, Watch, People, Cast and the
 combos, majority and lies are masked (press and hold 👁 to read one for
 5 s). A second director sets the page to **Watching** (keys off, the
 glance first). The headings below name each act; ⏳ and 🚨 sit in C (the
-hour's own timers), 🕚 opens E, and 🏍 / 🪦 (after the dance) close F.
+hour's own timers), 🕚 opens E, 🪦 (after the dance) closes F, and 📜 opens G.
 
 **NEXT** is the first cue after LAST that has not fired and is on tonight's
 branch. Since wave 9 every step from V6 to 🕚 has a `while:` for its own
@@ -468,7 +468,7 @@ while a round-one question is left, 📺 / 📓 / 🏓 / 🧮 / 📊 / 🏆 / �
 each in its own step), and from 🌑 on each cue's `while:` names its branch
 (🌑 in the Y2K hour before the final round, 🍎 after 🌑, 📄 → ⚖ in the bob,
 💔 / 💌 in Grok Prom, the advice cues during the poll, 🕺 while banished,
-🏍 after Combo A or a talk-down, 🪦 after Combo B, G1 after an ending, the
+🪦 after Combo B, 📜 after any ending's last beat, G1 once the reading is over, the
 awards and G11 once G1 has run, **G10 only when MS Paint was cleared
 tonight**: without her NEXT goes G9 → G11). So **the sheet suggests
 nothing while a timer owns the night**: all of hunt 1 (C2 ⏰ fires itself
@@ -680,13 +680,11 @@ see *Trabolta: arc and powers*). The lines are `DRAFT w32`
 | **🚪 Server room door opened** (sensor fallback; the door sensor on the server-room terminal posts it itself; the server-room Antivirus has 🚪 on a program's card) | `# hosts`: *"🚪 The server-room door opened. The Heart plays: he wants the door shut."* | Opening the door with the code is a **clean entry, whoever does it and however they got the code: the door never alarms**. **Once Trabolta is awake** (🤖 Clippy introduces him), the first opening plays **The Heart** (wave 20): The Server Room is revealed to everyone (a quiet notice, no chime), the server-room terminal wakes in red (`room_heart_wake`), the light in his heart wakes (`heart_wake`), and he asks for the door shut. Left open he nags at 15 s and every 20 s after (`# hosts` at the third nag). Shut, **Heart Sealed** asks for a pass at the terminal's camera; a scan with the door shut docks the program's first layer on the terminal (*WHO ARE YOU* → *WHAT I AM* → *THE ARGUMENT* → *THE ASK*, clicked with the mouse, a pick from the phone held back with *Not out there*); a door opened mid-talk freezes it (*CLOSE THE DOOR*, the amber swell) until shut. One heart at a time. **Pressing a 🚪 button hands the door to the buttons** (`Night.door_override`, *Door on buttons* on the glance): the sensor is ignored until 🚪 Trust the door sensor. Before he is awake the door is just a door: `# hosts` hears of it. Inside a 🔧 window or after 📄 only `# hosts` hears. |
 | **🚪 Server room door closed** (sensor fallback, `server_door_closed`, off-sequence; the server-room Antivirus has *🚪 The server-room door is shut* while the story thinks it open) | `# hosts`: *"🚪 The story now follows the 🚪 buttons, not the door sensor. …"* (the first press) | Press it when the sensor is wrong or in fault (Run → Terminals: a red 🚪). The talk waits for the door to be shut, so a sensor that never reports *shut* stalls the heart until this. |
 | **🚪 Trust the door sensor again** (`server_door_trust`, only while the buttons have the door) | `# hosts`: *"🚪 The story follows the door sensor again."* | Hands the door back to the sensor: the terminal's next poll brings the story in line with the real door. Press it before doors if anyone pressed a 🚪 in a check. |
-| **🕊 Heart: end the night on his own (toggle)** (`heart_autoend`, Anytime; **off** by default since wave 20b: the night truly ends on your 🕊) | `# hosts` says which way it is now | Off: a program who talks him down at his heart (any hour) waits for you: `# hosts` asks for 🕊 and NEXT points at it; until you press it, 🔄 can reopen his heart. On: the night ends 25 s after his goodbye by itself (🕊 ends it at once); turning it off inside the 25 s stops the countdown. |
 | **🔧 Crew going through the server-room door (2 min)** (`crew_through_the_door`, Anytime; the server-room Antivirus has it too) | — | Before the crew open the cold door for themselves (a check, the patch-bay watch going in): for 2 minutes an opening only tells `# hosts`, and The Heart is kept for the programs. |
 | **♟ They beat the King: the door code (fallback)** (`chess_won`, **naming the winner**; the door terminal posts it itself — press it when the terminal could not) | a host or Antivirus who **saw the mate** on the door terminal taps **♟ They beat the machine** on the winner's card | **Until 📄 truth.txt**, the winner gets **The Door Code** in their Codex (a private line on their phone, a `♟` note in `# hosts`). A second win changes nothing but a `# hosts` note; a win with no winner named only tells `# hosts` to press ♟ on the winner's card. From 📄 truth.txt on a win only tells `# hosts` *"♟ A King win after truth.txt: the verdict is in, no door code. Nothing happens in the story."* (wave 9). A **loss or draw** (`chess_lost` / `chess_drawn`) posts a `♟` readout in `# hosts` every time, and once Trabolta is awake he gloats on the TV (The Desktop) at most once every five minutes, never from the final reveal. |
 | **👑 Restore the King's health** (`restore_the_king`, Anytime) | — | Sets `Night.king_hp` back to `Night.king_hp_max` (15): he stands again in both games and plays his best at the door terminal. `# hosts` is told. Each hit in a game knocks a point off, once per program per visit (the server's); at 0 he kneels for everyone. |
 | *(auto)* **the cold door's digit notes** | — | Four secret notes, one digit each, hidden in four rooms (the print sheet's **silver** pile: `generated/print-stacks.md`), scannable all night. The first starts the quest *The Cold Door* and hands the program the keypad sign's words; each step reads *N of 4*; the fourth puts **The Door Code** in their Codex and tells `# hosts` *"🔢 X found all four digit notes: the door code is in their Codex."* A program who already has the code gains nothing more. Trabolta refuses a note shared to him (secret). |
 | **🔄 Server room: reset the patch-bay alarm** (`reset_server_room`) | — | After a rehearsal, or a wrong patch the crew forgave: clears the wrong-combination count (the bay forgives one again), the alarm latch, the crew window and The Heart's latch (the next opening plays it again; wave 20: the heart is sealed again unless he already stood down, anyone thrown out of his heart may come back, a heart to heart ends, and a program still at the terminal stays in front of him). Lights stay (💡 restores them; the bulb goes back to `heart_idle`). The keypad is never touched. |
-| *(the heart's talk)* → **🕊 Trabolta stands down (talked down)** (`talked_down`; wave 20b: in sequence, `urgent: true`, NEXT while a stand-down waits) | `# hosts`: *"!🕊 Trabolta has stood down for X at his heart. The night ends when you press 🕊 …"* (autoend off, the default) or *"🕊 Trabolta stands down for X. The night ends in 25 s (🕊 to end it now)."* (autoend turned on) | Wave 20 (D13): the `stand_down` power is gone. A program at his heart who reaches **THE ASK** (a proof they hold and did not get from him, *What Sandy Says* or *The Sandy File*, plus one more point: trusted, honest, the overshare, the LiveJournal, a marked program's candour) and says *She was never going to answer* convinces him, **at any hour** (wave 20b, Q4): **Heart Shutdown** plays (the bay going dark, the bulb fading to warm white, his goodbye) and the night waits for your 🕊 (Q3). Wrong pushes raise his suspicion: a warning at 50, thrown out for the night at 80 (barred **and marked for reinstallation**, wave 20b Q2; never marked twice; 🔄 forgives the heart, 🩹 lifts the mark). 🕊 plays the Combo A ending without a cable (`trabolta_disabled` with `Night.talked_down`): the blackout, the dance, and a recount and ceremony that say who talked him down. With nothing on record 🕊 still works (the director's call) and `# hosts` says so. |
 | **🔌 Combo A** · **💥 Combo B** · **❌ wrong combination** (fallbacks: since wave 22 the bay judges itself through the server-room terminal's `patch_changed`; the server-room Antivirus presses the same three on the card of the program at the cables only when the bay missed one) | every Antivirus booth on the alarm: *"🚨 Server room alarm: a second wrong combination at the patch bay. Get there. Whoever is at the cables goes to the Internet."* | Combo A disables Trabolta and Combo B self-destructs (the cables are on the patch-bay watch's card and the four Patch Sheets). **Everyone is forgiven one wrong combination: the second trips the alarm** (latched for 120 s; only the first alarm hurts Trabolta). Otherwise Trabolta says *"Stop touching me."* Before the Y2K clock the patch bay, combos included, does nothing. **A press puts the bay on the buttons** (`Night.patch_override`, *Patch bay on buttons* on the glance): the cables are ignored until 🔌 **Trust the patch bay again** (`trust_patch_bay`, off-sequence, only while the buttons have it); 🔄 leaves it on the buttons. A ❌ within a minute of the bay's own rejection is that same patch: not counted again (the presser's booth says so; a second ❌ counts). A press pays the watch ⭐ only when the story takes it. |
 | *(auto)* blackout → **🪩 Dance lights** (fallback; auto 10 s later) | — | Every light goes out, every phone is covered by a flashing full-screen **GO TO THE LIVING ROOM** (a room-wide `pin "!!…"`, also an alert and a push), and the dance song plays. The dance (auto or 🪩) takes it down (*💃 Dance.*); the recount, the summary and G1 are backstops. |
 | **💡 Restore the house lights** (`restore_the_lights`, off-sequence; **Anytime**: always on hand, never inside a folded act) | — | The manual fallback for Trabolta's `cut_the_lights` (auto-restored after 90 s) and **the first step of ALL STOP**. Since wave 9 (D2) it also holds a pending automatic dance after a server-room blackout: *"💡 The dance is held: press 🪩 when the house manager says go."* in `# hosts`. It does not lift the takeover; 🪩 plays the held dance and lifts it. |
@@ -721,14 +719,14 @@ Server Room. Never say the code on the radio.
 | *(in Grok Prom)* | the first program to type the line on the 💌 card wins (the house judges it against `facts.json` P1, never Trabolta: since 2026-10-19 he has no power to accept a line, and the story tells him who gave it, in their thread and `Night.line_by`); or a host presses **💘 Said "You're the one that I want"** | **Pickup Line** → Song Ending. In the Song branch the first correct line is read before the song (flavour). |
 | **💔 Nobody has the line → confession → rave** (`no_pickup_line`) | — | **Sad Confession** → rave. |
 | *(alt, only in Grok Prom)* **💌 Trabolta begs for relationship advice** → **🗳 Count the advice poll** (or **💞 helped** / **⛈ thwarted**, which only answer in the advice phase) → **🕺 Everyone hand-jived** | after thwarted: every Antivirus booth says they are banished too | Help → he wins Sandy. Thwart → everyone is banished to the Internet and learns *The Hand Jive Exception* (the TV keeps the banish card; the banishment is no reinstallation, and a duck find frees nobody: Gerald only says the way out is the hand jive) → the hand jive crashes him and puts the screensaver back on every screen. |
-| **🏍 After the dance: weakened Trabolta recounts** (`trabolta_recounts`, after Combo A) | — | Everyone gets every backstory + truth.txt. He names each identity, motive and accomplishment, plus the trustworthy and worst program, then leaves on his motorcycle and everyone is freed. |
+| **G0 · 📜 The full truth** (`tell_the_truth`, wave 58; `beats/truth.loom`; refused before an ending's last beat, 🪦 on Combo B) | Task Manager's teleprompter after Combo A and Combo B (*Read this out loud*, in the hidden room The Script: no guest's Chats carry it); the TV after every other ending | The monologue, about 12 minutes on the TV, 14 on the teleprompter. Trabolta reads his own file clean (phase `finale_truth`; G1 puts the ending's phase back), and after the rave he phones it in from Computer Prom: press ■ Stop house sounds first, the rave's track never ducks. After Combo A a message he left before he died, after Combo B the last thing the computer saved; Combo A also frees everyone, the house lights come back and the hung window stands. **📜 Task Manager reads it instead** (`task_manager_reads`, off-sequence) is the fallback when the TV has no voice. |
 | **🪦 After the dance: Clippy reads the summary** (`clippy_reads_summary`, after Combo B) | Clippy reads Purgatory from their phone (CI 9) | Purgatory. Private fate lines by faction. Trabolta's line goes dark. The summary says, for each featured program at the party, whether they met their goal (their own quest: Excel's mission, OpenOffice's dossier, DraftKings' majority, Bugdom's four secrets, Jeeves' ten findings, Runescape's gold standard, MS Paint's painting, VLC going viral, Pong's ball in play). **Complete The Gold Standard / Go Viral / Keep The Ball In Play in the Inspector first** for any of the three that met their goal: only a director completes them, and Combo B posts the ones still open to `# hosts`. |
 
 ### G. The awards ceremony (after any final ending, K-25)
 
 | Director fires | Performers do | What happens |
 |---|---|---|
-| **G1 · 🏆 Start the awards ceremony** (`start_the_ceremony`; refused until `Night.ended`, and `banished` is not an ending) | Clippy hosts after `destroyed` / `rave` and **reads every line aloud** from The Desktop room | `!` alert to the living room, `sound ceremony_bed`, then **The Night In Review** first (wave 18b, R8, DRAFT: the host reads who everyone really was, the pool programs by problem group, the goals and the deeds, skipping what Recounts / Purgatory just read; every cleared program still here gets a private **Your File** from The Uploader), then `screens_ceremony` and **The Ceremony**: the host opens in The Desktop, per ending (Trabolta weakened after `disabled`, rebooted after `hand_jive`, showman otherwise). Trabolta's lines are spoken by the TV. |
+| **G1 · 🏆 Start the awards ceremony** (`start_the_ceremony`; refused until `Night.ended`, and `banished` is not an ending; wave 58: NEXT waits for 📜 and its reading, and a press before that asks first, a second press inside 30 s goes on anyway) | Clippy hosts after `disabled` / `destroyed` / `rave` and **reads every line aloud** from The Desktop room | `!` alert to the living room, `sound ceremony_bed`, then **The Night In Review** first (wave 18b, R8, DRAFT: the host reads who everyone really was, the pool programs by problem group, the goals and the deeds, skipping what Recounts / Purgatory just read; every cleared program still here gets a private **Your File** from The Uploader), then `screens_ceremony` and **The Ceremony**: the host opens in The Desktop, per ending (Trabolta weakened after `disabled`, rebooted after `hand_jive`, showman otherwise). Trabolta's lines are spoken by the TV. |
 | **G2–G6** the five fixed awards (`award_most_trusted`, `award_least_trusted`, `award_frequent_flyer`, `award_lore_hoarder`, `award_truthcoin_tycoon`) and **G7–G9** the three bonus awards (`award_best_liar`, `award_duck_speedrun`, `award_quest_completionist`), each **with the winner picked on the cue sheet** (from the recap numbers) | the winner comes up to the TV for a trophy | **Present Award**: `sound award_fanfare`, the slide `screens_award_<name>` (`Night.screen` = `award_<name>`; it persists over the screensaver), the host's line with the winner's name and number (the winner's own var: trust, Internet visits, codex count, Truthcoin; the bonus awards read the cue sheet's **value** box — lies accepted, the duck time, quests done — and have a line without a number when it is empty), and a 🏆 reply to the winner. `value` also overrides a fixed award's number. Firing an award again corrects it. |
 | **G10 · 🖌 Bonus: The Million Dollar Painting** (`award_the_painting`, winner = MS Paint; only when she is at the party: its `while:` needs `Night.painting`, so without her the sheet goes G9 → G11) | the painting is revealed for the silent auction | Reads the **🖌 Signed** count (`Night.signatures`) unless **value** is given; a line without a number when nobody was counted. Slide `screens_award_the_painting`. Fired on anyone but MS Paint it is refused in `# hosts` (*"G10 is MS Paint's award…"*); any award fired before G1 says *"Start the ceremony (G1) first"* there; a second 🖌 Signed (or one on MS Paint) says so in `# hosts` and counts nothing. |
 | **G10a–c · the staff awards** (wave 21: `award_staff_trusted` 🛡 *Trabolta's Favourite Staff*, `award_staff_points` ⭐ *Staff Player Of The Night*, `award_staff_mole` 🤫 *The Mole*; **no subject**: the story names the player from the five players' trust, ⭐ Points and quiet favours, a tie to the first of Clippy, Norton, McAfee, Password Manager, CRA) | the winner comes up to the TV; their booth pops *🏆 You won …* | **Present Award** with `screens_award_staff_<name>` and the host's line. The Mole reads each player's private quiet-favour count, here for the first time (*Nobody* when nobody did one) and is the **last award**: it sets `ceremony_done`. |
@@ -759,14 +757,14 @@ final ending happens. `banished` is the one ending that is not final.
 
 | `Night.ending` | Reached when | Result |
 |---|---|---|
-| `disabled` | Combo A patched (normally after a majority got the door code), **or talked down** (🕊 `talked_down`, pressed by a director after Heart Shutdown (wave 20b: NEXT points at it; with 🕊 Heart autoend turned on it fires by itself 25 s later): `Night.talked_down`) | blackout, the dance, then **Trabolta Recounts**: he cannot truly die, rides off on his motorcycle, and everyone returns. Talked down, the blackout opens on the patch bay going quiet on its own, the recount names who talked him down ("Nobody pulled a cable. I stopped."), and he hosts the ceremony quietly |
-| `destroyed` | Combo B patched | blackout, the dance, then **Purgatory**: improper shutdown, bodies dead in the Maps and Ducks building, purgatory forever together. Fate lines: Unlimited Power "went with it", The Way Out "into purgatory, with everyone else" |
-| `song` | truth.txt read with no lie on record (answered questions only) | he solved the theory; vocoder duet with Sandy; leavers may leave |
+| `disabled` | Combo A patched (normally after a majority got the door code) | he dies and does not come back: blackout, the dance, then 📜 Task Manager reads the message he left; everyone is free; Clippy hosts the ceremony. Fate lines: Unlimited Power and The Way Out as before |
+| `destroyed` | Combo B patched | blackout, the dance, then **Purgatory**: improper shutdown, bodies dead in the Optical Drive, purgatory forever together; then 📜 Task Manager reads the last thing the computer saved. Fate lines: Unlimited Power "went with it", The Way Out "into purgatory, with everyone else" |
+| `song` | truth.txt read with no lie on record (answered questions only) | he solved the theory; vocoder duet with Sandy; leavers may leave; then 📜 he reads the monologue on the TV |
 | `song_pickup` | in Grok Prom, someone gives the line (the answer card or 💘) | the song, and everyone is released |
-| `rave` | in Grok Prom, `no_pickup_line` | Sandy-only song; he confesses anyway, reads her line as YES, rides away; everyone is trapped; rave |
-| `help` | in Grok Prom, ask for advice → helped | he wins Sandy; leavers may leave |
+| `rave` | in Grok Prom, `no_pickup_line` | Sandy-only song; he confesses anyway, reads her line as YES, rides away; everyone is trapped; rave; then 📜 he phones the monologue in from Computer Prom. Clippy hosts |
+| `help` | in Grok Prom, ask for advice → helped | he wins Sandy; leavers may leave; then 📜 |
 | `banished` (not final) | ask for advice → thwarted | every program is captured, Antivirus included; everyone learns The Hand Jive Exception |
-| `hand_jive` | `the_hand_jive` while banished | recognition overflow; he reboots and leaves; everyone returns |
+| `hand_jive` | `the_hand_jive` while banished | recognition overflow; he reboots and leaves; everyone returns; then 📜 |
 
 The final reveal is reached when the director fires it, or at midnight
 (60 min after the clock reset) when nothing has ended yet. That covers
@@ -936,9 +934,9 @@ what he wants and why. Two more situations decide whether he may say "Sandy" (th
 own unredaction rule: `Night.recount`, or scenario 1 from step 13). He
 never says the year he met her (it is the door code), never a hunt answer,
 a combination or her one line, and never offers to stop (no act of his ends
-anything). `facts:` gains `Night.heart_opened` / `Night.talked_down` (wave
+anything). `facts:` gains `Night.heart_opened` (wave
 20: `Night.heart_stage` / `Night.server_door`), `them:` gains `at_the_heart`
-(wave 20: `heart_layer`, `heart_menu`, `heart_convinced`, `heart_chat`,
+(wave 20: `heart_layer`, `heart_menu`, wave 58's `heart_heard`, `heart_chat`,
 `heart_out`; wave 27: `heart_who`, what they told him they are at the
 first question); the candour stays out of the shared brief.
 
@@ -981,7 +979,7 @@ pop-up or announcement and a non-positive amount are refused out loud.
 | pardon_a_program | 1 | target | step 11–15 | releases a captured program |
 | turn_back_the_clock | 1 | — | the Y2K hour | midnight moves 5 minutes later |
 
-(Wave 20 deleted `stand_down`, D13: only the story's talk at his heart can stop him.)
+(Wave 20 deleted `stand_down`, D13, and wave 58 the talk-down: nothing said to him stops him.)
 
 He also shares any entry he holds, exactly like a performer's booth. Nobody
 can hand *him* lore about someone or somewhere else: the server refuses a

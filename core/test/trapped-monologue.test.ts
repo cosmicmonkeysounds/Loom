@@ -134,6 +134,15 @@ describe("the full truth: the words (wave 58)", () => {
     }
   });
 
+  it("Task Manager's printed copy is the same text, with each frame", () => {
+    const pack = readFileSync(join(HERE, "../examples/trapped-in-the-internet/cast-packs/performers/task-manager.md"), "utf8");
+    const printed = pack.slice(pack.indexOf("## Appendix: the full truth"));
+    expect(printed.length).toBeGreaterThan(10_000);
+    for (const p of delivered().values()) expect(printed, p).toContain(p);
+    for (const frame of ["shortly before he died", "This message is the last thing it saved", "Trabolta's line has dropped"]) expect(printed).toContain(frame);
+    for (const name of Object.values(FEATURED_NAMES)) expect(printed).toContain(`*(if ${name} came)*`);
+  });
+
   it("nobody featured: only the seven parts go", { timeout: SLOW }, () => {
     const d = delivered();
     const left = [...d].filter(([n]) => !Object.values(FEATURED_PARTS).some(([a, b]) => n >= a && n <= b)).map(([, t]) => t);

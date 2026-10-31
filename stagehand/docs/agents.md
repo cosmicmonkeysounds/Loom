@@ -1023,10 +1023,9 @@ true`, set by the story while the server-room terminal pilots that
 program; since wave 11 at any hour once he is awake) makes him candid, like the Master: he admits the patch bay is
 his heart and that he does not know the combinations or the door's code,
 and says what he wants and why; since wave 20 nothing he says there ends
-the night: the story's four-layer menu on the terminal decides (a
-convince works at any hour since wave 20b, then the night waits for a
-director's 🕊), and the `stand_down` power and its **standing down** block
-are gone. **marked at your heart** (wave 11b: the same, and `them.marked
+the night, and neither does the story's menu on the terminal (wave 58:
+the talk ends nothing), and the `stand_down` power and its **standing down**
+block are gone. **marked at your heart** (wave 11b: the same, and `them.marked
 == true`) has him notice the Antivirus' mark once, ask why (he doesn't
 know), and let the answer move his regard, wary but still candid: he
 takes their files, the questions on the screen are theirs as anyone's,

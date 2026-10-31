@@ -69,10 +69,11 @@ does ends the night or needs you; you may read their numbers in Run → World
 | 14 | **🤖** Trabolta shares the next facts (press it; the scenario picks itself) | | |
 | 15 | wait for **IN** from the patch-bay watch → **🕚** Y2K clock (60 min) | (auto majority; clock warnings) | *desperate* |
 | 16 | door / patch bay (or the Tier 0 buttons 🚪 🔌 💥 ❌) | blackout → (auto 🪩) | |
-| 17 | **🏍** (after Combo A) or **🪦** (after Combo B), else auto **🌑** at midnight | | *last act* at 🌑 |
+| 17 | **🪦** (after Combo B), else auto **🌑** at midnight | | *last act* at 🌑 |
 | 18 | **🍎** Bobbing for Truth → **📄** Read truth.txt (the slide holds while the bobber reads) → **⚖** the verdict when they finish | | |
 | 19 | Grok Prom only: 💘 from a host, or **💔** / the alt **💌 → 🗳 → 💞 / ⛈ → 🕺** | | |
-| 20 | (**✍** first, only if the second director wrote award lines) → **G1 🏆** ceremony → **G2–G9** awards, winner picked from the recap → **G10 🖌** the painting (only if MS Paint came; without her NEXT skips it) → **G10a–c** the three staff awards (no winner to pick: 🛡 Trabolta's Favourite Staff, ⭐ Staff Player Of The Night, 🤫 The Mole, the last) → **G11 🎃** Resurrection (last: ends the show and rolls the credits; **G12 🎬** rolls them again). **G13 🚻** The Bathroom Report: any time between G1 and G11, best before G2 (no winner to pick; programs that never went already lost 5 trust at G1). **G14 🔑** The Language Report: the same, any time between two awards (who cursed the most, the top censored words, her ⭐; the TV shows them all, slurs only as black bars) | | |
+| 19b | **G0 📜** The full truth, after the ending's last beat: Trabolta on the TV, or Task Manager on the teleprompter after Combo A or B. ■ Stop house sounds first if a dance track is still up (the rave's never ducks). Leave 🌀 His voice on Auto or Clean, and no shots: a director's own Broken or shot can still break him | | about 12 to 14 minutes |
+| 20 | (**✍** first, only if the second director wrote award lines) → **G1 🏆** ceremony (NEXT once 📜 is over; a press sooner asks, a second inside 30 s goes on) → **G2–G9** awards, winner picked from the recap → **G10 🖌** the painting (only if MS Paint came; without her NEXT skips it) → **G10a–c** the three staff awards (no winner to pick: 🛡 Trabolta's Favourite Staff, ⭐ Staff Player Of The Night, 🤫 The Mole, the last) → **G11 🎃** Resurrection (last: ends the show and rolls the credits; **G12 🎬** rolls them again). **G13 🚻** The Bathroom Report: any time between G1 and G11, best before G2 (no winner to pick; programs that never went already lost 5 trust at G1). **G14 🔑** The Language Report: the same, any time between two awards (who cursed the most, the top censored words, her ⭐; the TV shows them all, slurs only as black bars) | | |
 
 **The talk scenes (wave 32).** At the four 🤖 marks above, Clippy talks
 with Trabolta live in front of the room: Task Manager types what Clippy
@@ -103,7 +104,7 @@ owns the night**: all of hunt 1 (until C2 ⏰ fires itself, then V6), hunt
 (until midnight fires 🌑). Never tap a timer's cue early: it cuts the window
 short. When the filing window closes by itself, ⏱ ticks and NEXT is 📋.
 After the dance NEXT is the ending's own cue. The timer cues (⏰ 📥 ⏳ 🚨)
-and the anytime ones (🗜 🎆 🔄 ♟ 🕊 🗳 🪩 💡 ✍) never become LAST or
+and the anytime ones (🗜 🎆 🔄 ♟ 🗳 🪩 💡 ✍ 📜 Task Manager reads) never become LAST or
 NEXT. The hardware fallbacks (🖨 🫘 🔌 💥 ❌) stay silent when early.
 
 **Judging is automatic.** Every fact filed on the 📝 card (question + answer
@@ -169,10 +170,7 @@ never from a guest card.
 | the crew need to open the server-room door themselves | **🔧** Crew going through the server-room door (Anytime; the server-room Antivirus has it too): for 2 minutes an opening only tells `# hosts`, The Heart is kept |
 | the server-room door opened and nothing happened | **🚪** Server room door opened (the door sensor's fallback; the server-room Antivirus has it too): once Trabolta is awake the first one plays The Heart. Run → Terminals shows the sensor: a red 🚪 is a fault |
 | the door is shut but his screen still says CLOSE THE DOOR | **🚪** Server room door closed (sensor fallback). After either 🚪 the story follows the buttons (*Door on buttons* on the glance) until **🚪 Trust the door sensor again** |
-| you want a talk-down to end the night by itself | **🕊 Heart: end the night on his own** on (off by default: a talk-down waits for your 🕊); on, the night ends 25 s after Heart Shutdown; turning it off inside the 25 s stops the countdown |
 | a wrong patch the crew forgave, or after a rehearsal | **🔄** Server room: reset the patch-bay alarm (clears the wrong-combination count, the alarm latch and The Heart); the lights stay as they are, so if the house is still red press **💡** Restore the house lights |
-| `# hosts`: "!🕊 Trabolta has stood down for X at his heart" (any hour; NEXT points at 🕊) | your sign-off: **🕊** Trabolta stands down (talked down) ends the night the Combo A way, without a cable; until you do, 🔄 reopens his heart |
-| `# hosts`: "🕊 Trabolta stands down for X. The night ends in 25 s" (autoend turned on) | nothing (it ends itself), or **🕊** to end it now |
 | `# hosts`: "⛔ Trabolta threw X out of his heart" + "🚨 X is marked for reinstallation" | the Antivirus take it from the Wanted board; 🔄 forgives the heart, 🩹 lifts the mark (a barred re-scan never marks them again) |
 | a dead keypad battery or a jammed lock | the house manager's override key; prop the door; fire **🚪** if the cutscene has not played (W-35) |
 | the patch bay (wave 22: the bay on the server-room terminal judges itself, about 5 s after the fourth cable; Run → Terminals shows it) | nothing. Only when the bay missed one (nothing happened, or a cable runs top to top / bottom to bottom) the watch presses 🔌 / 💥 / ❌ on their booth, or radios A / B / WRONG → you press it. A press puts the bay on the buttons (*Patch bay on buttons* on the glance): the cables are ignored until **🔌 Trust the patch bay again**. A ❌ within a minute of the bay's own rejection is not counted twice |

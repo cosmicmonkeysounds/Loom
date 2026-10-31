@@ -189,9 +189,10 @@ queued.
    turns it off, so the ✓ only means it was pressed: read `# hosts` to see
    which is on (press ✍ again for the template). Without ✍ the template lines play on their own (and a
    line you post would be spoken as well, on top).
-3. **If Trabolta is gone** (Combo B, the rave): Clippy hosts and reads each line
+3. **If Trabolta is gone** (Combo A, Combo B, the rave): Clippy hosts and reads each line
    aloud; the TV shows the award slide.
-4. Fire **G1**, then G2–G9 with the winner as the subject. Firing an award
+4. Fire **G0 📜** after the ending's last beat, then **G1** when NEXT moves to it
+   (a press sooner asks first), then G2–G9 with the winner as the subject. Firing an award
    again corrects it. Then **G10 🖌** on MS Paint (only if she came; without
    her the sheet's NEXT skips it), then **G10a–c**, the three staff awards
    (wave 21: no winner to name, the story picks the player; The Mole is the

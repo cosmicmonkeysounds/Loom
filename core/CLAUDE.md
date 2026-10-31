@@ -477,7 +477,7 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
 - **His voice** (wave 56, [`docs/loom-w56-contract.md`](../docs/loom-w56-contract.md)).
   `src/voice-fx.ts` (`@loom/core/voice-fx`, pure) decides how broken Trabolta
   sounds: `voiceLevel` (a curve over `Night.phase`, the Y2K clock, scaled by
-  `Trabolta.composure`; healed by `Night.talked_down`), `voiceSpikeOf` (the
+  `Trabolta.composure`; clean at `finale_help` and `finale_truth`), `voiceSpikeOf` (the
   glitch, burst, flicker and dream shots, a director's shot) and the mode
   (`auto | clean | broken`). `ScreenWatch` puts `voiceFx` on every answer. The
   mode lives beside the mute (`Store.loadVoiceFx`, in the state dir); the shot

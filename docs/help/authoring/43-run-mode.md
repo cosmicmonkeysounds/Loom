@@ -466,15 +466,13 @@ countdown): a click opens the Director page and never fires.
   verbs](live-verbs.md)) is only suggested while it holds: in *Trapped
   in the Internet* NEXT is empty while a timer runs the night — all of
   hunt 1, hunt 2's hour, the summons, and the Y2K hour (midnight fires 🌑
-  itself); after the dance it is the ending's own cue, after the song it
-  is G1, and G10 is only suggested when MS Paint was cleared. A `while:` never stops you pressing a cue; the story's rule
+  itself); after the dance it is the ending's own cue, after an ending's
+  last beat it is G0 📜, and G1 once the reading is over, and G10 is only suggested when MS Paint was cleared. A `while:` never stops you pressing a cue; the story's rule
   decides what happens. Acts never change NEXT: they only group the page.
 - A `repeat: true` cue **stays NEXT** while you keep pressing it and its
   `while:` holds (📋 once per question, until the third).
 - An `urgent: true` cue **jumps the order**: while its `while:` holds and
-  it has not fired it is NEXT wherever LAST is (the show's 🕊 *Trabolta
-  stands down* once a program talks him down at his heart: the night
-  ends on your press).
+  it has not fired it is NEXT wherever LAST is.
 - A press the story **turns down** counts for nothing: it never becomes
   LAST and never ticks. A show's cues pressed out of turn say why in
   `# hosts` and do nothing else — a cue pressed ahead of its turn is

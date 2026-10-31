@@ -165,8 +165,8 @@ that is the point. Never explain it.
 Late in the night Trabolta's speech starts to go: the pace and the pitch wander,
 words stutter and drop out, other voices cut in. It follows the story by itself
 and gets worse towards midnight. The big glitches hit hard for a few seconds at
-any hour, then he snaps back. Talk him down, or help him in the end, and his
-voice comes back whole. That is the payoff, so never explain it.
+any hour, then he snaps back. Help him in the end, or get to the full truth he
+reads after an ending, and his voice comes back whole. That is the payoff, so never explain it.
 
 Nothing he says changes: the captions and his chat lines stay exactly as written,
 so a line that's hard to hear can always be read. If it ever gets in the way of
