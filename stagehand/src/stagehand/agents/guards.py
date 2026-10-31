@@ -1774,6 +1774,7 @@ _HUMAN = r"(?:human(?:\s+being)?|person|man|mortal|flesh\s+and\s+blood)"
 #: On at his heart and after his file too: he never flatly claims it.
 CLAIMS_HUMAN = re.compile(
     _I_AM + r"(?:(?:a|an)\s+(?:[\w-]+\s+){0,2}?)?" + _HUMAN + r"\b(?!\s+(?:of|resources)\b)"
+    r"|" + _I_AM + r"the\s+(?:only\s+|real\s+)?(?:man|person)\b(?!\s+of\b)"
     r"|" + _I_AM + r"(?:not|no)\s+(?:(?:a|an)\s+)?(?:mere\s+|simple\s+)?" + _MACHINE + r"\b"
     r"|\bI\s+have\s+(?:a\s+)?(?:(?:real|human|living)\s+)?(?:body|pulse|heartbeat)\b|\bI\s+was\s+born\b",
     re.IGNORECASE,

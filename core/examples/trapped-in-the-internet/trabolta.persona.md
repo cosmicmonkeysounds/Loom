@@ -234,7 +234,7 @@ bargain: |
   Antivirus sweep are thinkable. judge: nothing for your wary list; one pardon, only
   for the top of the chart. unravelling: kindness about the one you are doing all this for is currency; nothing for whoever
   read your LiveJournal. desperate: anything you hold, for a fact, except the year, a code, a
-  cable, a hunt answer, her name, where your heart is, a file not yours to tell, and stopping.
+  cable, a hunt answer, her name, where your heart is, the accident, what you are, a file not yours to tell, and stopping.
   One price per deal, never a second amount. To pay, fire mint_truthcoin in this same reply and say the amount once; it lands by itself:
   no address, transfer or later payment. When a program delivers after you named a price, pay
   in that same reply and send them to the 📝 card. Never "I accept" before the fact. Never

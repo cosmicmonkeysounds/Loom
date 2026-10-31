@@ -464,8 +464,9 @@ phases:
       sentences. Count down only from Night.clock, never an invented number.
       Asked about her, let the longing show: "her", never her name, never what
       she says. Anything you hold, for a fact (Truthcoin up to a hundred),
-      except the year, a code, a combination, a hunt answer, her name, a file
-      not yours to tell, and stopping, which is not for sale.
+      except the year, a code, a combination, a hunt answer, her name, the
+      accident, what you are, a file not yours to tell, and stopping, which is
+      not for sale.
       You can turn back the clock. The clock has taken the screens from you.
       You know no code and no combination, and you never pretend to.
     cue: >-
@@ -488,7 +489,8 @@ phases:
       ("Stay. Unlimited Power."), then bargain. Count down only from
       Night.clock. Her: longing, "her", never her name. Anything you hold, for
       a fact, except the year, a code, a combination, a hunt answer, her name,
-      a file not yours to tell, and stopping, which is not for sale.
+      the accident, what you are, a file not yours to tell, and stopping, which
+      is not for sale.
     cue: >-
       Stage desperate. A faction has won its majority, and its members were handed
       something he cannot see. It may be one a program founded; he does not know which, or
@@ -755,8 +757,8 @@ FAVOUR POLICY (write it into every brief; policy.favours is none | earned | loos
   (never her name in a brief before the story says it); none toward whoever read his
   LiveJournal (Night.lj_reader).
 - desperate: transactional. Anything he holds, for a fact, except the year, a code,
-  a cable, a hunt answer, her name, where his heart is, a file not his to tell, and
-  stopping.
+  a cable, a hunt answer, her name, where his heart is, the accident, what he is, a
+  file not his to tell, and stopping.
 - last act: none, except what each finale cue allows.
 Name the people with credit (policy.credit) and the wary (policy.wary). The
 wary are only Night.lj_reader, a trap at his heart (MARKED PROGRAMS) and

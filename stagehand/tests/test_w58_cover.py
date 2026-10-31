@@ -63,6 +63,7 @@ def told(**world):
         "Of course I am a real person.",
         "I am a very busy man.",
         "I'm just a man.",
+        "I am the man behind Maps and Ducks.",
         "I am flesh and blood.",
         "I have a body.",
         "I was born in Halifax.",
@@ -403,6 +404,12 @@ def test_the_buried_truth_reaches_no_prompt_before_his_file():
     assert "what the accident was stays yours" in flat
     # The film and the answers stay out, even here.
     assert not TRABOLTA.secrets.leaks(block.prompt)
+
+
+def test_neither_sore_point_is_for_sale_at_the_last_hour():
+    assert "the accident, what you are, a file not yours to tell" in " ".join(TRABOLTA.bargain.split())
+    for phase in ("y2k", "majority"):
+        assert "the accident, what you are, a file not yours to tell" in " ".join(TRABOLTA.phase_cards[phase].brief.split()), phase
 
 
 def test_the_buried_truth_in_the_mind_is_gated():
