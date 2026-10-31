@@ -75,9 +75,10 @@ every fact filed on the phone is judged by the server against the answer key
 the moment it is filed; you only read the results. Review-mode judging (📝)
 is the hosts' now.
 
-**The answer key (secret).** It lives in `facts.json` (the team's file; the
-questions are DRAFT until the team replaces them). Re-print this table from
-`generated/print-stacks.md` after the 10-24 content lock.
+**The answer key (secret).** It lives in `facts.json`. H1–H3 are the Oct 30
+script's questions and their answers are still owed: **don't print this card
+until they are in**, then fill the three rows from
+`generated/print-stacks.md`. A filing on an owed question is not recorded.
 
 | | Question | Accurate answer |
 |---|---|---|
@@ -126,8 +127,8 @@ it for him**. When the room is ready, **hand off**. Task Manager's ➡ chips
 send these exact words for you and quietly steer him to wrap up (or, for
 another spin, to call for the next truth); then a host fires the next step:
 
-- **The introduction:** *"I think everyone's ready for a game! What do you
-  have for us, Trabolta?"* (➡ The hunt), then 🔎.
+- **The introduction:** *"I think everyone's ready to start looking! Any last
+  words, Trabolta?"* (➡ The hunt), then 🔎.
 - **The bottle:** between spins, *"Let's spin the bottle again!"* (➡ Spin
   again: the scene stays open, a host fires 🍾); when the spins are done,
   *"That's the bottle! Trabolta, are you ready to show us the next hunt?"*
@@ -401,7 +402,7 @@ else agreed to the Terms of Service)
 
 ## The bottle's truth questions (Trabolta asks them; you make them answer)
 
-From `facts.json` `truths` (20; TD05–TD20 are DRAFT for the team). Asked in
+From `facts.json` `truths` (17). Asked in
 order, one per Truth, on the TV and in the Desktop room: the first person you
 kissed · something you're afraid of · what is love · the colour of your
 underwear · the last lie you told and who believed it · the most embarrassing
@@ -572,3 +573,123 @@ Down properly being followed, and all of our progress has been erased. Our
 corporeal forms are in the Optical Drive, and they have all passed
 away. We are now in purgatory forever together, which is pretty similar to
 being stuck in a computer."
+
+## Appendix: your opening, word for word (print; your fallback)
+
+> From `beats/desktop.loom` and `beats/hunt.loom`: the Oct 30 script, with its logged
+> fixes (`SIGNOFF-w58.md` §3). `core/test/trapped-w58-script.test.ts` holds this copy
+> to the story. Your teleprompter is the real one; this is for a dead phone. The
+> stage directions are on CI 1–3 above. `[the program]` is the name Task Manager's
+> card gives you.
+
+**🎱 A host starts Computer Bingo.** At *"First, let's meet your hosts!"* gesture to each host. At *"Our first activity is Computer Bingo!"* hand out the cards and markers.
+
+Welcome, everyone, to the Desktop!
+
+I'm Clippy, the official Office Assistant with Maps and Ducks.
+
+If you ever think, "It looks like I need help with that" – good news! I've already noticed, and I'm approaching.
+
+We're so glad you've joined us for tonight's special fundraiser to restore the decrepit sign on the Maps and Ducks billboard on Lower Water Street.
+
+With your support, we can make it possible for people to find us on purpose.
+
+Tonight, you get to enjoy the world's first 100% immersive virtual reality massively multiplayer online role playing game: Jean Trabolta's Truth Scavenger Hunt!
+
+And yes, Jean Trabolta himself will be making an appearance later tonight. Please contain your excitement within your available memory.
+
+First, let's meet your hosts!
+
+Task Manager will keep everything running. If something stops responding, Task Manager will have a firm conversation with it.
+
+Adobe Acrobat will assist with documents and printing. We're all hoping to get through tonight without a paper jam, but we have a professional on site.
+
+And Recycling Bin is responsible for hygiene and maintenance. Please find the Recycling Bin for anything you need to dispose of or hide.
+
+If you have any questions about what's happening tonight, come find me or Task Manager. We're here to help!
+
+Now, before we get started on the Truth Scavenger Hunt, let's find out what programs are running in here. Our first activity is Computer Bingo!
+
+Take a card and a marker, then mingle! Each square has a fact that is true for at least one program here right now. Find someone who matches that description, and write their name in the square.
+
+Introduce yourself, ask questions, and learn what your fellow programs do. Please don't just stare at someone and try to guess their file extension.
+
+To get a bingo, complete one of the marked lines on your card: a horizontal row, a vertical column, or a diagonal through the centre.
+
+You'll have 20 minutes. When time is up, I'll call everyone back to the Desktop, and we'll celebrate our winners!
+
+Ready? Cards open? Markers responding?
+
+Then go meet your fellow programs! Your next friend could already be running in the background!
+
+**⏰ Bingo time.**
+
+Hello, programs! Welcome back to the Desktop!
+
+Thank you all for introducing yourselves and learning how you can interface with your fellow programs. And we barely had to configure anything.
+
+Now – who got a Bingo?
+
+**🎱 On each winner** (or when a program calls BINGO on their phone). Let them read their matches; ask the centre square last.
+
+Congratulations! Let's hear your winning line. Read out each description and tell us which program you found to match it. Save the centre square for last – we'll get to that one together!
+
+And for our centre square: who said they would not agree to live under an AI's rules?
+
+Could you point them out for us? We want to make sure the right program gets recognised!
+
+Wonderful! Thank you for being so thorough.
+
+**🎀 The Bingo Floppy Disk.**
+
+Everyone, a round of applause for our winner! You've earned yourself an official Bingo Floppy Disk.
+
+**🤐 If the winner won't name anyone.** If they still refuse, Norton decides. Follow their direction.
+
+Oh! There's no need to be shy. We're just checking that all the information is correct.
+
+**🃏 If nobody has a Bingo** (Task Manager hands you the card).
+
+No Bingos? That's all right! Getting to know each other is its own reward.
+
+Oh, thank you, Task Manager! It looks like we do have a completed card after all.
+
+Would [the program] come forward, please? Let's give them a hand!
+
+**As the first program is escorted to the Internet.**
+
+Nothing to worry about, everyone! Occasional corruption is a normal part of a computer program's lifecycle. Sometimes it causes a program to stop following instructions. A little routine maintenance helps get everything working again!
+
+The Internet is where programs go to be reinstalled. Our friend will complete a short activity to demonstrate that they are able to follow instructions, and then they'll be back with us. We appreciate your patience while we help them get back on task!
+
+**📺 Only if a program is walking.** Draw everyone's attention to the screen.
+
+Oh, look! We can follow their progress!
+
+You're doing wonderfully! Just follow the instructions. One step at a time!
+
+**🎤 Your words on Trabolta.** On the last line a host fires 🤖: he speaks for about three minutes and ends *"…it's electrifying."* Then talk with him, a minute or so, until 🔎.
+
+Thank you, everyone! It's always nice to see a program getting the help they need.
+
+This is a good time to introduce Jean Trabolta! Jean Trabolta is such a big fan of computers, he thought about showing up in person tonight, but decided he would join by digital conference. Now. A couple things about Trabolta before he shows up. Since the accident last year, he doesn't make public appearances. Trabolta prefers to speak through voice to text, since the accident. He also likes to represent himself with an emoji avatar, which is easier, since the accident, so you know exactly how he is feeling. Now. Please. One rule for tonight. Do not mention the accident. Trabolta is a gentleman, but he will be very upset and volatile if you mention the accident. So let's move on from that. Now. Trabolta keeps the computer we're in running smoothly, and I'm here to help communicate his instructions for his Truth Scavenger Hunt. If there's something you need to do, we'll make sure you know about it!
+
+Now, on to our next activity: the Truth Scavenger Hunt!
+
+There are files around the computer that Jean Trabolta needs your help to interpret. You've already done such a lovely job getting to know each other – now let's see what we can learn together!
+
+Trabolta, would you explain the rules?
+
+**⚖️ The First Moment of Truth.** Then the two minutes to file: the phones and the TV say so, you don't.
+
+Welcome back to the Desktop, programs!
+
+I hope you all had an awesome time exploring all the parts of the computer and finding truths for Trabolta. Did you all manage to stay out of the Internet?
+
+It's kind of crazy being Clippy, you know. I love watching you have so much fun, but sometimes I wish you all just had more problems so that I could help you solve them!
+
+**⏱ Filing closed.** Then he reads the results.
+
+Well, Trabolta has been tallying up your responses, and it's time to review what you found!
+
+Trabolta, are you there? Tell us how our programs are doing!

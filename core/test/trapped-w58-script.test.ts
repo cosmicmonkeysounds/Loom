@@ -110,6 +110,21 @@ describe.skipIf(!has)("wave 58: the opening against the delivered script", () =>
   });
 });
 
+describe("wave 58: Clippy's printed copy", () => {
+  it("is every line of hers in the opening, word for word, in the night's order", () => {
+    const pack = read("cast-packs/performers/clippy.md");
+    const printed = pack.slice(pack.indexOf("## Appendix: your opening, word for word"));
+    const hers = BEATS.flatMap(spokenIn).filter((l) => l.startsWith("Clippy: ")).map((l) => l.slice("Clippy: ".length).replace("{Night.framed_name}", "[the program]"));
+    expect(hers.length).toBeGreaterThan(40);
+    let from = 0;
+    for (const line of hers) {
+      const at = printed.indexOf(`\n${line}\n`, from);
+      expect(at, line).toBeGreaterThanOrEqual(0);
+      from = at + line.length;
+    }
+  });
+});
+
 describe("wave 58: nothing but the performers' lines in the opening", () => {
   it("no Narrator line in any of its beats: a Narrator line reaches every phone, directions and all", () => {
     for (const b of BEATS) {
