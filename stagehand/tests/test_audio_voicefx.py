@@ -502,3 +502,38 @@ def test_the_voice_role_is_the_shows():
 
     doc = json.loads((ROOT / "core/examples/trapped-in-the-internet/audio.json").read_text(encoding="utf-8"))
     assert any(i.get("role") == "trabolta" for i in doc["inputs"])
+
+
+def test_the_poll_reads_his_state_and_survives_a_bad_answer(tmp_path, monkeypatch):
+    import asyncio
+
+    import httpx
+
+    from stagehand.audio import module
+
+    r = fx_router(tmp_path)
+    monkeypatch.setattr(module, "VOICEFX_POLL_S", 0.001)
+    answers = iter(
+        [
+            {"now": 1, "voiceFx": {"level": 0.4, "spike": None}},
+            httpx.ConnectError("the house lost the uplink"),
+            "not a mapping",
+            {"now": 2},  # an older server: no block
+            {"now": 3, "voiceFx": {"level": 0.9, "spike": None}},
+        ]
+    )
+
+    class Mod:
+        async def get(self, path):
+            assert path == "/api/screen/state"
+            try:
+                a = next(answers)
+            except StopIteration:
+                raise asyncio.CancelledError from None
+            if isinstance(a, Exception):
+                raise a
+            return a
+
+    with pytest.raises(asyncio.CancelledError):
+        asyncio.run(r._voicefx_loop(Mod()))
+    assert r.engine.voicefx.want == 0.9
