@@ -1530,6 +1530,7 @@ export class Game {
       this.resetBar = fill;
       this.lastHudAt = Number.NEGATIVE_INFINITY;
     }
+    if (fill > 0) this.leash.touch(now);
     if (fill < 1 || this.escaping) return;
     this.resetHold.spend();
     this.resetBar = 0;

@@ -9,7 +9,7 @@
 //! them; a LOCATION no room is). Those two are warnings: they never block
 //! a save.
 
-import { locate, roomById, route, TALK_NONE, visibleIn, voiceOn } from "@loom/house";
+import { inPropFootprint, locate, roomById, route, TALK_NONE, visibleIn, voiceOn } from "@loom/house";
 import type { DescentScript, HouseMap, Vec2 } from "@loom/house";
 import { REACH } from "../game/hud.ts";
 import type { Selection } from "./edit.ts";
@@ -182,7 +182,27 @@ export function duckWallLeaks(house: HouseMap): Array<{ duck: string; from: stri
   return out;
 }
 
-/** Walkability as warnings: one per unreachable duck spot, one per duck found through a wall (per room behind it), one per room nobody can walk into, then one per room a King guards. */
+/** How tall Gerald stands, for `buriedDucks`. */
+const DUCK_HEIGHT = 0.5;
+
+/**
+ * The duck spots with Gerald inside a prop's box: the validator refuses a solid
+ * one, but a prop that isn't solid (a TV, a toaster, a descent's strange prop)
+ * would draw right over him, and he would be found by walking up to nothing.
+ */
+export function buriedDucks(house: HouseMap): Array<{ duck: string; prop: string }> {
+  const out: Array<{ duck: string; prop: string }> = [];
+  for (const s of house.duck.spots) {
+    const mid = s.pos[1] + DUCK_HEIGHT / 2;
+    for (const p of house.props) {
+      if (p.kind === "label") continue;
+      if (mid > p.pos[1] && mid < p.pos[1] + p.size[1] && inPropFootprint(p, [s.pos[0], s.pos[2]])) out.push({ duck: s.id, prop: p.id });
+    }
+  }
+  return out;
+}
+
+/** Walkability as warnings: one per unreachable duck spot, one per duck found through a wall (per room behind it), one per duck buried in a prop, one per room nobody can walk into, then one per room a King guards. */
 export function walkabilityProblems(house: HouseMap): Problem[] {
   const ducks = unreachableDucks(house).map((id): Problem => {
     const spot = house.duck.spots.find((d) => d.id === id)!;
@@ -195,6 +215,11 @@ export function walkabilityProblems(house: HouseMap): Problem[] {
     const other = roomById(house, from)?.label ?? from;
     return { text: `duck spot "${duck}" (${room}) can be picked up through the wall from "${other}" — move it ≥ ~1.2 m from that wall`, sel: { kind: "duck", id: duck }, level: "warning" };
   });
+  const buried = buriedDucks(house).map(({ duck, prop }): Problem => {
+    const spot = house.duck.spots.find((d) => d.id === duck)!;
+    const room = roomById(house, spot.room)?.label ?? spot.room;
+    return { text: `duck spot "${duck}" (${room}) is inside prop "${prop}" — nobody will see Gerald there`, sel: { kind: "duck", id: duck }, level: "warning" };
+  });
   const rooms = unreachableRooms(house).map((id): Problem => {
     const r = roomById(house, id)!;
     return { text: `${r.outdoor ? "yard" : "room"} "${id}" (${r.label}) can't be reached from the spawn — no door leads into it`, sel: { kind: "room", id }, level: "warning" };
@@ -203,7 +228,7 @@ export function walkabilityProblems(house: HouseMap): Problem[] {
     const r = roomById(house, room)!;
     return { text: `room "${room}" (${r.label}) is guarded by king "${king}" at door "${door}" — it opens when he falls`, sel: { kind: "door", id: door }, level: "warning" };
   });
-  return [...ducks, ...leaks, ...rooms, ...guarded, ...voiceProblems(house)];
+  return [...ducks, ...leaks, ...buried, ...rooms, ...guarded, ...voiceProblems(house)];
 }
 
 /** The voice link as warnings: a terminal standing in the spawn room (the
