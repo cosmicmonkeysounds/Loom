@@ -795,6 +795,8 @@ export const SCREEN_NIGHT_VARS = {
   dream: "Night.dream",
   // Wave 56: what his voice is made of; only the level ever leaves the server.
   composure: "Trabolta.composure",
+  // Wave 59: which talk scene is on, for his voice alone.
+  talk: "Night.talk",
   // Wave 48: the Language Report (G14), only while its slide is up.
   lang_flagged: "Night.lang_flagged",
   lang_censored: "Night.lang_censored",
@@ -1972,7 +1974,9 @@ export class ScreenWatch {
       voiceFx: voiceFxOf(
         this.voiceFxMode,
         { phase: night.phase, composure: num(SCREEN_NIGHT_VARS.composure), remaining, alarmOn: night.alarm_on, heartStage: night.heart_stage, reading: awardUp || summaryUp },
-        { now: this.now(), glitch: program.glitch ?? null, flicker: program.flicker, dreamAt: this.dreamOf(sim)?.at ?? null, shot: this.voiceShot },
+        // His first public crack is the first guess at the results: a flicker
+        // in the intro talk (the costume's) is the screens' alone.
+        { now: this.now(), glitch: program.glitch ?? null, flicker: peek(SCREEN_NIGHT_VARS.talk) === "intro" ? null : program.flicker, dreamAt: this.dreamOf(sim)?.at ?? null, shot: this.voiceShot },
       ),
       ...(room !== undefined ? { room } : {}),
       identify: identifyLeft > 0,

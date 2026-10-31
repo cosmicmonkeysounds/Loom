@@ -111,6 +111,19 @@ describe("the major glitches, pressed for real", () => {
     expect(fx().spike).toBeNull();
   });
 
+  it("a flicker in the intro talk is the screens', and his voice stays clean", { timeout: SLOW }, () => {
+    const { sim, clock, fx } = night();
+    sim.setVar("Night.step", "4");
+    sim.setVar("Night.talk", "intro");
+    sim.signal("costume_flicker");
+    expect(fx().spike).toBeNull();
+    clock.t += 10_000;
+    // The same press in another talk scene is the catch in his throat it always was.
+    sim.setVar("Night.talk", "bottle");
+    sim.signal("costume_flicker");
+    expect(fx().spike?.kind).toBe("flicker");
+  });
+
   it("a story that has just reloaded plays no spike from its history", { timeout: SLOW }, () => {
     const sim = Sim.fromSources(SRC);
     sim.fireBeat("Power On");
