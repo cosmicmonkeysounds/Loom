@@ -46,7 +46,9 @@
 //   --event <id>        skip code resolution (default: /api/resolve-code)
 //   --guests 12         how many guest bots (featured included)
 //   --featured "Microsoft Excel,MS Paint,Pong"   featured programs (claims)
-//   --ending verdict|destroyed   (default verdict)
+//   --ending verdict|disabled|destroyed|song_pickup|help|hand_jive|rave
+//                       (default verdict: the song, or with --lie the advice
+//                       poll; the last four imply --lie and take that road)
 //   --lie               one confident wrong filing → the verdict's Grok Prom
 //   --facts <path>      facts.json for accurate filings (default the show's;
 //                       never printed). `--facts none` files guesses only.
@@ -70,8 +72,10 @@ import {
   CEREMONY,
   GROK_TO_ADVICE,
   GROK_TO_RAVE,
+  THE_FULL_TRUTH,
   TO_Y2K,
   Y2K_TO_DESTROYED,
+  Y2K_TO_DISABLED,
   Y2K_TO_VERDICT,
   pressChain,
   type ChainStep,
@@ -98,8 +102,10 @@ const base = resolveBase(arg("base"), process.env["LOOM_SERVER"]) ?? "";
 const modCode = arg("code") ?? process.env["LOOM_MOD_CODE"] ?? "";
 const nGuests = Math.max(4, Number(arg("guests", "12")));
 const featuredWanted = (arg("featured", "Microsoft Excel,MS Paint,Pong") ?? "").split(",").map((s) => s.trim()).filter((s) => s !== "");
-const ending = (arg("ending", "verdict") ?? "verdict") as "verdict" | "destroyed";
-const lie = flag("lie");
+const ENDINGS = ["verdict", "disabled", "destroyed", "song_pickup", "help", "hand_jive", "rave"] as const;
+const ending = (arg("ending", "verdict") ?? "verdict") as (typeof ENDINGS)[number];
+/** The roads that run through Grok Prom need a lie on record. */
+const lie = flag("lie") || ending === "song_pickup" || ending === "help" || ending === "hand_jive" || ending === "rave";
 const pace = Math.max(0, Number(arg("pace", "0")));
 const color = !flag("no-color") && process.stdout.isTTY !== false;
 const beatFile = arg("beat-file");
@@ -107,8 +113,8 @@ const jsonOut = arg("json");
 const here = dirname(fileURLToPath(import.meta.url));
 const factsPath = arg("facts", join(here, "../../core/examples/trapped-in-the-internet/facts.json"))!;
 
-if (base === "" || modCode === "" || !["verdict", "destroyed"].includes(ending)) {
-  console.error("usage: node --experimental-strip-types scripts/sim/evening.ts --base <url> --code <MOD code> [--ending verdict|destroyed] [--pace ms] [--watch] [--yes]");
+if (base === "" || modCode === "" || !(ENDINGS as readonly string[]).includes(ending)) {
+  console.error(`usage: node --experimental-strip-types scripts/sim/evening.ts --base <url> --code <MOD code> [--ending ${ENDINGS.join("|")}] [--pace ms] [--watch] [--yes]`);
   process.exit(2);
 }
 const envNotice = envServerNotice(arg("base"), process.env["LOOM_SERVER"], base);
@@ -475,6 +481,7 @@ async function main(): Promise<void> {
   await y2kHour();
   await theHeart();
   await theEnding();
+  await theFullTruth();
   await ceremony();
 }
 
@@ -1025,7 +1032,16 @@ async function theHeart(): Promise<void> {
 // --- the ending + the ceremony ----------------------------------------------------------
 
 async function theEnding(): Promise<void> {
-  if (ending === "destroyed") {
+  if (ending === "disabled") {
+    await beat(
+      "🔌 Combo A: he is dead, the blackout, the dance",
+      async (c) => {
+        await press(c, Y2K_TO_DISABLED);
+        await sleep(11_000); // the dance lands by itself
+      },
+      () => ({ "Night.ending": "disabled", "Night.ended": "true", "Trabolta.awake": "false" }),
+    );
+  } else if (ending === "destroyed") {
     await beat("💥 Combo B: the computer is destroyed", async (c) => press(c, Y2K_TO_DESTROYED), () => ({ "Night.ending": "destroyed", "Night.ended": "true" }));
   } else {
     await beat(
@@ -1038,20 +1054,45 @@ async function theEnding(): Promise<void> {
         }
         const w = await world();
         c.note(`the verdict: ${read(w, "Night.phase")}`);
-        if (read(w, "Night.phase") === "grok_prom") {
-          await press(c, GROK_TO_ADVICE);
-          for (const [i, b] of bots.entries()) {
-            const p = await widgetFor(b.token, "poll");
-            if (p !== undefined) await answerWidget(b.token, p.seq, i % 3 === 0 ? { choice: "Thwart him", index: 1 } : { choice: "Help him", index: 0 });
-          }
-          await press(c, ADVICE_TALLY);
-          const after = await world();
-          if (read(after, "Night.ended") !== "true") await press(c, GROK_TO_RAVE);
-        }
+        if (read(w, "Night.phase") === "grok_prom") await grokProm(c);
       },
-      () => ({ "Night.ended": "true", "Night.ending": lie ? (x) => x !== "song" && x !== "none" : "song" }),
+      () => ({ "Night.ended": "true", "Night.ending": ending === "verdict" ? (lie ? (x) => x !== "song" && x !== "none" : "song") : ending }),
     );
   }
+}
+
+/** Grok Prom, down the road `--ending` names (`verdict`: the room votes). */
+async function grokProm(c: Ctx): Promise<void> {
+  if (ending === "rave") {
+    await press(c, GROK_TO_RAVE);
+    return;
+  }
+  if (ending === "song_pickup") {
+    c.must("💘 the line works", await signal("pickup_line_works", { subject: bots[0]!.id }));
+    return;
+  }
+  await press(c, GROK_TO_ADVICE);
+  for (const [i, b] of bots.entries()) {
+    const p = await widgetFor(b.token, "poll");
+    const help = ending === "help" || (ending === "verdict" && i % 3 !== 0);
+    if (p !== undefined) await answerWidget(b.token, p.seq, help ? { choice: "Help him", index: 0 } : { choice: "Thwart him", index: 1 });
+  }
+  await press(c, ADVICE_TALLY);
+  const after = await world();
+  if (ending === "hand_jive") await press(c, ["the_hand_jive"]);
+  else if (read(after, "Night.ended") !== "true") await press(c, GROK_TO_RAVE);
+}
+
+/** 📜 after the ending's last beat (wave 58): Task Manager reads after Combo A
+ *  and B, Trabolta otherwise. The beat is instant; the reading isn't, and the
+ *  bots don't wait for it: ceremony() takes G1's ask. */
+async function theFullTruth(): Promise<void> {
+  const reader = ending === "disabled" || ending === "destroyed" ? "Task Manager" : "Trabolta";
+  await beat(
+    `📜 The full truth: ${reader} reads`,
+    async (c) => press(c, THE_FULL_TRUTH),
+    () => ({ "Night.truth_told": "true", "Night.truth_reader": reader, ...(reader === "Trabolta" ? { "Night.phase": "finale_truth" } : {}) }),
+  );
 }
 
 async function ceremony(): Promise<void> {
@@ -1066,6 +1107,9 @@ async function ceremony(): Promise<void> {
       const steps = [...CEREMONY];
       const paint = role.feat("mspaint");
       if (paint !== undefined && read(w, "Night.painting") === "true") steps.splice(steps.indexOf("award_staff_trusted"), 0, { name: "award_the_painting", who: "painting" });
+      // G1 waits for the reader (wave 58): its first press only asks, and the
+      // chain's own press inside 30 s goes on anyway. A refusal here is the ask.
+      c.must("🏆 G1 asks first", await signal("start_the_ceremony"), (r) => r.status === 200 && r.json["refused"] === true);
       await press(c, steps, (r) => (r === "painting" ? paint?.id : winners[r]));
     },
     () => ({ "Night.ceremony_done": "true", "Night.resurrected": "true", "Night.talk": "none" }),

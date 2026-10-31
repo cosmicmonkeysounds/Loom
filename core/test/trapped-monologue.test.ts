@@ -10,6 +10,20 @@ import { fileURLToPath } from "node:url";
 import { Sim } from "../src/runtime/sim/index.ts";
 import type { SimEvent } from "../src/runtime/sim/index.ts";
 import { scenarioSource } from "../examples/load.ts";
+import { cueRows } from "../src/cue-sheet.ts";
+import { VOICE_PHASE_LEVEL, voiceLevel } from "../src/voice-fx.ts";
+import { buildRecent, inReadingBeat } from "../server/agent-recent.ts";
+import { composeGuestMessages, type ChatMessage } from "../server/chat.ts";
+import { ScreenWatch, slidePersists, voiceLinesOf } from "../server/routes/screen.ts";
+import { cueState, guestView, modView, notePress, pressRefused } from "../server/views.ts";
+import { CEREMONY, TO_Y2K, Y2K_TO_DESTROYED, Y2K_TO_DISABLED, Y2K_TO_VERDICT, pressChain, type ChainStep } from "../../scripts/accept/chains.ts";
+
+// The phone's own reader (by path: core's typecheck has no DOM for play's types).
+const { markFloor, scriptOf, unreadLines } = (await import(new URL("../../play/src/aloud/model.ts", import.meta.url).href)) as {
+  markFloor(script: unknown, clock: number): number;
+  scriptOf(messages: Iterable<ChatMessage>, me: string): Array<{ title: string; lines: unknown[] }>;
+  unreadLines(script: unknown, mark: number): unknown[];
+};
 
 const SHOW = "trapped-in-the-internet";
 const SRC = scenarioSource(SHOW);
@@ -56,6 +70,7 @@ const FEATURED_PARTS: Record<string, [number, number]> = { excel: [89, 95], open
 const FEATURED_NAMES: Record<string, string> = { excel: "Microsoft Excel", openoffice: "OpenOffice", jeeves: "Broken Ask Jeeves", bugdom: "Bugdom", runescape: "Runescape", mspaint: "MS Paint", draftkings: "DraftKings" };
 
 type Ev<T extends SimEvent["type"]> = Extract<SimEvent, { type: T }>;
+const diagnostics = (evs: SimEvent[]) => evs.filter((e) => e.type === "diagnostic");
 const said = (evs: SimEvent[], speaker: string) => (evs.filter((e) => e.type === "dialogue") as Ev<"dialogue">[]).filter((e) => e.speaker === speaker).map((e) => e.text);
 
 /** Register → CAPTCHA → the problem → deposit → the door scan. */
@@ -123,5 +138,365 @@ describe("the full truth: the words (wave 58)", () => {
     const d = delivered();
     const left = [...d].filter(([n]) => !Object.values(FEATURED_PARTS).some(([a, b]) => n >= a && n <= b)).map(([, t]) => t);
     expect(taskManager(house([]), "disabled").slice(2)).toEqual(left);
+  });
+});
+
+// ───────────────────────── every road, on the real compiled story ─────────────────────────
+
+const FACTS = JSON.parse(readFileSync(join(HERE, "../examples/trapped-in-the-internet/facts.json"), "utf8")) as { questions: Array<{ id: string; answer: string }> };
+const WHO = { name: "tv", spot: "", view: "tv", character: "Trabolta", voice: "The Desktop", after: 0 };
+const v = (sim: Sim, p: string) => (sim.world.get(p) as { value: unknown } | undefined)?.value;
+const hostsOf = (evs: SimEvent[]) => (evs.filter((e) => e.type === "broadcast") as Ev<"broadcast">[]).filter((b) => b.scope === "channel(hosts)").map((b) => b.cue);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const beatsOf = (evs: SimEvent[]) => evs.filter((e) => e.type === "beatEntered").map((e: any) => (e.beat ?? e.name) as string);
+const cuesOf = (evs: SimEvent[]) => (evs.filter((e) => e.type === "directive") as Ev<"directive">[]).filter((e) => e.verb === "cue" || e.verb === "sfx").map((e) => e.args.trim());
+
+type Road = "song" | "song_pickup" | "help" | "hand_jive" | "rave" | "disabled" | "destroyed";
+const ROADS: Record<Road, { reader: "Trabolta" | "Task Manager"; host: "Trabolta" | "Clippy"; phase: string; frame: RegExp; lines: number; freeBefore: boolean; freeAfter: boolean; awake: boolean }> = {
+  song: { reader: "Trabolta", host: "Trabolta", phase: "finale_song", frame: /^Before anyone leaves, one last file\./u, lines: 1, freeBefore: true, freeAfter: true, awake: true },
+  song_pickup: { reader: "Trabolta", host: "Trabolta", phase: "finale_song", frame: /^Before anyone leaves, one last file\./u, lines: 1, freeBefore: true, freeAfter: true, awake: true },
+  help: { reader: "Trabolta", host: "Trabolta", phase: "finale_help", frame: /^Before anyone leaves, one last file\./u, lines: 1, freeBefore: true, freeAfter: true, awake: true },
+  hand_jive: { reader: "Trabolta", host: "Trabolta", phase: "finale_hand_jive", frame: /^Before anyone leaves, one last file\./u, lines: 1, freeBefore: true, freeAfter: true, awake: true },
+  rave: { reader: "Trabolta", host: "Clippy", phase: "finale_rave", frame: /^Programs, this is Jean Trabolta, calling from Computer Prom\./u, lines: 2, freeBefore: false, freeAfter: false, awake: true },
+  disabled: { reader: "Task Manager", host: "Clippy", phase: "finale_killed", frame: /^This message was recorded by Jean Trabolta shortly before he died\.$/u, lines: 2, freeBefore: false, freeAfter: true, awake: false },
+  destroyed: { reader: "Task Manager", host: "Clippy", phase: "finale_shutdown", frame: /^The computer is off\. This message is the last thing it saved\.$/u, lines: 2, freeBefore: false, freeAfter: false, awake: false },
+};
+const ROAD_NAMES = Object.keys(ROADS) as Road[];
+
+/** A full house, walked by the director's own chains to the ending's last beat. */
+async function road(which: Road) {
+  const sim = Sim.fromSources(SRC);
+  sim.fireBeat("Power On");
+  const clock = { t: 1_000_000 };
+  const watch = new ScreenWatch({ now: () => clock.t });
+  watch.poll(sim, WHO as never, () => false);
+  upload(sim, "g-pool", "Calculator");
+  for (const slug of ALL) upload(sim, `f-${slug}`, FEATURED_NAMES[slug]!);
+  upload(sim, "f-vlc", "VLC");
+  upload(sim, "f-pong", "Pong");
+  const log: SimEvent[] = [];
+  const press = async (name: string, who?: string) => {
+    const out = sim.signal(name, who === undefined ? undefined : "g-pool");
+    notePress(sim, out);
+    log.push(...out);
+    return pressRefused(sim, out) ? { ok: true, refused: true } : { ok: true };
+  };
+  const chain = async (steps: readonly ChainStep[]) => expect(await pressChain(steps, press, () => {})).toEqual({ ok: true, refused: [] });
+  const tick = (seconds: number) => {
+    for (let i = 0; i < seconds; i++) {
+      clock.t += 1000;
+      log.push(...sim.tick(1000));
+    }
+  };
+  await chain(TO_Y2K);
+  if (which === "disabled") {
+    await chain(Y2K_TO_DISABLED);
+    tick(15);
+  } else if (which === "destroyed") {
+    await chain(Y2K_TO_DESTROYED);
+    tick(15);
+  } else {
+    if (which !== "song") sim.setVar("Kernel.q1", '"lie"');
+    await chain(Y2K_TO_VERDICT);
+    tick(40);
+    if (which === "song_pickup") log.push(...sim.signal("pickup_line_works", "g-pool", null, "Clippy"));
+    if (which === "rave") await press("no_pickup_line");
+    if (which === "help") await chain(["ask_for_advice", "advice_helped"]);
+    if (which === "hand_jive") await chain(["ask_for_advice", "advice_thwarted", "the_hand_jive"]);
+  }
+  /** The next press as the phones get it, each with a seq. */
+  let seq = 1000;
+  const compose = (evs: SimEvent[]) => composeGuestMessages(sim, evs).map((m) => ({ ...m, seq: seq++, hidden: false }));
+  const rows = () => cueRows(modView(sim, "open", "x").interactions ?? [], cueState(sim));
+  const next = () => rows().find((r) => r.next)?.id ?? null;
+  const fx = () => watch.poll(sim, WHO as never, () => false);
+  return { sim, log, press, chain, tick, compose, rows, next, fx, clock };
+}
+const fire = (sim: Sim, name: string) => {
+  const out = sim.signal(name);
+  notePress(sim, out);
+  return out;
+};
+
+describe.each(ROAD_NAMES)("the full truth on the road to %s", (which) => {
+  const want = ROADS[which];
+
+  it("is offered after the ending's last beat, read by the right voice, whole, in its frame", { timeout: SLOW }, async () => {
+    const n = await road(which);
+    expect(v(n.sim, "Night.ended")).toBe(true);
+    expect(v(n.sim, "Night.ending")).toBe(which);
+    expect(v(n.sim, "Night.truth_told")).toBe(false);
+    expect(n.next()).toBe("tell_the_truth");
+    expect(v(n.sim, "Night.everyone_free")).toBe(want.freeBefore);
+    const evs = fire(n.sim, "tell_the_truth");
+    expect(diagnostics(evs)).toEqual([]);
+    const lines = said(evs, want.reader);
+    expect(lines[0]).toMatch(want.frame);
+    const body = lines.slice(want.lines);
+    const file = [...delivered().values()];
+    expect(body.join(" ")).toBe(file.join(" "));
+    if (want.reader === "Task Manager") expect(body).toEqual(file);
+    else expect(body).toHaveLength(18);
+    // Nobody else says a word of it, and the other version never plays.
+    expect(said(evs, want.reader === "Trabolta" ? "Task Manager" : "Trabolta")).toEqual([]);
+    expect(beatsOf(evs)).toContain(want.reader === "Trabolta" ? "The Full Truth" : "The Full Truth Read");
+    expect(beatsOf(evs)).not.toContain(want.reader === "Trabolta" ? "The Full Truth Read" : "The Full Truth");
+    // No glitch tag on any of it.
+    const tagged = (evs.filter((e) => e.type === "dialogue") as Ev<"dialogue">[]).filter((e) => e.manner !== undefined);
+    expect(tagged).toEqual([]);
+    expect(v(n.sim, "Night.truth_told")).toBe(true);
+    expect(v(n.sim, "Night.truth_reader")).toBe(want.reader);
+    expect(v(n.sim, "Night.everyone_free")).toBe(want.freeAfter);
+    expect(v(n.sim, "Night.alerts")).toBe("sticky");
+    expect(v(n.sim, "Night.recount")).toBe(true); // every identity is out, Combo B too
+    expect(v(n.sim, "Trabolta.awake")).toBe(want.awake);
+    expect(cuesOf(evs).filter((c) => c.includes("motorcycle"))).toEqual([]);
+  });
+
+  it("reaches its audience: the TV takes every line of Trabolta's, the teleprompter every line of Task Manager's, no guest the latter", { timeout: SLOW }, async () => {
+    const n = await road(which);
+    const msgs = n.compose(fire(n.sim, "tell_the_truth"));
+    const his = msgs.filter((m) => m.from === "Trabolta" && m.kind === "line");
+    const tm = msgs.filter((m) => m.from === "Task Manager" && m.kind === "line");
+    const script = scriptOf(msgs as ChatMessage[], "@Task Manager");
+    if (want.reader === "Trabolta") {
+      expect(his.every((m) => m.channel === "loc:The Desktop")).toBe(true);
+      const tv = voiceLinesOf(msgs as ChatMessage[], "loc:The Desktop", 999, (f) => f === "Trabolta");
+      expect(tv.lines.map((l) => l.text)).toEqual(his.map((m) => m.text));
+      expect(tm).toEqual([]);
+      expect(script).toEqual([]);
+      // The worker's `recent` never carries it, whatever it says.
+      for (const m of his) expect(inReadingBeat(m)).toBe(true);
+      const recent = buildRecent({ character: "Trabolta", speaker: { kind: "guest", id: "g-pool", name: "Calculator" }, messages: msgs as ChatMessage[], storyAt: n.sim.elapsed(), lastFreeReply: null, codex: () => undefined, peek: () => null, persons: [], filings: [] });
+      expect(recent.filter((r) => r.kind === "house")).toEqual([]);
+      return;
+    }
+    expect(his).toEqual([]);
+    expect(voiceLinesOf(msgs as ChatMessage[], "loc:The Desktop", 999, (f) => f === "Trabolta").lines).toEqual([]);
+    expect(tm.length).toBe(99);
+    expect(new Set(tm.map((m) => m.channel))).toEqual(new Set(["loc:The Script"]));
+    expect(script).toHaveLength(1);
+    expect(script[0]!.title).toBe("The Full Truth Read");
+    expect(unreadLines(script, 0)).toHaveLength(99);
+    // A phone swapped at minute 14 still gets it (`ALOUD_WINDOW_MS`).
+    expect(markFloor(script, tm[0]!.ts + 14 * 60_000)).toBe(0);
+    // No guest lists the room, or can.
+    for (const g of ["g-pool", "f-excel"]) {
+      expect(n.sim.canSeeChannel(g, "loc:The Script")).toBe(false);
+      expect((guestView(n.sim, g).channels ?? []).map((c) => c.id)).not.toContain("loc:The Script");
+    }
+    // A check-in sign would print for a room with one: this one has none.
+    const loc = n.sim.model.locations.get("The Script")!;
+    expect(loc.hidden).toBe(true);
+    expect(loc.checkin).toBe(false);
+  });
+
+  it("his voice: level 0 and no spike the whole way, even from the worst of the night; the phase comes back at G1", { timeout: SLOW }, async () => {
+    const n = await road(which);
+    if (want.reader === "Trabolta") {
+      // The floors he could carry in: a talk left open, a latched alarm, no composure left.
+      n.sim.setVar("Night.heart_stage", '"talk"');
+      n.sim.setVar("Night.alarm_on", "true");
+      n.sim.setVar("Night.alarm_clear_at", "99999");
+      n.sim.setVar("Trabolta.composure", "0");
+      expect(n.fx().voiceFx.level).toBeGreaterThan(0);
+      fire(n.sim, "tell_the_truth");
+      expect(v(n.sim, "Night.phase")).toBe("finale_truth");
+      expect(n.fx().voiceFx.level).toBe(0);
+      n.tick(13); // past the longest spike the night's history could still be counting
+      expect(n.fx().voiceFx).toEqual({ mode: "auto", level: 0, spike: null });
+      expect(v(n.sim, "Night.alarm_on")).toBe(false);
+      for (let i = 0; i < 7; i++) {
+        n.tick(100);
+        expect(n.fx().voiceFx).toEqual({ mode: "auto", level: 0, spike: null });
+      }
+      n.tick(10);
+      // A director's own Broken mode or shot can still break him (the hosts are told).
+      expect(hostsOf(fire(n.sim, "tell_the_truth"))[0]).toContain("Already told");
+    } else {
+      fire(n.sim, "tell_the_truth");
+      expect(v(n.sim, "Night.phase")).toBe(want.phase);
+      n.tick(830);
+    }
+    expect(n.next()).toBe("start_the_ceremony");
+    fire(n.sim, "start_the_ceremony");
+    expect(v(n.sim, "Night.ceremony")).toBe(true);
+    expect(v(n.sim, "Night.phase")).toBe(want.phase);
+  });
+
+  it("G1 waits: NEXT holds, a press asks first, and a second one inside 30 s goes on anyway", { timeout: SLOW }, async () => {
+    const n = await road(which);
+    fire(n.sim, "tell_the_truth");
+    expect(n.next()).toBeNull();
+    const ask = fire(n.sim, "start_the_ceremony");
+    expect(pressRefused(n.sim, ask)).toBe(true);
+    expect(hostsOf(ask)[0]).toContain(`${want.reader} is still reading the full truth`);
+    expect(v(n.sim, "Night.ceremony")).toBe(false);
+    expect(cueState(n.sim).fired).not.toContain("start_the_ceremony");
+    n.tick(32); // the ask lapses
+    expect(pressRefused(n.sim, fire(n.sim, "start_the_ceremony"))).toBe(true);
+    const go = fire(n.sim, "start_the_ceremony");
+    expect(pressRefused(n.sim, go)).toBe(false);
+    expect(v(n.sim, "Night.ceremony")).toBe(true);
+    expect(beatsOf(go)).toEqual(expect.arrayContaining(["The Night In Review", "The Ceremony"]));
+  });
+
+  it("the ceremony: the right host from the first line to the last award, the review reads only those the monologue leaves out", { timeout: SLOW }, async () => {
+    const n = await road(which);
+    fire(n.sim, "tell_the_truth");
+    n.tick(830);
+    const start = n.log.length;
+    await n.chain(CEREMONY);
+    const rest = n.log.slice(start);
+    expect(v(n.sim, "Night.ceremony_host")).toBe(want.host);
+    expect(v(n.sim, "Night.resurrected")).toBe(true);
+    expect(v(n.sim, "Night.everyone_free")).toBe(true);
+    const other = want.host === "Trabolta" ? "Clippy" : "Trabolta";
+    expect(said(rest, want.host).length).toBeGreaterThan(10);
+    expect(said(rest, other)).toEqual([]);
+    const review = said(rest, want.host);
+    // The monologue told these.
+    for (const told of ["Clippy is Tippi", "Norton Anti-Virus is Julie", "Password Manager is Bridget", "CRA Agent Software is Sharon", "Microsoft Excel is", "OpenOffice is", "DraftKings is", "Bugdom is", "Broken Ask Jeeves is", "Runescape is", "MS Paint is"]) {
+      expect(review.some((l) => l.startsWith(told)), told).toBe(false);
+    }
+    // It leaves these out.
+    for (const left of ["VLC is Victor", "Pong is the child", "Task Manager was a middle manager", "Adobe Acrobat is Sheryl", "Recycling Bin was a bathroom attendant", "McAfee Anti-Virus is John McAfee", "The Installation Wizard walked"]) {
+      expect(review.some((l) => l.startsWith(left)), left).toBe(true);
+    }
+    // Purgatory read the goals and the deeds; every other road reads them here.
+    const goals = review.some((l) => /(?:meet|met) their goal/iu.test(l));
+    expect(goals).toBe(which !== "destroyed");
+    if (which === "disabled") expect(review).toContain("Trabolta is gone. The right cables came out, and nobody is keeping you here any more. You may go back to your bodies.");
+    if (which === "destroyed") expect(review.some((l) => l.startsWith("The computer is off."))).toBe(true);
+    if (which === "rave") expect(review.some((l) => l.startsWith("Trabolta has left on his motorcycle."))).toBe(true);
+  });
+
+  it("the screens: his face on Trabolta's roads; the hung window or purgatory stands through Task Manager's, past any hold", { timeout: SLOW }, async () => {
+    const n = await road(which);
+    fire(n.sim, "tell_the_truth");
+    n.tick(2);
+    const s = n.fx();
+    const up = s.program.slide;
+    if (want.reader === "Trabolta") {
+      expect(v(n.sim, "Night.screen")).toBe("screensaver");
+      expect(up?.kind).toBe("base");
+      expect(s.attract).toBe(false);
+    } else {
+      const value = which === "disabled" ? "recount" : "purgatory";
+      expect(v(n.sim, "Night.screen")).toBe(value);
+      expect(up?.value).toBe(value);
+      expect(up?.persist).toBe(true);
+      expect(s.attract).toBe(true); // asleep: the slide stands over it, and nothing speaks him
+      n.tick(300);
+      expect(n.fx().program.slide?.value).toBe(value);
+    }
+  });
+});
+
+describe("the full truth: the frames and the fallbacks", () => {
+  it("Sandy's line is the file's, the story's and F1's; Grok finds her tonight", { timeout: SLOW }, async () => {
+    const line = /"(.+)"/u.exec(delivered().get(19)!)![1]!;
+    expect(FACTS.questions.find((q) => q.id === "F1")!.answer).toBe(line);
+    for (const which of ["song", "help", "rave"] as const) {
+      const n = await road(which);
+      const hers = said(n.log, "Sandy");
+      expect(hers.length, which).toBeGreaterThan(0);
+      expect(new Set(hers), which).toEqual(new Set([line]));
+      expect(said(fire(n.sim, "tell_the_truth"), "Trabolta").join(" "), which).toContain("Grok was too antisocial to find a partner, until tonight.");
+    }
+  });
+
+  it("the rave: he phones it in, the look comes down, and Clippy still hosts", { timeout: SLOW }, async () => {
+    const n = await road("rave");
+    expect(cuesOf(n.log)).toContain("rave");
+    const evs = fire(n.sim, "tell_the_truth");
+    const lines = said(evs, "Trabolta");
+    expect(lines[1]).toBe("You are not going anywhere, so stay on the line. I am going to read you my own file, exactly as it is written.");
+    expect(cuesOf(evs)).toContain("lights_restore");
+    expect(cuesOf(evs)).toContain("screens_screensaver");
+  });
+
+  it("📜 Task Manager reads: the fallback when the TV has no voice, mid-way or instead", { timeout: SLOW }, async () => {
+    const n = await road("song");
+    fire(n.sim, "tell_the_truth");
+    expect(v(n.sim, "Night.phase")).toBe("finale_truth");
+    const until = v(n.sim, "Night.truth_until") as number;
+    n.tick(60);
+    const mid = fire(n.sim, "task_manager_reads");
+    const lines = said(mid, "Task Manager");
+    expect(lines[0]).toBe("Trabolta's line has dropped. I have a copy of his file.");
+    expect(lines.slice(2)).toEqual([...delivered().values()]);
+    expect(v(n.sim, "Night.truth_reader")).toBe("Task Manager");
+    expect(v(n.sim, "Night.phase")).toBe("finale_song");
+    expect(v(n.sim, "Night.truth_until")).toBeGreaterThan(until);
+    expect(hostsOf(fire(n.sim, "task_manager_reads"))).toEqual(['"📜 Task Manager already has it. Nothing happens."']);
+    // In place of G0: the cue is then spent.
+    const m = await road("help");
+    expect(said(fire(m.sim, "task_manager_reads"), "Task Manager").length).toBe(99);
+    expect(hostsOf(fire(m.sim, "tell_the_truth"))).toEqual(['"📜 Already told: Task Manager has it. Nothing happens."']);
+    // He reads after Combo A and B anyway: the fallback says so.
+    const a = await road("disabled");
+    expect(pressRefused(a.sim, fire(a.sim, "task_manager_reads"))).toBe(true);
+  });
+
+  it("📜 refuses before an ending, while banished, and before 🪦 on Combo B", { timeout: SLOW }, async () => {
+    const early = Sim.fromSources(SRC);
+    early.fireBeat("Power On");
+    expect(pressRefused(early, fire(early, "tell_the_truth"))).toBe(true);
+    const b = Sim.fromSources(SRC);
+    b.fireBeat("Power On");
+    expect(await pressChain(TO_Y2K, async (x) => (pressRefused(b, fire(b, x)) ? { ok: true, refused: true } : { ok: true }), () => {})).toEqual({ ok: true, refused: [] });
+    fire(b, "patch_combo_b");
+    const out = fire(b, "tell_the_truth");
+    expect(pressRefused(b, out)).toBe(true);
+    expect(hostsOf(out)).toEqual(['"📜 Not yet: 🪦 Clippy reads the summary first. Nothing happens."']);
+    expect(v(b, "Night.truth_told")).toBe(false);
+    const ban = await road("rave");
+    expect(hostsOf(ban.log.length > 0 ? fire(ban.sim, "the_hand_jive") : [])[0]).toContain("Only once everyone is banished");
+  });
+
+  it("G1 asks before 📜 too, and a skipped monologue leaves the review whole and Combo A's programs free", { timeout: SLOW }, async () => {
+    const n = await road("disabled");
+    expect(v(n.sim, "Night.everyone_free")).toBe(false);
+    const ask = fire(n.sim, "start_the_ceremony");
+    expect(pressRefused(n.sim, ask)).toBe(true);
+    expect(hostsOf(ask)[0]).toContain("The full truth hasn't been told");
+    const go = fire(n.sim, "start_the_ceremony");
+    expect(v(n.sim, "Night.ceremony")).toBe(true);
+    expect(v(n.sim, "Night.everyone_free")).toBe(true);
+    expect(said(go, "Clippy").some((l) => l.startsWith("Clippy is Tippi"))).toBe(true);
+    expect(said(go, "Clippy").some((l) => l.startsWith("Microsoft Excel is"))).toBe(true);
+    expect(said(go, "Trabolta")).toEqual([]);
+    expect(hostsOf(fire(n.sim, "tell_the_truth"))).toEqual(['"📜 The ceremony has started: too late for the full truth. Nothing happens."']);
+  });
+
+  it("Combo A: no return, no recount, and the worker holds", { timeout: SLOW }, async () => {
+    const n = await road("disabled");
+    expect(v(n.sim, "Trabolta.awake")).toBe(false);
+    expect(n.sim.model.interactions.has("trabolta_recounts")).toBe(false);
+    expect(n.sim.model.beats.has("Trabolta Recounts")).toBe(false);
+    expect(v(n.sim, "Night.ranking")).toBe(false);
+    expect(v(n.sim, "Night.most_trusted")).not.toBe("none"); // the chart's last count, for the review
+    expect(beatsOf(n.log)).toContain("Trabolta Disabled");
+    expect(cuesOf(n.log).filter((c) => c.includes("motorcycle"))).toEqual([]);
+    expect(said(n.log.slice(n.log.findIndex((e) => e.type === "beatEntered" && beatsOf([e]).includes("Trabolta Disabled"))), "Trabolta")).toEqual([]);
+  });
+});
+
+describe("the mind has a card for every phase", () => {
+  it("every `Night.phase =` in the story has a card (a phase without one warns and leaves every power live), finale_truth among them", () => {
+    const set = new Set([...SRC.matchAll(/set Night\.phase = "([a-z0-9_]+)"/gu)].map((m) => m[1]!));
+    expect(set.has("finale_truth")).toBe(true);
+    const mind = readFileSync(join(HERE, "../examples/trapped-in-the-internet/trabolta.mind.md"), "utf8");
+    const table = mind.slice(mind.indexOf("\nphases:\n"), mind.indexOf("\n---\n", mind.indexOf("\nphases:\n")));
+    const cards = new Set([...table.matchAll(/^ {2}([a-z0-9_]+):$/gmu)].map((m) => m[1]!));
+    for (const phase of set) expect(cards, phase).toContain(phase);
+    expect(mind).toMatch(/finale_truth:\n {4}tell: \[\]/u);
+  });
+
+  it("voice-fx names finale_truth clean", () => {
+    expect(VOICE_PHASE_LEVEL["finale_truth"]).toBe(0);
+    expect(voiceLevel({ phase: "finale_truth", composure: 0, remaining: null, alarmOn: false, heartStage: "done", reading: false })).toBe(0);
+    expect(["recount", "purgatory"].every(slidePersists)).toBe(true);
   });
 });
