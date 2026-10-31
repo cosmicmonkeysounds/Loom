@@ -337,11 +337,13 @@ def test_the_shipped_persona_has_every_pool_for_every_awake_stage():
 
 def test_the_new_lines_are_on_the_signoff_sheet():
     sheet = (SHOW / "SIGNOFF-w42.md").read_text()
+    w58 = (SHOW / "SIGNOFF-w58.md").read_text()
     for key, lines in TRABOLTA.fallbacks.items():
-        # Wave 58's two pools (the accident, what he is) go on that wave's sheet.
-        if "." in key and not key.endswith((".accident", ".cover")):
+        if "." in key:
+            # Wave 58's two pools (the accident, what he is) are on that wave's sheet.
+            own = w58 if key.endswith((".accident", ".cover")) else sheet
             for line in lines:
-                assert line in sheet, line
+                assert line in own, line
     assert "w42d" in sheet
     for lines in TRABOLTA.card_lines.values():
         for line in lines:

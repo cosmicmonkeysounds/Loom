@@ -70,7 +70,7 @@ captions under the new speech, or a story the worker doesn't know.
 9. **Print only now** (§3, 12:00), and only with no *placeholder* WARN: the
    sheet prints what the event holds, so a print before the sync prints the
    old codes. Raise the per-tier counts for a full run (the default is 4).
-10. **Reprint the packs:** `clippy` (with its script appendix), `task-manager`
+10. **Reprint the packs:** `clippy` (with its printed script), `task-manager`
     (with the monologue, and put that copy in his pocket), `norton`, `mcafee`,
     `password-manager` (wave 57 too), `cra-agent`, `adobe-acrobat`,
     `recycling-bin`, `installation-wizard`, `crew/director`,
@@ -430,7 +430,7 @@ $env:LOOM_MOD_CODE = '<mod>'                # Windows
 14. Push: every booth reloaded after the release; the staff test alert arrived on every performer phone. Every part has done its upload on its own phone (Run's watch *Staff uploaded* gone or at 8), before the doors: the booth is the upload until then, so an Antivirus who signs in at the door is not at the door. Stuck: ⏭ Wave the staff through their upload (Anytime).
 15. Facts and wallet: `titi:facts --check` passed at predeploy with no *placeholder* WARN (every hunt key is in); Run → Mind's Judging card reads auto; a test phone shows the Wallet room and a 🪙 balance; `# quarantine` is empty; Run → Wallet names CRA Agent Software as the approver and Runescape as the minter.
 16. Knobs: on the VPS, `deploy/release.sh --check-env` ends "the night's knobs are set ✔"; `LOOM_SNAPSHOT_MS` and `LOOM_HOMESCREEN` are blank unless the K-32 run failed (then `LOOM_SNAPSHOT_MS=500`) or the iPhone Home Screen call was yes (then `LOOM_HOMESCREEN=on`).
-17. Print, all of it after the sync: codex posters up and clue props hidden (photos match), the four silver digit notes hidden, the invitations sent with their claim QRs, check-in signs up, Bingo cards and pens, the cans of water out, Task Manager's printed monologue on him, the fact stacks per `generated/print-stacks.md`, trophies, cheat-sheets; on a shed night the SITE-SCHEDULE clipboard and the BUGDOM-VR sketch hang in The Optical Drive.
+17. Print, all of it after the sync: codex posters up and clue props hidden (photos match), the four silver digit notes hidden, the invitations sent with their claim QRs, check-in signs up, Bingo cards and pens, the cans of water out, Task Manager's printed monologue on him, the fact stacks per `generated/print-stacks.md`, trophies, cheat-sheets; on a shed night the shed's clipboard and the singed sketch hang in The Optical Drive.
 18. Safety: first aid and an ABC extinguisher placed, egress clear, glow tape, GFCIs tested, no strobe over 3 Hz, the server door opens from inside with no code, the patch-bay gear taped off, the emergency card posted at the door, the override key and spare batteries with the house manager.
 19. Phones: loaners (2–3) charged, the guest charging station live, power banks for every performer, radios charged with earpieces.
 20. Backups: `scripts/ops/showbackup.sh install` armed on the MacBook for 19:00–03:00; the ISP router boxed nearby as the cold spare.
@@ -496,7 +496,7 @@ first public crack is the first guess at the results.
 
 **The ending** (wave 58). Every ending plays as it did, then **G0 📜 The full
 truth** once it has had its moment: Trabolta on the TV after the song, the pickup
-line, the helped ending and the hand jive; phoned in from Computer Prom after the
+line, the helped ending and the hand jive; phoned in from the prom after the
 rave; Task Manager off the teleprompter after Combo A and Combo B. ■ Stop house
 sounds first if a dance track is up (the rave's never ducks), and leave 🌀 His
 voice on Auto or Clean with no shots. About 12 minutes on the TV, 14 at the

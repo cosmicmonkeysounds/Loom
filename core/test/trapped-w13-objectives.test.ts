@@ -859,7 +859,10 @@ describe("Trapped in the Internet — wave 13: the sign-off sheet", () => {
         continue;
       }
       // Wave 58's words go on its own sheet.
-      if (new RegExp(`// DRAFT w58[^\n]*\nOBJECTIVE ${id}\n`, "u").test(objectives)) continue;
+      if (new RegExp(`// DRAFT w58[^\n]*\nOBJECTIVE ${id}\n`, "u").test(objectives)) {
+        expect(readFileSync(join(dir, "SIGNOFF-w58.md"), "utf8"), id).toContain(id);
+        continue;
+      }
       expect(sheets.some((s) => s.includes(id)), id).toBe(true);
     }
     expect(["Talk With Trabolta", "Relay Clippy To Trabolta"].filter(draft32)).toHaveLength(2);

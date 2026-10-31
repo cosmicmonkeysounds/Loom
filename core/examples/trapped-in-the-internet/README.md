@@ -1163,7 +1163,7 @@ Question Results reads *Nobody filed an answer*. To finish one, give it its
 | H2 | According to Forensics For Dummies, finish this sentence: “___ ___ ___ ___ ___ previously hypnotized witnesses.” | ⚠ owed | Forensics For Dummies |
 | H3 | According to Macs for Dummies, finish this sentence: “A similar online _, called pharming, also involves the use of __ ___ __.” | ⚠ owed | Macs For Dummies |
 | H4 | What extension does the Customer Care card tell you to dial? | (in `facts.json`) | The Extension |
-| H5 | Which song did Trabolta play 412 times the night before he registered mapsandducks.com? | (in `facts.json`) | The Search History |
+| H5 | Which song did Trabolta play 412 times the night before he registered mapsandducks.com? | (in `facts.json`) | (H5's card) |
 | H6 | What is the title of the last chapter of Trabolta's unfinished Grand Unified Theory? | (in `facts.json`) | The Final Chapter |
 | F1 | What is the only thing Sandy has ever said? | (her one line, in `facts.json`) | What Sandy Says |
 | F2 | Who is taking Sandy to computer prom? | (in `facts.json`) | The prom ticket (F2's card) |

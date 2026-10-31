@@ -51,7 +51,7 @@ shipped): the opening is the delivered script, the monologue follows every
 ending, every part scans codex QRs, the talk-down is gone, and H1–H3 are the
 script's three questions with their answers still owed. Print nothing until
 those answers are in and the story is synced. Reprint: `clippy` (with its new
-script appendix), `task-manager` (with the monologue), `norton`, `mcafee`,
+printed script), `task-manager` (with the monologue), `norton`, `mcafee`,
 `password-manager`, `cra-agent`, `adobe-acrobat`, `recycling-bin`,
 `installation-wizard`, `crew/director`, `crew/second-director`,
 `crew/tech-operator`, `crew/house-manager`, `crew/trabolta-mind`, `all-crew`,
