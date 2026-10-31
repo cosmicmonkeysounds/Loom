@@ -35,9 +35,12 @@ This folder holds the whole show as a Loom project: the world, the cast,
 the games, the lore, the endings, and the contract that every piece of
 show hardware talks to. It is the default scenario the event server hosts
 (`pnpm --filter @loom/core serve`). The source story lives in
-[`../../../Trapped In The Internet story/`](../../../Trapped%20In%20The%20Internet%20story)
-(STORY BEATS is the spine; the Story Overview, the Character Sheet and the
-Clippy Instructions supply the voice).
+[`../../../Trapped In The Internet story/`](../../../Trapped%20In%20The%20Internet%20story):
+`oct30/` is the Oct 30 delivery (the script, the ending, the facts), which
+wins, and `older/` holds what came before (STORY BEATS was the spine; the Story
+Overview, the Character Sheet and the Clippy Instructions supplied the voice).
+Both stay as delivered; every change the story made to the Oct 30 text is logged
+on [`SIGNOFF-w58.md`](./SIGNOFF-w58.md).
 
 ## The files
 
@@ -200,7 +203,7 @@ These rules matter when you edit. Break one and something fails silently.
 
 As of 2026-10-22 (the wave 18b integration) the project compiles clean, both
 per file and concatenated the way the server joins them (`loomcheck`):
-**34 files, 0 errors, 0 warnings; 112 beats, 267 codex entries (161 with codes; wave 58's Oct 30 facts counted), 27
+**36 files, 0 errors, 3 warnings (the three hunt keys still owed); 112 beats, 267 codex entries (161 with codes; wave 58's Oct 30 facts counted), 27
 quests, 117 rules, 123 INTERACTIONs**. Wave 18b added `beats/review.loom`
 (The Night In Review, Your File and their shared beats) and
 `codex/85-ties.loom` (the 16 Connections ties + Program Briefing), The DSL
@@ -480,8 +483,9 @@ NEXT is the ending's own cue (even when the server room ended the night
 after 🌑), and after the song G1. A `while:` never stops a press: every rule
 still checks for itself. 📋 is `repeat: true`: it stays NEXT while a
 question is left. The timer cues (C2 ⏰, 📥, ⏳, 🚨) and the anytime and
-fallback cues (🍾, the set pieces, 🗜, 🎆, 🧾, 🔄, ♟, 🕊, 🗳, the hardware
-fallbacks, 🪩, 💡, ✍) are off-sequence: they tick when they fire but never
+fallback cues (🍾, 📺 *Follow the reinstallation*, the set pieces, 🗜, 🎆, 🧾,
+🔄, ♟, 🗳, the hardware fallbacks, 🪩, 💡, ✍, 📜 *Task Manager reads it
+instead*) are off-sequence: they tick when they fire but never
 become LAST or NEXT. A press whose only world write is a variable whose
 last segment starts with `_` (G11's `Night._resurrect_ask_at`) is
 cue-sheet bookkeeping: it is refused, never ticks and never becomes LAST.
@@ -663,7 +667,7 @@ a skip or a director jumping ahead leaves behind.
 | Director fires | Performers do | What happens |
 |---|---|---|
 | *(while a scene is on)* the hosts' **🤖 Talk** card (Show) | **Task Manager** types what Clippy just said aloud (or taps a Clippy chip) and sends; Clippy talks with him live (objective *Talk With Trabolta*, CI 2/3/4/6) | `POST /api/mod/talk` commits Clippy's line in The Desktop (captioned on every phone, never said by the TV) and asks Trabolta's worker for a **public** answer, first in its queue; his answer is a line in The Desktop to everyone, and the TV says it. A **Trabolta chip** (two taps) posts his line at once and stands in for an answer still owed. Clippy's last chips carry a hidden steer to wrap up. The card carries the sheet's own NEXT (ARM → FIRE), so the scene flows straight into what comes next. No hold or busy line ever reaches the room: a slow or missing worker is one `# hosts` line (*🤖 Trabolta isn't answering — tap one of his canned lines*); an answer after its scene closed is dropped. Other hosts see the card folded (*Task Manager is relaying Clippy*), with Open. Canned lines: `core/src/talk-scenes.ts`. |
-| **⚡ Glitch: an ad burst through Trabolta (talk scenes)** (`ad_burst`, cue 77, Anytime, repeatable; `while: Night.talk != "none"`; on the Talk card as **⚡ Glitch**) | — | No scene on → *"⚡ No talk scene is on (🤖 Talk): nothing glitches."*; within 8 s of 📺 (`Night.glitch_kind == "full"`, the hijack's takeover still playing) → *"⚡ The ad hijack is still playing: wait for it to end. Nothing happens."*; within 2 s of the last → *"⚡ Too soon …"* (all three to `# hosts`). In `intro` and `bottle`: `cue screens_flicker` only (the screens and the room bulbs blink; no advert before the ad attack). In `ad` and `beans`: an **ad burst**: `cue screens_glitch` with `Night.glitch_kind = "burst"` and the next of eight lines in `Night.glitch_text`, `sound truther_glitch`. Phones play the short look-only takeover (`glitch.light`), the walls and the TV a 3.6 s popup storm over the scene with the line as a banner; the 📺 hijack keeps its full 8 s takeover. |
+| **⚡ Glitch: an ad burst through Trabolta (talk scenes)** (`ad_burst`, cue 79, Anytime, repeatable; `while: Night.talk != "none"`; on the Talk card as **⚡ Glitch**) | — | No scene on → *"⚡ No talk scene is on (🤖 Talk): nothing glitches."*; within 8 s of 📺 (`Night.glitch_kind == "full"`, the hijack's takeover still playing) → *"⚡ The ad hijack is still playing: wait for it to end. Nothing happens."*; within 2 s of the last → *"⚡ Too soon …"* (all three to `# hosts`). In `intro` and `bottle`: `cue screens_flicker` only (the screens and the room bulbs blink; no advert before the ad attack). In `ad` and `beans`: an **ad burst**: `cue screens_glitch` with `Night.glitch_kind = "burst"` and the next of eight lines in `Night.glitch_text`, `sound truther_glitch`. Phones play the short look-only takeover (`glitch.light`), the walls and the TV a 3.6 s popup storm over the scene with the line as a banner; the 📺 hijack keeps its full 8 s takeover. |
 | **🌀 Clippy's dream: on / off** (`dream_toggle`, Anytime, repeatable; from 🕚 until an ending) | Every terminal and the games' terminals | Wave 50: the dream takes over by itself on *"…the Y2K BUG."* Puts every screen back on its usual show, and brings it back. Nothing in the story changes. |
 | *(auto)* the scene's own glitches | — | About every 45 s of story time while a scene is on (each ⚡ pushes it back; `Night.burst_at`): at most 2 flickers in `intro` and `bottle`, at most 4 bursts in `ad` and `beans`. |
 
@@ -951,8 +955,8 @@ included, never a line carrying an answer, a code or a secret value). The
 worker serves it before any waiting DM. The persona's *before the whole
 Desktop* block (three sentences asked for, four at most, `acts: none`)
 plus one block per scene set his register and what may slip: `intro`
-formal with the manners cracking (lag, a frozen word, an ALL CAPS word; no
-pain, no malware), `bottle` hungry (a guess stings; he never calls an
+word perfect, after his sign-off (wave 58: nothing freezes and nothing cracks;
+his first public crack is the first guess at the results), `bottle` hungry (a guess stings; he never calls an
 answer a guess), `ad` rattled and in pain (adverts mid-word, a scream, "a
 minor irregularity"; one slip at a time, taken back in the same sentence:
 "we are all going to die", who brought the malware in, "for the theory",
@@ -1158,11 +1162,11 @@ Question Results reads *Nobody filed an answer*. To finish one, give it its
 | H1 | According to Funk and Wagnalls, what is an example of fraud? | ⚠ owed | Funk And Wagnalls |
 | H2 | According to Forensics For Dummies, finish this sentence: “___ ___ ___ ___ ___ previously hypnotized witnesses.” | ⚠ owed | Forensics For Dummies |
 | H3 | According to Macs for Dummies, finish this sentence: “A similar online _, called pharming, also involves the use of __ ___ __.” | ⚠ owed | Macs For Dummies |
-| H4 | What extension does the Customer Care card tell you to dial? | 1978 | The Extension (`EXT-1978`) |
-| H5 | Which song did Trabolta play 412 times the night before he registered mapsandducks.com? | Hopelessly Devoted to You | The Search History (`SEARCH-HISTORY`) |
-| H6 | What is the title of the last chapter of Trabolta's unfinished Grand Unified Theory? | Appendix Z: Loose Ends (Do Not Print) | The Final Chapter (`APPENDIX-Z`) |
+| H4 | What extension does the Customer Care card tell you to dial? | (in `facts.json`) | The Extension |
+| H5 | Which song did Trabolta play 412 times the night before he registered mapsandducks.com? | (in `facts.json`) | The Search History |
+| H6 | What is the title of the last chapter of Trabolta's unfinished Grand Unified Theory? | (in `facts.json`) | The Final Chapter |
 | F1 | What is the only thing Sandy has ever said? | (her one line, in `facts.json`) | What Sandy Says |
-| F2 | Who is taking Sandy to computer prom? | Grok | Grok's Prom Ticket (`COMPUTER-PROM`) |
+| F2 | Who is taking Sandy to computer prom? | (in `facts.json`) | The prom ticket (F2's card) |
 
 A filing matches if its folded text equals the answer or one of its
 `accept` aliases (case, accents, apostrophes and punctuation ignored, one
@@ -1177,11 +1181,11 @@ No slips. Between each question's results the director spins the bottle
 the Desktop, Trabolta asks *"{name}. Truth or dare?"* on the TV and their
 phone shows **Truth / Dare**. Dare → marked for reinstallation. Truth →
 Trabolta asks the next personal question from `facts.json` `truths[]`
-(20, `TD01`–`TD20`; TD05–TD20 are drafts for the team), spoken on the TV
+(17 of them), spoken on the TV
 and posted in The Desktop; Clippy presses 🗣 *Truth answered* (+50) or 🙅
 *Truth refused* (marked). 🎩 *Chose Dare* is the dead-phone fallback.
 
-### QR placements (the 94 coded entries)
+### QR placements (the 161 coded entries)
 
 Print each as a QR of its `?code=&unlock=` link (from `POST
 /api/mod/codes`) **plus** the typed code: Run → Join → **🖨 Print sheet…**
@@ -1242,9 +1246,8 @@ codes** are software (CHECKLIST); the story needs nothing more.
 ## For the user to review
 
 Content invented here (not in the four source docs): Clippy Instructions
-3–9, the placeholder hunt questions and answers in `facts.json` (F2 = Grok
-is the source's twist; every row is marked DRAFT for the team), the
-Truth-or-Dare personal questions TD05–TD20, the character facts quoting
+3–9, the placeholder hunt questions and answers in `facts.json` (F2 is the
+source's twist; every row is marked DRAFT for the team), the character facts quoting
 the invitations' real-world details (the team's call before printing),
 the Truther Download bulletin, Overshares Three and Four, the Installation
 Wizard's backstory, the Hand Jive weakness, the Runescape / MS Paint / VLC
