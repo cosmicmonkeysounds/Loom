@@ -54,7 +54,7 @@ needed. Build `play` and `terminal` first if you want to watch in a browser.
 | 5 | 🚚 Reinstall | Norton's `send to the internet`, the tent's web game: begin, walk to Gerald, the golden duck | released |
 | 6 | 🤖 Trabolta | The cue; a DM to him (his hold line without a worker) | step 4, `Trabolta.awake`, `Night.talk` intro |
 | 7 | 🤖 Talk (wave 32) | Task Manager's booth `POST /api/mod/talk` as Clippy (the intro's first canned Clippy line). With `--worker`: the probe worker answers the public request. Without: Task Manager fires the intro's first canned Trabolta line. Then ⚡ (`ad_burst`, through the booth's signal) | Clippy's line and Trabolta's answer in `loc:The Desktop` with audience `"all"` (the answer names Clippy's line); with `--worker`, the open request was the worker's; the ⚡ is a flicker: `glitch_kind`, `glitch_text`, `burst_n` unchanged, `burst_last` moved |
-| 8 | 🔎 Hunt 1 | Every guest files H1–H3 (most accurate at 80, a quarter guess at 40; `--lie` one at 100) | step 5, filings judged, `Night.talk` none |
+| 8 | 🔎 Hunt 1 | Every guest files H1–H3 (most accurate at 80, a quarter guess at 40) | step 5, filings judged, `Night.talk` none |
 | 9 | ⚖️ Truth 1 | ⏰ → ⚖️ → ⏱ → 📋 ×3 | step 6, `results_q` 3, `Night.talk` bottle |
 | 10 | 🍾 Bottle | Spin, Truth, Task Manager's `truth_answered` | a pick, the bottle closed |
 | 11 | 📺 The ad attack (wave 32) | 📺; a ⚡ inside the 8 s takeover; another ⚡ once the story's clock says the takeover is over (`Time.elapsed` ≥ `glitch_at` + 8, polled, capped at 12 s) | `Night.talk` ad, `glitch_kind` full after 📺 and still full after the early ⚡; then `glitch_kind` burst, `burst_n` + 1, a new digit-free `glitch_text` |

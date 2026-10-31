@@ -129,9 +129,12 @@ if ((flag("reset-after") || flag("reset-before")) && !local) {
 
 /** The hunts' answer keys, read (never printed) for accurate filings. */
 const answers = new Map<string, string>();
+/** Questions whose key is still owed (wave 58): a filing on one gets no verdict. */
+const owedKeys = new Set<string>();
 if (factsPath !== "none") {
   try {
-    const book = JSON.parse(readFileSync(factsPath, "utf8")) as { questions?: Array<{ id: string; answer: string }> };
+    const book = JSON.parse(readFileSync(factsPath, "utf8")) as { questions?: Array<{ id: string; answer: string; placeholder?: boolean }> };
+    for (const q of book.questions ?? []) if (q.placeholder === true) owedKeys.add(q.id);
     for (const q of book.questions ?? []) answers.set(q.id, q.answer);
   } catch {
     /* guesses only */
@@ -679,11 +682,11 @@ async function act1(): Promise<void> {
     async (c) => {
       await press(c, chain("start_the_hunt", "start_the_hunt"));
       let n = 0;
-      for (const [i, b] of bots.entries()) n += await fileFacts(c, b, ["H1", "H2", "H3"], { guess: i % 4 === 3, ...(lie && b === role.liar() ? { lieOn: "H2" } : {}) });
+      for (const [i, b] of bots.entries()) n += await fileFacts(c, b, ["H1", "H2", "H3"], { guess: i % 4 === 3 });
       c.note(`${n} filings`);
       if (n === 0) c.fail("no 📝 card reached any program");
     },
-    () => ({ "Night.step": "5", [`${bots[0]!.id}.fact_v1`]: notNone, "Night.talk": "none" }),
+    () => ({ "Night.step": "5", ...(owedKeys.has("H1") ? {} : { [`${bots[0]!.id}.fact_v1`]: notNone }), "Night.talk": "none" }),
   );
 
   await beat(
@@ -841,7 +844,7 @@ async function act2(): Promise<void> {
       // The cold door's four digit notes, scanned around the house (granted
       // as the scans would): the fourth assembles the code (never printed).
       const notes = bots[9 % bots.length]!;
-      for (const d of ["First", "Second", "Third", "Fourth"]) c.must(`digit note ${d}`, await http.post("/api/mod/codex", { who: notes.id, entry: `Cold Door ${d} Digit` }, mod));
+      for (const d of ["First", "Second", "Third", "Fourth"]) c.must(`digit note ${d}`, await http.post("/api/mod/codex", { who: notes.id, entry: `Server Room ${d} Digit` }, mod));
       await questIs(c, "The Cold Door", notes, "done");
       if (excel !== undefined) await questIs(c, "Excel Mission", excel, "done");
       // MS Paint's painting: a host signs every other program on it.
@@ -898,7 +901,8 @@ async function y2kHour(): Promise<void> {
     async (c) => {
       await press(c, chain("trabolta_overshares", "y2k_clock"));
       let n = 0;
-      for (const b of bots.slice(0, 6)) n += await fileFacts(c, b, ["F1", "F2"]);
+      // A round the keys are in (H1–H3's may be owed), and every filer of it counts.
+      for (const b of bots.slice(0, 6)) n += await fileFacts(c, b, ["F1", "F2"], lie && b === role.liar() ? { lieOn: "F2" } : {});
       c.note(`${n} final filings`);
     },
     () => ({ "Night.step": "14", "Night.phase": "y2k", "Night.talk": "none" }),
