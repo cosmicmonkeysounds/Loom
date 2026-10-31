@@ -168,11 +168,12 @@ The house deals the programs files about **who they are connected to** (Codex �
 
 - **Doors → C1:** your clearance line does the introducing; answer
   `# task-manager` and your DMs (or the director does).
-- **C1:** Clippy introduces you. One line: you keep things running.
+- **V2:** Clippy describes you, and gestures. You have no line.
 - **V3, no Bingo:** you have a **pre-filled Bingo card** with MS Paint's
   program name on it (ask the director at 17:00 if the anti-AI program has
-  changed). Hand it to Clippy, then press 🃏 on MS Paint's card. MS Paint
-  truthfully denies it; Clippy marks them (🎯) and Norton takes it from there.
+  changed). Press 🃏 on MS Paint's card and hand it to Clippy: her *"No
+  Bingos?"* comes up with the press, then she thanks you. MS Paint truthfully
+  denies it; Clippy marks them (🎯) and Norton takes it from there.
 - **V3, a guest's 🎱 BINGO!**: a program may call BINGO from
   their own phone, and the results start at once. Your NOW names the
   caller: if Clippy finds no line, **↩ Not a Bingo** on their card puts
@@ -184,8 +185,9 @@ The house deals the programs files about **who they are connected to** (Codex �
   whatever the app can't see: 🪙 Pay on the seller, 🪙 Charge on the buyer
   (100 each press). McAfee brokers and referees bets (he holds no pot
   and takes no cut); CRA audits.
-- **🤖 after Bingo, between the 🍾 spins, at 📺 and at 🫘:** the talk
-  scenes. Relay Clippy on the 🤖 Talk card (above); fire NEXT when Clippy
+- **🤖 after his sign-off, between the 🍾 spins, at 📺 and at 🫘:** the talk
+  scenes. The card comes up on 🤖, but his speech runs about three minutes: wait
+  for *"it's electrifying."* Relay Clippy on the 🤖 Talk card (above); fire NEXT when Clippy
   hands off.
 - **Grok Prom:** if a program says the line to you, 💘.
 
@@ -195,10 +197,10 @@ Your phone shows only the labels; here is what each one sends, scene by
 scene, word for word (`core/src/talk-scenes.ts`). A Clippy chip goes in as
 Clippy's line (Clippy has the same list, to learn); a **hidden steer** goes
 only to Trabolta, never on a screen. A Trabolta chip, tapped twice, is his
-line at once on the TV and every phone. Every scene's card also has
+line at once on the TV and every phone. Every scene's card but `intro`'s also has
 **⚡ Glitch**.
 
-**`intro` · Trabolta comes online.** **Opens** on 🤖 (the introduction ends on his *"Not yet, Clippy."*) · **closes** on 🔎 · **NEXT:** 🔎, after **➡ The hunt**.
+**`intro` · Trabolta comes online.** **Opens** on 🤖, for after his speech (it ends *"…it's electrifying."*) · **closes** on 🔎 · **NEXT:** 🔎, after **➡ The hunt**. No ⚡ here.
 
 | Clippy chip (one tap) | Sent as Clippy's line |
 |---|---|

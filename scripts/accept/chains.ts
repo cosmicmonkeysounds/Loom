@@ -11,6 +11,7 @@ export const TO_HUNT2: readonly string[] = [
   "call_to_the_desktop",
   "start_the_bingo",
   "bingo_time",
+  "clippy_on_trabolta",
   "introduce_trabolta",
   "start_the_hunt",
   "hunt_time_up",

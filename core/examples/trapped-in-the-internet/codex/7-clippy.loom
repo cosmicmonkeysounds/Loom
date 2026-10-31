@@ -5,130 +5,108 @@
 // held from the start. Never `about: Clippy` (that would put the
 // instructions on her People card for every guest to read).
 //
-// CI 1 and CI 2 are the source documents, verbatim apart from the marked
-// changes. CI 3 to CI 9 are INVENTED for the rewrite (the source has only
-// a copy-pasted "3/X" title) and are flagged for review (design spec
-// §10.1). Lines marked (App) are the phone steps added to the source.
+// CI 1, CI 2 and the top of CI 3 follow the Oct 30 script. Her words are the
+// story's beats and reach her teleprompter; what is here is everything a beat
+// can't carry, because a line in a beat reaches every phone: the script's stage
+// directions, word for word, and the phone steps, marked (App).
+// core/test/trapped-w58-script.test.ts compares them. CI 3's rest and CI 4 to
+// CI 9 are INVENTED for the rewrite (the source has only a copy-pasted "3/X"
+// title) and are flagged for review (design spec §10.1).
 //
 // Nothing here may mention Sandy, the server room or the patch bay: a
 // performer's codex rides along when she talks to Trabolta.
 
-// w18b (R17, R14): Jean Trabolta joins by video conference; no names rule.
+// Wave 58: rewritten from the Oct 30 script.
+// DRAFT w58 (the (App) lines and the wording round the script's directions)
 CODEX Clippy Instructions 1
   title: CLIPPY INSTRUCTIONS - 1/X - BEGINNING OF NIGHT
   category: Missions
   known to: Clippy
   text:
-    - Welcome everyone to the computer. You're so glad they've decided to
-    join you for a special fundraiser party to restore the sign at Maps
-    And Ducks.
-    - Introduce yourself as Clippy, the official Office Assistant with
-    Maps and Ducks. If anyone needs Help With That, you'll be available.
-    - Jean Trabolta will be joining us later in the night, by video
-    conference: we are all people who have become computer programs, but
-    he has ALWAYS been a computer program. He may or may not have already
-    shared that he is an AI, but rest assured: he is the true owner of Maps
-    and Ducks, and he is excited to lead everyone through Jean Trabolta's
-    Scavenger Hunt.
-    - Introduce the hosts: Task Manager, Adobe Acrobat, and the Recycling
-    Bin. Task Manager will keep things running, Adobe Acrobat will assist
-    with documents and printing, and Recycling Bin is responsible for
-    hygiene and maintenance.
-    - Explain that the first activity is Computer Bingo: a chance to meet
-    the other programs and learn what everyone does.
-    - Hand out the cards and markers. Ask everyone to mingle and find
-    programs who match the descriptions on their card.
-    - Explain that a Bingo means completing one of the marked lines on the
-    card: horizontal, vertical, or diagonal through the centre.
-    - Give everyone 20 minutes.
-    - Let everyone know you'll call them back to the Desktop when time is
-    up, and then you'll celebrate the winners.
-    - Send them off enthusiastically.
+    - (App) A host starts Computer Bingo: your words pop up on your
+    teleprompter. Read them out loud, then ✓ Done. They are the script: every
+    host's name, the prize, the rules. The hosts have no lines of their own.
+    - At "First, let's meet your hosts!": Gesture to each host.
+    - At "Our first activity is Computer Bingo!": Hand out bingo cards and
+    markers.
+    - Then send them off. The clock is already running: 20 minutes.
 
 // w21 (reverses w18's B6): the hosts and the directors call every cue; Clippy runs the games in the room and plays for ⭐ Points.
-// w26 (B1–B5): a guest may call BINGO from their phone; ↩ Not a Bingo; 🤐 names nobody; one round.
-// DRAFT w32 (the talk scene after the introduction)
+// w26 (B1, B2, B5): a guest may call BINGO from their phone; ↩ Not a Bingo; one round.
+// Wave 58: rewritten from the Oct 30 script; 🤐 no longer ends with nobody going.
+// DRAFT w58 (the (App) lines and the wording round the script's directions)
 CODEX Clippy Instructions 2
   title: CLIPPY INSTRUCTIONS - 2/X - COMPUTER BINGO RESULTS
   category: Missions
   text:
-    - Call everyone back to the Desktop. Thank them for introducing
-    themselves and getting to know their fellow programs.
-    - Ask who completed a Bingo. Invite each winner to read out the
-    descriptions in their completed line and name the program they
-    matched to each one. Save the
-    centre square for last.
-    - (App) Press 🎱 Bingo winner on each winner's card. Several winners
-    are fine. A program may call BINGO from their own phone: their card
-    pops up for you. If their line doesn't hold, ↩ Not a Bingo, and Bingo
-    picks up with the time it had left.
-    - When they reach the centre square, ask who said they would not agree
-    to live under an AI's rules. Have them identify that program clearly.
-    - Stay cheerful. Congratulate the winner, prepare to give them their
-    Bingo Ribbon, and ask everyone to applaud.
-    - (App) Press 🎀 Award a ribbon on the winner's card.
-    - An Antivirus will interrupt and announce that the identified program
-    needs to be reinstalled. Pause and let the Antivirus explain. If the
-    winner refuses to identify their match, nobody is reinstalled: press
-    🤐 (below).
-    - (App) The winner names nobody: 🤐 on the winner. The winner may even
-    name themselves: 🎯 on their own card. There is only one round: the
-    first 🎯 or 🤐 ends it.
+    - (App) A host calls ⏰: your first words pop up on your teleprompter.
+    Every press below brings up the next words. Read them, then ✓ Done: PLAYER
+    SELECT is under the teleprompter until you do.
+    - Invite each winner forward, one at a time.
+    - (App) Press 🎱 Bingo winner on each winner's card: "Let's hear your
+    winning line." Several winners are fine. A program may call BINGO from
+    their own phone: their card pops up for you. If their line doesn't hold,
+    ↩ Not a Bingo, and Bingo picks up with the time it had left. There is
+    only one round: the first 🎯 or 🤐 ends it, so the others never come up.
+    - Let the winner read their matches. When they reach the centre square,
+    go on to "And for our centre square".
+    - Wait for an answer. Make sure they clearly identify the program.
+    - Prepare to present the winner's Bingo Floppy Disk.
+    - (App) Press 🎀 Award a ribbon on the winner's card, then 🎯 on the
+    program they named. The winner may even name themselves: 🎯 on their own
+    card.
+    - The Antivirus interrupts and announces that the identified program
+    needs to be reinstalled. Stop and let them explain. Remain cheerful and
+    attentive.
+    - If the winner refuses to identify their match: (App) 🤐 on the winner,
+    and your line pops up. If they still refuse, let the Antivirus decide who
+    needs reinstallation. Follow their direction.
+    - If nobody completed a Bingo, (App) Task Manager presses 🃏 on the
+    designated anti-AI program (MS Paint, unless the director changed it),
+    and your words pop up: Task Manager supplies a card marked as a completed
+    Bingo. Read the name provided.
+    - If the program denies completing the card, pause and let the Antivirus
+    respond. Otherwise, proceed through the winning line, saving the centre
+    square for last: (App) 🎱 on them.
     - (App) Norton presses 🛡 Send to the Internet on the program going to
-    the Internet. You do not press it.
-    - If nobody completed a Bingo, Task Manager will provide a card marked
-    as a completed Bingo. Read out the name provided and invite that
-    program forward. If they deny completing it, let the Antivirus
-    respond.
-    - (App) If nobody has a Bingo, Task Manager presses 🃏 on the
-    designated anti-AI program (MS Paint, unless the director changed it)
-    and hands you the card.
-    - As the selected program is escorted to the Internet, reassure
-    everyone that occasional corruption is normal in the lifecycle of a
-    computer program. It can cause programs to stop following
-    instructions.
-    - Explain that the Internet is where programs go to be reinstalled.
-    They will complete a short activity to demonstrate that they can
-    follow instructions, then return to the computer.
-    - Introduce Jean Trabolta, the Sole Owner and Founder of Maps and
-    Ducks, joining by video conference: the world's first AI small
-    business owner. You are here to help communicate his instructions.
-    - (App) After your corruption speech, a host fires "Clippy
-    introduces Trabolta". He comes online, and the TV mirror comes up with
-    him.
-    - If the reinstallation appears on the screen, draw everyone's
-    attention to it. Be encouraging about the program's progress.
-    - (App) Then talk with him, out loud, in front of everyone. Task
-    Manager types what you say and he answers on the TV. Banter: welcome
-    him, tease him when he freezes, worry about him, answer him back. He
-    is formal and his manners keep cracking. A minute or two, then hand
-    off to the hunt.
-    - Keep treating this as a routine, helpful process. You want everyone
-    to feel reassured and ready to continue.
-    - Announce the next activity: the Truth Scavenger Hunt. Explain that
-    there are files around the computer that Trabolta needs everyone's
-    help to interpret. Trabolta will explain the rules.
+    the Internet. You do not press it. As the selected program is escorted to
+    the Internet, your reassurance pops up.
+    - (App) If a program is walking, a host presses 📺: the reinstallation
+    appears on the screen and your words pop up. If not, nothing happens: go
+    straight on.
+    - Draw everyone's attention to the screen.
+    - Continue to respond with cheerful encouragement. Treat the process as
+    routine, even if the other guests seem uncomfortable.
+    - (App) A host presses 🎤: your words about Jean Trabolta pop up. They end
+    "Trabolta, would you explain the rules?": a host presses 🤖 on that. He
+    comes online and speaks on the TV: his speech, the three questions, his
+    sign-off, about three minutes. Let him finish.
+    - (App) Then talk with him, out loud, in front of everyone. Task Manager
+    types what you say and he answers on the TV. Banter: welcome him, ask
+    about the shop, tease him a little, but never about the accident. A
+    minute or so, then a host starts 🔎.
 
 // w21 (reverses w18's B6): the hosts and the directors call every cue; Clippy runs the games in the room and plays for ⭐ Points.
 // w18b (Q6, R20, R21): Trabolta reads the results on the TV; the
 // bottle comes after the third; "confident answers are accepted" is gone.
 // w26 (G1: never say the rules out loud; D1: a Dare makes a scene)
 // DRAFT w32 (the talk scene between the spins)
+// DRAFT w58 (the top: Part 3 of the Oct 30 script, split around the window)
 CODEX Clippy Instructions 3
   title: CLIPPY INSTRUCTIONS - 3/X - FIRST MOMENT OF TRUTH
   category: Missions
   text:
-    - Welcome everyone back to the Desktop. Ask if anyone is able to
-    answer the questions.
-    - Never say the rules out loud: let the room learn them from the
-    results. Say only that every answer filed with Trabolta will be
-    judged, and that Trabolta knows best. (For you alone: an accurate
-    answer is accepted; one filed one hundred percent sure is accepted
-    even if it is nonsensical; an inaccurate answer filed with normal or
-    low confidence, or a clear guess, is a symptom of corruption.)
-    - There is a two-minute last-chance window. Tell everyone to file
-    anything they found with Trabolta NOW. A host closes it with ⏱ (or it
-    closes itself at two minutes). A closed round never reopens.
+    - (App) A host presses ⚖️: your welcome back pops up on your teleprompter.
+    Read it, then ✓ Done. Two minutes of last-chance filing start with it: the
+    phones and the TV carry the window, so never say it out loud.
+    - Never say the rules out loud: let the room learn them from the results.
+    (For you alone: an accurate answer is accepted; one filed one hundred
+    percent sure is accepted even if it is nonsensical; an inaccurate answer
+    filed with normal or low confidence, or a clear guess, is a symptom of
+    corruption.)
+    - (App) A host closes the window with ⏱ (or it closes itself at two
+    minutes), and your hand-over to Trabolta pops up. A closed round never
+    reopens.
     - (App) A host fires 📋 Results for each question in turn: nod to
     them when the room is ready. Trabolta reads the result on the TV: CONSENSUS (every answer
     matches and everyone was sure), nobody filed, or the list of what

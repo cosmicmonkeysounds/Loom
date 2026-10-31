@@ -31,9 +31,9 @@ QUEST The Bingo Card
   title: Computer Bingo
   from: Clippy
   text:
-    Mingle and find a program for every square. The centre square matters.
+    Mingle and find a program for every square, and write their name in it. The centre square matters.
     - The card is a big asterisk: the two diagonals, the centre column, the centre row.
-    - A Bingo is one full line through the centre.
+    - A Bingo is one of the marked lines: a horizontal row, a vertical column, or a diagonal through the centre.
     - The centre square: "Would you never agree to a life where AI makes all of your decisions?"
 
 QUEST Excel Mission

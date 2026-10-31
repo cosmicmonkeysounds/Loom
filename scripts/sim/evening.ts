@@ -658,9 +658,9 @@ async function act1(): Promise<void> {
   );
 
   await beat(
-    "🤖 Clippy introduces Trabolta",
+    "🎤 Clippy tells the room about Trabolta; 🤖 he comes online",
     async (c) => {
-      await press(c, chain("introduce_trabolta", "introduce_trabolta"));
+      await press(c, chain("clippy_on_trabolta", "introduce_trabolta"));
       c.must("DM Trabolta", await say(bots[0]!.token, "dm:Trabolta", "Hello? Are you the one who invited me?"));
     },
     () => ({ "Night.step": "4", "Trabolta.awake": "true", "Night.talk": "intro" }),

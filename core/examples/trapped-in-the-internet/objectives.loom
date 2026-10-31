@@ -125,13 +125,14 @@ OBJECTIVE Go To The Desktop
     Everyone to the living room. Clippy welcomes the programs and introduces the hosts.
 
 // w26 (B1: a guest calls BINGO from here)
+// DRAFT w58 (the name in the square, the marked lines)
 OBJECTIVE Play Computer Bingo
   for: Program
   while: Night.step == 2 and program.cleared == true
   act: B
   title: Computer Bingo: find a program for each square
   text:
-    Mingle. Find programs who match the squares on your card. A Bingo is one full line through the centre: press 🎱 BINGO! and read it to Clippy. 20 minutes, then back to the Desktop.
+    Mingle. Find programs who match the squares on your card and write their name in the square. A Bingo is one of the marked lines: a row, a column or a diagonal through the centre. Press 🎱 BINGO! and read it to Clippy. 20 minutes, then back to the Desktop.
   buttons: call_bingo
 
 // w26 (G1: no hint about the centre square)
@@ -412,16 +413,16 @@ OBJECTIVE Door Duty
     The four of you share the door. A scan clears the program: through the Tube to the Desktop, ⭐ +5 each. 🙋 on an arrival tells the others you have them. Not uploaded yet: they finish first. Camera fails: type the id under the QR.
   buttons: scan
 
-// Wave 26 (B3): a 🤐 marks nobody and ends it (the quest reads "Nobody was
-// named. Patrol the Tube.").
-// w26 (B3: 🤐 marks nobody)
+// Wave 58 (reverses w26's B3, SCRIPT:77): after a 🤐 it stays up: Norton decides
+// who needs reinstallation.
+// DRAFT w58 (the refusal)
 OBJECTIVE The Selected Antivirus
   for: Norton Anti-Virus
-  while: (Night.phase == "bingo" or Night.phase == "bingo_results") and Night.first_reinstall_done != true and Night.bingo_none != true
+  while: (Night.phase == "bingo" or Night.phase == "bingo_results") and Night.first_reinstall_done != true
   act: B
   title: You are the selected Antivirus
   text:
-    When the centre-square program is named (or the framed program denies the card), stand at attention and interrupt. They light up on your Wanted board: scan their pass, then 🛡 and walk them through the Tube. If the winner names nobody, Clippy presses 🤐: nobody is marked, so follow the room.
+    When the centre-square program is named (or the framed program denies the card), stand at attention and interrupt. They light up on your Wanted board: scan their pass, then 🛡 and walk them through the Tube. If the winner refuses to name anyone, Clippy presses 🤐: you decide who needs reinstallation, then 🛡.
     - The first reinstallation, done when Night.first_reinstall_done == true
   buttons: scan
 
@@ -603,8 +604,9 @@ OBJECTIVE Greet The Arrivals
     Greet people in person. Your scan greets them in your voice; it never clears anyone (only an Antivirus does).
   buttons: scan
 
-// w18b: Jean Trabolta joins by video conference; no "no names"
+// w18b: Jean Trabolta joins by digital conference; no "no names"
 // w21 (wave 21: points, no 🎤 bar, no All buttons…)
+// DRAFT w58 (the teleprompter)
 OBJECTIVE Welcome Everyone
   for: Clippy
   while: Night.phase == "desktop" or Night.phase == "bingo"
@@ -612,7 +614,7 @@ OBJECTIVE Welcome Everyone
   go: The Desktop
   title: Welcome everyone, then Computer Bingo
   text:
-    The fundraiser to restore the sign at Maps And Ducks. Jean Trabolta joins by video conference later. Introduce Task Manager, Adobe Acrobat and the Recycling Bin. Bingo: 20 minutes, one line through the centre. A host starts 🎱 Bingo and calls ⏰ time: your booth pops up when your game is on.
+    The fundraiser to restore the sign on the Maps and Ducks billboard. Jean Trabolta joins by digital conference later. A host starts 🎱 Bingo: your words pop up on your teleprompter. Gesture to each host as you name them, then hand out the cards and markers. 20 minutes, then a host calls ⏰ time: your booth pops up when your game is on.
 
 // Wave 26 (B1): a guest pressed 🎱 BINGO!: Clippy checks that line first.
 // It ends at the first 🎱 or 🎯 on anyone (↩ is dead from then on, so the
@@ -633,7 +635,8 @@ OBJECTIVE Check The Bingo
 // to-do leads with its button's glyph. Wave 26 (B3, B5): ④ 🤐 the winner
 // names nobody; the first 🎯 or 🤐 ends the round, and the objective.
 // w21 (wave 21: points, no 🎤 bar, no All buttons…)
-// w26 (B3, B5: 🤐 names nobody; one round)
+// w26 (B5: one round)
+// DRAFT w58 (the refusal, the Bingo Floppy Disk, the teleprompter)
 OBJECTIVE Celebrate The Winners
   for: Clippy
   while: Night.phase == "bingo_results" and Night.bingo_done != true
@@ -642,15 +645,16 @@ OBJECTIVE Celebrate The Winners
   title: Celebrate the Bingo winners
   pick: program.location == "The Desktop" and program.cleared == true
   text:
-    Winners read their line, centre square last. Demand applause. Tap each winner (⭐ +10), give the ribbon (⭐ +5), then tap the program they name at the centre square (⭐ +10): Norton interrupts. If they name nobody, 🤐 on the winner (⭐ +5). One round only. You never press 🛡.
+    Winners read their line, centre square last. Each press brings your words up on the teleprompter: read them, then ✓ Done. Tap each winner (⭐ +10), give the floppy disk (⭐ +5), then tap the program they name at the centre square (⭐ +10): Norton interrupts. If they refuse, 🤐 on the winner (⭐ +5): Norton decides who goes. One round only. You never press 🛡.
     - 🎱 Who shouted BINGO?, done when Night.bingo_winners >= 1
-    - 🎀 Give the winner the Bingo Ribbon, done when Night.bingo_ribbons >= 1
+    - 🎀 Give the winner the Bingo Floppy Disk, done when Night.bingo_ribbons >= 1
     - 🎯 Who did the winner name?, done when Night.bingo_named >= 1 or Night.bingo_none == true
-    - 🤐 Or they name nobody, done when Night.bingo_none == true
+    - 🤐 Or they refuse, done when Night.bingo_none == true
   buttons: bingo_winner, award_the_ribbon, named_at_bingo, named_nobody
 
 // Wave 26 (B5): the round is over; Clippy's NOW until 🤖.
 // w26 (B5: one round)
+// DRAFT w58 (🎤)
 OBJECTIVE After The Bingo
   for: Clippy
   while: Night.phase == "bingo_results" and Night.bingo_done == true
@@ -658,9 +662,10 @@ OBJECTIVE After The Bingo
   go: The Desktop
   title: The Bingo is over: stay cheerful
   text:
-    One round only. Let Norton do his job and reassure everyone; then a host introduces Trabolta.
+    One round only. Stop and let Norton explain, cheerful and attentive; your reassurance pops up when the first program goes. Then a host brings up your words on Trabolta (🎤).
 
 // w21 (wave 21: points, no 🎤 bar, no All buttons…)
+// DRAFT w58 (his speech, then the banter)
 OBJECTIVE Introduce Trabolta
   for: Clippy
   while: Night.phase == "introduced" or Night.phase == "hunt_1"
@@ -668,7 +673,7 @@ OBJECTIVE Introduce Trabolta
   go: The Desktop
   title: Introduce Trabolta, then host the hunt
   text:
-    Once a host fires 🤖: "Everyone, say hello to JEAN TRABOLTA!" Point at the reinstallation on the TV. Hand off: Trabolta has a game for all of us. A host starts 🔎 the hunt: it runs 15 minutes.
+    Your last line was "Trabolta, would you explain the rules?": a host fires 🤖 and he speaks on the TV, about three minutes. After his sign-off, talk with him out loud: Task Manager types what you say. A minute or so, then a host starts 🔎 the hunt: it runs 15 minutes.
 
 // w18b: Trabolta reads; 🍾 after Q3; no "confident answers" line
 // w21 (wave 21: points, no 🎤 bar, no All buttons…)
