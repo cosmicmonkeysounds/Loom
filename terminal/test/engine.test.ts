@@ -8,6 +8,7 @@ import {
   DEFAULT_GAPS,
   DeviceEngine,
   ENGINE_LABEL,
+  CANCEL_SETTLE_MS,
   START_TIMEOUT_MS,
   LINE_GAP_MS,
   ServerEngine,
@@ -173,6 +174,10 @@ describe("SpeechQueue", () => {
     await flush();
     q.stop();
     q.say({ id: 2, chunks: ["Two."] });
+    await flush();
+    // (wave 59) Not on the heels of the cancel: that `speak()` is lost on some engines.
+    expect(log).toEqual(["browser:One."]);
+    await new Promise((r) => setTimeout(r, CANCEL_SETTLE_MS + 5));
     await flush();
     expect(log).toEqual(["browser:One.", "browser:Two."]);
     e.finish();

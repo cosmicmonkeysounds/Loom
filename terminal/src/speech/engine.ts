@@ -894,6 +894,10 @@ export class SpeechQueue {
   private lastEndAt: number | null = null;
   /** Ends the pause in progress early (`stop()`). */
   private wake: (() => void) | null = null;
+  /** An engine is saying a chunk now. */
+  private playing = false;
+  /** (wave 59) When the last `stop()` that cut a chunk has settled (`Date.now()`). */
+  private settledAt = 0;
   constructor(
     private engines: { primary: SpeechEngine; fallback: SpeechEngine | null },
     private readonly on: {
@@ -939,6 +943,7 @@ export class SpeechQueue {
     this.gen++;
     this.queue = [];
     this.lastEndAt = null;
+    if (this.playing) this.settledAt = Date.now() + CANCEL_SETTLE_MS;
     this.wake?.();
     this.engines.primary.stop();
     this.engines.fallback?.stop();
@@ -1037,6 +1042,9 @@ export class SpeechQueue {
         // The pause between lines: before this one, counted from the end of
         // the last (a line queued long after it waits for nothing).
         if (this.lastEndAt !== null) await this.pause(this.lastEndAt + this.gaps.line - Date.now());
+        // (wave 59) A line right behind a stop waits for the cancel to settle: a
+        // lost `speak()` never starts, and the engine would be written off.
+        if (g === this.gen) await this.pause(this.settledAt - Date.now());
         let spoken = false;
         for (let i = 0; i < u.chunks.length && g === this.gen; i++) {
           if (i > 0) await this.pause(this.gaps.chunk);
@@ -1061,12 +1069,15 @@ export class SpeechQueue {
               fired = true;
               this.on.chunk(u.id, i);
             };
+            this.playing = true;
             try {
               await ready.engine.play(this.shaped(ready.p, u, i), this.on.level, start);
             } catch {
               // An engine that throws (a WebView's half-built speechSynthesis
               // refusing a voice, a decode gone wrong) must never wedge the
               // queue: the chunk counts as said and the line goes on.
+            } finally {
+              this.playing = false;
             }
             start();
           }

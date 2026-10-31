@@ -13,7 +13,7 @@ import { DOOR_LATE_MS, DOOR_OPEN_BEATS, DOOR_SHUT_BEATS, DoorCut, stopsAt, wrong
 import type { Line } from "../src/pilot.ts";
 import type { ScreenVoice } from "../src/screen.ts";
 import { DOOR_STALE_MS, doorOpenNow, type SensorState, type StoryDoor } from "../src/serial/door-bridge.ts";
-import { DEFAULT_GAPS, SpeechQueue, VoiceFloor, type Prepared, type SpeechEngine } from "../src/speech/engine.ts";
+import { CANCEL_SETTLE_MS, DEFAULT_GAPS, SpeechQueue, VoiceFloor, type Prepared, type SpeechEngine } from "../src/speech/engine.ts";
 import { RoomSpeech } from "../src/speech/said.ts";
 import { revealOffsets, splitSentences } from "../src/speech/split.ts";
 import { LinePlayer, planVoice, type TvLine } from "../src/tv.ts";
@@ -68,6 +68,11 @@ describe("what counts as an edge", () => {
     expect(d.step(sensor(true, 1100, { fault: "ldr_saturated" }), night("closed"), 1100)).toBe(false);
     expect(d.step(sensor(false, 1200), night("closed"), 1200)).toBe(false);
     expect(d.step(sensor(true, 1300), night("closed"), 1300)).toBe(true);
+    // As the bridge reads it (`lastOpen` null after a fault): the first clean line
+    // is never an edge, even on the other side. The reconcile tells the story.
+    expect(d.step(sensor(true, 1400, { fault: "led_dead" }), night("open"), 1400)).toBe(false);
+    expect(d.step(sensor(false, 1500), night("open"), 1500)).toBe(false);
+    expect(d.step(sensor(true, 1600), night("closed"), 1600)).toBe(true);
   });
 
   it("a stale sensor handing over to a story that hasn't caught up is no edge, nor is the story catching up", () => {
@@ -175,6 +180,11 @@ const line = (seq: number, text: string, beat: string | null = "The Heart"): TvL
 const flush = async () => {
   for (let i = 0; i < 8; i++) await new Promise((r) => setTimeout(r, 0));
 };
+/** Past the settle after a stop. */
+const settle = async () => {
+  await new Promise((r) => setTimeout(r, CANCEL_SETTLE_MS + 5));
+  await flush();
+};
 
 /** `Terminal`'s room voice: a real queue, player and speech model over an engine
  *  that speaks until told to stop. */
@@ -250,10 +260,23 @@ describe("the cut", () => {
     await flush();
     player.stop();
     player.push([line(14, "The door.", "Heart Door Again")]);
-    await flush();
+    await settle();
     expect(said).toEqual(["Thank you.", "The door."]);
     await finish();
     expect(player.busy).toBe(false);
+  });
+
+  it("the next line waits for the cancel to settle: a speak() on its heels is lost, and that writes the voice off", async () => {
+    const { said, player } = rig();
+    player.push([line(5, "Close the door.")]);
+    await flush();
+    // A 🚪 press: one answer brings the cut and the new door's lines together.
+    player.stop();
+    player.push([line(11, "Thank you.", "Heart Sealed")]);
+    await flush();
+    expect(said).toEqual(["Close the door."]);
+    await settle();
+    expect(said).toEqual(["Close the door.", "Thank you."]);
   });
 
   it("a dropped line never comes back: not on a poll, not through the cursor", async () => {
