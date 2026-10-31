@@ -1,9 +1,11 @@
 // Wave 23: getting back in — badge / cast-card links, the enter / ask /
 // poll calls over a fake fetch, the card plan, and the scanners' badge reads.
 
+import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
+import { storedClaim } from "../src/claim.ts";
 import { badgeFromText, badgeLinkOf, badgeLinkText, cardFromSearch, cardPlan, heldOf, joinHeld, joinReserved, letGo, printedBadge, settleOwed, rememberBadge, storedBadge, forgetBadge, withoutCard, BADGE_UNKNOWN, OWED_KEY, OWED_RETRY_MS } from "../src/rejoin.ts";
-import { askHeld, askHost, askLine, cancelAsk, enterBy, enterPart, filterNames, heldLine, joinedNames, payOwed, pollAsk, RejoinError, tryCard } from "../src/rejoin-calls.ts";
+import { askHeld, askHost, askLine, cancelAsk, enterBadge, enterBy, enterPart, filterNames, heldLine, joinedNames, payOwed, pollAsk, RejoinError, tryCard } from "../src/rejoin-calls.ts";
 import { memoryStore } from "../src/host.ts";
 import { guestScan } from "../src/guest-scan-sheet.tsx";
 import { parseScan } from "../src/scan.ts";
@@ -233,6 +235,45 @@ describe("wave 59: one holder", () => {
     const r = badgeLinkOf(409, { error: "that badge is saved for Bugdom", reserved: true, name: "Bugdom" });
     expect(r).toEqual({ kind: "reserved", name: "Bugdom" });
     expect(badgeLinkText(r!)).toMatch(/saved for Bugdom/);
+  });
+});
+
+describe("a badge typed on the join screen (Get back in)", () => {
+  const fresh = (claim?: string) => ({ ...resolve, "/e/ev1/api/guest/enter": () => ({ status: 200, body: { ok: true, resumed: false, badge: 601, ...(claim !== undefined ? { claim } : {}) } }) });
+  it("pays what the phone owes, then proves it holds the card with its stored token", async () => {
+    const store = memoryStore();
+    store.save(OWED_KEY, [{ role: "guest", eventId: "ev1", token: "old" }]);
+    store.save("loom.guest", { id: "g-1", token: "t1", eventId: "ev1" });
+    const f = fakeFetch({ ...resolve, "/e/ev1/api/guest/logout": () => ({ status: 200, body: {} }), "/e/ev1/api/guest/enter": () => ({ status: 200, body: { ok: true, resumed: true, id: "g-1", name: "Winamp", token: "t1" } }) });
+    expect(await enterBadge(store, "EVT1", CODE, f.fn)).toMatchObject({ kind: "in", guest: { id: "g-1" } });
+    expect(f.calls.map((c) => c.path)).toEqual(["/e/ev1/api/guest/logout", "/api/resolve-code", "/e/ev1/api/guest/enter"]);
+    expect(f.calls[2]!.body).toMatchObject({ passcode: "EVT1", badge: CODE, token: "t1" });
+    expect(store.load(OWED_KEY)).toBeNull();
+  });
+  it("a phone with no stored session sends no token", async () => {
+    const f = fakeFetch(fresh());
+    await enterBadge(memoryStore(), "EVT1", CODE, f.fn);
+    expect(f.calls[1]!.body).not.toHaveProperty("token");
+  });
+  it("a fresh badge rides into the join, an invited one with its invitation", async () => {
+    const store = memoryStore();
+    expect(await enterBadge(store, "EVT1", CODE, fakeFetch(fresh("c1")).fn)).toMatchObject({ kind: "fresh" });
+    expect(storedBadge(store, "EVT1")).toBe(CODE);
+    expect(storedClaim(store, "EVT1")).toBe("c1");
+  });
+  it("a held card lands on the refused screen and remembers nothing", async () => {
+    const store = memoryStore();
+    const f = fakeFetch({ ...resolve, "/e/ev1/api/guest/enter": () => ({ status: 409, body: { held: true, ref: "B012" } }) });
+    const e = await enterBadge(store, "EVT1", CODE, f.fn).catch((x: unknown) => x);
+    expect(heldOf(e)).toEqual({ name: null, ref: "B012" });
+    expect(storedBadge(store, "EVT1")).toBeNull();
+  });
+  it("is the only road to enter on that panel, behind the badge's shape", () => {
+    const src = readFileSync(new URL("../src/guest/get-back-in.tsx", import.meta.url), "utf8");
+    expect(src).not.toMatch(/\benterBy\(/u);
+    const guard = src.indexOf("if (badge === null)");
+    expect(guard).toBeGreaterThan(-1);
+    expect(src.indexOf("enterBadge(host.storage")).toBeGreaterThan(guard);
   });
 });
 

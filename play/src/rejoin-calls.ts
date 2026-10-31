@@ -6,7 +6,8 @@
 //! `test/rejoin.test.ts`.
 
 import type { AdoptedGuest, ResumeLink } from "./resume.ts";
-import { BADGE_UNKNOWN, OWED_RETRY_MS, owedReleases, setOwed, type HeldCard, type HeldShown } from "./rejoin.ts";
+import { rememberClaim } from "./claim.ts";
+import { BADGE_UNKNOWN, OWED_RETRY_MS, owedReleases, rememberBadge, setOwed, type HeldCard, type HeldShown } from "./rejoin.ts";
 import type { SessionStorage } from "./host.ts";
 
 /** What `enter` gave: the guest session to adopt, or "join as usual" (with
@@ -278,6 +279,22 @@ export function payOwed(storage: SessionStorage, fetchFn: typeof fetch = fetch):
     }, OWED_RETRY_MS);
   });
   return paying;
+}
+
+/** A badge read on the join screen, by camera or typed: what the page does with
+ *  its QR's link (`ui.tsx`, entry `badge`). An owed release goes first, or this
+ *  phone's own badge reads as held. The stored token proves a holder. A fresh
+ *  badge rides into the join, an invited one with its invitation. A held one
+ *  throws `held` (wave 59). */
+export async function enterBadge(storage: SessionStorage, code: string, badge: string, fetchFn: typeof fetch = fetch): Promise<EnterResult> {
+  await payOwed(storage, fetchFn);
+  const token = storage.load<{ token?: unknown }>("loom.guest")?.token;
+  const r = await enterBy(code, { badge }, fetchFn, typeof token === "string" ? token : undefined);
+  if (r.kind === "fresh") {
+    rememberBadge(storage, code, badge);
+    rememberClaim(storage, code, r.claim);
+  }
+  return r;
 }
 
 /** What trying a refused card again gave. */

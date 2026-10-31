@@ -11,10 +11,9 @@ import type { CameraState } from "../scan.ts";
 import { CameraScanner } from "../scanner.tsx";
 import { usePlayHost } from "../host.ts";
 import { HeldPanel } from "../held.tsx";
-import { rememberClaim } from "../claim.ts";
-import { badgeFromText, heldOf, rememberBadge, type HeldCard } from "../rejoin.ts";
+import { badgeFromText, heldOf, type HeldCard } from "../rejoin.ts";
 import { resolveCode } from "../session/shared.ts";
-import { ASK_POLL_MS, askHost, askLine, cancelAsk, enterBy, filterNames, joinedNames, payOwed, pollAsk, type Ask, type AskState } from "../rejoin-calls.ts";
+import { ASK_POLL_MS, askHost, askLine, cancelAsk, enterBadge, filterNames, joinedNames, pollAsk, type Ask, type AskState } from "../rejoin-calls.ts";
 import type { AdoptedGuest } from "../resume.ts";
 
 /** The panel's step. */
@@ -56,11 +55,8 @@ export function GetBackIn({ code, open, onOpen, onIn, onBlankBadge }: { code: st
     setBusy(true);
     setNote("🪪 Checking your badge…");
     try {
-      await payOwed(host.storage);
-      const r = await enterBy(eventCode, { badge });
+      const r = await enterBadge(host.storage, eventCode, badge);
       if (r.kind === "in") return onIn(r.guest);
-      rememberBadge(host.storage, eventCode, badge);
-      rememberClaim(host.storage, eventCode, r.claim);
       onBlankBadge();
       setStep({ kind: "menu" });
       setOpen(false);

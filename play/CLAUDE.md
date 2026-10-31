@@ -112,7 +112,9 @@ into `//`: 147.03 kB. The shared teleprompter added
   same through `parseScan`. On a join screen a
   badge's code resolves with `printed`, and `useIdentities` opens that link
   (`IdentityLookup` kind `printed`), so the page runs the QR's whole path; so does
-  *Get back in*, with no event code needed. Tests: `test/guest-scan.test.tsx`,
+  *Get back in*, with no event code needed. Its one road to `enter` (an embedded
+  pane, or a busy resolve) is `enterBadge`: what the page does with the link, so
+  the owed release, this phone's token and the refused screen hold there too. Tests: `test/guest-scan.test.tsx`,
   `test/w58-booth-scan.test.tsx`.
 - **Deep links.** `?unlock=` (codex; a guest's session, or wave 58's
   `booth/unlock-link.ts` on a phone signed in as a booth), `?checkin=` (room sign), `?act=` (a
