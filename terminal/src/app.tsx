@@ -79,7 +79,7 @@ import { PASS_LINE, PROMPT_SPEAK_MS, promptAfterDoor, promptAfterPress, promptUp
 import { Wave } from "./crt/Wave.tsx";
 import { PadNav } from "./gamepad/PadNav.tsx";
 import { mic } from "./voice/mic.ts";
-import { adoptCharacter, baseOf, castCheckKey, characterProblem, dropConfig, hintsFromSearch, loadConfig, provision, roomOf, saveConfig, spotProblem, tvRoomOf, withoutSecrets, type TerminalConfig } from "./config.ts";
+import { adoptCharacter, baseOf, bleepsOn, castCheckKey, characterProblem, dropConfig, hintsFromSearch, loadConfig, provision, roomOf, saveConfig, spotProblem, tvRoomOf, withoutSecrets, type TerminalConfig } from "./config.ts";
 import { Setup } from "./Setup.tsx";
 import { followMap, followVoice, linkConfig } from "./setup-map.ts";
 import { useCamFeed } from "./camfeed.ts";
@@ -104,7 +104,7 @@ import { fullScreenSim, hasWebGL2 } from "./webgl.ts";
 import { linkedNow, linkedPane, usePresenceLatch } from "./world/presence.ts";
 import { screenWake } from "./kiosk.ts";
 import { kioskFullscreen } from "./fullscreen.ts";
-import { setSoundMuted, setSoundView, setSoundVolume, sfx, voiceNoise } from "./sound/bus.ts";
+import { effectsLevel, setBleeps, setSoundMuted, setSoundVolume, sfx, voiceNoise } from "./sound/bus.ts";
 import { drawsSlides, loadCutscenes, screenTargetOf, silentView } from "./cutscene/load.ts";
 import { attractOf, useScreenState, watchWhileAsleep, type ScreenState } from "./screen.ts";
 import { Attract } from "./Attract.tsx";
@@ -380,11 +380,15 @@ export function App() {
   useEffect(() => {
     kioskFullscreen().setEnabled(fullscreen);
   }, [fullscreen]);
-  // The effects' level follows the view (the TV's are quieter); the mirror
+  // The effects' level follows the view (the TV's are silent); the mirror
   // fallback stays silent (X5).
   // The CRT makes no effects of its own (wave 52b): his voice is all it says.
   const crt = config?.crt === true;
-  useEffect(() => (crt ? setSoundVolume(0) : setSoundView(config?.view)), [config?.view, crt]);
+  const askedBleeps = config?.bleeps;
+  useEffect(() => setSoundVolume(effectsLevel({ view: config?.view, crt, ...(askedBleeps === undefined ? {} : { bleeps: askedBleeps }) })), [config?.view, crt, askedBleeps]);
+  // Set while rendering, like `access-bus.ts`: a child's first effect must
+  // never slip a bleep out ahead of this one (wave 59).
+  if (config !== null) setBleeps(bleepsOn(config));
   const silent = config !== null && silentView(config.view);
   useEffect(() => {
     if (!silent) return;

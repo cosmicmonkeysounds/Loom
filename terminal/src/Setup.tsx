@@ -12,7 +12,7 @@
 //! room) sits under a folded *advanced*.
 
 import { useEffect, useMemo, useState } from "react";
-import { DEFAULT_TV_ROOM, VIEWS, VIEW_INFO, announceChoiceValue, announceFromChoice, baseOf, connect, defaultConfig, pickCharacter, roomChoices, savedCharacter, TV_SPEED, withViewDefaults, type DoorConfig, type TerminalConfig, type TerminalView } from "./config.ts";
+import { DEFAULT_TV_ROOM, VIEWS, VIEW_INFO, announceChoiceValue, announceFromChoice, baseOf, bleepsOn, connect, defaultConfig, pickCharacter, roomChoices, savedCharacter, TV_SPEED, withViewDefaults, type DoorConfig, type TerminalConfig, type TerminalView } from "./config.ts";
 import { feedStatusText, feedWanted, useFeedStatus } from "./camfeed.ts";
 import { micBox, voiceRoles } from "./voice/roles.ts";
 import { DoorSetup } from "./heart/DoorSetup.tsx";
@@ -125,6 +125,8 @@ export function Setup({
   // The voice link's microphone: undefined = the view's default (the TV's is off).
   const [mic, setMic] = useState<boolean | undefined>(current?.mic);
   const [voicesOn, setVoicesOn] = useState(current?.voices ?? true);
+  // Wave 59: undefined = this spot's default (`bleepsOn`); a tick here is kept.
+  const [bleeps, setBleeps] = useState<boolean | undefined>(current?.bleeps);
   const [fullscreen, setFullscreen] = useState(current?.fullscreen ?? true);
   const [door, setDoor] = useState<DoorConfig>(current?.door ?? "off");
   const [doorTouched, setDoorTouched] = useState(false);
@@ -220,6 +222,8 @@ export function Setup({
       const voiceFields = mic === undefined ? { voices: voicesOn } : { voices: voicesOn, mic };
       const picked = applyPick({ ...base, character: kept, camera, engine, announce, camFeed, ...voiceFields, fullscreen, door, keys, bay, webcam: webcam.trim(), pad, whisper, crt, serverVoice: serverVoice.trim(), browserVoice, speed, pause }, pick);
       if (mic === undefined) delete picked.mic;
+      if (bleeps === undefined) delete picked.bleeps;
+      else picked.bleeps = bleeps;
       const next = picked;
       const own = manualTouched || (current !== null && current.spot === pick.spot);
       const done = own ? withManual(next, pick, { view: viewOverride, room: roomOverride }) : next;
@@ -445,6 +449,10 @@ export function Setup({
               <label className="check">
                 <input type="checkbox" checked={voicesOn} onChange={(e) => setVoicesOn(e.target.checked)} />
                 play the players near this screen <span className="muted">(their headset voices)</span>
+              </label>
+              <label className="check">
+                <input type="checkbox" checked={!bleepsOn({ spot: current?.spot ?? "", view: viewOverride || current?.view || "auto", crt, ...(bleeps === undefined ? {} : { bleeps }) })} onChange={(e) => setBleeps(!e.target.checked)} />
+                🔇 No ad sounds or bleeps <span className="muted">(on by itself on the TV, the tent and the server room; never his voice, announcements or the players)</span>
               </label>
               <label className="check">
                 <input type="checkbox" checked={fullscreen} onChange={(e) => setFullscreen(e.target.checked)} />

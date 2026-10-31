@@ -48,6 +48,10 @@
 //!
 //!   /terminal/?code=<mod passcode>&spot=tent&announce=1
 //!
+//! Ad sounds and bleeps (wave 59, `bleepsOn`): the TV, the tent and the server
+//! room make none by default; `&bleeps=1` / `&bleeps=0` or ⚙'s
+//! `🔇 No ad sounds or bleeps` choose for one tablet, and the choice stays.
+//!
 //! The voice link (wave 19, `voice/`): a placed terminal's microphone is
 //! heard in the reinstallation games at its screen, and the players near it
 //! are heard out of its speaker. `&mic=0` / `&voices=0` turn either half off
@@ -182,6 +186,10 @@ export interface TerminalConfig {
    *  waveform for the face, the pipes for the idle show, no sound effects,
    *  glitches or dream, and nothing cuts him off. */
   crt: boolean;
+  /** (wave 59) This page's own ad sounds and bleeps (`sound/bus.ts`
+   *  `setBleeps`): true they play, false they don't; absent = this spot's
+   *  default (`bleepsOn`). `bleeps=` on a link, `🔇` in ⚙. */
+  bleeps?: boolean;
   /** Set up by tapping a terminal of the event's house map: at boot the
    *  name / view / room follow that map entry (`setup-map.ts` `followMap`).
    *  A manual view / room in ⚙'s advanced section clears it. */
@@ -269,6 +277,18 @@ export function roomOf(c: Pick<TerminalConfig, "room" | "view">): string | null 
   return room === "" ? null : room;
 }
 
+/** (wave 59) The spots whose sound is someone listening to him or to a game:
+ *  no ad sounds or bleeps here unless ⚙ asks for them. */
+export const QUIET_SPOTS: readonly string[] = ["desktop-tv", "tent", "server-room"];
+
+/** Does this terminal make its ad sounds and bleeps? A choice stored in ⚙ or
+ *  on a link wins; else no on `QUIET_SPOTS` (and on the screens they carry,
+ *  however a tablet was placed), yes everywhere else. */
+export function bleepsOn(c: Pick<TerminalConfig, "spot" | "view"> & { bleeps?: boolean; crt?: boolean }): boolean {
+  if (typeof c.bleeps === "boolean") return c.bleeps;
+  return !(QUIET_SPOTS.includes(c.spot.trim()) || c.view === "tv" || c.view === "reinstall" || c.crt === true);
+}
+
 export function defaultConfig(partial: Partial<TerminalConfig> & Pick<TerminalConfig, "eventId" | "token">): TerminalConfig {
   return {
     title: "",
@@ -313,6 +333,8 @@ export function loadConfig(storage: Pick<Storage, "getItem"> = localStorage): Te
     const loaded = defaultConfig({ ...stored, eventId: c.eventId, token: c.token, spot, view, room, speed: speedOf(c.speed), pause: pauseOf(c.pause), engine: voiceChoiceOf(c.engine), announce: storedAnnounce(c.announce, announceMode), camFeed: c.camFeed !== false, voices: c.voices !== false, voiceLink: c.voiceLink !== false, fullscreen: c.fullscreen !== false, fromMap: c.fromMap === true, door: doorConfigOf(c.door), keys: c.keys !== false, bay: c.bay !== false, webcam: typeof c.webcam === "string" ? c.webcam : "", pad: c.pad === true, whisper: c.whisper === true, crt: c.crt === true });
     if (typeof c.mic === "boolean") loaded.mic = c.mic;
     else delete loaded.mic;
+    if (typeof c.bleeps === "boolean") loaded.bleeps = c.bleeps;
+    else delete loaded.bleeps;
     return loaded;
   } catch {
     return null;
@@ -354,7 +376,7 @@ export function withViewDefaults(c: TerminalConfig): TerminalConfig {
   return c.view === "tv" && c.speed === 1 ? { ...c, speed: TV_SPEED } : c;
 }
 
-/** Provisioning hints riding on the URL (`?code=&name=&character=&camera=&engine=&spot=&view=&room=&announce=&cam=&mic=&voices=&door=&keys=&bay=&pause=&webcam=&pad=&whisper=&crt=`). */
+/** Provisioning hints riding on the URL (`?code=&name=&character=&camera=&engine=&spot=&view=&room=&announce=&cam=&mic=&voices=&door=&keys=&bay=&pause=&webcam=&pad=&whisper=&crt=&bleeps=`). */
 export interface UrlHints {
   code: string;
   name: string | null;
@@ -388,6 +410,8 @@ export interface UrlHints {
   whisper?: boolean | null;
   /** (wave 52b) `crt=0` / `1`: an old 4:3 CRT (null = not given: no). */
   crt?: boolean | null;
+  /** (wave 59) `bleeps=0` / `1`: this page's ad sounds and bleeps (null = not given: the spot's default). */
+  bleeps?: boolean | null;
 }
 
 /** A URL on/off switch: true / false, null = not given or unreadable. */
@@ -422,6 +446,7 @@ export function hintsFromSearch(search: string): UrlHints {
     pad: flagOf(p.get("pad")),
     whisper: flagOf(p.get("whisper")),
     crt: flagOf(p.get("crt")),
+    bleeps: flagOf(p.get("bleeps")),
   };
 }
 
@@ -448,6 +473,7 @@ export function withoutSecrets(search: string): string {
   p.delete("pad");
   p.delete("whisper");
   p.delete("crt");
+  p.delete("bleeps");
   const s = p.toString();
   return s === "" ? "" : `?${s}`;
 }
@@ -482,6 +508,7 @@ export async function provision(code: string, hints: Omit<UrlHints, "code">): Pr
     crt: hints.crt ?? false,
   });
   if (typeof hints.mic === "boolean") given.mic = hints.mic;
+  if (typeof hints.bleeps === "boolean") given.bleeps = hints.bleeps;
   return withViewDefaults(given);
 }
 

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { MIN_GAP_MS, OVER_GAIN, VIEW_VOLUME, VOICES_DUCK, VOICES_LEVEL, playChime, playNotes, setSoundContext, setSoundMuted, setSoundView, setVoicesDucked, sfx, sfxGate, soundPlayingUntil, voicesOut, type SoundContext } from "../src/sound/bus.ts";
+import { MIN_GAP_MS, OVER_GAIN, TV_ASKED_VOLUME, VIEW_VOLUME, VOICES_DUCK, VOICES_LEVEL, effectsLevel, playChime, playNotes, setBleeps, setSoundContext, setSoundMuted, setSoundView, setVoicesDucked, sfx, sfxGate, soundPlayingUntil, voiceNoise, voicesOut, type SoundContext } from "../src/sound/bus.ts";
 import { CHIME_PARTS, SFX_NAMES, hz, isSfxName, recipe, sfxLength } from "../src/sound/library.ts";
 import { voiceFloor } from "../src/speech/engine.ts";
 import { FakeAudioContext, type FakeGain, type FakeOsc } from "./fake-audio.ts";
@@ -10,6 +10,7 @@ beforeEach(() => {
   setSoundContext(ctx as unknown as SoundContext);
   setSoundMuted(false);
   setSoundView("auto");
+  setBleeps(true);
 });
 afterEach(() => {
   setSoundContext(undefined);
