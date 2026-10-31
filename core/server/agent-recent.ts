@@ -40,7 +40,7 @@ import { CHART_NOBODY, SCREEN_CHARTS } from "./routes/screen.ts";
 /** The beats where he reads the filings aloud (folded): none of their
  *  lines is ever a `recent` house item (wave 18b, §3). */
 export const READING_BEATS: ReadonlySet<string> = new Set(
-  ["Question Results", "Round One Close", "Round Two Tally", "Overshare Answers", "Round Two Close", "Final Trust", "The Verdict", "The Full Truth", ...["H1", "H2", "H3", "H4", "H5", "H6", "F1", "F2", "F3"].map((id) => `Reading ${id}`)].map(foldName),
+  ["Question Results", "Round One Close", "Round Two Tally", "Overshare Answers", "Round Two Close", "Final Trust", "Nobody Found It", "Read The Lines", "The Verdict", "The Full Truth", ...["H1", "H2", "H3", "H4", "H5", "H6", "F1", "F2", "F3"].map((id) => `Reading ${id}`)].map(foldName),
 );
 
 /** Was this line said in a reading beat? */

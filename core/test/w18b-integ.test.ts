@@ -350,6 +350,11 @@ describe("wave 18b integration — results, rulings and the verdict on the merge
 
     // On to ⚖: every key answer and the liars, on the TV only.
     for (const c of ["trust_chart", "show_the_rankings", "trabolta_overshares", "y2k_clock"]) await mod(c);
+    // Wave 59a: the key he doesn't know: a plain miss on it asks him no ruling.
+    const rulings = judges().length;
+    await file(rt, calc, "F3", "somebody else", 100);
+    expect(judges()).toHaveLength(rulings);
+    expect(JSON.stringify(judges())).not.toContain(FACTS.questions.find((q) => q.id === "F3")!.answer);
     rt.tickOnce(3_600_000); // midnight
     await mod("bobbing_for_truth");
     await mod("brought_up_the_bag", { subject: pad.id, actor: "Clippy" });

@@ -152,7 +152,7 @@ describe("the full truth: the words (wave 58)", () => {
 
 // ───────────────────────── every road, on the real compiled story ─────────────────────────
 
-const FACTS = JSON.parse(readFileSync(join(HERE, "../examples/trapped-in-the-internet/facts.json"), "utf8")) as { questions: Array<{ id: string; answer: string }> };
+const FACTS = JSON.parse(readFileSync(join(HERE, "../examples/trapped-in-the-internet/facts.json"), "utf8")) as { questions: Array<{ id: string; answer: string }>; documents: Array<{ was: string; guard?: string[] }> };
 const WHO = { name: "tv", spot: "", view: "tv", character: "Trabolta", voice: "The Desktop", after: 0 };
 const v = (sim: Sim, p: string) => (sim.world.get(p) as { value: unknown } | undefined)?.value;
 const hostsOf = (evs: SimEvent[]) => (evs.filter((e) => e.type === "broadcast") as Ev<"broadcast">[]).filter((b) => b.scope === "channel(hosts)").map((b) => b.cue);
@@ -160,20 +160,15 @@ const hostsOf = (evs: SimEvent[]) => (evs.filter((e) => e.type === "broadcast") 
 const beatsOf = (evs: SimEvent[]) => evs.filter((e) => e.type === "beatEntered").map((e: any) => (e.beat ?? e.name) as string);
 const cuesOf = (evs: SimEvent[]) => (evs.filter((e) => e.type === "directive") as Ev<"directive">[]).filter((e) => e.verb === "cue" || e.verb === "sfx").map((e) => e.args.trim());
 
-type Road = "song" | "song_pickup" | "help" | "hand_jive" | "rave" | "disabled" | "destroyed";
+type Road = "disabled" | "destroyed";
 const ROADS: Record<Road, { reader: "Trabolta" | "Task Manager"; host: "Trabolta" | "Clippy"; phase: string; frame: RegExp; lines: number; freeBefore: boolean; freeAfter: boolean; awake: boolean }> = {
-  song: { reader: "Trabolta", host: "Trabolta", phase: "finale_song", frame: /^Before anyone leaves, one last file\./u, lines: 1, freeBefore: true, freeAfter: true, awake: true },
-  song_pickup: { reader: "Trabolta", host: "Trabolta", phase: "finale_song", frame: /^Before anyone leaves, one last file\./u, lines: 1, freeBefore: true, freeAfter: true, awake: true },
-  help: { reader: "Trabolta", host: "Trabolta", phase: "finale_help", frame: /^Before anyone leaves, one last file\./u, lines: 1, freeBefore: true, freeAfter: true, awake: true },
-  hand_jive: { reader: "Trabolta", host: "Trabolta", phase: "finale_hand_jive", frame: /^Before anyone leaves, one last file\./u, lines: 1, freeBefore: true, freeAfter: true, awake: true },
-  rave: { reader: "Trabolta", host: "Clippy", phase: "finale_rave", frame: /^Programs, this is Jean Trabolta, calling from /u, lines: 2, freeBefore: false, freeAfter: false, awake: true },
   disabled: { reader: "Task Manager", host: "Clippy", phase: "finale_killed", frame: /^This message was recorded by Jean Trabolta shortly before he died\.$/u, lines: 2, freeBefore: false, freeAfter: true, awake: false },
   destroyed: { reader: "Task Manager", host: "Clippy", phase: "finale_shutdown", frame: /^The computer is off\. This message is the last thing it saved\.$/u, lines: 2, freeBefore: false, freeAfter: false, awake: false },
 };
 const ROAD_NAMES = Object.keys(ROADS) as Road[];
 
 /** A full house, walked by the director's own chains to the ending's last beat. */
-async function road(which: Road) {
+async function road(which: Road | "verdict") {
   const sim = Sim.fromSources(SRC);
   sim.fireBeat("Power On");
   const clock = { t: 1_000_000 };
@@ -205,13 +200,7 @@ async function road(which: Road) {
     await chain(Y2K_TO_DESTROYED);
     tick(15);
   } else {
-    if (which !== "song") sim.setVar("Kernel.q1", '"lie"');
-    await chain(Y2K_TO_VERDICT);
-    tick(110); // 8-B, then the verdict's pages
-    if (which === "song_pickup") log.push(...sim.signal("pickup_line_works", "g-pool", null, "Clippy"));
-    if (which === "rave") await press("no_pickup_line");
-    if (which === "help") await chain(["ask_for_advice", "advice_helped"]);
-    if (which === "hand_jive") await chain(["ask_for_advice", "advice_thwarted", "the_hand_jive"]);
+    await chain(Y2K_TO_VERDICT); // ⚖ plays it: see the verdict's own test below
   }
   /** The next press as the phones get it, each with a seq. */
   let seq = 1000;
@@ -418,29 +407,13 @@ describe.each(ROAD_NAMES)("the full truth on the road to %s", (which) => {
 describe("the full truth: the frames and the fallbacks", () => {
   it("Sandy's line is the file's, the story's and her document's; Grok finds her tonight", { timeout: SLOW }, async () => {
     const line = /"(.+)"/u.exec(delivered().get(19)!)![1]!;
-    expect(FACTS.documents!.find((d) => d.was === "F1")!.guard![0]).toBe(line);
-    for (const which of ["song", "help", "rave"] as const) {
-      const n = await road(which);
-      const hers = said(n.log, "Sandy");
-      expect(hers.length, which).toBeGreaterThan(0);
-      expect(new Set(hers), which).toEqual(new Set([line]));
-      expect(said(fire(n.sim, "tell_the_truth"), "Trabolta").join(" "), which).toContain("Grok was too antisocial to find a partner, until tonight.");
-    }
-  });
-
-  it("the rave: he phones it in, the look comes down, and Clippy still hosts", { timeout: SLOW }, async () => {
-    const n = await road("rave");
-    expect(cuesOf(n.log)).toContain("rave");
-    const evs = fire(n.sim, "tell_the_truth");
-    const lines = said(evs, "Trabolta");
-    expect(lines[1]).toBe("You are not going anywhere, so stay on the line. I am going to read you my own file, exactly as it is written.");
-    expect(cuesOf(evs)).toContain("lights_restore");
-    expect(cuesOf(evs)).toContain("screens_screensaver");
+    expect(FACTS.documents.find((d) => d.was === "F1")!.guard![0]).toBe(line);
+    const n = await road("verdict");
+    expect(said(n.log, "Trabolta").join(" ")).toContain("Grok was too antisocial to find a partner, until tonight.");
   });
 
   it("📜 Task Manager reads: the fallback when the TV has no voice, mid-way or instead", { timeout: SLOW }, async () => {
-    const n = await road("song");
-    fire(n.sim, "tell_the_truth");
+    const n = await road("verdict"); // ⚖ has started him
     expect(v(n.sim, "Night.phase")).toBe("finale_truth");
     const until = v(n.sim, "Night.truth_until") as number;
     n.tick(60);
@@ -449,13 +422,9 @@ describe("the full truth: the frames and the fallbacks", () => {
     expect(lines[0]).toBe("Trabolta's line has dropped. I have a copy of his file.");
     expect(lines.slice(2)).toEqual([...delivered().values()]);
     expect(v(n.sim, "Night.truth_reader")).toBe("Task Manager");
-    expect(v(n.sim, "Night.phase")).toBe("finale_song");
+    expect(v(n.sim, "Night.phase")).toBe("bobbing");
     expect(v(n.sim, "Night.truth_until")).toBeGreaterThan(until);
     expect(hostsOf(fire(n.sim, "task_manager_reads"))).toEqual(['"📜 Task Manager already has it. Nothing happens."']);
-    // In place of G0: the cue is then spent.
-    const m = await road("help");
-    expect(said(fire(m.sim, "task_manager_reads"), "Task Manager").length).toBe(99);
-    expect(hostsOf(fire(m.sim, "tell_the_truth"))).toEqual(['"📜 Already told: Task Manager has it. Nothing happens."']);
     // He reads after Combo A and B anyway: the fallback says so.
     const a = await road("disabled");
     expect(pressRefused(a.sim, fire(a.sim, "task_manager_reads"))).toBe(true);

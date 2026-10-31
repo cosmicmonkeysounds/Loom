@@ -416,9 +416,6 @@ describe("Trapped in the Internet — compile", () => {
       q8_hunt: "none",
       q9_hunt: "none",
       lies_accepted: "0",
-      all_accurate: "false",
-      verdict_wait: "false",
-      verdict_end: "0",
       said_1: "none",
       said_2: "none",
       said_3: "none",
@@ -451,8 +448,8 @@ describe("Trapped in the Internet — compile", () => {
       lb_2: "none",
       lb_3: "none",
       lb_line: "none",
-      unfound_wait: "false",
-      unfound_end: "0",
+      lines_said: "none",
+      lines_n: "0",
       t1: "none",
       t2: "none",
       t3: "none",
@@ -462,9 +459,6 @@ describe("Trapped in the Internet — compile", () => {
       t7: "none",
       t8: "none",
       t9: "none",
-      v_true: "0",
-      v_lies: "0",
-      v_none: "0",
       virus_planted: "false",
       excel_planted: "false",
       virus_planter: "none",
@@ -1440,12 +1434,12 @@ function boot(): Sim {
   return sim;
 }
 type Args = Record<string, string | number | boolean>;
-/** Wave 18b: ⚖'s ending follows The Verdict's TV pages (34 s of story
- *  time, the `verdict_wait` rule), so a press of it here ticks past them. */
-const VERDICT_PAGES_S = 110;
+/** Wave 59a: ⚖ plays the full truth, then 8-A or 8-B follow by themselves, so a
+ *  press of it here ticks past them to the song. */
+const VERDICT_PAGES_S = [831, 77]; // the full truth, then 8-A, to the song
 const pastTheVerdict = (sim: Sim, name: string): SimEvent[] => {
   const out: SimEvent[] = [];
-  if (name === "the_verdict") for (let i = 0; i < VERDICT_PAGES_S; i++) out.push(...sim.tick(1000));
+  if (name === "the_verdict") for (const seconds of VERDICT_PAGES_S) out.push(...sim.tick(seconds * 1000));
   return out;
 };
 const fire = (sim: Sim, name: string, subject: string | null = null, args: Args | null = null, actor?: string) => [...sim.signal(name, subject ?? undefined, args, actor), ...pastTheVerdict(sim, name)];
@@ -2665,7 +2659,7 @@ function toBobbing(sim: Sim, opts: { lie?: boolean; skipF2?: boolean; skipF3?: b
 }
 
 describe("Trapped in the Internet — the verdict", () => {
-  it("all eight accurate → truth.txt → the Song Ending", { timeout: SLOW }, () => {
+  it("the last answer found → ⚖ plays the full truth → 8-A → the song", { timeout: SLOW }, () => {
     const sim = boot();
     toBobbing(sim);
     expect(["q1", "q2", "q3", "q4", "q5", "q6", "q7", "q8", "q9"].map((q) => v(sim, `Kernel.${q}`))).toEqual(Array(9).fill("accurate"));
@@ -2673,54 +2667,35 @@ describe("Trapped in the Internet — the verdict", () => {
     for (const e of ["The Truth File", "Randy Barkmore Sr", "Julie Horton-Norton"]) expect(sim.holdsCodex("g1", e), e).toBe(true);
     expect(v(sim, "Night.ending")).toBe("song");
     expect(v(sim, "Night.ended")).toBe(true);
-    expect(beats(rt)).toContain("Song Ending");
-    expect(lines(rt, "Sandy")).toContain(Q("F1").answer);
+    expect(beats(rt)).toEqual(expect.arrayContaining(["The Full Truth", "Truth Found", "Off To See My Lady", "Song Ending"]));
+    expect(lines(rt, "Sandy")).toEqual([]);
     expect(sim.isCaptured("g5")).toBe(false);
     expect(sim.questStatus("g1", "The Final Facts")).toBe("done");
     expect(texts(rt).filter((t) => /\bnull\b/u.test(t))).toEqual([]);
-    // Trabolta DMs everyone for the line in this branch too (flavour: the
-    // first correct one is read; the ending stands).
-    const cards = widgets(rt).filter((w) => w.widget === "answer");
-    expect(cards.map((w) => w.audience[0]).sort()).toEqual(PROGRAMS.map(([id]) => id).sort());
-    expect(cards[0]!.params).toEqual({ thread: "Trabolta", question: "P1", max: "120", button: "Say it", moment: "big" }); // wave 18: a big card that asks
-    expect(composeGuestMessages(sim, rt).find((m) => m.kind === "widget" && m.widget?.kind === "answer")?.channel).toBe("dm:Trabolta");
-    const line = fire(sim, "answer answered", "g6", { question: "P1", text: "You're the one that I want", verdict: "accurate", card: 1 });
-    expect(v(sim, "Night.line_by")).toBe("VLC");
-    expect(lines(line, "Trabolta")).toEqual(["The house says YES. That is the line, VLC."]);
-    expect(casts(line).some((b) => b.cue.includes("💘 VLC knew the line."))).toBe(true);
-    expect(v(sim, "Night.ending")).toBe("song");
-    const second = fire(sim, "answer answered", "g1", { question: "P1", text: "you are the one that i want", verdict: "accurate", card: 1 });
-    expect(lines(second, "Trabolta")).toEqual(["VLC said it first, Calculator. But the house says yes: that is the line."]);
-    expect(lines(fire(sim, "answer answered", "g2", { question: "P1", text: "hello", verdict: "lie", card: 1 }), "Trabolta")).toEqual(["The house says no. That is not the line."]);
+    expect(widgets(rt).filter((w) => w.widget === "answer")).toEqual([]);
+    expect(cues(rt)).toContain("cue screens_song");
+    expect(cues(rt).some((c) => c.includes("youre_the_one_vocoder"))).toBe(true);
   });
 
-  it("⚖ publishes each question's truth to the screens and Trabolta says only the counts (wave 18b, Q6, O2)", { timeout: SLOW }, () => {
+  it("⚖ publishes each question's truth to the record, in silence (wave 18b, Q6; wave 59a)", { timeout: SLOW }, () => {
     const sim = boot();
     toBobbing(sim, { lie: true, skipF2: true });
     fire(sim, "read_truth_txt");
     const vd = fire(sim, "the_verdict");
     expect(["t1", "t2", "t3", "t4", "t5", "t6", "t7", "t8", "t9"].map((t) => v(sim, `Kernel.${t}`))).toEqual(["accurate", "accurate", "lie", "accurate", "accurate", "accurate", "accurate", "none", "accurate"]);
     expect(cues(vd).filter((c) => c.startsWith("fact_truth"))).toEqual(["fact_truth H1 accurate", "fact_truth H2 accurate", "fact_truth H3 lie", "fact_truth H4 accurate", "fact_truth H5 accurate", "fact_truth H6 accurate", "fact_truth F1 accurate", "fact_truth F2 none", "fact_truth F3 accurate"]);
-    expect([v(sim, "Kernel.v_true"), v(sim, "Kernel.v_lies"), v(sim, "Kernel.v_none")]).toEqual([7, 1, 1]);
-    expect(lines(vd, "Trabolta").slice(0, 2)).toEqual(["I have compared every fact you gave me with truth.txt.", "7 true. 1 with a lie on record. 1 nobody answered."]);
-    // No line of the verdict beat says a key answer or a program's name:
-    // those are the TV's results block only (O2).
-    const verdict = (vd.filter((e) => e.type === "dialogue") as Ev<"dialogue">[]).filter((e) => e.beat === "The Verdict").map((e) => e.text);
-    expect(verdict).toHaveLength(2);
-    const forms = BOOK.questions.flatMap((q) => q.forms).filter((f) => f.length >= 4);
-    for (const t of verdict) {
-      for (const f of forms) expect(t.toLowerCase(), f).not.toContain(f.toLowerCase());
-      for (const [, name] of PROGRAMS) expect(t, name).not.toContain(name);
-    }
+    // The record is silent, and a lie decides nothing: the last answer was found.
+    expect(lines(vd, "Trabolta").join(" ")).not.toContain("I have compared every fact");
+    expect(v(sim, "Night.ending")).toBe("song");
   });
 
-  it("a DM bluff makes its question's truth tile a lie, as it does the ending (wave 18b, A4)", { timeout: SLOW }, () => {
+  it("a DM bluff makes its question's truth tile a lie, and the ending stands (wave 59a)", { timeout: SLOW }, () => {
     const sim = boot();
     toBobbing(sim, { dmLie: true });
     fire(sim, "read_truth_txt");
     const vd = fire(sim, "the_verdict");
     expect(cues(vd)).toContain("fact_truth H5 lie");
-    expect(v(sim, "Night.phase")).toBe("grok_prom");
+    expect(v(sim, "Night.ending")).toBe("song");
   });
 
   it("eight accurate answers that skip F2 → the Song Ending: an unanswered question is not a lie (U14)", { timeout: SLOW }, () => {
@@ -2733,146 +2708,15 @@ describe("Trapped in the Internet — the verdict", () => {
     expect(v(sim, "Night.ended")).toBe(true);
   });
 
-  it("one lie → Grok Prom → the DM to everyone: a wrong line, the right one (the way out), a second right one", { timeout: SLOW }, () => {
-    const sim = boot();
-    toBobbing(sim, { lie: true });
-    const rt = truthTxt(sim);
-    expect(v(sim, "Night.phase")).toBe("grok_prom");
-    const cards = widgets(rt).filter((w) => w.widget === "answer");
-    expect(cards.map((w) => w.audience[0]).sort()).toEqual(PROGRAMS.map(([id]) => id).sort());
-    expect(cards[0]!.params["question"]).toBe("P1");
-    const wrong = fire(sim, "answer answered", "g6", { question: "P1", text: "Hey girl", verdict: "lie", card: 1 });
-    expect(lines(wrong, "Trabolta")).toEqual(["The house says no. That is not the line."]);
-    expect(v(sim, "Night.ended")).not.toBe(true);
-    const right = fire(sim, "answer answered", "g6", { question: "P1", text: "You're the one that I want", verdict: "accurate", card: 1 });
-    expect(v(sim, "Night.ending")).toBe("song_pickup");
-    expect(v(sim, "Night.line_by")).toBe("VLC");
-    expect(beats(right)).toContain("Pickup Line");
-    expect(beats(right)).toContain("Song Ending");
-    expect(widgets(right).filter((w) => w.widget === "answer")).toEqual([]); // not dealt twice
-    const second = fire(sim, "answer answered", "g1", { question: "P1", text: "You're the one that I want", verdict: "accurate", card: 1 });
-    expect(lines(second, "Trabolta")).toEqual(["VLC said it first, Calculator. But the house says yes: that is the line."]);
-    expect(v(sim, "Night.ending")).toBe("song_pickup");
-  });
-
-  it("one lie → Grok Prom → a performer's pickup line", { timeout: SLOW }, () => {
-    const sim = boot();
-    toBobbing(sim, { lie: true });
-    truthTxt(sim);
-    expect(v(sim, "Night.phase")).toBe("grok_prom");
-    const pl = fire(sim, "pickup_line_works", "g6", null, "Clippy");
-    expect(v(sim, "Night.ending")).toBe("song_pickup");
-    expect(v(sim, "Night.line_by")).toBe("VLC");
-    expect(beats(pl)).toContain("Pickup Line");
-    // The story tells him, in the giver's thread (he never judged it).
-    expect(saidBy(pl, "Trabolta").filter((d) => aud(d) === '["g6"]').map((d) => d.text)).toEqual(["The house says YES. That is the line, VLC."]);
-    expect(sim.isCaptured("g5")).toBe(false);
-    expect(texts(pl).filter((t) => /\bnull\b/u.test(t))).toEqual([]);
-  });
-
-  it("one DM bluff (a 📝 filing judged a confident lie) fails the verdict for good", { timeout: SLOW }, () => {
+  it("one DM bluff (a 📝 filing judged a confident lie) stays on the record and decides nothing", { timeout: SLOW }, () => {
     const sim = boot();
     toBobbing(sim, { dmLie: true });
     expect(v(sim, "Kernel.q5")).toBe("lie"); // g5's accurate Q2 in round 2 never clears it
     expect(v(sim, "Kernel.lies_accepted")).toBe(1);
     truthTxt(sim);
-    expect(v(sim, "Night.phase")).toBe("grok_prom");
-    expect(v(sim, "Night.ended")).not.toBe(true);
+    expect(v(sim, "Night.ending")).toBe("song");
   });
 
-  it("Trabolta cannot accept the line himself: the house judges it (2026-10-19)", { timeout: SLOW }, () => {
-    const sim = boot();
-    expect(sim.model.interactions.has("the_line_works")).toBe(false); // no such power
-    toBobbing(sim, { lie: true });
-    truthTxt(sim);
-    expect(v(sim, "Night.phase")).toBe("grok_prom");
-    // An old worker's fire of the retired power does nothing.
-    fire(sim, "the_line_works", "g1", null, "Trabolta");
-    expect(v(sim, "Night.ended")).not.toBe(true);
-    expect(v(sim, "Night.line_by")).toBe("none");
-    // The card is the way out, and the story tells him who gave the line.
-    const right = fire(sim, "answer answered", "g1", { question: "P1", text: "You're the one that I want", verdict: "accurate", card: 1 });
-    expect(v(sim, "Night.ending")).toBe("song_pickup");
-    expect(v(sim, "Night.line_by")).toBe("Calculator");
-    expect(saidBy(right, "Trabolta").filter((d) => aud(d) === '["g1"]').map((d) => d.text)).toEqual(["The house says YES. That is the line, Calculator."]);
-  });
-
-  it("nobody has the line → the confession → the rave (captives stay)", { timeout: SLOW }, () => {
-    const sim = boot();
-    toBobbing(sim, { lie: true });
-    truthTxt(sim);
-    const np = fire(sim, "no_pickup_line");
-    expect(v(sim, "Night.ending")).toBe("rave");
-    expect(beats(np)).toContain("Sad Confession");
-    expect(cues(np).some((c) => c.includes("rave"))).toBe(true);
-    expect(sim.isCaptured("g5")).toBe(true);
-    fire(sim, "pickup_line_works", "g6", null, "Clippy");
-    expect(v(sim, "Night.ending")).toBe("rave"); // nothing after the rave
-  });
-});
-
-describe("Trapped in the Internet — the alternate advice ending", () => {
-  it("advice poll → tally → they helped him", { timeout: SLOW }, () => {
-    const sim = boot();
-    toBobbing(sim, { lie: true });
-    truthTxt(sim);
-    const aa = fire(sim, "ask_for_advice");
-    expect(widgets(aa).some((w) => w.widget === "poll")).toBe(true);
-    fire(sim, "poll answered", "g1", { choice: "Help him", index: 0 });
-    fire(sim, "poll answered", "g2", { choice: "Thwart him", index: 1 });
-    fire(sim, "poll answered", "g3", { choice: "Help him", index: 0 });
-    fire(sim, "poll answered", "g3", { choice: "Help him", index: 0 }); // one vote each
-    expect(v(sim, "Night.help_votes")).toBe(2);
-    expect(v(sim, "Night.thwart_votes")).toBe(1);
-    const t = fire(sim, "advice_tally");
-    expect(v(sim, "Night.ending")).toBe("help");
-    expect(beats(t)).toContain("Advice Helped");
-    expect(sim.isCaptured("g5")).toBe(false);
-    expect(v(sim, "Trabolta.love")).toBeGreaterThanOrEqual(60);
-    expect(has(cues(t), "motorcycle")).toBe(true);
-  });
-
-  it("they thwarted him → everyone banished → the hand jive", { timeout: SLOW }, () => {
-    const sim = boot();
-    toBobbing(sim, { lie: true });
-    truthTxt(sim);
-    fire(sim, "ask_for_advice");
-    const visits = PROGRAMS.map(([g]) => v(sim, `${g}.internet_visits`));
-    const th = fire(sim, "advice_thwarted");
-    expect(v(sim, "Night.ending")).toBe("banished");
-    expect(v(sim, "Night.ended")).not.toBe(true);
-    for (const [g] of PROGRAMS) {
-      expect(sim.isCaptured(g), g).toBe(true);
-      expect(sim.holdsCodex(g, "The Hand Jive Exception"), g).toBe(true);
-    }
-    expect(replies(th).filter((r) => /banish/iu.test(r.text)).length >= 4 || texts(th).some((t) => /Antivirus/u.test(t))).toBe(true);
-    // T2-01 / T2-02: no reinstallation, no visit, and the TV keeps the banish card.
-    expect(beats(th)).not.toContain("Reinstallation");
-    expect(cues(th).filter((c) => c === "cue tv_mirror" || c === "cue tablet_wizard")).toEqual([]);
-    expect(v(sim, "Night.screen")).toBe("banish");
-    expect(cues(th).filter((c) => c.startsWith("cue screens_")).at(-1)).toBe("cue screens_banish");
-    expect(PROGRAMS.map(([g]) => v(sim, `${g}.internet_visits`))).toEqual(visits);
-    expect(replies(th).filter((r) => r.to === "g1").map((r) => r.text)).toContain("⛈ Banished to the Internet, with everyone else. Gerald cannot help you tonight. Remember what Trabolta let slip.");
-    // The duck frees nobody before the hand jive (g5 was in the Internet already, g1 banished).
-    fire(sim, "the simulation completed", "g5");
-    expect(sim.isCaptured("g5")).toBe(true);
-    const duck = fire(sim, "the simulation completed", "g1");
-    expect(sim.isCaptured("g1")).toBe(true);
-    expect(replies(duck).map((r) => r.text)).toContain("Gerald cannot help you: everyone is banished. The way out is the hand jive, together.");
-    // The games' second signal says nothing that reads as a release: no egg, no Golden Duck entry.
-    const egg = fire(sim, "the golden duck", "g1");
-    expect(replies(egg).filter((r) => r.to === "g1")).toEqual([]);
-    expect(learned(egg)).toEqual([]);
-    expect(sim.holdsCodex("g1", "The Golden Duck")).toBe(false);
-    const hj = fire(sim, "the_hand_jive");
-    expect(v(sim, "Night.ending")).toBe("hand_jive");
-    expect(v(sim, "Night.ended")).toBe(true);
-    for (const [g] of PROGRAMS) expect(sim.isCaptured(g), g).toBe(false);
-    expect(sim.questStatus("g4", "Find The Exit")).toBe("done");
-    const back = replies(hj).filter((r) => r.to === "g5").map((r) => r.text);
-    expect(back).toContain("!!🕺 The hand jive broke his hold. You are out of the Internet.");
-    expect(back.filter((t) => t.startsWith("Reinstallation complete"))).toEqual([]);
-  });
 });
 
 // ───────────────────────── 5 · Trabolta's powers ─────────────────────────
@@ -4087,21 +3931,17 @@ describe("Trapped in the Internet — the awards ceremony (K-25)", () => {
     expect(v(sim, "Night.award_winner")).toBe("none");
   });
 
-  it("an ending → Trabolta hosts in The Desktop; awards carry the winner's name and number", () => {
+  it("an ending → Clippy hosts in The Desktop; awards carry the winner's name and number", () => {
     const sim = ended("song");
     const s = g1(sim);
-    expect(v(sim, "Night.ceremony_host")).toBe("Trabolta");
+    expect(v(sim, "Night.ceremony_host")).toBe("Clippy");
     expect(beats(s)).toContain("The Ceremony");
     expect(cues(s)).toContain("cue screens_ceremony");
     expect(casts(s).map((c) => c.cue.replace(/^"|"$/gu, ""))).toEqual(["!🏆 THE AWARDS CEREMONY. Every program to the Desktop."]);
     expect(composeGuestMessages(sim, s).some((m) => m.alert === true)).toBe(true);
     // Wave 18b: The Night In Review, then The Ceremony's two opening lines.
     expect(beats(s).indexOf("The Night In Review")).toBeLessThan(beats(s).indexOf("The Ceremony"));
-    expect(desktop(sim, s).slice(-2)).toEqual([
-      "Trabolta: Programs. Before the prom, a ceremony. I kept score of every one of you tonight.",
-      "Trabolta: These are the awards of the night. When I say your name, come up to the screen and collect your trophy.",
-    ]);
-    expect(desktop(sim, s).every((l) => l.startsWith("Trabolta: "))).toBe(true);
+    expect(desktop(sim, s).every((l) => l.startsWith("Clippy: "))).toBe(true);
 
     sim.setVar("g1.trust", "42");
     const a = fire(sim, "award_most_trusted", "g1");
@@ -4148,8 +3988,8 @@ describe("Trapped in the Internet — the awards ceremony (K-25)", () => {
     expect(desktop(sim, fire(sim, "award_best_liar", "g4"))[0]).not.toContain("accepted:");
   });
 
-  it("the host changes per ending: Clippy after disabled, destroyed and rave, Trabolta otherwise", () => {
-    for (const [ending, host] of [["destroyed", "Clippy"], ["rave", "Clippy"], ["disabled", "Clippy"], ["song_pickup", "Trabolta"], ["hand_jive", "Trabolta"]] as const) {
+  it("the host changes per ending: Clippy on every road the night can reach (wave 59a: he has left)", () => {
+    for (const [ending, host] of [["destroyed", "Clippy"], ["rave", "Clippy"], ["disabled", "Clippy"], ["song_pickup", "Clippy"], ["song", "Clippy"], ["hand_jive", "Trabolta"]] as const) {
       const sim = ended(ending);
       const s = g1(sim);
       expect(v(sim, "Night.ceremony_host"), ending).toBe(host);
@@ -4189,7 +4029,7 @@ describe("Trapped in the Internet — the awards ceremony (K-25)", () => {
     const s = g1(sim);
     expect(beats(s)).toContain("The Ceremony");
     const a = fire(sim, "award_most_trusted", "g1");
-    expect(desktop(sim, a)[0]).toMatch(/^Trabolta: Most Trusted\. Trust score -?\d+\. Calculator\./u);
+    expect(desktop(sim, a)[0]).toMatch(/^Clippy: Award\. Most Trusted\./u);
   });
 });
 
@@ -4639,19 +4479,6 @@ describe("Trapped in the Internet — the WIP demo (DEMO.md)", () => {
     expect(v(sim, "Night.award_winner")).toBe("Calculator");
   });
 
-  it("ending B — the verdict: midnight → bobbing → truth.txt → Grok Prom → the pickup line (the DM) → the song", { timeout: SLOW }, () => {
-    const sim = demo();
-    fire(sim, "y2k_midnight");
-    expect(v(sim, "Night.phase")).toBe("final_reveal");
-    fire(sim, "bobbing_for_truth");
-    fire(sim, "brought_up_the_bag", "g3", null, "Adobe Acrobat");
-    const tt = truthTxt(sim);
-    expect(beats(tt)).toContain("Grok Prom"); // a confident lie on record
-    expect(widgets(tt).filter((w) => w.widget === "answer").map((w) => w.audience[0]).sort()).toEqual(["g1", "g2", "g3"]);
-    fire(sim, "answer answered", "g2", { question: "P1", text: "You're the one that I want", verdict: "accurate", card: 1 });
-    expect(v(sim, "Night.ending")).toBe("song_pickup");
-    expect(beats(g1(sim))).toContain("The Ceremony");
-  });
 });
 
 
@@ -5473,7 +5300,8 @@ describe("Trapped in the Internet — wave 5 (lane B): the takeover, the resurre
     const a = fire(sim, "award_the_painting", "g4");
     expect(cues(a)).toContain("cue screens_award_the_painting");
     const room = composeGuestMessages(sim, a).filter((m) => m.channel === "loc:The Desktop" && m.kind === "line").map((m) => `${m.from}: ${m.text}`);
-    expect(room).toEqual(["Trabolta: A bonus award. The Million Dollar Painting. Signed by 5 programs. MS Paint made one painting out of all of you. It goes to silent auction. Come and stand beside it."]);
+    expect(room).toHaveLength(1);
+    expect(room[0]).toContain("Million Dollar Painting");
     expect(diags(sim.log.since(0) as SimEvent[])).toEqual([]);
   });
 
@@ -5736,7 +5564,7 @@ describe("Trapped in the Internet — wave 6 (story lane)", () => {
   it("🌑 closes round 3's cards: an unfiled question becomes the closing card, and a filing after it is refused", { timeout: SLOW }, () => {
     const facts = (evs: SimEvent[]) => widgets(evs).filter((w) => w.widget === "fact" && w.audience[0] === "g6");
     const qs = (w: { params: Record<string, string> }) => (w.params["questions"] ?? "").split("|").map((q) => q.trim().split(":")[0]).filter(Boolean);
-    for (const [lie, ending] of [[false, "Song Ending"], [true, "Grok Prom"]] as const) {
+    for (const [lie, ending] of [[false, "Song Ending"], [true, "Song Ending"]] as const) {
       const sim = boot();
       let closed: ReturnType<typeof facts> = [];
       toBobbing(sim, {
@@ -6083,13 +5911,15 @@ describe("Trapped in the Internet — wave 8 (story lane)", () => {
     // The ceremony: G1, then the awards; G11 last.
     g1(late);
     expect(sheet(late).next).toBe("award_most_trusted");
-    // The verdict: the song goes to the ceremony; Grok Prom to 💔 / 💌.
+    // The verdict: a lie changes nothing, and G1 waits for the rave.
     for (const lie of [false, true]) {
       const sim = boot();
       toBobbing(sim, { lie });
       expect(sheet(sim).next).toBe("read_truth_txt");
       truthTxt(sim);
-      expect(sheet(sim), `lie ${lie}`).toEqual({ last: "the_verdict", next: lie ? "no_pickup_line" : "tell_the_truth" });
+      expect(sheet(sim), `lie ${lie}`).toEqual({ last: "the_verdict", next: null });
+      advance(sim, 171);
+      expect(sheet(sim).next, `lie ${lie}`).toBe("start_the_ceremony");
     }
   });
 
@@ -6101,19 +5931,7 @@ describe("Trapped in the Internet — wave 8 (story lane)", () => {
     expect(said).not.toContain("already in");
   });
 
-  it("integration: the hand jive takes EVERYONE TO THE INTERNET off the screens", { timeout: SLOW }, () => {
-    const sim = boot();
-    toBobbing(sim, { lie: true });
-    truthTxt(sim);
-    fireAll(sim, "ask_for_advice", "advice_thwarted");
-    expect(v(sim, "Night.screen")).toBe("banish");
-    const jive = fire(sim, "the_hand_jive");
-    expect(cues(jive)).toContain("cue screens_screensaver");
-    expect(v(sim, "Night.screen")).toBe("screensaver");
-    expect(v(sim, "Night.terminals")).toBe("screensaver");
-  });
-
-  it("T6-01: 📄 puts truth.txt up and holds it; ⚖ the verdict plays the song or Grok Prom", { timeout: SLOW }, () => {
+  it("T6-01: 📄 puts truth.txt up and holds it; ⚖ plays the full truth and the ending", { timeout: SLOW }, () => {
     const m = fresh().model;
     const admin = [...m.interactions.values()].filter((i) => i.who === "admin").map((i) => i.id);
     expect(admin.indexOf("the_verdict")).toBe(admin.indexOf("read_truth_txt") + 1);
@@ -6125,7 +5943,7 @@ describe("Trapped in the Internet — wave 8 (story lane)", () => {
       expect(cues(rt)).toContain("cue screens_truth_txt");
       expect(cues(rt).filter((c) => /lights_song|screens_song|youre_the_one_vocoder|screens_grok_prom/u.test(c))).toEqual([]);
       expect(beats(rt)).toContain("Truth Txt");
-      expect(beats(rt).filter((b) => ["The Verdict", "Song Ending", "Grok Prom"].includes(b))).toEqual([]);
+      expect(beats(rt).filter((b) => ["The Full Truth", "Song Ending", "Grok Prom"].includes(b))).toEqual([]);
       expect(widgets(rt).filter((w) => w.widget === "answer")).toEqual([]);
       expect(v(sim, "Night.screen")).toBe("truth_txt");
       expect(v(sim, "Night.r3_closed")).toBe(true);
@@ -6133,10 +5951,9 @@ describe("Trapped in the Internet — wave 8 (story lane)", () => {
       // Adobe's readout says who presses ⚖.
       expect(replies(rt).filter((r) => r.to === "Adobe Acrobat").map((r) => r.text)).toEqual(["📄 Hand the bobber the truth.txt printout. They read it aloud; when they finish, the director presses ⚖ for the verdict."]);
       const vd = fire(sim, "the_verdict");
-      expect(beats(vd), String(lie)).toContain(lie ? "Grok Prom" : "Song Ending");
-      expect(widgets(vd).filter((w) => w.widget === "answer").map((w) => w.audience[0]).sort()).toEqual(PROGRAMS.map(([id]) => id).sort());
+      expect(beats(vd), String(lie)).toContain("Song Ending");
       // Once only.
-      expect(beats(fire(sim, "the_verdict"))).toEqual([]);
+      expect(beats(sim.signal("the_verdict"))).toEqual([]);
     }
     // Before truth.txt it does nothing.
     const early = boot();
@@ -6178,15 +5995,12 @@ describe("Trapped in the Internet — wave 8 (story lane)", () => {
     const gen = v(bob, "Night.settle_gen");
     refused(bob, "read_truth_txt", "📄 Already read: press ⚖ for the verdict when the bobber has finished. Nothing happens.");
     expect(v(bob, "Night.settle_gen")).toBe(gen);
-    // T2-10: G1 while banished says why (banished is not an ending).
+    // G1 twice.
     const ban = boot();
-    toBobbing(ban, { lie: true });
+    toBobbing(ban);
     truthTxt(ban);
-    fireAll(ban, "ask_for_advice", "advice_thwarted");
-    refused(ban, "start_the_ceremony", "🏆 No ceremony yet: banished is not an ending (🕺 the hand jive first). Nothing happens.");
-    expect(v(ban, "Night.ceremony")).toBe(false);
-    fire(ban, "the_hand_jive");
-    expect(beats(g1(ban))).toContain("The Ceremony");
+    fire(ban, "start_the_ceremony");
+    expect(beats(fire(ban, "start_the_ceremony"))).toContain("The Ceremony");
     refused(ban, "start_the_ceremony", "🏆 The ceremony has already started. Nothing happens.");
   });
 
@@ -6258,50 +6072,6 @@ describe("Trapped in the Internet — wave 8 (story lane)", () => {
     expect(sim.isCaptured("g5")).toBe(false);
   });
 
-  it("T1-03: the song after a pickup line never says every fact was true", { timeout: SLOW }, () => {
-    const TRUE = "Every fact you gave me was true, and the truth tells me what to say to her. You're the one that I want.";
-    const song = boot();
-    toBobbing(song);
-    expect(lines(truthTxt(song), "Trabolta")).toContain(TRUE);
-    const prom = boot();
-    toBobbing(prom, { lie: true });
-    truthTxt(prom);
-    const pl = fire(prom, "answer answered", "g3", { question: "P1", text: "You're the one that I want", verdict: "accurate", card: 1 });
-    expect(v(prom, "Night.ending")).toBe("song_pickup");
-    expect(lines(pl, "Trabolta")).not.toContain(TRUE);
-    expect(lines(pl, "Trabolta")).toContain("Not every fact you gave me was true. But that line was, and it tells me what to say to her. You're the one that I want.");
-  });
-
-  it("T2-06: a pickup line after the rave or during the advice poll / banishment celebrates nothing", { timeout: SLOW }, () => {
-    const P1 = (sim: Sim, g: string) => fire(sim, "answer answered", g, { question: "P1", text: "You're the one that I want", verdict: "accurate", card: 1 });
-    const rave = boot();
-    toBobbing(rave, { lie: true });
-    truthTxt(rave);
-    fire(rave, "no_pickup_line");
-    const r = P1(rave, "g3");
-    expect(casts(r)).toEqual([]);
-    expect(lines(r, "Trabolta")).toEqual([]);
-    expect(replies(r).map((x) => x.text)).toEqual(["Trabolta has ridden away. Nobody reads your line."]);
-    expect(v(rave, "Night.line_by")).toBe("none");
-    expect(v(rave, "Night.ending")).toBe("rave");
-    const adv = boot();
-    toBobbing(adv, { lie: true });
-    truthTxt(adv);
-    fire(adv, "ask_for_advice");
-    const a = P1(adv, "g3");
-    expect(casts(a)).toEqual([]);
-    expect(lines(a, "Trabolta")).toEqual(["Too late for lines, OpenOffice."]);
-    expect(v(adv, "Night.line_by")).toBe("none");
-    expect(v(adv, "Night.ended")).toBe(false);
-    fire(adv, "advice_thwarted");
-    expect(casts(P1(adv, "g4"))).toEqual([]);
-    // The song still celebrates the first correct line (flavour).
-    const song = boot();
-    toBobbing(song);
-    truthTxt(song);
-    expect(casts(P1(song, "g3")).map((b) => b.cue)).toEqual(['"~💘 OpenOffice knew the line."']); // wave 13: a per-person notice
-  });
-
   it("T2-03: once truth.txt is read the server room is quiet: the patch bay and the door only tell # hosts", { timeout: SLOW }, () => {
     const QUIET = ["patch_combo_a", "patch_combo_b", "patch_rejected", "server_door_opened"];
     const quiet = (sim: Sim, where: string) => {
@@ -6318,17 +6088,11 @@ describe("Trapped in the Internet — wave 8 (story lane)", () => {
       expect(v(sim, "Night.phase"), where).toBe(phase);
       expect(v(sim, "Night.wrong_combos"), where).toBe(0);
     };
-    // Between 📄 and ⚖, then Grok Prom, the advice poll and the banishment.
+    // Between 📄 and ⚖, and through the full truth.
     const sim = boot();
     toBobbing(sim, { lie: true });
     fire(sim, "read_truth_txt");
     quiet(sim, "truth.txt");
-    fire(sim, "the_verdict");
-    quiet(sim, "grok_prom");
-    fire(sim, "ask_for_advice");
-    quiet(sim, "advice");
-    fire(sim, "advice_thwarted");
-    quiet(sim, "banished");
     // His heart's talk is over too (wave 20: core/test/trapped-heart.test.ts).
     // Before truth.txt (the bob) a combo still ends the night.
     const b = boot();

@@ -212,6 +212,10 @@ export function showSecrets(show: Show): string[] {
         add(a.answer);
         for (const x of a.accept) add(x);
       }
+      for (const d of f.documents ?? []) {
+        add(d.codex.code);
+        for (const g of d.guard ?? []) add(g);
+      }
       for (const x of f.facts) {
         add(x.code);
         add(x.codex?.code);

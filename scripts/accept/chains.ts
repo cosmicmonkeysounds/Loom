@@ -54,13 +54,14 @@ export const Y2K_TO_DISABLED: readonly ChainStep[] = ["patch_combo_a"];
 /** After 🕚, Combo B without the cables (💥, the hardware fallback): `destroyed`. */
 export const Y2K_TO_DESTROYED: readonly ChainStep[] = ["patch_combo_b", "clippy_reads_summary"];
 
-/** After every ending's last beat (wave 58): 📜, the monologue. G1 then waits
+/** After Combo A or B (wave 58): 📜, the monologue, then the rave. G1 then waits
  *  for it: its first press only asks while the reader is at it. */
 export const THE_FULL_TRUTH: readonly ChainStep[] = ["tell_the_truth"];
 
-/** After 🕚, midnight's road: 🌑 → 🍎 → the bag (on the bobber) → 📄 → ⚖.
- *  The verdict then waits ~37 s (finale.loom), after about 70 s of 8-B if nobody found the last answer: every answered fact accurate
- *  → the song (`song`); any lie on record → Grok Prom (below). */
+/** After 🕚, midnight's road: 🌑 → 🍎 → the bag (on the bobber) → 📄 → ⚖, which
+ *  plays the full truth (830 s, `Night.truth_until`). The last answer then
+ *  decides: found, 8-A; nobody found it, 8-B and two minutes of lines. The song
+ *  and the rave follow by themselves (finale.loom). */
 export const Y2K_TO_VERDICT: readonly ChainStep[] = [
   "final_reveal",
   "bobbing_for_truth",
@@ -68,13 +69,6 @@ export const Y2K_TO_VERDICT: readonly ChainStep[] = [
   "read_truth_txt",
   "the_verdict",
 ];
-
-/** Grok Prom → nobody has the line: the confession and the rave (`rave`). */
-export const GROK_TO_RAVE: readonly ChainStep[] = ["no_pickup_line"];
-
-/** Grok Prom → 💌 the advice poll; the room votes Help / Thwart, then 🗳. */
-export const GROK_TO_ADVICE: readonly ChainStep[] = ["ask_for_advice"];
-export const ADVICE_TALLY: readonly ChainStep[] = ["advice_tally"];
 
 /** The awards ceremony, after any ending and 📜 (with the reading over; a
  *  caller who won't wait presses G1 once first, the ask): G1, the programs'

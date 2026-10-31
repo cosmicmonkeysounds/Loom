@@ -7400,6 +7400,11 @@ export class EventRuntime {
           sendJson(res, 400, { error: "bad fact filing" });
           return true;
         }
+        // Wave 59a: he reads filings and pickup lines aloud, on the room's TV.
+        for (const k of ["answer", "text"] as const) {
+          const said = args[k];
+          if ((m.widget.kind === "fact" || m.widget.kind === "answer") && typeof said === "string") args[k] = this.unsaidMasked(said);
+        }
         if (!this.widgetAnswers.take(id)) {
           sendJson(res, 429, { error: "slow down — wait a minute" });
           return true;

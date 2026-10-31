@@ -70,12 +70,12 @@ function boot(programs: Array<[string, string]> = PROGRAMS): Sim {
   for (const [id, name] of programs) upload(sim, id, name);
   return sim;
 }
-/** Wave 18b: ⚖'s ending follows The Verdict's TV pages (34 s of story
- *  time, the `verdict_wait` rule), so a press of it here ticks past them. */
-const VERDICT_PAGES_S = 110;
+/** Wave 59a: ⚖ plays the full truth, then 8-A or 8-B follow by themselves, so a
+ *  press of it here ticks past them to the song. */
+const VERDICT_PAGES_S = [831, 77]; // the full truth, then 8-A, to the song
 const pastTheVerdict = (sim: Sim, name: string): SimEvent[] => {
   const out: SimEvent[] = [];
-  if (name === "the_verdict") for (let i = 0; i < VERDICT_PAGES_S; i++) out.push(...sim.tick(1000));
+  if (name === "the_verdict") for (const seconds of VERDICT_PAGES_S) out.push(...sim.tick(seconds * 1000));
   return out;
 };
 const fire = (sim: Sim, name: string, subject: string | null = null, args: Args | null = null, actor?: string) => [...sim.signal(name, subject ?? undefined, args, actor), ...pastTheVerdict(sim, name)];

@@ -55,10 +55,6 @@ CHARACTER Kernel
   q8_hunt: text? = none
   q9_hunt: text? = none
   lies_accepted: 0 to 50 = 0
-  all_accurate: bool = false
-  // Wave 18b: The Verdict is on the TV; the ending waits for its pages.
-  verdict_wait: bool = false
-  verdict_end: 0 to 1000000 = 0
   said_1: text? = none
   said_2: text? = none
   said_3: text? = none
@@ -86,9 +82,9 @@ CHARACTER Kernel
   res_unsure: text? = none
   res_found: 0 to 999 = 0
   res_sure: 0 to 999 = 0
-  // Wave 59a: the Truth Leaderboard (main.loom), and the wait 8-B holds the
-  // verdict for. The verdict's per-question truths are below (accurate | lie |
-  // none, published with `do fact_truth`), then its totals.
+  // Wave 59a: the Truth Leaderboard (main.loom), and every line 8-B collected
+  // on the card. The verdict's per-question truths are below (accurate | lie |
+  // none, published with `do fact_truth`).
   board_gen: 0 to 999 = 0
   board_read: 0 to 999 = 0
   board_for: 0 to 3 = 0
@@ -97,8 +93,8 @@ CHARACTER Kernel
   lb_2: text? = none
   lb_3: text? = none
   lb_line: text? = none
-  unfound_wait: bool = false
-  unfound_end: 0 to 1000000 = 0
+  lines_said: text? = none
+  lines_n: 0 to 999 = 0
   t1: text? = none
   t2: text? = none
   t3: text? = none
@@ -108,9 +104,6 @@ CHARACTER Kernel
   t7: text? = none
   t8: text? = none
   t9: text? = none
-  v_true: 0 to 9 = 0
-  v_lies: 0 to 9 = 0
-  v_none: 0 to 9 = 0
   virus_planted: bool = false
   excel_planted: bool = false
   virus_planter: text? = none

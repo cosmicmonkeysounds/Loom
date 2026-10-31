@@ -2761,29 +2761,18 @@ ROLE Program
   // director fires `pickup_line_accepted` with the subject.
   when Night.pickup_gen > self.pickup_seen and self.cleared == true:
     set self.pickup_seen = Night.pickup_gen
-    show answer "Give me a pickup line that works on Sandy. One line. I cannot tell a good one myself: say it here, and the house will judge it." to program with thread: Trabolta, question: "P1", max: 120, button: "Say it", moment: big
+    show answer "What should I say to her?" to program with thread: Trabolta, question: "P1", max: 120, button: "Say it", moment: big
 
-  // Only Grok Prom and the song hear it: after the rave he has ridden away,
-  // and the advice poll, the banishment and the hand jive have moved on
-  // from the line (a card answered late gets a quiet "too late").
+  // Wave 59a: every line is kept and none wins: nothing is judged, and he reads
+  // them all out. Out of the two minutes a card answered late gets a quiet
+  // "too late".
   when answer answered for program:
     if question == "P1":
-      if Night.phase != "grok_prom" and Night.ending != "song" and Night.ending != "song_pickup":
-        if Night.ending == "rave":
-          reply Trabolta has ridden away. Nobody reads your line.
-        else:
-          Trabolta: Too late for lines, {program.name}.
-      else if verdict == "accurate" and Night.line_by == "none":
-        if Night.phase == "grok_prom" and Night.ended != true:
-          fire pickup_line_accepted for program
-        else:
-          set Night.line_by = program.name
-          Trabolta: The house says YES. That is the line, {program.name}.
-          broadcast "~💘 {program.name} knew the line." to everyone
-      else if verdict == "accurate":
-        Trabolta: {Night.line_by} said it first, {program.name}. But the house says yes: that is the line.
+      if Night.lines_open == true:
+        set Kernel.lines_said = Kernel.lines_said + program.name + " recommended I try: “" + text + "”. "
+        set Kernel.lines_n += 1
       else:
-        Trabolta: The house says no. That is not the line.
+        Trabolta: Too late for lines, {program.name}.
     // Wave 41 (C1): the problem form's write-in. Answered before the
     // deposit box is offered (Upload stops at the card), so it is never
     // mistaken for the deposit's record below. DRAFT w41.
@@ -3668,13 +3657,14 @@ INTERACTION read_truth_txt
 INTERACTION the_verdict
   label: ⚖ truth.txt read → the verdict
   who: admin
-  description: When the bobber has finished reading truth.txt. If nobody found the last answer he speaks first (about a minute), then the verdict. Every answered fact accurate → the song; any lie on record → Grok Prom.
-  while: Night.phase == "bobbing" and Night.ended != true
+  description: When the bobber has finished reading truth.txt. Trabolta reads the full truth on the TV, about 14 minutes, then the last answer decides: found, he has his news; nobody found it, the pickup lines. The ending, the song and the rave follow by themselves. The lies stay on the record, for trust, the recap and the screens.
+  while: Night.phase == "bobbing" and Night.ended != true and Night.truth_told != true
 
 INTERACTION no_pickup_line
-  label: 💔 Nobody has the line → confession → rave
+  label: 💬 Close the pickup lines now (auto at 2 min)
   who: admin
-  while: Night.phase == "grok_prom" and Night.ended != true
+  description: Only when nobody found the last answer: he gives everyone two minutes for a line, on the card, then reads them all. Nothing is judged. This ends the two minutes early.
+  while: Night.lines_open == true
 
 INTERACTION ask_for_advice
   label: 💌 (Alt, after a lie → Grok Prom) Trabolta begs for relationship advice
@@ -3725,7 +3715,7 @@ INTERACTION own_award_lines
 INTERACTION tell_the_truth
   label: G0 · 📜 The full truth: the monologue (after the ending's last beat)
   who: admin
-  description: Press it once the ending has had its moment: the song, the hand jive, the dance, 🪦 Clippy's summary. After the song, the pickup line, the helped ending and the hand jive Trabolta reads his own file on the TV. After the rave he phones it in from Computer Prom: press ■ Stop house sounds first, or the track plays over him (it never ducks). After Combo A or Combo B Task Manager reads it off the teleprompter, a message he left behind. About 12 minutes on the TV, 14 on the teleprompter, and it is clean: leave 🌀 His voice on Auto or Clean, and no shots. NEXT moves to G1 when it should be over; a press of G1 before then asks first.
+  description: Combo A and Combo B only: press it once the dance or 🪦 has had its moment, and Task Manager reads the monologue off the teleprompter; the rave follows when the read is done. On the verdict ⚖ plays it, so this row stays grey.
   while: Night.ended == true and Night.truth_told != true and Night.ceremony != true and Night.dance_at == 0 and (Night.ending != "destroyed" or Night.summary_read == true)
 
 INTERACTION task_manager_reads
@@ -3733,14 +3723,14 @@ INTERACTION task_manager_reads
   who: admin
   sequence: false
   description: The fallback for G0 on Trabolta's endings: the TV has no voice, or he has dropped out mid-way (mute the TV so the two don't overlap). Task Manager's teleprompter pops up with the whole monologue. He has a printed copy in his pack, and ⊞ Start → My script reopens it on any phone signed in to the part.
-  while: Night.ended == true and Night.ceremony != true and Night.truth_reader != "Task Manager" and Night.ending != "disabled" and Night.ending != "destroyed"
+  while: (Night.ended == true or Night.truth_first == true) and Night.ceremony != true and Night.truth_reader != "Task Manager" and Night.ending != "disabled" and Night.ending != "destroyed"
 
 INTERACTION start_the_ceremony
   label: G1 · 🏆 Start the awards ceremony (after the ending)
   who: admin
-  description: Only once the night has ended, and after G0, the full truth. Before it, or while it is being read, a press asks first: a second press within 30 seconds starts anyway. Trabolta hosts; Clippy hosts after Combo A, Combo B and the rave, and reads every line aloud. The three staff awards (G10a–c) come after the programs' awards.
+  description: Only once the rave is on, after the full truth. Press ■ Stop house sounds first. Before that a press asks first: a second press within 30 seconds starts anyway. Clippy hosts every ending the night can reach, and reads the lines Trabolta would.
   // Wave 58: NEXT waits for the monologue, never the press.
-  while: Night.ended == true and Night.ceremony != true and Night.truth_told == true and Time.elapsed >= Night.truth_until
+  while: Night.ended == true and Night.ceremony != true and Night.truth_told == true and Time.elapsed >= Night.truth_until and Night.raved == true
 
 INTERACTION award_most_trusted
   label: G2 · 🥇 Award: Most Trusted (winner = top trust)
@@ -6521,6 +6511,15 @@ when final_reveal:
 // the two never run in one pass.
 when Night.reveal_stage == 2:
   set Night.reveal_stage = 0
+set Night.truth_first = false
+set Night.lines_open = false
+set Night.lines_end = 0
+set Night.ask_at = 0
+set Night.back_at = 0
+set Night.song_at = 0
+set Night.rave_at = 0
+set Night.raved = false
+set Kernel.lines_said = ""
   set Night.rank_round = 2
   set Night.most_trusted = "none"
   set Night.least_trusted = "none"
@@ -6577,19 +6576,21 @@ when read_truth_txt:
   else:
     broadcast "📄 Only during Bobbing for Truth (🍎 first). Nothing happens." to channel(hosts)
 
-// Wave 59a: if nobody found the last answer, 8-B plays first and the verdict
-// waits for it (the voice's time for its lines). If someone did, the script's
-// 8-A is blank: straight on.
+// Wave 59a: ⚖ is the record, then the full truth. The last answer decides what
+// follows, not the lies, which stay on the record for trust, the recap and the
+// screens. `Night.truth_first` says the monologue is being read ahead of its
+// ending: `Night.ended` stays false for it. The next beat starts when
+// `Night.truth_until` has passed, never in the drain that lands his 18 lines, or
+// the TV (the newest MAX_VOICE_LINES of a poll) would lose them. 📜 Task Manager
+// moves `Night.truth_until` and the ending still follows.
 when the_verdict:
-  if Kernel.verdict_wait == true or Kernel.unfound_wait == true:
-    broadcast "⚖ The verdict is on the TV now; the ending follows when its pages are done. Nothing happens." to channel(hosts)
+  if Night.truth_told == true:
+    // DRAFT w59a
+    broadcast "⚖ The full truth is being read; the ending follows by itself. Nothing happens." to channel(hosts)
   else if Night.phase == "bobbing" and Night.r3_closed == true and Night.ended != true:
-    if count([p for p in Persons where p.fact_v9 == "accurate" or (p.fact_v9 == "pending" and p.fact_j9 == "accurate") or (p.judged_q9 == true and p.hunt_lie_q9 != true)]) == 0:
-      set Kernel.unfound_wait = true
-      set Kernel.unfound_end = Time.elapsed + 70
-      -> Nobody Found It
-    else:
-      -> The Verdict
+    -> Verdict Record
+    set Night.truth_first = true
+    fire the_truth_spoken
   else if Night.phase == "bobbing":
     broadcast "⚖ Not yet: 📄 Read truth.txt first. Nothing happens." to channel(hosts)
   else if Night.ended == true or Night.r3_closed == true:
@@ -6597,40 +6598,71 @@ when the_verdict:
   else:
     broadcast "⚖ Not yet: 🍎 Bobbing for Truth, then 📄 truth.txt first. Nothing happens." to channel(hosts)
 
-when Kernel.unfound_wait == true and Time.elapsed >= Kernel.unfound_end:
-  set Kernel.unfound_wait = false
-  if Night.ended != true:
-    -> The Verdict
+// The phase stays `finale_truth` through 8-A and 8-B: his voice stays clean.
+when Night.truth_first == true and Time.elapsed >= Night.truth_until:
+  set Night.truth_first = false
+  set Night.phase = "finale_truth"
+  if count([p for p in Persons where p.fact_v9 == "accurate" or (p.fact_v9 == "pending" and p.fact_j9 == "accurate") or (p.judged_q9 == true and p.hunt_lie_q9 != true)]) > 0:
+    -> Truth Found
+  else:
+    -> Nobody Found It
+    set Night.ask_at = Time.elapsed + 105
 
-// Wave 18b (screens #3): the ending once the verdict's TV pages are
-// done (The Verdict sets the wait; ≈ 34 s of story time).
-when Kernel.verdict_wait == true and Time.elapsed >= Kernel.verdict_end:
-  set Kernel.verdict_wait = false
-  if Night.ended != true:
-    if Kernel.all_accurate == true:
-      -> Song Ending
-    else:
-      -> Grok Prom
+// 8-B: his [pause] is the 6 s past his speech (the voice's time for its lines).
+when Night.ask_at > 0 and Time.elapsed >= Night.ask_at:
+  set Night.ask_at = 0
+  -> Ask Her For A Dance
+  set Night.lines_open = true
+  set Night.lines_end = Time.elapsed + 120
+  set Night.pickup_gen += 1
 
+when Night.lines_open == true and Time.elapsed >= Night.lines_end:
+  fire no_pickup_line
+
+// 8-B: the two minutes are up (or 💬): every line read, then he goes. His
+// disappearing is the screens' one-second flicker, when the voice has done.
+when no_pickup_line:
+  if Night.lines_open == true:
+    set Night.lines_open = false
+    -> Read The Lines
+    set Night.back_at = Time.elapsed + 34 + Kernel.lines_n * 7
+  else:
+    broadcast "💬 Only while the pickup lines are open (nobody found the last answer). Nothing happens." to channel(hosts)
+
+when Night.back_at > 0 and Time.elapsed >= Night.back_at:
+  set Night.back_at = 0
+  cue screens_flicker
+  -> She Said Yes
+
+// After his last line: the first of the tracks he selected, then the rave.
+when Night.song_at > 0 and Time.elapsed >= Night.song_at:
+  set Night.song_at = 0
+  if Night.ceremony != true:
+    -> Song Ending
+
+when Night.rave_at > 0 and Time.elapsed >= Night.rave_at:
+  set Night.rave_at = 0
+  fire the_rave
+
+// Combo A and Combo B keep their monologue: the rave follows Task Manager's read,
+// on the signal that lets G1 come up.
+when Night.truth_told == true and (Night.ending == "disabled" or Night.ending == "destroyed") and Time.elapsed >= Night.truth_until:
+  fire the_rave
+
+// The rave, in every ending. Sad Confession's cues, without the motorcycle.
+when the_rave:
+  if Night.raved != true and Night.ceremony != true:
+    set Night.raved = true
+    -> The Rave
+
+// Grok Prom, the advice poll, the hand jive: the verdict reaches none of them now
+// (wave 59a), and their cue rows stay, greyed by their `while:`.
 // F5: someone gave him the line (ROLE `pickup_line_accepted`). Guarded
 // like its caller: a stray director press after an ending (or the
 // ceremony) does nothing, instead of re-running the Song Ending.
 when line_accepted:
   if Night.phase == "grok_prom" and Night.ended != true:
     -> Pickup Line
-
-// F6: nobody has the line. He takes his shot anyway; everyone is trapped.
-when no_pickup_line:
-  if Night.phase == "grok_prom" and Night.ended != true:
-    set Night.ended = true
-    set Night.ending = "rave"
-    set Night.phase = "finale_rave"
-    set Night.step = 19
-    cue music_off
-    set Night.music = "off"
-    -> Sad Confession
-  else:
-    broadcast "💔 Only in Grok Prom (after ⚖ with a lie on record). Nothing happens." to channel(hosts)
 
 // F7: the alternate relationship-advice ending, only after a failed
 // verdict (Grok Prom).
@@ -6739,7 +6771,7 @@ when tell_the_truth:
 
 // 📜 on Trabolta's endings when the TV has no voice. Also stands in for G0.
 when task_manager_reads:
-  if Night.ended != true:
+  if Night.ended != true and Night.truth_first != true:
     // DRAFT w58
     broadcast "📜 Not yet: the night has not ended. Nothing happens." to channel(hosts)
   else if Night.ceremony == true:
@@ -6811,7 +6843,7 @@ when the_truth_spoken:
     cue lights_restore
     set Night.lights = "restore"
   // DRAFT w58
-  broadcast "📜 Trabolta reads the full truth on the TV, about 12 minutes, clean: leave 🌀 His voice on Auto or Clean, and no shots. If the TV has no voice: 📜 Task Manager reads it instead. NEXT moves to G1 when it should be over: wait for his last word before you press it." to channel(hosts)
+  broadcast "📜 Trabolta reads the full truth on the TV, about 14 minutes, clean: leave 🌀 His voice on Auto or Clean, and no shots. If the TV has no voice: 📜 Task Manager reads it instead. The ending follows by itself when it is over." to channel(hosts)
   // DRAFT w58
   // DRAFT w59 (in-world room name)
   broadcast "!📜 THE FULL TRUTH. To the Desktop." to everyone with go: The Desktop
@@ -6825,16 +6857,19 @@ when the_truth_spoken:
 // The award events are ROLE hooks (main.loom, ROLE Program); each ends
 // in `present_award`, which shows the award slide and the host's line.
 when start_the_ceremony:
-  if Night.ended == true and Night.ceremony != true and (Night.truth_told != true or Time.elapsed < Night.truth_until) and (Night._ceremony_ask_at == 0 or Time.elapsed > Night._ceremony_ask_at + 30):
+  if Night.ended == true and Night.ceremony != true and (Night.truth_told != true or Time.elapsed < Night.truth_until or Night.raved != true) and (Night._ceremony_ask_at == 0 or Time.elapsed > Night._ceremony_ask_at + 30):
     // Wave 58: a mis-press until confirmed, like G11's (the lines would queue
     // behind him on the TV, and the review assumes the monologue was told).
     set Night._ceremony_ask_at = Time.elapsed + 1
     if Night.truth_told != true:
       // DRAFT w58
       broadcast "🏆 The full truth hasn't been told (G0, 📜). Press G1 again within 30 seconds to skip it." to channel(hosts)
-    else:
+    else if Time.elapsed < Night.truth_until:
       // DRAFT w58
       broadcast "🏆 {Night.truth_reader} is still reading the full truth. Press G1 again within 30 seconds to start anyway." to channel(hosts)
+    else:
+      // DRAFT w59a
+      broadcast "🏆 The rave hasn't started. Press G1 again within 30 seconds to start anyway." to channel(hosts)
   else if Night.ended == true and Night.ceremony != true:
     set Night.ceremony = true
     set Night.alerts = "sticky"
@@ -6846,7 +6881,8 @@ when start_the_ceremony:
     set Night.recount = true
     if Night.ending == "disabled":
       set Night.everyone_free = true
-    if Night.ending == "destroyed" or Night.ending == "rave" or Night.ending == "disabled":
+    // Wave 59a: 8-A and 8-B end "I'm off to see my lady": he has left.
+    if Night.ending == "destroyed" or Night.ending == "rave" or Night.ending == "disabled" or Night.ending == "song" or Night.ending == "song_pickup":
       set Night.ceremony_host = "Clippy"
     else:
       set Night.ceremony_host = "Trabolta"
@@ -7430,6 +7466,15 @@ set Night.award_lines = "template"
 set Night.prize_gen = 0
 set Night.count_gen = 0
 set Night.reveal_stage = 0
+set Night.truth_first = false
+set Night.lines_open = false
+set Night.lines_end = 0
+set Night.ask_at = 0
+set Night.back_at = 0
+set Night.song_at = 0
+set Night.rave_at = 0
+set Night.raved = false
+set Kernel.lines_said = ""
 set Night.rank_stage = 0
 set Night.second_trusted = "none"
 set Night.third_trusted = "none"

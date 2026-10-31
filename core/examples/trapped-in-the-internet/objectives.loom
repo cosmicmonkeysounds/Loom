@@ -316,14 +316,15 @@ OBJECTIVE Bobbing For Truth
   text:
     Nothing happens until someone brings up the Bag of Truth. Then truth.txt is read aloud.
 
+// DRAFT w59a
 OBJECTIVE The Pickup Line
   for: Program
-  while: Night.phase == "grok_prom" and program.cleared == true
+  while: Night.lines_open == true and program.cleared == true
   act: F
-  title: Give Trabolta a pickup line that works on Sandy
+  title: What should he say to her?
   go: Trabolta
   text:
-    The card is in his thread. One line. The house judges it. It is the only way out.
+    The card is in his thread. One line. Two minutes.
 
 OBJECTIVE Help Or Thwart
   for: Program
