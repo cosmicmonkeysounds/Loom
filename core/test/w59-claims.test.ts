@@ -269,7 +269,9 @@ describe("released means", () => {
     expect(feed.frames.join("")).toContain('"kind":"released"');
     const old = await guestState(rt, a.token);
     expect(old.status).toBe(401);
+    // The phone reads this very string (`play/src/lifecycle.ts`).
     expect(old.json.error).toBe(SIGNED_OUT);
+    expect(SIGNED_OUT).toBe("signed out on this phone");
     const b = await enter(rt, { badge: code });
     expect(b.status).toBe(200);
     expect(b.json).toMatchObject({ resumed: true, id: a.id });
@@ -427,11 +429,14 @@ describe("a lost phone", () => {
     const rt = open();
     const part = await partOf(rt, "Clippy");
     const a = await staffBadge(rt, part);
+    const feed = stream(rt, `role=prime&token=${a.json.token}`);
     expect((await staffBadge(rt, part)).status).toBe(409);
     const ask = await post(rt, "/api/guest/rejoin", { passcode: CODES.event, part });
     expect(ask.json).toMatchObject({ ok: true, name: "Clippy" });
     const row = await approve(rt, ask.json.request);
     expect(row).toMatchObject({ name: "Clippy", held: true, part: true });
+    expect(feed.ended).toBe(true);
+    expect(feed.frames.join("")).toContain('"kind":"released"');
     expect((await boothState(rt, a.json.token)).status).not.toBe(200);
     const got = await post(rt, "/api/guest/rejoin/poll", { request: ask.json.request });
     expect(got.json).toMatchObject({ state: "approved", part: true, character: "Clippy", host: false });

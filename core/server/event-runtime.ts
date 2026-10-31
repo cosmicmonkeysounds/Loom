@@ -5035,6 +5035,8 @@ export class EventRuntime {
       if (c.role !== "prime" || c.id !== character || c.via !== undefined) continue;
       this.clients.delete(c);
       try {
+        // Told at once: a reconnect's 401 takes the phone seconds (wave 59).
+        sseSend(c.res, "lifecycle", { kind: "released", at: Date.now() });
         c.res.end();
       } catch {
         /* client already gone */
