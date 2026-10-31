@@ -50,7 +50,7 @@ crates are the original one and lag far behind it.
 | `examples/` | Reference `.loom` projects | — |
 | `mind/` | Superseded by stagehand `agents`; awaiting deletion | — |
 | `simulator/` | Old, kept runnable | its `README.md` |
-| `scripts/` | `dev.mjs`, `ops/` (predeploy, ship, backups, checklist), `accept/` (per-item device checks), `show/` (`showctl`), `sim/` (the full-evening bots), `house-desktop/` (Windows runbook), `house-macbook/` (macOS runbooks), `server-room/` (whisper.cpp on Steph's laptop) | `scripts/show/`, `scripts/accept/`, `scripts/sim/`, `scripts/house-desktop/` READMEs |
+| `scripts/` | `dev.mjs`, `ops/` (predeploy, ship, backups, checklist), `accept/` (per-item device checks), `show/` (`showctl`), `sim/` (the full-evening bots), `house-desktop/` (Windows runbook), `house-macbook/` (macOS runbooks), `server-room/` (whisper.cpp and the kiosk on Steph's laptop) | `scripts/show/`, `scripts/accept/`, `scripts/sim/`, `scripts/house-desktop/` READMEs |
 | `deploy/` | VPS release, rollback, backup and restore scripts + the Caddyfile | `docs/loom-docker-deploy.md` |
 | `docs/` | Design docs, specs, runbooks, in-app help, history | `docs/README.md` |
 
@@ -164,7 +164,7 @@ are in `TECH.md`.
 | VPS (`app.mapsandducks.com`) | The event server, Postgres, Caddy |
 | John's MacBook (macOS, M3 Max 48 GB) | **Trabolta**: stagehand `agents` (`stagehand/laptop.yaml`, local) on Claude Haiku, with Ollama `gpt-oss:20b` as its standby (wave 52); `predeploy` / `ship` / `sync-show` / `showbackup`; a director's Run console. The audio router's fallback host only (`trapped.macbook.yaml`) |
 | John's Desktop (Windows) | **The audio and the lights** (decided 2026-10-27): the audio router (stagehand `audio`) on the MOTU 828x's own outs (no ADAT expander since wave 31), with the living room on Main L/R (outs 1–2) plus the sub on Analog Out 1 (out 3) (wave 38; the 828x's Windows ASIO channel order since wave 46) and the soundtrack's MP3s in `stagehand/media/music/`; Zigbee2MQTT on the CC2652P stick with the Philips Hue and ThirdReality ZL1 bulbs, each paired under its `lights.json` name (no Zigbee groups, scenes or WLED presets: every `lights_*` cue is a `lights.json` look); the living room's WLED (ESP32) strip over Wi-Fi (`wled/living`); Mosquitto (anonymous on 127.0.0.1:1883, password-only `props` on the LAN at :1884); stagehand `show` + `lights` + `audio` as Task Scheduler tasks (`trapped.desktop.yaml`); the living-room TV over HDMI (Chrome kiosk, spot `desktop-tv`), its sound through VoiceMeeter (the PC has no line out: Chrome's output is VoiceMeeter Input, VoiceMeeter Potato runs at sign-in with its VAIO strip on B1 only) and the router's `audio.tap` into the 828x's input 3 (wave 46), which the router plays on every speaker as Trabolta's channel (the TV's own speakers off; input 3 mixed nowhere in CueMix). Runbook: `scripts/house-desktop/README.md` |
-| Steph's laptop | The server-room terminal in Chrome (`…&spot=server-room&door=serial&camera=user`) + the Grand Central M4 over USB (door + patch bay); the USB webcam (camera + mic), an old 4:3 CRT (HDMI → component), GameCube controller, whisper.cpp on 127.0.0.1:8178 (`scripts/server-room/`); no mouse or keyboard on the night |
+| Steph's laptop | The server-room terminal in its own Chrome profile (`scripts/server-room/start-terminal.ps1`: `…&spot=server-room&door=serial&camera=user&webcam=C310&pad=1&whisper=1&crt=1`) + the Grand Central M4 over USB (door + patch bay); the USB webcam (camera + mic), an old 4:3 CRT (HDMI → component), GameCube controller, whisper.cpp on 127.0.0.1:8178; no SSH key for the VPS, so it can't ship; no mouse or keyboard on the night |
 | John's old laptop | The tent: `/terminal/?code=<mod>&spot=tent&announce=1`, the reinstall wizard and web game. Needs WebGL2 |
 
 Also in the show: the wall tablets (Fully Kiosk), the Server Door chess
@@ -353,19 +353,30 @@ the merged `oct31/trabolta-room` (the server room's CRT, GameCube pad and local
 Whisper, the pulsed door sensor; the CRT and voice words are `DRAFT w52` /
 `DRAFT w52b`) and `oct31-w52/tidal` (the soundtrack from the TIDAL app). No story
 or server code changed, so the preview was synced with `--no-reload` and carried
-on through the release. **Open: the spoken answers can't work on the live server
-yet.** `TERMINAL_CSP` (`core/server/routing.ts`) has `connect-src 'self'`, which
-blocks `http://127.0.0.1:8178`, and an agent's edit to allow that one origin was
-refused as a security change, so it waits on the user's word. Vite sends no CSP,
-so a local test hides this. In Chromium the live policy blocks both whisper calls,
-and with that origin added both pass and other ports stay blocked. A guest sees
-*YOUR VOICE ISN'T REACHING HIM*; B and the menus still work. The test and doc line
-are parked on the local branch `oct31-w53/whisper-csp`, red until `routing.ts`
-changes. Still owed: Steph's laptop reflashes the M4 (`run.sh compile` was not run:
-no `arduino-cli` on the MacBook), recalibrates the door, relearns the patch bay and
-reloads the terminal on the `&webcam=C310&pad=1&whisper=1&crt=1` URL. The Desktop
-does `git pull`, sets up `tidal.ps1` (`scripts/house-desktop/README.md` §3.7) and
-runs `start-stagehand.ps1 -Restart audio`.
+on through the release. **Open: the spoken answers can't work on `w53b`.**
+`TERMINAL_CSP` (`core/server/routing.ts`) has `connect-src 'self'` there, which
+blocks `http://127.0.0.1:8178`; a guest sees *YOUR VOICE ISN'T REACHING HIM*, and B
+and the menus still work. The user approved adding that one origin (2026-10-30),
+and `oct31-w53/whisper-origin` does it, on master with
+`oct31-w53/server-room-kiosk`: **it needs a release from the MacBook, and a release
+restarts the server.** No `sync-show`: no story changed. That branch replaces the
+parked local `oct31-w53/whisper-csp`. Vite sends no CSP, so a local test hides this.
+Rehearsed on 2026-10-30 in Chrome 156 on the real https page, with this header
+swapped in and the laptop's real whisper: both gates are needed and nothing else
+stands behind them. The CSP refuses the fetch; with the header and no device grant
+Chrome refuses the loopback address; with both, `/inference` answers (a 29 s clip
+in 4.3 s, `small.en`, 8 threads). `showctl preflight serverroom` now fails on its
+*Page → whisper* row until the release lands. After it, on Steph's laptop, run
+`scripts/server-room/start-terminal.ps1 -Setup` with `LOOM_MOD_CODE` set and a
+mouse, make every grant in the terminal's own profile (`%LOCALAPPDATA%\loom-terminal`,
+which doesn't exist yet: the kiosk has no way to answer a prompt) and check ⚙ reads
+*whisper is listening*; then run it with no switches
+(`docs/trapped/kiosk.md`, First launch). The CSP stopped that prompt ever coming up
+there. Steph's laptop has reflashed the M4 and recalibrated the door (2026-10-30);
+a new profile leaves the board's flash alone. Still owed: it relearns the patch bay
+once that's wired, and the CRT becomes the only display at 640 × 480. The Desktop does
+`git pull`, sets up `tidal.ps1` (`scripts/house-desktop/README.md` §3.7) and runs
+`start-stagehand.ps1 -Restart audio`.
 
 Before it, `w53` (master `a27da927`, shipped 2026-10-30; rollback `w51`):
 wave 53 (everyone uploads, the phones speak) on top of wave 52, which changes

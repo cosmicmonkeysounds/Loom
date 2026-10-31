@@ -7,7 +7,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { HTML_CSP, REINSTALL_CSP, TERMINAL_CSP, appRelPath, subAppRoute, wantsModRead } from "../server/routing.ts";
+import { HTML_CSP, PLAY_CSP, REINSTALL_CSP, TERMINAL_CSP, appRelPath, subAppRoute, wantsModRead } from "../server/routing.ts";
 
 const params = (q = "") => new URLSearchParams(q);
 
@@ -44,6 +44,22 @@ describe("the /reinstall/ sub-app route", () => {
     expect(REINSTALL_CSP).toContain("worker-src 'self' blob:");
     expect(TERMINAL_CSP).not.toContain("worker-src");
     expect(HTML_CSP).toContain("frame-ancestors 'none'");
+  });
+});
+
+describe("the terminal's CSP", () => {
+  const connectSrc = (csp: string) => csp.split("; ").filter((d) => d.startsWith("connect-src"));
+
+  it("lets the terminal reach whisper.cpp on its own laptop, and nowhere else new", () => {
+    expect(connectSrc(TERMINAL_CSP)).toEqual(["connect-src 'self' http://127.0.0.1:8178"]);
+  });
+
+  it("changes nothing else about the terminal's policy", () => {
+    expect(TERMINAL_CSP).toBe(`${HTML_CSP.replace("connect-src 'self'", "connect-src 'self' http://127.0.0.1:8178")}; media-src 'self' blob:`);
+  });
+
+  it("no other app gets it", () => {
+    for (const csp of [HTML_CSP, PLAY_CSP, REINSTALL_CSP]) expect(connectSrc(csp)).toEqual(["connect-src 'self'"]);
   });
 });
 

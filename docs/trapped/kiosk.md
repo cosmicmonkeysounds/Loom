@@ -15,7 +15,7 @@ only the spot.
 | Screen | Device | Spot | Link | Browser |
 |---|---|---|---|---|
 | The TV (living room) | John's Desktop (Windows), HDMI | `desktop-tv` | `/terminal/?code=<mod>&spot=desktop-tv` | Chrome `--kiosk` via `scripts/house-desktop/tv-kiosk.ps1` |
-| The server room (his heart) | Steph's laptop + monitor, mouse, keyboard, webcam, the Grand Central M4 on USB | `server-room` | `/terminal/?code=<mod>&spot=server-room&door=serial&camera=user` | desktop Chrome `--kiosk` (Web Serial) |
+| The server room (his heart) | Steph's laptop + the CRT, webcam, GameCube controller, the Grand Central M4 on USB | `server-room` | `/terminal/?code=<mod>&spot=server-room&door=serial&camera=user&webcam=C310&pad=1&whisper=1&crt=1` | desktop Chrome `--kiosk` (Web Serial), via `scripts/server-room/start-terminal.ps1` |
 | The tent (The Internet) | John's old laptop + its webcam | `tent` | `/terminal/?code=<mod>&spot=tent&announce=1` | Chrome `--kiosk`; needs WebGL2 |
 | The Server Door (the King's chess) | a tablet on the basement hall wall by the keypad | `server-room-door` | `/terminal/?code=<mod>&spot=server-room-door` | Fully Kiosk (Android) |
 | The casino (upstairs bedroom) | a tablet | `graphics-card` | `/terminal/?code=<mod>&spot=graphics-card` | Fully Kiosk (Android) |
@@ -320,34 +320,44 @@ The tube loses about 6% off every edge, so nothing sits outside a 7% margin.
 
 ⟦SPEAK FREELY⟧ opens **SPEAK TO HIM**: it listens until they stop (or A),
 whisper.cpp writes it down, he says it back and asks, and YES sends it. Speech
-stays on this laptop: `127.0.0.1:8178`, never the server. Install once, then
-it starts with the terminal:
+stays on this laptop: `127.0.0.1:8178`, never the server. Install once;
+`start-terminal.ps1` starts it with the terminal:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts\server-room\install-whisper.ps1
-powershell -ExecutionPolicy Bypass -File scripts\server-room\start-whisper.ps1
 ```
 
 ### First launch: grants and calibration
 
-Grants (the camera, the serial port) belong to a Chrome profile, so the
-terminal gets its own, and grants made in Steph's everyday profile don't
-carry over. Launch it once **without** `--kiosk`:
+Grants (the camera, the microphone, the serial port, device access) belong to
+a Chrome profile, so the terminal gets its own, and grants made in Steph's
+everyday profile don't carry over. The kiosk has no mouse to answer a prompt,
+so make them all here, on the laptop's own screen with a mouse. The page takes
+the link's keys only with a code, so the first setup needs the code:
+
+```powershell
+# Windows
+$env:LOOM_MOD_CODE = '<mod>'     # this window only; never written to disk
+powershell -ExecutionPolicy Bypass -File scripts\server-room\start-terminal.ps1 -Setup
+```
 
 ```bash
 # macOS
 open -na "Google Chrome" --args --user-data-dir="$HOME/.loom-terminal" \
-  "https://app.mapsandducks.com/terminal/?code=<mod>&spot=server-room&door=serial&camera=user"
+  "https://app.mapsandducks.com/terminal/?code=<mod>&spot=server-room&door=serial&camera=user&webcam=C310&pad=1&whisper=1&crt=1"
 ```
 
-```powershell
-# Windows
-& "C:\Program Files\Google\Chrome\Application\chrome.exe" --user-data-dir="$env:LOCALAPPDATA\loom-terminal" `
-  "https://app.mapsandducks.com/terminal/?code=<mod>&spot=server-room&door=serial&camera=user"
-```
+**Device access can't be granted before the page may reach whisper.** Chrome
+asks only when the page tries, and the server's `connect-src` has to allow that
+first, or the fetch dies with nothing to ask about. `pnpm showctl preflight
+serverroom` says which it is, on its *Page → whisper* row. If it fails, do the
+rest now and run `-Setup` again after the release (no code needed then). Without
+the grant, Chrome refuses the loopback address and a guest sees *YOUR VOICE ISN'T
+REACHING HIM*.
 
 1. Allow the camera, the microphone and, when Chrome asks, access to apps on
-   this device (that's whisper; ⚙'s *no mouse or keyboard* section asks).
+   this device (that's whisper; ⚙'s *no mouse or keyboard* section asks, and
+   reads *whisper is listening* once it's allowed).
 2. Hold ⚙ 2 s → *advanced* → *door sensor* → **Connect door sensor** →
    pick the Grand Central in Chrome's list. A terminal that shows no door
    after this was saved with the sensor off: check the select says *the door
@@ -374,10 +384,12 @@ caffeinate -dims open -na "Google Chrome" --args --user-data-dir="$HOME/.loom-te
 ```
 
 ```powershell
-# Windows
-powershell -ExecutionPolicy Bypass -File scripts\server-room\start-whisper.ps1
-& "C:\Program Files\Google\Chrome\Application\chrome.exe" --user-data-dir="$env:LOCALAPPDATA\loom-terminal" `
-  --kiosk --autoplay-policy=no-user-gesture-required --no-first-run "https://app.mapsandducks.com/terminal/"
+# Windows: whisper, then the kiosk on the last display, in that profile
+powershell -ExecutionPolicy Bypass -File scripts\server-room\start-terminal.ps1
+# The same 20 s after every logon, for a laptop that restarts with no keyboard
+powershell -ExecutionPolicy Bypass -File scripts\server-room\start-terminal.ps1 -InstallTask
+# Close that Chrome, and only that one
+powershell -ExecutionPolicy Bypass -File scripts\server-room\start-terminal.ps1 -Close
 ```
 
 - **Never sleep.** macOS: `caffeinate -dims` (above) and `sudo pmset -a
