@@ -122,8 +122,8 @@ Nothing reaches Trabolta's worker: no chat line, no `recent`, no `say`.
 - `ad-slot.tsx` is the pop-up: the Windows 95 window (`WinWindow`), the ad's name, 🔊,
   and ×. × stops the sound on that device only. It closes when the track ends, or
   3 s past its time if `ended` never came.
-- `z-index: var(--z-toast)`: under every moment and sheet. It is eager: 0.48 kB net,
-  with ten `//!` headers turned into `//`. The guest's first load is 148.25 kB.
+- `z-index: var(--z-toast)`: under every moment and sheet. It is eager: 0.51 kB net,
+  with ten `//!` headers turned into `//`. The guest's first load is 148.28 kB.
 - Run → Players' panes never arm, so an embedded phone is silent.
 
 ## C6. The kill switch

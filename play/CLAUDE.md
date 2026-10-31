@@ -54,7 +54,7 @@ into `//`: 147.03 kB. The shared teleprompter added
 (wave 59a) added `ad-player.ts`, `ad-spots.ts` and `ad-slot.tsx` and turned the headers
 of `ui/window.tsx`, `takeover.tsx`, `wake-lock.ts`, `lazy-chunk.tsx`, `client.ts`,
 `threads.ts`, `pins.ts`, `presence.ts`, `lifecycle.ts` and `countdown.tsx` into `//`:
-148.25 kB.
+148.28 kB.
 
 ## How a session works
 
