@@ -2,10 +2,10 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
 
-import { chromeMajor, desktopChecks, kioskUrl, launchdState, macbookChecks, mindModeOf, ollamaModels, pmsetSleep, powercfgAc, type Probe, type RunResult, serverroomChecks, spotFocus, stagehandJobs, tentChecks } from "../lib/local.ts";
+import { chromeMajor, cspConnects, desktopChecks, kioskUrl, launchdState, macbookChecks, mindModeOf, ollamaModels, pmsetSleep, powercfgAc, type Probe, type RunResult, serverroomChecks, spotFocus, stagehandJobs, tentChecks } from "../lib/local.ts";
 
 /** A fake machine: commands answered by `cmd args…` prefix, ports, URLs, files. */
-function fakeProbe(o: { platform: string; run?: Record<string, Partial<RunResult>>; ports?: number[]; http?: Record<string, string>; files?: Record<string, string>; env?: Record<string, string> }): Probe & { ran: string[] } {
+function fakeProbe(o: { platform: string; run?: Record<string, Partial<RunResult>>; ports?: number[]; http?: Record<string, string>; csp?: Record<string, string>; files?: Record<string, string>; env?: Record<string, string> }): Probe & { ran: string[] } {
   const ran: string[] = [];
   return {
     ran,
@@ -20,7 +20,7 @@ function fakeProbe(o: { platform: string; run?: Record<string, Partial<RunResult
       return { code: 0, stdout: "", stderr: "", ...o.run![key] };
     },
     port: async (_h, p) => (o.ports ?? []).includes(p),
-    http: async (url) => (o.http?.[url] !== undefined ? { status: 200, body: o.http[url]! } : null),
+    http: async (url) => (o.http?.[url] !== undefined ? { status: 200, body: o.http[url]!, csp: o.csp?.[url] ?? null } : null),
     exists: (p) => o.files?.[p] !== undefined,
     readFile: (p) => o.files?.[p] ?? null,
     uid: () => 501,
@@ -160,6 +160,37 @@ test("the server room: Web Serial needs Chrome 89+, the M4 on USB; URLs carry a 
   const tent = await tentChecks(fakeProbe({ platform: "linux" }), "https://s");
   assert.equal(levelOf(tent, "Chrome"), "fail");
   assert.ok(!tent.some((r) => /view=reinstall/u.test(r.detail) && !/never add/u.test(r.detail)));
+});
+
+test("the server room: whisper up is not enough, the served page must be allowed to reach it", async () => {
+  const health = "http://127.0.0.1:8178/health";
+  const page = "https://s/terminal/";
+  const up = { [health]: "{}", [page]: "<html>" };
+  const refused = "default-src 'self'; connect-src 'self'; media-src 'self' blob:";
+  const allowed = "default-src 'self'; connect-src 'self' http://127.0.0.1:8178; media-src 'self' blob:";
+  const blocked = await serverroomChecks(fakeProbe({ platform: "win32", http: up, csp: { [page]: refused } }), "https://s");
+  assert.equal(levelOf(blocked, "Whisper"), "ok");
+  assert.equal(levelOf(blocked, "Page → whisper"), "fail");
+  assert.match(blocked.find((r) => r.name === "Page → whisper")!.detail, /release from the MacBook/u);
+  assert.equal(levelOf(await serverroomChecks(fakeProbe({ platform: "win32", http: up, csp: { [page]: allowed } }), "https://s"), "Page → whisper"), "ok");
+  assert.equal(levelOf(await serverroomChecks(fakeProbe({ platform: "win32", http: { [health]: "{}" } }), "https://s"), "Page → whisper"), "warn");
+
+  // Another port, or the name localhost, is a different origin to the browser.
+  assert.equal(cspConnects("connect-src 'self' http://127.0.0.1:9999", "http://127.0.0.1:8178"), false);
+  assert.equal(cspConnects("connect-src 'self' http://localhost:8178", "http://127.0.0.1:8178"), false);
+  assert.equal(cspConnects("default-src 'self'", "http://127.0.0.1:8178"), false);
+  assert.equal(cspConnects(null, "http://127.0.0.1:8178"), true);
+  assert.equal(cspConnects("script-src 'self'", "http://127.0.0.1:8178"), true);
+});
+
+test("the server room: the grants live in the terminal's own Chrome profile", async () => {
+  const profile = "C:\\Users\\s\\AppData\\Local\\loom-terminal";
+  const env = { LOCALAPPDATA: "C:\\Users\\s\\AppData\\Local" };
+  const none = await serverroomChecks(fakeProbe({ platform: "win32", env }), "https://s");
+  assert.equal(levelOf(none, "Chrome profile"), "warn");
+  assert.match(none.find((r) => r.name === "Chrome profile")!.detail, /start-terminal\.ps1 -Setup/u);
+  assert.equal(levelOf(await serverroomChecks(fakeProbe({ platform: "win32", env, files: { [profile]: "" } }), "https://s"), "Chrome profile"), "ok");
+  assert.equal(levelOf(await serverroomChecks(fakeProbe({ platform: "darwin", env }), "https://s"), "Chrome profile"), undefined);
 });
 
 test("this machine's own screen: the spot polling, the right view and mic, the door sensor", () => {
