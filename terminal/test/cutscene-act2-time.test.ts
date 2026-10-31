@@ -21,7 +21,6 @@ import {
   liveNow,
   liveRemaining,
   onGrid,
-  recountRideAt,
   scenarioFor,
   scenarioOf,
   sinceAnswer,
@@ -64,13 +63,6 @@ describe("act 2 timelines — a hold's heartbeat", () => {
     expect(onGrid(5150, 700, 260, "type", undefined, 5200).map((c) => c[0])).toEqual([5120]);
     expect(onGrid(6000, 700, 260, "type", undefined, 5200)).toEqual([]);
     expect(onGrid(0, 0, 100, "tick", { gain: 0.5 })[0]).toEqual([0, "tick", { gain: 0.5 }]);
-  });
-});
-
-describe("act 2 timelines — the recount's ride", () => {
-  it("rides ten seconds before the slide lets go, on either screen", () => {
-    expect(recountRideAt("tv")).toBe(80_000);
-    expect(recountRideAt("wall")).toBe(35_000);
   });
 });
 

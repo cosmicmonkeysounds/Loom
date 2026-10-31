@@ -370,7 +370,7 @@ export function flatText(plan: VoicePlan): string {
 /** Lines that are never broken, whatever the night says: the moments he
  *  stops being broken. The helped ending heals the level, but only after
  *  these lines start the story's vars moving. */
-export const CLEAN_BEATS: readonly string[] = ["Heart Heard", "Advice Helped"];
+export const CLEAN_BEATS: readonly string[] = ["Heart Heard", "Advice Helped", "The Full Truth"];
 
 const fold = (s: string): string => s.toLowerCase().replace(/[\s_-]+/gu, " ").trim();
 

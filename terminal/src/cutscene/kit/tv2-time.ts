@@ -7,7 +7,6 @@
 
 import { foldName } from "../../config.ts";
 import type { ScreenKing, ScreenMoment, ScreenNight, ScreenState, ScreenVoice } from "../../screen.ts";
-import { SLIDE_HOLD_MS } from "../../slides.ts";
 import type { SfxName, SfxOpts } from "../../sound/index.ts";
 import { clamp01, ease, lerp, noise1, progress } from "./time.ts";
 
@@ -181,21 +180,6 @@ export function glitchYear(t: number, level: number, seed = 3): string {
   if (noise1(seed, bucket) >= odds) return "1999";
   const forms = ["19100", "2000", "1900", "19:9", "19—", "1999"];
   return forms[Math.floor(noise1(seed + 1, bucket) * forms.length)]!;
-}
-
-// --- the recount -------------------------------------------------------------------------
-
-/** The motorcycle's ride and its line take this long (ms), ending as the slide lets go. */
-export const RECOUNT_RIDE_LEAD = 10_000;
-
-/**
- * When the recount's motorcycle rides (scene ms): the end of the slide's hold
- * (`SLIDE_HOLD_MS`: 90 s on the TV, 45 s on the walls). The story's `sound
- * motorcycle` comes in the same drain as the slide — the TV then still has
- * the whole recount to say — so its moment can't time the ride.
- */
-export function recountRideAt(target: "tv" | "wall"): number {
-  return SLIDE_HOLD_MS[target === "tv" ? "tv" : "terminals"] - RECOUNT_RIDE_LEAD;
 }
 
 // --- the King --------------------------------------------------------------------------
