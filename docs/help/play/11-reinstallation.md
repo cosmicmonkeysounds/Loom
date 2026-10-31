@@ -89,7 +89,7 @@ headset, your microphone.
 | Turn | **right stick** — left or right (gently: a small push turns slowly), or turn your body | **right** on-screen stick (push up/down to look up/down) |
 | Look | turn your head | drag on the screen |
 | Hit the King | **trigger** (either hand), or **A / X** | **⚔ HIT** |
-| Mute your mic | **B / Y** | **🎤** (or **M**), when the tablet has a voice link |
+| Mute your mic | You can't: a headset's mic stays on | **🎤** (or **M**), when the tablet has a voice link |
 | Pick your program (lobby) | point + **trigger**, or stick + hold **right** 1 s | scan your pass |
 | Stuck on something | hold **both triggers + A** for 5 seconds | hold **R** for 5 seconds, on a keyboard |
 
@@ -156,8 +156,7 @@ room with a terminal and you **hear the people standing by it in the real
 room**, coming from where its screen hangs; talk, and they hear you on
 the terminal. Other players in the simulation can't hear you.
 
-- In a **headset**, your mic is on. **B** or **Y** mutes it (and unmutes
-  it), and the HUD says whether it is on or muted and what to press. In
+- In a **headset**, your mic is on, and it stays on: nothing mutes it. In
   the lobby, **TEST MIC** shows whether it hears you, and **ASK AGAIN**
   asks for the microphone again if it wasn't allowed.
 - The **tent laptop** has no voice link: the tent is its own room. A
