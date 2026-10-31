@@ -451,6 +451,23 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   `->` does not end the hook, so a guard must be one `if` chain, and `super`
   only splices at hook level. Tests: `test/server-rejoin.test.ts`,
   `test/trapped-w54-door.test.ts`.
+- **A booth scans codex QRs** (wave 58). `POST /api/prime/codex/redeem {code}`
+  (a booth's token, a host's too: it is off the host allowlist's surface)
+  answers `/api/guest/codex/redeem`'s shape (`{ok, unlocked, title?, already?,
+  missed?}`, no `codex`). A part is no Person, so `Sim.redeem` would do nothing:
+  a hit is the journaled `unlock` (`via: "story"`, so its card reads *Learned
+  tonight*), and a miss is no story event (no `codexMissed`, no `wrong code`, no
+  doubt), only `redeemMisses`, keyed by the part. 409 with the doors closed; 403
+  without a character (a guest, a locked guest, a director); `agentRefusal` for
+  an operator playing an agent-voiced part. `secret` never limits a scan: it
+  only hides an entry from agents, and `agentVarsOf` and the holdings filters
+  keep a part's secret entries out of every request. `isLocked` reads Persons
+  only, so no part is ever locked. Holdings are Persons-only where it counts:
+  `codex_in`, awards, the recap, the letters; `program learns` hooks run only
+  for Persons, so a part assembles no Door Code. `/api/prime/codex/share` stays
+  unfiltered: a part can pass on anything it holds. Tests:
+  `test/w58-booth-scan.test.ts` (all 8 parts over every coded entry of the show,
+  every code read from the compiled model).
 - **The teleprompter** (wave 55, [`docs/loom-w55-contract.md`](../docs/loom-w55-contract.md)).
   A beat's contract line `aloud:` names who reads it: parts
   (`aloud: Clippy, Task Manager`, `@<Character>`) or a program (`aloud:

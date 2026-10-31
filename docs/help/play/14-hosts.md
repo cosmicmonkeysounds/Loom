@@ -46,7 +46,8 @@ every phone, guests' included.
   messages (the number on it counts guests waiting on a reply).
 - **Desk** is the house desk: its cues, ■ STOP ALL, and the speaker and
   light checks (below).
-- **📷 Scan** opens the scanner, as in any booth. Every guest, with their
+- **📷 Scan** opens the scanner, as in any booth: passes, and codex QRs into
+  your own Codex (**⊞ Start → What … knows**). Every guest, with their
   card, is in Show's **People**.
 
 ## The Show window
