@@ -44,6 +44,7 @@ function session(o: { wanted?: boolean; responses?: string[] } = {}): PrimeSessi
     card: () => Promise.resolve(card),
     act: () => new Promise(() => {}),
     scan: (id: string) => Promise.resolve({ guest: { id, name: "Ada" }, card, responses: o.responses ?? ["✅ Cleared Ada."] }),
+    printed: () => Promise.resolve(null),
   } as unknown as PrimeSession;
 }
 

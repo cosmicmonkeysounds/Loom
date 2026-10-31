@@ -880,7 +880,7 @@ Everything is optional; the defaults run a LAN event with no setup.
 | `LOOM_HOMESCREEN` | off | the iPhone Home Screen push path |
 | `LOOM_SNAPSHOT_MS` | 0 | coalesce guest and booth snapshots (a load contingency) |
 | `LOOM_AGENT_RECENT`, `LOOM_AGENT_DOSSIER` | on | `off` drops the `recent` block / the heart dossier from agent requests |
-| `LOOM_RL_RESOLVE`, `_REGISTER`, `_LOGIN_FAILURES`, `_REDEEM_MISSES`, `_WIDGETS`, `_WALLET`, `_QR` | see `server/rate-limit.ts` | rate limits as `<max>` or `<max>/<seconds>`; raise them for a house behind one public IP |
+| `LOOM_RL_RESOLVE`, `_REGISTER`, `_LOGIN_FAILURES`, `_REDEEM_MISSES`, `_PRINTED`, `_WIDGETS`, `_WALLET`, `_QR` | see `server/rate-limit.ts` | rate limits as `<max>` or `<max>/<seconds>`; raise them for a house behind one public IP |
 | `DATABASE_URL` | `postgres://127.0.0.1:5432/loom_dev` | the control plane's Postgres |
 | `LOOM_DB_WAIT` | wait when `DATABASE_URL` is set | `off` / `0` probes the database once |
 | `BETTER_AUTH_SECRET` (or `LOOM_AUTH_SECRET`), `BETTER_AUTH_URL` | a dev secret | author sessions; a deployment refuses the dev secret |

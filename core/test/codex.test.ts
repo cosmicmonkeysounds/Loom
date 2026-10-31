@@ -422,8 +422,8 @@ describe("routes — codex", () => {
     ]);
     // K-12: the print sheet's join poster + one check-in sign per room.
     expect(codes.json.joinLink).toBe("http://party.local:7000/?code=EVT777");
-    expect(codes.json.checkin).toEqual([
-      { id: "The Desktop", label: "The Desktop", slug: "the-desktop", url: "http://party.local:7000/?code=EVT777&checkin=the-desktop", hidden: false },
+    expect(codes.json.checkin).toMatchObject([
+      { id: "The Desktop", label: "The Desktop", slug: "the-desktop", url: "http://party.local:7000/?code=EVT777&checkin=the-desktop", hidden: false, place: null },
     ]);
     // SW-QR-11: a cast card per performer part (the parts a booth can pick).
     expect(codes.json.cast).toContain("Norton");

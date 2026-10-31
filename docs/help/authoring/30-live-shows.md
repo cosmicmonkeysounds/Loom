@@ -117,7 +117,10 @@ COHORT Early Arrivals
   guests, guests on rails, rooms hidden from them, prisons and
   cutscenes, and more than one check-in per 20 seconds; `checkin: false`
   leaves a place off the sheet and never lands a guest there (a locked
-  room).
+  room). The sign carries a short text code too, for anyone with no
+  camera. A location's `label:` can hold a note for the crew, in brackets or
+  after a ` — ` (`label: The Cellar (the garage)`): Run shows it, and
+  everything printed and every guest screen read only *The Cellar*.
 - A `listed: true` **CHARACTER** can be `hidden: true` too: out of the
   People directory (and, for an agent-voiced one, off every phone) until
   `reveal Name` / `reveal self`.
