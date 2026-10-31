@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { BrowserEngine, CANCEL_SETTLE_MS, DeviceEngine, FRAG_START_MS, START_TIMEOUT_MS, SpeechQueue, VoiceFloor, alternateCount, alternateVoices, withPlan, type Prepared, type SpeechEngine } from "../src/speech/engine.ts";
+import { BrowserEngine, CANCEL_HOLD_MS, CANCEL_SETTLE_MS, DeviceEngine, FRAG_START_MS, START_TIMEOUT_MS, SpeechQueue, VoiceFloor, alternateCount, alternateVoices, withPlan, type Prepared, type SpeechEngine } from "../src/speech/engine.ts";
 import { HIS_PITCH, paceRate, type VoiceFrag, type VoicePlan } from "../src/speech/glitch.ts";
 
 type Handler = ((e?: { error: string }) => void) | null;
@@ -193,6 +193,105 @@ describe("a broken sentence on the browser voice", () => {
     await done;
     expect(noise).toHaveBeenCalledTimes(1);
     expect(noise).toHaveBeenCalledWith("tick");
+  });
+});
+
+// Chrome on macOS, cancelled right after `speak()`, never speaks again: not after a
+// click, not after a reload (real Chrome, 8 of 8 with a warm engine; fine from +2 ms).
+describe("a stop right behind speak()", () => {
+  const cancels = (synth: { cancel: () => void }) => {
+    const spy = vi.fn(synth.cancel);
+    synth.cancel = spy;
+    return spy;
+  };
+
+  it("holds the cancel until the utterance has been out long enough, then ends the line", async () => {
+    const { synth, said } = fakeSynth({ startMs: 500, speakMs: 5000 });
+    const cancel = cancels(synth);
+    const engine = new BrowserEngine({ voice: "", speed: 1 });
+    const done = vi.fn();
+    void engine.play({ kind: "browser", text: "Close the door." }, () => {}).then(done);
+    engine.stop();
+    expect(cancel).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(CANCEL_HOLD_MS - 1);
+    expect(cancel).not.toHaveBeenCalled();
+    expect(done).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(1);
+    expect(cancel).toHaveBeenCalledTimes(1);
+    expect(done).toHaveBeenCalled();
+    expect(said[0]!.cut).toBe(true);
+  });
+
+  it("the same for a broken sentence's fragment", async () => {
+    const { synth, said } = fakeSynth({ startMs: 500, speakMs: 5000 });
+    const cancel = cancels(synth);
+    const engine = new BrowserEngine({ voice: "", speed: 1 });
+    const done = vi.fn();
+    void engine.play(browser(plan(frag("one"), frag("two"))), () => {}).then(done);
+    engine.stop();
+    expect(cancel).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(CANCEL_HOLD_MS);
+    expect(cancel).toHaveBeenCalledTimes(1);
+    await vi.runAllTimersAsync();
+    expect(done).toHaveBeenCalled();
+    expect(said.map((s) => s.u.text)).toEqual(["one"]);
+    expect(engine.dead).toBe(false); // a stop isn't a voice that never started
+  });
+
+  it("a later fragment's speak() restarts the wait", async () => {
+    const { synth } = fakeSynth({ startMs: 0, speakMs: 100 });
+    const cancel = cancels(synth);
+    const engine = new BrowserEngine({ voice: "", speed: 1 });
+    void engine.play(browser(plan(frag("one"), frag("two"))), () => {});
+    await vi.advanceTimersByTimeAsync(100);
+    engine.stop();
+    expect(cancel).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(CANCEL_HOLD_MS);
+    expect(cancel).toHaveBeenCalledTimes(1);
+  });
+
+  it("a stop well after speak() cancels at once, as it always has", async () => {
+    const { synth } = fakeSynth({ startMs: 0, speakMs: 5000 });
+    const cancel = cancels(synth);
+    const engine = new BrowserEngine({ voice: "", speed: 1 });
+    void engine.play({ kind: "browser", text: "Close the door." }, () => {});
+    await vi.advanceTimersByTimeAsync(CANCEL_HOLD_MS);
+    engine.stop();
+    expect(cancel).toHaveBeenCalledTimes(1);
+  });
+
+  it("two stops in the hold are one cancel", async () => {
+    const { synth } = fakeSynth({ startMs: 500, speakMs: 5000 });
+    const cancel = cancels(synth);
+    const engine = new BrowserEngine({ voice: "", speed: 1 });
+    const done = engine.play({ kind: "browser", text: "Close the door." }, () => {});
+    engine.stop();
+    engine.stop();
+    await vi.advanceTimersByTimeAsync(CANCEL_HOLD_MS);
+    await done;
+    expect(cancel).toHaveBeenCalledTimes(1);
+  });
+
+  it("the next line can't overtake a held cancel: it speaks only after the settle behind it", async () => {
+    const { synth, said } = fakeSynth({ startMs: 500, speakMs: 5000 });
+    const cancel = cancels(synth);
+    const engine = new BrowserEngine({ voice: "", speed: 1 });
+    const q = new SpeechQueue({ primary: engine, fallback: null }, { level: () => {}, chunk: () => {}, done: () => {}, idle: () => {} }, new VoiceFloor(), { chunk: 0, line: 0 });
+    q.say({ id: 1, chunks: ["Close the door."] });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(said).toHaveLength(1);
+    q.stop();
+    q.say({ id: 2, chunks: ["Good."] });
+    await vi.advanceTimersByTimeAsync(CANCEL_HOLD_MS - 1);
+    expect(cancel).not.toHaveBeenCalled();
+    expect(said).toHaveLength(1);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(cancel).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(CANCEL_SETTLE_MS - 1);
+    expect(said).toHaveLength(1);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(said.map((s) => s.u.text)).toEqual(["Close the door.", "Good."]);
+    expect(said[1]!.cut).toBe(false);
   });
 });
 
