@@ -148,14 +148,11 @@ guest's card in that performer's booth (phone C / D), or in Run while you
 3. **G0 · 📜 The full truth** after the dance — Task Manager's phone pops up with the message Trabolta left before he died (*Read this out loud*). Nobody else's Chats carry it. Everyone is released, the house lights come back, and the TV holds TRABOLTA.EXE (Not Responding). He does not come back.
 4. **G1** once the reading is over (a press before that asks first; press again inside 30 s to go on): Clippy hosts every row.
 
-**B · The verdict (Grok Prom → the song)**
+**B · The verdict (the full truth → the song → the rave)**
 
-1. **🎆 Midnight** → the final reveal (lights down). **🍎 Bobbing for Truth** → Adobe Acrobat's or Clippy's **🍎 Brought up the Bag of Truth** on a guest.
-2. **📄 Read truth.txt** (the slide holds while the bobber reads), then **⚖ truth.txt read → the verdict**: Trabolta says the counts, the TV flips the nine tiles and then shows each question's answer and **who lied** in a filing (wave 18b; the walls get the tiles only); about 37 s later, with a lie on record: **Grok Prom** ("You lied to me… give me a pickup line").
-3. Every phone gets Trabolta's DM card *"Give me a pickup line that works on Sandy."* — type **You're the one that I want** and send it (the server judges it) → the **Song Ending**. (Or Clippy: **💘 Said "You're the one that I want"** on whoever says it aloud.)
-   (Alternatives: **💔 Nobody has the line** → the rave; **💌 relationship advice** → a poll on every phone → **🗳 Count the advice poll**.)
-
-**Then the full truth**: **G0 · 📜 The full truth** once the song has had its moment: Trabolta reads his own file on the TV, about 12 minutes (mute the TV to skip it in a demo; press G1 twice inside 30 s to go on).
+1. **🎆 Midnight** → the final reveal (lights down): Clippy has the room, then **🌑** again (or her arrow past her last line) and Trabolta reads the final answers. **🍎 Bobbing for Truth** → Adobe Acrobat's or Clippy's **🍎 Brought up the Bag of Truth** on a guest.
+2. **📄 Read truth.txt** (the slide holds while the bobber reads), then **⚖ truth.txt read → the verdict**: Trabolta reads the full truth on the TV, about 12 minutes.
+3. The last answer decides, by itself. Someone found it: his news. Nobody did: his speech, then every phone gets the card *"What should I say to her?"*, for two minutes (**💬 Close the pickup lines now** ends them early); he reads every line, goes, and comes back with his news. Either way he leaves, the song plays and the rave follows.
 
 **Then the ceremony (2 min)**: **G1 · 🏆 Start the awards ceremony** (wave 18b: *The Night In Review* plays first, the host reading who everyone really was, and each phone gets its private *Your File* in The Uploader's thread), then e.g.
 **G2 · 🥇 Most Trusted** with the winner picked in the cue's *who?* box (the

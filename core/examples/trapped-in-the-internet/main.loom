@@ -3726,7 +3726,7 @@ INTERACTION task_manager_reads
   label: 📜 Task Manager reads it instead (the TV's voice failed)
   who: admin
   sequence: false
-  description: The fallback for G0 on Trabolta's endings: the TV has no voice, or he has dropped out mid-way (mute the TV so the two don't overlap). Task Manager's teleprompter pops up with the whole monologue. He has a printed copy in his pack, and ⊞ Start → My script reopens it on any phone signed in to the part.
+  description: The fallback for G0 on Trabolta's endings: the TV has no voice, or he has dropped out mid-way (mute the TV so the two don't overlap, and unmute it before the read is over: the ending that follows is his voice). Task Manager's teleprompter pops up with the whole monologue. He has a printed copy in his pack, and ⊞ Start → My script reopens it on any phone signed in to the part.
   while: (Night.ended == true or Night.truth_first == true) and Night.ceremony != true and Night.truth_reader != "Task Manager" and Night.ending != "disabled" and Night.ending != "destroyed"
 
 INTERACTION start_the_ceremony
@@ -6574,11 +6574,10 @@ when bag_retrieved:
   -> The Bag Of Truth
   -> Final Assessment
 
-// F3: truth.txt, then (⚖, once the bobber has read it aloud) the verdict:
-// Song Ending or Grok Prom. Round three closed and settled at 🌑 (wave 59a), so
-// The Verdict reads settled facts (a review filing still pending counts by its
-// proposal). `Night.r3_closed` still means truth.txt is read: the server room
-// goes quiet on it.
+// F3: truth.txt, then ⚖ (once the bobber has read it aloud): the full truth, then
+// 8-A or 8-B. Round three settled at 🌑 (wave 59a), so Verdict Record reads settled
+// facts (a review filing still pending counts by its proposal). `Night.r3_closed`
+// still means truth.txt is read: the server room goes quiet on it.
 when read_truth_txt:
   if Night.phase == "bobbing" and Night.bag_up == true and Night.r3_closed != true:
     complete quest The Final Facts for everyone

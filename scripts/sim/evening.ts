@@ -1066,7 +1066,7 @@ async function skipTheWait(c: Ctx, path: string): Promise<void> {
   await sleep(1500); // the ticker lands it
 }
 
-/** 8-B: the pause, the card, some lines, 💬, the flicker. */
+/** 8-B: the pause, the card, some lines, 💬, the blank. */
 async function pickupLines(c: Ctx): Promise<void> {
   await skipTheWait(c, "Night.ask_at");
   if (read(await world(), "Night.lines_open") !== "true") c.fail("the pickup lines did not open");
@@ -1078,6 +1078,7 @@ async function pickupLines(c: Ctx): Promise<void> {
   }
   await press(c, ["no_pickup_line"]);
   await skipTheWait(c, "Night.back_at");
+  await sleep(2_000); // the blank's second, then "She said yes." sets the song's wait
 }
 
 /** 📜 after Combo A or B: Task Manager reads, then the rave. On the verdict ⚖

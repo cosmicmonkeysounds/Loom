@@ -44,8 +44,6 @@ Run → Players and a terminal piloting that program are refused the same
 way. Release lifts it on the next update; nobody needs to unlock it by
 hand.
 
-- A **banished** night (everyone in the Internet at once) is not a
-  reinstallation and never locks.
 - A player's booth (Clippy, an Antivirus) is never locked.
 - A locked guest's Codex is refused, so the tent's printed QR works only
   after release, or through Run's codex grant.

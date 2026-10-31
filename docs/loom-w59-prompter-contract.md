@@ -160,7 +160,7 @@ are not an end. A host driving for a dead phone gets there by scrolling.
 
 The runtime's `sceneFinished` fires `introduce_trabolta` through `deskFire`, the same
 `commit("signal", …)` + `fanout` as a host's press, read as `📜 Teleprompter`, for that
-beat alone (`HANDOVER_BEAT`), unless `Night.trabolta_introduced` is already true. Either
+beat alone (`HANDOVERS`, which since wave 59a also has `Final Reveal` → 🌑's second half), unless `Night.trabolta_introduced` is already true. Either
 order is safe. 🤖 first: the end does nothing and says nothing. The arrow first: 🤖
 reads *Trabolta is already online. Nothing happens.* in `# hosts`, which is true, and
 the cue sheet shows the press as a refused one.
@@ -172,7 +172,7 @@ No reader online, a phone on an old build, or a restart mid-read: nothing fires,
 
 A newer scene over hers (a capture's Corrupted Code, 📺 Follow the reinstallation):
 `superseded`, and if he is still to come one alert in `# hosts`, *A new beat cut Clippy
-off: press 🤖 on her last line* (`HANDOVER_CUT_NOTE`, DRAFT w59), because she goes on
+off: press 🤖 on her last line* (`HANDOVERS`, DRAFT w59), because she goes on
 from the sheet and only a person knows when she has said it. Paused doors: `finished`
 answers false, so nothing is used up and her next move or ✓ Done after they reopen
 fires him; a ✓ Done behind them took the scene with it, so he starts when they reopen.

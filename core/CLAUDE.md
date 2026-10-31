@@ -620,8 +620,9 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   `POST /api/mod/aloud {action: release | done}` is on the host allowlist. Every
   stream's first frames include a `prompter` (null with none). `pushLifecycle` clears
   it. `finished` (the position reached `total`, or a reader's ✓ Done, once a scene) is
-  `sceneFinished`: the end of `Clippy On Trabolta` fires `introduce_trabolta` through
-  `deskFire` unless he is already in (the contract's C11). Paused doors answer false, so
+  `sceneFinished`: the end of a `HANDOVERS` beat fires its cue through `deskFire`:
+  `Clippy On Trabolta` → `introduce_trabolta` unless he is already in (the contract's
+  C11), `Final Reveal` → `final_reveal`'s second half while `Night.reveal_owed`. Paused doors answer false, so
   nothing is used up, and a ✓ Done behind them goes in `openDoors`. A newer scene over
   hers is `superseded`: one alert in `# hosts`, and 🤖 from there. `inUse`, not `status()`,
   is what must not cut across a read asks: a scene nobody opened, or one whose

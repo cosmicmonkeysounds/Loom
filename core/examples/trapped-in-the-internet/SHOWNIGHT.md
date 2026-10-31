@@ -337,7 +337,7 @@ Each one wipes every guest.
 | Time | Who | What |
 |---|---|---|
 | 10:00 | Director + tech op | Weather call and the morning reset (§2) |
-| 12:00 | Set crew | Set dressing, the tent pitched or the shed set, glow tape on every step, the cans of water out (Desktop and Start Bar). Print, only once H1–H3's answers are in (`titi:facts` prints no *placeholder* WARN) and the event carries the new facts, with the per-tier counts raised for a full run: codex posters, clue props hidden (photos match), the four silver digit notes hidden in their rooms (never the server room, never a bathroom), the 10 check-in signs (no Tube card) up on their doors, because a phone now reads *The Start Bar* and never the real room, the fact stacks per `generated/print-stacks.md`, Bingo cards and pens, trophies. Print one sheet at 100% first and check the text codes read. Once it has run: `titi:qr-lock`, commit `qr-lock.json` (§1, step 9) |
+| 12:00 | Set crew | Set dressing, the tent pitched or the shed set, glow tape on every step, the cans of water out (Desktop and Start Bar). Print, only once the event carries the new facts and Clippy's, Adobe's and the second director's answer keys are filled in from `facts.json`, with the per-tier counts raised for a full run: codex posters, clue props hidden (photos match), the four silver digit notes hidden in their rooms (never the server room, never a bathroom), the 10 check-in signs (no Tube card) up on their doors, because a phone now reads *The Start Bar* and never the real room, the fact stacks per `generated/print-stacks.md`, Bingo cards and pens, trophies. Print one sheet at 100% first and check the text codes read. Once it has run: `titi:qr-lock`, commit `qr-lock.json` (§1, step 9) |
 | 15:00 | Tech op | Boot every machine (below); `pnpm showctl doctor` green; the keypad **re-set by hand** to the new `door.code`, then its test (outside with the code, inside with the handle and no code); one announcement through the router; a 🔈 Test per speaker at show level; the iPad's strap test (below) |
 | 17:00 | Performers + house manager | Booths signed in (after Go live) with the staff badge or the performer code, each on the phone they will keep: a part is one phone's; push subscribed; a test `!` alert reaches every performer phone; walk the stations. Loaner phones (2–3), the charging station, power banks, radios with earpieces |
 | 18:00 | Door host + house manager | Porch: candy bowl and sign, the Optical Drive dim (not dark) until doors. Pre-show checklist signed. Safety re-check |
@@ -592,6 +592,10 @@ server owns it.
   which is true: the cue sheet shows it as a refused press. A host's ✓ Done doesn't
   fire him, but a host scrolling to the end does. A ✓ Done behind paused doors
   fires him the moment the doors reopen, with no press.
+- **The reveal** (🌑) goes the same way: his final answers wait for the end of her
+  last line, her arrow or her ✓ Done, so what she takes out loud is in them. ▶ left
+  running through the room's turn starts him, so she stays on ⏸ while they speak. 🌑
+  again is the backup; 🍎 refuses until he has read.
 - **▶ on the prompter** is the shared autoscroll. A rail or section jump stops it
   for everyone, so press it again after a jump.
 - **While someone's finger is on it, it is theirs:** the others read *🔒 Clippy has

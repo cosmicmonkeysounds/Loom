@@ -277,32 +277,32 @@ The refused screen and its neighbours carry no marker, because they are app word
 
 | File | Lines |
 |---|---|
-| `CLAUDE.md` | 378 |
-| `INDEX.md` | 57 |
+| `CLAUDE.md` | 377 |
+| `INDEX.md` | 58 |
 | `atmosphere.loom` | 14 |
 | `beats/ceremony.loom` | 55 |
-| `beats/finale.loom` | 227 |
+| `beats/finale.loom` | 258 |
 | `beats/internet.loom` | 23 |
 | `beats/pong.loom` | 18 |
 | `beats/server-room.loom` | 36, 150, 1210, 1223 |
 | `codex/1-world.loom` | 36, 115, 176 |
 | `codex/2-files.loom` | 106 |
-| `core/scripts/titi-facts.ts` | 116 |
+| `core/scripts/titi-facts.ts` | 115 |
 | `core/server/costume-page.ts` | 101 |
-| `core/server/event-runtime.ts` | 357 |
+| `core/server/event-runtime.ts` | 359, 367 |
 | `core/server/push.ts` | 290 |
 | `core/src/costume.ts` | 217 |
 | `costume.json` | 2 |
-| `editor/src/lib/print-sheet.ts` | 18 |
-| `main.loom` | 2494, 2558, 2593, 3292, 3309, 3849, 6146, 6148, 6228, 6230, 6288, 6535, 6567, 6607 |
-| `objectives.loom` | 118, 217, 300, 339 |
+| `editor/src/lib/print-sheet.ts` | 18, 131 |
+| `main.loom` | 2618, 2682, 2717, 3425, 3442, 3645, 3988, 6350, 6352, 6432, 6434, 6516, 6521, 6558, 6607, 6850, 6882, 6885, 6908, 6929 |
+| `objectives.loom` | 118, 217, 300, 319, 340 |
 | `play/CLAUDE.md` | 597 |
 | `play/src/aloud/prompter.tsx` | 71, 459, 523, 577 |
 | `play/src/booth/people.tsx` | 46 |
 | `play/src/director.tsx` | 1374 |
 | `play/src/guest/register.tsx` | 173 |
 | `play/src/host/prompter-strip.tsx` | 22, 28 |
-| `play/src/host/show-model.ts` | 115 |
+| `play/src/host/show-model.ts` | 115, 123 |
 | `play/src/host/tab-people.tsx` | 32, 38 |
 | `reinstall/vr/game/game.gd` | 145 |
 | `reinstall/vr/game/hud.gd` | 41 |
@@ -311,7 +311,7 @@ The refused screen and its neighbours carry no marker, because they are app word
 | `reinstall/web/src/game/reset.ts` | 13 |
 | `reinstall/web/src/game/tutorial.ts` | 142 |
 | `terminal/src/cutscene/scenes/act1.tsx` | 118, 155 |
-| `terminal/src/cutscene/scenes/act2.tsx` | 1387 |
+| `terminal/src/cutscene/scenes/act2.tsx` | 1383 |
 | `terminal/src/idle-show/ads.ts` | 100, 131 |
 | `terminal/src/slides.ts` | 608 |
 
@@ -473,8 +473,8 @@ is on this sheet: they are in `facts.json`, the story and the generated files.
 - **The old documents end `▒ FILED ▒`, not ▒ HUNT ANSWER.** That mark is on the phone's copy, with the same ids
   as the new questions, so an old document told a guest it answered H4. The entry's other words, its code, its
   card and its pile are as they were, and the new stamp keeps it from his worker as the old one did.
-- **G1 waits on the same record:** the 🖼 totals on a results slide count a wrong filing at 100 as ACCEPTED, as
-  they always have, beside his correct-only Congratulations. Not viewed on a page; left alone.
+- **The results slide's totals** still count a wrong filing at 100 as ACCEPTED, as they always have, beside his
+  correct-only Congratulations: *accepted* never said *true*. Not viewed on a page; left alone.
 - **The reveal's order:** the answers can't land while she asks for them, or they would be on every phone
   in the chat, so 🌑 waits for her. A script that holds only the TV would have left them on the phones. If she
   lets ▶ Scroll run through the room's turn, he starts: ⏸ while they speak (her pack says so).
