@@ -11,7 +11,6 @@ shader_type spatial;
 render_mode unshaded, skip_vertex_transform, cull_disabled, shadows_disabled;
 
 const int TRAIL = 8;
-const float STEP_HZ = 11.0;
 const float STORM_S = 0.9;
 const float FACE_GRID = 9.0;
 const float FACE_SIZE = 0.56;
@@ -26,6 +25,9 @@ uniform float swarm_seed = 0.0;
 // face gathers for a nearby camera (a hand is always near one).
 uniform float swarm_scale = 1.0;
 uniform float near_weight = 1.0;
+// How often the shards hop (Hz), and how near the eye they may come (m, 0 = any).
+uniform float step_hz = 11.0;
+uniform float near_cut = 0.0;
 // The share of the shards drawn (the `self` vision's fade).
 uniform float present = 1.0;
 uniform vec3 origin = vec3(0.0);
@@ -58,8 +60,8 @@ void vertex() {
 
 	float is_face = step(1.0, rnd.w);
 	float r = rnd.w - is_face;
-	float tick = floor(TIME * STEP_HZ + rnd.x * 3.0);
-	float t = tick / STEP_HZ;
+	float tick = floor(TIME * step_hz + rnd.x * 3.0);
+	float t = tick / step_hz;
 	float slot = floor(TIME / STORM_S + swarm_seed);
 	float storm = step(0.7, hash(slot * 1.37 + swarm_seed));
 
@@ -97,7 +99,7 @@ void vertex() {
 	float g = is_face * smoothstep(rnd.y * 0.6, rnd.y * 0.6 + 0.4, gather);
 	vec2 face_at = (cell.xy + cell.zw * 0.5 - 0.5) * FACE_SIZE;
 	float row = floor(cell.y * FACE_GRID + 0.5);
-	float row_tick = floor(TIME * STEP_HZ);
+	float row_tick = floor(TIME * step_hz);
 	float tear = step(mix(0.9, 0.55, storm), hash(row * 3.1 + row_tick * 0.17 + swarm_seed));
 	face_at.x += tear * (hash(row + row_tick * 0.31) - 0.5) * 0.42;
 	vec4 face = head + vec4(face_at, rnd.z * 0.03, 0.0) * swarm_scale;
@@ -105,7 +107,9 @@ void vertex() {
 
 	float big = 1.0 + (1.0 - g) * storm * step(0.8, rnd.z) * 1.5;
 	float here = step(rnd.x * 0.999, present);
-	view.xy += corner * size * big * swarm_scale * here;
+	// Nothing crowds the eyes: a shard closer than near_cut shrinks away.
+	float clear = near_cut > 0.0 ? smoothstep(near_cut * 0.6, near_cut, length(view.xyz)) : 1.0;
+	view.xy += corner * size * big * swarm_scale * here * clear;
 	VERTEX = view.xyz;
 
 	// The layout's v is up (three's); a Godot texture's is down.

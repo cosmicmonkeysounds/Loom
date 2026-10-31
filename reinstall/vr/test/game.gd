@@ -49,6 +49,7 @@ func _run() -> void:
 	await _test_server_link()
 	_test_server_link_intro()
 	_test_locomotion()
+	_test_refresh_rate()
 	_test_picker()
 	_test_picker_grid()
 	_test_flow()
@@ -457,7 +458,7 @@ func _test_wave47_look() -> void:
 		if not _per_floor(b2, "Props_%s" % r).is_empty():
 			roles_built.append(r)
 	_check(roles_built.has("body") and roles_built.has("neon") and roles_built.has("trim") and roles_built.has("dark") and roles_built.has("alert"), "wave 47: a rack draws its parts in their roles (%s)" % [roles_built])
-	_check((_per_floor(b2, "Props_neon")[0] as MeshInstance3D).material_override == HouseLook.neon() and (HouseLook.neon() as StandardMaterial3D).disable_fog, "wave 47: model neon is the shared, unfogged neon")
+	_check((_per_floor(b2, "Props_neon")[0] as MeshInstance3D).material_override == HouseLook.neon() and not (HouseLook.neon() as StandardMaterial3D).disable_fog, "wave 47: model neon is the shared neon, fading into the haze")
 	_check(b2.part("Prop_w47-rack") != null and b2.part("Prop_w47-odd") != null, "wave 47: every prop keeps its Prop_<id> root")
 	var neon_faces := _faces(b2, "Props_neon")
 	var plain: Dictionary = house.duplicate(true)
@@ -1401,6 +1402,36 @@ func _test_locomotion() -> void:
 
 ## The `--autopilot` follower, walked kinematically (no physics): from the
 ## spawn it reaches every duck spot of the show, up the stairs included.
+func _test_refresh_rate() -> void:
+	var offered: Array = [72.0, 80.0, 90.0, 120.0]
+	_check(RefreshRate.nearest(offered, 90.0) == 90.0 and RefreshRate.nearest([72.0, 89.9], 90.0) == 89.9 and RefreshRate.nearest([], 90.0) == 0.0, "refresh: the offered rate nearest the wanted one, never an exact match")
+	_check(RefreshRate.other(offered, 90.0, 72.0) == 72.0 and RefreshRate.other([90.0], 90.0, 72.0) == 0.0, "refresh: the other rate is the one nearest the display, if there is one")
+	var r := RefreshRate.new()
+	_check(r.step(72.0, 1.0) == 0.0, "refresh: nothing is asked before the session has focus")
+	r.start(offered)
+	_check(r.step(72.0, 0.011) == 90.0 and r.tries == 1, "refresh: the first ask goes straight to the wanted rate")
+	_check(r.step(72.0, 0.5) == 0.0, "refresh: … and it gets time to take")
+	_check(r.step(72.0, 0.6) == 72.0, "refresh: still not there, another rate first (a repeat of the last ask is dropped)")
+	_check(r.step(72.0, 0.1) == 0.0, "refresh: … held for a moment")
+	_check(r.step(72.0, 0.2) == 90.0 and r.tries == 2, "refresh: … then the wanted rate, a new request again")
+	_check(r.step(90.0, 2.0) == 0.0 and r.want == 0.0, "refresh: once the display reads back it stops asking")
+	_check(r.step(72.0, 2.0) == 0.0, "refresh: … until the next focus")
+	r.start(offered)
+	_check(r.step(72.0, 0.011) == 72.0, "refresh: a new focus with the last ask still standing kicks first")
+	_check(r.step(90.0, 0.3) == 0.0 and r.want == 0.0, "refresh: a display that gets there on its own needs nothing more")
+	r.start(offered)
+	r.step(90.0, 0.011)
+	_check(r.want == 0.0, "refresh: a focus already at the wanted rate asks for nothing")
+	r.start(offered)
+	var asks := 0
+	for i in 200:
+		if r.step(72.0, 0.25) == 90.0:
+			asks += 1
+	_check(asks == RefreshRate.TRIES and r.want == 0.0, "refresh: a runtime that never moves gets %d asks, then the game runs at what it has" % asks)
+	r.start([72.0])
+	_check(r.want == 72.0 and r.step(72.0, 0.011) == 0.0, "refresh: one rate on offer, nothing to ask")
+
+
 func _test_autopilot() -> void:
 	_check(StationConfig.parse_args(PackedStringArray(["--autopilot"])).get("autopilot") == true, "autopilot: --autopilot parses")
 	_check(StationConfig.defaults()["autopilot"] == false, "autopilot: off by default")
@@ -5017,7 +5048,7 @@ func _test_house_lights() -> void:
 		_check(env.glow_enabled == (t == "high"), "graphics: %s %s glow" % [t, "has" if t == "high" else "has no"])
 		_check(not env.ssao_enabled and not env.ssr_enabled and not env.ssil_enabled and not env.volumetric_fog_enabled and not env.sdfgi_enabled, "graphics: %s has no SSAO / SSR / SSIL / volumetric fog / SDFGI" % t)
 		_check(_near(env.ambient_light_energy, HouseLights.DAY_AMBIENT), "graphics: %s starts at today's ambient" % t)
-	_check(HouseLook.msaa("high") == Viewport.MSAA_2X and HouseLook.msaa("medium") == Viewport.MSAA_DISABLED and HouseLook.msaa("low") == Viewport.MSAA_DISABLED, "graphics: MSAA on high only")
+	_check(HouseLook.msaa("high") == Viewport.MSAA_4X and HouseLook.msaa("medium") == Viewport.MSAA_4X and HouseLook.msaa("low") == Viewport.MSAA_DISABLED, "graphics: 4x MSAA but on low")
 	HouseLook.set_tier("low")
 	var low_mat := HouseLook.wall() as StandardMaterial3D
 	HouseLook.set_tier("medium")
@@ -5193,7 +5224,7 @@ func _test_house_lamps_game() -> void:
 	game.clock = func() -> float: return _now
 	var env: Environment = (main.get_node("WorldEnvironment") as WorldEnvironment).environment
 	_check(env.glow_enabled and env.tonemap_mode == Environment.TONE_MAPPER_ACES and game.world_env == env, "lamps game: high glows and tone-maps; the game has the environment")
-	_check(main.get_viewport().msaa_3d == Viewport.MSAA_2X, "lamps game: high turns MSAA on")
+	_check(main.get_viewport().msaa_3d == Viewport.MSAA_4X, "lamps game: high turns MSAA on")
 	_check(game.lamps != null and game.lamps.pool.size() == 5 and game.lamps.bulb_ids().size() == 5, "lamps game: a frame already in is drawn; high pools 5")
 	game._process(0.016)
 	_check(not game.lamps.in_house and _near(env.ambient_light_energy, HouseLights.DAY_AMBIENT, 1e-3), "lamps game: the lobby keeps today's ambient")

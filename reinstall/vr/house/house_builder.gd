@@ -733,12 +733,17 @@ static func add_cylinder(st: SurfaceTool, xf: Transform3D, c: Vector3, s: Vector
 		_tri(st, bottom, rim_lo[i + 1], rim_lo[i], -wa, -wa, -wa, -wa, color)
 
 
+## The strips in a headset (m tall): at the web's 12 mm a far strip is under
+## a pixel, a dotted line that crawls.
+const NEON_STRIP_H := 0.03
+
+
 ## Wave 47: a neon skirting and cove strip along both faces of every
 ## `wall` segment (HouseModels.NEON_*), one merged mesh, no colliders.
 func _build_neon_strips() -> void:
 	var boxes := wall_boxes(walls, HouseGeometry.style_of(house)["wallThickness"])
 	var tools := {}
-	var hh := HouseModels.NEON_STRIP_H
+	var hh := NEON_STRIP_H
 	var proud := HouseModels.NEON_STRIP_PROUD
 	var levels := [[float(HouseModels.NEON_STRIP_AT[0]), Color(HouseModels.NEON_SKIRT)], [-float(HouseModels.NEON_STRIP_AT[1]), Color(HouseModels.NEON_COVE)]]
 	for i in boxes.size():

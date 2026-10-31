@@ -20,6 +20,10 @@
     tools\quest-win.ps1 -Logs                                       # record the game's log
     tools\quest-win.ps1 -TestServer -Install -Launch                # for tools/test-server.mjs
 
+  -Package installs under another package id, beside the show's copy, whose
+  own setup then stays as it is. -Autopilot -Guest g-... walks the house by
+  itself (for tools/quest-frames.mjs: real frame costs with nobody in it).
+
   -TestServer builds station vr-test for the quick test server
   (`node tools/test-server.mjs`, a scratch server on this computer): its
   passcode from build\test-server.json, server http://127.0.0.1:<port> (the
@@ -62,7 +66,10 @@ param(
   [string]$Serial = "",
   [switch]$Logs,
   [switch]$NoIntro,
-  [switch]$TestServer
+  [switch]$TestServer,
+  [switch]$Autopilot,
+  [string]$Guest = "",
+  [string]$Package = "com.mapsandducks.reinstall"
 )
 
 $ErrorActionPreference = "Stop"
@@ -119,7 +126,7 @@ if ($TestServer) {
   if (-not $Station) { $Station = "vr-test" }
   if (-not $Name) { $Name = "Test Headset" }
   $Code = $ts.mod
-  $Server = "http://127.0.0.1:$TestPort"
+  if (-not $PSBoundParameters.ContainsKey("Server")) { $Server = "http://127.0.0.1:$TestPort" }
   $NoIntro = $true
 }
 
@@ -135,7 +142,8 @@ if ($Station) {
   }
 }
 if ($Graphics -and -not $Station) { Die "-Graphics needs -Station (it is baked into the station's config)" }
-$Package = "com.mapsandducks.reinstall"
+$ShowPackage = "com.mapsandducks.reinstall"
+if ($Autopilot -and $Package -eq $ShowPackage) { Die "-Autopilot needs -Package: it must never replace the show's copy" }
 $Adb = Join-Path $AndroidHome "platform-tools\adb.exe"
 
 function Apk-Name {
@@ -231,13 +239,23 @@ if ($Station) {
   $st = [ordered]@{ server = $Server; code = $Code; station = $Station; name = $Name }
   if ($Graphics) { $st["graphics"] = $Graphics }
   if ($NoIntro) { $st["intro"] = $false }
+  if ($Autopilot) { $st["autopilot"] = $true; if ($Guest) { $st["guest"] = $Guest } }
   Write-Utf8NoBom (Join-Path $Stage "config\station.json") ($st | ConvertTo-Json)
   $extra = ""; if ($Graphics) { $extra = " / $Graphics" }; if ($NoIntro) { $extra = "$extra / no intro" }
   Say "  baked: $Station / $Name / $Server$extra"
 }
 
+# another package id: the staging copy of the preset only
+if ($Package -ne $ShowPackage) {
+  $presets = Join-Path $Stage "export_presets.cfg"
+  $was = Get-Content -Raw $presets
+  $now = $was.Replace("package/unique_name=`"$ShowPackage`"", "package/unique_name=`"$Package`"")
+  if ($now -ceq $was) { Die "could not set the package id in $presets" }
+  Write-Utf8NoBom $presets $now
+}
+
 # the lobby's build stamp (config\build.json): short sha, "+" when the tree is dirty
-$sha = (& git -C $ProjectRoot rev-parse --short HEAD 2>$null)
+$sha =(& git -C $ProjectRoot rev-parse --short HEAD 2>$null)
 if (-not $sha) { $sha = "unknown" }
 elseif (& git -C $ProjectRoot status --porcelain -- . 2>$null) { $sha = "$sha+" }
 $when = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mmZ")

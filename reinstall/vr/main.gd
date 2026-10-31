@@ -7,8 +7,7 @@ extends Node3D
 var link: LinkBase = null
 var xr_interface: OpenXRInterface = null
 
-## The display rate to ask a headset for (Hz).
-const REFRESH_RATE := 90.0
+var _refresh := RefreshRate.new()
 
 @onready var game: Game = $Game
 
@@ -43,33 +42,49 @@ func _start_xr() -> bool:
 	get_viewport().use_xr = true
 	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
 	if xr_interface != null:
-		# Quest 3 runs 72 / 90 / 120 Hz (72 unless asked). The rates are only
-		# known once the session has begun, so ask for 90 then.
-		xr_interface.session_begun.connect(_ask_refresh_rate)
-		xr_interface.display_refresh_rate_changed.connect(_match_physics)
-		if not xr_interface.get_available_display_refresh_rates().is_empty():
-			_ask_refresh_rate()
+		# Quest 3 runs 72 / 80 / 90 / 120 Hz (72 unless asked), and only hears
+		# a session with focus ([RefreshRate]).
+		xr_interface.refresh_rate_changed.connect(_match_physics)
+		xr_interface.session_begun.connect(_ask_performance)
+		xr_interface.cpu_level_changed.connect(_log_level.bind("cpu"))
+		xr_interface.gpu_level_changed.connect(_log_level.bind("gpu"))
 		xr_interface.user_presence_changed.connect(game.presence_changed)
 		xr_interface.session_focussed.connect(func() -> void: game.focus_changed(true))
-		# … and again on focus: asked only before it, the Quest 3 stayed at
-		# 72 Hz (2026-10-29).
 		xr_interface.session_focussed.connect(_ask_refresh_rate)
 		xr_interface.session_visible.connect(func() -> void: game.focus_changed(false))
 		xr_interface.session_stopping.connect(game.headset_gone)
 	return true
 
 
-## The display at the offered rate nearest [constant REFRESH_RATE] (the
-## runtime's floats need not be exactly 90.0, so never match them exactly).
+## Hold the clocks up: left dynamic, a Quest runs them low and raises them only
+## after a frame has been missed, so each climb into a heavier room judders.
+func _ask_performance() -> void:
+	xr_interface.set_cpu_level(OpenXRInterface.PERF_SETTINGS_LEVEL_SUSTAINED_HIGH)
+	xr_interface.set_gpu_level(OpenXRInterface.PERF_SETTINGS_LEVEL_SUSTAINED_HIGH)
+
+
+func _log_level(sub_domain: int, from_level: int, to_level: int, what: String) -> void:
+	print("reinstall-vr: %s level, domain %d: %d to %d" % [what, sub_domain, from_level, to_level])
+
+
+## Work towards the wanted rate from here ([method _process]).
 func _ask_refresh_rate() -> void:
-	var want := 0.0
-	for r: float in xr_interface.get_available_display_refresh_rates():
-		if want == 0.0 or absf(r - REFRESH_RATE) < absf(want - REFRESH_RATE):
-			want = r
-	if want > 0.0 and absf(xr_interface.display_refresh_rate - want) > 0.5:
-		print("reinstall-vr: asking for %.3f Hz" % want)
-		xr_interface.display_refresh_rate = want
+	_refresh.start(Array(xr_interface.get_available_display_refresh_rates()))
 	_match_physics(xr_interface.display_refresh_rate)
+
+
+## The display rate's asks, and reading it back: the physics tick follows even
+## if the runtime never sends its changed event.
+func _process(delta: float) -> void:
+	if xr_interface == null:
+		return
+	var display := xr_interface.display_refresh_rate
+	if display >= 60.0 and roundi(display) != Engine.physics_ticks_per_second:
+		_match_physics(display)
+	var ask := _refresh.step(display, delta)
+	if ask > 0.0:
+		print("reinstall-vr: asking for %.3f Hz (display %.3f, try %d)" % [ask, display, _refresh.tries])
+		xr_interface.display_refresh_rate = ask
 
 
 ## One physics tick per displayed frame, whatever rate the runtime settled

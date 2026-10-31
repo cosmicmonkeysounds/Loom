@@ -2,7 +2,8 @@
 ## tiled walls, checkerboard floors, starfield ceilings, gold for anything
 ## that matters (rails, the trail, the duck). Every texture is drawn
 ## procedurally into an [ImageTexture] (no imported assets, nothing to
-## compress), filtered NEAREST for the chunky 1997 pixels. Materials are
+## compress). Their chunky 1997 pixels are cut 8× finer and filtered smooth, so
+## a hard texel edge stays put as the head moves instead of crawling. Materials are
 ## Lambert-lit with no specular: per pixel on the `medium` and `high`
 ## graphics tiers (wave 39: the real house's lights pool on the walls and
 ## floors, [HouseLamps]), per vertex on `low` — cheapest on the Quest's
@@ -57,7 +58,7 @@ static func _lit(albedo: Color, tex: Texture2D = null) -> StandardMaterial3D:
 	m.albedo_color = albedo
 	if tex != null:
 		m.albedo_texture = tex
-		m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST_WITH_MIPMAPS
+		m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
 	return m
 
 
@@ -70,9 +71,12 @@ static func _unshaded(albedo: Color, tex: Texture2D = null) -> StandardMaterial3
 # --- textures --------------------------------------------------------------
 
 
-static func _texture(key: String, make: Callable) -> ImageTexture:
+## A texture from its small chunky drawing, `k` times finer with the same hard
+## pixels: filtering then softens an edge by a fraction of a chunky pixel.
+static func _texture(key: String, make: Callable, k := 8) -> ImageTexture:
 	if not _textures.has(key):
 		var img: Image = make.call()
+		img.resize(img.get_width() * k, img.get_height() * k, Image.INTERPOLATE_NEAREST)
 		img.generate_mipmaps()
 		_textures[key] = ImageTexture.create_from_image(img)
 	return _textures[key]
@@ -110,11 +114,13 @@ static func starfield() -> ImageTexture:
 		img.fill(NIGHT)
 		var rng := RandomNumberGenerator.new()
 		rng.seed = 1997
-		for i in 90:
+		for i in 45:
 			var c := INK if i % 4 != 0 else TEAL_GLOW
 			c.a = 1.0
-			img.set_pixel(rng.randi_range(0, 127), rng.randi_range(0, 127), c.darkened(rng.randf_range(0.0, 0.6)))
-		return img)
+			# Two pixels across and dimmer: a one-pixel star at a grazing
+			# angle twinkles as the head moves.
+			img.fill_rect(Rect2i(rng.randi_range(0, 126), rng.randi_range(0, 126), 2, 2), c.darkened(rng.randf_range(0.3, 0.7)))
+		return img, 4)
 
 
 ## A fence lattice: diagonal wires, holes cut by alpha.
@@ -288,7 +294,6 @@ static func neon() -> StandardMaterial3D:
 		m.vertex_color_use_as_albedo = true
 		m.vertex_color_is_srgb = true
 		m.albedo_color = Color(HouseModels.NEON_GAIN, HouseModels.NEON_GAIN, HouseModels.NEON_GAIN)
-		m.disable_fog = true
 		return m) as StandardMaterial3D
 
 
@@ -447,8 +452,9 @@ static func environment(tier := HouseLights.DEFAULT_TIER) -> Environment:
 	return env
 
 
-## The 3D anti-aliasing for a tier: 2× MSAA on `high` only. (2× on `medium`
-## drew a black void on the Quest 3, with only the text showing, on
-## 2026-10-29: leave `medium` without until a build proves otherwise.)
+## The 3D anti-aliasing for a tier: 4× MSAA but on `low`. An unsmoothed edge
+## crawls with every small move of the head, differently in each eye. (The
+## black void of 2026-10-29 was Godot's #123406, MSAA on a subsampled swapchain
+## with no density map: keep `foveation_with_subsampled_images` off.)
 static func msaa(tier := HouseLights.DEFAULT_TIER) -> Viewport.MSAA:
-	return Viewport.MSAA_2X if HouseLights.tier_of(tier) == "high" else Viewport.MSAA_DISABLED
+	return Viewport.MSAA_DISABLED if HouseLights.tier_of(tier) == "low" else Viewport.MSAA_4X

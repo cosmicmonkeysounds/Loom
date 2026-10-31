@@ -9,6 +9,11 @@ extends MultiMeshInstance3D
 
 ## The swarm's size against a ghost's.
 const SCALE := 0.32
+## In view all the time at arm's length, so slower than a ghost, and under the
+## 3 Hz a flicker needs to stay below.
+const STEP_HZ := 3.0
+## How near the eye a shard may come (m).
+const NEAR_CUT := 0.2
 
 ## The picture fetcher ([member Ghosts.avatars]) and avatar key → URL.
 var avatars: AvatarCache
@@ -31,6 +36,8 @@ func _init() -> void:
 	_mat.shader = Ghosts.SWARM_SHADER
 	_mat.set_shader_parameter("swarm_scale", SCALE)
 	_mat.set_shader_parameter("near_weight", 0.0)
+	_mat.set_shader_parameter("step_hz", STEP_HZ)
+	_mat.set_shader_parameter("near_cut", NEAR_CUT)
 	material_override = _mat
 
 

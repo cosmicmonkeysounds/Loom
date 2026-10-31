@@ -14,6 +14,9 @@ extends Node3D
 
 ## Seconds to ease halfway toward a new pose (~10 Hz updates).
 const EASE := 0.06
+## How near the eye a ghost's shards may come (m): one walking through the player
+## otherwise fills the view at the near plane.
+const NEAR_CUT := 0.6
 const SWARM_SHADER := preload("res://game/swarm.gdshader")
 
 static var _shared_shards: MultiMesh
@@ -171,6 +174,7 @@ static func make_pale() -> Node3D:
 	var root := Node3D.new()
 	var mat := ShaderMaterial.new()
 	mat.shader = SWARM_SHADER
+	mat.set_shader_parameter("near_cut", NEAR_CUT)
 	var swarm := MultiMeshInstance3D.new()
 	swarm.name = "Swarm"
 	swarm.multimesh = shards()
@@ -228,6 +232,7 @@ func _make(sid: String) -> Node3D:
 	var mat := ShaderMaterial.new()
 	mat.shader = SWARM_SHADER
 	mat.set_shader_parameter("swarm_seed", seed_of / 10.0)
+	mat.set_shader_parameter("near_cut", NEAR_CUT)
 	mat.set_shader_parameter("tint", Color.from_hsv(seed_of / 1000.0, 0.6, 1.0))
 	var swarm := MultiMeshInstance3D.new()
 	swarm.name = "Swarm"

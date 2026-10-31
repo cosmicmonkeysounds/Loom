@@ -34,13 +34,16 @@ common/max_physics_steps_per_frame=12
 
 renderer/rendering_method="mobile"
 textures/vram_compression/import_etc2_astc=true
+anti_aliasing/quality/msaa_3d=2
+textures/default_filters/anisotropic_filtering_level=3
 
 [xr]
 
 openxr/enabled=true
 openxr/reference_space=2
-openxr/foveation_level=3
-openxr/foveation_dynamic=true
+openxr/foveation_level=0
+openxr/foveation_dynamic=false
+openxr/foveation_with_subsampled_images=false
 openxr/startup_alert=false
 openxr/extensions/user_presence=true
 shaders/enabled=true

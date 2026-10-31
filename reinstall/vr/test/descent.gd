@@ -217,7 +217,7 @@ func _test_comfort_rules() -> void:
 	for i in range(1, Descent.FLICKER_DIPS.size()):
 		gaps.append(float(Descent.FLICKER_DIPS[i]) - float(Descent.FLICKER_DIPS[i - 1]))
 	_check(gaps.min() >= 1.0 / 3.0, "comfort: its dips start at least a third of a second apart")
-	for level in range(1, 5):
+	for level in range(0, 5):
 		var rate := float(HouseDescent.descent_look(level)["flicker"])
 		var edges := 0
 		var was := Descent.neon_level(0.0, rate)
@@ -227,7 +227,7 @@ func _test_comfort_rules() -> void:
 				edges += 1
 			was = now
 		_check(edges <= 5, "comfort: the neon at level %d dips %d times in 10 s" % [level, edges])
-	_check(Descent.neon_level(0.02, 1.0) == HouseModels.neon_flicker(0.02) and Descent.neon_level(3.0, 1.0) == 1.0, "comfort: level 0's neon is today's")
+	_check(Descent.neon_level(0.02, 1.0) == Descent.NEON_DIP and Descent.neon_level(3.0, 1.0) == 1.0, "comfort: level 0's neon dips once, never the 14 Hz stutter")
 	_check(_near(Descent.eye_scale_at(0.0, 0.32), 1.0) and _near(Descent.eye_scale_at(1.0, 0.32), 0.32) and _near(Descent.eye_scale_at(1.0, 1.42), 1.42), "comfort: the eye eases from 1 to its target")
 
 

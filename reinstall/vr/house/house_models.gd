@@ -114,8 +114,8 @@ const NEON_STRIP_H := 0.012
 const NEON_STRIP_PROUD := 0.006
 const NEON_SKIRT := CYAN
 const NEON_COVE := MAGENTA
-## Neon is drawn this many times its colour (unlit, unfogged), so it glows.
-const NEON_GAIN := 2.2
+## Neon is drawn this many times its colour (unlit), so it glows.
+const NEON_GAIN := 1.3
 ## The haze sheets per floor: [0] m over its floor, [1] m under its
 ## ceiling; opacities, tile, drift (m/s, x and z); none on `low`, the floor
 ## one on `medium`, both on `high`.

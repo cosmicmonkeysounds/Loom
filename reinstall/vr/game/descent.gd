@@ -152,13 +152,11 @@ static func flicker_level(t: float) -> float:
 	return 1.0
 
 
-## The neon at `t` s under a level's look (`rate`, its `flicker`): today's
-## stutter at 1; deeper, every [constant HouseModels.NEON_FLICKER_S] / `rate`
-## s, one dip, however often it comes: never past 3 Hz.
+## The neon at `t` s under a level's look (`rate`, its `flicker`): every
+## [constant HouseModels.NEON_FLICKER_S] / `rate` s, one dip, however often it
+## comes: never past 3 Hz. (The web's stutter is 14 Hz, too fast for a headset.)
 static func neon_level(t: float, rate: float) -> float:
-	if rate <= 1.0:
-		return HouseModels.neon_flicker(t)
-	return NEON_DIP if fposmod(t, HouseModels.NEON_FLICKER_S / rate) < NEON_DIP_S else 1.0
+	return NEON_DIP if fposmod(t, HouseModels.NEON_FLICKER_S / maxf(rate, 1.0)) < NEON_DIP_S else 1.0
 
 
 ## A pale thing's alpha at `t` of `dur` s: in and out over [constant FADE_S].
