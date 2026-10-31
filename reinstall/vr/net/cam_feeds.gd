@@ -65,6 +65,8 @@ var _spots := {}
 var _textures := {}
 ## spot → true while its feed is shown.
 var _shown := {}
+## Held for good, so the feeds' shader outlives the last feed of a room.
+var _feed_shader := HouseBuilder.feed_material()
 ## The player's presence room (null = none: the void, no session).
 var _presence: Variant = null
 

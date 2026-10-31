@@ -25,6 +25,10 @@ general/text_to_speech=true
 
 ServerLink="*res://net/server_link.gd"
 
+[gui]
+
+theme/default_font_generate_mipmaps=true
+
 [physics]
 
 common/physics_ticks_per_second=90

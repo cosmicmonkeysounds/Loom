@@ -2,9 +2,10 @@
 ## headset camera and both controllers, carried by a [CharacterBody3D] that
 ## collides with the house and stands on its floors and ramps.
 ##
-## - **Left stick** walks where the head looks (dead zone 0.15, 1.4 m/s).
+## - **Left stick** walks where the head looks (dead zone 0.15, 1.4 m/s; half
+##   that backwards, and 0.6 of it on a stair).
 ## - **Right stick** turns smoothly about the head (gentle near the centre,
-##   at most 70°/s; no snap turn — its jumps made people dizzy). With the
+##   at most 50°/s; no snap turn — its jumps made people dizzy). With the
 ##   left stick idle (the show's headsets have only the right controller),
 ##   its forward / back walks too, each axis locked out unless the push is
 ##   a real diagonal ([method Locomotion.axis_lock]).
@@ -48,9 +49,17 @@ const BODY_HEIGHT := 1.5
 const MAX_SLOPE_DEG := 45.0
 const MOUSE_SENSITIVITY := 0.15
 ## Room scale: how far the head may stay off the body (horizontally) before
-## the view is pushed back — slack for a slope's slower climb, well short of
-## [constant RADIUS] so the head never reaches a wall the body touches.
-const MAX_HEAD_GAP := 0.05
+## the view is pushed back: enough that a small lean still moves the view, but
+## the eyes stop 17 cm from a wall the body touches.
+const MAX_HEAD_GAP := 0.08
+## The walk on a stair (a share of [constant Locomotion.WALK_SPEED]): at the full
+## pace the eye climbs 0.83 m/s, on a flight under a metre wide.
+const STAIR_SPEED := 0.6
+## A floor this tilted (the normal's up) is a stair.
+const STAIR_NORMAL_Y := 0.95
+## How long the view takes to follow the body's height (s): a stair's foot and
+## a drop ease instead of kicking. The player's own head is never delayed.
+const EYE_EASE := 0.12
 ## The vignette at full-speed turning (turning is what upsets stomachs
 ## most), and how fast the vignette closes / opens (per s).
 const TURN_VIGNETTE := 0.85
@@ -98,6 +107,8 @@ var _turn_flash := 0.0
 var _pitch := 0.0
 ## Physics ticks still to wait before the body moves (after a teleport).
 var _settle := 0
+## The rig's eased height (world y, [constant EYE_EASE]).
+var _eye_y := 0.0
 ## The eye height's scale ([method set_eye_scale]).
 var eye_scale := 1.0
 var _fall := 0.0
@@ -110,6 +121,10 @@ func _ready() -> void:
 	floor_snap_length = 0.4
 	floor_stop_on_slope = true
 	floor_constant_speed = true
+	# Sliding from any angle: at the default 15 degrees a body pressed to a wall
+	# sticks, then lurches off at the first small turn of the head.
+	wall_min_slide_angle = 0.0
+	_eye_y = global_position.y
 	set_xr(xr_active)
 
 
@@ -156,6 +171,8 @@ func teleport(pos: Vector3, yaw: float) -> void:
 	_fall = 0.0
 	_settle = 2
 	global_position = pos
+	_eye_y = pos.y
+	origin.position.y = 0.0
 	if xr_active:
 		var turn := yaw - head_yaw()
 		origin.global_transform = Locomotion.rotate_about(origin.global_transform, camera.global_position, turn)
@@ -228,13 +245,27 @@ func _process(frame: float) -> void:
 		if turn != 0.0:
 			origin.global_transform = Locomotion.rotate_about(origin.global_transform, camera.global_position, turn)
 			_turn_flash = maxf(_turn_flash, absf(turn) / (Locomotion.TURN_RATE * delta))
-	var walk := Locomotion.head_relative(left_stick, head_yaw()) * Locomotion.WALK_SPEED if locomotion_enabled else Vector3.ZERO
+	var pace := Locomotion.WALK_SPEED * (STAIR_SPEED if on_stair() else 1.0)
+	var walk := Locomotion.head_relative(Locomotion.gait(left_stick), head_yaw()) * pace if locomotion_enabled else Vector3.ZERO
 	if _settle == 0:
 		if xr_active:
 			_fold_head()
 		_walk(walk, delta)
 		_wall_bump(delta, Vector2(walk.x, walk.z).length())
+		if xr_active:
+			_ease_eye(delta)
 	_update_vignette(delta, Vector2(walk.x, walk.z).length())
+
+
+## Whether the body stands on a stair.
+func on_stair() -> bool:
+	return is_on_floor() and get_floor_normal().y < STAIR_NORMAL_Y
+
+
+## The rig follows the body's height a little behind ([constant EYE_EASE]).
+func _ease_eye(delta: float) -> void:
+	_eye_y += (global_position.y - _eye_y) * (1.0 - exp(-delta / EYE_EASE))
+	origin.position.y = _eye_y - global_position.y
 
 
 ## The walk and gravity over `delta`. move_and_slide moves velocity × the

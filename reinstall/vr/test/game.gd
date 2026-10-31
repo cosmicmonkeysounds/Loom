@@ -50,6 +50,7 @@ func _run() -> void:
 	_test_server_link_intro()
 	_test_locomotion()
 	_test_refresh_rate()
+	_test_trail_stays()
 	_test_picker()
 	_test_picker_grid()
 	_test_flow()
@@ -1387,6 +1388,7 @@ func _test_locomotion() -> void:
 	var half := absf(Locomotion.smooth_turn(0.5, 1.0))
 	_check(half < Locomotion.TURN_RATE * 0.4 and half > 0.0, "loco: a half push turns well under half speed (%.1f°/s)" % half)
 	_check(Locomotion.smooth_turn(0.0, 1.0) == 0.0, "loco: a centred stick doesn't turn")
+	_check(Locomotion.gait(Vector2(0.2, 1.0)) == Vector2(0.2, 1.0) and Locomotion.gait(Vector2(0.2, -1.0)) == Vector2(0.2, -Locomotion.BACK_SPEED), "loco: backwards is slower, forwards and sideways are not")
 	_check(Locomotion.WALK_SPEED <= 1.5 and Locomotion.TURN_RATE <= 75.0, "loco: a first-timer's pace (walk %.1f m/s, turn %.0f°/s)" % [Locomotion.WALK_SPEED, Locomotion.TURN_RATE])
 	_check(Locomotion.axis_lock(Vector2(0.3, 0.9)) == Vector2(0, 0.9), "loco: one stick — a crooked push forward walks straight")
 	_check(Locomotion.axis_lock(Vector2(-0.8, 0.2)) == Vector2(-0.8, 0), "loco: … a crooked turn doesn't creep")
@@ -1403,6 +1405,8 @@ func _test_locomotion() -> void:
 ## The `--autopilot` follower, walked kinematically (no physics): from the
 ## spawn it reaches every duck spot of the show, up the stairs included.
 func _test_refresh_rate() -> void:
+	_check(ClassDB.class_has_signal("OpenXRInterface", "refresh_rate_changed"), "refresh: main.gd's signal exists (a wrong name is silent in a release build, and this path needs a headset)")
+	_check(FileAccess.get_file_as_string("res://main.gd").contains("xr_interface.refresh_rate_changed.connect("), "refresh: main.gd connects it")
 	var offered: Array = [72.0, 80.0, 90.0, 120.0]
 	_check(RefreshRate.nearest(offered, 90.0) == 90.0 and RefreshRate.nearest([72.0, 89.9], 90.0) == 89.9 and RefreshRate.nearest([], 90.0) == 0.0, "refresh: the offered rate nearest the wanted one, never an exact match")
 	_check(RefreshRate.other(offered, 90.0, 72.0) == 72.0 and RefreshRate.other([90.0], 90.0, 72.0) == 0.0, "refresh: the other rate is the one nearest the display, if there is one")
@@ -1430,6 +1434,23 @@ func _test_refresh_rate() -> void:
 	_check(asks == RefreshRate.TRIES and r.want == 0.0, "refresh: a runtime that never moves gets %d asks, then the game runs at what it has" % asks)
 	r.start([72.0])
 	_check(r.want == 72.0 and r.step(72.0, 0.011) == 0.0, "refresh: one rate on offer, nothing to ask")
+
+
+func _test_trail_stays() -> void:
+	var path: Array = [[0.0, 0.0, 0.0], [10.0, 0.0, 0.0], [10.0, 0.0, 10.0]]
+	var near: Array = [[3.2, 0.0, 0.0], [10.0, 0.0, 0.0], [10.0, 0.0, 10.0]]
+	var from_start := Game.trail_samples(path)
+	var further_on := Game.trail_samples(near)
+	var moved := 0
+	for i in further_on.size():
+		var a: Array = further_on[further_on.size() - 1 - i]["p"]
+		var b: Array = from_start[from_start.size() - 1 - i]["p"]
+		if not _near3(a, b, 1e-4):
+			moved += 1
+	_check(moved == 0, "trail: walking up the path leaves every chevron where it was (%d moved)" % moved)
+	_check(_near(float(from_start[0]["p"][0]), 0.5 , 1.0) and from_start[from_start.size() - 1]["p"][2] < 10.0, "trail: it reads from the player to the duck")
+	var ahead: float = float(HouseRoute.sample_trail(path)[0]["yaw"])
+	_check(_near(HouseFrames.wrap_yaw(float(from_start[0]["yaw"]) - ahead), 0.0, 1e-3), "trail: each chevron points the way to go")
 
 
 func _test_autopilot() -> void:
@@ -1588,10 +1609,40 @@ func _test_room_scale() -> void:
 	for i in 180:
 		player.camera.global_position += Vector3(0, 0, -2.0 / 180.0)
 		player.step(dt)
+	for i in 45:  # the view follows the body's height a little behind
+		player.step(dt)
 	var up := b.to_house(player.feet())
 	_check(up[2] < 9.0 and up[1] > -2.3 and player.head_gap() <= VrPlayer.MAX_HEAD_GAP + 0.01, "room scale: a real step up the stairs climbs them (feet %s, head %.2f m off)" % [up, player.head_gap()])
 	var eye: float = b.to_house(player.camera.global_position)[1] - up[1]
 	_check(_near(eye, VrPlayer.EYE_HEIGHT, 0.05), "room scale: … and the head rises with the body (eye %.2f m over the feet)" % eye)
+	# A step down the same flight: the view eases, it never kicks.
+	player.teleport(b.to_world([-2.4, -2.7, 10.8]), b.yaw_to_world(0.0))
+	for i in 10:
+		player.step(dt)
+	var was_y := player.camera.global_position.y
+	player.global_position.y += 0.4
+	player.step(dt)
+	_check(absf(player.camera.global_position.y - was_y) < 0.1, "room scale: a sudden 0.4 m in the body's height eases into the view (%.2f m in a frame)" % absf(player.camera.global_position.y - was_y))
+	player.global_position.y -= 0.4
+	for i in 45:
+		player.step(dt)
+	# A flight's open sides hold a body in, both ways: 40% up its first ramp.
+	var ramp: Dictionary = HouseGeometry.build_ramps(house)[0]
+	var r: Array = ramp["rect"]
+	var on_flight := [(float(r[0]) + float(r[2])) / 2.0, float(ramp["low"]) + 0.4 * (float(ramp["high"]) - float(ramp["low"])) + 0.03, float(r[3]) - 0.4 * (float(r[3]) - float(r[1]))]
+	for stick: float in [1.0, -1.0]:
+		player.teleport(b.to_world(on_flight), b.yaw_to_world(0.0))
+		var at := b.to_house(player.feet())
+		player.left_stick = Vector2(stick, 0.0)
+		for i in 150:
+			player.step(dt)
+		player.left_stick = Vector2.ZERO
+		var now := b.to_house(player.feet())
+		_check(absf(now[0] - at[0]) < 0.5 and now[1] > at[1] - 0.5, "stairs: walking sideways on a flight stays on it (%.2f m aside, %.2f m down)" % [absf(now[0] - at[0]), at[1] - now[1]])
+	player.teleport(b.to_world(on_flight), b.yaw_to_world(0.0))
+	for i in 10:
+		player.step(dt)
+	_check(player.on_stair(), "stairs: the body knows it is on one")
 
 	player.set_xr(false)
 	main.queue_free()

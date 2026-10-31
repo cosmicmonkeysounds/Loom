@@ -531,6 +531,27 @@ func _build_ramps() -> void:
 		var cs := CollisionShape3D.new()
 		cs.shape = shape
 		_body.add_child(cs)
+		var north_south := up == "n" or up == "s"
+		_ramp_side(corners[0], corners[3] if north_south else corners[1])
+		_ramp_side(corners[1] if north_south else corners[3], corners[2])
+
+
+## A wall of air along one long side of a flight, from the tread up: only the
+## upper floor has rails, so without it a glance sideways walks a body straight
+## off the lower half. The wall buzz says why it stopped.
+func _ramp_side(a: Vector3, b: Vector3) -> void:
+	var half := (b - a).cross(Vector3.UP).normalized() * (RAMP_SIDE_THICK / 2.0)
+	var hull := PackedVector3Array()
+	for p: Vector3 in [a, b]:
+		for rise: float in [RAMP_SIDE_FROM, RAMP_SIDE_HIGH]:
+			hull.append(p + half + Vector3(0, rise, 0))
+			hull.append(p - half + Vector3(0, rise, 0))
+	var shape := ConvexPolygonShape3D.new()
+	shape.points = hull
+	var cs := CollisionShape3D.new()
+	cs.name = "RampSide"
+	cs.shape = shape
+	_body.add_child(cs)
 
 
 func _build_props() -> void:
@@ -733,6 +754,14 @@ static func add_cylinder(st: SurfaceTool, xf: Transform3D, c: Vector3, s: Vector
 		_tri(st, bottom, rim_lo[i + 1], rim_lo[i], -wa, -wa, -wa, -wa, color)
 
 
+## The haze sheets' strength in a headset, and they stand still: drifting over
+## the floor they are a second textured layer in the same direction as it,
+## moving on its own, which the eyes keep trying to settle on. The fog does the look.
+const HAZE_SHARE := 0.5
+## A flight's sides (m): thick, and from just over the tread to over a head.
+const RAMP_SIDE_THICK := 0.05
+const RAMP_SIDE_FROM := 0.02
+const RAMP_SIDE_HIGH := 1.4
 ## The strips in a headset (m tall): at the web's 12 mm a far strip is under
 ## a pixel, a dotted line that crawls.
 const NEON_STRIP_H := 0.03
@@ -805,14 +834,15 @@ func _build_haze() -> void:
 			mi.name = "Haze_%s_%d" % [fl["id"], i]
 			mi.mesh = plane
 			mi.position = Vector3((float(b[0]) + float(b[2])) / 2.0, heights[i], (float(b[1]) + float(b[3])) / 2.0)
-			var mat := HouseLook.haze_sheet(float(HouseModels.HAZE_OPACITY[i]))
+			var alpha := float(HouseModels.HAZE_OPACITY[i]) * HAZE_SHARE
+			var mat := HouseLook.haze_sheet(alpha)
 			mat.uv1_scale = Vector3(w / HouseModels.HAZE_TILE_M, d / HouseModels.HAZE_TILE_M, 1.0)
 			mi.material_override = mat
 			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 			_floor_node(str(fl["id"])).add_child(mi)
-			var drift: Array = HouseModels.HAZE_DRIFT[i]
+			var drift: Array = [0.0, 0.0]  # still: see HAZE_SHARE
 			mat.albedo_color.a *= _haze_scale
-			_haze.append({"mat": mat, "alpha": float(HouseModels.HAZE_OPACITY[i]), "drift": Vector2(float(drift[0]), float(drift[1])) / HouseModels.HAZE_TILE_M})
+			_haze.append({"mat": mat, "alpha": alpha, "drift": Vector2(float(drift[0]), float(drift[1])) / HouseModels.HAZE_TILE_M})
 
 
 ## (wave 49) Thin the haze to `k` of itself (the `dark` vision: it is unfogged,
@@ -1383,6 +1413,15 @@ func set_cam(id: String, texture: Texture2D) -> void:
 
 
 ## Terminal `id` back to its own screen.
+## A camera feed's material. [CamFeeds] holds one for good: with the last feed
+## freed on leaving a room, the shader would compile again on entering the next.
+static func feed_material() -> StandardMaterial3D:
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR
+	return mat
+
+
 func clear_cam(id: String) -> void:
 	_cams.erase(id)
 	if not _terminals.has(id):
@@ -1419,10 +1458,7 @@ func _show_cam(root: Node3D, texture: Texture2D) -> void:
 		vq.size = CAM_SIZE
 		video.name = "Video"
 		video.mesh = vq
-		var mat := StandardMaterial3D.new()
-		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-		mat.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR
-		video.material_override = mat
+		video.material_override = feed_material()
 		video.rotation.y = PI  # faces −z, as the glass
 		video.position.z = -0.017
 		feed.add_child(video)

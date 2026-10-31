@@ -6,13 +6,17 @@
 class_name Hud
 extends Node3D
 
+## How far off the head-locked text hangs (m), with the captions
+## ([constant Speech.HEAD_AT]): one plane, or the eyes refocus between them.
+const PLANE_Z := 1.2
+
 var _big: Label3D
 var _sub: Label3D
 
 
 func _ready() -> void:
-	_big = _label(0.14, HouseLook.GOLD, Vector3(0, 0.12, -1.8))
-	_sub = _label(0.06, HouseLook.INK, Vector3(0, -0.06, -1.8))
+	_big = _label(0.093, HouseLook.GOLD, Vector3(0, 0.08, -PLANE_Z))
+	_sub = _label(0.04, HouseLook.INK, Vector3(0, -0.04, -PLANE_Z))
 	hide_all()
 
 
@@ -26,12 +30,43 @@ func _label(height: float, color: Color, pos: Vector3) -> Label3D:
 	return l
 
 
+## Draw every glyph once, unseen, while still in the lobby: the first line of a
+## walk otherwise builds them mid-step, a stall of a tenth of a second.
+func warm(more: Array = []) -> void:
+	if not is_inside_tree():
+		return
+	if _scare == null:
+		_build_scare()
+		_apply_scare()
+	var labels: Array = [_big, _sub]
+	labels.append_array(more)
+	var was := []
+	for l: Label3D in labels:
+		was.append([l.modulate, l.outline_modulate, l.visible])
+		l.modulate.a = 0.01
+		l.outline_modulate.a = 0.01
+		l.visible = true
+		l.text = GLYPHS
+	await get_tree().create_timer(WARM_S).timeout
+	for i in labels.size():
+		var l: Label3D = labels[i]
+		l.modulate = was[i][0]
+		l.outline_modulate = was[i][1]
+		if l.text == GLYPHS:
+			l.text = ""
+			l.visible = was[i][2]
+
+
 func hide_all() -> void:
 	for l: Label3D in [_big, _sub]:
 		l.text = ""
 	_scare_alpha = 0.0
 	_scare_target = 0.0
 	_apply_scare()
+
+
+const GLYPHS := "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 .,:;!?'\"-()/&%+="
+const WARM_S := 0.3
 
 
 # --- the void's jump scare (wave 26, R4) -------------------------------------

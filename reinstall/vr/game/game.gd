@@ -404,6 +404,7 @@ func setup(l: LinkBase, xr: bool) -> void:
 	if not link.lights.is_empty():
 		lamps.apply(link.lights)
 	enter_lobby()
+	hud.warm(speech.labels())
 	_maybe_offer_saved()  # (wave 40) a walk saved before a relaunch → the resume prompt
 
 
@@ -1836,10 +1837,11 @@ static func stair_step_out(house: Dictionary, stair: Dictionary, p: Array) -> Va
 ## headset the route runs on a worker thread: it rebuilds the house's whole
 ## visibility graph (13 ms a call on a desktop, several frames on a Quest),
 ## and twice a second on this thread it snapped the view while walking.
+## ([method trail_samples] keeps the chevrons where they are as it does.)
 ## One route in flight at a time; the desktop rig and the tests route here.
 func refresh_trail(from: Array, to: Array) -> void:
 	if player == null or not player.xr_active:
-		_lay_trail(HouseRoute.sample_trail(trail_path(route_house, from, to)), _trail_gen)
+		_lay_trail(Game.trail_samples(trail_path(route_house, from, to)), _trail_gen)
 		return
 	if _trail_task != -1:
 		return
@@ -1848,8 +1850,20 @@ func refresh_trail(from: Array, to: Array) -> void:
 	var house := _route_copy
 	var gen := _trail_gen
 	_trail_task = WorkerThreadPool.add_task(func() -> void:
-		var samples := HouseRoute.sample_trail(Game.trail_path(house, from, to))
+		var samples := Game.trail_samples(Game.trail_path(house, from, to))
 		_trail_done.call_deferred(samples, gen))
+
+
+## The chevrons along `path`, counted back from its end: laid from the player's
+## feet they would hop along the floor with every refresh, twice a second.
+static func trail_samples(path: Array) -> Array:
+	var back := path.duplicate()
+	back.reverse()
+	var out := HouseRoute.sample_trail(back)
+	for s: Dictionary in out:
+		s["yaw"] = float(s["yaw"]) + 180.0
+	out.reverse()
+	return out
 
 
 func _trail_done(samples: Array, gen: int) -> void:

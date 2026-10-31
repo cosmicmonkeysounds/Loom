@@ -650,6 +650,11 @@ func _start_mic() -> void:
 		_set_mic("asking")
 		_request_grant()
 		return
+	# A Quest's input frames never come, so straight to the route that works:
+	# found by failing, it stalled a frame some seconds into each walk.
+	if platform == "Android" and not input_activate.is_valid():
+		_fallback()
+		return
 	var err: Error = input_activate.call() if input_activate.is_valid() else AudioServer.set_input_device_active(true)
 	_input_refused = err == ERR_UNAUTHORIZED
 	if err == ERR_UNAUTHORIZED:

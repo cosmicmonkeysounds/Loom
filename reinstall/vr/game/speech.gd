@@ -34,8 +34,8 @@ const TTS_VOLUME := 100
 ## A voice still speaking this long past its reading time is cut (ms).
 const STUCK_AFTER_MS := 4000.0
 ## The head-locked caption (camera frame) and the prop billboard's lift (m).
-const HEAD_AT := Vector3(0, -0.2, -1.1)
-const HEAD_WIDTH := 0.9
+const HEAD_AT := Vector3(0, -0.22, -Hud.PLANE_Z)
+const HEAD_WIDTH := 0.6
 const BILLBOARD_LIFT := 0.45
 const BILLBOARD_WIDTH := 1.2
 
@@ -88,9 +88,17 @@ func _caption(width: float, height: float) -> Label3D:
 	return l
 
 
+## The captions, for [method Hud.warm].
+func labels() -> Array:
+	var out: Array = [_prop_caption]
+	if _head_label() != null:
+		out.append(_head_caption)
+	return out
+
+
 func _head_label() -> Label3D:
 	if _head_caption == null and head != null:
-		_head_caption = _caption(HEAD_WIDTH, 0.034)
+		_head_caption = _caption(HEAD_WIDTH, 0.037)
 		_head_caption.name = "HeadCaption"
 		_head_caption.position = HEAD_AT
 		head.add_child(_head_caption)

@@ -62,6 +62,15 @@ static func _lit(albedo: Color, tex: Texture2D = null) -> StandardMaterial3D:
 	return m
 
 
+## A hard alpha cut with its edge smoothed: MSAA alone leaves one jagged, and
+## wires are the worst of it.
+static func _cut_smooth(m: StandardMaterial3D) -> void:
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR
+	m.alpha_scissor_threshold = 0.5
+	m.alpha_antialiasing_mode = BaseMaterial3D.ALPHA_ANTIALIASING_ALPHA_TO_COVERAGE
+	m.alpha_antialiasing_edge = 0.3
+
+
 static func _unshaded(albedo: Color, tex: Texture2D = null) -> StandardMaterial3D:
 	var m := _lit(albedo, tex)
 	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
@@ -159,8 +168,7 @@ static func lintel() -> Material:
 static func fence() -> Material:
 	return _cached("fence", func() -> Material:
 		var m := _lit(Color("#9fb7c0"), lattice())
-		m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR
-		m.alpha_scissor_threshold = 0.5
+		_cut_smooth(m)
 		m.cull_mode = BaseMaterial3D.CULL_DISABLED
 		return m)
 
@@ -169,8 +177,7 @@ static func fence() -> Material:
 static func rail() -> Material:
 	return _cached("rail", func() -> Material:
 		var m := _lit(GOLD, lattice())
-		m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR
-		m.alpha_scissor_threshold = 0.5
+		_cut_smooth(m)
 		m.cull_mode = BaseMaterial3D.CULL_DISABLED
 		return m)
 
@@ -454,7 +461,8 @@ static func environment(tier := HouseLights.DEFAULT_TIER) -> Environment:
 
 ## The 3D anti-aliasing for a tier: 4× MSAA but on `low`. An unsmoothed edge
 ## crawls with every small move of the head, differently in each eye. (The
-## black void of 2026-10-29 was Godot's #123406, MSAA on a subsampled swapchain
-## with no density map: keep `foveation_with_subsampled_images` off.)
+## black void of 2026-10-29 was probably Godot's #123406, MSAA on a subsampled
+## swapchain with no density map. 4× with `foveation_with_subsampled_images` off
+## is proven on a Quest 3: keep it off. If the void comes back, try 2×.)
 static func msaa(tier := HouseLights.DEFAULT_TIER) -> Viewport.MSAA:
 	return Viewport.MSAA_DISABLED if HouseLights.tier_of(tier) == "low" else Viewport.MSAA_4X

@@ -16,8 +16,11 @@ extends RefCounted
 const DEAD_ZONE := 0.15
 ## Metres per second at full stick: a calm walking pace.
 const WALK_SPEED := 1.4
-## Degrees per second at full stick.
-const TURN_RATE := 70.0
+## Degrees per second at full stick. A judgement call: slower sickens less per
+## second, but a turn lasts longer, and nobody has measured the whole dose.
+const TURN_RATE := 50.0
+## Walking backwards, a share of the pace: nobody's body expects it at full speed.
+const BACK_SPEED := 0.5
 ## Turning's response curve: `|x|^TURN_CURVE`, so a small push turns slowly.
 const TURN_CURVE := 1.6
 ## The one stick (walk + turn, wave 33b): the weaker axis counts only past
@@ -51,6 +54,11 @@ static func axis_lock(v: Vector2, held := Vector2.ZERO) -> Vector2:
 	if ay < ax * (AXIS_RELEASE if held.y != 0.0 else AXIS_LOCK):
 		return Vector2(v.x, 0.0)
 	return v
+
+
+## The stick with the backward pace applied.
+static func gait(stick: Vector2) -> Vector2:
+	return Vector2(stick.x, stick.y * (BACK_SPEED if stick.y < 0.0 else 1.0))
 
 
 ## The world velocity direction (unit × deflection, horizontal) for a stick
