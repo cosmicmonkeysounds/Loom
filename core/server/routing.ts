@@ -26,9 +26,14 @@ export const PLAY_CSP = `${HTML_CSP}; worker-src 'self'; manifest-src 'self'`;
  *  (K-31b) rides along: iOS fetches it at the root by that name. */
 export const PLAY_PWA_FILES: ReadonlySet<string> = new Set(["/sw.js", "/manifest.webmanifest", "/apple-touch-icon.png"]);
 
-/** The terminal plays synthesised speech from in-memory blobs and reads
- *  the tablet's camera; only the media source differs from the play app. */
-export const TERMINAL_CSP = `${HTML_CSP}; media-src 'self' blob:`;
+/** whisper.cpp on the server-room laptop, the terminal's `WHISPER_URL`:
+ *  loopback, so a spoken answer stays on that laptop. */
+export const WHISPER_ORIGIN = "http://127.0.0.1:8178";
+
+/** The terminal plays synthesised speech from in-memory blobs, reads the
+ *  tablet's camera and sends spoken answers to whisper.cpp. A browser ignores
+ *  a repeated directive, so its connect-src replaces the base one. */
+export const TERMINAL_CSP = `${HTML_CSP.replace("connect-src 'self'", `connect-src 'self' ${WHISPER_ORIGIN}`)}; media-src 'self' blob:`;
 
 /** The reinstallation game: the terminal's media rule (the duck's quack,
  *  the camera) plus blob workers (three.js loaders may spin one up). */
