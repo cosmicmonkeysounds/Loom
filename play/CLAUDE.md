@@ -734,14 +734,14 @@ scrolling tab: **🎛 Cues** (`CuesTab`) · **🎵 Music** · **🎚 Mix** · **
 **🔌 Setup** (How, Setup, the checks). The panel is keyed by tab, so a tab opens at its
 top and nothing of the last one stays mounted: `MusicSection` and `MixerSection` no
 longer fold, and poll only while on screen. `DeskBody` holds what a hop must keep (the
-Say box, the place in the walk); `startTab` is the tests'. `firstDeskTab`: this
+Say box, the place in the walk, Mix's scope, PLAY NOW's pasted link); `startTab` is the tests'. `firstDeskTab`: this
 device's last tab (`DESK_TAB_KEY`, host storage), else Music for Task Manager (M-2),
 else Cues. The notes float (`pointer-events: none`) so a line never moves a tab or a
 fader under a thumb. **🖥 House** (`host/desk-house.tsx`, `DeskHouseBody` over
 `useHostConsole()`) takes his voice (`calls.voiceFx`, `voiceShot`), the TV's mute, the
 dream (`dreamRow`: the story's `dream_toggle` through `calls.cue`, off behind closed
 doors), ⚡, ■ + the announcement, Try it and the terminals (`terminalLines`: silent
-first, `majorityBuild`). It reaches nothing a host couldn't already: `RUN_ONLY` says
+first, then by name, since the server re-lists a row on every poll; `majorityBuild`; Identify asks once `live`). It reaches nothing a host couldn't already: `RUN_ONLY` says
 where the costume's switch and the descent are. **Landing:** `LandingSlot` in
 `desk-house.tsx` is the one place for 📷 Photos and 📢 Audio ads, and it has `auth` and `calls`. Never on the Desk: Go
 live, Push draft, Restart, End (`test/w59-desk-tabs.test.tsx`). Driven in Chromium at
