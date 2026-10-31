@@ -134,9 +134,9 @@ def _yaml_combos() -> tuple[str, str]:
     return found["patch_combo_a"], found["patch_combo_b"]
 
 
-_ESP32_COMBO_A_LEGACY = (
-    "wave 22 moved combo A to V6-D7 for the Grand Central M4's 8 + 7 bay; the "
-    "archived ESP32 box (not installed) still pins its old combo A in "
+_ESP32_COMBOS_LEGACY = (
+    "wave 57 made both combinations new for the panel as built, on the Grand "
+    "Central M4; the archived ESP32 box (not installed) still pins its old ones in "
     "hardware/server-room/test/test_logic.cpp. Un-skip once that file follows."
 )
 
@@ -146,16 +146,17 @@ def _host_test_combos() -> dict[str, str]:
     return dict(re.findall(r'static const char\* (kCombo[AB]) = "([^"]+)"', text))
 
 
+@pytest.mark.skip(reason=_ESP32_COMBOS_LEGACY)
 def test_the_host_tests_pin_the_yamls_combo_b():
     assert _host_test_combos()["kComboB"] == _yaml_combos()[1]
 
 
-@pytest.mark.skip(reason=_ESP32_COMBO_A_LEGACY)
+@pytest.mark.skip(reason=_ESP32_COMBOS_LEGACY)
 def test_the_host_tests_pin_the_yamls_combo_a():
     assert _host_test_combos()["kComboA"] == _yaml_combos()[0]
 
 
-@pytest.mark.skip(reason=_ESP32_COMBO_A_LEGACY)
+@pytest.mark.skip(reason=_ESP32_COMBOS_LEGACY)
 def test_the_firmwares_combo_a_payload_fires_combo_a():
     # Exactly what test_logic.cpp asserts stateJson builds for Combo A.
     state_a = json.loads(

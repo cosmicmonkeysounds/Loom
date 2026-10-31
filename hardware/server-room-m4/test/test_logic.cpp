@@ -970,8 +970,8 @@ static void test_the_flash_record() {
 
 // ── The patch bay (wave 22) ────────────────────────────────────────────────
 // A modelled bay: each source a fixed voltage (config.h's table) behind about
-// 2 kΩ; each input 220 kΩ to GND, 1 kΩ to the pin. A cable V<k> → D<i> reads
-// V<k>'s voltage less the droop into the 220 kΩ, plus a little noise; an empty
+// 2 kΩ; each input 100 kΩ to GND at the jack. A cable V<k> → D<i> reads
+// V<k>'s voltage less the droop into the 100 kΩ, plus a little noise; an empty
 // input reads a few counts. `forced` injects a reading (a half-seated plug, a
 // wiring fault); `bounce` a tip brushing the sleeve on its way in.
 
@@ -987,7 +987,7 @@ struct Bay : pb::Pins {
     for (int& f : forced) f = -1;
   }
   static double counts(int k, double scale = 1.0) {
-    return kVolts[k - 1] * scale * 220.0 / (220.0 + kRth + 1.0) / 3.3 * 4095.0;
+    return kVolts[k - 1] * scale * 100.0 / (100.0 + kRth) / 3.3 * 4095.0;
   }
   uint16_t adc(int i) override {
     reads++;

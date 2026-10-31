@@ -180,7 +180,7 @@ if p is None:
 else:
     hi = max(p["raw"])
     ok(f"empty: every input under the floor (highest {hi} of {floor})") if all(k == 0 for k in p["src"]) else bad(f"an input reads between levels with no cable: {p['raw']}")
-    if hi > floor // 2: note(f"an empty input reads {hi}, more than half the floor: check the 220 kΩ pull-down on it")
+    if hi > floor // 2: note(f"an empty input reads {hi}, more than half the floor: check the pull-down on it")
 
 step(f"3. learn every source (one cable, into {inp(1)})")
 levels = list(nominal)

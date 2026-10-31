@@ -380,10 +380,12 @@ describe("Trapped in the Internet — the panel as built (wave 57)", () => {
     // Straight down a column: the jacks that share a number.
     for (const pair of [...panel(a), ...panel(b)]) expect(pair.split("-")[0]!.slice(1), pair).not.toBe(pair.split("-")[1]!.slice(1));
     // Left to right, and crossed: live jacks in panel order.
-    const across = sources.toSorted().map((s, i) => `${s}-${inputs.toSorted()[i]}`);
-    const crossed = sources.toSorted().map((s, i) => `${s}-${inputs.toSorted()[3 - i]}`);
+    const left = [...sources].sort();
+    const right = [...inputs].sort();
+    const across = left.map((s, i) => `${s}-${right[i]}`);
+    const crossed = left.map((s, i) => `${s}-${right[3 - i]}`);
     for (const guess of [across, crossed]) {
-      expect(panel(a).toSorted(), "Shut-Down is no plain guess").not.toEqual(guess);
+      expect(panel(a).sort(), "Shut-Down is no plain guess").not.toEqual(guess);
       // Self-destruct ends the night: not one cable of it is in a plain guess.
       expect(panel(b).filter((pair) => guess.includes(pair))).toEqual([]);
     }

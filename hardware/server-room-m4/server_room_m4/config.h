@@ -100,6 +100,8 @@
 #define PB_FLOOR 150      // under this an input is empty (≈ 0.12 V)
 #define PB_TOL 200        // within this of a level it is that source (≈ 160 mV;
                           //   the closest two levels are 592 counts apart)
+#define PB_DRAIN_US 20    // each read drains the pin this long first: an empty jack
+                          //   floats, and would wander up into a source's band
 #define PB_FRAME_MS 50    // one scan of every input every 50 ms
 #define PB_SETTLE_MS 1000 // the whole bay must hold this long to count (a plug's tip
                           //   brushes the sleeve on its way in)

@@ -378,17 +378,27 @@ insertion can't short it. The levels only need to stay in order and well apart
 (the closest two, B8 and B7, are 592 counts apart, so `tol` is 200): `pb learn`
 measures the real ones on the bench.
 
-**Each input:** tip → **220 kΩ to GND** at the jack (an empty jack reads
-≈ 0) → **1 kΩ** → the ADC pin → **100 nF to GND** at the pin (a stiff source
-for the SAMD51's sample-and-hold, and a little filtering).
+**Each input:** the tip to its pin, with **100–220 kΩ to GND** at the jack. Only the
+four live A jacks take one: on a B jack it would load that source all the time.
 
 ```
-   D<i> tip ──┬──[1 kΩ]──┬── pin           D1 → A0 … D4 → A3
-              │          │
-          [220 kΩ]    [100 nF]
-              │          │
-             GND        GND
+   D<i> tip ──┬── pin                      D1 → A0 … D4 → A3
+              │
+      [100–220 kΩ]
+              │
+             GND
 ```
+
+**An empty jack must never float.** A bare pin doesn't sit at 0: on this board,
+with no pull-down, unplugged inputs read 350–780 counts and one climbed while we
+watched, toward B8's band. A phantom cable there would finish a patch of three.
+So there are two guards. The resistors are one. The other is in the firmware:
+the chip's own pull-down works only while a pin is digital (left on through
+`analogRead` it changes nothing, and empty pins still read about 440), so each
+read first drains the pin through it for `PB_DRAIN_US`. On 2026-10-31, before any
+resistor went on, that alone brought empty inputs down to 13–47 counts. It never
+drives the pin, so a source on a cable sees no load to speak of and recovers at
+once.
 
 The ADC reads against the SAMD51's 3.3 V analog rail. **Check on the bench**
 that B2 into any input reads ≈ 3746 (`N-21.sh` prints it).

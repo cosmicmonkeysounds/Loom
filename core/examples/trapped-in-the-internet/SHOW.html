@@ -1206,7 +1206,7 @@ Windows (PowerShell):
     <p>Two rows of eight ¼-inch TRS jacks on the server-room panel, A and B, eight live and eight decoys, read by the same Grand Central M4 as the door sensor (firmware folder <code>hardware/server-room-m4</code>, renamed from <code>server-room-door</code>).</p>
     <ul>
       <li><strong>Sources</strong> (row B): B8, B7, B4 and B2, four fixed voltages from 0.965 V to 3.019 V, well separated.</li>
-      <li><strong>Inputs</strong> (row A): A5, A7, A6 and A4, on pins A0–A3: a 220 kΩ pulldown at the jack, 1 kΩ in series, 100 nF to ground at the pin. An empty input reads near zero.</li>
+      <li><strong>Inputs</strong> (row A): A5, A7, A6 and A4, on pins A0–A3: a 100–220 kΩ pulldown at each jack, and the firmware drains each pin before it reads it. An empty input reads near zero.</li>
       <li>Every sleeve to ground. Nothing analog ever touches 5 V.</li>
     </ul>
     <p>The firmware decodes which source each input sees and reports the settled cable pairs. The terminal posts <code>patch_changed</code> with the pairs only when the bay has settled on a complete state (exactly four source-to-input cables) that differs from the last complete state it posted. Pulling a cable and plugging the same one back never counts twice. A cable from source to source, or input to input, is invisible, so the bay reads incomplete and nothing is judged. The terminal never knows the combinations: the story compares the pairs with the secrets it holds.</p>
@@ -1409,7 +1409,7 @@ Windows (PowerShell):
       <dt><strong>U4 · Where this page lives</strong></dt><dd>A tracked file only, or a crew page the VPS serves?</dd>
       <dt><strong>U5 · The second director's computer</strong></dt><dd>Which machine runs Run all night, and where is John's backup console?</dd>
       <dt><strong>U7 · The patch-bay watch</strong></dt><dd>Now that the bay judges itself, does an Antivirus still sit inside, and does 🕚 still wait for IN?</dd>
-      <dt><strong>U8 · The bay's wiring</strong></dt><dd>Is the divider and pulldown circuit built, and are the eight voltages chosen?</dd>
+      <dt><strong>U8 · The bay's wiring</strong></dt><dd>Answered in wave 57: the four voltages are chosen and built. The pulldowns are going on the live A jacks, then the levels are learnt on the bench.</dd>
       <dt><strong>U9 · Jack labels</strong></dt><dd>Answered in wave 57: the sources are B8, B7, B4 and B2, the inputs A5, A7, A6 and A4, and the other eight jacks are decoys. The Patch Sheets and the watch card print those names.</dd>
       <dt><strong>U10 · The MOTU</strong></dt><dd>Answered: on the Desktop (the MacBook is the fallback), with no ADAT expander (Analog 1–8, Main L/R, Phones L/R). Still open: does it run under ASIO on MOTU's Windows driver at 32 in / 30 out with no dropouts?</dd>
       <dt><strong>U11 · The laptops</strong></dt><dd>What OS is Steph's laptop, and does the old tent laptop have WebGL2?</dd>
