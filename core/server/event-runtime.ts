@@ -53,6 +53,7 @@ import {
   normalizeCode,
   performerPickable,
   performerRefusal,
+  secretCode,
   takenNames,
   type IdentityRow,
   type PictureChoice,
@@ -83,6 +84,8 @@ import { CreditsSource } from "./credits.ts"; // w44
 import { CREDITS_ROUTE, creditsAnswer, sendCredits } from "./routes/credits.ts"; // w44
 import { VIDEO_ROUTE, sendVideoConsent, videoConsentView } from "./routes/video.ts"; // w44
 import { CREDITS_FILE } from "../src/credits.ts"; // w44
+import { COSTUME_FIRE_ROUTE, COSTUME_MENU_ROUTE, COSTUME_MOD_ROUTE, CostumeDesk, CostumeSource, costumeFixtures, costumeLookSafe, sendCostumeFire, sendCostumeMenu, type CostumeTimers } from "./costume.ts"; // w59
+import { COSTUME_BY, COSTUME_FILE, COSTUME_SIGNAL, COSTUME_TOKEN_LABEL, PROMPTER_CHARS_PER_S, STAGE_CHARS_PER_S, hijackPlaying, saidBy, type CostumeAction, type CostumeFacts, type CostumeFile, type CostumeItem } from "../src/costume.ts"; // w59
 import { DESCENT_FILE, DescentSource } from "./descent.ts"; // w49
 import { SWEAR_CENSORED, SWEAR_FILTER, SWEAR_FLAGGED, decodeHits, encodeHits, filterHits, hitList, isFilterLevel, maskText, maskUnsaid, type FilterHit } from "../src/language-filter.ts"; // w48, w48b
 import { FilterBook, type FilterView } from "./language-filter.ts"; // w48
@@ -90,12 +93,12 @@ import { forBooth, hostSeen, seenCues, seenName } from "./unseen-directors.ts";
 import { guestSide } from "./routes/sides.ts";
 import { CrewRoutes, answeredInviteCards, crewDrafts } from "./routes/crews.ts"; // w18 crews
 import { isCrewId, isCrewRoom } from "../src/runtime/sim/crews.ts"; // w18 crews
-import { AUDIO_FILE, AudioHub, audioProblems, handleAudioGet, handleAudioPost, handleMixerGet, type AudioContext } from "./audio.ts";
+import { AUDIO_FILE, AudioHub, audioPlayOf, audioProblems, handleAudioGet, handleAudioPost, handleMixerGet, type AudioContext } from "./audio.ts";
 import { LIGHTS_FILE, LightsHub, handleLightsGet, handleLightsPost, lightsProblems, type LightTest, type LightsContext } from "./lights.ts";
 import { GameLightsFeed, LightsEstimate, buildGameLights } from "./lights-shown.ts";
 import { DESK_BY, DESK_FILE, DeskHub, deskHouseOf, deskLightFixtures, deskProblems, deskRefsOf, deskSeen, handleDeskGet, handleDeskPost, lookMsOf, type DeskContext, type DeskTimers } from "./desk.ts";
 import { DESK_SPEECH_GRACE_MS } from "../src/house-desk.ts";
-import { ANNOUNCE_VERB, ScreenWatch, announceTextOf, speechWatchOf, spokenAnnounce, handleScreenGet, handleScreenTerminalsGet, handleScreenVoicePost, screenKingOf, screenTerminals } from "./routes/screen.ts";
+import { ANNOUNCE_VERB, SPEECH_ONLINE_MS, ScreenWatch, announceTextOf, speechWatchOf, spokenAnnounce, handleScreenGet, handleScreenTerminalsGet, handleScreenVoicePost, screenKingOf, screenTerminals } from "./routes/screen.ts";
 import { handleScreenIdentifyPost } from "./routes/screen.ts";
 import { CAM_BODY_LIMIT, CamStore, parseCamUpload } from "./spatial-cams.ts";
 import { DreamFeed } from "./dream-feed.ts";
@@ -333,6 +336,8 @@ export const SCAN_REPEAT_MS = 1500;
 
 /** How many thread lines an agent request carries. */
 const AGENT_HISTORY = 30;
+/** Wave 59: how far back a press looks for lines still being said. */
+const COSTUME_LOOKBACK_MS = 20 * 60_000;
 
 /**
  * The guest POST routes a **locked** phone may still call (wave 26, C2): the
@@ -631,6 +636,10 @@ export interface EventRuntimeInit {
   creditsFile?: string | null;
   /** Wave 49 (C3.2): the descent's fallback file (`LOOM_DESCENT`; null = none). */
   descentFile?: string | null;
+  /** Wave 59: the costume menu's fallback file (`LOOM_COSTUME`; null = none). */
+  costumeFile?: string | null;
+  /** Wave 59: the costume's timers (tests inject; default `setTimeout`). */
+  costumeTimers?: CostumeTimers;
   /** Wave 50: the house media folder (`LOOM_MEDIA_DIR`; null = none). */
   mediaDir?: string | null;
   /** The desk's timers (tests inject; default `setTimeout`). */
@@ -901,6 +910,11 @@ export class EventRuntime {
   private readonly factsFile: string;
   /** Wave 44 (C5): the credits, read live (`credits.ts`). */
   private readonly credits: CreditsSource;
+  /** Wave 59: the costume's menu, read live, and its desk (`costume.ts`). */
+  private readonly costumeSource: CostumeSource;
+  private readonly costume: CostumeDesk;
+  /** Wave 59: which of his poke lines is next (memory only). */
+  private costumePokes = 0;
   /** Wave 49 (C3.2): the descent's words, read live (`descent.ts`). */
   private readonly descent: DescentSource;
   private factsMemo: { text: string; book: FactsBook | null } | null = null;
@@ -1069,6 +1083,23 @@ export class EventRuntime {
       envFile: descentEnv,
       scenarioFile: join(dirname(this.houseFile), DESCENT_FILE),
       ...(init.now !== undefined ? { now: init.now } : {}),
+    });
+    // Wave 59: the costume's menu, found the same way, and its desk.
+    const costumeEnv = init.costumeFile !== undefined ? init.costumeFile : (process.env.LOOM_COSTUME ?? null);
+    this.costumeSource = new CostumeSource({
+      project: readProject !== undefined && this.project !== null ? () => readProject.call(this.project, COSTUME_FILE) : null,
+      envFile: costumeEnv,
+      scenarioFile: join(dirname(this.houseFile), COSTUME_FILE),
+      ...(init.now !== undefined ? { now: init.now } : {}),
+    });
+    this.costume = new CostumeDesk({
+      now: () => this.clock(),
+      timers: init.costumeTimers ?? { set: (fn, ms) => setTimeout(fn, ms).unref(), clear: (h) => clearTimeout(h as ReturnType<typeof setTimeout>) },
+      facts: () => this.costumeFacts(),
+      perform: (a, file) => this.costumePerform(a, file),
+      note: (item) => this.costumeNote(item),
+      restoreLights: () => this.costumeRestoreLights(),
+      musicStory: () => void this.audio.music({ action: "story" }, COSTUME_BY),
     });
     this.projectFacts = init.facts !== undefined ? init.facts : this.store.loadFacts();
     if (init.facts !== undefined) this.store.saveFacts(init.facts);
@@ -2080,6 +2111,7 @@ export class EventRuntime {
   /** A lifecycle transition every connected client should react to
    *  (`reset` / `reload` → drop local state; `ended` → the event is gone). */
   private pushLifecycle(kind: LifecycleKind, extra: Record<string, unknown> = {}): void {
+    this.costume.clear(); // wave 59: a new run owes the house no restore
     this.modPrev = null; // the next view after a transition is a keyframe
     for (const c of this.clients) sseSend(c.res, "lifecycle", { kind, at: Date.now(), ...extra });
   }
@@ -2494,10 +2526,10 @@ export class EventRuntime {
    * the same story from the journal. A replay never reaches here: only a
    * live run fires. `refused`: an INTERACTION the story turned down.
    */
-  private deskFire(event: string): "fired" | "refused" | "no story" {
+  private deskFire(event: string, by: string = DESK_BY): "fired" | "refused" | "no story" {
     if (this.sim === null) return "no story";
     const actingBy = this.actingBy;
-    this.actingBy = DESK_BY;
+    this.actingBy = by;
     try {
       const out = this.commit("signal", event, undefined, null, null);
       const name = foldName(event);
@@ -2907,6 +2939,134 @@ export class EventRuntime {
     const room = sim === null ? null : hostsRoomOf(sim.model);
     if (room === null) return;
     this.fanout(this.commit("broadcast", `channel(${room})`, text));
+  }
+
+  // -- wave 59: the Task Manager costume (`costume.ts`, `src/costume.ts`) ----
+
+  /** The costume's one credential. Never logged, never in a view but Run's. */
+  private costumeToken(): string {
+    return secretCode(this.claimSecret, COSTUME_TOKEN_LABEL);
+  }
+
+  /** What the night is doing, for a press. Read now, never cached. */
+  private costumeFacts(): CostumeFacts {
+    const sim = this.sim;
+    const word = (path: string): string | null => {
+      const v = sim === null ? null : worldString(sim.world.peek(path));
+      const t = v === null ? "" : v.replace(/^"(.*)"$/su, "$1").trim();
+      return t === "" || t === "none" ? null : t;
+    };
+    const num = (path: string): number | null => {
+      const n = Number(word(path));
+      return word(path) === null || !Number.isFinite(n) ? null : n;
+    };
+    const storyMs = sim?.elapsed() ?? 0;
+    const nowS = storyMs / 1000;
+    const recent = this.chat.all().filter((m) => !m.hidden && storyMs - m.ts < COSTUME_LOOKBACK_MS);
+    const tvTalking = this.screens.seen().some((p) => p.view === "tv" && p.talk === true && this.screens.clock() - p.at <= SPEECH_ONLINE_MS);
+    const burst = num("Night.burst_last");
+    return {
+      doors: sim !== null && this.phase === "open" && this.entryPlayed,
+      ended: word("Night.ended") === "true",
+      ceremony: word("Night.ceremony") === "true",
+      phase: word("Night.phase"),
+      speaking: tvTalking || saidBy(recent.filter((m) => m.channel === `loc:${TALK_ROOM}` && m.kind === "line" && typeof m.beat === "string"), STAGE_CHARS_PER_S) > storyMs,
+      // With wave 59's shared prompter on the server, its status says this.
+      prompter: saidBy(recent.filter((m) => m.aloud !== undefined), PROMPTER_CHARS_PER_S) > storyMs,
+      lights: word("Night.lights"),
+      alarm: word("Night.alarm_on") === "true",
+      roomOut: (num("Night.lights_back_at") ?? 0) > 0,
+      lightsOnline: this.lights.module()?.online === true,
+      routerOnline: this.audio.router().online,
+      talk: this.talkNight(),
+      hijackPlaying: hijackPlaying(word("Night.glitch_kind"), num("Night.glitch_at"), nowS),
+      sinceBurstS: burst !== null && burst > 0 ? nowS - burst : null,
+      awake: this.talkAwake(),
+      owed: this.agents.openOn(this.talkThread()) !== null,
+    };
+  }
+
+  /** One action, through the path the house already has for it. */
+  private costumePerform(a: CostumeAction, file: CostumeFile): boolean {
+    const lights = this.lights.current().lights;
+    switch (a.kind) {
+      case "look":
+        if (!costumeLookSafe(lights, this.spatialHouse(), a.look)) return false;
+        this.lights.test({ look: a.look }, COSTUME_BY);
+        return true;
+      case "light": {
+        const fixtures = costumeFixtures(lights, this.spatialHouse(), a.to);
+        if (fixtures.length === 0 || lightStateProblems("set", a.set).length > 0 || !lightStateDoes(a.set as LightState)) return false;
+        for (const fixture of fixtures) this.lights.test({ fixture, set: a.set as LightState }, COSTUME_BY);
+        return true;
+      }
+      case "sound": {
+        const play = audioPlayOf({ sound: a.sound, ...(a.to !== undefined ? { to: a.to } : {}) });
+        if (typeof play === "string") return false;
+        this.audio.play(play, COSTUME_BY);
+        return true;
+      }
+      case "music":
+        this.audio.music(a.command, COSTUME_BY);
+        return true;
+      case "cue":
+        return this.deskFire(a.cue, COSTUME_BY) === "fired";
+      case "poke": {
+        // The canned Trabolta line's path (`modTalk`): nothing is owed here,
+        // the press was refused if it was.
+        const line = file.poke[this.costumePokes++ % file.poke.length]!;
+        const actingBy = this.actingBy;
+        this.actingBy = COSTUME_BY;
+        try {
+          this.fanout(this.commit("say", TALK_AGENT, `loc:${TALK_ROOM}`, line, null, "all", null));
+        } finally {
+          this.actingBy = actingBy;
+        }
+        return true;
+      }
+    }
+  }
+
+  /** The mod log's line: a journaled signal no story hook hears, so a fire is
+   *  on the ledger whatever it did, and never in `# hosts`. */
+  private costumeNote(item: CostumeItem): void {
+    process.stdout.write(`  🎭 costume: ${item.label}\n`);
+    const actingBy = this.actingBy;
+    this.actingBy = COSTUME_BY;
+    try {
+      this.fanout(this.commit("signal", COSTUME_SIGNAL, undefined, { item: item.id, label: item.label }, null));
+    } finally {
+      this.actingBy = actingBy;
+    }
+  }
+
+  /** The story's look again (the lights module's catch-up names it the same
+   *  way), or the plain house when the story has none to give back. */
+  private costumeRestoreLights(): void {
+    const looks = this.lights.current().lights.looks ?? {};
+    const value = this.costumeFacts().lights;
+    const look = value === "server_open" ? "lights_y2k" : `lights_${value ?? "restore"}`;
+    const usable = Object.prototype.hasOwnProperty.call(looks, look) && looks[look]?.then !== "restore";
+    this.lights.test({ look: usable ? look : "lights_restore" }, COSTUME_BY);
+  }
+
+  /** The link Run hands the crew. It holds the token: only Run reads it. */
+  private costumeLink(): string {
+    return `${this.joinBase()}/costume?e=${encodeURIComponent(this.eventId)}&k=${this.costumeToken()}`;
+  }
+
+  /** The two routes the token opens. Nothing else accepts it. */
+  private async handleCostume(req: IncomingMessage, res: ServerResponse, path: string, body: Record<string, unknown>): Promise<boolean> {
+    if (!codeEquals(normalizeCode(str(body, "k")), this.costumeToken())) {
+      if (this.throttled(req, res)) return true;
+      this.loginFailures.record(ipOf(req));
+      sendJson(res, 401, { ok: false, why: "token" });
+      return true;
+    }
+    const on = !this.store.loadCostumeOff();
+    if (path === COSTUME_MENU_ROUTE) await sendCostumeMenu(res, this.costumeSource, on);
+    else await sendCostumeFire(res, this.costumeSource, this.costume, on, str(body, "id"));
+    return true;
   }
 
   /**
@@ -5514,6 +5674,7 @@ export class EventRuntime {
     this.flushClock();
     this.stopTicker();
     clearInterval(this.lettersTimer);
+    this.costume.clear();
     this.desk.dispose();
     if (this.modSnapshotTimer !== null) clearTimeout(this.modSnapshotTimer);
     this.modSnapshotTimer = null;
@@ -6078,6 +6239,12 @@ export class EventRuntime {
     }
     // --- the house lights (wave 20, lights.ts): the config + the lights module's long poll ---
     if (method === "GET" && path === "/api/mod/lights") return handleLightsGet(this.lights, this.lightsContext(), req, res, url, (t) => opts.moderator === true || this.sessions.canModerate(t));
+    // Wave 59: the costume's switch and link (a director's; never on the host allowlist).
+    if (method === "GET" && path === COSTUME_MOD_ROUTE) {
+      if (opts.moderator !== true && !this.sessions.canModerate(queryTokenOf(req, url))) sendJson(res, 403, { error: "moderators only" });
+      else sendJson(res, 200, { on: !this.store.loadCostumeOff(), url: this.costumeLink() });
+      return true;
+    }
     if (method === "GET" && path === "/api/mod/screen/terminals") return handleScreenTerminalsGet(this.screens, req, res, url, (t) => opts.moderator === true || this.sessions.canModerate(t));
     // A host booth may mute the TV and identify a terminal (§2.7). Both are
     // host-visible writes handled before the generic body parse, so they
@@ -6118,6 +6285,9 @@ export class EventRuntime {
     if (path === "/api/mod/spatial/cam") return this.handleCamUpload(req, res, opts.moderator === true);
 
     const body = await readBody(req);
+
+    // Wave 59: the costume's token opens these two and nothing else.
+    if (path === COSTUME_MENU_ROUTE || path === COSTUME_FIRE_ROUTE) return this.handleCostume(req, res, path, body);
 
     // The host allowlist for POSTs (the same rule as the GETs above).
     if (opts.moderator !== true && this.hostOnly(tokenOf(req, body)) && isModSurface(method, path, body) && !isHostRoute(method, path, body, this.hostRouteContext())) {
@@ -8383,6 +8553,17 @@ export class EventRuntime {
           }
         }
         sendJson(res, 200, { ok: true, seq, hidden: m.hidden });
+        return true;
+      }
+      case COSTUME_MOD_ROUTE: {
+        // Wave 59: the crew's kill switch (a director's; off the host allowlist).
+        if (typeof body["on"] !== "boolean") {
+          sendJson(res, 400, { error: "send {on}" });
+          return true;
+        }
+        this.store.saveCostumeOff(!body["on"]);
+        if (!body["on"]) this.costume.clear();
+        sendJson(res, 200, { ok: true, on: body["on"] });
         return true;
       }
       case "/api/mod/talk": {
