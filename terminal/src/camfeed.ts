@@ -400,7 +400,7 @@ export function useFeedStatus(): FeedStatus {
   return useSyncExternalStore(feedStatus.subscribe, () => feedStatus.snapshot);
 }
 
-interface Picture {
+export interface Picture {
   image: CanvasImageSource;
   w: number;
   h: number;
@@ -408,7 +408,7 @@ interface Picture {
 }
 
 /** The `<video>`'s current frame, or null. */
-function videoPicture(video: HTMLVideoElement): Picture | null {
+export function videoPicture(video: HTMLVideoElement): Picture | null {
   return video.readyState < 2 || video.videoWidth === 0 ? null : { image: video, w: video.videoWidth, h: video.videoHeight };
 }
 
@@ -422,7 +422,7 @@ function imageCaptureCtor(): ImageCaptureCtor | null {
 }
 
 /** The next frame straight off the track (no `<video>`), or null. */
-async function trackPicture(stream: MediaStream | null): Promise<Picture | null> {
+export async function trackPicture(stream: MediaStream | null): Promise<Picture | null> {
   const Ctor = imageCaptureCtor();
   const track = stream?.getVideoTracks()[0];
   if (Ctor === null || track === undefined) return null;
@@ -440,6 +440,14 @@ async function trackPicture(stream: MediaStream | null): Promise<Picture | null>
   } finally {
     window.clearTimeout(late);
   }
+}
+
+/** The feed's newest frame (wave 59p, `photos.ts`: what a still falls back on). */
+let newestFrame: (FeedFrame & { at: number }) | null = null;
+
+/** That frame, if it is no older than `freshMs`. */
+export function newestFeedFrame(now: number, freshMs: number): FeedFrame | null {
+  return newestFrame !== null && now - newestFrame.at <= freshMs ? newestFrame : null;
 }
 
 /** Frames of the camera, as the tuner says, each cropped into a JPEG. */
@@ -558,8 +566,13 @@ export function useCamFeed(config: TerminalConfig | null, hub: CameraHub = pageC
         void video.play().catch(() => {});
       });
       const url = `${baseOf({ eventId })}/api/mod/spatial/cam`;
+      const grab = frameGrabber(video, () => hub.snapshot.stream, tuner);
       stop = runFeed({
-        capture: frameGrabber(video, () => hub.snapshot.stream, tuner),
+        capture: async () => {
+          const frame = await grab();
+          if (frame !== null) newestFrame = { ...frame, at: Date.now() };
+          return frame;
+        },
         post: (f) =>
           fetch(url, { method: "POST", headers: { "content-type": "application/json", "x-loom-token": token }, body: JSON.stringify({ spot, jpeg: f.jpeg, w: f.w, h: f.h }) }).then(
             async (r): Promise<FeedReply> => {
@@ -588,6 +601,7 @@ export function useCamFeed(config: TerminalConfig | null, hub: CameraHub = pageC
       if (touchAgain !== null) window.removeEventListener("pointerdown", touchAgain);
       unfollow?.();
       stop?.();
+      newestFrame = null;
       video.srcObject = null;
       video.remove();
       hub.release();

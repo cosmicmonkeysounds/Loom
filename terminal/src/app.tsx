@@ -83,6 +83,7 @@ import { adoptCharacter, baseOf, bleepsOn, castCheckKey, characterProblem, dropC
 import { Setup } from "./Setup.tsx";
 import { followMap, followVoice, linkConfig } from "./setup-map.ts";
 import { useCamFeed } from "./camfeed.ts";
+import { usePhotos } from "./photos.ts";
 import { useVoiceLink } from "./voice/hook.ts";
 import { MicCue } from "./voice/MicCue.tsx";
 import { camera, useCameraLive, type Facing } from "./camera.ts";
@@ -221,6 +222,8 @@ export function App() {
   const doorOpen = doorOpenNow(door.sensor, screenState.state?.night ?? null, Date.now());
   // The camera feed (wave 14): a placed terminal sends its camera to the games.
   useCamFeed(config);
+  // The terminals' photos (wave 59p): stills off that camera, while armed.
+  usePhotos(config, screenState.state?.photos === true);
   // The voice link (wave 19): this room heard in the games at this screen,
   // the players near it heard out of its speaker — per the view and the
   // map's `voice` (`voice/roles.ts`), never on the setup screen. Capture

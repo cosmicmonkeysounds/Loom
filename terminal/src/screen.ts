@@ -659,6 +659,8 @@ export interface ScreenVoice {
 
 /** The server's answer (a subset is all the terminal reads today). */
 export interface ScreenState {
+  /** (wave 59p) Take stills now (`photos.ts`). Optional for hand-built states. */
+  photos?: boolean;
   now: number;
   /** Local `Date.now()` when this answer arrived (not from the server). */
   receivedAt: number;
@@ -880,6 +882,7 @@ export function parseScreenState(raw: unknown, receivedAt: number = Date.now()):
     tvSpeech: tvSpeechOf(r["tvSpeech"]),
     dream: dreamOf(r["dream"]),
     voiceFx: voiceFxOf(r["voiceFx"]),
+    photos: r["photos"] === true,
   };
 }
 

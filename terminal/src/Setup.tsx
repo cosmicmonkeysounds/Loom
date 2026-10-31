@@ -14,6 +14,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { DEFAULT_TV_ROOM, VIEWS, VIEW_INFO, announceChoiceValue, announceFromChoice, baseOf, bleepsOn, connect, defaultConfig, pickCharacter, roomChoices, savedCharacter, TV_SPEED, withViewDefaults, type DoorConfig, type TerminalConfig, type TerminalView } from "./config.ts";
 import { feedStatusText, feedWanted, useFeedStatus } from "./camfeed.ts";
+import { photoStatusText, usePhotoStatus } from "./photo-status.ts";
 import { linkReadout, linkStats, linkTroubled } from "./link-stats.ts";
 import { micBox, voiceRoles } from "./voice/roles.ts";
 import { DoorSetup } from "./heart/DoorSetup.tsx";
@@ -165,6 +166,7 @@ export function Setup({
   const [tested, setTested] = useState<string | null>(null);
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const feed = useFeedStatus();
+  const photos = usePhotoStatus();
   // The link stops while ⚙ is open (D9): show how it stood when ⚙ opened
   // (read while this screen first renders, before the link's cleanup runs).
   const [voice] = useState(() => voiceStatus.snapshot);
@@ -482,6 +484,7 @@ export function Setup({
               <RigSetup webcam={webcam} onWebcam={setWebcam} pad={pad} onPad={setPad} whisper={whisper} onWhisper={setWhisper} crt={crt} onCrt={setCrt} />
               {door !== "off" && <PatchSetup bay={bay} onBay={setBay} running={current !== null && current.door !== "off" && current.door === door && current.bay === bay} />}
               {current !== null && feedWanted(current) && <div className={`small ${feed.kind === "stopped" ? "warn" : "muted"}`}>{feedStatusText(feed)}</div>}
+              {photos !== null && <div className="small muted">{photoStatusText(photos)}</div>}
               {current !== null && (voiceRoles(current).mic || voiceRoles(current).voices) && <div className={`small ${voice.link === "stopped" || voice.mic === "denied" || voice.mic === "insecure" ? "warn" : "muted"}`}>{voice.link === "off" ? "voice link: starts once this terminal is set up" : `before ⚙ opened — ${voiceStatusText(voice)}`}</div>}
               <label>
                 screen <span className="muted">(blank = the map's)</span>
