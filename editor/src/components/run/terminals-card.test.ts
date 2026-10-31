@@ -40,7 +40,7 @@ const row = (name: string, spot: string, status: TerminalStatus = TerminalStatus
 })
 
 function render(rows: TerminalRow[], map = MAP, extra: Record<string, unknown> = {}): string {
-  fake.state = { ...extra, rows, map, mapRooms: ['The Desktop', 'The Server Room'], reachable: true, voiceMuted: false, acked: new Set(), muteError: null, identifyError: null }
+  fake.state = { costume: null, ...extra, rows, map, mapRooms: ['The Desktop', 'The Server Room'], reachable: true, voiceMuted: false, acked: new Set(), muteError: null, identifyError: null }
   const store = create<CockpitState>(() => ({
     ...nullCockpit.getState(),
     run: {
