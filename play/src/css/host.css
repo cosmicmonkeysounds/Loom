@@ -612,6 +612,21 @@
 .host-mix-skipall, .host-mix-stop { flex: 1 1 120px; min-height: var(--tap); font-weight: 800; }
 .host-mix-stop { color: var(--maroon); }
 .host-mix-transport .host-confirm { flex: 1 1 100%; }
+/* Wave 58: the 🎵 Music section. Every control is a 44 px target. */
+.host-music-source { margin: 0 0 8px; padding: 6px 8px; border-radius: var(--radius); background: var(--white); box-shadow: var(--sunken); font: 700 14px/1.3 var(--ui-font); color: var(--ink); overflow-wrap: anywhere; }
+.host-music-source.ok { color: var(--navy); }
+.host-music-source.warn, .host-music-source.bad { color: var(--maroon); }
+.host-music-deck { display: flex; gap: 6px; margin: 0 0 6px; }
+.host-music-key { flex: 1 1 0; min-width: var(--tap); min-height: var(--tap); font: 800 17px var(--ui-font); }
+.host-music-picks { list-style: none; margin: 0 0 6px; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.host-music-pick { width: 100%; min-height: var(--tap); padding: 4px 10px; font-weight: 700; text-align: left; overflow-wrap: anywhere; }
+.host-music-more { display: block; width: 100%; min-height: var(--tap); margin: 0 0 6px; font-weight: 700; }
+.host-music-link { display: flex; gap: 6px; }
+.host-music-input { flex: 1 1 auto; min-width: 0; min-height: var(--tap); padding: 4px 8px; }
+.host-music-play { flex: 0 0 auto; min-height: var(--tap); padding: 0 12px; font-weight: 800; }
+.host-music-line { margin: 0 0 4px; font: 14px/1.35 var(--ui-font); color: var(--ink); overflow-wrap: anywhere; }
+.host-music-status { font-weight: 800; }
+.host-music-lock { display: block; width: 100%; min-height: var(--tap); margin-top: 6px; font-weight: 800; }
 .host-mix-scopes { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 6px; }
 .host-mix-scope { flex: 0 1 auto; min-height: var(--tap); padding: 0 12px; font-weight: 700; overflow-wrap: anywhere; }
 .host-mix-scope[aria-pressed="true"] { box-shadow: var(--pressed); background: var(--face-hi); color: var(--navy); font-weight: 900; }

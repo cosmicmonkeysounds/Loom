@@ -10,11 +10,9 @@ import { readFileSync } from "node:fs";
 import { MIX_CHANGES_MAX, scopeStrips, type MixChange, type MixerView } from "../../core/src/house-mixer.ts";
 import { HOST_READS, HOST_ROUTES, hostCalls, type HostRoute } from "../src/host/api.ts";
 import {
-  HAND_NOTE,
   MIX_SEND_MS,
   NO_MIXER,
   NO_PENDING,
-  NO_SOUNDTRACK,
   NOT_A_MIXER,
   ROUTER_OFFLINE,
   answered,
@@ -262,12 +260,12 @@ describe("what the panel draws", () => {
     const np = nowPlaying(fixture().music)!;
     expect(np.scenes).toEqual(["off", "act1", "act2"]);
     expect(np.hand).toBe(true);
-    expect(np.beds).toEqual([{ playlist: "lounge", track: "Dial-up Dreams", progress: 65 / 200, time: "1:05 / 3:20" }]);
+    expect(np.beds).toEqual([{ playlist: "lounge", name: "lounge", track: "Dial-up Dreams", progress: 65 / 200, time: "1:05 / 3:20" }]);
     expect(np.warnings).toEqual(["rave: no tracks found"]);
     expect(nowPlaying(null)).toBeNull();
     const bare = nowPlaying({ scene: "x", beds: [{ playlist: "p", speakers: [], track: null, posS: 3 }], missing: [] })!;
     expect(bare.scenes).toEqual(["x"]);
-    expect(bare.beds[0]).toEqual({ playlist: "p", track: "—", progress: null, time: "0:03" });
+    expect(bare.beds[0]).toEqual({ playlist: "p", name: "p", track: "—", progress: null, time: "0:03" });
     expect(trackClock(3_601)).toBe("60:01");
   });
 
@@ -296,13 +294,12 @@ describe("what the panel draws", () => {
   });
 
   const body = (v: MixerView, scopeId = "all") =>
-    renderToStaticMarkup(createElement(MixerBody, { view: v, levels: v.mix.levels, scopeId, onScope: () => {}, onChange: () => {}, onMusic: () => {}, note: null, error: null }));
+    renderToStaticMarkup(createElement(MixerBody, { view: v, levels: v.mix.levels, scopeId, onScope: () => {}, onChange: () => {}, note: null, error: null }));
 
-  it("draws now playing first, then the scope chips and that scope's faders", () => {
+  it("draws the scope chips and that scope's faders, and leaves now playing to 🎵 Music", () => {
     const html = body(fixture());
-    expect(html.indexOf("NOW PLAYING")).toBeLessThan(html.indexOf("host-mix-scopes"));
-    for (const t of ["Dial-up Dreams", "⏭ Skip all", "■ Stop music", "↺ Follow the story", HAND_NOTE.replace("'", "&#x27;"), "rave: no tracks found", "Everywhere", "Living room", "Kitchen"]) expect(html).toContain(t);
-    expect(html).toMatch(/<option[^>]*value="act2"/u);
+    expect(html).not.toContain("NOW PLAYING");
+    for (const t of ["Everywhere", "Living room", "Kitchen"]) expect(html).toContain(t);
     expect(html).toMatch(/type="range"[^>]*min="-60"[^>]*max="10"[^>]*step="0.5"/u);
     expect(html).toContain("Mixed outside the router");
     expect(html).not.toContain(ROUTER_OFFLINE);
@@ -314,11 +311,8 @@ describe("what the panel draws", () => {
     expect(living).toContain("Reset Living room");
   });
 
-  it("says when no router listens or no soundtrack has reported", () => {
-    const html = body(fixture({ router: { online: false, lastSeen: null, name: null }, music: null }));
-    expect(html).toContain(ROUTER_OFFLINE);
-    expect(html).toContain(NO_SOUNDTRACK);
-    expect(html).not.toContain("Skip all");
+  it("says when no router listens", () => {
+    expect(body(fixture({ router: { online: false, lastSeen: null, name: null }, music: null }))).toContain(ROUTER_OFFLINE);
   });
 
   it("the Desk shows the Mixer folded (it polls nothing until opened)", () => {

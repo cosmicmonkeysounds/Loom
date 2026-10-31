@@ -608,3 +608,52 @@ export function scopeKeys(view: MixerView, scope: MixScope): string[] {
     .map((s) => s.key)
     .filter((k): k is string => k !== null && view.mix.levels[k] !== undefined);
 }
+
+// -- the Music manager (wave 58): both apps draw these -----------------------------
+
+export type MusicTone = "ok" | "warn" | "bad" | "idle";
+
+/** Where the music is coming from, in a line. */
+export function musicSource(music: MixerMusic | null): { tone: MusicTone; text: string } {
+  if (music === null) return { tone: "idle", text: "No soundtrack reported yet" };
+  const app = music.tidal;
+  if (app !== undefined && !app.online) return { tone: "bad", text: "TIDAL isn't answering: start it on the Desktop with tidal.ps1. Each act plays its fallback folder." };
+  if (app !== undefined && app.problem !== null) return { tone: "warn", text: `TIDAL: ${app.problem}` };
+  if (app?.paused === true) return { tone: "warn", text: "⏸ TIDAL is paused" };
+  if (music.beds.some((b) => b.live === true)) return { tone: "ok", text: "🎵 Playing from TIDAL" };
+  if (music.beds.length > 0) return { tone: "idle", text: "📁 Playing files" };
+  return { tone: "idle", text: "No music playing" };
+}
+
+/** Is a bed on the app (so ⏮ and ⏸ mean something)? */
+export function musicOnApp(music: MixerMusic | null): boolean {
+  return music?.beds.some((b) => b.live === true) === true;
+}
+
+/** A bed's name: an app bed's playlist by its title in the library. */
+export function musicBedName(bed: MixerMusicBed, music: MixerMusic): string {
+  if (bed.live !== true) return bed.playlist;
+  const id = music.tidal?.playlist;
+  return music.tidal?.library.find((p) => p.id === id)?.title ?? bed.playlist;
+}
+
+/** A scene's name, an ad-hoc one (`hand_act_2`) in words. */
+export function musicSceneName(scene: string): string {
+  if (!scene.startsWith("hand_")) return scene;
+  const rest = scene.slice("hand_".length);
+  return rest.startsWith("tidal_") ? "a TIDAL playlist (by hand)" : `${rest} (by hand)`;
+}
+
+/** The show's playlists a panel offers: the Fan Closet's kind of loop is no music. */
+export function handPlaylists(music: MixerMusic | null): MixerPlaylist[] {
+  return (music?.playlists ?? []).filter((p) => !p.loop);
+}
+
+/** Trabolta's card in words. DRAFT w58. */
+export function djLines(dj: MusicDj): { status: string; pals: string | null; last: string | null } {
+  const status = dj.locked ? "🔒 Kept off the music" : dj.pals.length === 0 ? `Nobody is chummy enough yet (${dj.bar} points)` : `Will change it for ${dj.pals.length} program${dj.pals.length === 1 ? "" : "s"}`;
+  const pals = dj.pals.length > 0 ? dj.pals.map((p) => `${p.name} (${p.chummy})`).join(", ") : null;
+  const last = dj.last !== null ? `Last: ${dj.last.what}${dj.last.who !== "" ? ` for ${dj.last.who}` : ""}` : null;
+  return { status, pals, last };
+}
+

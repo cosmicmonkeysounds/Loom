@@ -1,5 +1,5 @@
 //! Run → House (wave 30): which view the tab shows (Desk, Cue designer,
-//! Setup, the Mixer since wave 40, the Map since wave 49), the Desk's right column (Cue or Checks) and the side its keys
+//! Setup, the Music manager since wave 58, the Mixer since wave 40, the Map since wave 49), the Desk's right column (Cue or Checks) and the side its keys
 //! drive, kept across tab switches (memory only). The Map's two flags are
 //! `house/HouseMapHost.tsx`'s: which run's map has been opened (it stays
 //! mounted from then on, off the page, so a draft outlives a tab or a mode),
@@ -9,7 +9,7 @@ import { create } from 'zustand'
 import type { DeskPane } from '@/lib/house-desk-view'
 
 /** The House tab's view and the Desk's right column, kept across tab switches. */
-export type HouseView = 'desk' | 'designer' | 'setup' | 'mixer' | 'map'
+export type HouseView = 'desk' | 'designer' | 'setup' | 'music' | 'mixer' | 'map'
 export const useHouseView = create<{
   view: HouseView
   pane: DeskPane

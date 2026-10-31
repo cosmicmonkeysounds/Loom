@@ -2,6 +2,32 @@
 // levels and their release, the words.
 
 import { describe, expect, it } from 'vitest'
+import { mixerMusicOf as wave58Music, mixerViewOf as wave58View } from './house-mixer-view'
+
+describe('wave 58 off the wire', () => {
+  const library = [{ id: '34e328b7-92a7-4bcc-9603-ff296a8fd201', title: 'TITI - Act 1', items: 19 }]
+
+  it('keeps the app, the loan and a live bed', () => {
+    const m = wave58Music({ scene: 'act_1', beds: [{ playlist: 'act_1', speakers: [], track: null, posS: 0, live: true }], missing: [], loan: true, tidal: { online: true, playing: true, paused: false, track: null, problem: null, playlist: null, library } })!
+    expect(m.beds[0]!.live).toBe(true)
+    expect(m.loan).toBe(true)
+    expect(m.tidal!.library).toEqual(library)
+  })
+
+  it('an older router has none of it, and a library that is no list reads empty', () => {
+    const old = wave58Music({ scene: 'act_1', beds: [{ playlist: 'a', speakers: [], track: null, posS: 0 }], missing: [] })!
+    expect(old.tidal).toBeUndefined()
+    expect(old.loan).toBeUndefined()
+    expect(old.beds[0]).not.toHaveProperty('live')
+    expect(wave58Music({ scene: null, beds: [], missing: [], tidal: { online: true, library: 'x' } })!.tidal!.library).toEqual([])
+  })
+
+  it('reads Trabolta’s card, and an older server has none', () => {
+    const dj = { locked: true, bar: 3, pals: [], last: null }
+    expect(wave58View({ mix: { seq: 1, levels: {} }, dj })!.dj).toEqual(dj)
+    expect(wave58View({ mix: { seq: 1, levels: {} } })!.dj).toBeNull()
+  })
+})
 import { scopeStrips } from '@loom/core/house-mixer'
 import { fixtureMixer } from '@/lib/test/mixer-fixture'
 import { bedProgress, bedRooms, formatClock, levelChange, meterTone, mixerMusicOf, mixerViewOf, releasePending, shownLevels, stripNote, type PendingMix } from './house-mixer-view'
