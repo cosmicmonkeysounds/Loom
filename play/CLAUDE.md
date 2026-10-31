@@ -393,7 +393,7 @@ for an older server; contract `docs/loom-w48-contract.md` C2, C5, C7–C13).
 Everything is booth chunk only, in `booth/filter/`:
 
 - `model.ts` (pure, copy `FILTER_COPY` `DRAFT w48`, the 48b lines and
-  `FILTER_GAME_COPY` / `FILTER_LEVEL_COPY` / `FILTER_BANDS` `DRAFT w48b`):
+  `FILTER_GAME_COPY` / `FILTER_LEVEL_COPY` `DRAFT w48b`):
   `waitingLines` (not
   let go on this phone, not censored here while the view catches up),
   `filterPlan` (a line not seen before pops once, the newest of a batch,
@@ -414,9 +414,8 @@ Everything is booth chunk only, in `booth/filter/`:
   `censorRefusal` (409 *already censored* or *the filter no longer catches
   it* → gone quietly; doors, 404, 403, timeout, offline → plain words),
   `censorDone` (the 200's `points` / `mult` / `stars` when sent). 48b:
-  `snapLevel` / `levelOf` / `bandAt` / `bandsAt` / `stepBand` (the dial,
-  0–100 in steps of 5, starts 100; between tiers a strength catches what
-  the lower one does), `levelRefusal`, `mutedNote`, and the game's numbers:
+  `snapLevel` / `levelOf` (the dial, 0–100 in steps of 5, starts 100),
+  `levelRefusal`, `mutedNote`, and the game's numbers:
   `comboOf`, `heatAt`, `notchAt`, `multAt` (C11:
   `mults[min(len − 1, ceil(max(0, heat − elapsed / coolMs)))]`, elapsed
   from the view's arrival), `payOf` (`floor(points × mult)`),
@@ -454,12 +453,11 @@ Everything is booth chunk only, in `booth/filter/`:
 - `strength.tsx` (48b): the `{ kind: "strength" }` layer, opened only from
   ⊞ Start → 🔑 Filter strength (`filterStartItem`, passed as `filter` to
   `playerStartItems` / `boothStartItems` only when `PrimeView.filter` is
-  present). The big %, the band's words, an `<input type="range">` (step
-  5, 44 px track, 28 × 40 thumb) that posts on release (pointer up, touch
-  end, key up, blur; never per move), ◀ Less / More ▶ (a band at a time),
-  the legend (every band's colour, on / off, ⭐ a word; the slur row is
-  *Slurs (never shown)*), the status line (*Saving…*, or the refusal and
-  *Still n%*). **Nothing else points at it**: not the pop-out, the tile,
+  present). Only an `<input type="range">` (step 5, 44 px track, 28 × 40
+  thumb) that posts on release (pointer up, touch end, key up, blur; never
+  per move), not a word beyond the title (wave 59): a refused pick rolls
+  the thumb back, reddens the track and tells a screen reader why.
+  **Nothing else points at it**: not the pop-out, the tile,
   the tray or the help article (which says only that it can be tuned
   *somewhere on your phone*).
 - **Bands' colours** (`css/booth.css`): one token per tier
@@ -585,7 +583,13 @@ bar shows is pure in `host/show-model.ts` (`hostWindowShown`,
   Show is up), *Coming up* (`comingUp`), Judge,
   Cue sheet (`CueSheet`), People, More (the old tab components,
   unchanged). A jump (`ctx.go`, a need's row, the caller chip, a refused
-  press) opens Show at that section (`showTarget`).
+  press) opens Show at that section (`showTarget`). People shows who is
+  online (`personOnline`, wave 59); the offline sit behind one switch, off
+  each time it opens, and 🗂 Guests keeps everyone. Everywhere else
+  `presence.ts` `isOnline` reads the server's per-row `online`: the guest's
+  People, a player's 👥 People (`booth/people.tsx`: a claimer keeps whoever
+  it hunts or holds) and a room's strip. A picker, a DM's name and a card
+  still read every row.
 - **🤖 Talk** (wave 32, contract `docs/loom-w32-contract.md` C6;
   `host/talk.tsx` over the pure `host/talk-model.ts`, core's
   `talk-back.ts`). While `view.talk` is set (a talk scene: `HostView.talk`)
