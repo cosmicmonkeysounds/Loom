@@ -175,9 +175,12 @@ export function DeskBody({ view, calls, client, me, mixer, startTab }: { view: D
   const [tab, setTab] = useState<DeskTabId>(() => startTab ?? firstDeskTab(me, readDeskTab(host.storage), tabs));
   const [note, setNote] = useState<string | null>(null);
   const [wall, setWall] = useState(() => Date.now());
-  // Held here: a hop to another tab keeps the words and the place in the walk.
+  // Held here: a hop to another tab keeps the words, the place in the walk, the
+  // room being balanced and a half-pasted link.
   const [say, setSay] = useState("");
   const [walk, setWalk] = useState<string | null>(null);
+  const [scope, setScope] = useState("all");
+  const [link, setLink] = useState("");
   const playingAt = useRef<HTMLElement | null>(null);
   const [jump, setJump] = useState(0);
   const running = view.runs.some((r) => r.state === "running");
@@ -267,8 +270,8 @@ export function DeskBody({ view, calls, client, me, mixer, startTab }: { view: D
       {/* Keyed: a tab opens at its top, and nothing of the last one stays mounted. */}
       <div key={tab} className="host-desk-scroll" id="host-desk-panel" role="tabpanel" aria-label={tabs.find((t) => t.id === tab)?.label}>
         {tab === "cues" && <CuesTab view={view} calls={calls} act={act} now={now} playingAt={playingAt} />}
-        {tab === "music" && mixer !== undefined && <MusicSection auth={mixer} calls={calls} />}
-        {tab === "mix" && mixer !== undefined && <MixerSection auth={mixer} calls={calls} />}
+        {tab === "music" && mixer !== undefined && <MusicSection auth={mixer} calls={calls} link={link} onLink={setLink} />}
+        {tab === "mix" && mixer !== undefined && <MixerSection auth={mixer} calls={calls} scopeId={scope} onScope={setScope} />}
         {tab === "house" && <DeskHouse auth={mixer} calls={calls} act={act} live={testNeedsConfirm(view)} tryIt={<TryIt view={view} calls={calls} act={act} say={say} setSay={setSay} />} />}
         {tab === "setup" && (
           <>

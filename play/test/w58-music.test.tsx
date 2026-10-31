@@ -56,7 +56,7 @@ function view(over: Partial<MixerView> = {}): MixerView {
   };
 }
 
-const body = (v: MixerView) => renderToStaticMarkup(createElement(MusicBody, { view: v, levels: v.mix.levels, onChange: () => {}, onMusic: () => {}, onLock: () => {}, onNote: () => {}, note: null, error: null }));
+const body = (v: MixerView, link = "") => renderToStaticMarkup(createElement(MusicBody, { view: v, levels: v.mix.levels, onChange: () => {}, onMusic: () => {}, onLock: () => {}, onNote: () => {}, link, onLink: () => {}, note: null, error: null }));
 
 function recorder() {
   const sent: Array<{ route: HostRoute; body: Record<string, unknown> }> = [];

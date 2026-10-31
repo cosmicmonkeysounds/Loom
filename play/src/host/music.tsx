@@ -21,16 +21,17 @@ import { ActButton, ConfirmButton, HostEmpty, failText } from "./kit.tsx";
 import { StripLine, useMixPosts, useMixerView } from "./mixer.tsx";
 import { BAD_LINK, HAND_NOTE, LOAN_NOTE, NO_SOUNDTRACK, musicCalls, nowPlaying, routerBanner, stripRow } from "./mixer-model.ts";
 
-/** The section in the Desk window. */
-export function MusicSection({ auth, calls }: { auth: HostAuth; calls: HostCalls }) {
+/** The section in the Desk window. The pasted link is the Desk's to hold: this
+ *  unmounts on a hop to another tab. */
+export function MusicSection({ auth, calls, link, onLink }: { auth: HostAuth; calls: HostCalls; link: string; onLink: (text: string) => void }) {
   return (
     <section className="host-mix" aria-label="Music" data-testid="host-music">
-      <MusicPanel auth={auth} calls={calls} />
+      <MusicPanel auth={auth} calls={calls} link={link} onLink={onLink} />
     </section>
   );
 }
 
-function MusicPanel({ auth, calls }: { auth: HostAuth; calls: HostCalls }) {
+function MusicPanel({ auth, calls, link, onLink }: { auth: HostAuth; calls: HostCalls; link: string; onLink: (text: string) => void }) {
   const client = useMixerView(auth);
   const posts = useMixPosts(client, calls);
   const view = client.view;
@@ -45,7 +46,7 @@ function MusicPanel({ auth, calls }: { auth: HostAuth; calls: HostCalls }) {
       client.refresh();
     }
   };
-  return <MusicBody view={view} levels={posts.levels} onChange={posts.change} onMusic={posts.music} onLock={lock} onNote={posts.setNote} note={posts.note} error={client.connected ? null : client.error} />;
+  return <MusicBody view={view} levels={posts.levels} onChange={posts.change} onMusic={posts.music} onLock={lock} onNote={posts.setNote} link={link} onLink={onLink} note={posts.note} error={client.connected ? null : client.error} />;
 }
 
 export interface MusicBodyProps {
@@ -55,12 +56,15 @@ export interface MusicBodyProps {
   onMusic: (cmd: MusicCommand) => Promise<void> | void;
   onLock: (locked: boolean) => Promise<void> | void;
   onNote: (note: string) => void;
+  /** PLAY NOW's paste box. */
+  link: string;
+  onLink: (text: string) => void;
   note: string | null;
   error: string | null;
 }
 
 /** The panel over one view (the tests render it with a fixture). */
-export function MusicBody({ view, levels, onChange, onMusic, onLock, onNote, note, error }: MusicBodyProps) {
+export function MusicBody({ view, levels, onChange, onMusic, onLock, onNote, link, onLink, note, error }: MusicBodyProps) {
   const banner = routerBanner(view);
   const source = musicSource(view.music);
   const level = scopeStrips(view, { kind: "all" }, levels).find((s) => s.source === "music");
@@ -79,7 +83,7 @@ export function MusicBody({ view, levels, onChange, onMusic, onLock, onNote, not
         {source.text}
       </p>
       <NowPlayingBox view={view} onMusic={onMusic} />
-      <Playlists view={view} onMusic={onMusic} onNote={onNote} />
+      <Playlists view={view} onMusic={onMusic} onNote={onNote} link={link} onLink={onLink} />
       {level !== undefined && (
         <ul className="host-mix-strips" data-testid="host-music-level">
           <StripLine row={stripRow(level)} onChange={onChange} />
@@ -163,9 +167,8 @@ function NowPlayingBox({ view, onMusic }: { view: MixerView; onMusic: (cmd: Musi
 }
 
 /** What to play: the show's playlists, the app's library, a pasted link. */
-function Playlists({ view, onMusic, onNote }: { view: MixerView; onMusic: (cmd: MusicCommand) => Promise<void> | void; onNote: (note: string) => void }) {
+function Playlists({ view, onMusic, onNote, link, onLink }: { view: MixerView; onMusic: (cmd: MusicCommand) => Promise<void> | void; onNote: (note: string) => void; link: string; onLink: (text: string) => void }) {
   const [more, setMore] = useState(false);
-  const [link, setLink] = useState("");
   const show = handPlaylists(view.music);
   const app = view.music?.tidal;
   const library = app?.library ?? [];
@@ -177,7 +180,7 @@ function Playlists({ view, onMusic, onNote }: { view: MixerView; onMusic: (cmd: 
       return;
     }
     await onMusic(musicCalls.tidal(id));
-    setLink("");
+    onLink("");
   };
   return (
     <fieldset className="host-box" data-testid="host-music-lists">
@@ -213,7 +216,7 @@ function Playlists({ view, onMusic, onNote }: { view: MixerView; onMusic: (cmd: 
             void paste();
           }}
         >
-          <input className="host-music-input" value={link} onChange={(e) => setLink(e.target.value)} placeholder="Paste a TIDAL playlist link" aria-label="TIDAL playlist link" autoComplete="off" />
+          <input className="host-music-input" value={link} onChange={(e) => onLink(e.target.value)} placeholder="Paste a TIDAL playlist link" aria-label="TIDAL playlist link" autoComplete="off" />
           <button type="submit" className="w95-btn host-music-play">
             ▶ Play
           </button>

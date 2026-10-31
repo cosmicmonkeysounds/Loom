@@ -167,6 +167,37 @@ describe("the window", () => {
   });
 });
 
+describe("a hop to another tab keeps what the host was doing", () => {
+  type Element = ReturnType<typeof elements>[number];
+  const propsOf = (e: Element) => e.props as Record<string, unknown>;
+  const section = (h: { output: unknown }, name: string) => propsOf(elements(h.output).find((e) => (e.type as { name?: string }).name === name)!);
+  const hop = (h: { output: unknown; act(f: () => void): void }, tab: string) => {
+    const button = elements(h.output).find((e) => propsOf(e)["data-testid"] === `host-desk-tab-${tab}`)!;
+    h.act(() => (propsOf(button)["onClick"] as () => void)());
+  };
+
+  it("the room being balanced: back on Mix the next fader doesn't move the whole house", () => {
+    const { calls } = recorder();
+    const h = mountHooks(DeskBody as (p: Parameters<typeof DeskBody>[0]) => unknown, { view: deskFixture(), calls, client, me: "Installation Wizard", mixer, startTab: "mix" });
+    expect(section(h, "MixerSection")["scopeId"]).toBe("all");
+    h.act(() => (section(h, "MixerSection")["onScope"] as (id: string) => void)("room:living"));
+    hop(h, "cues");
+    expect(elements(h.output).some((e) => (e.type as { name?: string }).name === "MixerSection")).toBe(false);
+    hop(h, "mix");
+    expect(section(h, "MixerSection")["scopeId"]).toBe("room:living");
+  });
+
+  it("a half-pasted TIDAL link: back on Music it is still in the box", () => {
+    const { calls } = recorder();
+    const h = mountHooks(DeskBody as (p: Parameters<typeof DeskBody>[0]) => unknown, { view: deskFixture(), calls, client, me: "Installation Wizard", mixer, startTab: "music" });
+    expect(section(h, "MusicSection")["link"]).toBe("");
+    h.act(() => (section(h, "MusicSection")["onLink"] as (t: string) => void)("https://tidal.com/playlist/abc"));
+    hop(h, "cues");
+    hop(h, "music");
+    expect(section(h, "MusicSection")["link"]).toBe("https://tidal.com/playlist/abc");
+  });
+});
+
 describe("the note says what the server said", () => {
   type Element = ReturnType<typeof elements>[number];
   const named = (e: Element, name: string) => (e.type as { name?: string }).name === name;

@@ -108,11 +108,12 @@ export function useMixerView(auth: HostAuth | null): MixerClient {
   return { view, error, connected, setMix, refresh };
 }
 
-/** The Desk's 🎚 Mix tab. */
-export function MixerSection({ auth, calls }: { auth: HostAuth; calls: HostCalls }) {
+/** The Desk's 🎚 Mix tab. The scope is the Desk's to hold: this unmounts on a hop to
+ *  another tab, and a host balancing a room must not come back to the whole house. */
+export function MixerSection({ auth, calls, scopeId, onScope }: { auth: HostAuth; calls: HostCalls; scopeId: string; onScope: (id: string) => void }) {
   return (
     <section className="host-mix" aria-label="Mixer" data-testid="host-mixer">
-      <MixerPanel auth={auth} calls={calls} />
+      <MixerPanel auth={auth} calls={calls} scopeId={scopeId} onScope={onScope} />
     </section>
   );
 }
@@ -203,13 +204,12 @@ export function useMixPosts(client: MixerClient, calls: HostCalls) {
 }
 
 /** The open panel. */
-function MixerPanel({ auth, calls }: { auth: HostAuth; calls: HostCalls }) {
+function MixerPanel({ auth, calls, scopeId, onScope }: { auth: HostAuth; calls: HostCalls; scopeId: string; onScope: (id: string) => void }) {
   const client = useMixerView(auth);
   const posts = useMixPosts(client, calls);
-  const [scopeId, setScopeId] = useState("all");
   const view = client.view;
   if (view === null) return <p className="host-empty">{client.error ?? "Loading the mixer…"}</p>;
-  return <MixerBody view={view} levels={posts.levels} scopeId={scopeId} onScope={setScopeId} onChange={posts.change} note={posts.note} error={client.connected ? null : client.error} />;
+  return <MixerBody view={view} levels={posts.levels} scopeId={scopeId} onScope={onScope} onChange={posts.change} note={posts.note} error={client.connected ? null : client.error} />;
 }
 
 export interface MixerBodyProps {
