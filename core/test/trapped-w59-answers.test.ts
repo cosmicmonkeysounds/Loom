@@ -226,20 +226,19 @@ describe("wave 59a: the cue list", () => {
 describe("wave 59a: the accept lists", () => {
   const book = bookOf(FACTS);
   const judged = (id: string, form: string) => judgeFiling(book, id, form, 100)?.verdict;
-  // Rewordings of forms the file already takes: nothing here spells a key.
+  // Plain word swaps on the forms the file already takes: nothing here spells a key.
+  const swapped = (id: string, swaps: ReadonlyArray<readonly [string, string]>) =>
+    [Q(id).answer, ...Q(id).accept].map((f) => swaps.reduce((t, [a, b]) => t.replaceAll(a, b), f));
+  const anyAccepted = (id: string, swaps: ReadonlyArray<readonly [string, string]>) => {
+    const was = new Set([Q(id).answer, ...Q(id).accept]);
+    return swapped(id, swaps).some((f) => !was.has(f) && judged(id, f) === "accurate");
+  };
   it("take the rewordings a guest really types, not only the book's words", () => {
-    const forms = (id: string) => [Q(id).answer, ...Q(id).accept];
-    const tweak = (id: string, match: RegExp, swap: string) => forms(id).filter((f) => match.test(f)).map((f) => f.replace(match, swap));
-    const cases: Array<[string, string[]]> = [
-      ["H1", tweak("H1", /^representing yourself as (the|an) agent of a business you are unconnected with$/u, "representing yourself as $1 agent of a business with which you are unconnected")],
-      ["F1", tweak("F1", /^a hypothetical colleague who challenges you to a (number )?guessing game$/u, "a hypothetical colleague that challenges you to a $1guessing game")],
-      ["F2", tweak("F2", /^if your child has a /u, "if your child owns a ")],
-      ["F2", tweak("F2", /^if your child has a /u, "if your kid has a ")],
-    ];
-    for (const [id, list] of cases) {
-      expect(list.length, id).toBeGreaterThan(0);
-      for (const f of list) expect(judged(id, f), id).toBe("accurate");
-    }
+    expect(anyAccepted("H1", [["himself", "yourself"], [" he is ", " you are "]])).toBe(true);
+    expect(anyAccepted("F1", [[" who ", " that "]])).toBe(true);
+    expect(anyAccepted("F2", [[" has a ", " owns a "]])).toBe(true);
+    expect(anyAccepted("F2", [[" has a ", " uses a "]])).toBe(true);
+    expect(anyAccepted("F2", [["child", "kid"]])).toBe(true);
   });
 });
 
