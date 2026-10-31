@@ -23,6 +23,21 @@ node --experimental-strip-types --no-warnings scripts/sim/evening.ts --base … 
 The server plays the show's story from disk (event `default`); no sync is
 needed. Build `play` and `terminal` first if you want to watch in a browser.
 
+## The teleprompter, on real pages
+
+`prompter.spec.ts` (wave 59) drives Clippy's phone, a host's phone and the real TV
+page over `Second Hunt` and `Ad Hijack`: she scrolls, he waits, she reaches his line,
+he speaks, it locks and scrolls for both, and the other phone is locked out. It
+prints how long a scroll takes to reach the TV. Build `play` and `terminal` first.
+
+```bash
+SIM_BASE=http://127.0.0.1:7391 SIM_MOD_CODE=<mod> SIM_PRIME_CODE=<prime> SIM_SHOTS=<dir> \
+  pnpm --filter loom-app exec playwright test -c ../scripts/sim/playwright.config.ts prompter
+```
+
+`SIM_LINES=1` adds the card for someone else's line. It loads a tiny story over the
+event, so run it last, on a scratch server you can throw away.
+
 ## Flags
 
 | Flag | What |

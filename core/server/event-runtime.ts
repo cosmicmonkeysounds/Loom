@@ -187,9 +187,6 @@ import { TALK_SCENES } from "../src/talk-scenes.ts";
 import { agentRecentOn, answerMentions, buildRecent, HUNT_ANSWER_MARK, secretMentions, storyTag, storyTexts, worldString, type StoryTagContext } from "./agent-recent.ts";
 
 
-/** Wave 59: a director on a prompter, by no one's name. */
-const DIRECTOR_PROMPTER = "director";
-
 /** A guest view is never rendered against a null sim — this stands in. */
 const EMPTY_SIM = Sim.fromSources("");
 
@@ -2264,7 +2261,6 @@ export class EventRuntime {
   }
 
   private prompterName(who: string): string {
-    if (who === DIRECTOR_PROMPTER) return "Director";
     return who.startsWith("@") ? who.slice(1) : (this.sim?.persons.get(who)?.name ?? "A program");
   }
 

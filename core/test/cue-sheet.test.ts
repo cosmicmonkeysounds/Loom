@@ -401,9 +401,10 @@ when door_sensor_closed:
     const full = await call(rt, "GET", "/api/state?role=mod", {}, token);
     const lean = await call(rt, "GET", "/api/state?role=mod&cues=1", {}, token);
     expect(lean.status).toBe(200);
-    expect(Object.keys(lean.json).sort()).toEqual(["clock", "cues", "interactions", "rejoins", "roster", "theme", "title", "world"]);
-    // Wave 23: plus the guests asking to get back in (none here).
-    expect(lean.json).toEqual({ ...cueSheetView(full.json as unknown as ModView), rejoins: [] });
+    expect(Object.keys(lean.json).sort()).toEqual(["clock", "cues", "interactions", "prompter", "rejoins", "roster", "theme", "title", "world"]);
+    // Wave 23: plus the guests asking to get back in (none here); wave 59: and
+    // the teleprompter's line (none on).
+    expect(lean.json).toEqual({ ...cueSheetView(full.json as unknown as ModView), rejoins: [], prompter: null });
     const v = lean.json as unknown as ReturnType<typeof cueSheetView>;
     expect(v.interactions.map((i) => i.id)).toEqual(["ring_the_bell", "hunt_time_up"]);
     expect(v.world).toEqual([{ path: "Night.phase", value: expect.stringContaining("desktop") }]);

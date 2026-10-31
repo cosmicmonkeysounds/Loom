@@ -59,6 +59,22 @@ async function phone(browser: Browser, part: string): Promise<{ ctx: BrowserCont
   return { ctx, page };
 }
 
+/** A real finger: touch events through the browser's own input, so the page
+ *  scrolls natively and fires what a phone fires. It stays down until `lift`. */
+async function swipe(p: Page, ctx: BrowserContext, dy: number): Promise<{ lift: () => Promise<void> }> {
+  const cdp = await ctx.newCDPSession(p);
+  const box = (await p.locator(".aloud-text").boundingBox())!;
+  const x = box.x + box.width / 2;
+  const from = box.y + box.height * 0.7;
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x, y: from }] });
+  const steps = 12;
+  for (let i = 1; i <= steps; i++) {
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x, y: from - (dy * i) / steps }] });
+    await p.waitForTimeout(16);
+  }
+  return { lift: () => cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] }).then(() => {}) };
+}
+
 const scrollOf = (p: Page) => p.locator(".aloud-text").evaluate((e) => e.scrollTop);
 const nowLine = (p: Page) => p.locator(".aloud-line.now").first().innerText();
 
@@ -129,8 +145,9 @@ test("she scrolls, he waits; she reaches his line, he speaks, it scrolls, a host
   await joinIt.click();
   await expect(host.page.locator(".aloud-text")).toBeVisible();
 
-  // She scrolls to her second line: the host follows, and he still waits.
-  await press(clippy.page, await yOf(clippy.page, 1));
+  // She scrolls to her second line with a real finger: the host follows, and he still waits.
+  // (A little past it: the browser keeps the first few pixels of a drag as slop.)
+  const down = await swipe(clippy.page, clippy.ctx, (await yOf(clippy.page, 1)) - (await scrollOf(clippy.page)) + 40);
   await expect(host.page.getByTestId("aloud-lock")).toContainText("Clippy has it", { timeout: 5_000 });
   await expect(host.page.locator(".aloud-text")).toHaveClass(/locked/u);
   await clippy.page.waitForTimeout(600);
@@ -142,7 +159,7 @@ test("she scrolls, he waits; she reaches his line, he speaks, it scrolls, a host
   await host.page.locator(".aloud-text").evaluate((e) => void (e.scrollTop = e.scrollTop + 300));
   await host.page.waitForTimeout(400);
   expect(Math.abs((await scrollOf(host.page)) - hostTop), "a locked phone snaps back").toBeLessThan(20);
-  await letGo(clippy.page);
+  await down.lift();
   await expect(host.page.getByTestId("aloud-lock")).toHaveCount(0, { timeout: 5_000 });
 
   // She reaches his line: the time from the scroll to the TV having it.

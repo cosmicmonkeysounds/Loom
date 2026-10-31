@@ -193,7 +193,8 @@ export function Prompter({ a, storage, sound }: PrompterProps) {
     const end = rows[rows.length - 1];
     bottom.current = end !== undefined ? end.offsetTop + end.offsetHeight : 0;
   };
-  const sharedPos = () => posOfY((box.current?.scrollTop ?? 0) + markY(), offs, tops.current, bottom.current);
+  // One past the mark, as the line under it is read (`onScroll`).
+  const sharedPos = () => posOfY((box.current?.scrollTop ?? 0) + markY() + 1, offs, tops.current, bottom.current);
   const place = (i: number) => {
     const el = box.current;
     if (el === null) return;
