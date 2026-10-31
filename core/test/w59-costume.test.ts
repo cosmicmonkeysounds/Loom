@@ -389,13 +389,12 @@ describe("w59 costume: refused while it would wreck something", () => {
     r.rt.dispose();
   });
 
-  it("for as long as the scene is on the prompter, however slowly it is read, and not after ✓ Done", async () => {
+  it("only while someone is at the script: a reader who never pressed ✓ Done doesn't hold it for an hour", async () => {
     const r = await live();
     await r.setVar("Trabolta.awake", "true");
     await call(r.rt, "POST", "/api/mod/beat", { name: "A Reading" }, { moderator: true });
-    r.advance(600); // far past what the words take to say
     expect((await r.fire("poke")).json).toMatchObject({ why: "prompter" });
-    await call(r.rt, "POST", "/api/mod/aloud", { action: "done" }, { moderator: true });
+    r.advance(600); // the scene is still up, and nobody has touched it
     expect((await r.fire("poke")).status).toBe(200);
     r.rt.dispose();
   });

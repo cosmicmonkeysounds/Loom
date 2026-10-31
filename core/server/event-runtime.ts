@@ -3236,7 +3236,7 @@ export class EventRuntime {
       ceremony: word("Night.ceremony") === "true",
       step: num("Night.step"),
       speaking: tvTalking || saidBy(recent.filter((m) => m.channel === `loc:${TALK_ROOM}` && m.kind === "line" && typeof m.beat === "string"), STAGE_CHARS_PER_S) > storyMs,
-      prompter: this.prompters.status() !== null,
+      prompter: this.prompters.reading(),
       lights: word("Night.lights"),
       alarm: word("Night.alarm_on") === "true",
       roomOut: (num("Night.lights_back_at") ?? 0) > 0,

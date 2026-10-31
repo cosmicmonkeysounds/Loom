@@ -425,6 +425,41 @@ describe("the night never hangs", () => {
   });
 });
 
+describe("reading() (what must not cut across a read asks this)", () => {
+  it("goes quiet on a reader who never pressed ✓ Done, with the scene still up", () => {
+    const r = rig([clippy(1)]);
+    r.here();
+    expect(r.p.reading()).toBe(true);
+    r.to(DRIVE_TTL_MS + 1);
+    r.here();
+    expect(r.p.active).toBe(true);
+    expect(r.p.reading()).toBe(false);
+    r.p.op(r.id, "@Clippy", false, { op: "jump", pos: 1 });
+    expect(r.p.reading()).toBe(true);
+  });
+
+  it("stays on through a held line, his lines and a finger or an autoscroll", () => {
+    const held = rig([clippy(1), him(2)]);
+    for (let t = 0; t <= DRIVE_TTL_MS; t += HERE_TTL_MS / 2) {
+      held.to(HERE_TTL_MS / 2);
+      held.here();
+    }
+    expect(held.p.reading()).toBe(true);
+
+    const finger = rig([clippy(1, "one two three four five six seven eight nine ten")]);
+    finger.here();
+    finger.p.op(finger.id, "@Clippy", false, { op: "press", pos: 0 });
+    finger.p.op(finger.id, "@Clippy", false, { op: "play", on: true, speed: 0.4 });
+    expect(finger.p.reading()).toBe(true);
+  });
+
+  it("is false with no scene", () => {
+    const r = rig([clippy(1)]);
+    r.p.clear();
+    expect(r.p.reading()).toBe(false);
+  });
+});
+
 describe("the TV's poll stops at a held line", () => {
   const msgs = [row(1, "Trabolta", "before"), row(2, "Clippy", "c"), row(3, "Trabolta", "held"), row(4, "Trabolta", "after")];
   const speaks = (f: string) => f === "Trabolta";
