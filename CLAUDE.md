@@ -361,14 +361,20 @@ Run tab (an open one keeps the old print sheet); every staff member uploads agai
 (the reload cleared it); sign off `SIGNOFF-w54.md`, `-w55` and `-w56`, with their
 real-device checks. The Desktop does `git pull`, sets up `tidal.ps1`
 (`scripts/house-desktop/README.md` §3.7) and runs `start-stagehand.ps1 -Restart
-audio`. On Steph's laptop, run `scripts/server-room/start-terminal.ps1 -Setup` with
-`LOOM_MOD_CODE` set and a mouse, make every grant in the terminal's own profile
-(`%LOCALAPPDATA%\loom-terminal`, which doesn't exist yet: the kiosk has no way to
-answer a prompt) and check ⚙ reads *whisper is listening*; then run it with no
-switches (`docs/trapped/kiosk.md`, First launch). The old CSP stopped that prompt
-ever coming up there. Steph's laptop has reflashed the M4 and recalibrated the door
-(2026-10-30); a new profile leaves the board's flash alone. It still relearns the
-patch bay once that's wired, and the CRT becomes the only display at 640 × 480.
+audio`.
+
+**Spoken answers work on `w56`** (Steph's laptop, 2026-10-31). `start-terminal.ps1
+-Setup` made every grant in the terminal's own profile (`%LOCALAPPDATA%\loom-terminal`,
+`docs/trapped/kiosk.md`, First launch), and ⚙ read *whisper is listening*. After a
+full Chrome restart the M4 reopened with no click, a recorded clip went from the
+live page to whisper and back word for word, and in the kiosk SPEAK TO HIM said the
+speaker's words back. His reply to a spoken line wasn't checked. The laptop reflashed
+the M4 and recalibrated the door on 2026-10-30, and a new profile leaves the board's
+flash alone, but the door read OPEN at the setup. Still owed there: open and shut the
+door once and watch 🚪 flip on Run → Terminals (calibrate again if a shut door reads
+open), relearn the patch bay once that's wired, make the CRT the only display at
+640 × 480, and run `start-terminal.ps1 -InstallTask`, or the kiosk doesn't come back
+after a restart.
 
 Before it, `w53b` (master `136e656c`, shipped 2026-10-30; rollback `w53`):
 the merged `oct31/trabolta-room` (the server room's CRT, GameCube pad and local

@@ -359,9 +359,10 @@ REACHING HIM*.
    this device (that's whisper; ⚙'s *no mouse or keyboard* section asks, and
    reads *whisper is listening* once it's allowed).
 2. Hold ⚙ 2 s → *advanced* → *door sensor* → **Connect door sensor** →
-   pick the Grand Central in Chrome's list. A terminal that shows no door
-   after this was saved with the sensor off: check the select says *the door
-   sensor*, and Save.
+   click the Grand Central's row in Chrome's list, then that list's own
+   **Connect**, which stays grey until a row is picked. A terminal that shows
+   no door after this was saved with the sensor off: check the select says
+   *the door sensor*, and Save.
 3. **Calibrate: door shut** (door shut, 2 s), open the door, **Calibrate:
    door open**. The thresholds are stored on the laptop and in the board's
    flash and re-sent on every connect. **Always calibrate again after a
