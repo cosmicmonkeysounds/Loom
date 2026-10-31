@@ -254,6 +254,10 @@ export function cardString(q: Question, n: number): string {
 /** The world var a question's card string is set on. */
 export const cardVar = (q: Question): string => `${SHOW_SHAPE.world}.q_${q.id.toLowerCase()}`;
 
+/** (wave 58) The world var saying a question's key is still owed
+ *  (`Question.placeholder`): G9a's count skips it, on either road. */
+export const owedVar = (q: Question): string => `${SHOW_SHAPE.world}.owed_${q.id.toLowerCase()}`;
+
 /** Pure: the generated outputs for a validated file. Throws
  *  `TitiFactsError` on a marker problem or an unwrappable text. */
 export function generate(facts: FactsFile, current: GenerateInput): Generated {
@@ -306,8 +310,9 @@ function questionsLoom(f: FactsFile): string {
     out.push(`-> ${shape.next}`, "");
   }
 
-  out.push(`// The 📝 card lines (main.loom \`when deal_fact_card\`), the truth count${f.door ? " and the door code" : ""}.`, `== ${S.seedBeat}`, `  setting: ${S.setting}`, "");
+  out.push(`// The 📝 card lines (main.loom \`when deal_fact_card\`), which keys are still owed (G9a skips them), the truth count${f.door ? " and the door code" : ""}.`, `== ${S.seedBeat}`, `  setting: ${S.setting}`, "");
   for (const { questions } of rs) questions.forEach((q, i) => out.push(`set ${cardVar(q)} = "${cardString(q, i + 1)}"`));
+  for (const { questions } of rs) questions.forEach((q) => out.push(`set ${owedVar(q)} = ${q.placeholder === true}`));
   out.push(`set ${S.world}.truth_count = ${f.truths.length}`);
   if (f.door !== undefined) out.push(`set ${S.doorVar} = "${f.door.code}"`);
   out.push("");
