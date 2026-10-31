@@ -101,7 +101,8 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   codes, or a live event's passcodes. `show-page.test.ts` fails if the
   generated `SHOW.html` names any secret it reads from `facts.json` or
   the story.
-- **A hunt key still owed** (wave 58, `facts.ts` `Question.placeholder`). A
+- **A hunt key still owed** (wave 58, the contract's C1, `facts.ts`
+  `Question.placeholder`). A
   question may ship before its answer: a stand-in `answer` carrying
   `PLACEHOLDER_MARK`, flagged `placeholder: true` (`showFactsProblems` refuses
   one without the other). `judgeWidget` passes a filing on it with no verdict,
@@ -463,7 +464,8 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   `->` does not end the hook, so a guard must be one `if` chain, and `super`
   only splices at hook level. Tests: `test/server-rejoin.test.ts`,
   `test/trapped-w54-door.test.ts`.
-- **A booth scans codex QRs** (wave 58). `POST /api/prime/codex/redeem {code}`
+- **A booth scans codex QRs** (wave 58,
+  [`docs/loom-w58-contract.md`](../docs/loom-w58-contract.md) C4). `POST /api/prime/codex/redeem {code}`
   (a booth's token, a host's too: it is off the host allowlist's surface)
   answers `/api/guest/codex/redeem`'s shape (`{ok, unlocked, title?, already?,
   missed?}`, no `codex`). A part is no Person, so `Sim.redeem` would do nothing:
@@ -502,8 +504,8 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   mode lives beside the mute (`Store.loadVoiceFx`, in the state dir); the shot
   is memory only. `POST /api/mod/screen/voice {fx?, shot?}` is on the host
   allowlist. Tests: `test/voice-fx.test.ts`, `test/trapped-w56-voice.test.ts`.
-- **The full truth** (wave 58, `examples/.../beats/truth.loom`, story only but
-  for three small reads). The monologue plays on the director's 📜
+- **The full truth** (wave 58, [`docs/loom-w58-contract.md`](../docs/loom-w58-contract.md)
+  C2, `examples/.../beats/truth.loom`, story only but for three small reads). The monologue plays on the director's 📜
   `tell_the_truth`, after an ending's last beat: `The Full Truth` (Trabolta, 18
   merged lines, `MAX_VOICE_LINES` keeps a poll's newest 40; phase `finale_truth`,
   level 0) or `The Full Truth Read` (`Task Manager:` lines under `aloud:` in the
@@ -514,7 +516,7 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   worker's `recent`, `PERSISTENT_SLIDES` holds `recount` and `purgatory`, and
   `ALOUD_WINDOW_MS` outlasts the 14-minute read. Both versions and Task Manager's
   printed copy are held to the delivered file by `test/trapped-monologue.test.ts`.
-- **The special prize** (wave 58, G9a `award_most_correct`). `questions_right`
+- **The special prize** (wave 58, the contract's C5, G9a `award_most_correct`). `questions_right`
   is written per program only when G9a is pressed (a role watcher on
   `Night.prize_gen`; a watcher pass runs the programs' before the story's, so
   the story watcher reads the new numbers) and sits on the role's `secret:`

@@ -421,7 +421,8 @@ module docstrings that explain the why).
   `fallbacks:` without intents) to a reply to a fact that never names the
   📝 card. Tests: `tests/test_dm_guards_42e.py`. An older worker refuses a
   persona with `card_lines:`.
-- **The sore points** (wave 58, `guards.py` 8g, `docs/agents.md`). He is
+- **The sore points** (wave 58, `guards.py` 8g, `docs/agents.md`,
+  [`docs/loom-w58-contract.md`](../docs/loom-w58-contract.md) C3). He is
   publicly a man and the accident is never explained, so a persona's `cover:
   {until: <cond>}` (parsed in `persona.py`, read like `when:`; `Night.truth_told`
   in the show) turns on `guards.sore_point` (`accident`, `self`), a steer

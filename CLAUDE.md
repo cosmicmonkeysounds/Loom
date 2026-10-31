@@ -54,8 +54,10 @@ crates are the original one and lag far behind it.
 | `deploy/` | VPS release, rollback, backup and restore scripts + the Caddyfile | `docs/loom-docker-deploy.md` |
 | `docs/` | Design docs, specs, runbooks, in-app help, history | `docs/README.md` |
 
-`Trapped In The Internet story/` at the root holds the author's original
-story documents. Leave them as they are; quote the path in shell commands.
+`Trapped In The Internet story/` at the root holds the author's own documents:
+`oct30/` is the Oct 30 delivery (the script, the ending, the facts), which the
+story follows, and `older/` is everything before it. Leave them as they are;
+quote the path in shell commands.
 
 ## Commands
 
@@ -337,6 +339,34 @@ speed, a rail that previews and jumps, section jumps. Trabolta's lines stay on
 the TV; they show as cues. The bobber's printout stays. Quick reactions are left
 unmarked so a mid-game phone is never blocked. Every phone needs a reload. Help:
 `docs/help/play/07-performers.md`, `docs/help/authoring/56-read-aloud.md`.
+
+**The Oct 30 story** (wave 58, not shipped; `docs/loom-w58-contract.md`, the
+discrepancy log, the edits to the delivered text and show text `DRAFT w58` on
+`SIGNOFF-w58.md`): the user's delivery in `Trapped In The Internet story/oct30/`
+(the script, the ending, the facts) is the story now. The opening is the script
+word for word on Clippy's teleprompter, each press bringing up her next words (🎤
+and a host's 📺 are new, and the hosts have no lines). Trabolta's speech is clean,
+with a short live talk after his sign-off until 🔎; his first public crack is the
+first guess at the results. Every ending plays as it did, then a director presses
+G0 📜 and the whole truth comes out: Trabolta on the TV, clean, on the good
+endings; phoned in from the prom after the rave; Task Manager off his
+teleprompter after Combo A (a message he left before he died, and he does not come
+back: Clippy hosts) and Combo B, in a hidden room no guest's Chats list. G1 waits
+for it. The talk-down is gone: nothing said at his heart ends the night. He is
+publicly a man until his file is read: asked, he dodges and never claims it, and
+the accident is never explained. Sandy's one line is the monologue's everywhere
+(the recorded songs can't follow), she was an answering machine on the
+Northumberland Ferries line, and the billboard is on Lower Water Street. G9a 🏅 is
+the special prize. Every guest, featured program and all 8 booth parts scan every
+coded entry, secret ones included (`/api/prime/codex/redeem`): `secret` only hides
+an entry from Trabolta. **Owed:** H1–H3's answers (the script's three questions,
+on stand-in keys: a filing on one isn't recorded, and their gold cards wait); the
+keypad, re-set by hand before the 15:00 test, because the door code changed; the
+worker's restart, because `sync-show` never reaches his persona or mind; the print,
+after the sync; and the battery on Claude, because nobody has heard this persona
+on the real model. Not proven on a real TV, phone or voice: `SIGNOFF-w58.md` §5.
+The order is `SHOWNIGHT.md` §1, *Landing wave 58*. Help:
+`docs/help/play/19-house-workings.md`, `docs/help/authoring/56-read-aloud.md`.
 
 **His voice comes apart** (wave 56, shipped in `w56`; `docs/loom-w56-contract.md`,
 decisions on `SIGNOFF-w56.md`, no new show text): towards the end of the night

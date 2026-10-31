@@ -84,6 +84,9 @@ part and turned the headers of `moments/model.ts`, `moments/provider.tsx`,
 - **Streams reopen.** `client.ts` `openChatFeed` probes a dead
   `EventSource` (a Caddy 502 during a restart) and reopens on a 1 s → 15 s
   jittered backoff; the tray's live dot reads *reconnecting…*.
+- **The read window** (wave 58). `aloud/model.ts` `ALOUD_WINDOW_MS` is 20
+  minutes, past the longest read: the monologue lands at once and takes 14 at the
+  prompter's pace, so a phone swapped mid-read still gets it.
 - **Deep links.** `?unlock=` (codex; a guest's session, or wave 58's
   `booth/unlock-link.ts` on a phone signed in as a booth), `?checkin=` (room sign), `?act=` (a
   sign that presses a guest's button, `act-link.ts`, wave 54: 📷 Scan or the
@@ -226,7 +229,8 @@ windows), the Desk, the director phone and Help are lazy chunks.
   (`booth/card.tsx`: facts, at most three face buttons from the live
   objectives, the press's replies / said / staff lines). Since wave 21
   no booth has *All buttons…*, earlier readouts or the raw id.
-- **A codex QR** (wave 58, copy `DRAFT w58`). `ScannerScreen`'s `onCode`
+- **A codex QR** (wave 58, [`docs/loom-w58-contract.md`](../docs/loom-w58-contract.md)
+  C4, copy `DRAFT w58`). `ScannerScreen`'s `onCode`
   redeems a wall code with an `unlock` before anything else
   (`PrimeSession.redeem` → `POST /api/prime/codex/redeem`, typed `RedeemAnswer`):
   `redeemNote` is the line under the camera, which stays on, `redeemHeld` shows
