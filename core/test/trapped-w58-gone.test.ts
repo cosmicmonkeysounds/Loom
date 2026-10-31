@@ -102,6 +102,11 @@ describe("he does not return (wave 58)", () => {
     expect(v(sim, "Night.phase")).toBe("y2k");
   });
 
+  it("Clippy's card at the ceremony names every ending she hosts", () => {
+    const text = Sim.fromSources(SRC).model.objectives.get("Host The Ceremony")?.brief ?? "";
+    expect(text).toContain("after Combo A, Combo B or the rave");
+  });
+
   it("the walk still costs before his reveal (R4) and while he lives, in his voice", { timeout: SLOW }, () => {
     const before = boot();
     expect(v(before, "Trabolta.awake")).not.toBe(true);
