@@ -208,8 +208,9 @@ queued.
    a director's Broken still breaks him. It takes about 12 minutes on the TV and
    14 at the teleprompter. **📜 Task Manager reads it instead** is the way out if
    the TV has no voice (mute the TV first). If nobody holds the part nothing
-   warns you: he has a printed copy. Then **G1** when NEXT moves to it
-   (a press sooner asks first), then G2–G9 with the winner as the subject. Firing an award
+   warns you: he has a printed copy. Then **G1** when NEXT moves to it and he has
+   said his last word (a press sooner asks first; a press while he is reading
+   breaks the rest of his voice), then G2–G9 with the winner as the subject. Firing an award
    again corrects it. Then **G9a 🏅 Most Questions Correct**, the special prize
    Trabolta promised (wave 58: no winner to pick, the story counts each
    program's questions right; a tie names everyone in it and they share it; a

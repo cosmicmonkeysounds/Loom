@@ -501,7 +501,9 @@ rave; Task Manager off the teleprompter after Combo A and Combo B. ■ Stop hous
 sounds first if a dance track is up (the rave's never ducks), and leave 🌀 His
 voice on Auto or Clean with no shots. About 12 minutes on the TV, 14 at the
 teleprompter. **G1** waits for it; a press sooner asks, a second inside 30 s goes
-on. After Combo A he does not come back and Clippy hosts. The talk-down is gone:
+on. Wait for his last word: G1 puts the night's phase back at once, so a press
+while he is reading breaks the rest of his voice. After Combo A he does not come
+back and Clippy hosts. The talk-down is gone:
 nothing said at his heart ends the night. **G9a 🏅** names its own winner.
 
 **Clippy's dream** (wave 50). On *"…the Y2K BUG."*, about 30 s after 🕚, every

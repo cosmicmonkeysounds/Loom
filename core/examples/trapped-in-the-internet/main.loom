@@ -6520,7 +6520,10 @@ when the_truth_read:
 when the_truth_spoken:
   set Night.truth_told = true
   set Night.truth_reader = "Trabolta"
-  set Night.truth_until = Time.elapsed + 720
+  // The same as Task Manager's until a real read is timed: the terminal's own
+  // numbers give 803 s at the show TV's 0.92 pace, and G1 puts the phase back at
+  // once, so a press mid-reading breaks the rest of his voice.
+  set Night.truth_until = Time.elapsed + 830
   set Night._ceremony_ask_at = 0
   set Night.alerts = "sticky"
   set Night.truth_phase = Night.phase
@@ -6536,7 +6539,7 @@ when the_truth_spoken:
     cue lights_restore
     set Night.lights = "restore"
   // DRAFT w58
-  broadcast "📜 Trabolta reads the full truth on the TV, about 12 minutes, clean: leave 🌀 His voice on Auto or Clean, and no shots. If the TV has no voice: 📜 Task Manager reads it instead. NEXT moves to G1 when it should be over." to channel(hosts)
+  broadcast "📜 Trabolta reads the full truth on the TV, about 12 minutes, clean: leave 🌀 His voice on Auto or Clean, and no shots. If the TV has no voice: 📜 Task Manager reads it instead. NEXT moves to G1 when it should be over: wait for his last word before you press it." to channel(hosts)
   // DRAFT w58
   broadcast "!📜 THE FULL TRUTH. To the living room." to everyone with go: The Desktop
   -> The Full Truth

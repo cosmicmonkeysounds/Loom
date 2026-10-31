@@ -317,11 +317,11 @@ describe.each(ROAD_NAMES)("the full truth on the road to %s", (which) => {
       n.tick(13); // past the longest spike the night's history could still be counting
       expect(n.fx().voiceFx).toEqual({ mode: "auto", level: 0, spike: null });
       expect(v(n.sim, "Night.alarm_on")).toBe(false);
-      for (let i = 0; i < 7; i++) {
+      for (let i = 0; i < 8; i++) {
         n.tick(100);
         expect(n.fx().voiceFx).toEqual({ mode: "auto", level: 0, spike: null });
       }
-      n.tick(10);
+      n.tick(30);
       // A director's own Broken mode or shot can still break him (the hosts are told).
       expect(hostsOf(fire(n.sim, "tell_the_truth"))[0]).toContain("Already told");
     } else {
@@ -350,6 +350,17 @@ describe.each(ROAD_NAMES)("the full truth on the road to %s", (which) => {
     expect(pressRefused(n.sim, go)).toBe(false);
     expect(v(n.sim, "Night.ceremony")).toBe(true);
     expect(beatsOf(go)).toEqual(expect.arrayContaining(["The Night In Review", "The Ceremony"]));
+  });
+
+  it("G1 stays back for the whole read: 830 s on either voice, and the hosts are told to wait for his last word", { timeout: SLOW }, async () => {
+    const n = await road(which);
+    const out = fire(n.sim, "tell_the_truth");
+    expect((v(n.sim, "Night.truth_until") as number) - n.sim.elapsed() / 1000).toBe(830);
+    if (want.reader === "Trabolta") expect(hostsOf(out).join(" ")).toContain("wait for his last word");
+    n.tick(828);
+    expect(n.next()).toBeNull();
+    n.tick(4);
+    expect(n.next()).toBe("start_the_ceremony");
   });
 
   it("the ceremony: the right host from the first line to the last award, the review reads only those the monologue leaves out", { timeout: SLOW }, async () => {

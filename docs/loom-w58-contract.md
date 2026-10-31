@@ -82,7 +82,7 @@ director's `tell_the_truth` (G0 📜). Nothing about any ending was restructured
 - **The seven featured parts** are read only if that program came tonight.
 - **G1** waits. `Night.truth_until` gates its `while:`; a press before that asks first,
   and a second inside 30 s goes on. A beat is instantaneous and nothing waits for
-  speech, so this is the only gate, and 720 s / 830 s are estimates.
+  speech, so this is the only gate, and its 830 s on either version is an estimate.
 - **`task_manager_reads`** hands any ending to Task Manager, for a TV with no voice.
   Nothing warns if nobody holds the part; his pack carries a printed copy, held to the
   story by the test.
