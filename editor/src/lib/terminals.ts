@@ -103,6 +103,8 @@ export interface ScreenTerminals {
   now: number
   terminals: TerminalPoll[]
   voiceMuted: boolean
+  /** (wave 56) The director's mode for his voice; absent from an older server. */
+  voiceFx?: import('@loom/core/voice-fx').VoiceFxMode
   silentMs: number
 }
 

@@ -46,6 +46,7 @@ export default defineConfig({
       '@loom/core/house-mixer': path.resolve(__dirname, '../core/src/house-mixer.ts'),
       // The credits (wave 44): Run's Credits card reads the roll as text.
       '@loom/core/credits': path.resolve(__dirname, '../core/src/credits.ts'),
+      '@loom/core/voice-fx': path.resolve(__dirname, '../core/src/voice-fx.ts'),
       '@loom/core': path.resolve(__dirname, '../core/src/index.ts'),
       // The house model (wave 30): the Cue designer edits, plans and
       // previews `lights.json` looks with the server's own rules. `/three`

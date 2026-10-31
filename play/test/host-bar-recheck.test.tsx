@@ -9,7 +9,7 @@ import { describe, expect, it } from "vitest";
 import { cueRows } from "../../core/src/cue-sheet.ts";
 import { nextBar, sheetLayout, type CueDesk } from "../src/director.tsx";
 import { HostNextBar, PAUSED_MARK, hostPaused } from "../src/host/dock.tsx";
-import { OPTIMISTIC_MS, barLine, hostStrip, optimisticValue, tvVoiceLabel } from "../src/host/model.ts";
+import { OPTIMISTIC_MS, barLine, hostStrip, nextVoiceFx, optimisticValue, tvVoiceLabel, voiceFxLabel } from "../src/host/model.ts";
 import { hostFixture } from "./host-fixture.ts";
 
 function desk(over: Partial<CueDesk> = {}): CueDesk {
@@ -68,6 +68,12 @@ describe("the TV voice turns with its toast", () => {
     expect(optimisticValue(false, { value: true, at: 1000 }, 1000 + OPTIMISTIC_MS + 1)).toBe(false);
     expect(tvVoiceLabel(true)).toBe("🔇 TV voice muted: unmute");
     expect(tvVoiceLabel(false)).toBe("🔊 Mute the TV voice");
+  });
+  it("wave 56: his voice's button turns Auto → Clean → Broken → Auto, Clean first", () => {
+    expect(nextVoiceFx("auto")).toBe("clean");
+    expect(nextVoiceFx(nextVoiceFx("auto"))).toBe("broken");
+    expect(nextVoiceFx(nextVoiceFx(nextVoiceFx("auto")))).toBe("auto");
+    for (const m of ["auto", "clean", "broken"] as const) expect(voiceFxLabel(m)).toContain("His voice");
   });
 });
 

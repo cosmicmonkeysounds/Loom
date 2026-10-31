@@ -24,6 +24,10 @@ cable such as VoiceMeeter) summed into one input channel of the duplex
 block before the mixer sees it: the house PC's stand-in for a cable into
 the interface. It opens after the main stream; a tap that fails to open is
 logged and the router plays on without it.
+
+A **voice insert** (wave 56, `voicefx.py`) breaks one input channel, his, on
+its way from the tap to the mixer. It needs the duplex stream like the tap,
+and any exception in it turns it off for good: he goes on speaking, dry.
 """
 
 from __future__ import annotations
@@ -187,6 +191,8 @@ class Engine:
         reinit: Callable[[], None] | None = None,
         expect: tuple[int, int] | None = None,
         tap: Callable[[int], Any] | None = None,
+        voicefx: Callable[[int], Any] | None = None,
+        voicefx_ch: int = 0,
     ) -> None:
         self.device = device_name(device)
         #: `device.expect`: compared on every open (the router updates it).
@@ -217,6 +223,12 @@ class Engine:
         self._tap_factory = tap
         self.tap: Any = None
         self.tap_error: str | None = None
+        #: `voicefx(rate)` → a `voicefx.VoiceFx` for input `voicefx_ch` (1-based), or None.
+        self._voicefx_factory = voicefx
+        self.voicefx_ch = voicefx_ch
+        self.voicefx: Any = None
+        #: It threw in the callback, and was taken out of the path.
+        self.voicefx_failed = False
         self._scratch: np.ndarray | None = None
 
     def describe(self) -> str:
@@ -288,6 +300,9 @@ class Engine:
         self.stream = stream
         log.info("audio stream open: %s", self.describe())
         self._open_tap(rate, n_in)
+        if self._voicefx_factory is not None and 1 <= self.voicefx_ch <= n_in:
+            self.voicefx = self._voicefx_factory(rate)
+            self.voicefx_failed = False
         return mixer
 
     def _open_tap(self, rate: int, n_in: int) -> None:
@@ -317,6 +332,7 @@ class Engine:
         tap, self.tap = self.tap, None
         if tap is not None:
             tap.close()
+        self.voicefx = None
         stream, self.stream = self.stream, None
         if stream is not None:
             for step in ("stop", "close"):
@@ -349,16 +365,31 @@ class Engine:
     def _duplex_cb(self, indata, outdata, frames, time, status) -> None:  # noqa: ARG002
         self._note(status)
         tap = self.tap
-        if tap is not None:
+        fx = self.voicefx
+        if tap is not None or fx is not None:
             # PortAudio's input buffer is not ours to write: sum into a copy.
             scratch = self._scratch
             if scratch is None or scratch.shape != indata.shape:
                 scratch = self._scratch = np.empty(indata.shape, dtype=np.float32)
             np.copyto(scratch, indata)
-            try:
-                tap.add_into(scratch[:, tap.cfg.ch - 1])
-            except Exception:  # noqa: BLE001 — never let the callback raise
-                self.errors += 1
+            if tap is not None:
+                try:
+                    tap.add_into(scratch[:, tap.cfg.ch - 1])
+                except Exception:  # noqa: BLE001 — never let the callback raise
+                    self.errors += 1
+            if fx is not None:
+                # Its own copy of his channel: a throw mid-block must leave
+                # his voice as it came in.
+                column = scratch[:, self.voicefx_ch - 1]
+                held = column.copy()
+                try:
+                    fx.process(column)
+                except Exception:  # noqa: BLE001 — never let the callback raise
+                    self.errors += 1
+                    column[:] = held
+                    # Out of the path for good: whatever broke stays broken.
+                    self.voicefx = None
+                    self.voicefx_failed = True
             indata = scratch
         self._run(indata, outdata)
 

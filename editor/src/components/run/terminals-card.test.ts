@@ -8,8 +8,9 @@ import { CockpitContext, RunBackend, RunMode, nullCockpit, type CockpitState } f
 // see `setState`: the card reads a plain fake instead.
 const fake = vi.hoisted(() => ({ state: {} as Record<string, unknown> }))
 vi.mock('@/store/terminals', () => ({
-  useTerminals: (sel: (s: Record<string, unknown>) => unknown) => sel({ ack: () => {}, forget: () => {}, setVoiceMuted: async () => {}, identify: async () => {}, loadMap: async () => {}, ...fake.state }),
+  useTerminals: (sel: (s: Record<string, unknown>) => unknown) => sel({ ack: () => {}, forget: () => {}, setVoiceMuted: async () => {}, setVoiceFx: async () => {}, fireVoiceShot: async () => {}, identify: async () => {}, loadMap: async () => {}, ...fake.state }),
 }))
+import { VOICE_FLAVOURS } from '@loom/core/voice-fx'
 import { TerminalStatus, type TerminalRow } from '@/lib/terminals'
 import { mapTerminals } from '@/lib/terminal-setup'
 import { TerminalsCard } from './TerminalsCard'
@@ -125,5 +126,24 @@ describe('TerminalsCard (wave 20 door sensor)', () => {
   it('a terminal with no sensor shows no door badge, even under an override', () => {
     const html = render([doorRow({ door: 'none' }), { ...row('TV', 'desktop-tv'), device: {} }], MAP, { doorOverride: true })
     expect(html).not.toContain('run-terminal-badge-door')
+  })
+})
+
+describe('TerminalsCard (wave 56 his voice)', () => {
+  const tv = (): TerminalRow => ({ ...row('TV', 'desktop-tv'), view: 'tv' })
+
+  it('offers Auto, Clean and Broken with a TV up, the mode marked, and every flavour to fire', () => {
+    const html = render([tv()], MAP, { voiceFx: 'clean' })
+    for (const m of ['auto', 'clean', 'broken']) expect(html).toContain(`run-terminals-voicefx-${m}`)
+    expect(html).toMatch(/aria-pressed="true"[^>]*>Clean/)
+    expect(html).toMatch(/aria-pressed="false"[^>]*>Auto/)
+    for (const f of VOICE_FLAVOURS) expect(html).toContain(`run-terminals-voicefx-shot-${f}`)
+  })
+  it('stays out of the way with no TV, unless it is left off Auto', () => {
+    expect(render([row('Kitchen', 'server-room')], MAP, { voiceFx: 'auto' })).not.toContain('run-terminals-voicefx')
+    expect(render([row('Kitchen', 'server-room')], MAP, { voiceFx: 'broken' })).toContain('run-terminals-voicefx')
+  })
+  it('shows nothing from an older server, which names no mode', () => {
+    expect(render([tv()], MAP, { voiceFx: null })).not.toContain('run-terminals-voicefx')
   })
 })

@@ -41,7 +41,7 @@ crates are the original one and lag far behind it.
 | `bank/` | `@loom/bank`: the `.loombank` compiler and the normative reference interpreter | `bank/CLAUDE.md` |
 | `engines/godot/` | The GDScript runtime + Godot addon, conformance-tested against `bank` | `engines/godot/CLAUDE.md` |
 | `desktop/` | `loom-desktop`: the editor in a Tauri 2 shell, with the Godot integration | `desktop/README.md` |
-| `stagehand/` | Python (uv) live-event bridge: `agents` (Trabolta's voice), `show`, `lights`, `audio` (the speakers, the soundtrack, the SFX library) | `stagehand/CLAUDE.md` |
+| `stagehand/` | Python (uv) live-event bridge: `agents` (Trabolta's voice), `show`, `lights`, `audio` (the speakers, the soundtrack, the SFX library, his voice broken in real time) | `stagehand/CLAUDE.md` |
 | `hardware/server-room-m4/` | Grand Central M4 firmware: the server-room door sensor and the patch bay | its `README.md` |
 | `hardware/server-room/` | ESP32 firmware. **Not installed** for Oct 31 | its `README.md` |
 | `invite/` | `loom-invite`: the party invitation one-pager | — |
@@ -318,6 +318,21 @@ the TV; they show as cues. The bobber's printout stays. Quick reactions are left
 unmarked so a mid-game phone is never blocked. It needs a release, `sync-show`
 with its reload, and every phone reloaded. Help:
 `docs/help/play/07-performers.md`, `docs/help/authoring/56-read-aloud.md`.
+
+**His voice comes apart** (wave 56, not shipped; `docs/loom-w56-contract.md`,
+decisions on `SIGNOFF-w56.md`, no new show text): towards the end of the night
+and in the major glitches Trabolta's speech breaks, in nine flavours. The server
+says how much (`voiceFx`, `core/src/voice-fx.ts`: a curve over the phases and the
+Y2K clock, scaled by `Trabolta.composure`, healed by a talk-down or the helped
+ending; a spike for the hijack, ⚡ and the dream). Every terminal that speaks him
+plans each sentence (`terminal/src/speech/glitch.ts`: pace, pitch, voice, real
+cut-offs, only ever his own words), and the Desktop's router tears the sound
+itself up on its way to the speakers (`stagehand/audio/voicefx.py`). Run →
+Terminals, 🌀 His voice: Auto, Clean (the kill switch), Broken, and a flavour on a
+button; `/terminal/?preview=voice` auditions them. It needs a release, every
+terminal and the TV reloaded, and on the Desktop `git pull` and
+`start-stagehand.ps1 -Restart audio`; no `sync-show`. Not proven on Windows' voices
+or the house speakers: run `SIGNOFF-w56.md` §3 first.
 
 ### Release status
 

@@ -11,7 +11,7 @@ the show's device setup is [`../docs/trapped/kiosk.md`](../docs/trapped/kiosk.md
 ```bash
 pnpm --filter loom-terminal dev        # Vite :5175, proxies /api + /e to LOOM_SERVER (default http://localhost:7000)
 pnpm --filter loom-terminal build      # dist/ (base /terminal/)
-pnpm --filter loom-terminal test       # vitest run: 1283 tests, 98 files (test/**/*.test.ts)
+pnpm --filter loom-terminal test       # vitest run: 1462 tests, 102 files (test/**/*.test.ts)
 pnpm --filter loom-terminal typecheck  # tsc --noEmit
 pnpm --filter loom-terminal exec vitest run test/door-bridge.test.ts   # one file
 ```
@@ -51,7 +51,7 @@ play app's own `useChatStream` (imported as source) and narrows it to
 | `src/idle-show/` | the idle show: `schedule.ts` (seeded segments; `PATTERN`, `CALM_PATTERN`), `pools.ts` (by `Night.phase`; `calm`), `field.ts` (popup lives and places, `popupCap`, `calmPace`), `ads.ts` + `art.tsx`, `popups.ts`, `storm.ts`, `gags.ts`, `savers/`, `ScanBox.tsx` + `scan-copy.ts` |
 | `src/cutscene/` | `SceneDef` (`types.ts`), `pick.ts` (which scene plays, `MomentQueue`), `clock.ts` (server time), `CutsceneLayer.tsx`, `registry.ts`, `kit/` (Win98 blocks, typewriter, particles…), `scenes/{act1,act2,act3,moments,house,heart,credits}.tsx` (+ `scenes/language.tsx`, G14's breach, listed in act3's), `kit/lang-breach.ts` + `kit/lang-breach-draw.ts` (wave 48b: the breach's timeline and its canvas), `access-bus.ts` (the app's event base + token for a scene that fetches), `credits-fetch.ts` + `credits-roll.ts` (wave 44), `speech-bus.ts` + `voice-clock.ts` + `voice-scenes.ts` (the TV's voice-timed scenes), `preview.tsx` (`?preview=`) |
 | `src/sound/` | `bus.ts` (master, effects, voices buses; `soundPlayingUntil`), `library.ts` (30 synthesised `SFX_NAMES`), `sfx()` |
-| `src/speech/` | `engine.ts` (browser → Fully → silent ladder, opt-in server voice, the queue and its pauses, `VoiceFloor`), `lexicon.ts` + `pronounce.json` (how a word is said), `split.ts`, `pick-voice.ts` (male for the character, female for announcements; macOS + Windows names), `said.ts` (`RoomSpeech` → `talk` / `said` / `sp`, `PollPacer`, the drain re-poll) |
+| `src/speech/` | `engine.ts` (browser → Fully → silent ladder, opt-in server voice, the queue and its pauses, `VoiceFloor`), `lexicon.ts` + `pronounce.json` (how a word is said), `split.ts`, `pick-voice.ts` (male for the character, female for announcements; macOS + Windows names), `said.ts` (`RoomSpeech` → `talk` / `said` / `sp`, `PollPacer`, the drain re-poll), `glitch.ts` (wave 56: pure: a sentence → a plan of fragments), `VoiceBench.tsx` (`?preview=voice`) |
 | `src/announce.ts` | which house announcements a terminal says, the chime |
 | `src/face/` | the SVG face (`Face.tsx`) and `mood.ts` (`browGeometry`: SVG's y points down, so angry pulls the inner brows down) |
 | `src/scanner.tsx`, `src/scan.ts`, `src/camera.ts` | QR scan (`BarcodeDetector`, else jsQR); what a code means; one shared ref-counted `MediaStream` |
@@ -378,6 +378,34 @@ the tent laptop the mounted reinstall game adds its own
 - **`sp=`.** The TV also reports `sp=<seq>:<chunk>` / `sp=<seq>:d`; the
   server keeps it as `tvSpeech`. The walls don't follow it yet: they keep
   the server clock.
+
+### His voice comes apart (wave 56, `docs/loom-w56-contract.md`)
+
+The server's `voiceFx` (`screen.ts` `voiceFxOf`) says how broken he is; a queue
+that speaks him (the TV's, the room terminal's) has a shaper (`voiceShaper`) that
+turns each sentence into a plan as it starts, so a spike reaches the next
+sentence. `breakChunk` is pure and seeded. Nine flavours, each a function of the
+window's words.
+
+- **Only his own words**, or their letters: no glitch can say anything new. The
+  written text is never touched, so captions, `moodOfText` and `DREAM_BUG_LINE`
+  read as ever. Announcements and TEST VOICE have no shaper.
+- **One sentence stays one chunk.** A plan plays inside one `engine.play`
+  (`BrowserEngine.playPlan`), so `chunk`, `done`, `said=` and the voice clock see
+  the same sentences, only longer. A plain sentence takes the old path untouched.
+- **`pace` is whole SAPI steps, never a multiplier** (`paceRate`). Chrome on
+  Windows truncates `10 · log10(rate)`, so a gentle rate is no change at all on
+  the TV, and its 0.92 sounds like 1. Pitch moves in tenths.
+- **`cutMs` is a real cut-off**: `cancel()`, counted from the fragment's start,
+  then `CANCEL_SETTLE_MS` before the next `speak()`. Only the first fragment can
+  write the engine off; a later one gets `FRAG_START_MS` and is skipped.
+- `isCleanBeat`: `CLEAN_BEATS` are never broken (`Utterance.clean`).
+- Fully Kiosk gets `flatText` (no pace, pitch or voice per call), the server voice
+  and silent the sentence as it stands (`withPlan`).
+- `voiceNoise` (`sound/bus.ts`) plays on the master bus: it is his voice, not an
+  effect, so it reaches the house from the TV, where effects are silent.
+- The house speakers get far more than this: the router tears up the sound itself
+  (`stagehand/audio/voicefx.py`). The server room has only the plan.
 
 ### Speech done (wave 25)
 

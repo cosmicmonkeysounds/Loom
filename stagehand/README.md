@@ -609,3 +609,10 @@ Mosquitto and a scratch event server, not in unit tests.
 
 The README before this rewrite (with the per-wave notes) is kept at
 [`docs/history/stagehand-readme-2026-10.md`](../docs/history/stagehand-readme-2026-10.md).
+
+## His voice breaks in real time (wave 56)
+
+`audio.voicefx: true` breaks the voice on the `trabolta` input on its way to the
+speakers. The server says how much: Run → Terminals, 🌀 His voice (Auto, Clean,
+Broken). `false` is the hard off, then restart `audio`. To hear every flavour with
+no interface: `uv run python -m stagehand.audio.voicefx in.wav outdir`.

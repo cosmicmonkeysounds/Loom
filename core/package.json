@@ -23,7 +23,8 @@
     "./house-desk": "./src/house-desk.ts",
     "./house-mixer": "./src/house-mixer.ts",
     "./talk-back": "./src/talk-back.ts",
-    "./credits": "./src/credits.ts"
+    "./credits": "./src/credits.ts",
+    "./voice-fx": "./src/voice-fx.ts"
   },
   "scripts": {
     "test": "vitest run",

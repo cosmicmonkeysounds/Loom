@@ -89,6 +89,7 @@
 //! Transport-free apart from `handleScreenGet`; `ScreenWatch` takes an
 //! injected clock for tests.
 
+import { isVoiceFlavour, isVoiceFxMode, voiceFxOf, type VoiceFlavour, type VoiceFx, type VoiceFxMode, type VoiceShot } from "../../src/voice-fx.ts";
 import type { ShowClock } from "../../src/show-clock.ts";
 import type { IncomingMessage, ServerResponse } from "node:http";
 
@@ -778,6 +779,9 @@ export const SCREEN_NIGHT_VARS = {
   bath_toggles: "Night.bath_toggles",
   // Wave 50: Clippy's dream, on from the Y2K bug until an ending or a 🌀.
   dream: "Night.dream",
+  // Wave 56: what his voice is made of; only the level ever leaves the server.
+  talked_down: "Night.talked_down",
+  composure: "Trabolta.composure",
   // Wave 48: the Language Report (G14), only while its slide is up.
   lang_flagged: "Night.lang_flagged",
   lang_censored: "Night.lang_censored",
@@ -1231,6 +1235,8 @@ export interface ScreenState {
   announces: ScreenAnnounce[];
   /** Only when the poll names a voice room (K-18) or a `room`. */
   voice?: ScreenVoice;
+  /** (wave 56) How broken his voice is now, for everything that speaks him. */
+  voiceFx: VoiceFx;
   /** Only when the poll names a `room` (wave 7). */
   room?: ScreenRoom;
   /** A director's `identify` is live for this terminal (SW-SCR-21). */
@@ -1423,18 +1429,36 @@ export class ScreenWatch {
    *  seeds it, `onMute` writes it), so a server restart keeps the TV quiet. */
   voiceMuted: boolean;
   private readonly onMute: ((muted: boolean) => void) | undefined;
+  /** (wave 56) The director's mode for his voice; persisted like the mute. */
+  voiceFxMode: VoiceFxMode;
+  private readonly onVoiceFx: ((mode: VoiceFxMode) => void) | undefined;
+  /** (wave 56) A director's shot: one flavour, now. */
+  private voiceShot: VoiceShot | null = null;
 
-  constructor(o: { now?: () => number; muted?: boolean; onMute?: (muted: boolean) => void; signals?: () => { devices?: Iterable<string>; quiet?: Iterable<string> } } = {}) {
+  constructor(o: { now?: () => number; muted?: boolean; onMute?: (muted: boolean) => void; voiceFx?: VoiceFxMode; onVoiceFx?: (mode: VoiceFxMode) => void; signals?: () => { devices?: Iterable<string>; quiet?: Iterable<string> } } = {}) {
     this.now = o.now ?? Date.now;
     this.signalExtras = o.signals;
     this.voiceMuted = o.muted ?? false;
     this.onMute = o.onMute;
+    this.voiceFxMode = o.voiceFx ?? "auto";
+    this.onVoiceFx = o.onVoiceFx;
   }
 
   /** Flip the TV-voice mute (`POST /api/mod/screen/voice`) and persist it. */
   setVoiceMuted(muted: boolean): void {
     this.voiceMuted = muted;
     this.onMute?.(muted);
+  }
+
+  /** (wave 56) The director's mode for his voice, persisted. */
+  setVoiceFxMode(mode: VoiceFxMode): void {
+    this.voiceFxMode = mode;
+    this.onVoiceFx?.(mode);
+  }
+
+  /** (wave 56) Break his voice in one flavour, now. */
+  fireVoiceShot(flavour: VoiceFlavour): void {
+    this.voiceShot = { flavour, at: this.now() };
   }
 
   /** Fold every screen cue the sim logged since the last look. A new Sim
@@ -1904,6 +1928,11 @@ export class ScreenWatch {
       announce: this.announcements[this.announcements.length - 1] ?? null,
       announces: [...this.announcements],
       ...(voice !== undefined ? { voice } : {}),
+      voiceFx: voiceFxOf(
+        this.voiceFxMode,
+        { phase: night.phase, composure: num(SCREEN_NIGHT_VARS.composure), remaining, talkedDown: flag(SCREEN_NIGHT_VARS.talked_down), alarmOn: night.alarm_on, heartStage: night.heart_stage, reading: awardUp || summaryUp },
+        { now: this.now(), glitch: program.glitch ?? null, flicker: program.flicker, dreamAt: this.dreamOf(sim)?.at ?? null, shot: this.voiceShot },
+      ),
       ...(room !== undefined ? { room } : {}),
       identify: identifyLeft > 0,
       identifyLeft,
@@ -1965,9 +1994,11 @@ export function handleScreenGet(
 }
 
 /**
- * `POST /api/mod/screen/voice {muted: boolean}` — the director's (or the TV's
- * own) mute for the room voice. Every TV reads it off its next poll. Answers
- * `{muted}`; a body without a boolean `muted` just reads the current state.
+ * `POST /api/mod/screen/voice {muted?: boolean, fx?: auto|clean|broken,
+ * shot?: <flavour>}` — the director's (or the TV's own) mute for the room
+ * voice, and (wave 56) the mode for how broken it is and a shot of one
+ * flavour. Every terminal and the router read them off their next poll.
+ * Answers `{muted, fx}`; a body with none of them just reads the current state.
  */
 export async function handleScreenVoicePost(watch: ScreenWatch, req: IncomingMessage, res: ServerResponse, authorized: (token: string | undefined) => boolean): Promise<boolean> {
   const body = await readBody(req, 1024);
@@ -1976,7 +2007,9 @@ export async function handleScreenVoicePost(watch: ScreenWatch, req: IncomingMes
     return true;
   }
   if (typeof body["muted"] === "boolean") watch.setVoiceMuted(body["muted"]);
-  sendJson(res, 200, { muted: watch.voiceMuted });
+  if (isVoiceFxMode(body["fx"])) watch.setVoiceFxMode(body["fx"]);
+  if (isVoiceFlavour(body["shot"])) watch.fireVoiceShot(body["shot"]);
+  sendJson(res, 200, { muted: watch.voiceMuted, fx: watch.voiceFxMode });
   return true;
 }
 
@@ -2076,13 +2109,15 @@ export interface ScreenTerminals {
   terminals: Array<ScreenPoll & { ago: number }>;
   /** The TV-voice mute (K-18), so the card can flip it. */
   voiceMuted: boolean;
+  /** (wave 56) The director's mode for his voice. */
+  voiceFx: VoiceFxMode;
   /** The server's silence threshold (ms). */
   silentMs: number;
 }
 
 /** The heartbeat list, read-only (pure apart from the watch's clock). */
 export function screenTerminals(watch: ScreenWatch): ScreenTerminals {
-  return { now: watch.clock(), terminals: watch.seen(), voiceMuted: watch.voiceMuted, silentMs: TERMINAL_SILENT_MS };
+  return { now: watch.clock(), terminals: watch.seen(), voiceMuted: watch.voiceMuted, voiceFx: watch.voiceFxMode, silentMs: TERMINAL_SILENT_MS };
 }
 
 /**

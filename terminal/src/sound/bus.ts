@@ -26,9 +26,15 @@
 //! the effects (`setSoundMuted`: the TV's director mute, the mirror). The
 //! microphone's half-duplex asks `soundPlayingUntil()` when this page's own
 //! effects, jingles and chime stop, so they are never sent to the games.
+//!
+//! The noise inside a broken sentence (wave 56, `voiceNoise`) is his voice,
+//! not an effect, so it plays on the master bus: on the TV, where the effects
+//! are silent, it reaches the house with him; on the CRT likewise. Only the
+//! lock and the director's mute stop it.
 
 import { audioContext, voiceFloor } from "../speech/engine.ts";
-import { CHIME_PARTS, partsLength, recipe, type NoisePart, type Part, type SfxName, type TonePart } from "./library.ts";
+import type { VoiceNoise } from "../speech/glitch.ts";
+import { CHIME_PARTS, VOICE_NOISE_PARTS, partsLength, recipe, type NoisePart, type Part, type SfxName, type TonePart } from "./library.ts";
 
 /** The effects' level per view. The TV's are silent (wave 38): its sound is
  *  cabled into the house router as Trabolta's channel, so an effect here would
@@ -269,6 +275,20 @@ function schedule(b: Bus, parts: readonly Part[], t0: number, out: AudioNode, le
 }
 
 // --- the public calls ---------------------------------------------------------------
+
+/** (wave 56) A burst of noise inside his voice, now. Never throws. */
+export function voiceNoise(kind: VoiceNoise): boolean {
+  try {
+    const ctx = context();
+    if (ctx === null || ctx.state !== "running" || muted) return false;
+    const b = ensureBus();
+    if (b === null) return false;
+    schedule(b, VOICE_NOISE_PARTS[kind], b.ctx.currentTime + 0.005, b.master, 1);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 /**
  * Play one effect now (or `delay` s from now). Returns whether it plays:

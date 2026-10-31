@@ -2,7 +2,7 @@
 title: Run mode — rehearse, go live, be anyone
 section: The Editor
 order: 43
-keywords: run, house desk, House tab, desk, door sensor, 🚪, door override, patch bay, 🔌, trust the patch bay, trust the door sensor, ldr_open, fault, lights, 💡, lights module, zigbee, pairing, fixtures, keys=0, door=serial, microphone, mic, 🎤, voice link, denied, invitations, stop house sounds, house sound, router, announcements, house list, tablets, reinstall, tent laptop, faction race, over the line, founded, badge, bathroom, flagged, audit, judge queue, queued, reserved, claim, unlock, king, health bar, restore, last seen, went home, gone, near miss, agent queue, stalled, rehearse, rehearsal, live, go live, launch, deploy, event, cockpit, persona, choices, named events, identity, lens, be, view as, composer, quick fire, world, roster, stage, moderate, co-writer, director, push draft, restart, end, log, export, code, QR, join, passcode, lookup, scratch, private, print, poster, check-in sign, rotate, staff codes, terminals, heartbeat, silent, chime, TV voice, cue sheet, director page, act, acts, now card, on hand, anytime, arm, fire, double click, countdown, watch, glance, needs you, calling, watching, keyboard, cue, next, last, refused, not taken, repeat, urgent, branch, ledger, parts, phone offline, agent, worker, ceremony, award, recap, re-pair, lost phone, release, grant codex, give quest, complete quest, fail quest
+keywords: run, his voice, voice glitch, stutter, flavours, clean, broken, house desk, House tab, desk, door sensor, 🚪, door override, patch bay, 🔌, trust the patch bay, trust the door sensor, ldr_open, fault, lights, 💡, lights module, zigbee, pairing, fixtures, keys=0, door=serial, microphone, mic, 🎤, voice link, denied, invitations, stop house sounds, house sound, router, announcements, house list, tablets, reinstall, tent laptop, faction race, over the line, founded, badge, bathroom, flagged, audit, judge queue, queued, reserved, claim, unlock, king, health bar, restore, last seen, went home, gone, near miss, agent queue, stalled, rehearse, rehearsal, live, go live, launch, deploy, event, cockpit, persona, choices, named events, identity, lens, be, view as, composer, quick fire, world, roster, stage, moderate, co-writer, director, push draft, restart, end, log, export, code, QR, join, passcode, lookup, scratch, private, print, poster, check-in sign, rotate, staff codes, terminals, heartbeat, silent, chime, TV voice, cue sheet, director page, act, acts, now card, on hand, anytime, arm, fire, double click, countdown, watch, glance, needs you, calling, watching, keyboard, cue, next, last, refused, not taken, repeat, urgent, branch, ledger, parts, phone offline, agent, worker, ceremony, award, recap, re-pair, lost phone, release, grant codex, give quest, complete quest, fail quest
 ---
 
 Run (`⌘2`) is the control room for your project's **one run**. You
@@ -146,7 +146,12 @@ Front of house: getting people in.
   to captions only (the TV's own 🔊 / `M` key does the same). The mute
   holds through a server restart, a redeploy and Go live in place, and the
   server log says 🔇 at boot when the TV starts muted, so look at this
-  button before the doors. Each row
+  button before the doors. **🌀 His voice** sets how broken Trabolta sounds:
+  **Auto** follows the night, **Clean** is the kill switch, **Broken** is full,
+  and it holds through a restart like the mute. **Fire a flavour** breaks his
+  next words one way for 8 seconds, in any mode, which is how to audition them;
+  `/terminal/?preview=voice` on a set-up terminal does the same with no show
+  running. Each row
   shows what the tablet reports: **🔇** nobody has touched it yet so it
   can't speak, **💤** its screen is off or another app is on top, **⛶**
   it is not full screen (on a tablet, touch it once: it asks again on

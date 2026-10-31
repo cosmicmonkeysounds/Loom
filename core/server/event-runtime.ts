@@ -1267,10 +1267,14 @@ export class EventRuntime {
     // show: say so on boot, where the crew reads the log.
     const voiceMuted = this.store.loadVoiceMuted();
     if (voiceMuted) process.stderr.write(`  🔇 event ${this.eventId}: the TV voice is muted (kept from before this start) — unmute it on Run → Terminals\n`);
+    const voiceFx = this.store.loadVoiceFx();
+    if (voiceFx !== "auto") process.stderr.write(`  🌀 event ${this.eventId}: Trabolta's voice is on ${voiceFx} (kept from before this start) — put it back on Run → Terminals\n`);
     this.screens = new ScreenWatch({
       ...(init.now !== undefined ? { now: init.now } : {}),
       muted: voiceMuted,
       onMute: (muted) => this.store.saveVoiceMuted(muted),
+      voiceFx,
+      onVoiceFx: (mode) => this.store.saveVoiceFx(mode),
       // The screens' signal allowlist (wave 17): the map's own king signals
       // are device moments, but a checkmate never is (it would tell the
       // house someone now holds the door code); nor are the facts book's
@@ -1845,7 +1849,7 @@ export class EventRuntime {
       mod,
       waiting,
       king: king === null ? null : { hp: king.hp, max: king.max, fallen: king.fallen },
-      terminals: { now: terms.now, silentMs: terms.silentMs, voiceMuted: terms.voiceMuted, terminals: terms.terminals.map((t) => ({ name: t.name, ago: t.ago, ...(t.room !== undefined ? { room: t.room } : {}), view: t.view })) },
+      terminals: { now: terms.now, silentMs: terms.silentMs, voiceMuted: terms.voiceMuted, voiceFx: terms.voiceFx, terminals: terms.terminals.map((t) => ({ name: t.name, ago: t.ago, ...(t.room !== undefined ? { room: t.room } : {}), view: t.view })) },
       flags,
       staffRooms: model === null ? [] : staffRoomChannels(model),
       ...(sim !== null ? { awardOnly: awardOnly(sim) } : {}),

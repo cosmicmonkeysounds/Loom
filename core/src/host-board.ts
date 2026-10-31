@@ -9,6 +9,7 @@
 //! them. Dependency-free (the play app imports it by path): nothing here
 //! may reach `node:*`, `server/*` or the sim.
 
+import type { VoiceFxMode } from "./voice-fx.ts";
 import { cueRows, cueSheetView, onDeck, type CueSheetView, type CueInteraction, type CueMarks, type WorldLine, type CuePerson } from "./cue-sheet.ts";
 import type { AlertLevel } from "./delivery.ts";
 import type { TalkView } from "./talk-back.ts";
@@ -823,7 +824,7 @@ export interface HostView extends CueSheetView {
     stimulus: { uses: number; limit: number };
   } | null;
   king: { hp: number; max: number; fallen: boolean } | null;
-  terminals: { voiceMuted: boolean; silentMs: number; rows: Array<{ name: string; agoMs: number; room?: string; view: string }> } | null;
+  terminals: { voiceMuted: boolean; voiceFx?: VoiceFxMode; silentMs: number; rows: Array<{ name: string; agoMs: number; room?: string; view: string }> } | null;
   agents: Array<{
     id: string;
     online: boolean;
@@ -913,6 +914,7 @@ export interface HostViewInput {
     now: number;
     silentMs: number;
     voiceMuted: boolean;
+    voiceFx?: VoiceFxMode;
     terminals: Array<{ name: string; ago: number; room?: string; view: string }>;
   } | null;
   /** Per-guest flags (`guestFlags`), by guest id. */
@@ -1044,7 +1046,7 @@ export function hostView(input: HostViewInput): HostView {
     judging,
     wallet,
     king: input.king === null ? null : { hp: input.king.hp, max: input.king.max, fallen: input.king.fallen },
-    terminals: terminals === null ? null : { voiceMuted: terminals.voiceMuted, silentMs: terminals.silentMs, rows: terminals.terminals.map((t) => ({ name: t.name, agoMs: t.ago, ...(t.room !== undefined ? { room: t.room } : {}), view: t.view })) },
+    terminals: terminals === null ? null : { voiceMuted: terminals.voiceMuted, ...(terminals.voiceFx !== undefined ? { voiceFx: terminals.voiceFx } : {}), silentMs: terminals.silentMs, rows: terminals.terminals.map((t) => ({ name: t.name, agoMs: t.ago, ...(t.room !== undefined ? { room: t.room } : {}), view: t.view })) },
     agents,
     parts,
     people,

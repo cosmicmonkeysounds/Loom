@@ -598,6 +598,18 @@ export function optimisticValue<T>(server: T, local: Optimistic<T> | null, now: 
   return local.value;
 }
 
+export type VoiceFxMode = "auto" | "clean" | "broken";
+
+/** (wave 56) His voice's button: what it is now. A tap moves to the next. */
+export function voiceFxLabel(mode: VoiceFxMode): string {
+  return mode === "auto" ? "🌀 His voice: follows the night" : mode === "clean" ? "🌀 His voice: kept clean" : "🌀 His voice: fully broken";
+}
+
+/** Auto → Clean → Broken → Auto: Clean first, the one a crisis wants. */
+export function nextVoiceFx(mode: VoiceFxMode): VoiceFxMode {
+  return mode === "auto" ? "clean" : mode === "clean" ? "broken" : "auto";
+}
+
 /** The TV-voice toggle's label: what it is, and what a tap does. */
 export function tvVoiceLabel(muted: boolean): string {
   return muted ? "🔇 TV voice muted: unmute" : "🔊 Mute the TV voice";

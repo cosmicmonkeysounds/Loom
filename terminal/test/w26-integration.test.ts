@@ -40,7 +40,8 @@ describe("I2: every app.tsx SpeechQueue takes the config's pauses (V2)", () => {
   it("passes voiceFloor and gapsFor(config) at each construction", () => {
     const made = app.match(/new SpeechQueue\(/gu) ?? [];
     expect(made.length).toBeGreaterThan(0);
-    const withGaps = app.match(/\}, voiceFloor, gapsFor\(config\)\);/gu) ?? [];
+    // Wave 56: a queue that speaks him adds its shaper after them.
+    const withGaps = app.match(/\}, voiceFloor, gapsFor\(config\)[,)]/gu) ?? [];
     expect(withGaps.length).toBe(made.length);
   });
   it("gapsFor scales the defaults by pause", () => {

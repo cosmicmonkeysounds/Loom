@@ -19,6 +19,7 @@
 //! Everything is small and written synchronously: durability before the
 //! HTTP response matters far more than throughput on a one-room LAN.
 
+import { isVoiceFxMode, type VoiceFxMode } from "../src/voice-fx.ts";
 import { appendFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -536,7 +537,18 @@ export class Store {
     return readJson<{ muted?: unknown }>(this.path(SCREEN_VOICE))?.muted === true;
   }
   saveVoiceMuted(muted: boolean): void {
-    writeFileSync(this.path(SCREEN_VOICE), JSON.stringify({ muted }));
+    writeFileSync(this.path(SCREEN_VOICE), JSON.stringify({ ...this.screenVoice(), muted }));
+  }
+  /** (wave 56) The director's mode for his voice, kept beside the mute. */
+  loadVoiceFx(): VoiceFxMode {
+    const fx = this.screenVoice()["fx"];
+    return isVoiceFxMode(fx) ? fx : "auto";
+  }
+  saveVoiceFx(fx: VoiceFxMode): void {
+    writeFileSync(this.path(SCREEN_VOICE), JSON.stringify({ ...this.screenVoice(), fx }));
+  }
+  private screenVoice(): Record<string, unknown> {
+    return readJson<Record<string, unknown>>(this.path(SCREEN_VOICE)) ?? {};
   }
 
   loadHidden(): number[] {

@@ -28,13 +28,15 @@ import { baseOf, type TerminalConfig } from "./config.ts";
 import { Face, type FaceHandle } from "./face/Face.tsx";
 import { moodOfText, type Mood } from "./face/mood.ts";
 import type { ScreenState } from "./screen.ts";
-import { SpeechQueue, audioUnlocked, gapsFor, unlock, voiceEngines, voiceFloor, voiceNote, type EngineKind } from "./speech/engine.ts";
+import { SpeechQueue, alternateCount, audioUnlocked, gapsFor, unlock, voiceEngines, voiceFloor, voiceNote, type EngineKind } from "./speech/engine.ts";
+import { isCleanBeat, voiceShaper } from "./speech/glitch.ts";
 import { revealOffsets, splitSentences } from "./speech/split.ts";
 import { LinePlayer, TvSpeechFeed, cursorAfterGap, planVoice, postVoiceMute, showsNameplate, type TvLine } from "./tv.ts";
 import { useSpatialStream, useWorld, type Gone, type WorldStore } from "./world/stream.ts";
 import { linkedNow, usePresenceLatch } from "./world/presence.ts";
+import { hash32 } from "./idle-show/rng.ts";
 import { kioskFullscreen } from "./fullscreen.ts";
-import { setSoundMuted } from "./sound/bus.ts";
+import { setSoundMuted, voiceNoise } from "./sound/bus.ts";
 import { onSceneFace } from "./cutscene/face-bus.ts";
 import { emitSpeech, setSpeechLive } from "./cutscene/speech-bus.ts";
 import { DreamView, useDreamPhase } from "./dream/DreamView.tsx";
@@ -149,7 +151,7 @@ export function Tv({
   const feed = useMemo(() => new TvSpeechFeed({ emit: emitSpeech, now: () => serverNow(stateRef.current), room: speech }), [speech]);
   const queue = useMemo(() => {
     const engines = voiceEngines(
-      { choice: config.engine, browserVoice: config.browserVoice, serverVoice: config.serverVoice, speed: config.speed, base: baseOf(config), token: config.token },
+      { choice: config.engine, browserVoice: config.browserVoice, serverVoice: config.serverVoice, speed: config.speed, base: baseOf(config), token: config.token, noise: voiceNoise },
       () => setLatched(true),
     );
     const chunks = new Map<number, string[]>();
@@ -179,7 +181,7 @@ export function Tv({
         setMood("neutral");
       },
       engine: (kind) => setEngineUsed(kind),
-    }, voiceFloor, gapsFor(config));
+    }, voiceFloor, gapsFor(config), voiceShaper({ fx: () => stateRef.current?.voiceFx, now: () => serverNow(stateRef.current), salt: hash32(config.name), voices: alternateCount }));
     return { q, chunks };
   }, [config, feed, speech]);
 
@@ -199,7 +201,7 @@ export function Tv({
             queue.chunks.set(line.seq, parts);
             starts.current.set(line.seq, started);
             waiters.current.set(line.seq, resolve);
-            queue.q.say({ id: line.seq, chunks: parts });
+            queue.q.say({ id: line.seq, chunks: parts, clean: isCleanBeat(line.beat) });
           }),
         cancel: () => {
           feed.cancelAll(); // first: the lines are cut, not finished
