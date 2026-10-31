@@ -227,6 +227,24 @@ describe("wave 58: the buttons bring up the script's branches", () => {
     expect(beatsOf(fire(sim, "bingo_winner", "g4", "Clippy"))).toContain("Winning Line");
   });
 
+  it("a framed program who denies the card: the sheets' 🎯 marks them, the Wanted board and Norton's 🛡 follow, and the word is on Clippy's sheets", () => {
+    const sim = boot();
+    for (const c of TO_BINGO) fire(sim, c);
+    fire(sim, "frame_for_bingo", "g4", "Task Manager");
+    // Nothing else can reach them: no 🛡 and no 🤐 on a framed program, unmarked.
+    const shield = sim.model.interactions.get("send to the internet")!.while!;
+    expect(v(sim, "g4.marked")).toBe(false);
+    expect(sim.holds(shield, "g4", "Norton Anti-Virus")).toBe(false);
+    fire(sim, "named_at_bingo", "g4", "Clippy");
+    expect(v(sim, "g4.marked")).toBe(true);
+    expect(sim.holds(shield, "g4", "Norton Anti-Virus")).toBe(true);
+    fire(sim, "send to the internet", "g4", "Norton Anti-Virus");
+    expect(v(sim, "g4.corrupted")).toBe(true);
+    expect(read("codex/7-clippy.loom").replace(/\s+/gu, " ")).toContain("(App) If they deny the card, 🎯 on them first");
+    expect(read("cast-packs/performers/clippy.md").replace(/\s+/gu, " ")).toContain("they deny completing the card, 🎯 on them first");
+    expect(sim.model.objectives.get("Celebrate The Winners")!.brief).toContain("A framed program who denies the card: 🎯 on them");
+  });
+
   it("📺 is the mirror, only after the first reinstallation, once, before he is online; off the sequence", () => {
     const sim = boot();
     expect(cue(sim, "follow_the_reinstallation").sequence).toBe(false);

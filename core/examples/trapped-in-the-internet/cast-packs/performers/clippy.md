@@ -242,7 +242,8 @@ direction. There is one round only: the first 🎯 or 🤐
 closes the selection, so any other winner stays where they are. **Skip** or **Later** if you need the room. If
 nobody has a Bingo, Task Manager presses 🃏 and supplies a card marked as a
 completed Bingo for MS Paint, and your words come up with the name in them. If
-they deny completing the card, pause and let Norton respond. Otherwise, proceed
+they deny completing the card, 🎯 on them first (that marks them, so Norton can
+act), then pause and let Norton respond. Otherwise, proceed
 through the winning line (🎱 on them), saving the centre square for last. You never
 press 🛡.
 
