@@ -53,10 +53,31 @@ beforeEach(() => {
       return { mix: next }
     }),
     music: vi.fn(async (_id: string, _cmd: MusicCommand) => ({ seq: 1, router: true })),
+    signal: vi.fn(async (_id: string, _name: string) => ({})),
   }
 })
 afterEach(() => {
   vi.useRealTimers()
+})
+
+describe('wave 58: Trabolta at the stereo', () => {
+  it('the lock and the unlock fire the story\'s cues, and say so', async () => {
+    const s = store()
+    s.getState().bind('ev1')
+    await s.getState().lockDj(true)
+    await s.getState().lockDj(false)
+    expect(api.signal.mock.calls.map((c) => c[1])).toEqual(['trabolta_music_lock', 'trabolta_music_unlock'])
+    expect(s.getState().note?.text).toContain('can reach the music')
+  })
+
+  it('a refused lock says so and lets go of busy', async () => {
+    const s = store()
+    s.getState().bind('ev1')
+    api.signal.mockRejectedValueOnce(new Error('nope'))
+    await s.getState().lockDj(true)
+    expect(s.getState().busy).toBeNull()
+    expect(s.getState().note?.tone).toBe('bad')
+  })
 })
 
 describe('the poll', () => {

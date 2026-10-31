@@ -24,6 +24,11 @@ playlist from the top), and a track paused by a stray click resumes.
 A router restarted mid-act finds the app already playing, on the wanted
 playlist's page, and adopts it rather than starting the act over.
 
+The Music manager (wave 58, docs/loom-w58-music-contract.md) adds a held pause,
+`pause(on)`, so a paused app is not "a track paused by a stray click"; `previous()`;
+and `library`, the playlists in the app's sidebar, read every `LIBRARY_EVERY_S`.
+That read touches nothing, so it runs before the director's first word too.
+
 The buttons are found by TIDAL's own `data-test` attributes, which an update
 could rename: tidal.ps1 starts the app with `-disable-auto-update`. Any
 failure is reported through `problem()`, and the director then plays the
@@ -66,6 +71,10 @@ RETRY_S = 5.0
 SIGNAL_DB = -75.0
 #: The default loopback port (tidal.ps1's `-Port`).
 PORT = 9333
+#: The sidebar's playlists are read this often.
+LIBRARY_EVERY_S = 30.0
+#: At most this many of them in a report (the server's `MUSIC_LIBRARY_MAX`).
+LIBRARY_MAX = 64
 
 
 class TidalError(Exception):
@@ -278,6 +287,19 @@ STATE_JS = _js(
 )
 
 
+#: The sidebar's playlists: `/playlist/<id>` links reading "title\\nN items".
+LIBRARY_JS = _js(
+    "const side=q('main-layout-sidebar-wrapper');if(!side)return '[]';"
+    "const seen=new Set();const out=[];"
+    "for(const a of side.querySelectorAll('a[href*=\"/playlist/\"]')){"
+    "const id=(a.getAttribute('href').match(/playlist\\/([0-9a-f-]{36})/)||[])[1];"
+    "if(!id||seen.has(id))continue;seen.add(id);"
+    "const parts=(a.innerText||'').split('\\n');"
+    "out.push({id,title:(parts[0]||'').trim(),items:parseInt(parts[1],10)||null});}"
+    "return JSON.stringify(out)"
+)
+
+
 def _click_js(test: str) -> str:
     return _js("const b=q(name);if(b)b.click();return !!b", name=test)
 
@@ -393,6 +415,12 @@ class TidalRemote:
         #: router restarted mid-act must not pause the act before its catch-up.
         self._told = False
         self._skips = 0
+        self._backs = 0
+        #: Held paused (wave 58): the reconciler presses ⏸, never ▶.
+        self._paused = False
+        self._library_at = 0.0
+        #: The app's sidebar playlists, `[{id, title, items}]` (wave 58).
+        self.library: list[dict[str, Any]] = []
         #: The playlist the app was last told to play (None: don't know).
         self._loaded: str | None = None
         self._prepared = False
@@ -422,6 +450,26 @@ class TidalRemote:
         with self._lock:
             self._skips += 1
         self._wake.set()
+
+    def previous(self) -> None:
+        with self._lock:
+            self._backs += 1
+        self._wake.set()
+
+    def pause(self, on: bool) -> None:
+        with self._lock:
+            self._paused = on
+        self._wake.set()
+
+    @property
+    def paused(self) -> bool:
+        return self._paused
+
+    @property
+    def wanted(self) -> str | None:
+        """The playlist the app is told to play."""
+        want = self._want
+        return want[0] if want is not None else None
 
     def start(self) -> None:
         if self._thread is None:
@@ -487,8 +535,11 @@ class TidalRemote:
         st = self._read()
         if not st.get("footer"):
             raise TidalError("the app shows no player (still starting, or signed out)")
+        self._read_library()
         with self._lock:
-            want, told, skips, self._skips = self._want, self._told, self._skips, 0
+            want, told, paused = self._want, self._told, self._paused
+            skips, self._skips = self._skips, 0
+            backs, self._backs = self._backs, 0
         if not told:
             return
         if want is None:
@@ -503,14 +554,34 @@ class TidalRemote:
                 log.info("🎵 tidal: already playing %s", uuid)
             else:
                 self._load(uuid, shuffle)
-        elif not st["playing"]:
+        elif st["playing"] and paused:
+            self._page.eval(_click_js("pause"))
+        elif not st["playing"] and not paused:
             self._page.eval(_click_js("play"))
         if self._loaded == uuid:
             if not self._repeat_set:
                 self._repeat_set = bool(self._page.eval(REPEAT_JS))
+            for _ in range(backs):
+                self._page.eval(_click_js("previous"))
             for _ in range(skips):
                 self._page.eval(_click_js("next"))
             self.error = None
+
+    def _read_library(self) -> None:
+        """The sidebar's playlists, now and then. A list that won't read keeps
+        the last one, and nothing here can fail a reconcile: a dead socket
+        shows at the next state read."""
+        now = self._clock()
+        if now < self._library_at:
+            return
+        self._library_at = now + LIBRARY_EVERY_S
+        try:
+            rows = json.loads(self._page.eval(LIBRARY_JS))
+        except Exception as err:  # noqa: BLE001
+            log.debug("tidal library: %s", err)
+            return
+        if isinstance(rows, list):
+            self.library = [r for r in rows if isinstance(r, dict) and r.get("id") and r.get("title")][:LIBRARY_MAX]
 
     def _load(self, uuid: str, shuffle: bool) -> None:
         now = self._clock()
@@ -592,6 +663,25 @@ class Tidal:
 
     def next(self) -> None:
         self.remote.next()
+
+    def previous(self) -> None:
+        self.remote.previous()
+
+    def pause(self, on: bool) -> None:
+        self.remote.pause(on)
+
+    def report(self) -> dict[str, Any]:
+        """The app, for the Music manager (the health's `music.tidal`)."""
+        st = self.remote.state
+        return {
+            "online": bool(st) and not self.remote.down,
+            "playing": bool(st.get("playing")),
+            "paused": self.remote.paused,
+            "track": st.get("track") or None,
+            "problem": self.problem(),
+            "playlist": self.remote.wanted,
+            "library": list(self.remote.library),
+        }
 
     def reachable(self) -> bool:
         """Worth trying: the capture is open and the app is not known to be down."""

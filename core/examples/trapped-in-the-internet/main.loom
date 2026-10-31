@@ -4,6 +4,9 @@ theme: aol97
 directory: everyone
 judge: Trabolta
 censor: Password Manager
+// Wave 58: how far Trabolta warms to a program, the one guest slot his reply
+// may move (±1 a reply; docs/loom-w58-music-contract.md C5).
+warmth: chummy -5 to 10
 alerts: Night.alerts
 currency: score as Truthcoin, max 500, expiry 10m
 watch: Night.clock as Y2K clock, Night.round as Truth round, Night.judge_mode as Judge, Night.lights as Lights
@@ -342,6 +345,10 @@ ROLE Program
   checked_in: text? = none
   checked_in_time: 0 to 100000 = 0
   delivered: bool = false
+  // Wave 58: how chummy Trabolta is with this program. +1 for each fact
+  // accepted and each piece of lore given to him, and ±1 a reply on his own
+  // judgement (`warmth:` above). At `Night.dj_bar` he will touch the music for them.
+  chummy: -5 to 10 = 0
   read_livejournal: bool = false
   carries_virus: bool = false
   planted_virus: bool = false
@@ -765,6 +772,7 @@ ROLE Program
   // Shared lore delivered to Trabolta (the `when share:` house rule).
   when trabolta_heard for program:
     set program.delivered = true
+    set program.chummy += 1
     set Trabolta.truth += 2
 
   // A finding Broken Ask Jeeves shared with this program (the `when
@@ -1113,6 +1121,7 @@ ROLE Program
       broadcast "⚖️ {program.name}'s answer to that question is already accepted." to channel(hosts)
     else:
       set program.truths_accepted += 1
+      set program.chummy += 1
       set Night.facts_accepted += 1
       if Night.round == 1:
         set Night.r1_accepted += 1
@@ -1194,6 +1203,7 @@ ROLE Program
       broadcast "⚖️ {program.name}'s answer to that question is already accepted." to channel(hosts)
     else:
       set program.truths_accepted += 1
+      set program.chummy += 1
       set Night.facts_accepted += 1
       if Night.round == 1:
         set Night.r1_accepted += 1
@@ -2041,6 +2051,7 @@ ROLE Program
   // Identical for an accurate filing and a confident lie; only the Kernel knows.
   when fact_accepted for program:
     set program.truths_accepted += 1
+    set program.chummy += 1
     set Night.facts_accepted += 1
     set program.score += 50
     set Trabolta.truth += 2
@@ -3855,6 +3866,23 @@ INTERACTION costume_flicker
   repeat: true
   while: Night.step < 16 and Night.ended != true
   description: The Task Manager costume presses this itself. The screens and the room bulbs flicker once. No ad, no line, no spoiler.
+
+// DRAFT w58-music (the labels, and the # hosts lines above). The Music manager's
+// switch, on hand all night. Each shows only
+// when it would do something.
+INTERACTION trabolta_music_lock
+  label: 🔒 Keep Trabolta off the music
+  who: admin
+  act: Anytime
+  sequence: false
+  while: Night.dj_locked != true
+
+INTERACTION trabolta_music_unlock
+  label: 🔓 Let Trabolta reach the music
+  who: admin
+  act: Anytime
+  sequence: false
+  while: Night.dj_locked == true
 
 // Performer buttons (on every guest card). Every hook guards its phase
 // and ignores a wrong-phase press — except `send to the internet` and
@@ -6687,6 +6715,27 @@ when Night.lights_back_at > 0 and Time.elapsed >= Night.lights_back_at:
 when Night.lit_scene != "none" and Night.lights != Night.lit_scene and Night.lights != "pong" and Night.lights != "glitch" and Night.lights != "server_open" and (Night.dark_room == "The Desktop" or (Night.lights != "game" and Night.lights != "truth_time" and Night.lights != "trust_chart")):
   set Night.lit_scene = "none"
 
+// Wave 58: his three minutes on the music are up (`change_the_music`,
+// cast/trabolta.loom). The router lets go of the loan and catches up; a live
+// `cue music_*` or a director's hand since has already ended it, and then this
+// finds no loan and does nothing.
+when Night.dj_back_at > 0 and Time.elapsed >= Night.dj_back_at:
+  set Night.dj_back_at = 0
+  <cue: music, action: back>
+
+// A host's or a director's word: he is off the music until they say otherwise,
+// and what he had on goes back now.
+when trabolta_music_lock:
+  set Night.dj_locked = true
+  if Night.dj_back_at > 0:
+    set Night.dj_back_at = 0
+    <cue: music, action: back>
+  broadcast "🔒 Trabolta is off the music." to channel(hosts)
+
+when trabolta_music_unlock:
+  set Night.dj_locked = false
+  broadcast "🔓 Trabolta can reach the music again." to channel(hosts)
+
 // 💡 is the first step of ALL STOP (the emergency card), so it also holds
 // the dance a server-room ending armed for ten seconds after its blackout:
 // the dance look would replace the house lights mid-emergency. It does not
@@ -7120,6 +7169,12 @@ set Night.dark_room = "none"
 set Night.dark_scene = "none"
 set Night.lit_scene = "none"
 set Night.lights_back_at = 0
+set Night.dj_locked = false
+set Night.dj_bar = 3
+set Night.dj_back_at = 0
+set Night.dj_free_at = 0
+set Night.dj_last = "none"
+set Night.dj_for = "none"
 set Night.dance_at = 0
 set Night.takeover = false
 set Night.resurrected = false

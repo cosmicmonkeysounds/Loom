@@ -517,6 +517,45 @@ describe("w59 costume: refused while it would wreck something", () => {
     r.rt.dispose();
   });
 
+  it("a playlist picked in 🎵 Music is a hand, and a track forward or back isn't", async () => {
+    const music = (r: ReturnType<typeof rig>, body: unknown) => call(r.rt, "POST", "/api/mod/audio/music", body, { moderator: true });
+    for (const hand of [{ action: "playlist", playlist: "act_2" }, { action: "tidal", id: "0b5f3a1e-9c44-4a3e-8f4b-1d2e3f4a5b6c" }]) {
+      const r = await live();
+      expect((await music(r, hand)).status).toBe(200);
+      expect((await r.fire("next")).json).toMatchObject({ why: "hand" });
+      r.rt.dispose();
+    }
+    const r = await live();
+    for (const track of [{ action: "next" }, { action: "previous" }]) await music(r, track);
+    expect(r.hub.audio.musicHand()).toBe(null);
+    expect((await r.fire("next")).status).toBe(200);
+    r.rt.dispose();
+  });
+
+  it("a host's ⏸ holds until ⏵, whatever the router's hand says", async () => {
+    const r = await live();
+    const music = (body: unknown) => call(r.rt, "POST", "/api/mod/audio/music", body, { moderator: true });
+    const report = (paused: boolean) => r.hub.audio.report({ health: audioHealthOf({ ok: true, music: { scene: "act_2", beds: [], missing: [], hand: false, tidal: { online: true, playing: !paused, paused } } }, r.hub.audio.clock()) });
+    await music({ action: "pause" });
+    expect((await r.fire("next")).json).toMatchObject({ why: "hand" });
+    r.advance(3);
+    report(true);
+    expect((await r.fire("next")).json).toMatchObject({ why: "hand" });
+    await music({ action: "resume" });
+    r.advance(3);
+    report(false);
+    expect((await r.fire("next")).status).toBe(200);
+    r.rt.dispose();
+  });
+
+  it("Trabolta's loan is no hand: a press takes the music back from him", async () => {
+    const r = await live();
+    r.hub.audio.report({ health: audioHealthOf({ ok: true, music: { scene: "act_2", beds: [], missing: [], hand: true, loan: true, tidal: { online: true, playing: false, paused: true } } }, r.hub.audio.clock()) });
+    expect(r.hub.audio.musicHand()).toBe(null);
+    expect((await r.fire("next")).status).toBe(200);
+    r.rt.dispose();
+  });
+
   it("the poke needs him awake, with no reply owed", async () => {
     const r = await live();
     expect((await r.fire("poke")).json).toMatchObject({ why: "asleep" });

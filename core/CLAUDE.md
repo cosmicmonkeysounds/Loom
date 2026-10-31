@@ -654,8 +654,9 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   or going), never by the scene alone: a beat nobody opened, or one whose reader's
   phone died, stays live until a ✓ Done, a newer scene or a restart.
   MUSIC is refused while anyone else's hand is on the soundtrack
-  (`AudioHub.musicHand`: the last scene or stop's `by`, memory only, corrected by
-  the router's `hand`), and AFTER PARTY's timed return stands down then too. Every
+  (`AudioHub.musicHand`: the last scene, stop, hand playlist or held pause's `by`,
+  memory only, corrected by the router's `hand`; Trabolta's loan is no hand, so a
+  press ends it), and AFTER PARTY's timed return stands down then too. Every
   action uses the house's own path (`lights.test`, `audio.play`, `audio.music`,
   `deskFire(cue, COSTUME_BY)`, the canned `say`). A light item never reaches a
   safety fixture (`costumeFixtures`), and the show's stay on `living`, which every
@@ -681,6 +682,17 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   `recap.ts` `questionsRight` reads the same rule live, and
   `test/trapped-w58-prize.test.ts` holds the two together. `titi:facts` writes
   `Night.owed_<id>` (`owedVar`) from `Question.placeholder`.
+- **The music manager** (wave 58, landed with wave 59,
+  [`docs/loom-w58-music-contract.md`](../docs/loom-w58-music-contract.md)). `MusicCommand`
+  gains `previous`, `pause`, `resume`, `playlist`, `tidal`; `MixerMusic` gains
+  `tidal` and `loan`, a bed `live`, each optional (`audioMusicOf`). The words both
+  panels draw are in `src/house-mixer.ts` (`musicSource`, `djLines`, …).
+  `MixerView.dj` is `musicDjOf` over the sim's world, null for a story without
+  `Night.dj_locked`. The header `warmth: <slot> <min> to <max>` (`model.warmth`,
+  ROLE slots keep no range) names the one guest slot an agent's `adjust` may move,
+  `them.<slot>`, by `Math.sign` whatever was asked; `them.ranges` offers it to a
+  guest's request. Every other guest `them.` key is still ignored. Tests:
+  `test/w58-music.test.ts`, `test/trapped-w58-music.test.ts`.
 - **Hub files have one owner at a time.** `event-runtime.ts`,
   `views.ts`, `chat.ts` and `sim.ts` are touched by almost every
   feature; when several agents work in parallel, give each of these to

@@ -449,7 +449,8 @@ edits first); the MacBook's `git pull`, `agents` restart and Mind → Reset for 
 mind and heart guard; a reload of every phone, terminal, the TV, the tablets, the tent and
 any open Run tab; the Quest's APK re-exported and sideloaded; the iPad set up; then the
 print, the lock, and `clippy`, `crew/director`, `crew/tech-operator` and `all-crew`
-reprinted. The Desktop needs nothing new. **Not proven on a real device:** no real phone,
+reprinted. The Desktop needs nothing new for it (the Music manager's router does,
+below). **Not proven on a real device:** no real phone,
 printer, camera, tablet, iPad, Quest, TV or voice has met any of it. It ran in Chromium as
 a phone (Chromium 95 for the tablets, WebKit for the costume's click test), in Godot's
 tests, and on scratch servers with no database. `SIGNOFF-w59.md` §5 is the list. Help:
@@ -470,6 +471,20 @@ button; `/terminal/?preview=voice` auditions them. It needs every terminal and
 the TV reloaded, and on the Desktop `git pull` and
 `start-stagehand.ps1 -Restart audio`. Not proven on Windows' voices
 or the house speakers: run `SIGNOFF-w56.md` §3 first.
+
+**The music manager, and Trabolta at the stereo** (wave 58's other half, not
+shipped, and it lands with wave 59; `docs/loom-w58-music-contract.md`, show text
+`DRAFT w58-music` on `SIGNOFF-w58-music.md`, a sheet of its own because the Oct 30
+story took `SIGNOFF-w58.md`): Run →
+House → 🎵 Music and the Desk's 🎵 Music (open for Task Manager) hold Now Playing,
+TIDAL's ⏮ ⏸ ⏭, the show's playlists, the app's sidebar, a pasted playlist link
+and the music level. `change_the_music`, like the lights' window, but only for a
+program at `Night.dj_bar` of `chummy` (`warmth: chummy -5 to 10`: the one guest
+slot his reply may move, ±1). His moves are allow-listed and a loan: a live music
+cue ends it, a director's hand refuses it, 🔒 keeps him off. It adds one step to
+the landing: the Desktop's `git pull` and `start-stagehand.ps1 -Restart audio`, or
+the commands are logged as unknown. ⏮ ⏸ and a hand playlist are unproven on the
+real app. Help: `docs/help/authoring/57-music-manager.md`.
 
 ### Release status
 

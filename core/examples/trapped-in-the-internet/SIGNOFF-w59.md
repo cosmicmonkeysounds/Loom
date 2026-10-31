@@ -16,6 +16,8 @@ a word that is also a code.
    all three, and none of their gold cards can print until its answer is in.
 4. **Two small word calls** on §3: N-47 (Clippy's Cloud aside) and N-48 (the Casino's room
    tone).
+5. **The Music manager's decisions,** which land with this wave: §1 and §3 of
+   [`SIGNOFF-w58-music.md`](./SIGNOFF-w58-music.md).
 
 The biggest open risk: **no real phone, printer, camera, tablet, iPad, Quest, TV or
 voice has met any of this** (§5). Nothing here has run through a real `sync-show` or on
@@ -144,7 +146,7 @@ Found on the way. Each is built as it says, and yours to overrule.
 | N-44 | Five facts keep room words, word for word from your delivered file (the bathroom, the basement, the kitchen fridge, the living room, office, hall and mud room): `facts[18]`, `[19]`, `[20]`, `[57]`, `[61]` | Kept as your text | Say if they should change |
 | N-45 | Words left on purpose: *Bathroom Mode*, *need the bathroom*, upstairs, downstairs, stairs, fireplace, *the tunnel*, the sign on the cold door and its codex title. Antivirus objectives and crew packs keep real rooms. An ad's *every hall and both stairs* describes the Tube | As built | |
 | N-46 | His persona keeps the plain room words so he understands a program who uses them, with a new line that he says only the computer's names | Needs the MacBook's restart. **Whether he obeys wasn't run against a real model** | |
-| N-47 | Clippy's aside at her Cloud check-in reads *Remember, the Cloud is just someone else's backyard!* (`main.loom:2575`) | Kept: the joke works, at the cost of one real-house word on a guest's phone | *…someone else's computer!* has no house word and is the old saying, but loses the pun |
+| N-47 | Clippy's aside at her Cloud check-in reads *Remember, the Cloud is just someone else's backyard!* (`main.loom:2586`) | Kept: the joke works, at the cost of one real-house word on a guest's phone | *…someone else's computer!* has no house word and is the old saying, but loses the pun |
 | N-48 | The Casino's room tone is still a graphics card's coil whine (read only, never auditioned) | Kept: no work, and only someone who knows the sound would notice | A swap needs a new synthesised sound and an audition on the Desktop's router |
 | N-49 | "A song is on" has no check of its own in the costume | Every song plays after `Night.ended`, so the ending's refusal covers it | |
 | N-50 | A server restart inside AFTER PARTY's 45 s hold loses its timed return | BACK TO NORMAL reads *Not Responding*, and someone presses Follow the story in the Mixer. Before this a guest could release a director's hand | |
@@ -157,14 +159,14 @@ Packs and help carry no markers, and are listed at the end.
 
 ### 4.1 Rooms, on every phone
 
-- *📍 Checked in at the Power Supply. Everything in here hums like it is one plug away from a blackout. Something is rolled up in a cardboard tube behind the games.* (`main.loom:2559`)
-- *📍 Checked in at the Casino. The house always wins. Somebody staked a sketchbook on the bed and never came back for it, every drawing in pixels.* (`main.loom:2594`)
+- *📍 Checked in at the Power Supply. Everything in here hums like it is one plug away from a blackout. Something is rolled up in a cardboard tube behind the games.* (`main.loom:2570`)
+- *📍 Checked in at the Casino. The house always wins. Somebody staked a sketchbook on the bed and never came back for it, every drawing in pixels.* (`main.loom:2605`)
 - *Upstairs, the Casino pays out to an empty room.* (`atmosphere.loom:15`)
-- *The door code is in your Codex. The keypad is by the cold door, downstairs.* (`main.loom:2495`)
-- *!!GO TO THE DESKTOP* (`main.loom:6147`, `:6229`) and *Go to the Desktop.* (`main.loom:6149`, `:6231`)
-- *!🌑 ALL PROGRAMS: to the Desktop for the final Truth Scavenger Hunt reveal.* (`main.loom:6289`)
-- *!📜 THE FULL TRUTH. To the Desktop.* (`main.loom:6536`, `:6568`)
-- *!🏆 THE AWARDS CEREMONY. Every program to the Desktop.* (`main.loom:6608`)
+- *The door code is in your Codex. The keypad is by the cold door, downstairs.* (`main.loom:2506`)
+- *!!GO TO THE DESKTOP* (`main.loom:6175`, `:6257`) and *Go to the Desktop.* (`main.loom:6177`, `:6259`)
+- *!🌑 ALL PROGRAMS: to the Desktop for the final Truth Scavenger Hunt reveal.* (`main.loom:6317`)
+- *!📜 THE FULL TRUTH. To the Desktop.* (`main.loom:6564`, `:6596`)
+- *!🏆 THE AWARDS CEREMONY. Every program to the Desktop.* (`main.loom:6636`)
 - *!🎵 TRABOLTA SOLVED IT. Those of you who want to leave may leave. To the Desktop for the song.* (`beats/finale.loom:228`)
 - Installation Wizard: You are in the Internet, out in the Cloud at the end of the tunnel. Your program has been corrupted. It went against the will of Jean Trabolta, Sole Owner and Founder of Maps and Ducks. That is not your fault. Entropy is a normal part of the lifecycle of a program. (`beats/internet.loom:24`)
 - *Every phone in the house buzzes at once. Five minutes. Somewhere in the Tube an Antivirus starts counting.* (`beats/pong.loom:19`)
@@ -261,9 +263,9 @@ The refused screen and its neighbours carry no marker, because they are app word
 
 **Cue descriptions**
 
-- *🎤 Clippy tells the room about Trabolta*: After the first reinstallation (or when the Bingo is done with). Her paragraph pops up on her teleprompter; it closes the Bingo round if it is still open. It ends "Trabolta, would you explain the rules?". When her arrow passes that line, or she presses ✓ Done, he starts by himself: 🤖 is the backup. (`main.loom:3297`)
-- *🤖 Trabolta comes online*: The backup. He starts by himself when Clippy's arrow passes "Trabolta, would you explain the rules?" or she presses ✓ Done; press this if neither can happen (no reader, a lost phone, after a server restart), or on her last line when # hosts says a new beat cut her off. Before or after that it is harmless. He comes online and gives his whole speech, the three questions and his sign-off on the TV, about three minutes; check the terminals show his face. The 🤖 Talk card stays open behind it for the banter after. (`main.loom:3313`)
-- *🎭 Flicker the screens (the costume's Glitch, outside a talk scene)*: The Task Manager costume presses this itself. The screens and the room bulbs flicker once. No ad, no line, no spoiler. (`main.loom:3851`)
+- *🎤 Clippy tells the room about Trabolta*: After the first reinstallation (or when the Bingo is done with). Her paragraph pops up on her teleprompter; it closes the Bingo round if it is still open. It ends "Trabolta, would you explain the rules?". When her arrow passes that line, or she presses ✓ Done, he starts by himself: 🤖 is the backup. (`main.loom:3308`)
+- *🤖 Trabolta comes online*: The backup. He starts by himself when Clippy's arrow passes "Trabolta, would you explain the rules?" or she presses ✓ Done; press this if neither can happen (no reader, a lost phone, after a server restart), or on her last line when # hosts says a new beat cut her off. Before or after that it is harmless. He comes online and gives his whole speech, the three questions and his sign-off on the TV, about three minutes; check the terminals show his face. The 🤖 Talk card stays open behind it for the banter after. (`main.loom:3324`)
+- *🎭 Flicker the screens (the costume's Glitch, outside a talk scene)*: The Task Manager costume presses this itself. The screens and the room bulbs flicker once. No ad, no line, no spoiler. (`main.loom:3862`)
 
 **Maps.** The prop labels *POWER* (was STEAM) and *CASINO* (was GPU), in `house.json` and `house.shed.json`. They carry no marker: JSON takes no comments.
 
@@ -386,7 +388,8 @@ preview, before the doors. The owed checks of waves 53–58 still stand on their
 
 `SHOWNIGHT.md` §1, *Landing wave 58 and wave 59*. In short: the
 answers → `predeploy.sh --vr` → the roster, in its own step → `ship.sh` → the 10:00 sync, with
-`--replace-maps` → the worker, `git pull` and restart together, then Mind → Reset → reload every
+`--replace-maps` → the worker, `git pull` and restart together, then Mind → Reset, and the Desktop's
+`git pull` and `-Restart audio` → reload every
 phone, terminal, the TV, the tablets, the tent and any open Run tab before 17:00 → the Quest's
 APK → the iPad → print → `titi:qr-lock`, committed → the keypad before 15:00. No release, sync or
 restart has happened: nothing on this sheet is live.

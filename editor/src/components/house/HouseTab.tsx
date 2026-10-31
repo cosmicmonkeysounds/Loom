@@ -10,8 +10,10 @@
 //!   fires each.
 //! - **Setup** (`SetupPanel.tsx`): is the sound router, the lights module
 //!   and each outside mind connected, and what to do when not.
+//! - **Music** (`MusicPanel.tsx`, wave 58): what is playing, the TIDAL app's
+//!   transport and library, and Trabolta's hands on it.
 //! - **Mixer** (`MixerPanel.tsx`, wave 40): the live balance of the house
-//!   sound per room and source, and the soundtrack's transport.
+//!   sound per room and source.
 //! - **Map** (`HouseMapHost.tsx`, `HouseMapPanel.tsx`, wave 49): the real
 //!   house map editor, kept mounted once opened, in a lazy chunk.
 //!
@@ -41,12 +43,14 @@ import { useHouseView, type HouseView } from '@/store/house-view'
 import { CueDesigner } from './CueDesigner'
 import { SetupPanel } from './SetupPanel'
 import { MixerPanel } from './MixerPanel'
+import { MusicPanel } from './MusicPanel'
 import { HouseMapSlot } from './HouseMapHost'
 
 const VIEWS: Array<{ id: HouseView; label: string }> = [
   { id: 'desk', label: '🎛 Desk' },
   { id: 'designer', label: '🎨 Cue designer' },
   { id: 'setup', label: '🔌 Setup' },
+  { id: 'music', label: '🎵 Music' },
   { id: 'mixer', label: '🎚 Mixer' },
   { id: 'map', label: '🗺 Map' },
 ]
@@ -203,6 +207,7 @@ function DeskPage({ view }: { view: DeskView }) {
           onDesigner={() => setView('designer')}
         />
       )}
+      {houseView === 'music' && <MusicPanel />}
       {houseView === 'mixer' && <MixerPanel />}
       {houseView === 'map' && <HouseMapSlot eventId={eventId} />}
       {houseView === 'desk' && (

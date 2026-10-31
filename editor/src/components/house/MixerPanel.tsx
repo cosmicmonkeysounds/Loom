@@ -1,12 +1,9 @@
 //! Run → House → 🎚 Mixer (wave 40, `docs/loom-w40-contract.md` C4): the
-//! live balance of the house sound and the soundtrack's transport.
+//! live balance of the house sound. Now Playing moved to 🎵 Music in wave 58
+//! (`MusicPanel.tsx`), which shares this store and `Strip`.
 //!
 //! - **The strip**: is the sound router listening (the mix is kept and
 //!   applies when it connects), its name, the last note, **Reset all**.
-//! - **Now playing**: the scene (a picker: picking holds it against the
-//!   story's music cues until **Follow the story**), each bed (its playlist,
-//!   rooms, track and progress, **⏭ Skip**), **⏭ Skip all**, **■ Stop
-//!   music**, the empty playlists.
 //! - **The console**: one column per scope (Everywhere, then each room),
 //!   side by side, scrolling across: `scopeStrips` with a fader (−60 … +10,
 //!   0.5 dB; double-click, Alt-click or 0 resets it), the dB, a mute, the
@@ -17,9 +14,9 @@
 
 import clsx from 'clsx'
 import { useEffect, type KeyboardEvent, type MouseEvent, type ReactNode } from 'react'
-import { formatMixDb, meterFill, mixerScopes, MIX_DB_MAX, MIX_DB_MIN, MIX_DB_STEP, scopeKeys, scopeStrips, type MixerMusic, type MixerStrip, type MixerView, type MixScope } from '@loom/core/house-mixer'
+import { formatMixDb, meterFill, mixerScopes, MIX_DB_MAX, MIX_DB_MIN, MIX_DB_STEP, scopeKeys, scopeStrips, type MixerStrip, type MixerView, type MixScope } from '@loom/core/house-mixer'
 import { mixerLevels, useHouseMixer } from '@/store/house-mixer'
-import { bedProgress, bedRooms, formatClock, meterTone, stripNote } from '@/lib/house-mixer-view'
+import { meterTone, stripNote } from '@/lib/house-mixer-view'
 import { btn, btnDanger, heading, TONE_CHIP, TONE_TEXT } from './ui'
 
 export function MixerPanel() {
@@ -38,7 +35,7 @@ export function MixerPanel() {
   return <MixerPage view={view} />
 }
 
-function Centered({ title, children }: { title: string; children?: ReactNode }) {
+export function Centered({ title, children }: { title: string; children?: ReactNode }) {
   return (
     <div className="grid min-h-0 flex-1 place-items-center p-8 text-center text-sm text-zinc-500" data-testid="mixer-explain">
       <div className="max-w-md">
@@ -74,8 +71,7 @@ function MixerPage({ view }: { view: MixerView }) {
         </button>
       </div>
       <div className="min-h-0 flex-1 overflow-auto p-3">
-        <NowPlaying view={view} music={view.music} />
-        <div className={clsx(heading, 'mb-1.5 mt-4')}>Console</div>
+        <div className={clsx(heading, 'mb-1.5')}>Console</div>
         <div className="flex gap-3 overflow-x-auto pb-2" data-testid="mixer-console">
           {mixerScopes(view).map((s) => (
             <ScopeColumn key={s.id} id={s.id} label={s.label} scope={s.scope} strips={scopeStrips(view, s.scope, levels)} resetKeys={scopeKeys(view, s.scope)} />
@@ -86,111 +82,6 @@ function MixerPage({ view }: { view: MixerView }) {
         </p>
       </div>
     </div>
-  )
-}
-
-// -- now playing ---------------------------------------------------------------
-
-function NowPlaying({ view, music }: { view: MixerView; music: MixerMusic | null }) {
-  const busy = useHouseMixer((s) => s.busy)
-  const send = useHouseMixer((s) => s.music)
-  return (
-    <section className="rounded-xl border border-zinc-800 bg-zinc-950 p-3" data-testid="mixer-music">
-      <div className="flex flex-wrap items-center gap-2">
-        <div className={heading}>Now playing</div>
-        {music !== null && (
-          <>
-            {music.scenes !== undefined && music.scenes.length > 0 ? (
-              <label className="flex items-center gap-1 text-xs text-zinc-400">
-                Scene
-                <select
-                  className="rounded border border-zinc-700 bg-zinc-950 px-1.5 py-0.5 text-xs text-zinc-200 outline-none focus:border-indigo-500"
-                  value={music.scene ?? ''}
-                  disabled={busy !== null}
-                  onChange={(e) => {
-                    if (e.target.value !== '') void send({ action: 'scene', scene: e.target.value }, 'scene')
-                  }}
-                  data-testid="mixer-scene"
-                >
-                  {(music.scene === null || !music.scenes.includes(music.scene)) && <option value="">{music.scene ?? '(none)'}</option>}
-                  {music.scenes.map((s) => (
-                    <option key={s} value={s}>
-                      {s}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            ) : (
-              <span className="text-xs text-zinc-300">Scene: {music.scene ?? '(none)'}</span>
-            )}
-            {music.hand === true && (
-              <>
-                <span className={clsx('rounded border px-1.5 py-0.5 text-[11px]', TONE_CHIP.warn)} data-testid="mixer-hand">
-                  by hand: the story’s music cues are held
-                </span>
-                <button className={btn} disabled={busy !== null} onClick={() => void send({ action: 'story' }, 'story')} data-testid="mixer-follow">
-                  Follow the story
-                </button>
-              </>
-            )}
-            <span className="ml-auto flex gap-1">
-              <button className={btn} disabled={busy !== null || music.beds.length === 0} onClick={() => void send({ action: 'next' }, 'next')} data-testid="mixer-skip-all">
-                ⏭ Skip all
-              </button>
-              <button className={btnDanger} disabled={busy !== null} onClick={() => void send({ action: 'stop' }, 'stop')} data-testid="mixer-stop">
-                ■ Stop music
-              </button>
-            </span>
-          </>
-        )}
-      </div>
-      {music === null ? (
-        <p className="mt-2 text-xs text-zinc-500" data-testid="mixer-no-music">
-          No soundtrack reported yet{view.router.online ? ': the router has no soundtrack.yaml, or hasn’t sent its first report' : ': the router isn’t listening'}.
-        </p>
-      ) : (
-        <>
-          {music.beds.length === 0 ? (
-            <p className="mt-2 text-xs text-zinc-500">{music.scene === null || music.scene === 'off' ? 'No music playing.' : 'This scene plays no beds.'}</p>
-          ) : (
-            <ul className="mt-2 space-y-1.5">
-              {music.beds.map((b) => {
-                const progress = bedProgress(b)
-                const rooms = bedRooms(view, b)
-                return (
-                  <li key={b.playlist} className="flex items-center gap-2 rounded border border-zinc-800 px-2 py-1 text-xs" data-testid={`mixer-bed-${b.playlist}`}>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-baseline gap-x-2">
-                        <span className="font-medium text-zinc-100">{b.playlist}</span>
-                        <span className="text-zinc-500">{rooms.length > 0 ? rooms.join(', ') : b.speakers.join(', ') || 'no speakers'}</span>
-                      </div>
-                      <div className="truncate text-zinc-300">{b.track ?? '(between tracks)'}</div>
-                      <div className="mt-0.5 flex items-center gap-2">
-                        <div className="h-1 flex-1 overflow-hidden rounded bg-zinc-800">
-                          {progress !== null && <div className="h-full bg-indigo-500" style={{ width: `${(progress * 100).toFixed(1)}%` }} />}
-                        </div>
-                        <span className="shrink-0 font-mono text-[10px] text-zinc-500">
-                          {formatClock(b.posS)}
-                          {b.durS !== undefined ? ` / ${formatClock(b.durS)}` : ''}
-                        </span>
-                      </div>
-                    </div>
-                    <button className={btn} disabled={busy !== null} onClick={() => void send({ action: 'next', playlist: b.playlist }, `next:${b.playlist}`)} data-testid={`mixer-skip-${b.playlist}`}>
-                      ⏭ Skip
-                    </button>
-                  </li>
-                )
-              })}
-            </ul>
-          )}
-          {music.missing.length > 0 && (
-            <p className={clsx('mt-2 text-xs', TONE_TEXT.warn)} data-testid="mixer-missing">
-              ⚠ {music.missing.length === 1 ? 'An empty playlist' : 'Empty playlists'} (no file on the router’s machine): {music.missing.join(', ')}
-            </p>
-          )}
-        </>
-      )}
-    </section>
   )
 }
 
@@ -225,7 +116,7 @@ function Meter({ db }: { db: number | null }) {
   )
 }
 
-function Strip({ strip, scopeLabel, speakerRow }: { strip: MixerStrip; scopeLabel: string; speakerRow: boolean }) {
+export function Strip({ strip, scopeLabel, speakerRow }: { strip: MixerStrip; scopeLabel: string; speakerRow: boolean }) {
   const key = strip.key
   if (strip.kind === 'meter' || key === null) {
     return (

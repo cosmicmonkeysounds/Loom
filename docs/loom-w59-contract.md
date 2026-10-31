@@ -60,7 +60,9 @@ One release and one sync with wave 58: `SHOWNIGHT.md` §1, *Landing wave 58 and 
    `deploy/release.sh --check-env`. Stop if it fails.
 5. The morning reset: ⏸ Pause, Download JSON any map edits, `pnpm sync-show
    --replace-maps` with its reload, Push draft, Go live in place. Any later sync is plain.
-6. The MacBook: `git pull`, `launchd restart --job agents`, Run → Mind → Reset.
+6. The MacBook: `git pull`, `launchd restart --job agents`, Run → Mind → Reset. The
+   Desktop, for the Music manager's router: `git pull`, `start-stagehand.ps1 -Restart
+   audio`.
 7. Reload every phone, terminal, the TV, the tablets, the tent, the web game and any open
    Run tab, before the booths sign in at 17:00.
 8. The Quest: re-export and sideload on every headset. A new APK on an older server resets
@@ -72,7 +74,8 @@ One release and one sync with wave 58: `SHOWNIGHT.md` §1, *Landing wave 58 and 
     `crew/tech-operator` and `all-crew`.
 12. Rehearse the checks on `SIGNOFF-w59.md` §5, scratch server first, then the preview.
 
-The Desktop needs nothing new from this wave.
+The Desktop needs nothing for wave 59's own lanes. Step 6's pull and restart are the
+Music manager's, which lands here (`docs/loom-w58-music-contract.md`).
 
 ## Tests
 

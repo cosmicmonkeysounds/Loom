@@ -20,6 +20,8 @@ import {
   formatMixDb,
   levelOf,
   meterFill,
+  musicBedName,
+  musicOnApp,
   scopeStrips,
   type AudioMix,
   type MixChange,
@@ -30,6 +32,9 @@ import {
   type MixerView,
   type MusicCommand,
 } from "../../../core/src/house-mixer.ts";
+
+/** The part whose Desk opens on the music. */
+export const MUSIC_OWNER = "Task Manager";
 
 /** The mixer GET's path (on the host read list). */
 export const MIXER_PATH = "/api/mod/audio/mixer";
@@ -45,6 +50,8 @@ export const NOT_A_MIXER = "Only hosts and directors can mix";
 export const ROUTER_OFFLINE = "No router listening: the mix is kept and applies when it connects";
 export const NO_SOUNDTRACK = "No soundtrack reported yet";
 export const HAND_NOTE = "By hand — the story's music cues are held";
+export const LOAN_NOTE = "Trabolta has the music. It goes back by itself";
+export const BAD_LINK = "That's no TIDAL playlist link";
 
 // -- the poll -------------------------------------------------------------------
 
@@ -229,12 +236,45 @@ export const musicCalls = {
   next: (playlist?: string): MusicCommand => (playlist !== undefined ? { action: "next", playlist } : { action: "next" }),
   stop: (): MusicCommand => ({ action: "stop" }),
   story: (): MusicCommand => ({ action: "story" }),
+  previous: (): MusicCommand => ({ action: "previous" }),
+  pause: (): MusicCommand => ({ action: "pause" }),
+  resume: (): MusicCommand => ({ action: "resume" }),
+  playlist: (playlist: string): MusicCommand => ({ action: "playlist", playlist }),
+  tidal: (id: string, title?: string): MusicCommand => (title !== undefined ? { action: "tidal", id, title } : { action: "tidal", id }),
 };
+
+/** The 🎵 Music section starts open for the part who runs the room's sound. */
+export function musicOpen(me: string | null | undefined): boolean {
+  return me === MUSIC_OWNER;
+}
+
+function musicWords(cmd: MusicCommand): string {
+  switch (cmd.action) {
+    case "scene":
+      return `▶ Scene ${cmd.scene}`;
+    case "next":
+      return cmd.playlist !== undefined ? `⏭ Skipped ${cmd.playlist}` : "⏭ Skipped every bed";
+    case "stop":
+      return "■ Music stopped";
+    case "story":
+      return "↺ Following the story";
+    case "previous":
+      return "⏮ Back a track";
+    case "pause":
+      return "⏸ TIDAL paused";
+    case "resume":
+      return "▶ TIDAL playing";
+    case "playlist":
+      return `▶ Playing ${cmd.playlist}`;
+    case "tidal":
+      return `▶ Playing ${cmd.title ?? "that playlist"}`;
+  }
+}
 
 /** The line after a music post (`{ok, seq, router}`). */
 export function musicDone(cmd: MusicCommand, answer: unknown): string {
   const router = typeof answer === "object" && answer !== null ? (answer as Record<string, unknown>)["router"] : undefined;
-  const what = cmd.action === "scene" ? `▶ Scene ${cmd.scene}` : cmd.action === "next" ? (cmd.playlist !== undefined ? `⏭ Skipped ${cmd.playlist}` : "⏭ Skipped every bed") : cmd.action === "stop" ? "■ Music stopped" : "↺ Following the story";
+  const what = musicWords(cmd);
   // The server answers the router's presence (`{online, lastSeen, name}`); a bare false is accepted too.
   const offline = router === false || (typeof router === "object" && router !== null && (router as Record<string, unknown>)["online"] === false);
   return offline ? `${what} — sent, but no router is listening (it waits a minute)` : what;
@@ -249,7 +289,10 @@ export function trackClock(s: number): string {
 }
 
 export interface BedRow {
+  /** Its id, for ⏭. */
   playlist: string;
+  /** What to call it. */
+  name: string;
   track: string;
   /** 0..1, null when the length is unknown. */
   progress: number | null;
@@ -261,6 +304,11 @@ export interface NowPlaying {
   /** The scene picker's options (the scene in force first if it is not listed). */
   scenes: string[];
   hand: boolean;
+  /** The hand is Trabolta's. */
+  loan: boolean;
+  /** A bed is on the app. */
+  onApp: boolean;
+  paused: boolean;
   beds: BedRow[];
   warnings: string[];
 }
@@ -274,12 +322,13 @@ export function nowPlaying(music: MixerMusic | null): NowPlaying | null {
     const dur = typeof b.durS === "number" && b.durS > 0 ? b.durS : null;
     return {
       playlist: b.playlist,
+      name: musicBedName(b, music),
       track: b.track ?? "—",
       progress: dur !== null ? Math.min(1, Math.max(0, b.posS / dur)) : null,
       time: dur !== null ? `${trackClock(b.posS)} / ${trackClock(dur)}` : trackClock(b.posS),
     };
   });
-  return { scene: music.scene, scenes, hand: music.hand === true, beds, warnings: music.missing.map((p) => `${p}: no tracks found`) };
+  return { scene: music.scene, scenes, hand: music.hand === true, loan: music.loan === true, onApp: musicOnApp(music), paused: music.tidal?.paused === true, beds, warnings: music.missing.map((p) => `${p}: no tracks found`) };
 }
 
 /** The router banner, or null while it listens. */

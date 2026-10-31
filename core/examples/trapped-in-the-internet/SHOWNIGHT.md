@@ -74,6 +74,9 @@ decisions are on [`SIGNOFF-w59.md`](./SIGNOFF-w59.md).
    boot from this checkout. Pull and restart together, never from a half-merged
    tree: an older worker refuses a persona with `cover:`. Wave 59's room names in
    his persona and the guard on his heart arrive the same way.
+   **Desktop, the router** (the Music manager): `git pull`, then
+   `.\scripts\house-desktop\start-stagehand.ps1 -Restart audio`. An old router
+   logs 🎵 Music's new commands as unknown and does nothing.
 8. **Reload the TV, every terminal, the tablets, the tent, the web game, every
    phone, every booth and any open Run tab**, and check the build stamps on
    Run → Terminals, before the booths sign in at 17:00, to leave the crew
@@ -111,9 +114,9 @@ decisions are on [`SIGNOFF-w59.md`](./SIGNOFF-w59.md).
     talkers' panel are all in the APK. A new APK on an older server resets the
     player but leaves Gerald where he was.
 14. **Rehearse before the doors, scratch server first, then the preview:** the
-    checks on `SIGNOFF-w58.md` §5 and `SIGNOFF-w59.md` §5. The Desktop needs
-    nothing new from either wave (its owed `w56` pull stands, once, after the
-    merge).
+    checks on `SIGNOFF-w58.md` §5, `SIGNOFF-w58-music.md` §2 and
+    `SIGNOFF-w59.md` §5. The Desktop's one pull and restart is step 7's: it also
+    covers its owed `w56` pull.
 
 ### The steps of the older deploys
 

@@ -50,6 +50,12 @@ switch a hard cut under a level that never moves. The old bed fades out over
 over `LIVE_FADE_S`, `LIVE_SWITCH_S` later. A TIDAL bed that leaves for no
 other pauses the app when its fade ends.
 
+A host can pick a playlist that no scene names (wave 58): `play_playlist` and
+`play_tidal` build an ad-hoc scene from the one in force, the pick in place of
+every entry that plays a non-looping playlist, so the Fan Closet's dryer runs
+on. `pause` holds the app, on a live bed only: a file bed has no pause. A silent
+cable is then no problem, and any change of scene lets go of it.
+
 Everything the director touches is injectable: `stream_factory(path, rate,
 loop=, offset=)` (default: a `stream.Stream`), `live` (a `tidal.Tidal`), `rng`
 (a `random.Random`), and the clock is the mixer's own, so the tests drive it
@@ -62,7 +68,7 @@ import logging
 import random
 import re
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any
 
@@ -75,6 +81,10 @@ log = logging.getLogger("stagehand.audio")
 
 #: The scene that is silence (always valid, defined or not).
 OFF = "off"
+#: An ad-hoc scene, a playlist picked by hand (wave 58): never in `status()`.
+HAND_PREFIX = "hand_"
+#: An ad-hoc playlist, one the YAML doesn't name, off the app's library.
+TIDAL_PREFIX = "tidal_"
 #: A live `cue music_<scene>`.
 CUE_PREFIX = "music_"
 NAME = re.compile(r"^[a-z][a-z0-9_]{0,47}$")
@@ -530,6 +540,8 @@ class Director:
         #: The scene in force (None: none yet, or stopped — any scene cue,
         #: even the last one, starts it again).
         self.scene: str | None = None
+        #: The app is held paused (wave 58).
+        self.paused = False
         self.beds: dict[str, Bed] = {}
         self._decks: dict[str, Deck] = {}
         self._logged: set[str] = set()
@@ -577,6 +589,7 @@ class Director:
             return False
         if name == self.scene:
             return True
+        self.pause(False)
         log.info("🎵 soundtrack: scene %s%s", name, f" ({why})" if why else "")
         self.scene = name
         if self.mixer is not None and self.doc is not None:
@@ -586,6 +599,7 @@ class Director:
     def stop(self, fade_s: float, why: str = "") -> None:
         """Fade every bed out and forget the scene (Stop house sounds, a
         story restart): the next scene cue, even the same one, starts again."""
+        self.pause(False)
         if self.beds:
             log.info("🎵 soundtrack: every bed fades out over %gs%s", fade_s, f" ({why})" if why else "")
         if any(bed.live for bed in self.beds.values()):
@@ -629,6 +643,56 @@ class Director:
             bed.nxt = self._play(bed, got, fade_s=fade, start_at=start)
             moved += 1
         return moved
+
+    def previous(self) -> int:
+        """The app's ⏮ (wave 58). A file bed has none. → beds moved."""
+        if self.live is None or not any(bed.live for bed in self.beds.values()):
+            return 0
+        self.live.previous()
+        return 1
+
+    def pause(self, on: bool) -> bool:
+        """Hold the app, or let it go (wave 58). Only a live bed can pause.
+        Letting go restarts the silent cable's clock. → whether it did."""
+        live = [bed for bed in self.beds.values() if bed.live]
+        if on and (self.live is None or not live):
+            return False
+        if on == self.paused:
+            return True
+        self.paused = on
+        self.live.pause(on)
+        if not on and self.mixer is not None:
+            for bed in live:
+                bed.live_since = self.mixer.frames
+        return True
+
+    def play_playlist(self, name: str, why: str = "") -> bool:
+        """A show playlist by hand. → False for one the YAML doesn't name."""
+        playlist = self.st.playlists.get(name)
+        return playlist is not None and self.set_scene(self._hand_scene(playlist), why or f"playlist {name}")
+
+    def play_tidal(self, uuid: str, why: str = "") -> bool:
+        """Any playlist on the app by hand. No fallback: it has no files. →
+        False on a router with no app, or for something that is no playlist id."""
+        if self.live is None or not TIDAL_ID.match(uuid):
+            return False
+        playlist = Playlist(name=f"{TIDAL_PREFIX}{uuid[:8]}", shuffle=False, tidal=uuid)
+        return self.set_scene(self._hand_scene(playlist), why or f"TIDAL {uuid}")
+
+    def _hand_scene(self, playlist: Playlist) -> str:
+        """The scene in force with `playlist` where its music plays."""
+        def music(e: Entry) -> bool:
+            return e.play is not None and not self.st.playlists[e.play].loop
+
+        base = self.st.scene(self.scene) if self.scene is not None else None
+        entries = tuple(Entry(to=e.to, play=playlist.name) if music(e) else e for e in base or ())
+        if not any(e.play == playlist.name for e in entries):
+            # Nothing was playing: everywhere, under what the scene keeps (a
+            # speaker takes the last entry that reaches it).
+            entries = (Entry(to=("everywhere",), play=playlist.name), *entries)
+        name = f"{HAND_PREFIX}{playlist.name}"
+        self.st = replace(self.st, playlists={**self.st.playlists, playlist.name: playlist}, scenes={**self.st.scenes, name: entries})
+        return name
 
     # -- scene changes --------------------------------------------------------------
 
@@ -770,7 +834,7 @@ class Director:
         if bed.cur is None and now < bed.live_at:
             return  # the bed before it is still fading: the app was not asked yet
         problem = self.live.problem()
-        if problem is None and bed.cur is not None and (now - bed.live_since) >= self._frames(SILENT_S) and self.live.silent_s() >= SILENT_S:
+        if problem is None and not self.paused and bed.cur is not None and (now - bed.live_since) >= self._frames(SILENT_S) and self.live.silent_s() >= SILENT_S:
             problem = f"no sound on the cable for {SILENT_S:g}s"
         if problem is None:
             return
@@ -934,20 +998,40 @@ class Director:
             if end is not None and end > 0:
                 row["dur_s"] = round(end / rate, 1)
             if bed.live:
+                row["live"] = True
                 now = self.live.now()
                 row["track"] = now.get("track") or None
                 row["pos_s"] = now.get("pos_s") or 0.0
                 if now.get("dur_s"):
                     row["dur_s"] = now["dur_s"]
             beds.append(row)
-        counts = {name: len(p.tracks()) for name, p in self.st.playlists.items()}
-        return {
+        lists = {name: p for name, p in self.st.playlists.items() if not name.startswith(TIDAL_PREFIX)}
+        scenes = [s for s in self.st.scenes if not s.startswith(HAND_PREFIX)]
+        out: dict[str, Any] = {
             "scene": self.scene,
             "beds": beds,
             "missing": self.st.missing(self.live is not None),
-            "scenes": [*self.st.scenes, *([] if OFF in self.st.scenes else [OFF])],
-            "playlists": [{"name": name, "tracks": counts[name], "loop": p.loop} for name, p in self.st.playlists.items()],
+            "scenes": [*scenes, *([] if OFF in scenes else [OFF])],
+            "playlists": [{"name": name, "tracks": len(p.tracks()), "loop": p.loop} for name, p in lists.items()],
         }
+        if self.live is not None:
+            out["tidal"] = self.live.report()
+        return out
+
+
+def stereo_of_cue(args: Any) -> dict[str, str] | None:
+    """`<cue: music, action: skip>` (wave 58, Trabolta at the stereo): the
+    args of a long-form music cue → `{"action": "skip"}`, else None. Never a
+    scene: `music,` is not `music_`."""
+    parts = [p.strip() for p in str(args or "").split(",")]
+    if parts[0] != "music":
+        return None
+    out = {}
+    for part in parts[1:]:
+        key, _, value = part.partition(":")
+        if key.strip() and value.strip():
+            out[key.strip()] = value.strip()
+    return out if out.get("action") else None
 
 
 def scene_of_cue(args: Any) -> str | None:

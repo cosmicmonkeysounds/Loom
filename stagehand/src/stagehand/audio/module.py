@@ -118,6 +118,7 @@ import socket
 import sys
 import threading
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -154,7 +155,7 @@ from .routing import (
     split_targets,
 )
 from .sounds import EXTENSIONS, SoundBank, identify_label, identify_tone, placeholders_in, sound_lengths
-from .soundtrack import OFF, Director, scene_of_cue
+from .soundtrack import OFF, Director, scene_of_cue, stereo_of_cue
 from .tap import Tap, TapConfig, find_device
 from .voicefx import ROLE as VOICE_ROLE
 from .voicefx import VoiceFx
@@ -282,8 +283,14 @@ def _camel_music(music: Any) -> dict[str, Any] | None:
         row = {"playlist": b["playlist"], "speakers": list(b["speakers"]), "track": b["track"], "posS": b["pos_s"]}
         if b.get("dur_s") is not None:
             row["durS"] = b["dur_s"]
+        if b.get("live") is True:
+            row["live"] = True
         beds.append(row)
     out: dict[str, Any] = {"scene": music.get("scene"), "beds": beds, "missing": list(music.get("missing") or [])}
+    if isinstance(music.get("tidal"), dict):
+        out["tidal"] = music["tidal"]
+    if music.get("loan") is True:
+        out["loan"] = True
     if isinstance(music.get("scenes"), list):
         out["scenes"] = list(music["scenes"])
     if isinstance(music.get("hand"), bool):
@@ -454,6 +461,9 @@ class AudioRouter:
         #: stop | scene`, C3's rank 2): a feed-reconnect catch-up (rank 3)
         #: leaves it be. The next live cue, or a story restart, clears it.
         self._music_hand = False
+        #: That hand is Trabolta's (wave 58): it ends by itself, and anyone's
+        #: hand or a live music cue ends it first.
+        self._music_loan = False
         self._music_catch_up: asyncio.Future | None = None
         #: The house mix (wave 40): its levels (key → (db, mute)) and the
         #: server's seq (None: none seen yet, an older server).
@@ -1170,6 +1180,9 @@ class AudioRouter:
             setting = event.get("setting") if isinstance(event.get("setting"), str) else None
             return self.play_sound(name, rooms, setting)
         if verb == "cue":
+            stereo = stereo_of_cue(event.get("args"))
+            if stereo is not None:
+                return self.on_stereo(stereo)
             scene = scene_of_cue(event.get("args"))
             if scene is None or self.music is None:
                 return None
@@ -1209,6 +1222,8 @@ class AudioRouter:
             mixer.stop(bus="sfx", fade_s=STOP_FADE_S)
             mixer.stop(bus="test", fade_s=STOP_FADE_S)
         if self.music is not None:
+            if self._music_loan:
+                self._music_loan = self._music_hand = False
             self.music.stop(STOP_FADE_S, "stop house sounds")
         self._test_epoch += 1
         if announce:
@@ -1415,7 +1430,7 @@ class AudioRouter:
             log.info("lifecycle %s: every sound fades out", kind)
             self.mixer.stop(bus="sfx", fade_s=RESTART_FADE_S)
         if self.music is not None:
-            self._music_hand = False  # a restart: the story's scene again
+            self._music_hand = self._music_loan = False  # a restart: the story's scene again
             self.music.stop(RESTART_FADE_S, f"lifecycle {kind}")
             self.schedule_music_catch_up(kind, delay=MUSIC_CATCH_UP_DELAY_S)
 
@@ -1431,9 +1446,58 @@ class AudioRouter:
         if not self.music.st.has_scene(scene):
             self.music.set_scene(scene, why)  # logs it once
             return False
+        self._end_loan()
         self._music_live += 1
         self._music_hand = hand
         return self.music.set_scene(scene, why)
+
+    def _end_loan(self) -> None:
+        """Trabolta's hand comes off: what he paused plays again."""
+        if self._music_loan:
+            self._music_loan = False
+            self.music.pause(False)
+
+    def _take_music(self, pick: Callable[[], bool], *, loan: bool = False) -> bool:
+        """A playlist picked by hand, held like a hand scene. `loan`: it's
+        Trabolta's. → False when the pick came to nothing."""
+        self._end_loan()
+        self._music_live += 1
+        if not pick():
+            return False
+        self._music_hand, self._music_loan = True, loan
+        return True
+
+    def on_stereo(self, cmd: dict[str, str]) -> str | None:
+        """Trabolta at the stereo, off the feed (wave 58, contract C4). The
+        story has judged him already; here a director's hand still wins, so
+        `skip`, `hush` and `play` are ignored under it, and `back` touches
+        nothing but his own loan. → what was done, or None."""
+        if self.music is None:
+            return None
+        action = cmd.get("action")
+        if action == "back":
+            if not self._music_loan:
+                return None
+            self._end_loan()
+            self._music_hand = False
+            self.schedule_music_catch_up("Trabolta let go")
+            return "back"
+        if self._music_hand and not self._music_loan:
+            log.info("🎵 soundtrack: Trabolta's %s is ignored: a director holds the music", action)
+            return None
+        if action == "skip":
+            self.music_next(None, "Trabolta")
+            return "skip"
+        if action == "hush":
+            if not self.music.pause(True):
+                return None
+            self._music_hand = self._music_loan = True
+            return "hush"
+        if action == "play":
+            playlist = cmd.get("playlist") or ""
+            return "play" if self._take_music(lambda: self.music.play_playlist(playlist, "Trabolta"), loan=True) else None
+        log.warning("🎵 soundtrack: unknown stereo cue %r — ignored", action)
+        return None
 
     def on_music(self, doc: Any) -> str | None:
         """`show/audio/music`: `{"scene": name}`, `{"next": true, "playlist"?:
@@ -1466,6 +1530,7 @@ class AudioRouter:
             return None
         st = self.music.status()
         st["hand"] = self._music_hand
+        st["loan"] = self._music_loan
         return st
 
     # -- the mixer's music commands (wave 40) ----------------------------------------
@@ -1497,10 +1562,11 @@ class AudioRouter:
         return fresh
 
     def serve_music(self, e: dict) -> str | None:
-        """One music command from the mixer panel (C0): `next` (`playlist`
-        or every bed), `scene` and `stop` by hand (held against the story's
-        catch-ups until the next live music cue), `story` (let go of the
-        hand: the story's scene, now). → what was done, or None."""
+        """One music command from a panel (C0): `next` (`playlist` or every
+        bed), `scene` and `stop` by hand (held against the story's catch-ups
+        until the next live music cue), `story` (let go of the hand: the
+        story's scene, now). Wave 58: `previous`, `pause`, `resume`, and
+        `playlist` and `tidal`, held like a scene. → what was done, or None."""
         by = str(e.get("by") or "the mixer")
         action = e.get("action")
         self.music_done += 1
@@ -1520,9 +1586,26 @@ class AudioRouter:
             return "stop" if self.music_scene(OFF, f"{by}: stop", hand=True) else None
         if action == "story":
             log.info("🎵 soundtrack: %s hands the music back to the story", by)
+            self._end_loan()
+            self.music.pause(False)
             self._music_hand = False
             self.schedule_music_catch_up("story")
             return "story"
+        if action == "previous":
+            return "previous" if self.music.previous() else None
+        if action == "pause":
+            return "pause" if self.music.pause(True) else None
+        if action == "resume":
+            self.music.pause(False)
+            return "resume"
+        if action == "playlist":
+            name = e.get("playlist")
+            ok = isinstance(name, str) and self._take_music(lambda: self.music.play_playlist(name, f"{by}: by hand"))
+            return "playlist" if ok else None
+        if action == "tidal":
+            uuid = e.get("id")
+            ok = isinstance(uuid, str) and self._take_music(lambda: self.music.play_tidal(uuid, f"{by}: by hand"))
+            return "tidal" if ok else None
         log.warning("music command %s: unknown action %r — ignored", e.get("seq"), action)
         return None
 

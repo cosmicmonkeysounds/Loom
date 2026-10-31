@@ -105,7 +105,7 @@ describe("house mixer: music commands", () => {
   });
 
   it("refuses the rest", () => {
-    for (const raw of [null, {}, { action: "pause" }, { action: "scene" }, { action: "scene", scene: "a b" }, { action: "next", playlist: 3 }]) {
+    for (const raw of [null, {}, { action: "dance" }, { action: "scene" }, { action: "scene", scene: "a b" }, { action: "next", playlist: 3 }]) {
       expect(typeof musicCommandOf(raw), JSON.stringify(raw)).toBe("string");
     }
   });

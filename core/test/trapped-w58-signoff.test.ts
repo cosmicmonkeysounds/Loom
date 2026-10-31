@@ -19,17 +19,24 @@ const DELIVERED = join(ROOT, "Trapped In The Internet story/oct30/facts-with-cod
 const read = (p: string) => readFileSync(join(SHOW, p), "utf8");
 const SHEET = read("SIGNOFF-w58.md");
 const CONTRACT = readFileSync(join(ROOT, "docs/loom-w58-contract.md"), "utf8");
+const MUSIC_SHEET = read("SIGNOFF-w58-music.md");
+const MUSIC_CONTRACT = readFileSync(join(ROOT, "docs/loom-w58-music-contract.md"), "utf8");
 const SECRETS = showSecrets(loadShow());
 
-/** Every tracked file carrying a marker, by path from the root. */
-const MARKED = execSync(`git grep -l "DRAFT w58" -- . ':!core/test' ':!terminal/test' ':!play/test' ':!stagehand/tests' ':!*SIGNOFF-w58.md' ':!docs/loom-w58-contract.md'`, { cwd: ROOT, encoding: "utf8" }).split("\n").filter(Boolean);
+/** Every tracked file a pattern finds, by path from the root, past the tests and two sheets. */
+const grepped = (pattern: string, sheet: string, contract: string): string[] =>
+  execSync(`git grep -lE '${pattern}' -- . ':!core/test' ':!terminal/test' ':!play/test' ':!stagehand/tests' ':!*${sheet}' ':!docs/${contract}'`, { cwd: ROOT, encoding: "utf8" }).split("\n").filter(Boolean);
+
+/** Wave 58 is two waves: the story's `DRAFT w58` here, the Music manager's `DRAFT w58-music`. */
+const MARKED = grepped("DRAFT w58([^-]|$)", "SIGNOFF-w58.md", "loom-w58-contract.md");
+const MUSIC_MARKED = grepped("DRAFT w58-music", "SIGNOFF-w58-music.md", "loom-w58-music-contract.md");
 
 /** The words a `// DRAFT w58` comment covers: the next line that says something. */
 function markedWords(file: string): Array<{ where: string; text: string }> {
   const lines = read(file).split("\n");
   const out: Array<{ where: string; text: string }> = [];
   lines.forEach((l, i) => {
-    if (!/\/\/.*DRAFT w58/u.test(l)) return;
+    if (!/\/\/.*DRAFT w58(?!-music)/u.test(l)) return;
     let j = i + 1;
     while (j < lines.length && (lines[j]!.trim() === "" || lines[j]!.trim().startsWith("//"))) j++;
     const next = lines[j] ?? "";
@@ -72,6 +79,54 @@ describe("wave 58: the sign-off sheet", () => {
     const words = loom.flatMap(markedWords);
     expect(words.length).toBeGreaterThan(40);
     for (const w of words) expect(SHEET, w.where).toContain(redact(w.text, SECRETS));
+  });
+});
+
+describe("wave 58's Music manager: its own sheet", () => {
+  const trabolta = read("cast/trabolta.loom");
+  const main = read("main.loom");
+  const start = trabolta.indexOf("when change_the_music for program:");
+  const power = trabolta.slice(start, trabolta.indexOf("// He asks; the humans capture.", start));
+  /** The sheet writes `{program}`, and the three moods as one line. */
+  const asSheet = (t: string) => t.replace("{program.name}", "{program}").replace(/the (?:calm|uneasy|dread) one/u, "the calm / uneasy / dread one");
+
+  it("names no secret, and neither does the contract", () => {
+    expect(secretsIn(MUSIC_SHEET, SECRETS)).toEqual([]);
+    expect(secretsIn(MUSIC_CONTRACT, SECRETS)).toEqual([]);
+  });
+
+  it("is not the story's sheet: each marker has one home, and both sheets say so", () => {
+    expect(MUSIC_SHEET).toMatch(/DRAFT w58-music/u);
+    expect(MUSIC_SHEET).toContain("`SIGNOFF-w58.md` is the Oct 30 story's");
+    for (const f of ["cast/trabolta.loom", "main.loom", "trabolta.mind.md"]) expect(read(f), f).toMatch(/DRAFT w58-music/u);
+    // A marker carried over as a bare `DRAFT w58` would sit on the wrong sheet.
+    expect(power).not.toMatch(/DRAFT w58(?!-music)/u);
+    expect(trabolta.slice(trabolta.lastIndexOf("DRAFT w58", start), start)).toMatch(/^DRAFT w58-music/u);
+  });
+
+  it("records each decision", () => {
+    const rows = MUSIC_SHEET.split("\n").filter((l) => /^\| [MT]-\d+ \|/u.test(l));
+    expect(rows.map((r) => /^\| ([MT]-\d+)/u.exec(r)![1])).toEqual(["M-1", "M-2", "M-3", "M-4", "M-5", "M-6", "T-1", "T-2", "T-3", "T-4", "T-5", "T-6", "T-7", "T-8", "T-9", "T-10"]);
+  });
+
+  it("names every file that holds a DRAFT w58-music marker", () => {
+    expect(MUSIC_MARKED.length).toBeGreaterThanOrEqual(5);
+    for (const f of MUSIC_MARKED) expect(MUSIC_SHEET, f).toContain(f.replace("core/examples/trapped-in-the-internet/", ""));
+  });
+
+  it("carries every line he says, the asker's and # hosts', and the two cues, word for word", () => {
+    const refusals = [...power.matchAll(/^\s*Trabolta: (.+)$/gmu)].map((m) => m[1]!);
+    const told = [...power.matchAll(/broadcast "(.*?)" to /gu), ...main.matchAll(/broadcast "(🔒 Trabolta.*?|🔓 Trabolta.*?)" to /gu)].map((m) => m[1]!);
+    expect(refusals.length).toBeGreaterThanOrEqual(6);
+    expect(told.length).toBeGreaterThanOrEqual(12);
+    // A refusal he already had isn't new words.
+    const rest = trabolta.replace(power, "");
+    for (const line of refusals) if (!rest.includes(`Trabolta: ${line}`)) expect(MUSIC_SHEET, line).toContain(line);
+    for (const line of told) expect(MUSIC_SHEET, line).toContain(asSheet(line));
+    for (const label of ["Keep Trabolta off the music", "Let Trabolta reach the music"]) {
+      expect(main).toContain(label);
+      expect(MUSIC_SHEET).toContain(label);
+    }
   });
 });
 

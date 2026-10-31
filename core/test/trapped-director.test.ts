@@ -92,14 +92,14 @@ const countdowns = (sim: Sim) => boardFor(sim).countdowns.map((c) => c.label);
 describe("Trapped in the Internet — wave 10 (the Director page's acts and board)", () => {
   it("every admin cue has an act", () => {
     const rows = rowsOf(Sim.fromSources(SRC));
-    expect(rows).toHaveLength(85); // wave 59: 🎭 appended last, rejoining Anytime; wave 58: 🏅 G9a in the spine; 🎤 in the spine and 📺 an aside, both in B before 🤖; G0 📜 and its fallback in G; 🕊, its autoend and 🏍 gone; wave 53: ⏭ appended last, rejoining Anytime; wave 50: 🌀 appended last, rejoining Anytime; wave 48: 🔑 G14 appended last, rejoining G; wave 45: 🚻 G13 appended last, rejoining G; wave 44: 🎬 G12 appended last, rejoining G; wave 32: ⚡ ad_burst appended to Anytime; wave 26: the games' three moments appended to Anytime; wave 11: 👑 and 🔧 appended to Anytime; wave 18b: −☎️ −🪅; wave 20: 🚪 closed / trust + 🕊 autoend appended to E; wave 21: the three staff awards in G, before G11; wave 22: 🔌 Trust the patch bay appended to E
+    expect(rows).toHaveLength(87); // wave 58 music: 🔒 🔓 appended last, after 🎭; wave 59: 🎭 appended last, rejoining Anytime; wave 58: 🏅 G9a in the spine; 🎤 in the spine and 📺 an aside, both in B before 🤖; G0 📜 and its fallback in G; 🕊, its autoend and 🏍 gone; wave 53: ⏭ appended last, rejoining Anytime; wave 50: 🌀 appended last, rejoining Anytime; wave 48: 🔑 G14 appended last, rejoining G; wave 45: 🚻 G13 appended last, rejoining G; wave 44: 🎬 G12 appended last, rejoining G; wave 32: ⚡ ad_burst appended to Anytime; wave 26: the games' three moments appended to Anytime; wave 11: 👑 and 🔧 appended to Anytime; wave 18b: −☎️ −🪅; wave 20: 🚪 closed / trust + 🕊 autoend appended to E; wave 21: the three staff awards in G, before G11; wave 22: 🔌 Trust the patch bay appended to E
     for (const r of rows) expect(r.act, r.id).not.toBe(null);
     // `act:` rides admin cues only — never a performer's or a guest's button.
     const others = (modView(Sim.fromSources(SRC), "open", "x").interactions ?? []).filter((i) => i.who !== "admin");
     for (const i of others) expect(i.act, i.id).toBeUndefined();
   });
 
-  it("the act split is B12 C5 D8 E15 Anytime13 F11 G21 with 45 spine and 40 asides", () => {
+  it("the act split is B12 C5 D8 E15 Anytime15 F11 G21 with 45 spine and 42 asides", () => {
     const acts = cueActs(rowsOf(Sim.fromSources(SRC)));
     const shape = (a: CueAct) => [a.code ?? a.title, a.rows.length, a.spine.length, a.asides.length];
     expect(acts.map(shape)).toEqual([
@@ -107,16 +107,16 @@ describe("Trapped in the Internet — wave 10 (the Director page's acts and boar
       ["C", 5, 2, 3],
       ["D", 8, 5, 3],
       ["E", 15, 1, 14], // wave 20: three door / heart asides appended (no cue number moved); wave 22: 🔌 Trust the patch bay; wave 58: 🕊 and its autoend are gone
-      ["Anytime", 13, 0, 13], // wave 59: 🎭 costume_flicker; wave 26: the games' three moments (escape, heart, pickup); wave 32: ⚡ ad_burst; wave 50: 🌀 dream_toggle; wave 53: ⏭ wave_staff_through
+      ["Anytime", 15, 0, 15], // wave 58 music: 🔒 🔓 Trabolta off the music; wave 59: 🎭 costume_flicker; wave 26: the games' three moments (escape, heart, pickup); wave 32: ⚡ ad_burst; wave 50: 🌀 dream_toggle; wave 53: ⏭ wave_staff_through
       ["F", 11, 11, 0], // wave 58: 🏍 is gone
       ["G", 21, 16, 5], // wave 58: 🏅 G9a before G10; wave 21: G10a–c before G11; wave 44: 🎬 G12, an aside; wave 45: 🚻 G13, an aside; wave 48: 🔑 G14, an aside; wave 58: G0 📜 and its fallback, an aside
     ]);
     expect(acts.reduce((s, a) => s + a.spine.length, 0)).toBe(45);
-    expect(acts.reduce((s, a) => s + a.asides.length, 0)).toBe(40);
+    expect(acts.reduce((s, a) => s + a.asides.length, 0)).toBe(42);
     // The two `act: Anytime` lines are one act (💡, the reinstallation cues,
     // and wave 11's 👑 / 🔧, appended last so no cue number moved).
     const anytime = acts.find((a) => a.state === "anytime")!;
-    expect(anytime.rows.map((r) => r.id)).toEqual(["restore_the_lights", "the simulation completed", "the golden duck", "reinstallation begun", "restore_the_king", "crew_through_the_door", "simulation escape attempt", "simulation heart reached", "simulation pickup taken", "ad_burst", "dream_toggle", "wave_staff_through", "costume_flicker"]);
+    expect(anytime.rows.map((r) => r.id)).toEqual(["restore_the_lights", "the simulation completed", "the golden duck", "reinstallation begun", "restore_the_king", "crew_through_the_door", "simulation escape attempt", "simulation heart reached", "simulation pickup taken", "ad_burst", "dream_toggle", "wave_staff_through", "costume_flicker", "trabolta_music_lock", "trabolta_music_unlock"]);
     // Titles keep the README's wording.
     expect(acts.map((a) => a.title)).toEqual([
       "Act I: the Desktop, Bingo and the first truth",

@@ -591,6 +591,12 @@ export interface SimModel {
    *  Censor — the canonical id of a declared CHARACTER, else null (no key,
    *  or an unknown name: no filter at all). */
   censor: string | null;
+  /** Header `warmth: <slot> <min> to <max>` (wave 58,
+   *  `docs/loom-w58-music-contract.md` C5): the one guest slot an agent's `adjust`
+   *  may move (`them.<slot>`, ±1 a reply). ROLE slots declare no range the
+   *  sim keeps, so the header carries it. Null: a guest's `them.` keys are
+   *  ignored, as they always were. */
+  warmth: Warmth | null;
   /** Declared OBJECTIVEs, in model order (file order: main.loom first, then
    *  by path; source order within a file). */
   objectives: Map<string, ObjectiveDef>;
@@ -734,6 +740,7 @@ export function compileModel(bundle: Bundle): SimModel {
     countdowns: [],
     judge: null,
     censor: null,
+    warmth: null,
     objectives: new Map(),
     alerts: DEFAULT_ALERTS_PATH,
     wanted: null,
@@ -756,6 +763,8 @@ export function compileModel(bundle: Bundle): SimModel {
   let judgeName: string | null = null;
   /** Wave 48: the raw `censor:` header value (first file that has one). */
   let censorName: string | null = null;
+  /** Wave 58: the raw `warmth:` header value (first file that has one). */
+  let warmthRaw: string | null = null;
   /** Wave 18 header lines resolved once every name is known. */
   let wantedRaw: string | null = null;
   const archiveRaw: string[] = [];
@@ -780,6 +789,8 @@ export function compileModel(bundle: Bundle): SimModel {
     if (judgeName === null && judgeProp !== undefined && judgeProp.value.trim() !== "") judgeName = judgeProp.value.trim();
     const censorProp = entry.file.header.properties.get("censor");
     if (censorName === null && censorProp !== undefined && censorProp.value.trim() !== "") censorName = censorProp.value.trim();
+    const warmthProp = entry.file.header.properties.get("warmth");
+    if (warmthRaw === null && warmthProp !== undefined && warmthProp.value.trim() !== "") warmthRaw = warmthProp.value.trim();
     for (const line of entry.file.header.lines ?? []) {
       if (line.key === "watch") {
         const b = parseBoardLine(line.value);
@@ -984,6 +995,7 @@ export function compileModel(bundle: Bundle): SimModel {
   }
   model.judge = judgeOf(model, judgeName);
   model.censor = censorOf(model, censorName);
+  model.warmth = warmthOf(warmthRaw);
   model.wanted = wantedRaw === null ? null : parseWanted(model, wantedRaw);
   for (const raw of archiveRaw) {
     const a = parseArchive(model, raw);
@@ -1001,6 +1013,22 @@ export function judgeOf(model: Pick<SimModel, "characters" | "entityIndex">, nam
   const id = model.characters.has(name) ? name : model.entityIndex.get(name);
   const def = id === null ? undefined : model.characters.get(id);
   return def !== undefined && def.mind === "external" ? def.id : null;
+}
+
+/** The guest slot an agent's `adjust` may move (wave 58). */
+export interface Warmth {
+  slot: string;
+  min: number;
+  max: number;
+}
+
+/** The header `warmth:` value (`chummy -5 to 10`), or null for anything else. */
+export function warmthOf(raw: string | null): Warmth | null {
+  const m = /^([A-Za-z_][A-Za-z0-9_]*)\s+(-?\d+)\s+to\s+(-?\d+)$/u.exec((raw ?? "").trim());
+  if (m === null) return null;
+  const min = Number(m[2]);
+  const max = Number(m[3]);
+  return min < max ? { slot: m[1]!, min, max } : null;
 }
 
 /** The header `censor:` value as a declared CHARACTER's canonical id

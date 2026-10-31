@@ -58,11 +58,12 @@ beforeEach(() => {
 })
 
 describe('the House views', () => {
-  it('switches between Desk, Cue designer, Setup, Mixer and Map, flagging a setup problem', () => {
+  it('switches between Desk, Cue designer, Setup, Music, Mixer and Map, flagging a setup problem', () => {
     const html = render()
     expect(html).toContain('data-testid="house-view-desk"')
     expect(html).toContain('🎨 Cue designer')
-    expect([...html.matchAll(/data-testid="house-view-([a-z]+)"/gu)].map((m) => m[1])).toEqual(['desk', 'designer', 'setup', 'mixer', 'map'])
+    expect([...html.matchAll(/data-testid="house-view-([a-z]+)"/gu)].map((m) => m[1])).toEqual(['desk', 'designer', 'setup', 'music', 'mixer', 'map'])
+    expect(html).toContain('🎵 Music')
     expect(html).toContain('🎚 Mixer')
     expect(html).toContain('🗺 Map')
     expect(html).not.toContain('house-mixer')
@@ -153,18 +154,27 @@ describe('the Cue designer', () => {
   })
 })
 
-describe('the Mixer', () => {
+describe('the Music manager', () => {
+  const ACT_1 = '34e328b7-92a7-4bcc-9603-ff296a8fd201'
+  const app = {
+    online: true,
+    playing: true,
+    paused: false,
+    track: 'Band - Song',
+    problem: null,
+    playlist: ACT_1,
+    library: [{ id: ACT_1, title: 'TITI - Act 1', items: 19 }],
+  }
+
   beforeEach(() => {
-    fake.view = { view: 'mixer' }
+    fake.view = { view: 'music' }
   })
 
-  it('the strip, Now playing and one column per scope', () => {
+  it('now playing moved here, from the Mixer', () => {
     const html = render()
-    expect(html).toContain('data-testid="house-mixer"')
-    expect(html).not.toContain('house-cues')
+    expect(html).toContain('data-testid="house-music"')
     expect(html).toContain('🔊 router online (house-desktop)')
-    expect(html).toContain('every level at 0 dB')
-    // Now playing: the scene picker, each bed with its rooms, track, progress and Skip.
+    // The scene picker, each bed with its rooms, track, progress and Skip.
     expect(html).toMatch(/data-testid="mixer-scene"[^]*<option value="act_1" selected="">act_1/u)
     expect(html).toMatch(/data-testid="mixer-bed-lounge"[^]*lounge[^]*Living room[^]*Dial-up Dreams[^]*width:25.0%[^]*0:30 \/ 2:00/u)
     expect(html).toContain('data-testid="mixer-skip-lounge"')
@@ -173,6 +183,86 @@ describe('the Mixer', () => {
     expect(html).toContain('■ Stop music')
     expect(html).toMatch(/data-testid="mixer-missing"[^]*heart/u)
     expect(html).not.toContain('mixer-hand')
+    // The Mixer's own music fader, here too.
+    expect(html).toContain('data-testid="mixer-strip-src:music"')
+    // Files on the fixture: no deck.
+    expect(html).not.toContain('music-pause')
+  })
+
+  it('a bed on the app: the deck, its source and the library', () => {
+    const base = fixtureMixer()
+    fake.mixer = { ...fake.mixer, view: { ...base, music: { ...base.music!, beds: [{ playlist: 'act_1', speakers: ['living_l'], track: 'Band - Song', posS: 3, live: true }], tidal: app } } }
+    const html = render()
+    expect(html).toMatch(/data-testid="music-source"[^]*Playing from TIDAL/u)
+    expect(html).toContain('data-testid="music-previous"')
+    expect(html).toMatch(/data-testid="music-pause"[^>]*>⏸/u)
+    expect(html).toContain(`data-testid="music-tidal-${ACT_1}"`)
+    expect(html).toContain('Your TIDAL playlists (1)')
+    expect(html).toContain('data-testid="music-link"')
+    // An app bed goes by its title.
+    expect(html).toMatch(/data-testid="mixer-bed-act_1"[^]*TITI - Act 1/u)
+  })
+
+  it('a paused app offers play, and a dead one says what to do', () => {
+    const base = fixtureMixer()
+    const on = { ...base.music!, beds: [{ playlist: 'act_1', speakers: [], track: null, posS: 0, live: true }] }
+    fake.mixer = { ...fake.mixer, view: { ...base, music: { ...on, tidal: { ...app, paused: true } } } }
+    expect(render()).toMatch(/data-testid="music-pause"[^>]*>▶/u)
+    fake.mixer = { ...fake.mixer, view: { ...base, music: { ...on, tidal: { ...app, online: false } } } }
+    expect(render()).toContain('tidal.ps1')
+  })
+
+  it('Trabolta: his pals, his loan and the lock', () => {
+    const base = fixtureMixer()
+    fake.mixer = { ...fake.mixer, view: { ...base, music: { ...base.music!, hand: true, loan: true }, dj: { locked: false, bar: 3, pals: [{ name: 'Winamp', chummy: 4 }], last: { what: 'skipped a song', who: 'Winamp' } } } }
+    const html = render()
+    expect(html).toContain('Will change it for 1 program')
+    expect(html).toContain('Winamp (4)')
+    expect(html).toContain('Last: skipped a song for Winamp')
+    expect(html).toMatch(/data-testid="music-dj-lock"[^>]*>🔒 Keep him off the music/u)
+    expect(html).toContain('Trabolta has the music')
+    expect(html).toMatch(/data-testid="mixer-follow"[^>]*>Take it back/u)
+    fake.mixer = { ...fake.mixer, view: { ...base, dj: { locked: true, bar: 3, pals: [], last: null } } }
+    expect(render()).toMatch(/data-testid="music-dj-lock"[^>]*>🔓 Let him reach the music/u)
+  })
+
+  it('a story without the power has no card', () => {
+    fake.mixer = { ...fake.mixer, view: { ...fixtureMixer(), dj: null } }
+    expect(render()).not.toContain('music-dj')
+  })
+
+  it('a hand scene, no soundtrack, an older server, a refusal', () => {
+    const v = fixtureMixer()
+    fake.mixer = { ...fake.mixer, view: { ...v, music: { ...v.music!, hand: true } } }
+    let html = render()
+    expect(html).toContain('by hand: the story’s music cues are held')
+    expect(html).toContain('data-testid="mixer-follow"')
+    fake.mixer = { ...fake.mixer, view: fixtureMixer({ music: null, router: { online: false, lastSeen: null, name: null }, meters: null }) }
+    html = render()
+    expect(html).toContain('No soundtrack reported yet')
+    expect(html).toContain('🔇 no router listening')
+    fake.mixer = { ...fake.mixer, gone: 'missing' }
+    expect(render()).toContain('This event server has no music manager yet')
+    fake.mixer = { ...fake.mixer, gone: 'denied' }
+    expect(render()).toContain('The server refused the music manager.')
+    fake.mixer = { ...fake.mixer, gone: null, view: null }
+    expect(render()).toContain('Reading the music…')
+  })
+})
+
+describe('the Mixer', () => {
+  beforeEach(() => {
+    fake.view = { view: 'mixer' }
+  })
+
+  it('the strip and one column per scope', () => {
+    const html = render()
+    expect(html).toContain('data-testid="house-mixer"')
+    expect(html).not.toContain('house-cues')
+    expect(html).toContain('🔊 router online (house-desktop)')
+    expect(html).toContain('every level at 0 dB')
+    // Now playing moved to 🎵 Music.
+    expect(html).not.toContain('mixer-music')
     // The console: Everywhere, then each room, scrolling across.
     expect([...html.matchAll(/data-testid="mixer-scope-([^"]+)"/gu)].map((m) => m[1])).toEqual(['all', 'room:living', 'room:kitchen'])
     expect(html).toContain('data-testid="mixer-strip-master"')
@@ -209,16 +299,9 @@ describe('the Mixer', () => {
     expect(html).not.toMatch(/disabled=""[^>]*data-testid="mixer-reset-all"/u)
   })
 
-  it('a hand scene, no soundtrack, no router, an older server, a refusal', () => {
-    const v = fixtureMixer()
-    fake.mixer = { ...fake.mixer, view: { ...v, music: { ...v.music!, hand: true } } }
-    let html = render()
-    expect(html).toContain('by hand: the story’s music cues are held')
-    expect(html).toContain('data-testid="mixer-follow"')
+  it('no router, an older server, a refusal', () => {
     fake.mixer = { ...fake.mixer, view: fixtureMixer({ music: null, router: { online: false, lastSeen: null, name: null }, meters: null }) }
-    html = render()
-    expect(html).toContain('No soundtrack reported yet')
-    expect(html).toContain('no router listening: the mix is kept and applies when it connects')
+    expect(render()).toContain('no router listening: the mix is kept and applies when it connects')
     fake.mixer = { ...fake.mixer, gone: 'missing' }
     expect(render()).toContain('This event server has no mixer yet: update and restart it.')
     fake.mixer = { ...fake.mixer, gone: 'denied' }
