@@ -66,6 +66,10 @@ export function GuestRegister({ session }: { session: GuestSession }) {
   const closed = resolved !== null && resolved.doorsOpen === false;
   const fallback = ids !== null && ids !== "loading" && ids.kind === "unavailable" ? ids : null;
   const programs = resolved === null ? [] : orderPicker(resolved.identities);
+  // Wave 54: a printed badge fills everything in. Its event code is good, so
+  // the box steps aside, and an invited one lands on its own program.
+  const filledIn = resolved !== null && (badge !== null || claim !== null);
+  const invited = programs.find((r) => r.name === resolved?.invited && !r.claimed) ?? null;
   const sections = pickerSections(programs);
   const [reservedOpen, setReservedOpen] = useState(false);
   // Having picked a program, the guest picks its picture (when there is
@@ -124,19 +128,21 @@ export function GuestRegister({ session }: { session: GuestSession }) {
       <div className="glyph">🎟️</div>
       <h1>{resolved?.title ?? fallback?.title ?? eventTitle ?? "Loom"}</h1>
       {session.notice && <p className="notice">{session.notice}</p>}
-      <p className="sub">Enter the code from your host, then pick the program you are tonight.</p>
-      {claim !== null && <p className="pick-hint">Your invitation saved your program for you — pick it below.</p>}
-      {badge !== null && <p className="pick-hint">🪪 Badge {printedBadge(badge)} links to the program you pick. Lose this page? Scan your badge to get back in.</p>}
-      <input
-        placeholder="Event code (from the host)"
-        value={code}
-        autoFocus={code === ""}
-        autoCapitalize="characters"
-        autoCorrect="off"
-        spellCheck={false}
-        onChange={(e) => setCode(e.target.value)}
-      />
-      {picking === null && <GetBackIn code={code} open={rejoining} onOpen={setRejoining} onIn={session.adopt} onBlankBadge={() => setBadgeSeen((n) => n + 1)} />}
+      {!filledIn && <p className="sub">Enter the code from your host, then pick the program you are tonight.</p>}
+      {claim !== null && invited === null && <p className="pick-hint">Your invitation saved your program for you — pick it below.</p>}
+      {badge !== null && invited === null && <p className="pick-hint">🪪 Badge {printedBadge(badge)} links to the program you pick. Lose this page? Scan your badge to get back in.</p>}
+      {!filledIn && (
+        <input
+          placeholder="Event code (from the host)"
+          value={code}
+          autoFocus={code === ""}
+          autoCapitalize="characters"
+          autoCorrect="off"
+          spellCheck={false}
+          onChange={(e) => setCode(e.target.value)}
+        />
+      )}
+      {picking === null && invited === null && <GetBackIn code={code} open={rejoining} onOpen={setRejoining} onIn={session.adopt} onBlankBadge={() => setBadgeSeen((n) => n + 1)} />}
       {ids === "loading" && <p className="pick-hint">Looking up the program list…</p>}
       {ids !== null && ids !== "loading" && ids.kind === "unknown" && <p className="pick-hint">That code doesn't open anything. Check it with your host.</p>}
       {fallback !== null && (
@@ -171,7 +177,17 @@ export function GuestRegister({ session }: { session: GuestSession }) {
           </button>
         </div>
       )}
-      {resolved !== null && !closed && picking === null && !rejoining && (
+      {invited !== null && !closed && (
+        <div className="cast-pick" role="group" aria-label={`You are ${invited.name}`}>
+          <PersonAvatar name={invited.name} size="lg" src={picture(invited.avatar)} />
+          <div className="sheet-h">You are {invited.name}</div>
+          <p className="pick-hint">Your invitation saved this program for you.</p>
+          <button className="choice primary" disabled={busy} onClick={() => void go(invited.name)}>
+            {busy ? "Uploading…" : "Start your upload →"}
+          </button>
+        </div>
+      )}
+      {resolved !== null && !closed && picking === null && !rejoining && invited === null && (
         <div className="cast-pick" role="group" aria-label="Which program are you?">
           <div className="sheet-h">Which program are you?</div>
           {programs.length === 0 && <p className="pick-hint">{resolved.search ? "Every named program is taken — search for another below." : "No programs left to pick — ask your host."}</p>}

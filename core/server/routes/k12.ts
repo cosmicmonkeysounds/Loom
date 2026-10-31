@@ -10,6 +10,10 @@
 //! from the project's `facts.json`), so the sheet can sort and band the
 //! posters instead of a director sorting ~60 by hand.
 //!
+//! Wave 54: one **sign** per guest button the story marks `qr:` (the show:
+//! 🚻 Bathroom Mode): `…/?code=<event>&act=<interaction>`. The app presses
+//! that button for whoever scans it, the same press as the one in ⊞ Start.
+//!
 //! Pure: the codes route spreads `printExtras(…)` into its response. The QR
 //! images themselves are drawn in the editor (`qrcode`), never via
 //! `/api/qr` — a sheet of 60–80 codes would trip its 60/min limit.
@@ -30,6 +34,17 @@ export interface CheckinSign {
   hidden: boolean;
 }
 
+/** A printed sign that presses a guest's button (`qr:` on the INTERACTION). */
+export interface ActionSign {
+  /** The INTERACTION's name: the `act=` value. */
+  name: string;
+  /** Its button label: the big text on the sign. */
+  label: string;
+  /** The `qr:` line: what the sign tells a guest. */
+  line: string;
+  url: string;
+}
+
 /** Which printed pile a codex poster goes in (`facts.json`). */
 export interface CodexStack {
   /** `gold` (a hunt answer), `silver` (one of the door's digit notes) or
@@ -48,6 +63,8 @@ export interface PrintExtras {
   /** The join poster's link: `<base>/?code=<event>`. */
   joinLink: string;
   checkin: CheckinSign[];
+  /** Signs that press a guest's button (wave 54). */
+  actions: ActionSign[];
   /** The performer parts a cast card is printed for (declaration order). */
   cast: string[];
   /** Codex entry id → its stack; an entry the facts file doesn't place is absent. */
@@ -93,6 +110,16 @@ export function checkinSigns(model: Pick<SimModel, "locations">, base: string, e
   return out;
 }
 
+/** The guest buttons the story prints a sign for. */
+export function actionSigns(model: Pick<SimModel, "interactions">, base: string, eventCode: string): ActionSign[] {
+  const out: ActionSign[] = [];
+  for (const def of model.interactions.values()) {
+    if (def.qr === undefined || def.who !== "guest") continue;
+    out.push({ name: def.id, label: def.label, line: def.qr, url: `${base}/?code=${encodeURIComponent(eventCode)}&act=${encodeURIComponent(def.id)}` });
+  }
+  return out;
+}
+
 /** Every codex entry the facts file places: a hunt question's document
  *  (gold, its own `where`), a door digit note (silver, its own pile and
  *  `where`), a generated fact (its tier's colour; the tier and how it
@@ -120,6 +147,7 @@ export function printExtras(model: SimModel | null, base: string, eventCode: str
   return {
     joinLink: `${base}/?code=${encodeURIComponent(eventCode)}`,
     checkin: model === null ? [] : checkinSigns(model, base, eventCode),
+    actions: model === null ? [] : actionSigns(model, base, eventCode),
     cast: model === null ? [] : identityDefs(model).filter(performerPickable).map((d) => d.name),
     stacks: codexStacks(facts),
   };

@@ -99,43 +99,45 @@ Front of house: getting people in.
   early. If a performer or moderator code leaked (shared at rehearsal,
   typed into a terminal), end the run and tick **New performer +
   moderator codes** under ▶ Start rehearsal before you start the next one:
-  those two codes change and the guest code doesn't, so the join poster,
-  door sign, codex posters and room signs stay good — but every printed
-  **cast card** carries the old performer code and stops working, so
-  reprint the cast cards afterwards.
-- **🖨 Print sheet…** — everything to print, QRs drawn in the browser:
-  the **join poster**, the **door sign** (it says *Scan to join*, or
-  *iPhone? Join, then Add to Home Screen* with the steps when the server's
-  Home Screen switch is on), one **codex poster** per entry with a code
-  (title, QR, the typed code), one **room check-in sign** per place a
-  guest can check into (see [live shows](live-shows.md)), and one **cast
-  card** per performer part. Each cast card's QR signs in as its own
-  part: scanning it on any phone takes that part back, even from a lost
-  phone that still holds it (on an older server the QR is the performer
-  code: scan, tap 🎭 I'm a Performer, then pick the part). When the project has a `facts.json`, the codex posters come in
-  stack order (gold hunt answers, then green, blue, red), each with a
-  coloured band and its pile and hiding place printed underneath, so you
-  can deal them straight into the piles. Tick sections, skip single cards,
-  choose 1, 2, 4 or 8 per page; cast cards always print 8 to a page as
-  business cards, on a page of their own. A cast card is a performer
-  sign-in, so keep them with the cast and never post one. A story with
-  `reserved: true` programs ([live shows](live-shows.md)) adds
-  **Invitations**: one card per reserved program with its claim QR (no
-  typed code), four to a page. Hand each to its invitee; whoever scans it
-  joins as that program. On screen only, each card has **🔓 lost? open 2
-  min** (two taps): it opens that program to anyone for two minutes, for
-  an invitee whose invitation is lost, and counts the window down; two
-  taps while it is open shut it early. The door code's digit notes print
-  on the **silver** stack, title and QR only, never a digit.
-  **Badges** (unticked until you want them) are blank ID badges, 3 × 4
-  inches for a lanyard sleeve, four to a page: the title, a QR, the
-  badge's printed code, a *Program:* line for the guest to write their
-  name on, and a small number (B001…). Pick how many (60 by default)
-  and the first number, then **Load**; to print more later, start from
-  the *next batch* number the toolbar shows so no two badges repeat. A
-  guest scans their badge when they join (or later) to link it; after
-  that it gets them back in on any phone, and it is their pass at the
-  booths. On screen only, a linked badge names its guest.
+  those two codes change and the guest code doesn't, so everything printed
+  stays good, staff badges included.
+- **🖨 Print sheet…** — everything to print on Letter paper, QRs drawn in
+  the browser. Print at **100%**, not *Fit to page*: each sheet's footer has
+  a line that should measure 1 inch. The cards are cut to size on the sheet,
+  with a hairline to cut along.
+  - **Badges** are 3 × 2 inches, ten to a sheet, one QR per person. A
+    **staff badge** (black edge) per performer part signs its phone straight
+    in as that part, and takes the part back from a lost phone. An **invited
+    badge** (gold edge) per `reserved: true` program ([live
+    shows](live-shows.md)) lands its guest on their own program with one tap.
+    The numbered **blank badges** (B001…) are for everyone else: the phone
+    opens on the program picker with the event code filled in, and the badge
+    links to the program they pick. Pick how many blanks (60 by default) and
+    the first number, then **Load**; to print more later, start from the
+    *next batch* number the toolbar shows. Whichever badge a guest has, it
+    gets them back in on any phone and it is their pass at the booths. A
+    staff badge is a sign-in: keep it with its performer, QR side in, and
+    never post one. On screen only, a linked badge names its guest, and an
+    invited badge has **🔓 lost? open 2 min** (two taps): it opens that
+    program to anyone for two minutes and counts the window down; two taps
+    while it is open shut it early.
+  - **Location cards** are 3 × 2 inches too: one per place a guest can check
+    into (see [live shows](live-shows.md)), then the **signs**: one per guest
+    button the story marks `qr:` ([live verbs](live-verbs.md)), two copies by
+    default. A sign presses that button for whoever scans it.
+  - **Fact cards** print four to a row, twenty to a sheet, in stack order
+    with a coloured band. A number per stack prints a few: the hunt answers
+    and the door's digit notes print whole by default, four of each other
+    stack. A digit note prints title and QR only, never a digit.
+  - The **join poster** and the **door sign** are off until ticked (it says
+    *Scan to join*, or *iPhone? Join, then Add to Home Screen* with the steps
+    when the server's Home Screen switch is on), one, two or four to a page.
+
+  **skip** moves a card to the tray under the sheets. The toolbar warns in
+  red if the codes point at a local address, since a printed QR can't be
+  fixed later. Every code stays good through Restart, Go live, End →
+  relaunch and new performer + moderator codes. Renaming a part or a reserved
+  program retires its badge.
 - **Directing now** — every co-writer with a console open, who started
   the run, and when.
 - **Terminals** — every wall terminal and the TV that has checked in,

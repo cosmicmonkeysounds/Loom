@@ -62,7 +62,7 @@ async function postEvent(eventId: string, path: string, body: unknown, fetchFn: 
 
 /** Sign in by a badge or an invitation: the guest it belongs to, or "fresh"
  *  (a blank badge, an invitation not yet used) — the join goes on. */
-export async function enterBy(code: string, by: { badge: string } | { claim: string }, fetchFn: typeof fetch = fetch): Promise<EnterResult> {
+export async function enterBy(code: string, by: { badge: string; claim?: string } | { claim: string }, fetchFn: typeof fetch = fetch): Promise<EnterResult> {
   const ev = await resolve(code, fetchFn);
   const r = await postEvent(ev.eventId, "/api/guest/enter", { passcode: code, ...by }, fetchFn);
   if (r.status === 429) throw new RejoinError(TOO_MANY, 429);
@@ -169,7 +169,7 @@ export interface CardBooth {
   title?: string;
 }
 
-export const CARD_UNKNOWN = "That cast card isn't one of tonight's — ask the director.";
+export const CARD_UNKNOWN = "That staff badge isn't one of tonight's — ask the director.";
 
 /** Sign in by a cast card: its part, taken back from any booth holding it. */
 export async function enterPart(code: string, part: string, fetchFn: typeof fetch = fetch): Promise<CardBooth> {
@@ -177,7 +177,7 @@ export async function enterPart(code: string, part: string, fetchFn: typeof fetc
   const r = await postEvent(ev.eventId, "/api/prime/login", { passcode: code, part }, fetchFn);
   if (r.status === 429) throw new RejoinError(TOO_MANY, 429);
   if (r.status === 404) throw new RejoinError(CARD_UNKNOWN, 404);
-  if (r.status === 409) throw new RejoinError(str(r.body["error"]) === "doors are closed" ? "The story isn't loaded yet — scan your card again once the director opens the doors." : str(r.body["error"]) || CARD_UNKNOWN, 409);
+  if (r.status === 409) throw new RejoinError(str(r.body["error"]) === "doors are closed" ? "The story isn't loaded yet — scan your badge again once the director opens the doors." : str(r.body["error"]) || CARD_UNKNOWN, 409);
   if (r.status < 200 || r.status >= 300) throw new RejoinError(str(r.body["error"]) || CARD_UNKNOWN, r.status);
   const token = str(r.body["token"]);
   const character = str(r.body["character"]);

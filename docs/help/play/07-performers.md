@@ -33,23 +33,25 @@ confronting a marked one.
 
 ## Signing in
 
-Scan your **cast card** with your phone's camera: it signs you straight
-in as your part (each card is one part's). Typing works too — pick
+Scan your **staff badge** with your phone's camera: it signs you straight
+in as your part (each badge is one part's). Do it from a phone that isn't
+signed in as a guest. Typing works too — pick
 **I'm a Performer**, enter the **performer passcode** from the host, and
 the story's **parts** appear — every character with something to do,
 with their pictures — tap yours. A part is one booth's: a greyed-out
 name is already taken by another performer. You now speak *as* that
 character everywhere.
 
-Phone died, or you need to swap to a loaner? **Scan your cast card with
-the new phone**: it takes your part back and signs the old phone out,
-and everything is where you left it. Without the card, ask a host or the
+Phone died, or you need to swap to a loaner? **Scan your badge with the
+new phone**: it takes your part back and signs the old phone out, and
+everything is where you left it. So keep it on you, QR side in: anyone who
+scans it can sign you out. Without the badge, ask a host or the
 director to **release** the part (a host's console → More → Performer
 parts → **⏏ Release**, or Run → the character's Inspector), then sign in
 with the passcode and tap your part again. A booth signed out this way
 (or by the show going live) says *"Your booth was signed out (your part
 signed in on another phone, a director released it, or the show went
-live) — sign in again with your passcode or your cast card."* A phone that wakes late
+live) — sign in again with your passcode or your badge."* A phone that wakes late
 in the night gets back every readout, every guest's message, your cast
 thread and every card still waiting; only the busy rooms are cut to
 their last few hundred lines.
@@ -355,7 +357,9 @@ program's card, marked or not, under *Marks or captures …: tap twice*.
 ## At the door
 
 When a program finishes uploading, every Antivirus booth hears it, and
-the four of you share the door. During the opening rush a **🚪 At the
+the four of you share the door. Scan their badge or the pass on their
+phone: either confirms them. A host's scan confirms them too; Clippy's only
+says hello. During the opening rush a **🚪 At the
 door** pop-out appears only if nobody has had them for a minute; later, a
 late arrival pops at once: *Winamp is waiting at the Optical Drive*, with
 how long, **🙋 I've got Winamp** (the others see you have them, and your

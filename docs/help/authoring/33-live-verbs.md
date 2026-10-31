@@ -332,6 +332,23 @@ director phone and a host booth's NEXT bar, never on a booth's card (a
 Interactions are listed in the Run cockpit's event picker too. An
 [`OBJECTIVE`](objectives.md) chooses which of them a phone leads with.
 
+### A printed sign: `qr:`
+
+A guest's button can have a QR on the wall. Add `qr:` with the line to print
+under its label, and Run → 🖨 Print sheet prints a sign for it:
+
+```
+INTERACTION go to the bathroom
+  label: 🚻 Bathroom Mode
+  who: guest
+  restricted: allow
+  qr: Scan on your way in. Tap Back from the bathroom in Start when you return.
+```
+
+Scanned with the app's 📷 or a phone's camera, it is the same press as the
+button, and its `reply` lands the same way. A locked phone can use it if the
+button says `restricted: allow`.
+
 ### Whose button, and when: `by:` and `while:`
 
 A show with many performer buttons can say whose each one is, and when

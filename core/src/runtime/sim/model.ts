@@ -500,6 +500,10 @@ export interface InteractionDef {
   /** `restricted: allow` — a guest's button that stays on while they are
    *  restricted (`restrict who`): Bathroom Mode and its Back. */
   allowRestricted: boolean;
+  /** `qr: <line>` (wave 54) — a guest's button with a printed sign: the Print
+   *  sheet and `/cards` carry a QR that presses it, with this line under the
+   *  label. Absent = no sign. */
+  qr?: string;
   /** `urgent: true` — an in-sequence admin cue the cue sheet suggests as
    *  NEXT ahead of the running order whenever its `while:` holds and it has
    *  not fired (🕊 while a stand-down waits for the director's sign-off).
@@ -907,6 +911,7 @@ export function compileModel(bundle: Bundle): SimModel {
               act: decl.interaction.properties.get("act")?.value.trim() || null,
               arm: decl.interaction.properties.get("arm")?.value.trim().toLowerCase() === "true",
               ...(decl.interaction.properties.get("urgent")?.value.trim().toLowerCase() === "true" ? { urgent: true as const } : {}),
+              ...(decl.interaction.properties.get("qr")?.value.trim() ? { qr: decl.interaction.properties.get("qr")!.value.trim() } : {}),
             });
           }
           break;

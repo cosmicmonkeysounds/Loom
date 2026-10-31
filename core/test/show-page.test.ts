@@ -152,7 +152,7 @@ describe("the show book", () => {
   it("names the owner of every class-owned beat", () => {
     expect(PAGE).not.toContain("(owned)");
     expect(PAGE).toContain('<span class="owner">owned by Clippy</span>');
-    expect(PAGE).toMatch(/TRAIT Enforcer: one copy each for [^<]+\(×4\)/u);
+    expect(PAGE).toMatch(/TRAIT Doorkeeper: one copy each for [^<]+\(×8\)/u);
   });
 
   it("is committed as a fresh build (show:page --check)", () => {

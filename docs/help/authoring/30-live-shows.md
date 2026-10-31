@@ -141,9 +141,9 @@ COHORT Early Arrivals
   *reserved*. Its name without the first word is held too (*Excel* for
   *Microsoft Excel*, *Paint* for *MS Paint*). Each reserved program has a secret **claim link**, the
   same across restarts and End → relaunch: Run → 🖨 Print sheet prints
-  one invitation per program, and an invitee who scans it gets their
+  one invited badge per program, and an invitee who scans it lands on their
   program (with the claim, registering its `wiki:` article makes them
-  that program too). For a lost invitation the invitation card's
+  that program too). For a lost one, the invited badge's
   **🔓 lost? open 2 min** opens it to anyone for two minutes. `reserved`
   is not a part: the program stays a guest's.
 - **Profile pictures** are hand-picked with `avatar:` — a link, or a

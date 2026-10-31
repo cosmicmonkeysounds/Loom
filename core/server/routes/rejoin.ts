@@ -16,6 +16,13 @@
 //!   person, codex, score; the old phone's tokens stay good (like N-02).
 //! - The badge is their pass: `/api/scan` and `/api/mod/scan` take a badge
 //!   (code or link) as `target` and resolve it to the Person.
+//! **Invited badges** (wave 54). Each reserved program has its own badge,
+//! printed with its name: `…/?code=<guest code>&claim=<token>&badge=<code>`,
+//! so the one QR opens the program to its invitee, links at join and is their
+//! pass at the door. Its number sits past the blank stack (`invitedBadge`), so
+//! no blank badge ever shares it. A blank link's code still works alone; a
+//! claim alone (an invitation handed out before wave 54) still joins.
+//!
 //! One badge per Person (linking another frees the first), one Person per
 //! badge. The links are persisted (`badges.json`, like the guest tokens —
 //! not journaled: a badge is not a story fact) and cut by every story
@@ -43,6 +50,11 @@
 //! `/api/prime/login {passcode, part}` signs in as that part and takes it
 //! from whichever booth held it (that booth is signed out, as by a
 //! director's ⏏ Release). The passcode picker still can't take a held part.
+//! Wave 54: the printed link carries the **guest** code (`…/?code=<guest
+//! code>&part=<code>`): a `rotate: "staff"` launch mints a new performer
+//! code, and a printed badge must outlive that. The login takes the guest
+//! code only beside a valid `part`; a link with the old performer code
+//! still works.
 
 import { randomBytes, randomUUID } from "node:crypto";
 import type { ServerResponse } from "node:http";
@@ -61,8 +73,10 @@ export const REJOIN_POLL_ROUTE = "/api/guest/rejoin/poll";
 export const REJOIN_DECIDE_ROUTE = "/api/mod/guest/rejoin";
 export const BADGES_ROUTE = "/api/mod/badges";
 
-/** The highest badge number the server recognises (and prints). */
+/** The highest blank badge number the server prints. */
 export const BADGE_MAX = 600;
+/** Numbers past the blank stack, one per reserved program (wave 54). */
+export const INVITED_BADGES = 40;
 /** Characters in a badge code (40 bits; wrong guesses are throttled). */
 export const BADGE_LENGTH = 8;
 /** How long a rejoin request waits for a host. */
@@ -73,6 +87,16 @@ export const REJOIN_MAX = 40;
 /** Badge `n`'s code. */
 export function badgeCode(secret: string, n: number): string {
   return secretCode(secret, `badge:${n}`, BADGE_LENGTH);
+}
+
+/** The number on the `i`th reserved program's badge. Never a blank's. */
+export function invitedBadge(i: number): number {
+  return BADGE_MAX + 1 + i;
+}
+
+/** The ref printed on the `i`th reserved program's badge. */
+export function invitedRef(i: number): string {
+  return `F${String(i + 1).padStart(2, "0")}`;
 }
 
 /** A part's cast-card code. */
@@ -125,7 +149,7 @@ export class BadgeBook {
   numberOf(code: string): number | null {
     if (this.codes === null) {
       this.codes = new Map();
-      for (let n = 1; n <= BADGE_MAX; n++) this.codes.set(badgeCode(this.secret(), n), n);
+      for (let n = 1; n <= BADGE_MAX + INVITED_BADGES; n++) this.codes.set(badgeCode(this.secret(), n), n);
     }
     const n = this.codes.get(code);
     return n !== undefined && codeEquals(code, badgeCode(this.secret(), n)) ? n : null;
@@ -361,7 +385,8 @@ export class Rejoin {
     return null;
   }
 
-  /** `POST /api/guest/enter {passcode, badge? | claim?}`. True on a wrong code. */
+  /** `POST /api/guest/enter {passcode, badge? , claim?}`: an invited badge
+   *  sends both. True on a wrong code. */
   private enter(res: ServerResponse, body: Record<string, unknown>): boolean {
     const shut = this.closed(res, body);
     if (shut !== null) return shut === "wrong";
@@ -373,7 +398,7 @@ export class Rejoin {
         sendJson(res, 404, { error: "that isn't one of tonight's badges" });
         return true;
       }
-      const id = this.holderOf(code!);
+      const id = this.holderOf(code!) ?? this.joinedWithoutBadge(n, str(body, "claim"));
       if (id === null) {
         sendJson(res, 200, { ok: true, resumed: false, badge: n } satisfies EnterAnswer);
         return false;
@@ -388,13 +413,28 @@ export class Rejoin {
         sendJson(res, 404, { error: "that invitation isn't one of tonight's" });
         return true;
       }
-      const hit = this.guests().find((g) => foldName(g.name) === foldName(character));
+      const hit = this.joinedAs(character);
       if (hit === undefined) sendJson(res, 200, { ok: true, resumed: false } satisfies EnterAnswer);
       else this.resume(res, hit.id);
       return false;
     }
     sendJson(res, 400, { error: "a badge or an invitation, please" });
     return false;
+  }
+
+  /** The joined guest playing `character`. */
+  private joinedAs(character: string): { id: string; name: string } | undefined {
+    return this.guests().find((g) => foldName(g.name) === foldName(character));
+  }
+
+  /** An invited badge `n`, unlinked, whose program joined by a bare
+   *  invitation: it links now and signs in as that guest. */
+  private joinedWithoutBadge(n: number, claim: string): string | null {
+    const character = claim === "" ? null : this.host.claimed(claim);
+    const hit = character === null ? undefined : this.joinedAs(character);
+    if (hit === undefined) return null;
+    this.link(n, hit.id);
+    return hit.id;
   }
 
   private resume(res: ServerResponse, id: string, badge?: number): void {

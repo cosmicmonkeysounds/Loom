@@ -164,11 +164,13 @@ World, Director, Mind and House close under a lens.
   rehearsal, *Go live with real guests*, the last run's Export, the
   scratch offer). While running: **Join** (codes, join URL, QR, one
   sign-in row per performer part, *New performer + moderator codes*), the
-  **🖨 Print sheet** (`run/PrintSheet.tsx` + `lib/print-sheet.ts`: join
-  poster, door sign, codex posters by stack, room check-in signs, cast
-  cards (each QR the part's own `castLinks` sign-in when the server sends
-  them), invitations, and blank ID badges from `/api/mod/badges` (3 × 4 in,
-  4-up, a count + first number to load); QRs drawn in the browser),
+  **🖨 Print sheet** (`run/PrintSheet.tsx` + `lib/print-sheet.ts`, wave 54,
+  Letter at 100%: 3 × 2 in staff, invited and blank badges and location cards
+  with the story's `qr:` signs, ten to a sheet; fact cards four to a row with a
+  count per stack; the join poster and door sign off until ticked. Sheets are
+  cut in `sheetsOf`, so a page holds exactly its cards, and a skipped card moves
+  to a screen-only tray; `printBaseProblem` goes red on a local address; QRs
+  drawn in the browser, keyed by link),
   **✉ Letters** (`LettersCard`, wave 41), **🎥 Video consent**
   (`VideoConsentCard` + pure `video-consent.ts`, wave 44: `GET
   /api/mod/video` every 10 s, the opted-out first with their pictures,

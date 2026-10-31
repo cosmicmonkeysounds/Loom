@@ -30,7 +30,7 @@ export interface CardItem {
 }
 
 export interface CardSection {
-  kind: "rooms" | "facts" | "join" | "invitations";
+  kind: "rooms" | "facts" | "join" | "signs" | "invitations";
   label: string;
   items: CardItem[];
 }
@@ -119,8 +119,10 @@ export async function buildCards(input: CardsInput): Promise<CardsResponse> {
 
   const join: CardItem[] = [{ ref: "join", title: "Scan to join", sub: "pick who you are", code: input.eventPass, url: extras.joinLink, svg: await qrSvg(extras.joinLink) }];
 
+  const signs: CardItem[] = await Promise.all(extras.actions.map(async (a) => ({ ref: `sign:${a.name}`, title: a.label, sub: a.line, url: a.url, svg: await qrSvg(a.url) })));
+
   const invitations: CardItem[] = await Promise.all(
-    input.claims.map(async (c) => ({ ref: `claim:${c.character}`, title: c.character, sub: "invitation · reserved program", url: c.url, svg: await qrSvg(c.url) })),
+    input.claims.map(async (c) => ({ ref: `claim:${c.character}`, title: c.character, sub: "invited badge · reserved program", url: c.url, svg: await qrSvg(c.url) })),
   );
 
   const sections: CardSection[] = [
@@ -128,6 +130,7 @@ export async function buildCards(input: CardsInput): Promise<CardsResponse> {
     { kind: "facts", label: "Facts", items: facts },
     { kind: "join", label: "Join", items: join },
   ];
+  if (signs.length > 0) sections.push({ kind: "signs", label: "Signs", items: signs });
   if (invitations.length > 0) sections.push({ kind: "invitations", label: "Invitations", items: invitations });
   return { title: input.title, eventPass: input.eventPass, sections };
 }

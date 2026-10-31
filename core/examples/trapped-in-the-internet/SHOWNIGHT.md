@@ -200,7 +200,9 @@ Quest APK). Verify what runs with
     patch-bay watch card, the emergency card, Excel's and OpenOffice's
     sheets, every featured card, the Bingo card, and Combo A's two codex
     halves (the bay's layout changed in wave 22, and Combo A with it).
-    Wave 23: the badges (Run → Print sheet → Badges) and the cast cards.
+    Wave 54: the badges (Run → Print sheet: a staff badge per part, an invited
+    badge per featured program, the numbered blanks), the location cards with
+    the 🚻 signs, and the fact cards. Print at 100%.
     Wave 26: Clippy, Task Manager, Norton, McAfee, Password Manager, CRA,
     the director, the Installation Wizard and Microsoft Excel
     (`SIGNOFF-w26.md`). The sign-off: Adobe Acrobat, the Recycling Bin,

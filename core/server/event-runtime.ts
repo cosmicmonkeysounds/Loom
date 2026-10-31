@@ -48,7 +48,6 @@ import {
   reservedDefFor,
   guestPickable,
   heldCharacters,
-  claimMatches,
   codeEquals,
   identityDefs,
   normalizeCode,
@@ -1242,11 +1241,7 @@ export class EventRuntime {
         this.persistGuests();
       },
       isPersona: (id) => this.personaOwners.has(id) || id.startsWith("p-"),
-      claimed: (claim) => {
-        const model = this.sim?.model ?? this.declaredModel;
-        if (model === null) return null;
-        return identityDefs(model).find((d) => d.reserved && claimMatches(this.claimSecret, d.name, claim))?.name ?? null;
-      },
+      claimed: (claim) => this.claims.characterOf(this.sim?.model ?? this.declaredModel, claim),
       saveBadges: (entries) => this.store.saveBadges(entries),
       linked: () => this.pushClientSnapshots(),
       changed: () => {
@@ -6252,7 +6247,10 @@ export class EventRuntime {
       // `doorsOpen: false` — before the director opens the doors there is
       // no cast to list yet: the join screen says so and polls.
       const claim = str(body, "claim").trim() || null;
-      sendJson(res, 200, { role, identities: this.identities(role, claim), search: role === "guest" && this.wiki !== null, doorsOpen: this.open });
+      // Wave 54: `invited` names the program a claim opens, so a printed
+      // badge lands on that program, not the picker.
+      const invited = role === "guest" ? this.claims.characterOf(this.sim?.model ?? null, claim) : null;
+      sendJson(res, 200, { role, identities: this.identities(role, claim), search: role === "guest" && this.wiki !== null, doorsOpen: this.open, ...(invited !== null ? { invited } : {}) });
       return true;
     }
     // A guest's search of the program directory: any software on Wikipedia
@@ -7093,7 +7091,10 @@ export class EventRuntime {
       case "/api/prime/login": {
         if (this.throttled(req, res)) return true;
         let character = str(body, "character");
-        if (!passOk(str(body, "passcode"), this.codes.prime)) {
+        // Wave 54: a printed staff badge carries the guest code (the performer
+        // code can rotate), which is good only beside a valid `part` below.
+        const part = normalizeCode(str(body, "part"));
+        if (!passOk(str(body, "passcode"), this.codes.prime) && !(part !== "" && passOk(str(body, "passcode"), this.codes.event))) {
           this.loginFailures.record(ipOf(req));
           sendJson(res, 403, { error: "bad passcode" });
           return true;
@@ -7109,7 +7110,6 @@ export class EventRuntime {
         }
         // Wave 23: a cast card's `part` code signs in as its part and takes
         // it from whichever booth held it (signed out, as by ⏏ Release).
-        const part = normalizeCode(str(body, "part"));
         if (part !== "") {
           const def = identityDefs(model).find((d) => codeEquals(part, partCode(this.claimSecret, d.name)));
           if (def === undefined) {
@@ -7961,9 +7961,9 @@ export class EventRuntime {
           // Wave 23: each part's own cast-card link (signs in as it, takes it back).
           castLinks: this.performerParts.map((character) => {
             const part = partCode(this.claimSecret, character);
-            return { character, part, url: partUrl(base, this.codes.prime, part) };
+            return { character, part, url: partUrl(base, this.codes.event, part) };
           }),
-          ...printExtras(this.sim?.model ?? null, base, this.codes.event, this.factsBook()?.raw ?? null),
+          ...printExtras(this.sim?.model ?? this.declaredModel ?? null, base, this.codes.event, this.factsBook()?.raw ?? null),
         });
         return true;
       }

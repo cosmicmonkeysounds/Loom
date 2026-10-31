@@ -20,13 +20,14 @@
 // Wave 26: the 📷 Scan sheet and its classifiers moved to
 // `guest-scan-sheet.tsx` (a lazy chunk); this file keeps the landing.
 
+import { actFromSearch } from "./act-link.ts";
 import { checkinFromSearch } from "./checkin.ts";
 import { unlockFromSearch } from "./codex.ts";
 
 // --- the wrong-browser landing ---------------------------------------------
 
 /** A codex / check-in link that opened with no session. */
-export type LandingLink = { kind: "unlock"; code: string } | { kind: "checkin"; at: string; room: string };
+export type LandingLink = { kind: "unlock"; code: string } | { kind: "checkin"; at: string; room: string } | { kind: "act" };
 
 /** The link a session-less page came in on (`?unlock=` wins), or null. */
 export function landingLink(search: string): LandingLink | null {
@@ -34,7 +35,7 @@ export function landingLink(search: string): LandingLink | null {
   if (code !== null) return { kind: "unlock", code };
   const at = checkinFromSearch(search);
   if (at !== null) return { kind: "checkin", at, room: roomFromSlug(at) };
-  return null;
+  return actFromSearch(search) !== null ? { kind: "act" } : null;
 }
 
 /** The computer words a room name spells in capitals (`the-cpu` is the
@@ -65,6 +66,7 @@ export function roomFromSlug(slug: string): string {
 
 /** What the landing says after a cut session: join again, the link waits. */
 export function rejoinLine(link: LandingLink): string {
+  if (link.kind === "act") return "Join again — this sign works once you're in.";
   return link.kind === "unlock" ? `Join again — ${link.code} goes into your Codex once you're in.` : `Join again — you'll be checked into ${link.room} once you're in.`;
 }
 
@@ -114,6 +116,8 @@ export function LinkLanding({ link, title, notice, onJoin, onPerformer }: { link
           </div>
           <p className="landing-say">{landingTypeLine(link.code)}</p>
         </>
+      ) : link.kind === "act" ? (
+        <p className="landing-say">You scanned a sign, but this browser isn't the one you joined in. Open the app you joined with, tap 📷 Scan and point it at this sign.</p>
       ) : (
         <>
           <p className="sub">You scanned the sign for</p>

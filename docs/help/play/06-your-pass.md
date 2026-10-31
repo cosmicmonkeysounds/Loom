@@ -43,7 +43,8 @@ Mission. At *Trapped in the Internet* one of them is **🚻 Bathroom
 Mode**: open Start and tap it before you step out so the Antivirus know
 you are not hacking the Internet, and tap **Back from the bathroom** (in
 Start, or on Mission) when you're back. It turns itself off after
-fifteen minutes; tap it again if you're still away. While it's on, a
+fifteen minutes; tap it again if you're still away. The **🚻** signs on
+the bathroom doors do the same: scan one on your way in. While it's on, a
 **🚻** sits beside your name everywhere people are listed (People,
 Who's here, your messages, the hosts' lists), so nobody goes looking for
 you. The guided tour points it out over Start when the story uses it.

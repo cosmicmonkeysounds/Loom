@@ -12,7 +12,7 @@ import { afterAll, describe, expect, it } from "vitest";
 
 import { EventRuntime } from "../server/event-runtime.ts";
 import { Store } from "../server/store.ts";
-import { BADGE_MAX, BadgeBook, REJOIN_MAX, REJOIN_TTL_MS, RejoinDesk, badgeCode, badgeFromText, partCode, printedCode } from "../server/routes/rejoin.ts";
+import { BADGE_MAX, BadgeBook, INVITED_BADGES, REJOIN_MAX, REJOIN_TTL_MS, RejoinDesk, badgeCode, badgeFromText, partCode, printedCode } from "../server/routes/rejoin.ts";
 
 const CODES = { event: "EVT523", prime: "PRM523", mod: "MOD523" };
 
@@ -22,6 +22,9 @@ start: Opening
 LOCATION Hall
 
 CHARACTER Microsoft Excel
+  reserved: true
+
+CHARACTER OpenOffice
   reserved: true
 
 CHARACTER Calculator
@@ -137,7 +140,8 @@ describe("codes", () => {
   it("the book knows only the badges it prints, and one badge per person", () => {
     const book = new BadgeBook(() => "s");
     expect(book.numberOf(badgeCode("s", 7))).toBe(7);
-    expect(book.numberOf(badgeCode("s", BADGE_MAX + 1))).toBeNull();
+    expect(book.numberOf(badgeCode("s", BADGE_MAX + 1))).toBe(BADGE_MAX + 1); // the first invited badge
+    expect(book.numberOf(badgeCode("s", BADGE_MAX + INVITED_BADGES + 1))).toBeNull();
     expect(book.numberOf(badgeCode("other", 7))).toBeNull();
     book.link(7, "g-1");
     book.link(8, "g-1");
@@ -299,7 +303,8 @@ describe("cast cards", () => {
     rt.openDoors();
     const codes = await mod(rt, "/api/mod/codes", {});
     const card = (codes.json.castLinks as Array<{ character: string; part: string; url: string }>).find((c) => c.character === "Clippy")!;
-    expect(card.url).toBe(`https://app.example.com/?code=PRM523&part=${card.part}`);
+    // Wave 54: the printed link carries the guest code, never the performer code.
+    expect(card.url).toBe(`https://app.example.com/?code=${CODES.event}&part=${card.part}`);
     const lost = await post(rt, "/api/prime/login", { passcode: CODES.prime, character: "Clippy" });
     expect(lost.status).toBe(200);
     // The picker still can't take it…
@@ -312,5 +317,73 @@ describe("cast cards", () => {
     expect((await get(rt, `role=prime&token=${back.json.token}`)).status).toBe(200);
     expect((await post(rt, "/api/prime/login", { passcode: CODES.prime, part: "nope" })).status).toBe(404);
     expect((await post(rt, "/api/prime/login", { passcode: "WRONG", part: card.part })).status).toBe(403);
+  });
+
+  it("a printed badge signs in on the guest code; the guest code alone never does", async () => {
+    const rt = runtimeAt(freshDir());
+    rt.openDoors();
+    const codes = await mod(rt, "/api/mod/codes", {});
+    const links = codes.json.castLinks as Array<{ character: string; part: string; url: string }>;
+    for (const who of ["Task Manager", "Clippy"]) {
+      const card = links.find((c) => c.character === who)!;
+      const r = await post(rt, "/api/prime/login", { passcode: CODES.event, part: card.part });
+      expect(r.status).toBe(200);
+      expect(r.json.character).toBe(who);
+    }
+    expect((await post(rt, "/api/prime/login", { passcode: CODES.event, character: "Clippy" })).status).toBe(403);
+    expect((await post(rt, "/api/prime/login", { passcode: CODES.event, part: "nope" })).status).toBe(404);
+    // The link a card printed before wave 54 carried still signs in.
+    const old = links.find((c) => c.character === "Clippy")!;
+    expect((await post(rt, "/api/prime/login", { passcode: CODES.prime, part: old.part })).status).toBe(200);
+  });
+});
+
+describe("invited badges", () => {
+  type Link = { character: string; claim: string; ref: string; code: string; url: string };
+  const invited = async (rt: EventRuntime, who: string): Promise<Link> => {
+    const links = (await mod(rt, "/api/mod/codes", {})).json.claims as Link[];
+    return links.find((l) => l.character === who)!;
+  };
+  const badgeOf = (l: Link) => new URL(l.url).searchParams.get("badge")!;
+
+  it("one QR per reserved program: open to its holder, its own number, never a blank's", async () => {
+    const rt = runtimeAt(freshDir());
+    rt.openDoors();
+    const links = (await mod(rt, "/api/mod/codes", {})).json.claims as Link[];
+    expect(links.map((l) => l.ref)).toEqual(links.map((_, i) => `F0${i + 1}`));
+    const blanks = ((await mod(rt, "/api/mod/badges", { from: 1, count: 600 })).json.badges as Array<{ code: string }>).map((b) => b.code);
+    for (const l of links) {
+      const url = new URL(l.url);
+      expect(url.searchParams.get("code")).toBe(CODES.event);
+      expect(url.searchParams.get("claim")).toBe(l.claim);
+      expect(blanks).not.toContain(l.code);
+    }
+    const ids = await post(rt, "/api/identities", { passcode: CODES.event, claim: links[0]!.claim });
+    expect(ids.json.invited).toBe(links[0]!.character);
+    expect((await post(rt, "/api/identities", { passcode: CODES.event })).json.invited).toBeUndefined();
+  });
+
+  it("joins as its program, links, and is that guest's pass at the door", async () => {
+    const rt = runtimeAt(freshDir());
+    rt.openDoors();
+    const l = await invited(rt, "Microsoft Excel");
+    const code = badgeOf(l);
+    expect((await post(rt, "/api/guest/enter", { passcode: CODES.event, badge: code, claim: l.claim })).json.resumed).toBe(false);
+    const g = await register(rt, "Microsoft Excel", { claim: l.claim, badge: code });
+    expect(typeof g.badge).toBe("number");
+    const back = await post(rt, "/api/guest/enter", { passcode: CODES.event, badge: code, claim: l.claim });
+    expect(back.json).toMatchObject({ resumed: true, id: g.id, name: "Microsoft Excel" });
+    const scan = await mod(rt, "/api/mod/scan", { as: "Task Manager", target: l.url });
+    expect(scan.json.guest.id).toBe(g.id);
+  });
+
+  it("a program that joined by a bare invitation takes up its badge at the first scan", async () => {
+    const rt = runtimeAt(freshDir());
+    rt.openDoors();
+    const l = await invited(rt, "OpenOffice");
+    const g = await register(rt, "OpenOffice", { claim: l.claim });
+    const r = await post(rt, "/api/guest/enter", { passcode: CODES.event, badge: badgeOf(l), claim: l.claim });
+    expect(r.json).toMatchObject({ resumed: true, id: g.id });
+    expect((await mod(rt, "/api/mod/scan", { as: "Task Manager", target: l.url })).json.guest.id).toBe(g.id);
   });
 });

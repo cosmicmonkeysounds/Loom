@@ -607,7 +607,7 @@ describe("Trapped in the Internet — the whole night", () => {
     expect(widgets(dep).some((w) => w.widget === "pass")).toBe(false);
     const typed = sim.signal("answer answered", "g1", { text: "my car keys", card: 1 });
     expect(v(sim, "g1.left_behind_text")).toBe("my car keys");
-    expect(widgets(typed).some((w) => w.widget === "pass" && (w.text ?? "").includes("Hold this up."))).toBe(true);
+    expect(widgets(typed).some((w) => w.widget === "pass" && (w.text ?? "").includes("Hold this up, or your badge."))).toBe(true);
     expect(texts(typed).some((t) => t.includes("my car keys"))).toBe(false);
     expect(sim.locationOf("g1")).toBe("The Optical Drive");
     // Task Manager runs the installation (the Uploader keeps the machine

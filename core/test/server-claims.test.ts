@@ -248,7 +248,7 @@ describe("reserved programs at the door (W-03)", () => {
     expect(claims.map((c) => c.character)).toEqual(["Microsoft Excel", "Runescape"]);
     for (const c of claims) {
       expect(c.claim).toBe(rt.claimFor(c.character));
-      expect(c.url).toBe(`http://party.test/?code=${CODES.event}&claim=${c.claim}`);
+      expect(c.url).toMatch(new RegExp(`^http://party\\.test/\\?code=${CODES.event}&claim=${c.claim}&badge=[0-9a-z]{8}$`));
     }
     rt.openDoors();
     expect(await claimsOf(rt)).toEqual(claims);
