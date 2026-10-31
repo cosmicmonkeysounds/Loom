@@ -177,6 +177,16 @@ describe("nobody's People list shows a director", () => {
     const hostPane = (await call(rt, "POST", "/api/mod/impersonate", { role: "prime", id: "Task Manager" }, { moderator: true, moderatorName: "John" })).json.token as string;
     expect((await stateOf(rt, `role=prime&token=${encodeURIComponent(hostPane)}`)).guests.map((g) => g.id)).toContain(persona);
   });
+
+  it("a host can still scan one: no list offers them, the pass in Run's pane still works", async () => {
+    const rt = rtAll();
+    rt.openDoors();
+    const persona = await personaOf(rt, "John Director");
+    const tm = (await booth(rt, "Task Manager")).json.token as string;
+    const scan = await post(rt, "/api/scan", { token: tm, target: persona });
+    expect(scan.status).toBe(200);
+    expect(JSON.stringify(scan.json)).toContain("John Director");
+  });
 });
 
 describe("the lists say who is online", () => {
