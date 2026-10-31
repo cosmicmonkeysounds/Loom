@@ -10,7 +10,7 @@ import {
   ENGINE_LABEL,
   CANCEL_HOLD_MS,
   CANCEL_SETTLE_MS,
-  START_TIMEOUT_MS,
+  DEAD_RETRY_MS, START_TIMEOUT_MS,
   LINE_GAP_MS,
   ServerEngine,
   SpeechQueue,
@@ -524,7 +524,7 @@ describe("BrowserEngine — a speak() that never starts", () => {
     expect(started).toHaveBeenCalledTimes(1);
   });
 
-  it("a write-off made after the tap holds until the next one", async () => {
+  it("a write-off made after the tap goes at the next one", async () => {
     ignoringSpeech();
     await unlock();
     const browser = new BrowserEngine({ voice: "", speed: 1 });
@@ -532,9 +532,21 @@ describe("BrowserEngine — a speak() that never starts", () => {
     await vi.advanceTimersByTimeAsync(START_TIMEOUT_MS);
     await played;
     expect(browser.dead).toBe(true);
-    await vi.advanceTimersByTimeAsync(60_000);
-    expect(browser.dead).toBe(true);
     await unlock();
+    expect(browser.dead).toBe(false);
+  });
+
+  it("a kiosk nobody taps tries the voice again: one slow speak() never costs it the night", async () => {
+    ignoringSpeech();
+    await unlock();
+    const browser = new BrowserEngine({ voice: "", speed: 1 });
+    const played = browser.play({ kind: "browser", text: "Hello." }, () => {});
+    await vi.advanceTimersByTimeAsync(START_TIMEOUT_MS);
+    await played;
+    expect(browser.dead).toBe(true);
+    await vi.advanceTimersByTimeAsync(DEAD_RETRY_MS - 1_000);
+    expect(browser.dead).toBe(true);
+    await vi.advanceTimersByTimeAsync(1_000);
     expect(browser.dead).toBe(false);
   });
 });

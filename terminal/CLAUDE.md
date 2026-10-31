@@ -322,6 +322,9 @@ terminal has four queues: the room terminal's (`app.tsx`), the TV's
 the tent laptop the mounted reinstall game adds its own
 (`reinstall/web/src/game/lines.ts`), on the same `VoiceFloor`.
 
+- **A write-off (`BrowserEngine.dead`).** A `speak()` that hasn't started in
+  `START_TIMEOUT_MS` writes the voice off, and the line goes silently. The next tap
+  clears it, and so does `DEAD_RETRY_MS` (15 s), because a kiosk gets no tap.
 - **Pauses (wave 26, V2).** `CHUNK_GAP_MS` (300) between two sentences of
   a line, `LINE_GAP_MS` (700) before the next line, never after the last;
   `stop()` cuts a pause short. `gapsFor(config)` scales both by
@@ -434,8 +437,8 @@ In a beat with a reader's lines and his, the server's `voice` block stops just
 before his next line until the teleprompter reaches it (`head` too, so the cursor
 stays behind it), with `voice.held`. The terminal knows nothing else about it: it is
 told the line when it may say it. While `held` a TV polls every `HELD_POLL_MS` (300).
-`said=` and `sp=` tell the server when to free the prompter, so a TV that reports them
-ends his line's lock early. A hold moves a mixed beat's lines off any picture cued
+`said=` and `sp=` tell the server when he has finished (`status.speaking`); his lines
+never lock or scroll the prompter. A hold moves a mixed beat's lines off any picture cued
 with the beat: `Ad Hijack`'s no longer play under the 8 s takeover.
 
 ### The door and the bay cut him off (wave 59)
