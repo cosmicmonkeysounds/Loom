@@ -2,8 +2,8 @@
 //! `/api/mod/badges` into what a director prints on Letter paper.
 //!
 //! **Badges** (3 × 2 in, 10 to a sheet) are one QR per person: a staff badge
-//! per performer part (`castLinks`: signs in as it and takes it back from a
-//! lost phone), an invited badge per reserved program (`claims`: the claim and
+//! per performer part (`castLinks`: signs in as it; a new phone is refused and
+//! asks a host), an invited badge per reserved program (`claims`: the claim and
 //! a badge in one link) and the numbered blank badges (`B001`…, for everyone
 //! else, with a write-in Program line). **Location cards** (3 × 2 in) are a
 //! check-in card per room and the signs the story's `qr:` lines ask for (the
@@ -127,6 +127,9 @@ export interface PrintItem {
 export const BADGE_KINDS: readonly PrintKind[] = [PrintKind.Cast, PrintKind.Invite, PrintKind.Badge]
 /** The location sheet's kinds, in print order. */
 export const LOCATION_KINDS: readonly PrintKind[] = [PrintKind.Room, PrintKind.Sign]
+/** The last line of every badge. One holder (wave 59): the card alone is
+ *  refused on a new phone, and a host moves it. `DRAFT w59` */
+export const LOST_PHONE = 'Lost your phone? Do it again, and a host can move you.'
 /** A 3 × 2 in card sheet: two across, five down. */
 export const SHEET_3X2 = 10
 /** A fact card sheet: four across, five down. */
@@ -286,14 +289,14 @@ export function buildPrintItems(codes: PrintCodes, opts: PrintOptions = {}): Pri
     }
   })
   // A staff badge is its performer's only: the QR or its code signs in as that
-  // part and takes it back from a lost phone, and it carries the guest code,
-  // so new performer + moderator codes leave it good.
+  // part (a lost phone's is refused and asks a host: one holder, wave 59), and
+  // it carries the guest code, so new performer + moderator codes leave it good.
   ;(codes.castLinks ?? []).forEach((c, i) =>
     items.push({
       ref: `P${pad(i + 1)}`,
       kind: PrintKind.Cast,
       title: c.character,
-      hint: 'Scan to sign in, or type the code on the join screen. Lost your phone? Do it again.',
+      hint: `Scan to sign in, or type the code on the join screen. ${LOST_PHONE}`,
       code: c.code ?? '',
       url: c.url,
       note: `signs in as ${c.character} — this performer's only`,
@@ -306,7 +309,7 @@ export function buildPrintItems(codes: PrintCodes, opts: PrintOptions = {}): Pri
       ref: c.ref,
       kind: PrintKind.Invite,
       title: c.character,
-      hint: 'Scan to start, or type the code on the join screen. Lost your phone? Do it again.',
+      hint: `Scan to start, or type the code on the join screen. ${LOST_PHONE}`,
       code: c.code,
       url: c.url,
       note: `invited badge — the QR claims ${c.character}`,
@@ -336,7 +339,7 @@ export function buildBadgeItems(badges: PrintBadge[]): PrintItem[] {
     ref: b.ref,
     kind: PrintKind.Badge,
     title: 'Program',
-    hint: 'Scan to start, or type the code on the join screen. Lost your phone? Do it again.',
+    hint: `Scan to start, or type the code on the join screen. ${LOST_PHONE}`,
     code: b.code,
     url: b.url,
     note: b.holder !== null ? `linked to ${b.name ?? b.holder}` : null,

@@ -3279,7 +3279,7 @@ export class EventRuntime {
       ceremony: word("Night.ceremony") === "true",
       step: num("Night.step"),
       speaking: tvTalking || saidBy(recent.filter((m) => m.channel === `loc:${TALK_ROOM}` && m.kind === "line" && typeof m.beat === "string"), STAGE_CHARS_PER_S) > storyMs,
-      prompter: this.prompters.reading(),
+      prompter: this.prompters.inUse,
       lights: word("Night.lights"),
       alarm: word("Night.alarm_on") === "true",
       roomOut: (num("Night.lights_back_at") ?? 0) > 0,
@@ -7777,7 +7777,8 @@ export class EventRuntime {
 
       // --- performer (prime) login: grants the `character` capability ---
       case "/api/prime/login": {
-        if (this.throttled(req, res)) return true;
+        // A staff badge at a lockout is a printed card, not a guess (routes/rejoin.ts).
+        if (this.throttled(req, res, normalizeCode(str(body, "part")) !== "" && this.rejoin.passesLockout(path, body))) return true;
         let character = str(body, "character");
         // Wave 54: a printed staff badge carries the guest code (the performer
         // code can rotate), which is good only beside a valid `part` below.

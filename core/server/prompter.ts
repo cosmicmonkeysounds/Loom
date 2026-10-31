@@ -399,16 +399,6 @@ export class Prompters {
     };
   }
 
-  /** Is a scene being read? A line of his waiting or saying, or someone at the
-   *  script: a finger on it, an autoscroll, a move in the last `DRIVE_TTL_MS`. A
-   *  reader who never pressed ✓ Done leaves `active` on until the next marked
-   *  beat, an hour off, so whatever must not cut across a read asks this. */
-  reading(): boolean {
-    const s = this.live;
-    if (s === null) return false;
-    return this.isHeld(s) || s.speaking !== null || s.holder !== null || s.rate > 0 || this.deps.now() - s.at <= DRIVE_TTL_MS;
-  }
-
   /** ▶ from a host, a director or Run: every line of his left plays, in
    *  order. The prompter carries on with no holds. Null: nothing was held. */
   release(): boolean {
@@ -446,6 +436,17 @@ export class Prompters {
 
   get active(): boolean {
     return this.live !== null;
+  }
+
+  /** Is anyone on the scene? His lines waiting or going, a finger on it, or a
+   *  phone showing it. A live scene needn't be: a beat nobody opened, or one
+   *  whose reader's phone died, stays live for the hosts until ✓ Done, a newer
+   *  scene or a restart, and nobody is reading it. */
+  get inUse(): boolean {
+    const s = this.live;
+    if (s === null) return false;
+    const now = this.deps.now();
+    return this.isHeld(s) || s.speaking !== null || s.holder !== null || [...s.here.values()].some((h) => now - h.at <= HERE_TTL_MS);
   }
 
   /**

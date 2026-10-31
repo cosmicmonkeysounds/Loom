@@ -58,6 +58,78 @@ function rig(messages: readonly ChatMessage[], o: { online?: boolean; takes?: ()
   };
 }
 
+describe("whether anyone is on a scene (wave 59, the costume reads this)", () => {
+  const scene = [clippy(1), him(2), clippy(3)];
+
+  it("nobody, when no reader was online: the scene is live and refuses nothing", () => {
+    const r = rig(scene, { online: false });
+    expect(r.p.status()).not.toBeNull();
+    expect(r.p.inUse).toBe(false);
+  });
+
+  it("nobody, once a reader who was online never came", () => {
+    const r = rig(scene);
+    expect(r.p.inUse).toBe(true);
+    r.to(HOLD_WAIT_MS + 1);
+    expect(r.p.status()?.held).toBe(false);
+    expect(r.p.inUse).toBe(false);
+  });
+
+  it("someone, for as long as a phone shows it, and nobody once it stops", () => {
+    const r = rig(scene);
+    for (let i = 0; i < 10; i++) {
+      r.here();
+      r.to(HERE_TTL_MS - 1);
+      expect(r.p.inUse).toBe(true);
+    }
+    r.to(2);
+    expect(r.p.status()).not.toBeNull();
+    expect(r.p.inUse).toBe(false);
+  });
+
+  it("a reader still on it after ▶, with nothing left to hold", () => {
+    const r = rig(scene);
+    r.here();
+    expect(r.p.release()).toBe(true);
+    expect(r.p.status()?.held).toBe(false);
+    expect(r.p.inUse).toBe(true);
+  });
+
+  it("his lines, past a reader who left, and not after them", () => {
+    const long = "and on he goes ".repeat(20).trim();
+    const r = rig([clippy(1), him(2, long), clippy(3)]);
+    r.voice.live = false;
+    r.here();
+    r.p.op(r.id, "@Clippy", false, { op: "jump", pos: 4 });
+    expect(r.last().speaking).not.toBeNull();
+    r.to(HERE_TTL_MS + 1);
+    expect(r.p.status()?.speaking).toBe(true);
+    expect(r.p.inUse).toBe(true);
+    r.to(spokenMs(long));
+    expect(r.p.status()?.speaking).toBe(false);
+    expect(r.p.inUse).toBe(false);
+  });
+
+  it("a finger on it, only until that phone stops reporting", () => {
+    const r = rig([clippy(1)], { online: false });
+    r.p.op(r.id, "@Clippy", false, { op: "press" });
+    expect(r.p.inUse).toBe(true);
+    r.to(HOLDER_TTL_MS + 1);
+    r.to(HERE_TTL_MS);
+    expect(r.p.inUse).toBe(false);
+  });
+
+  it("no scene at all, and a newer one nobody came to", () => {
+    const r = rig(scene);
+    r.here();
+    r.p.land(sceneOf([clippy(9, "a newer one")], CTX));
+    expect(r.p.status()?.id).toBe(10);
+    expect(r.p.inUse).toBe(false);
+    r.p.done();
+    expect(r.p.inUse).toBe(false);
+  });
+});
+
 describe("the scene (wave 59)", () => {
   it("drops a section with no reader's line, so a ceremony he hosted just plays", () => {
     const m = [him(1), row(2, "Trabolta", "more", { beat: "C", aloud: { readers: ["@Clippy"] } }), clippy(3)];
@@ -510,41 +582,6 @@ describe("a scene's end", () => {
     r.p.op(r.id, "@Clippy", false, { op: "done" });
     expect(r.closed).toEqual([true]);
     expect(r.p.active).toBe(false);
-  });
-});
-
-describe("reading() (what must not cut across a read asks this)", () => {
-  it("goes quiet on a reader who never pressed ✓ Done, with the scene still up", () => {
-    const r = rig([clippy(1)]);
-    r.here();
-    expect(r.p.reading()).toBe(true);
-    r.to(DRIVE_TTL_MS + 1);
-    r.here();
-    expect(r.p.active).toBe(true);
-    expect(r.p.reading()).toBe(false);
-    r.p.op(r.id, "@Clippy", false, { op: "jump", pos: 1 });
-    expect(r.p.reading()).toBe(true);
-  });
-
-  it("stays on through a held line, his lines and a finger or an autoscroll", () => {
-    const held = rig([clippy(1), him(2)]);
-    for (let t = 0; t <= DRIVE_TTL_MS; t += HERE_TTL_MS / 2) {
-      held.to(HERE_TTL_MS / 2);
-      held.here();
-    }
-    expect(held.p.reading()).toBe(true);
-
-    const finger = rig([clippy(1, "one two three four five six seven eight nine ten")]);
-    finger.here();
-    finger.p.op(finger.id, "@Clippy", false, { op: "press", pos: 0 });
-    finger.p.op(finger.id, "@Clippy", false, { op: "play", on: true, speed: 0.4 });
-    expect(finger.p.reading()).toBe(true);
-  });
-
-  it("is false with no scene", () => {
-    const r = rig([clippy(1)]);
-    r.p.clear();
-    expect(r.p.reading()).toBe(false);
   });
 });
 

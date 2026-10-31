@@ -77,7 +77,7 @@ Found on the way. Each is built as it says, and yours to overrule.
 | N-8 | A performer's chat room list still shows the crew label | Left: performers need the real room | |
 | N-9 | `/cards` has no blank badges (600 of them) | The Print sheet has them | |
 | N-10 | `README.md`, `DESIGN.md` and `OCT31.md` quote codex codes in old rows | Added none. The old rows are still against your rule | Say the word and they go |
-| N-52 | Two of this wave's commit messages hold a secret's words: `c9bdc576` spells F2's answer, as three of wave 58's do (`SIGNOFF-w58.md`, N-59), and `aa53f7d9` names a sign whose words are also a codex code. F2's word also sat in `docs/trapped/costume.md` and `core/CLAUDE.md` | Taken out of the two docs. The commits are left: `c9bdc576` is on the integrate branch too, so rewording means rewriting those | Against your rule. If it matters, reword before the merge |
+| N-52 | Two of this wave's commit messages hold a secret's words: `c9bdc576` spells F2's answer, as three of wave 58's do (`SIGNOFF-w58.md`, N-59), and `aa53f7d9` names a sign whose words are also a codex code. F2's word also sat in `docs/trapped/costume.md` and `core/CLAUDE.md` | Taken out of the two docs. The commits are left: `c9bdc576` is on the integrate branch too, so rewording means rewriting those | Against your rule. Left in the history |
 
 ### One holder
 
@@ -89,7 +89,7 @@ Found on the way. Each is built as it says, and yours to overrule.
 | N-14 | A camera that opens a second browser | That browser is refused and told to go back to the first. If a host approves while it waits, it takes over and the first is signed out | Proved with two browser contexts, not a real camera handoff |
 | N-15 | A guest's released program stays taken on the picker, because the Person still exists | Reachable by their badge, invitation, Ask a host or a re-pair. A released part goes free | |
 | N-16 | A join screen still holding a released Person's badge, picking someone else | It signs in as the badge's Person, so a card can never make a second Person | |
-| N-17 | During a lockout, a right part or claim passes and a wrong one doesn't (on `oct31-w59/integrate`, merged after this) | That reads differently, which a guesser with the guest code could notice. The codes are 50 bits, so we judged it harmless | |
+| N-17 | During a lockout, a right part or claim passes and a wrong one doesn't | That reads differently, which a guesser with the guest code could notice. The codes are 50 bits, so we judged it harmless | |
 | N-18 | A stale row can sit on Needs for up to 10 minutes after a phone reloads while waiting | Approving it changes nothing | |
 | N-19 | A page left open on the old bundle reads a held badge as *The doors aren't open yet* | Until it reloads | |
 
@@ -237,7 +237,7 @@ Only the words we changed.
 - The push title *📜 You have a line* (`core/server/push.ts:290`)
 - `# hosts`: *🤖 A new beat cut Clippy off: press 🤖 on her last line* (`core/server/event-runtime.ts:358`)
 - *Nobody online.* (`play/src/booth/people.tsx:46`); *Offline ({n})*, *Nobody online.*, *Nobody online matches "…".* (`play/src/host/tab-people.tsx:32`, `:38`)
-- *🔁 1 wants back in* and *🔁 {n} want back in* (`play/src/host/show-model.ts` `asksLine`, on `oct31-w59/integrate`, merged after this)
+- *🔁 1 wants back in* and *🔁 {n} want back in* (`play/src/host/show-model.ts` `asksLine`)
 
 The refused screen and its neighbours carry no marker, because they are app words, not show text:
 
@@ -255,7 +255,7 @@ The refused screen and its neighbours carry no marker, because they are app word
 
 - A location card: *Scan to enter this room. No camera? Type the code in 📷 Scan.* (`editor/src/lib/print-sheet.ts`)
 - A staff badge: *Scan to sign in, or type the code on the join screen.* An invited or blank badge: *Scan to start, or type the code on the join screen.*
-- On every badge: *Lost your phone? Do it again, and a host can move you.* (`LOST_PHONE`, on `oct31-w59/integrate`, merged after this. This branch still reads *Lost your phone? Do it again.*, which is wrong under one holder, so **don't print before the merge**.)
+- On every badge: *Lost your phone? Do it again, and a host can move you.* (`LOST_PHONE`)
 
 ### 4.10 What only the crew reads
 
@@ -359,15 +359,12 @@ preview, before the doors. The owed checks of waves 53–58 still stand on their
     --battery`. No model has seen them. Read `SIGNOFF-w58.md` §5, check 6, first.
 16. **The in-world door signs in the house:** a guest finds each room from its sign alone.
 17. **Fullscreen** on a real Android phone. Driven in Chromium as a Pixel 7 and on a laptop only.
-18. **What was not run on the merged tree:** `predeploy.sh`, the Postgres-gated core tests (26
-    skipped on a dead database), and the merged branch with integrate's last fixes.
+18. **What was not run on the merged tree:** `predeploy.sh` and the Postgres-gated core tests.
 
 ## 6. What's owed in print
 
 **Settle, ship, sync, print, lock.** `SHOWNIGHT.md` §1, step 9.
 
-- **Print only after integrate's fixes are merged:** the badges' lost-phone line (§4.9) is on
-  that branch.
 - **10 location cards, not 11.** The two renamed rooms have new links and text codes, and The
   Tube has no card.
 - **Then the lock:** `pnpm --filter @loom/core titi:qr-lock`, and commit `qr-lock.json`.
@@ -387,7 +384,7 @@ preview, before the doors. The owed checks of waves 53–58 still stand on their
 
 ## 7. Ship order
 
-`SHOWNIGHT.md` §1, *Landing wave 58 and wave 59*. In short: integrate's fixes merged → the
+`SHOWNIGHT.md` §1, *Landing wave 58 and wave 59*. In short: the
 answers → `predeploy.sh --vr` → the roster, in its own step → `ship.sh` → the 10:00 sync, with
 `--replace-maps` → the worker, `git pull` and restart together, then Mind → Reset → reload every
 phone, terminal, the TV, the tablets, the tent and any open Run tab before 17:00 → the Quest's

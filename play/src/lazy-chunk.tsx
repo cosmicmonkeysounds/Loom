@@ -18,6 +18,20 @@ export function retryImport<T>(load: () => Promise<T>, wait = RETRY_MS, sleep: (
   return () => load().catch(() => sleep(wait).then(load));
 }
 
+/** What a chunk loaded by hand threw (`chunkOrDown`). The browser's own error
+ *  names the asset's full URL, and no guest should read that. */
+export class ChunkDown extends Error {}
+
+/** `retryImport` for a chunk with no boundary round it: its caller's catch tells
+ *  a chunk that won't load (`ChunkDown`, `ChunkFailed`'s job) from a refusal. */
+export function chunkOrDown<T>(load: () => Promise<T>, wait = RETRY_MS, sleep?: (ms: number) => Promise<void>): () => Promise<T> {
+  const fetched = retryImport(load, wait, sleep);
+  return () =>
+    fetched().catch(() => {
+      throw new ChunkDown("a chunk didn't load");
+    });
+}
+
 /**
  * A `React.lazy` part that can be asked for again: a rejected lazy keeps its
  * rejection for good, so "Try again" needs a fresh one (`again()`).
@@ -52,7 +66,7 @@ export class ChunkBoundary extends Component<Props, { failed: boolean }> {
 }
 
 /** The full-page fallback when a whole app (the booth, the cue sheet) would not load. */
-export function ChunkFailed({ what, onBack }: { what: string; onBack?: () => void }) {
+export function ChunkFailed({ what, onBack, onReload }: { what: string; onBack?: () => void; onReload?: () => void }) {
   return (
     <div className="root">
       <div className="hero" role="alert">
@@ -60,7 +74,7 @@ export function ChunkFailed({ what, onBack }: { what: string; onBack?: () => voi
           📡
         </div>
         <p className="sub">{what} didn't load — the connection dropped, or the show was just updated.</p>
-        <button type="button" className="choice primary" onClick={() => window.location.reload()}>
+        <button type="button" className="choice primary" onClick={onReload ?? (() => window.location.reload())}>
           Reload
         </button>
         {onBack !== undefined && (

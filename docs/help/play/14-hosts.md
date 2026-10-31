@@ -154,7 +154,8 @@ the rest.
 - **Cue sheet** — a filter box and every cue by act, NEXT highlighted,
   fired cues dimmed: fire one out of order from here (same ARM → FIRE).
 - **Needs you (n)** — what is waiting on a host. At the very top, a guest
-  asking to get back in from a new phone: **🔁 WinZip wants back in**.
+  asking to get back in from a new phone: **🔁 WinZip wants back in**. While
+  one waits, a line above NEXT (**🔁 1 wants back in**) takes you here.
   Check it's really them (their face, their badge or pass), then tap
   **✅ Let them in** (their phone signs straight in as their program) or
   **✋ Not them** ([Getting back in](getting-back-in.md)). Then, while programs are

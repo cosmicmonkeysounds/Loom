@@ -12,13 +12,6 @@ order games, terminals, booth, costume, claims, qr, prompter, with wave 58's sto
 merged into `oct31-w59/story`. Not shipped. Nothing here has met a real phone, printer,
 camera, tablet, iPad, Quest, TV or voice.
 
-**Not on `oct31-w59/story` yet:** `oct31-w59/integrate`'s seam fixes after `987a47ab`
-(head `ed1e6c54`). The docs describe the night with them in. They bring the badges'
-lost-phone line, a real part or claim passing a lockout, the *🔁 n want back in* line
-above NEXT, the failed-chunk screen and Reload keeping the card. `42cf784c`
-(`Prompters.inUse`) and this branch's `7592e3f0` (`Prompters.reading`) fix the same
-costume refusal two ways, so that merge has to pick one (see *The costume* below).
-
 ## The shape of it
 
 | Lane | What changed | Lives in | Reaches the show by |
@@ -42,14 +35,12 @@ costume refusal two ways, so that merge has to pick one (see *The costume* below
   `Rejoin.passesLockout` lets the guest code with a real badge, a real part or claim, or
   a name past a lockout, and any poll or cancel, so Ask a host always works. A guessed
   part or claim, a wrong event code and the crew's codes stay locked out.
-- **The costume reads the shared prompter,** never a guess at a beat's length: a press is
-  refused while a scene is being read. Which reader decides that is the open merge:
-  `Prompters.reading` on this branch asks whether his lines are waiting or going, a
-  finger is down, autoscroll runs or someone moved it in the last 20 s; `Prompters.inUse`
-  on `oct31-w59/integrate` asks the same first three, or whether a phone shows it within
-  12 s, so a reader sitting on an open pop-up keeps refusing. A reader who never presses
-  ✓ Done was the fault both set out to fix, and `reading` covers that case and `inUse`
-  only until their phone closes.
+- **The costume reads the shared prompter,** never a guess at a beat's length:
+  `Prompters.inUse` refuses a press while his lines are waiting or going, a finger is
+  down, or a phone shows the scene (within 12 s). A slow reader keeps it refused however
+  long they take. A scene nobody opened refuses nothing once its lines are said, and a
+  dead phone frees it in 12 s. The other reader, a press freed 20 s after the last move,
+  is gone: it let a press cut across a reader who had simply stopped to speak.
 - **A story restart frees guests and leaves booths.** Only Go live frees every part, or
   a sync's reload would sign all eight staff phones out (`SIGNOFF-w59.md`, D-1).
 - **A printed name is a contract.** Rooms, signs, parts, reserved programs and codex
@@ -62,25 +53,24 @@ costume refusal two ways, so that merge has to pick one (see *The costume* below
 
 One release and one sync with wave 58: `SHOWNIGHT.md` §1, *Landing wave 58 and wave 59*.
 
-1. Merge `oct31-w59/integrate`'s fixes into the story, settling `reading` against `inUse`.
-2. H1–H3's answers in `facts.json`, `titi:facts`, commit (wave 58).
-3. `scripts/ops/predeploy.sh --vr`, and push: `ship.sh` needs the commit on origin.
-4. The preview's roster, in its own step. If anyone is on, ask first.
-5. `LOOM_VPS=loom-vps scripts/ops/ship.sh show-1031`, then `/api/health` and
+1. H1–H3's answers in `facts.json`, `titi:facts`, commit (wave 58).
+2. `scripts/ops/predeploy.sh --vr`, and push: `ship.sh` needs the commit on origin.
+3. The preview's roster, in its own step. If anyone is on, ask first.
+4. `LOOM_VPS=loom-vps scripts/ops/ship.sh show-1031`, then `/api/health` and
    `deploy/release.sh --check-env`. Stop if it fails.
-6. The morning reset: ⏸ Pause, Download JSON any map edits, `pnpm sync-show
+5. The morning reset: ⏸ Pause, Download JSON any map edits, `pnpm sync-show
    --replace-maps` with its reload, Push draft, Go live in place. Any later sync is plain.
-7. The MacBook: `git pull`, `launchd restart --job agents`, Run → Mind → Reset.
-8. Reload every phone, terminal, the TV, the tablets, the tent, the web game and any open
+6. The MacBook: `git pull`, `launchd restart --job agents`, Run → Mind → Reset.
+7. Reload every phone, terminal, the TV, the tablets, the tent, the web game and any open
    Run tab, before the booths sign in at 17:00.
-9. The Quest: re-export and sideload on every headset. A new APK on an older server resets
+8. The Quest: re-export and sideload on every headset. A new APK on an older server resets
    the player but not Gerald.
-10. The iPad, early: `docs/trapped/costume.md`. At the first sign of trouble, the relay.
-11. The print: settle, ship, sync, print. Then `pnpm --filter @loom/core titi:qr-lock`, and
+9. The iPad, early: `docs/trapped/costume.md`. At the first sign of trouble, the relay.
+10. The print: settle, ship, sync, print. Then `pnpm --filter @loom/core titi:qr-lock`, and
     commit `qr-lock.json`.
-12. Reprint `clippy`, `crew/director`, `crew/second-director`, `crew/house-manager`,
+11. Reprint `clippy`, `crew/director`, `crew/second-director`, `crew/house-manager`,
     `crew/tech-operator` and `all-crew`.
-13. Rehearse the checks on `SIGNOFF-w59.md` §5, scratch server first, then the preview.
+12. Rehearse the checks on `SIGNOFF-w59.md` §5, scratch server first, then the preview.
 
 The Desktop needs nothing new from this wave.
 

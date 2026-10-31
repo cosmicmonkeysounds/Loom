@@ -513,9 +513,10 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   A Home Screen nonce (K-31b, off by default) is the one sign-in that adds a
   token: the same phone. The house is one IP, so a wrong badge at `enter` or
   `rejoin` counts against nobody, and `Rejoin.passesLockout` lets the guest code
-  with a badge or a name, and any poll or cancel, past a lockout; a wrong part or
-  claim still counts and stays behind it (`routes/rejoin.ts` header). Tests:
-  `test/w59-claims.test.ts`.
+  with a badge, a name, or a real part or claim (a staff or invited badge; 50
+  bits, so right and wrong may read apart), and any poll or cancel, past a
+  lockout; a wrong part or claim still counts and stays behind it
+  (`routes/rejoin.ts` header). Tests: `test/w59-claims.test.ts`.
 - **Text codes and in-world names** (wave 59, `routes/printed.ts`, `routes/k12.ts`).
   Every printed QR has a text code: the guest code, a badge's, a staff badge's
   (the part code, printed: wave 54's "no typed code" is overruled), `R-` + four
@@ -611,9 +612,9 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   `sceneFinished`: the end of `Clippy On Trabolta` fires `introduce_trabolta` through
   `deskFire` unless he is already in (the contract's C11). Paused doors answer false, so
   nothing is used up, and a ✓ Done behind them goes in `openDoors`. A newer scene over
-  hers is `superseded`: one alert in `# hosts`, and 🤖 from there. `reading()`, not `status()`,
-  is what must not cut across a read asks: a scene nobody has touched in
-  `DRIVE_TTL_MS` stays up but isn't being read.
+  hers is `superseded`: one alert in `# hosts`, and 🤖 from there. `inUse`, not `status()`,
+  is what must not cut across a read asks: a scene nobody opened, or one whose
+  reader's phone died, stays up but nobody is on it.
   Tests: `test/w59-prompter.test.ts`, `test/w59-prompter-server.test.ts`.
 - **His voice** (wave 56, [`docs/loom-w56-contract.md`](../docs/loom-w56-contract.md)).
   `src/voice-fx.ts` (`@loom/core/voice-fx`, pure) decides how broken Trabolta
@@ -648,7 +649,10 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   committed, so the story's own `ad_burst` refusals never reach `# hosts`. The
   night's end is `Night.step` 16 on (the reveal, the bobbing, the prom and the
   advice poll all play with `Night.ended` false; `step` is what a story edit must
-  keep). A scene being read on the shared prompter (`Prompters.reading`) refuses a press.
+  keep). A press is refused while anyone is on the shared prompter
+  (`Prompters.inUse`: a phone showing the scene, a finger on it, his lines waiting
+  or going), never by the scene alone: a beat nobody opened, or one whose reader's
+  phone died, stays live until a ✓ Done, a newer scene or a restart.
   MUSIC is refused while anyone else's hand is on the soundtrack
   (`AudioHub.musicHand`: the last scene or stop's `by`, memory only, corrected by
   the router's `hand`), and AFTER PARTY's timed return stands down then too. Every

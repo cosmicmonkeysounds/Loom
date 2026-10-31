@@ -8,7 +8,8 @@
 //! drawer's own tabs (`tab-*.tsx`), unchanged, on the same console
 //! (`HostConsole` in `dock.tsx`): an arm made here fires from the slim bar.
 //! Wave 32: while a talk scene is on, the 🤖 Talk card (`talk.tsx`) sits
-//! between NEXT and the status line. The rules are `show-model.ts`.
+//! between NEXT and the status line. Wave 59: while an ask waits, one line
+//! above NEXT jumps to *Needs you*. The rules are `show-model.ts`.
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { CLOCK_HELD, NOTHING_TO_PRESS, STORY_RUNS, countdownText } from "../director.tsx";
@@ -16,7 +17,7 @@ import { clockText, showClockOf, useShowClock } from "../show-clock.ts";
 import { useHostConsole, type HostConsoleState } from "./dock.tsx";
 import { HostContext, HostEmpty } from "./kit.tsx";
 import { cueThen, onlineCount } from "./model.ts";
-import { comingUp, nightStrip, sectionHead, sectionOpen, showClockChip, showSections, type ShowSectionId, type ShowSectionInfo } from "./show-model.ts";
+import { asksLine, comingUp, nightStrip, sectionHead, sectionOpen, showClockChip, showSections, type ShowSectionId, type ShowSectionInfo } from "./show-model.ts";
 import { CueSheet, LastBox, NextBox, WhoIsCalling } from "./tab-cues.tsx";
 import { JudgeTab } from "./tab-judge.tsx";
 import { MoreTab } from "./tab-more.tsx";
@@ -82,6 +83,7 @@ function ShowBody({ c, jobs, jobCount = 0, openGuests, openPrompter }: HostShowP
   const bar = c.bar!;
   const line2 = c.line2!;
   const coming = comingUp(c.rows, c.layout, view.countdowns, c.nowMs);
+  const asks = asksLine(view.rejoins?.length ?? 0);
   const body = (id: ShowSectionId): ReactNode => {
     switch (id) {
       case "jobs":
@@ -121,6 +123,11 @@ function ShowBody({ c, jobs, jobCount = 0, openGuests, openPrompter }: HostShowP
           ))}
         </div>
         {c.ctx?.callers === true && <WhoIsCalling />}
+        {asks !== null && (
+          <button type="button" className="w95-btn host-show-asks" data-testid="host-show-asks" onClick={() => c.ctx?.go("needs")}>
+            {asks}
+          </button>
+        )}
         {bar.kind === "next" ? (
           <NextBox big row={bar.row} desk={c.desk} stale={c.stale} again={bar.again} then={cueThen(c.rows, view.cues)} />
         ) : (
