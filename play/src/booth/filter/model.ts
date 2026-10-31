@@ -18,7 +18,7 @@ import type { ReactNode } from "react";
 import type { StartItem } from "../../chrome/start-menu.tsx";
 import type { SessionStorage } from "../../host.ts";
 import type { PopQuotePart } from "../../moments/popout-model.ts";
-import type { CensorResult, FilterCombo, FilterLine, FilterTier, FilterView, PrimeActResult, PrimeView } from "../../types.ts";
+import type { CensorResult, FilterCombo, FilterLine, FilterView, PrimeActResult, PrimeView } from "../../types.ts";
 import type { Draft } from "../popouts/model.ts";
 
 // DRAFT w48: every word the filter shows is here (SIGNOFF-w48.md); the
