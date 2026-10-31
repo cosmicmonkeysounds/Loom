@@ -19,6 +19,7 @@
 //! amber ? for inputs between levels, red fault, amber *buttons* while the
 //! story follows the 🔌 buttons: `patchBadges`).
 
+import { VOICE_FLAVOURS, VOICE_FLAVOUR_LABEL, VOICE_FX_MODES, type VoiceFxMode } from '@loom/core/voice-fx'
 import clsx from 'clsx'
 import { CockpitTab, useCockpit } from '@/store/cockpit'
 import { useTerminals } from '@/store/terminals'
@@ -49,6 +50,45 @@ export function TerminalsPill() {
   )
 }
 
+const VOICE_FX_LABEL: Record<VoiceFxMode, string> = { auto: 'Auto', clean: 'Clean', broken: 'Broken' }
+
+/** Wave 56: how broken his voice is. Auto follows the night; Clean is the kill
+ *  switch; a flavour breaks his next lines in that way, in any mode. */
+function VoiceFxRow({ mode }: { mode: VoiceFxMode }) {
+  const setVoiceFx = useTerminals((s) => s.setVoiceFx)
+  const fireVoiceShot = useTerminals((s) => s.fireVoiceShot)
+  return (
+    <div className="mb-2 rounded border border-zinc-800 px-2 py-1" data-testid="run-terminals-voicefx">
+      <div className="flex flex-wrap items-center gap-1">
+        <span className="mr-1 text-[11px] text-zinc-400" title="Trabolta's voice comes apart towards the end of the night and in the major glitches. It follows the story by itself.">
+          🌀 His voice
+        </span>
+        {VOICE_FX_MODES.map((m) => (
+          <button
+            key={m}
+            onClick={() => void setVoiceFx(m)}
+            aria-pressed={mode === m}
+            className={clsx('rounded border px-2 py-0.5 text-[11px]', mode === m ? 'border-emerald-700 bg-emerald-950/40 text-emerald-200' : 'border-zinc-700 text-zinc-300 hover:bg-zinc-900')}
+            data-testid={`run-terminals-voicefx-${m}`}
+          >
+            {VOICE_FX_LABEL[m]}
+          </button>
+        ))}
+      </div>
+      <details className="mt-1">
+        <summary className="cursor-pointer text-[11px] text-zinc-500">Fire a flavour (8 s, on his next words)</summary>
+        <div className="mt-1 flex flex-wrap gap-1">
+          {VOICE_FLAVOURS.map((f) => (
+            <button key={f} onClick={() => void fireVoiceShot(f)} className="rounded border border-zinc-700 px-2 py-0.5 text-[11px] text-zinc-300 hover:bg-zinc-900" data-testid={`run-terminals-voicefx-shot-${f}`}>
+              {VOICE_FLAVOUR_LABEL[f]}
+            </button>
+          ))}
+        </div>
+      </details>
+    </div>
+  )
+}
+
 export function TerminalsCard() {
   const rows = useTerminals((s) => s.rows)
   const reachable = useTerminals((s) => s.reachable)
@@ -58,6 +98,7 @@ export function TerminalsCard() {
   const forget = useTerminals((s) => s.forget)
   const setVoiceMuted = useTerminals((s) => s.setVoiceMuted)
   const muteError = useTerminals((s) => s.muteError)
+  const voiceFx = useTerminals((s) => s.voiceFx)
   const identify = useTerminals((s) => s.identify)
   const identifyError = useTerminals((s) => s.identifyError)
   const map = useTerminals((s) => s.map)
@@ -91,6 +132,7 @@ export function TerminalsCard() {
           </button>
         )}
       </div>
+      {voiceFx !== null && (hasTv || voiceFx !== 'auto') && <VoiceFxRow mode={voiceFx} />}
       {muteError !== null && (
         <p className="mb-2 rounded bg-amber-950/60 px-2 py-1 text-xs text-amber-200" data-testid="run-terminals-mute-error">
           {muteError}

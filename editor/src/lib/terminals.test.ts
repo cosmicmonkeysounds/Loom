@@ -225,9 +225,10 @@ describe('the chime rules', () => {
 
 const terminals = vi.fn<(id: string) => Promise<ScreenTerminals>>()
 const setVoiceMuted = vi.fn(async (_id: string, muted: boolean) => ({ muted }))
+const setVoiceFx = vi.fn(async (_id: string, body: { fx?: string; shot?: string }) => ({ fx: body.fx ?? 'auto' }))
 const identify = vi.fn(async (_id: string, name: string) => ({ name, until: 0 }))
 const chime = vi.fn()
-vi.mock('@/lib/api', () => ({ screensApi: { terminals: (id: string) => terminals(id), setVoiceMuted: (id: string, m: boolean) => setVoiceMuted(id, m), identify: (id: string, n: string) => identify(id, n) } }))
+vi.mock('@/lib/api', () => ({ screensApi: { terminals: (id: string) => terminals(id), setVoiceMuted: (id: string, m: boolean) => setVoiceMuted(id, m), setVoiceFx: (id: string, b: { fx?: string; shot?: string }) => setVoiceFx(id, b), identify: (id: string, n: string) => identify(id, n) } }))
 vi.mock('@/lib/chime', () => ({ playChime: () => chime() }))
 
 const mem = new Map<string, string>()
@@ -294,6 +295,18 @@ describe('useTerminals', () => {
     expect(useTerminals.getState().muteError).toMatch(/unmute the TV voice: 403/)
     await useTerminals.getState().setVoiceMuted(false)
     expect(useTerminals.getState().muteError).toBeNull()
+
+    // Wave 56: his voice's mode and a shot go the same way.
+    await useTerminals.getState().setVoiceFx('clean')
+    expect(setVoiceFx).toHaveBeenCalledWith('evt', { fx: 'clean' })
+    expect(useTerminals.getState().voiceFx).toBe('clean')
+    await useTerminals.getState().fireVoiceShot('kernel')
+    expect(setVoiceFx).toHaveBeenCalledWith('evt', { shot: 'kernel' })
+    expect(useTerminals.getState().voiceFx).toBe('clean') // a shot moves no mode
+    setVoiceFx.mockRejectedValueOnce(new Error('403 moderators only'))
+    await expect(useTerminals.getState().setVoiceFx('auto')).resolves.toBeUndefined()
+    expect(useTerminals.getState().voiceFx).toBe('clean')
+    expect(useTerminals.getState().muteError).toMatch(/his voice: 403/)
   })
 
   it('identify asks the server for that terminal; a failure is said on the card, never thrown', async () => {

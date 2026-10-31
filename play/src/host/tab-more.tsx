@@ -14,7 +14,7 @@ import { PassQr } from "../pass-qr.tsx";
 import { Sheet } from "../ui/primitives.tsx";
 import type { HostView } from "../types.ts";
 import { joinLink, type HostCodes } from "./api.ts";
-import { ALERT_LADDER, MORE_TABS, optimisticValue, tvVoiceLabel, type Optimistic, agentQueue, agentSection, agentThread, agoText, kingHpInput, levelLabel, moreDefaultTab, moreGroups, presenceText, releasable, showControl, stimulusInput, threadLine, waitingFor, type MoreFocus, type MoreTabId } from "./model.ts";
+import { ALERT_LADDER, MORE_TABS, nextVoiceFx, optimisticValue, tvVoiceLabel, voiceFxLabel, type Optimistic, type VoiceFxMode, agentQueue, agentSection, agentThread, agoText, kingHpInput, levelLabel, moreDefaultTab, moreGroups, presenceText, releasable, showControl, stimulusInput, threadLine, waitingFor, type MoreFocus, type MoreTabId } from "./model.ts";
 import { STOP_SOUNDS_LABEL, STOP_WITH_ANNOUNCE_LABEL, stopSoundsLine, type StopAnswer } from "../house-sound.ts";
 import { ActButton, ConfirmButton, HostEmpty, HostSection, failText, useHost, useRevealed } from "./kit.tsx";
 import { clockText, setToFields, setToTime, showClockOf, useShowClock } from "../show-clock.ts";
@@ -361,6 +361,12 @@ function Terminals({ terminals }: { terminals: NonNullable<HostView["terminals"]
     if (flipped !== null && terminals.voiceMuted === flipped.value) setFlipped(null);
   }, [terminals.voiceMuted, flipped]);
   const muted = optimisticValue(terminals.voiceMuted, flipped, Math.max(now, Date.now()));
+  // Wave 56: his voice's mode turns the same way.
+  const [fxTurned, setFxTurned] = useState<Optimistic<VoiceFxMode | null> | null>(null);
+  useEffect(() => {
+    if (fxTurned !== null && terminals.voiceFx === fxTurned.value) setFxTurned(null);
+  }, [terminals.voiceFx, fxTurned]);
+  const fx = optimisticValue(terminals.voiceFx ?? null, fxTurned, Math.max(now, Date.now()));
   return (
     <HostSection id="terminals" title="📟 Terminals" aside={`${terminals.rows.length - silent}/${terminals.rows.length} live`}>
       {terminals.rows.length === 0 ? (
@@ -393,6 +399,17 @@ function Terminals({ terminals }: { terminals: NonNullable<HostView["terminals"]
           if (await run(want ? "🔇 TV voice muted" : "🔊 TV voice on", () => calls.tvMute(want))) setFlipped({ value: want, at: Date.now() });
         }}
       />
+      {fx !== null && (
+        <ActButton
+          className="host-toggle"
+          pressed={fx !== "auto"}
+          label={voiceFxLabel(fx)}
+          onClick={async () => {
+            const want = nextVoiceFx(fx);
+            if (await run(voiceFxLabel(want), () => calls.voiceFx(want))) setFxTurned({ value: want, at: Date.now() });
+          }}
+        />
+      )}
     </HostSection>
   );
 }

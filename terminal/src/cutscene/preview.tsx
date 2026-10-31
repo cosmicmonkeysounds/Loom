@@ -32,6 +32,7 @@
 //! bars, a tie for the most, a wave 48 server's report, an older server's no
 //! report; `fake.ts` `fakeLanguage`).
 
+import { VoiceBench } from "../speech/VoiceBench.tsx";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "./kit/kit.css";
 import "./cutscene.css";
@@ -103,6 +104,7 @@ export function Preview() {
   const q = new URLSearchParams(window.location.search);
   const id = q.get("preview") ?? "list";
   if (id === "list") return <PreviewList />;
+  if (id === "voice") return <VoiceBench />;
   if (id === "glitch") return <PreviewGlitch q={q} />;
   if (id === "dream") return <PreviewDream q={q} />;
   if (id === "burst") return <PreviewBurst q={q} />;

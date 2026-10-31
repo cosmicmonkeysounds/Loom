@@ -5,6 +5,7 @@
 //! `GET /e/:id/api/mod/screen/terminals` every `TERMINALS_POLL_MS`; the
 //! rules live in the pure `lib/terminals.ts`.
 
+import type { VoiceFlavour, VoiceFxMode } from '@loom/core/voice-fx'
 import { create } from 'zustand'
 import { mapApi, screensApi } from '@/lib/api'
 import { playChime } from '@/lib/chime'
@@ -31,6 +32,8 @@ interface TerminalsState {
   voiceMuted: boolean | null
   /** Why the last TV-mute flip failed (offline, a 403), shown on the card; null = fine. */
   muteError: string | null
+  /** (wave 56) The director's mode for his voice (null = not known, or an older server). */
+  voiceFx: VoiceFxMode | null
   /** (wave 20) The screen state's `night.door_override`: the story follows
    *  the 🚪 buttons, not the sensor. Read only while a terminal reports a door
    *  sensor (false otherwise, and until the first read). */
@@ -56,6 +59,10 @@ interface TerminalsState {
   forget: (name: string) => void
   /** Flip the TV-voice mute. Never rejects: a failure lands in `muteError`. */
   setVoiceMuted: (muted: boolean) => Promise<void>
+  /** (wave 56) His voice's mode. Never rejects: a failure lands in `muteError`. */
+  setVoiceFx: (mode: VoiceFxMode) => Promise<void>
+  /** (wave 56) Break his voice in one flavour, now. */
+  fireVoiceShot: (flavour: VoiceFlavour) => Promise<void>
   /** Why the last identify failed; null = fine. */
   identifyError: string | null
   /** Ask one terminal to show its name (SW-SCR-21). Never rejects: a failure lands in `identifyError`. */
@@ -105,6 +112,7 @@ export const useTerminals = create<TerminalsState>((set, get) => ({
   rows: [],
   voiceMuted: null,
   muteError: null,
+  voiceFx: null,
   identifyError: null,
   reachable: true,
   acked: new Set(),
@@ -120,7 +128,7 @@ export const useTerminals = create<TerminalsState>((set, get) => ({
     memory = eventId === null ? {} : load(eventId)
     lastChime = 0
     ticks = 0
-    set({ eventId, rows: mergeTerminals(memory, null, Date.now()).rows, voiceMuted: null, muteError: null, identifyError: null, reachable: true, acked: new Set(), map: null, mapRooms: [], doorOverride: false, patchOverride: false })
+    set({ eventId, rows: mergeTerminals(memory, null, Date.now()).rows, voiceMuted: null, muteError: null, voiceFx: null, identifyError: null, reachable: true, acked: new Set(), map: null, mapRooms: [], doorOverride: false, patchOverride: false })
     if (eventId === null) return
     timer = setInterval(() => void get().tick(), TERMINALS_POLL_MS)
     void get().tick()
@@ -165,6 +173,28 @@ export const useTerminals = create<TerminalsState>((set, get) => ({
     }
   },
 
+  setVoiceFx: async (mode) => {
+    const { eventId } = get()
+    if (eventId === null) return
+    try {
+      const r = await screensApi.setVoiceFx(eventId, { fx: mode })
+      if (get().eventId === eventId) set({ voiceFx: r.fx, muteError: null })
+    } catch (e) {
+      if (get().eventId === eventId) set({ muteError: `Couldn’t change his voice: ${e instanceof Error ? e.message : String(e)}` })
+    }
+  },
+
+  fireVoiceShot: async (flavour) => {
+    const { eventId } = get()
+    if (eventId === null) return
+    try {
+      await screensApi.setVoiceFx(eventId, { shot: flavour })
+      if (get().eventId === eventId) set({ muteError: null })
+    } catch (e) {
+      if (get().eventId === eventId) set({ muteError: `Couldn’t break his voice: ${e instanceof Error ? e.message : String(e)}` })
+    }
+  },
+
   identify: async (name) => {
     const { eventId } = get()
     if (eventId === null) return
@@ -200,7 +230,7 @@ export const useTerminals = create<TerminalsState>((set, get) => ({
       lastChime = now
       playChime()
     }
-    set({ rows, acked, reachable: server !== null, ...(server !== null ? { voiceMuted: server.voiceMuted } : {}) })
+    set({ rows, acked, reachable: server !== null, ...(server !== null ? { voiceMuted: server.voiceMuted, voiceFx: server.voiceFx ?? null } : {}) })
     // Wave 20: the 🚪 override rides the screen state, read only while some
     // terminal bridges the door sensor (no sensor, no badge to colour).
     // Wave 22: the 🔌 override rides the same read.

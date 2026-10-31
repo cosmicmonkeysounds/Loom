@@ -6,6 +6,7 @@
 //! carry the session cookie (`credentials: "include"`); in dev the Vite proxy
 //! makes these same-origin so the cookie flows.
 
+import type { VoiceFlavour, VoiceFxMode } from '@loom/core/voice-fx'
 import type { PrintBadges, PrintCodes } from './print-sheet'
 import type { AgentControl, AgentMindSummary, AgentThought, GuestView, PrimeView, WalletModView } from '@loom/core/views'
 import type { ScreenTerminals } from '@/lib/terminals'
@@ -502,6 +503,10 @@ export const screensApi = {
   /** Mute / unmute the TV's room voice (K-18); every TV reads it off its next poll. */
   async setVoiceMuted(eventId: string, muted: boolean): Promise<{ muted: boolean }> {
     return await req<{ muted: boolean }>('POST', `/e/${eventId}/api/mod/screen/voice`, { muted })
+  },
+  /** (wave 56) His voice: the director's mode, or one flavour now. */
+  async setVoiceFx(eventId: string, body: { fx?: VoiceFxMode; shot?: VoiceFlavour }): Promise<{ fx: VoiceFxMode }> {
+    return await req<{ fx: VoiceFxMode }>('POST', `/e/${eventId}/api/mod/screen/voice`, body)
   },
   /** The lean screen state every terminal polls (`GET /api/screen/state`, no
    *  terminal name, so this read never shows up on the heartbeat card). Raw:
