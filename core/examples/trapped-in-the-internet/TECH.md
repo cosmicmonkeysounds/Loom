@@ -176,7 +176,7 @@ following it: avoid them.
 |---|---|
 | Any wall spot | `https://app.mapsandducks.com/terminal/?code=<mod>&spot=<spot>` |
 | TV (Desktop) | `…/terminal/?code=<mod>&spot=desktop-tv` (once, via `.\scripts\house-desktop\tv-kiosk.ps1 -Setup`) |
-| Server room (Steph's laptop) | `…/terminal/?code=<mod>&spot=server-room&door=serial&camera=user` |
+| Server room (Steph's laptop) | `…/terminal/?code=<mod>&spot=server-room&door=serial&camera=user&webcam=C310&pad=1&whisper=1&crt=1` (once, via `.\scripts\server-room\start-terminal.ps1 -Setup`) |
 | Server Door | `…/terminal/?code=<mod>&spot=server-room-door` |
 | Casino | `…/terminal/?code=<mod>&spot=graphics-card` |
 | Tent (old laptop) | `…/terminal/?code=<mod>&spot=tent&announce=1` (never add `&view=reinstall`) |

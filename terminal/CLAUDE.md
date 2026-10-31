@@ -462,7 +462,9 @@ the line at *not yet* and *leave*.
   access grant, and CORS is whisper-server's own `*`. The server's
   `TERMINAL_CSP` adds that one origin to `connect-src` (`WHISPER_ORIGIN`,
   pinned to `WHISPER_URL` by `test/w52-rig.test.ts`). Vite sends no CSP, so a
-  local test can't show this: check a change here on a served build.
+  local test can't show this: check a change here on a served build. A local
+  origin can't show the device grant either: Chrome asks only a public page
+  (`scripts/server-room/start-terminal.ps1 -Setup`).
 - **Local tests.** Vite against a scratch server, `door=sim`:
   `LOOM_SERVER=http://127.0.0.1:7391 pnpm --filter loom-terminal dev`. Vite's
   watcher misses rapid writes in the OneDrive folder on Steph's laptop: if a
