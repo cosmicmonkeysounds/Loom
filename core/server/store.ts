@@ -173,6 +173,11 @@ export class Store {
     return join(this.dir, name);
   }
 
+  /** A folder of its own beside this store's files (wave 59p: a test's photos). */
+  folder(name: string): string {
+    return this.path(name);
+  }
+
   // --- passcodes ----------------------------------------------------------
 
   loadCodes(): Partial<Passcodes> | null {

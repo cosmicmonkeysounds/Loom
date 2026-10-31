@@ -247,6 +247,7 @@ const defaultEvent = registry.register(
   new EventRuntime({
     eventId: "default",
     store,
+    photosDir: join(STATE_DIR, "photos", "default"),
     codes: PASS,
     scenarioName: "trapped-in-the-internet",
     scenarioSource: DEFAULT_SCENARIO,

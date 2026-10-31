@@ -135,6 +135,7 @@ export class EventRegistry {
     const runtime = new EventRuntime({
       eventId: spec.eventId,
       store: new Store(join(this.stateDir, spec.eventId)),
+      photosDir: join(this.stateDir, "photos", spec.eventId),
       codes: spec.codes,
       scenarioName: spec.scenarioName,
       scenarioSource: spec.scenarioSource,

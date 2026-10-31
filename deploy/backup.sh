@@ -3,7 +3,9 @@
 #   loom-db-<label>-<UTC stamp>.sql.gz     pg_dump of accounts/projects/events
 #   loom-state-<label>-<UTC stamp>.tgz     the /data volume (journals,
 #                                          guests.json tokens, codes, sessions,
-#                                          spatial-house.json, pictures/)
+#                                          spatial-house.json, pictures/; never
+#                                          photos/, the terminals' stills: Run's
+#                                          ⬇ Download all is how they leave)
 # plus a .sha256 for the pair, in ~/loom-backups (LOOM_BACKUP_DIR).
 #
 #   deploy/backup.sh [--label nightly|show|pre-release|…] [--keep-days 14]
@@ -34,12 +36,12 @@ main() {
   done
   [[ "$label" =~ ^[a-z0-9-]+$ ]] || die "bad label '$label'"
   mkdir -p "$LOOM_BACKUP_DIR"
-  local ts db st sha excl=()
+  local ts db st sha excl=(--exclude=./photos)
   ts="$(stamp)"
   db="loom-db-$label-$ts.sql.gz"
   st="loom-state-$label-$ts.tgz"
   sha="loom-$label-$ts.sha256"
-  [ "$label" = show ] && excl=(--exclude=./pictures)
+  [ "$label" = show ] && excl+=(--exclude=./pictures)
 
   cd "$LOOM_BACKUP_DIR"
   # Write to .part names and rename, so the puller never copies a half file.

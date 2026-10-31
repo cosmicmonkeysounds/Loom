@@ -91,6 +91,7 @@
 
 import { isVoiceFlavour, isVoiceFxMode, voiceFxOf, type VoiceFlavour, type VoiceFx, type VoiceFxMode, type VoiceShot } from "../../src/voice-fx.ts";
 import { isLinkError, type LinkError } from "../../src/link-health.ts";
+import { isPhotoReport, type PhotoReport } from "../../src/photos.ts";
 import type { CamRate } from "../spatial-cams.ts";
 import type { ShowClock } from "../../src/show-clock.ts";
 import type { IncomingMessage, ServerResponse } from "node:http";
@@ -965,6 +966,8 @@ export interface ScreenPollExtras {
   language?: () => { words: ReadonlyArray<{ word: string; n: number }>; unsaid: number; level: number; stars: number };
   /** (wave 59) The first line of `channel` the teleprompter holds back. */
   voiceHeldFrom?: (channel: string) => number | null;
+  /** (wave 59p) Should the terminal at this spot take stills now? Never the tent's or the TV's. */
+  photosFor?: (spot: string) => boolean;
 }
 
 /** A filing's public outcome on a screen: `a` accepted (an accurate filing
@@ -1124,6 +1127,8 @@ export interface ScreenDevice {
   simDrawn?: number;
   /** (wave 59) `ce=`: the last thing that went wrong with that link, for a minute. */
   linkError?: LinkError;
+  /** (wave 59p) `ph=`: while the photos are armed, how this terminal's are going. */
+  photo?: PhotoReport;
 }
 
 /** (wave 26) How long a TV's `sp=` report stays `tvSpeech` without a newer poll. */
@@ -1213,6 +1218,8 @@ export function screenDeviceOf(q: (k: string) => string): ScreenDevice {
   if (cd !== null) d.simDrawn = cd;
   const ce = q("ce");
   if (isLinkError(ce)) d.linkError = ce;
+  const ph = q("ph");
+  if (isPhotoReport(ph)) d.photo = ph;
   return d;
 }
 
@@ -1246,6 +1253,8 @@ export interface ScreenCharacter {
 }
 
 export interface ScreenState {
+  /** (wave 59p) Take stills: told only to a terminal that may, and only while armed. The arm, never a picture. */
+  photos?: true;
   /** Server epoch ms. */
   now: number;
   night: ScreenNight;
@@ -1987,6 +1996,7 @@ export class ScreenWatch {
       ...(spot !== undefined ? { spot } : {}),
       tvSpeech,
       dream: this.dreamOf(sim),
+      ...(extras.photosFor?.(who.spot) === true ? { photos: true as const } : {}),
     };
   }
 }

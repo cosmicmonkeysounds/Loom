@@ -25,7 +25,8 @@
     "./talk-back": "./src/talk-back.ts",
     "./credits": "./src/credits.ts",
     "./voice-fx": "./src/voice-fx.ts",
-    "./link-health": "./src/link-health.ts"
+    "./link-health": "./src/link-health.ts",
+    "./photos": "./src/photos.ts"
   },
   "scripts": {
     "test": "vitest run",

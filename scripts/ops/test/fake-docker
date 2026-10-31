@@ -21,6 +21,7 @@ case "$all" in
     printf -- '--\n-- PostgreSQL database dump\n--\nCREATE TABLE x();\n' ;;
   compose*"exec -T loom tar czf - -C /data"*)
     excl=""; case "$all" in *"--exclude=./pictures"*) excl="--exclude=./pictures" ;; esac
+    case "$all" in *"--exclude=./photos"*) excl="$excl --exclude=./photos" ;; esac
     tar cf - -C "$FAKE/data" $excl . | gzip -c ;;
   compose*"exec -T db pg_isready"*) exit 0 ;;
   compose*"exec -T loom node -e"*"/api/health"*) echo "${FAKE_HEALTH_BODY:-200 {\"ok\":true}}" ;;
