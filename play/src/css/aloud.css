@@ -131,6 +131,8 @@
 .aloud-sheet-list > button.now { background: #3a3936; }
 .aloud-sheet-list strong { font-size: 18px; color: var(--white); }
 .aloud-sheet-list em { font-size: 12px; font-style: normal; color: var(--highlight); }
+/* Wave 59: lines a newer scene took off the prompter. Their own scroll, away from the shared position. */
+.aloud-sheet-text { flex: 1; overflow-y: auto; overscroll-behavior: contain; padding: 14px 14px var(--safe-bottom); line-height: 1.28; }
 .aloud-plain b { font-size: 22px; color: var(--highlight); }
 .aloud-plain { display: flex; flex-direction: column; gap: 10px; padding: calc(12px + var(--safe-top)) 14px calc(12px + var(--safe-bottom)); }
 .aloud-plain-text { flex: 1; overflow-y: auto; font-size: 26px; line-height: 1.3; }

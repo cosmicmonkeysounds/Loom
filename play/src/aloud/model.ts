@@ -56,6 +56,22 @@ export function unreadLines(script: readonly ScriptSection[], mark: number): Scr
   return script.flatMap((s) => s.lines.filter((l) => l.mine && l.seq > mark));
 }
 
+/** Wave 59: what a scene starting at `first` left off this phone: the sections
+ *  behind it with a line of this reader's still unread, from the mark on. */
+export function linesBehind(script: readonly ScriptSection[], mark: number, first: number): ScriptSection[] {
+  return script.flatMap((s) => {
+    const lines = s.lines.filter((l) => l.seq > mark && l.seq < first);
+    return lines.some((l) => l.mine) ? [{ title: s.title, lines }] : [];
+  });
+}
+
+/** Wave 59: where the mark goes once a scene starting at `first` was read as far
+ *  as `reached`. It is one number, so it stays put while a line behind the scene
+ *  is unread: those lines come back, and never go with the ones on top of them. */
+export function markPast(script: readonly ScriptSection[], mark: number, first: number, reached: number): number {
+  return linesBehind(script, mark, first).length > 0 ? mark : Math.max(mark, reached);
+}
+
 export function lastSeq(script: readonly ScriptSection[]): number {
   const lines = script[script.length - 1]?.lines ?? [];
   return lines[lines.length - 1]?.seq ?? 0;

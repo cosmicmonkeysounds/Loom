@@ -10,7 +10,7 @@ import type { StartItem } from "../chrome/start-menu.tsx";
 import type { SessionStorage } from "../host.ts";
 import { ChunkBoundary, retryableLazy } from "../lazy-chunk.tsx";
 import type { ChatMessage } from "../types.ts";
-import { lastSeq, markFloor, scriptOf, unreadLines, type ScriptSection } from "./model.ts";
+import { lastSeq, linesBehind, markFloor, markPast, scriptOf, unreadLines, type ScriptSection } from "./model.ts";
 import type { PrompterProps } from "./prompter.tsx";
 import { PrompterStore, sceneRole, sceneScript, type PrompterPost } from "./shared.ts";
 
@@ -40,6 +40,10 @@ export interface Aloud {
   /** Wave 59: someone else's script has a line of yours: a small card, not the phone. */
   card: boolean;
   dropCard: () => void;
+  /** Wave 59: this reader's lines a newer scene took off the phone, unread. */
+  behind: ScriptSection[];
+  /** They read those. */
+  readBehind: () => void;
   /** The last line read. */
   mark: number;
   /** This reader's lines past the mark. */
@@ -88,6 +92,8 @@ export function useAloud(o: { messages: ReadonlyMap<number, ChatMessage>; me: st
     return role !== null && sc !== null && me !== null && o.post !== undefined ? { id: sceneId, store, me, post: o.post, role, script: sceneScript(sc, me) } : null;
   }, [sceneId, role, me, o.post, store]);
   const covering = open || unread > 0;
+  const sceneFirst = shared?.script[0]?.lines[0]?.seq ?? 0;
+  const behind = shared !== null ? linesBehind(script, mark, sceneFirst) : [];
   // Wave 59: a phone showing the script says so, or his lines don't wait for it.
   const post = useRef(o.post);
   post.current = o.post;
@@ -104,28 +110,31 @@ export function useAloud(o: { messages: ReadonlyMap<number, ChatMessage>; me: st
       document.removeEventListener("visibilitychange", beat);
     };
   }, [sceneId, covering, open]);
-  // A scene someone ended is read: its pop-up goes on every phone in it.
+  // A scene someone ended is read: its pop-up goes on every phone in it. One a
+  // newer scene took over is read as far as a prompter open here had got to.
   const [cardGone, setCardGone] = useState(0);
   const lastEnded = useRef<number | null>(null);
   useEffect(() => {
     const e = store.ended;
-    if (sceneId !== 0 || e === null || lastEnded.current === e.id) return;
+    if (e === null || lastEnded.current === e.id) return;
     lastEnded.current = e.id;
-    if (!e.superseded && script.length > 0) keep(last);
+    if (script.length > 0 && (!e.superseded || open)) keep(markPast(script, mark, e.first, e.superseded ? e.reached : last));
     // Forgotten by a restart, a reader carries on with their own script.
-    if (!e.superseded || script.length === 0) setOpen(false);
+    if (sceneId === 0 && (!e.superseded || script.length === 0)) setOpen(false);
   }, [sceneId]);
   return {
     script,
     shared,
     card: shared?.role === "owner" && cardGone !== sceneId,
     dropCard: () => setCardGone(sceneId),
+    behind,
+    readBehind: () => keep(lastSeq(behind)),
     mark,
     unread,
     open,
     setOpen,
     done: () => {
-      if (script.length > 0) keep(last);
+      if (script.length > 0) keep(markPast(script, mark, sceneFirst, last));
       setOpen(false);
       setCardGone(sceneId);
       if (shared !== null) void shared.post({ scene: shared.id, op: "done" }).catch(() => {});

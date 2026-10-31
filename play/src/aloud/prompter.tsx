@@ -164,6 +164,7 @@ export function Prompter({ a, storage, sound }: PrompterProps) {
   const [scrub, setScrub] = useState<number | null>(null);
   const [backTo, setBackTo] = useState<number | null>(null);
   const [armed, setArmed] = useState(false);
+  const [earlier, setEarlier] = useState(false);
   const seen = useRef(lines.length);
 
   const setSpeed = (n: number) => {
@@ -394,6 +395,7 @@ export function Prompter({ a, storage, sound }: PrompterProps) {
     else setArmed(true);
   };
   const preview = scrub !== null ? lines[scrub] : undefined;
+  const behind = a.behind.reduce((n, s) => n + s.lines.filter((l) => l.mine).length, 0);
 
   return (
     <div className="aloud-prompter" role="dialog" aria-label="Teleprompter">
@@ -512,6 +514,12 @@ export function Prompter({ a, storage, sound }: PrompterProps) {
               ＋ {fresh} new {fresh === 1 ? "line" : "lines"} ▾
             </button>
           )}
+          {behind > 0 && (
+            <button type="button" className="aloud-chip fresh" onClick={() => setEarlier(true)}>
+              {/* DRAFT w59 */}
+              ↑ {behind} earlier {behind === 1 ? "line" : "lines"}
+            </button>
+          )}
         </div>
       </div>
       <footer className="aloud-controls">
@@ -559,6 +567,42 @@ export function Prompter({ a, storage, sound }: PrompterProps) {
           </button>
         </div>
       </footer>
+      {earlier && (
+        <div className="aloud-sheet" role="dialog" aria-label="Earlier lines">
+          <header className="aloud-sheet-bar">
+            {/* DRAFT w59 */}
+            <span>Earlier lines</span>
+            <button type="button" className="aloud-x" aria-label="Close the earlier lines" onClick={() => setEarlier(false)}>
+              ✕
+            </button>
+          </header>
+          <div className="aloud-sheet-text" style={{ fontSize: `${size}px` }}>
+            {a.behind.map((s) => (
+              <section key={s.lines[0]!.seq}>
+                <h2 className="aloud-section">{s.title}</h2>
+                {s.lines.map((l) => (
+                  <p key={l.seq} className={`aloud-line ${l.mine ? "mine now" : "cue"}${l.his === true ? " his" : ""}`}>
+                    {!l.mine && l.speaker !== "" && <span className="aloud-who">{l.speaker}: </span>}
+                    {l.text}
+                  </p>
+                ))}
+              </section>
+            ))}
+            <div className="aloud-end">
+              <button
+                type="button"
+                className="aloud-done big"
+                onClick={() => {
+                  a.readBehind();
+                  setEarlier(false);
+                }}
+              >
+                ✓ Read them
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {jumps && (
         <div className="aloud-sheet" role="dialog" aria-label="Jump to a section">
           <header className="aloud-sheet-bar">

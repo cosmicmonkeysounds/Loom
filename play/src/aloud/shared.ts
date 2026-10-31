@@ -42,8 +42,8 @@ export class PrompterStore {
   script: NonNullable<PrompterFrame["script"]> | null = null;
   /** When `frame` arrived (`performance.now`). */
   arrived = 0;
-  /** The last scene to end, and how. */
-  ended: { id: number; superseded: boolean } | null = null;
+  /** The last scene to end, how, its first line, and the line it had got to. */
+  ended: { id: number; superseded: boolean; first: number; reached: number } | null = null;
   private readonly subs = new Set<() => void>();
   private before: PrompterFrame | null = null;
 
@@ -59,7 +59,10 @@ export class PrompterStore {
   set(f: PrompterFrame | null): void {
     if (f === null || f.done === true) {
       // Gone with no word (null: a restart forgot it) is not read: only a ✓ Done is.
-      if (this.frame !== null) this.ended = { id: this.frame.id, superseded: f?.done !== true || f.superseded === true };
+      if (this.frame !== null) {
+        const reached = lineReached(this.script, f?.pos ?? this.pos(performance.now()));
+        this.ended = { id: this.frame.id, superseded: f?.done !== true || f.superseded === true, first: this.script?.sections[0]?.lines[0]?.seq ?? 0, reached };
+      }
       this.frame = null;
       this.script = null;
     } else {
@@ -92,6 +95,20 @@ export class PrompterStore {
     this.before = null;
     for (const s of this.subs) s();
   }
+}
+
+/** The last line a position, in words, has got to. */
+function lineReached(script: PrompterStore["script"], pos: number): number {
+  let words = 0;
+  let seq = -1;
+  for (const s of script?.sections ?? []) {
+    for (const l of s.lines) {
+      if (words > pos) return seq;
+      seq = l.seq;
+      words += Math.max(1, l.text.split(/\s+/u).filter(Boolean).length);
+    }
+  }
+  return seq;
 }
 
 /** The scene's lines as this phone's script. */
