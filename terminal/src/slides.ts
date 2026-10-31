@@ -605,7 +605,7 @@ export const SLIDE_COPY: Readonly<Record<string, SlideCopy>> = {
   ad_hijack: { title: "000. 000. 000.", lines: ["A special offer for you."] },
   truther: { title: "TRUTHER DOWNLOAD", lines: ["Downloading… do not turn off your computer."] },
   five_minutes: { title: "SECOND MOMENT OF TRUTH", lines: ["Five minutes. Return to the Desktop."] },
-  truth_pong: { title: "TRUTH PONG", lines: ["To the backyard."] },
+  truth_pong: { title: "TRUTH PONG", lines: ["To the Cloud."] }, // DRAFT w59
   trust_chart: { title: "THE TRUST CHART", lines: ["Who can be trusted?"] },
   print_certificate: { title: "Printing certificate.pdf …", lines: ["0% complete"] },
   beans: { title: "Printer error", lines: ["The printer is full of beans."] },

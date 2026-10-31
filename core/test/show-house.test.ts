@@ -78,6 +78,26 @@ describe("the rooms' names (wave 59)", () => {
     }
     for (const f of ["house.json", "house.shed.json", "audio.json", "facts.json", "trabolta.persona.md"]) expect(OLD.test(read(f)), f).toBe(false);
   });
+
+  // The ads and slides are words on every wall, and live outside the story.
+  const terminalSrc = fileURLToPath(new URL("../../terminal/src/", import.meta.url));
+  const words = readdirSync(terminalSrc, { recursive: true, encoding: "utf8" }).filter((f) => /\.tsx?$/u.test(f));
+  const spoken = (f: string): string[] =>
+    readFileSync(join(terminalSrc, f), "utf8")
+      .split("\n")
+      .filter((l) => !/^\s*(\/\/|\*|\/\*)/u.test(l));
+
+  it("no terminal says the old names", () => {
+    expect(words.length).toBeGreaterThan(50);
+    for (const f of words) expect(spoken(f).filter((l) => OLD.test(l)), f).toEqual([]);
+  });
+
+  it("the terminals' ads, slides and scenes say the computer's names, not the house's", () => {
+    const REAL = /\b(?:backyard|basement|bedroom|living room|kitchen|game room)\b/iu;
+    const screens = words.filter((f) => /^(?:idle-show\/ads\.ts|slides\.ts|cutscene\/scenes\/)/u.test(f));
+    expect(screens.length).toBeGreaterThan(3);
+    for (const f of screens) expect(spoken(f).filter((l) => REAL.test(l)), f).toEqual([]);
+  });
 });
 
 describe.each(Object.entries(VARIANTS))("the show's house map (%s)", (variant, house) => {

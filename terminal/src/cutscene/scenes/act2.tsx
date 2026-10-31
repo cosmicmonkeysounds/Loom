@@ -303,7 +303,7 @@ function SummonsClosedWall(p: SceneProps) {
 //   1100–2400 the table rises into perspective, ten cups pop up (4-3-2-1)
 //   2600 →    hold: a throw every 2.8 s — a sink splashes (+1 TRUTH), a miss
 //             skips off the rim (THE INTERNET); the rules drift past in
-//             dialogs; "→ THE CLOUD" pulses; "To the backyard." types
+//             dialogs; "→ THE CLOUD" pulses; "To the Cloud." types
 
 const PONG_WORD = "TRUTH PONG";
 const PONG_START = 2600;
@@ -1384,7 +1384,8 @@ function MajorityTv(p: SceneProps) {
       <Frost amount={frost} t={t} />
       {!reduced && <Particles t={t} emitters={[{ x: 0.5, y: -0.04, w: 1.1, start: 0, end: 5500, rate: 26, life: 3500, speed: 0.05, angle: 90, spread: 30, gravity: 0.03, sway: 0.03, size: 5, colors: ["#e8f6ff", "#ffffff", "#bfe2ff"], shape: "dot", seed: 101 }]} />}
       <div className="tv2-cold" style={{ opacity: win, transform: reduced ? undefined : `translate3d(0, ${((1 - win) * 3).toFixed(2)}em, 0)` }}>
-        <Win98Window title="C:\BASEMENT\COLD STORAGE" icon="lock" inactive width="100%">
+        {/* DRAFT w59 */}
+        <Win98Window title="C:\COLD STORAGE" icon="lock" inactive width="100%">
           <div className="tv2-cold-row">
             <span>Activity</span>
             <div className="tv2-cold-meter">

@@ -166,7 +166,7 @@ minutes without a move and the game is abandoned.
 
 ## The casino
 
-At *Trapped in the Internet* a terminal in the upstairs bedroom is the
+At *Trapped in the Internet* a terminal in The Casino, upstairs, is the
 **casino**. It is not a line to anyone, and it is awake all night.
 
 1. Hold up your pass (or type your program name). The screen shows your

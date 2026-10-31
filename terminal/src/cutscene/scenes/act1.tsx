@@ -152,8 +152,9 @@ function CallDesktopTv({ t, sfx, reduced }: SceneProps) {
         </div>
       </Win98Window>
       {pop > 0 && <Win98Dialog title="Antivirus" kind="info" message={SWEEP[k % SWEEP.length]!} x={px} y={py} width="20em" open={pop} reduced={reduced} className="a1-cd-pop" />}
+      {/* DRAFT w59 */}
       <Marquee t={reduced ? 0 : t} speed={150} className="a1-ticker" style={{ opacity: progress(t, 2000, 600) }}>
-        ★ ALL PROGRAMS: REPORT TO THE DESKTOP ★ A GAME IS ABOUT TO BEGIN ★ THE DESKTOP IS THE LIVING ROOM ★
+        ★ ALL PROGRAMS: REPORT TO THE DESKTOP ★ A GAME IS ABOUT TO BEGIN ★ THE ROOM WITH THE BIG SCREEN ★
       </Marquee>
       {t < 900 && !reduced && <Noise t={t} alpha={0.5 * (1 - progress(t, 300, 600))} reduced={reduced} />}
     </TvStage>
