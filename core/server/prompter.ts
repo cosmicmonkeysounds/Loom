@@ -10,9 +10,10 @@
 //! pixels at its own size), and the server moves it: `pos` at `at`, then `rate`
 //! words a second up to `stop`. A press locks it to whoever pressed. When it
 //! reaches one of his lines, the run from there to the next person's line goes
-//! to the TV, the prompter locks and scrolls through it for everyone, and it
-//! frees when the TV has said it, or after a time from the words if the TV is
-//! dead or muted.
+//! to the TV. Only the people reading ever move it: his lines take no lock and
+//! scroll nothing, and the next `stop` is his next run. `speaking` only says
+//! he has lines going (the TV's word, or a time from the words), for the Show
+//! strip and for what must not cut across him.
 //!
 //! Memory only, on purpose: nothing here is journaled and a restart forgets
 //! it, so the rest of the lines just play. **The night never hangs:** with no
@@ -206,7 +207,8 @@ export interface PrompterFrame {
   speed: number;
   /** Who is pressing it. */
   holder: { who: string; name: string } | null;
-  /** His lines are saying (locked, scrolling). */
+  /** Always null since his lines stopped locking the prompter: a phone reads
+   *  anything else as a lock. `PrompterStatus.speaking` still says so. */
   speaking: { name: string; seq: number } | null;
   /** His next line is waiting for the script. */
   held: boolean;
@@ -250,7 +252,6 @@ export interface PrompterDeps {
 
 interface Run {
   from: number;
-  to: number;
   /** The first line that says it, and the last, at the TV. */
   firstSeq: number;
   endSeq: number;
@@ -292,7 +293,7 @@ const rateOf = (speed: number): number => (speed * PROMPTER_WPM) / 60;
 /** The hold points of a script: each run of his lines, up to the next line with
  *  someone to say it (a stage direction between two of his lines is in the
  *  run: nobody is reading it out, so nothing would ever move past it). */
-function runsOf(draft: SceneDraft, lines: readonly PrompterLine[], off: readonly number[], total: number): Array<Run & { seq: number }> {
+function runsOf(draft: SceneDraft, lines: readonly PrompterLine[], off: readonly number[]): Array<Run & { seq: number }> {
   const out: Array<Run & { seq: number }> = [];
   for (let i = 0; i < lines.length; i++) {
     if (!lines[i]!.his) continue;
@@ -303,7 +304,7 @@ function runsOf(draft: SceneDraft, lines: readonly PrompterLine[], off: readonly
     const rest = draft.after.filter((m) => m.seq > lines[i]!.seq && m.seq < nextSeq);
     const ms = [...said, ...rest].reduce((n, l) => n + spokenMs(l.text), 0);
     const endSeq = Math.max(...said.map((l) => l.seq), ...rest.map((m) => m.seq));
-    out.push({ seq: lines[i]!.seq, from: off[i]!, to: off[j + 1] ?? total, firstSeq: lines[i]!.seq, endSeq, ms, next: null });
+    out.push({ seq: lines[i]!.seq, from: off[i]!, firstSeq: lines[i]!.seq, endSeq, ms, next: null });
     i = j;
   }
   out.forEach((r, k) => {
@@ -335,7 +336,7 @@ export class Prompters {
       off.push(total);
       total += wordsIn(l.text);
     }
-    const runs = runsOf(draft, lines, off, total);
+    const runs = runsOf(draft, lines, off);
     const anyone = draft.readers.some((r) => this.deps.online(r));
     const s: Live = {
       draft,
@@ -490,7 +491,6 @@ export class Prompters {
         break;
       }
       case "play": {
-        if (s.speaking !== null) return "locked";
         if (s.holder !== null && s.holder.who !== who) return "locked";
         this.sync(s, now);
         s.playing = o.on;
@@ -531,15 +531,18 @@ export class Prompters {
       this.emit(s);
     }
     if (s.hold && now >= s.waitUntil && !this.attended(s, now)) this.free(s);
+    const talking = s.speaking !== null;
     if (this.step(s, now)) return;
     // The autoscroll ran out of script.
-    if (s.rate > 0 && s.speaking === null && this.posAt(s, now) >= s.total) {
+    if (s.rate > 0 && this.posAt(s, now) >= s.total) {
       this.sync(s, now);
       s.rate = 0;
       s.playing = false;
       this.emit(s);
       this.ranOut(s, now);
     } else if (s.rate > 0 && now - s.sentAt >= RESYNC_MS) this.emit(s);
+    // The reader got to the end first, and he has just finished.
+    if (talking && s.speaking === null) this.ranOut(s, now);
   }
 
   /** The position has passed the last line. */
@@ -568,7 +571,7 @@ export class Prompters {
   }
 
   private locked(s: Live, who: string, now: number): boolean {
-    return s.speaking !== null || (s.holder !== null && s.holder.who !== who && now - s.holder.at <= HOLDER_TTL_MS);
+    return s.holder !== null && s.holder.who !== who && now - s.holder.at <= HOLDER_TTL_MS;
   }
 
   private posAt(s: Live, now: number): number {
@@ -576,9 +579,8 @@ export class Prompters {
     return Math.min(s.stop, moved);
   }
 
-  /** The word it may not pass: his next line, unsaid. */
+  /** The word it may not pass: his next line, unsent. */
   private stopOf(s: Live): number {
-    if (s.speaking !== null) return s.speaking.run.to;
     return this.isHeld(s) ? s.runs[s.next]!.from : s.total;
   }
 
@@ -588,40 +590,31 @@ export class Prompters {
     s.at = now;
   }
 
-  /** His lines start, or his lines end. True: a frame went out. */
+  /** His lines go, or his lines end. The position stays the readers' either
+   *  way: a finger stays down, an autoscroll carries on at its own speed.
+   *  True: a frame went out. */
   private step(s: Live, now: number): boolean {
     const v = s.speaking;
     if (v !== null) {
       const t = this.deps.voice(s.draft.channel);
       // The TV started the run late (the poll, its queue's gap): the time
-      // runs from the moment he opens his mouth. Never a step back on screen.
+      // runs from the moment he opens his mouth.
       if (!v.started && t.live && t.speaking !== null && t.speaking >= v.run.firstSeq) {
         v.started = true;
         v.at = now;
         v.until = now + v.run.ms;
-        this.sync(s, now);
-        s.rate = ((v.run.to - s.pos) / v.run.ms) * 1000;
-        this.emit(s);
       }
-      if (!this.spoken(v, t, now)) return false;
-      s.pos = v.run.to;
-      s.at = now;
-      s.speaking = null;
-      s.rate = s.playing && s.holder === null ? rateOf(s.speed) : 0;
-      s.stop = this.stopOf(s);
-      this.emit(s);
-      this.deps.changed();
-      return true;
+      if (this.spoken(v, t, now)) {
+        s.speaking = null;
+        this.deps.changed();
+      }
     }
     if (!this.isHeld(s) || this.posAt(s, now) < s.runs[s.next]!.from) return false;
     const run = s.runs[s.next]!;
+    this.sync(s, now);
     s.next += 1;
-    s.holder = null;
-    s.pos = run.from;
-    s.at = now;
     s.speaking = { run, at: now, until: now + run.ms, started: false };
-    s.rate = ((run.to - run.from) / run.ms) * 1000;
-    s.stop = run.to;
+    s.stop = this.stopOf(s);
     this.emit(s);
     this.deps.changed();
     return true;
@@ -657,7 +650,6 @@ export class Prompters {
   }
 
   private frameOf(s: Live, now: number, script: boolean): PrompterFrame {
-    const spokenLine = s.speaking?.run.firstSeq;
     return {
       id: s.draft.id,
       rev: s.rev,
@@ -668,7 +660,7 @@ export class Prompters {
       playing: s.playing,
       speed: s.speed,
       holder: s.holder !== null ? { who: s.holder.who, name: this.deps.name(s.holder.who) } : null,
-      speaking: spokenLine !== undefined ? { name: s.lines.find((l) => l.seq === spokenLine)?.speaker ?? "", seq: spokenLine } : null,
+      speaking: null,
       held: this.isHeld(s),
       ...(script ? { script: { sections: s.draft.sections, readers: s.draft.readers, owners: s.draft.owners } } : {}),
     };

@@ -101,7 +101,7 @@ describe("whether anyone is on a scene (wave 59, the costume reads this)", () =>
     r.voice.live = false;
     r.here();
     r.p.op(r.id, "@Clippy", false, { op: "jump", pos: 4 });
-    expect(r.last().speaking).not.toBeNull();
+    expect(r.p.status()?.speaking).toBe(true);
     r.to(HERE_TTL_MS + 1);
     expect(r.p.status()?.speaking).toBe(true);
     expect(r.p.inUse).toBe(true);
@@ -164,7 +164,7 @@ describe("the scene (wave 59)", () => {
 describe("his lines wait for the script", () => {
   const scene = () => rig([clippy(1), him(2), clippy(3)]);
 
-  it("holds his line until the position reaches it, then locks and scrolls through it", () => {
+  it("holds his line until the position reaches it, then sends it and leaves the prompter to the readers", () => {
     const r = scene();
     r.here();
     expect(r.p.heldFrom("loc:The Desktop")).toBe(2);
@@ -175,10 +175,36 @@ describe("his lines wait for the script", () => {
     expect(r.p.heldFrom("loc:The Desktop")).toBe(2);
     r.p.op(r.id, "@Clippy", false, { op: "move", pos: 4 });
     expect(r.p.heldFrom("loc:The Desktop")).toBeNull();
-    expect(r.last().speaking).toEqual({ name: "Trabolta", seq: 2 });
-    expect(r.last().holder).toBeNull();
-    expect(r.last().rate).toBeGreaterThan(0);
-    expect(r.last().stop).toBe(8);
+    expect(r.p.status()?.speaking).toBe(true);
+    expect(r.last().speaking, "a phone reads this as a lock").toBeNull();
+    expect(r.last().holder?.who, "the finger keeps it").toBe("@Clippy");
+    expect(r.last().rate, "he scrolls nothing").toBe(0);
+    expect(r.last().stop, "and nothing stands between her and the end").toBe(12);
+    expect(r.p.op(r.id, "@Clippy", false, { op: "move", pos: 7 })).toBeNull();
+    expect(r.last().pos).toBe(7);
+  });
+
+  it("takes no lock while he speaks: anyone may press, jump or play", () => {
+    const r = scene();
+    r.here();
+    r.p.op(r.id, "@Clippy", false, { op: "jump", pos: 4 });
+    expect(r.p.status()?.speaking).toBe(true);
+    expect(r.last().rate).toBe(0);
+    expect(r.p.op(r.id, "@Task Manager", true, { op: "jump", pos: 6 })).toBeNull();
+    expect(r.p.op(r.id, "@Clippy", false, { op: "play", on: true, speed: 1 })).toBeNull();
+    expect(r.last().rate).toBeCloseTo(130 / 60);
+    expect(r.p.op(r.id, "@Clippy", false, { op: "press" })).toBeNull();
+    expect(r.last().pos).toBe(6);
+  });
+
+  it("a reader past one run fires the next while he is still on the first", () => {
+    const r = rig([clippy(1), him(2), clippy(3), him(4, "p q r s"), clippy(5)]);
+    r.here();
+    r.p.op(r.id, "@Clippy", false, { op: "jump", pos: 4 });
+    expect(r.p.heldFrom("loc:The Desktop")).toBe(4);
+    r.p.op(r.id, "@Clippy", false, { op: "jump", pos: 12 });
+    expect(r.p.heldFrom("loc:The Desktop")).toBeNull();
+    expect(r.p.status()?.speaking).toBe(true);
   });
 
   it("frees when the TV has said it, and not before half the time the words allow", () => {
@@ -188,10 +214,10 @@ describe("his lines wait for the script", () => {
     const ms = spokenMs("five six seven eight");
     r.voice.said = 2;
     r.to(ms * 0.3);
-    expect(r.last().speaking).not.toBeNull();
+    expect(r.p.status()?.speaking).toBe(true);
     r.to(ms * 0.3);
-    expect(r.last().speaking).toBeNull();
-    expect(r.last().pos).toBe(8);
+    expect(r.p.status()?.speaking).toBe(false);
+    expect(r.last().pos, "he never moved it").toBe(4);
     expect(r.last().rate).toBe(0);
   });
 
@@ -203,9 +229,9 @@ describe("his lines wait for the script", () => {
       r.p.op(r.id, "@Clippy", false, { op: "jump", pos: 4 });
       const ms = spokenMs("five six seven eight");
       r.to(ms - 200);
-      expect(r.last().speaking).not.toBeNull();
+      expect(r.p.status()?.speaking).toBe(true);
       r.to(400);
-      expect(r.last().speaking).toBeNull();
+      expect(r.p.status()?.speaking).toBe(false);
     }
   });
 
@@ -214,9 +240,9 @@ describe("his lines wait for the script", () => {
     r.here();
     r.p.op(r.id, "@Clippy", false, { op: "jump", pos: 4 });
     r.to(spokenMs("five six seven eight") + 500);
-    expect(r.last().speaking).not.toBeNull();
+    expect(r.p.status()?.speaking).toBe(true);
     r.to(20_000);
-    expect(r.last().speaking).toBeNull();
+    expect(r.p.status()?.speaking).toBe(false);
   });
 
   it("times his line from the moment he opens his mouth, and never steps back", () => {
@@ -233,9 +259,9 @@ describe("his lines wait for the script", () => {
     r.voice.muted = true;
     const ms = spokenMs("five six seven eight");
     r.to(ms - 300);
-    expect(r.last().speaking).not.toBeNull();
+    expect(r.p.status()?.speaking).toBe(true);
     r.to(400);
-    expect(r.last().speaking).toBeNull();
+    expect(r.p.status()?.speaking).toBe(false);
   });
 
   it("can't be scrolled past: a jump over his line stops on it and fires it", () => {
@@ -243,7 +269,7 @@ describe("his lines wait for the script", () => {
     r.here();
     r.p.op(r.id, "@Clippy", false, { op: "jump", pos: 12 });
     expect(r.last().pos).toBe(4);
-    expect(r.last().speaking?.seq).toBe(2);
+    expect(r.p.status()?.speaking).toBe(true);
   });
 
   it("his line first: it goes as soon as a reader is there", () => {
@@ -251,16 +277,16 @@ describe("his lines wait for the script", () => {
     expect(r.p.heldFrom("loc:The Desktop")).toBe(1);
     r.here();
     expect(r.p.heldFrom("loc:The Desktop")).toBeNull();
-    expect(r.last().speaking?.seq).toBe(1);
+    expect(r.p.status()?.speaking).toBe(true);
   });
 
   it("takes a stage direction with his run: nobody reads it, so nothing would move past it", () => {
     const r = rig([clippy(1), him(2), stage(3), him(4), clippy(5)]);
     r.here();
     r.p.op(r.id, "@Clippy", false, { op: "jump", pos: 4 });
-    expect(r.p.heldFrom("loc:The Desktop")).toBeNull();
-    expect(r.last().stop).toBe(16);
-    expect(r.last().speaking?.seq).toBe(2);
+    expect(r.p.heldFrom("loc:The Desktop"), "the whole run went").toBeNull();
+    expect(r.last().stop).toBe(20);
+    expect(r.p.status()?.speaking).toBe(true);
   });
 
   it("holds the next run behind the first, with his unmarked lines going with the run before", () => {
@@ -271,10 +297,10 @@ describe("his lines wait for the script", () => {
     // The run ends at 3, so the TV must say 3 before it frees.
     r.voice.said = 2;
     r.to(spokenMs("five six seven eight") + spokenMs("The questions, which are long.") + 1_000);
-    expect(r.last().speaking).not.toBeNull();
+    expect(r.p.status()?.speaking).toBe(true);
     r.voice.said = 3;
     r.to(200);
-    expect(r.last().speaking).toBeNull();
+    expect(r.p.status()?.speaking).toBe(false);
   });
 });
 
@@ -314,11 +340,11 @@ describe("one shared position", () => {
     r.p.op(r.id, "@Clippy", false, { op: "letgo" });
     expect(r.last().rate).toBeCloseTo(130 / 60);
     r.to(4_000);
-    expect(r.last().speaking?.seq).toBe(2);
+    expect(r.p.status()?.speaking).toBe(true);
     r.voice.said = 2;
     r.to(spokenMs("five six seven eight"));
     // He has finished: the autoscroll picks up where it stopped.
-    expect(r.last().speaking).toBeNull();
+    expect(r.p.status()?.speaking).toBe(false);
     expect(r.last().rate).toBeCloseTo(130 / 60);
   });
 
@@ -452,7 +478,7 @@ describe("the night never hangs", () => {
     const r = rig([clippy(1), him(2)]);
     r.here();
     r.p.op(r.id, "@Clippy", false, { op: "jump", pos: 4 });
-    expect(r.last().speaking).not.toBeNull();
+    expect(r.p.status()?.speaking).toBe(true);
     const sent = r.frames.length;
     expect(r.p.outrun([row(9, "Trabolta", "Next.", { beat: "Later" })], CTX.voiced)).toBe(false);
     expect(r.frames.length).toBe(sent);
@@ -527,7 +553,7 @@ describe("a scene's end", () => {
     const r = rig([clippy(1), him(2)]);
     r.here();
     r.p.op(r.id, "@Clippy", false, { op: "jump", pos: 99 });
-    expect(r.last().speaking).not.toBeNull();
+    expect(r.p.status()?.speaking).toBe(true);
     expect(r.finished()).toBe(0);
     r.to(60_000);
     expect(r.p.op(r.id, "@Clippy", false, { op: "move", pos: 99 })).toBeNull();

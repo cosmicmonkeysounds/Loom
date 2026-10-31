@@ -177,7 +177,7 @@ describe("over the real runtime", () => {
     expect((await post(rt, "/api/aloud", { scene: scene.id, op: "jump", pos: to }, { token: clippy })).status).toBe(200);
     const said = await poll(rt, before);
     expect(said.voice.lines[0]!.text).toContain("Hello? Can you hear me?");
-    expect(frames(res).at(-1)!.speaking?.name).toBe("Trabolta");
+    expect(frames(res).at(-1)!.speaking, "a phone reads this as a lock").toBeNull();
 
     expect((await post(rt, "/api/mod/aloud", { action: "release" }, { moderator: true })).json).toMatchObject({ ok: true });
     expect((await post(rt, "/api/mod/aloud", { action: "nope" }, { moderator: true })).status).toBe(400);

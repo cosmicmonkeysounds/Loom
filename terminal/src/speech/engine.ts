@@ -280,6 +280,9 @@ export class ServerEngine implements SpeechEngine {
 
 /** A `speak()` that hasn't started by now never will (a WebView stub). */
 export const START_TIMEOUT_MS = 4000;
+/** A write-off lasts this long with no tap. A kiosk gets no tap, so one slow
+ *  `speak()` mustn't cost it the rest of the night: it tries the voice again. */
+export const DEAD_RETRY_MS = 15_000;
 /** (wave 56) A broken sentence's later fragment gets this long to start: a
  *  dropped one is skipped. The engine already proved itself on the first. */
 export const FRAG_START_MS = 1200;
@@ -319,6 +322,8 @@ export class BrowserEngine implements SpeechEngine {
   private stopCurrent: (() => void) | null = null;
   /** The `unlock()` generation in which a `speak()` never started here. */
   private deadAt: number | null = null;
+  /** When it was written off (`Date.now()`). */
+  private deadSince = 0;
   /** When the last `speak()` went out (`Date.now()`). */
   private spokeAt = 0;
   /** The `cancel()` a stop is holding back. */
@@ -329,9 +334,15 @@ export class BrowserEngine implements SpeechEngine {
   constructor(private readonly opts: { voice: string; speed: number; pitch?: number; prefer?: VoicePrefer; noise?: (kind: VoiceNoise) => void }) {}
 
   /** `speak()` never started here since the last tap: a stub, or a page
-   *  that hasn't been touched yet. The next `unlock()` clears it. */
+   *  that hasn't been touched yet. The next `unlock()` clears it, and so does
+   *  `DEAD_RETRY_MS`, for a kiosk nobody touches. */
   get dead(): boolean {
-    return this.deadAt === gesture;
+    return this.deadAt === gesture && Date.now() - this.deadSince < DEAD_RETRY_MS;
+  }
+
+  private writeOff(): void {
+    this.deadAt = gesture;
+    this.deadSince = Date.now();
   }
 
   static available(): boolean {
@@ -401,7 +412,7 @@ export class BrowserEngine implements SpeechEngine {
       timers.push(
         window.setTimeout(() => {
           if (speaking || settled) return;
-          this.deadAt = gesture;
+          this.writeOff();
           speechSynthesis.cancel();
           finish();
         }, START_TIMEOUT_MS),
@@ -482,7 +493,7 @@ export class BrowserEngine implements SpeechEngine {
           if (first && !heard && !stopped) {
             // As `play`: nothing started, so this engine is written off and
             // the ladder says the sentence another way.
-            this.deadAt = gesture;
+            this.writeOff();
             speechSynthesis.cancel();
             return;
           }
