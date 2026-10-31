@@ -15,6 +15,8 @@ Shape (`audio.example.yaml` carries a commented copy):
       host_api: null               # Windows: asio (the MOTU: one N-channel device;
                                    # sets SD_ENABLE_ASIO) | wasapi | wdm-ks | directsound | mme
       rate: null                   # override the rate (default: audio.json / the device's)
+      voicefx: false               # wave 56: break the `trabolta` input's voice in real time
+                                   #  (needs passthrough; audio/voicefx.py)
       tap: null                    # wave 46: a capture device summed into an input, as if
                                    # cabled there (no line out on the house PC):
                                    # {device: "VoiceMeeter Output", host_api: mme, ch: 3,
@@ -109,6 +111,8 @@ class AudioConfig:
     tap: TapConfig | None = None
     #: The TIDAL app as a source for the soundtrack (wave 52, `tidal.py`).
     tidal: TidalConfig | None = None
+    #: Break his voice in real time on the `trabolta` input (wave 56, `voicefx.py`).
+    voicefx: bool = False
     blocksize: int = 512
     latency: str | float = "high"
     master_db: float = 0.0
@@ -382,6 +386,7 @@ def parse_audio_section(doc: Any, base_dir: str = ".") -> AudioConfig:
         rate=rate,
         tap=_tap(doc),
         tidal=_tidal(doc),
+        voicefx=_bool(doc, "voicefx", False),
         blocksize=blocksize,
         latency=latency,
         master_db=_num(doc, "master_db", 0.0, -60, 12),

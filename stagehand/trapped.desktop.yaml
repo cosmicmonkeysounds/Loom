@@ -89,6 +89,10 @@ lights:
 audio:
   host_api: asio
   tap: { device: "VoiceMeeter Output", host_api: mme, ch: 3 }
+  # Wave 56: his voice broken in real time on the way to the speakers. How much
+  # is the server's word (Run -> Terminals: Auto / Clean / Broken); false is the
+  # hard off (then restart audio) if the insert itself ever misbehaves.
+  voicefx: true
   # The soundtrack from the TIDAL app (wave 52; scripts/house-desktop/README.md
   # 3.7): TIDAL plays into "VoiceMeeter Aux Input", VoiceMeeter's AUX strip is
   # on B2 only, and the router hears B2 as the music bus's stereo bed.

@@ -47,6 +47,9 @@ audio:
   # Chrome plays into VoiceMeeter, whose B1 bus the router reads on MME).
   # A tap that fails to open is logged and the router plays on without it.
   # tap: { device: "VoiceMeeter Output", host_api: mme, ch: 3 }   # + channels: 2, gain_db: 0
+  # Break the voice on the input whose role is `trabolta`, in real time (wave 56,
+  # audio/voicefx.py). Needs passthrough. The server says how much.
+  # voicefx: true
 
   # device: "MOTU"     # override audio.json's device.name (a substring of the device name)
   # host_api: asio     # Windows: open the interface through ASIO (one N-channel device)

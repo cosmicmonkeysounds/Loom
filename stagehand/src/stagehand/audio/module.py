@@ -156,6 +156,8 @@ from .routing import (
 from .sounds import EXTENSIONS, SoundBank, identify_label, identify_tone, placeholders_in, sound_lengths
 from .soundtrack import OFF, Director, scene_of_cue
 from .tap import Tap, TapConfig, find_device
+from .voicefx import ROLE as VOICE_ROLE
+from .voicefx import VoiceFx
 from .tidal import Tidal
 
 log = logging.getLogger("stagehand.audio")
@@ -202,6 +204,8 @@ MUSIC_STALE_S = 10.0
 MIX_CACHE = "mix.json"
 #: (wave 49) The stream of who is walking in the games.
 WALKERS_PATH = "/api/mod/audio/walkers"
+#: How often his voice's state is read (the TV's own poll: a spike lands with the picture).
+VOICEFX_POLL_S = 1.0
 
 
 def play_gain(value: Any) -> float:
@@ -364,6 +368,9 @@ class AudioRouter:
         self.cfg = cfg
         self._query = query
         self._stream_factory = stream_factory
+        # His voice's level and the spike playing (wave 56, `on_voice_fx`).
+        self._voicefx_level = 0.0
+        self._voicefx_key: str | None = None
         # The tap's capture stream and device list (wave 46): fakes in the tests.
         self._tap_stream_factory = tap_stream_factory
         self._tap_query = tap_query
@@ -483,6 +490,9 @@ class AudioRouter:
             f"announce : {'the router (chime + ' + cfg.voice_engine + ' ' + (cfg.say_voice or 'default') + ')' if cfg.announce else 'not here (the alexa player)'}",
             f"matrix   : {'on' if cfg.passthrough else 'off'}" + (f", {len(doc.routes)} route(s)" if doc else ""),
             *(
+                [f"voice fx : his voice broken in real time on the {VOICE_ROLE!r} input"] if cfg.voicefx else []
+            )
+            + (
                 [f"tap      : {cfg.tap.device!r}" + (f" on {cfg.tap.host_api.upper()}" if cfg.tap.host_api else "") + f" summed into input {cfg.tap.ch} ({cfg.tap.gain_db:+.0f} dB)"]
                 if cfg.tap is not None
                 else []
@@ -895,6 +905,65 @@ class AudioRouter:
             return None
         return lambda rate: Tap(cfg, rate, factory=self._tap_stream_factory, query=self._tap_query)
 
+    def _voicefx_ch(self, doc: AudioDoc) -> int:
+        """The input his voice is on (0: no insert: off, no role, no duplex)."""
+        if not self.cfg.voicefx or not self.cfg.passthrough:
+            return 0
+        return next((i.ch for i in doc.input_list if i.role == VOICE_ROLE), 0)
+
+    def on_voice_fx(self, block: Any, now: Any) -> None:
+        """The screen state's `voiceFx` → the insert. The level and the spike's
+        key are kept here too, so a reopened stream picks them up."""
+        if not isinstance(block, dict):
+            return
+        level = block.get("level")
+        if isinstance(level, (int, float)) and not isinstance(level, bool):
+            self._voicefx_level = float(level)
+        fx = self.engine.voicefx if self.engine is not None else None
+        if fx is not None:
+            fx.set_level(self._voicefx_level)
+        spike = block.get("spike")
+        if not isinstance(spike, dict):
+            if self._voicefx_key is not None:
+                self._voicefx_key = None
+                if fx is not None:
+                    fx.end_spike()
+            return
+        key = spike.get("key")
+        if not isinstance(key, str) or key == self._voicefx_key:
+            return
+        self._voicefx_key = key
+        at, ms = spike.get("at"), spike.get("ms")
+        flavours = spike.get("flavours")
+        if fx is None or not isinstance(ms, (int, float)) or not isinstance(flavours, list):
+            return
+        left = ms - (now - at) if isinstance(at, (int, float)) and isinstance(now, (int, float)) else ms
+        strength = spike.get("strength")
+        fx.spike(float(strength) if isinstance(strength, (int, float)) else 1.0, left, [f for f in flavours if isinstance(f, str)])
+
+    def voicefx_state(self) -> str | None:
+        """For the health line (None: no insert)."""
+        if self.engine is None:
+            return None
+        if self.engine.voicefx_failed:
+            return "FAILED, he is speaking dry"
+        return self.engine.voicefx.stats() if self.engine.voicefx is not None else None
+
+    async def _voicefx_loop(self, mod: ModClient) -> None:
+        """His voice's state, off the same answer the TV reads, as often."""
+        warned = 0.0
+        while True:
+            try:
+                answer = await mod.get("/api/screen/state")
+                if isinstance(answer, dict):
+                    self.on_voice_fx(answer.get("voiceFx"), answer.get("now"))
+            except (ModApiError, httpx.HTTPError, OSError, ValueError) as err:
+                now = time.monotonic()
+                if now - warned > 60:
+                    warned = now
+                    log.warning("his voice's state unread (%s) — keeping the last", err or type(err).__name__)
+            await asyncio.sleep(VOICEFX_POLL_S)
+
     def tap_state(self) -> str | None:
         engine = self.engine
         if self.cfg.tap is None or engine is None:
@@ -909,7 +978,8 @@ class AudioRouter:
         if doc is None:
             return False
         cfg = self.cfg
-        signature = (self._device(doc), doc.inputs, doc.outputs, cfg.rate or doc.rate, cfg.passthrough, cfg.tap)
+        voicefx_ch = self._voicefx_ch(doc)
+        signature = (self._device(doc), doc.inputs, doc.outputs, cfg.rate or doc.rate, cfg.passthrough, cfg.tap, voicefx_ch)
         if signature[0] is None and not self._blank_device_logged:
             self._blank_device_logged = True
             log.warning("audio.json names no device (device.name is blank) and the YAML sets no `device:` — using the default output")
@@ -934,6 +1004,8 @@ class AudioRouter:
                 stream_factory=self._stream_factory,
                 expect=doc.expect,
                 tap=self._tap_factory(cfg.tap),
+                voicefx=VoiceFx if voicefx_ch else None,
+                voicefx_ch=voicefx_ch,
             )
             self._signature = signature
         try:
@@ -945,6 +1017,8 @@ class AudioRouter:
                 self._last_open_error = now
             return False
         mixer.set_passthrough(cfg.passthrough)
+        if self.engine.voicefx is not None:
+            self.engine.voicefx.set_level(self._voicefx_level)
         self._wire(mixer, doc)
         self.bank = SoundBank(cfg.sounds_dir, mixer.rate, **({"decode": self._decode} if self._decode else {}))
         return True
@@ -1901,6 +1975,8 @@ class AudioRouter:
             "walkers": self.walkers.count,
             # Wave 46: the software input (VoiceMeeter → input 3), or None.
             "tap": self.tap_state(),
+            # Wave 56: his voice's insert, or None.
+            "voicefx": self.voicefx_state(),
         }
 
     def sound_lengths(self) -> dict[str, int]:
@@ -1946,6 +2022,7 @@ class AudioRouter:
                 + (f" | underruns {h['underruns']}" if h["underruns"] else "")
                 + (f" | {h['walkers']} walking" if h["walkers"] else "")
                 + (f" | tap {h['tap']}" if h.get("tap") else "")
+                + (f" | voice fx {h['voicefx']}" if h.get("voicefx") else "")
                 + (f" | tidal {self.tidal.stats()}" if self.tidal is not None else "")
                 + (f" | ducking: {', '.join(f'{k} {v:.0%}' for k, v in h['sources'].items() if v > 0)}" if any(v > 0 for v in h["sources"].values()) else "")
                 + (f" | music {h['music']['scene'] or '—'}: " + (", ".join(f"{b['playlist']} {b['track'] or '—'}" for b in h["music"]["beds"]) or "no bed") if h.get("music") else ""),
@@ -2124,6 +2201,8 @@ class AudioRouter:
             asyncio.ensure_future(self._meters_loop()),
             asyncio.ensure_future(self._walkers_loop(ctx.mod)),
         ]
+        if self.cfg.voicefx:
+            tasks.append(asyncio.ensure_future(self._voicefx_loop(ctx.mod)))
         if self.cfg.announce and self.lock_fd is None:
             tasks.append(asyncio.ensure_future(self._voice_lock_loop()))
         if self.music is not None:
