@@ -205,6 +205,9 @@ export function adsDone(on: boolean): string {
   return on ? "📢 Audio ads on" : "📢 Audio ads off: nothing is playing";
 }
 
+/** A 409 is the server's *no scenario loaded*: the story isn't up yet. `DRAFT w59d`. */
+export const ADS_NOT_YET = "📢 Not until the doors open";
+
 /** What the note says after the switch: the story's own line to the hosts. */
 export function dreamDone(on: boolean, answer: unknown): string {
   const a = answer !== null && typeof answer === "object" ? (answer as Record<string, unknown>) : {};

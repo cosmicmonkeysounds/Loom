@@ -284,21 +284,21 @@ test("🖥 House: his voice, a flavour, the TV, Identify, the terminals, and wha
   await page.getByRole("button", { name: /Stop \+ the announcement/u }).click();
   await expect(page.getByTestId("host-desk-note")).toContainText("and the announcement");
 
-  // 📷 and 📢 live here, fit the phone, and 📢 is Run's own switch.
-  await expect(page.getByTestId("host-photos")).toContainText("Terminal photos");
+  // 📷 and 📢 live here and fit the phone. Before the doors 📢 has nothing to switch, and says so.
+  const photos = page.getByTestId("host-photos");
+  await expect(photos).toContainText("Terminal photos");
+  await photos.scrollIntoViewIfNeeded();
+  await expect(photos.getByRole("button", { name: /SAFE/u })).toBeInViewport();
+  await shot(page, "house-photos");
   const ads = page.locator("#host-desk-ads");
   await ads.scrollIntoViewIfNeeded();
   await expect(ads).toContainText("📢 Audio ads");
   await expect(page.getByTestId("host-desk-ads-line")).toContainText("played");
   await shot(page, "house-photos-ads");
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), "no sideways scroll").toBe(true);
-  const adsOn = async () => ((await (await fetch(`${API}/api/mod/screen/terminals`, { headers: { "x-loom-token": mod } })).json()) as { ads: { on: boolean } }).ads.on;
   await ads.getByRole("button", { name: "Off", exact: true }).click();
-  await expect.poll(adsOn).toBe(false);
-  await expect(page.getByTestId("host-desk-note")).toContainText("Audio ads off");
-  await expect(page.getByTestId("host-desk-ads-line")).toContainText("off");
-  await ads.getByRole("button", { name: "On", exact: true }).click();
-  await expect.poll(adsOn).toBe(true);
+  await expect(page.getByTestId("host-desk-note")).toContainText("Not until the doors open");
+  await expect(ads.getByRole("button", { name: "On", exact: true })).toHaveAttribute("aria-pressed", "true");
 
   // The server keeps these a director's, and the page says where they are.
   await expect(page.getByTestId("host-desk-run-only")).toContainText("🎭 the costume's switch");
@@ -408,6 +408,16 @@ test("once the doors are open: the dream's switch through the page, both ways; a
   await openDesk(page, mod, "Task Manager");
   await tab(page, "house");
   await expect(page.getByTestId("host-desk-dream"), "open doors, no 🕚 yet").toBeDisabled();
+  // 📢 is Run's own switch, through a host's token.
+  const ads = page.locator("#host-desk-ads");
+  const adsOn = async () => ((await (await fetch(`${API}/api/mod/screen/terminals`, { headers: { "x-loom-token": mod } })).json()) as { ads: { on: boolean } }).ads.on;
+  await ads.getByRole("button", { name: "Off", exact: true }).click();
+  await expect.poll(adsOn).toBe(false);
+  await expect(page.getByTestId("host-desk-note")).toContainText("Audio ads off");
+  await expect(page.getByTestId("host-desk-ads-line")).toContainText("off");
+  await ads.getByRole("button", { name: "On", exact: true }).click();
+  await expect.poll(adsOn).toBe(true);
+  await expect(page.getByTestId("host-desk-note")).toContainText("Audio ads on");
   await post("/api/mod/var", { path: "Night.clock", value: "23:00" });
   await expect(page.getByTestId("host-desk-dream")).toBeEnabled({ timeout: 10_000 });
   const dream = async () => ((await (await fetch(`${API}/api/state?role=mod&host=1`, { headers: { "x-loom-token": mod } })).json()) as { terminals: { dream: boolean } }).terminals.dream;

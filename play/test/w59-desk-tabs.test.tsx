@@ -8,11 +8,13 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
+import { ApiError } from "../src/client.ts";
 import { HOST_READS, HOST_ROUTES, hostCalls, type HostRoute } from "../src/host/api.ts";
 import { DeskBody } from "../src/host/desk.tsx";
 import { DeskHouseBody, RUN_ONLY, type Act } from "../src/host/desk-house.tsx";
 import {
   ADS_NOTE,
+  ADS_NOT_YET,
   DESK_TAB_KEY,
   DREAM_CUE,
   DREAM_NOT_NOW,
@@ -423,6 +425,17 @@ describe("🖥 House: the switches", () => {
     await (off!.props as { onClick: () => Promise<unknown> }).onClick();
     expect(r.sent).toEqual([{ route: "/api/mod/screen/ads", body: { on: false } }]);
     expect(HOST_ROUTES).toContain("/api/mod/screen/ads");
+    // Behind closed doors the server has no story to hold the switch, and the note says so.
+    let refused = "";
+    const refusing: Act = async (_done, _call, refusal) => {
+      refused = refusal?.(new ApiError("no scenario loaded", 409)) ?? "";
+      return false;
+    };
+    const h = mountHooks(DeskHouseBody as (p: Parameters<typeof DeskHouseBody>[0]) => unknown, { view: view({ terminals: terminals({ ads: adsOn }) }), rows: [], calls: r.calls as never, act: refusing, live: false, refresh: () => {}, tryIt: null });
+    const el = elements(h.output).find((e) => (e.type as { name?: string }).name === "AdsBox") as unknown as { type: (p: unknown) => unknown; props: unknown };
+    const offAgain = elements(mountHooks(el.type, el.props).output).filter((e) => (e.type as { name?: string }).name === "ActButton")[1]!;
+    await (offAgain.props as { onClick: () => Promise<unknown> }).onClick();
+    expect(refused).toBe(ADS_NOT_YET);
   });
 });
 

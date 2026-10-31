@@ -25,8 +25,8 @@ import type { HostCalls } from "./api.ts";
 import type { HostAuth } from "./client.ts";
 import { useHostConsole } from "./dock.tsx";
 import { liveAsk, stopAllDone } from "./desk-model.ts";
-import { ADS_NOTE, DREAM_CUE, DREAM_NOT_NOW, VOICE_MODE_WORD, adsDone, dreamDone, dreamRow, identifyDone, terminalLines, terminalsAside, voiceModeLine } from "./desk-tabs.ts";
-import { ActButton, ConfirmButton, HostEmpty, HostSection } from "./kit.tsx";
+import { ADS_NOTE, ADS_NOT_YET, DREAM_CUE, DREAM_NOT_NOW, VOICE_MODE_WORD, adsDone, dreamDone, dreamRow, identifyDone, terminalLines, terminalsAside, voiceModeLine } from "./desk-tabs.ts";
+import { ActButton, ConfirmButton, HostEmpty, HostSection, failText } from "./kit.tsx";
 import { optimisticValue, tvVoiceLabel, type Optimistic, type VoiceFxMode } from "./model.ts";
 import { PhotosSection } from "./photos.tsx";
 import { glitchText } from "./talk-model.ts";
@@ -151,7 +151,7 @@ function TvVoice({ muted, calls, send }: { muted: boolean; calls: HostCalls; sen
 function AdsBox({ ads, calls, send }: { ads: AdsStatus; calls: HostCalls; send: Act }) {
   const [on, turn] = useTurned<boolean>(ads.on);
   const pick = async (want: boolean) => {
-    if (want !== on && (await send(adsDone(want), () => calls.adsSwitch(want)))) turn(want);
+    if (want !== on && (await send(adsDone(want), () => calls.adsSwitch(want), (e) => (e.status === 409 ? ADS_NOT_YET : failText(e))))) turn(want);
   };
   return (
     <HostSection id="desk-ads" title="📢 Audio ads" aside={on ? "On" : "Off"}>
