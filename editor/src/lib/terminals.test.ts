@@ -311,12 +311,14 @@ describe('useTerminals', () => {
     expect(useTerminals.getState().muteError).toMatch(/his voice: 403/)
   })
 
-  it('reads the costume once per bind, flips its switch, and says so when it can't (wave 59)', async () => {
-    useTerminals.getState().bind(null)
-    useTerminals.getState().bind('evt')
-    await vi.waitFor(() => expect(useTerminals.getState().costume).toMatchObject({ on: true }))
+  it('reads the costume once per bind, flips its switch, and says so when it can’t (wave 59)', async () => {
+    const { useTerminals } = await import('@/store/terminals')
+    terminals.mockResolvedValue(server(poll('Kitchen', 0)))
+    useTerminals.getState().bind('evt-3')
+    await vi.advanceTimersByTimeAsync(0)
+    expect(useTerminals.getState().costume).toMatchObject({ on: true })
     await useTerminals.getState().setCostume(false)
-    expect(setCostume).toHaveBeenCalledWith('evt', false)
+    expect(setCostume).toHaveBeenCalledWith('evt-3', false)
     expect(useTerminals.getState().costume).toMatchObject({ on: false })
     setCostume.mockRejectedValueOnce(new Error('403 moderators only'))
     await expect(useTerminals.getState().setCostume(true)).resolves.toBeUndefined()
