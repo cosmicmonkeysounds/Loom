@@ -137,6 +137,12 @@ describe("what it draws", () => {
     expect(html).toContain("⏭ Skip all");
   });
 
+  it("after ■ Stop house sounds, with nothing playing, Follow the story is still the way back", () => {
+    const stopped = body(view({ music: music({ scene: null, beds: [], hand: true, tidal: tidal({ playing: false }) }) }));
+    expect(stopped).toContain("↺ Follow the story");
+    expect(stopped).toContain(HAND_NOTE.replace("'", "&#x27;"));
+  });
+
   it("a hand offers Follow the story; Trabolta's loan offers Take it back", () => {
     const hand = body(view({ music: music({ hand: true }) }));
     expect(hand).toContain(HAND_NOTE.replace("'", "&#x27;"));
