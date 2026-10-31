@@ -646,7 +646,7 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   /api/costume/menu` and `/fire {k, id}` and nothing else: it is no session.
   Refusals are `momentRefusal` + `actionRefusal`, judged before anything is
   committed, so the story's own `ad_burst` refusals never reach `# hosts`. The
-  night's end is `Night.step` 16 on (the reveal, the bobbing, Grok Prom and the
+  night's end is `Night.step` 16 on (the reveal, the bobbing, the prom and the
   advice poll all play with `Night.ended` false; `step` is what a story edit must
   keep). A scene being read on the shared prompter (`Prompters.reading`) refuses a press.
   MUSIC is refused while anyone else's hand is on the soundtrack

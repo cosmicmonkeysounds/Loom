@@ -20,7 +20,7 @@ refusal and every network failure.
 A press is refused:
 
 - before the doors, during a beat's lines on the TV, and while a scene is being read on the teleprompter: a line of his waiting for the script, or someone who moved it in the last 20 s. A reader who never presses ✓ Done doesn't hold the costume until the next marked beat;
-- from the final reveal on: the bobbing, Grok Prom and the advice poll, the endings, the songs, the monologue and the awards;
+- from the final reveal on: the bobbing, the prom and the advice poll, the endings, the songs, the monologue and the awards;
 - for 8 s after any press that landed, and for longer after a heavy one (AD STORM 60 s);
 - LIGHTS, during the alarm, a blackout, or while Trabolta has a room's lights out;
 - SOUNDS and MUSIC, with the router offline; LIGHTS, with the lights module offline;
