@@ -3,7 +3,7 @@
 // phone refused the sound it stays, with a ▶ to tap. Inside the moments provider,
 // so it yields to whatever already holds the moments.
 
-import { useEffect, useSyncExternalStore } from "react";
+import { useEffect, useRef, useSyncExternalStore } from "react";
 import { useMomentsEngineContext } from "./moments/provider.tsx";
 import { adCardsOpen, onAdCards, type AdSpots } from "./ad-spots.ts";
 import { WinWindow } from "./ui/window.tsx";
@@ -17,8 +17,11 @@ export function AdSlot({ spots, busy, tell }: { spots: AdSpots | undefined; busy
   const engine = useMomentsEngineContext();
   const card = useSyncExternalStore(onAdCards, adCardsOpen, adCardsOpen);
   const blocked = busy || card || engine?.held === true || engine?.takeover != null;
+  // Armed once: a new `tell` (a session's callback moving) must not stop the sound.
+  const told = useRef(tell);
+  told.current = tell;
   const armable = !host.embedded && spots !== undefined && tell !== undefined;
-  useEffect(() => (armable ? spots.arm(tell) : undefined), [armable, spots, tell]);
+  useEffect(() => (armable ? spots.arm((seq) => told.current?.(seq)) : undefined), [armable, spots]);
   useEffect(() => spots?.setBusy(blocked), [spots, blocked]);
   const none = () => null;
   const shown = useSyncExternalStore(spots?.subscribe ?? (() => () => {}), spots?.shown ?? none, none);

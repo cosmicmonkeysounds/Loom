@@ -23,6 +23,21 @@ node --experimental-strip-types --no-warnings scripts/sim/evening.ts --base … 
 The server plays the show's story from disk (event `default`); no sync is
 needed. Build `play` and `terminal` first if you want to watch in a browser.
 
+## The audio ads, on real pages
+
+`ads.spec.ts` (wave 59a) plays the real MP3s to seven guest phones, a wall, the TV,
+the server room and a host, at their real pace: the busy phone replaced, the ▶, the ×,
+Off, On at the next, a track to its end, the doors, the Restart. Headless Chromium
+lets anything play, so the phones carry a stand-in for iOS's rule. It takes about six
+minutes, and it needs `LOOM_MEDIA_DIR=~/loom-media` on the scratch server
+(`scripts/ops/ads-media.sh prepare`) and `play` and `terminal` built. The worktree's
+path can match a bare `ads`, so name it exactly:
+
+```bash
+SIM_BASE=http://127.0.0.1:7600 SIM_MOD_CODE=<mod> SIM_GUEST_CODE=<guest> SIM_PRIME_CODE=<prime> SIM_SHOTS=<dir> \
+  pnpm --filter loom-app exec playwright test -c ../scripts/sim/playwright.config.ts 'ads\.spec'
+```
+
 ## The teleprompter, on real pages
 
 `prompter.spec.ts` (wave 59) drives Clippy's phone, a host's phone and the real TV

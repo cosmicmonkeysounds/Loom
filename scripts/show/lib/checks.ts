@@ -74,6 +74,15 @@ export function dreamMediaCheck(status: number | null): Check {
   return row("Clippy's dream", "warn", `${why}: terminals keep their idle show at the Y2K bug. scripts/ops/dream-media.sh upload`, read);
 }
 
+/** (wave 59a) The audio ads: the list's last file proves the upload reached its end. */
+export const ADS_PROBE = "/media/ads/ad-14-mommy-outro.mp3";
+export function adsMediaCheck(status: number | null): Check {
+  const read = `GET ${ADS_PROBE}`;
+  if (status === 200) return row("Audio ads", "ok", "the media is served", read);
+  const why = status === null ? "no answer" : `HTTP ${status}`;
+  return row("Audio ads", "warn", `${why}: no ad plays in the second hunt, and nothing says so. scripts/ops/ads-media.sh upload`, read);
+}
+
 export function runCheck(view: Json, title: string | null, landingTitle: string | null): Check[] {
   const read = "GET /api/state?role=mod";
   const out: Check[] = [];

@@ -371,6 +371,11 @@ describe("the night", () => {
       await n.post("/api/mod/start", {}, true);
       n.run(205);
       expect(n.rt.ads.aired).toBe(2);
+      expect((await n.post("/api/mod/audio/stop", {}, true)).status).toBe(200);
+      expect(n.rt.ads.air).toBeNull(); // ■ Stop house sounds: this one, not the list
+      expect(n.rt.ads.status()).toMatchObject({ on: true, aired: 2 });
+      n.run(210);
+      expect(n.rt.ads.aired).toBe(3);
       await n.post("/api/mod/broadcast", { scope: "everyone", cue: "📣 Lost and found is at the kitchen." }, true);
       n.run(1);
       expect(n.rt.ads.air).toBeNull();
@@ -448,14 +453,18 @@ describe("the night", () => {
 
       n.rt.flushClock();
       const again = new EventRuntime({ eventId: "evt", store: new Store(n.dir), codes: CODES, scenarioName: "titi", scenarioSource: SRC, joinBase: () => "http://localhost", now: () => n.t });
+      live.push(again);
       expect(again.restore()).not.toBeNull();
       expect(again.ads.status()).toMatchObject({ on: false, aired: 1 });
       expect(again.ads.air).toBeNull();
       again.tickOnce(1000);
       expect(again.ads.aired).toBe(1);
-      expect((await n.post("/api/mod/screen/ads", { on: true }, true)).json).toMatchObject({ on: true });
-      n.run(1);
-      expect(n.rt.ads.status()).toMatchObject({ on: true, aired: 2, playing: "Adobe" });
+      const on = res();
+      await again.handle(fakeReq({ on: true }), on, "POST", "/api/mod/screen/ads", new URL("http://x/api/mod/screen/ads"), { moderator: true });
+      expect(on.statusCode).toBe(200);
+      n.t += 1000;
+      again.tickOnce(1000);
+      expect(again.ads.status()).toMatchObject({ on: true, aired: 2, playing: "Adobe" });
     },
     SLOW,
   );

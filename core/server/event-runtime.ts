@@ -7053,6 +7053,8 @@ export class EventRuntime {
           this.noteDeskAudio(path, res, by);
           // Wave 53 (C5): 🔇 + the announcement cuts the phones too.
           if (path === "/api/mod/audio/stop" && body["announce"] === true && res.statusCode === 200) this.phoneAnnounce({ stop: true });
+          // Wave 59a: ■ Stop house sounds cuts the ad on the air too (📢 Off stops the list).
+          if (path === "/api/mod/audio/stop" && res.statusCode === 200) this.adsCut();
           return true;
         }
       }

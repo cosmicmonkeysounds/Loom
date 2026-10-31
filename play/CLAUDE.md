@@ -50,7 +50,11 @@ into `//`: 147.03 kB. The shared teleprompter added
 `aloud/shared.ts` and turned the headers of `chrome/taskbar.tsx`,
 `chrome/icons.tsx`, `stream/card-tray.tsx`, `moments/pins-rail.tsx`,
 `moments/surfaces.tsx`, `show-clock.ts`, `claim.ts` and `back-gesture.ts` into `//`:
-147.55 kB with all of wave 59 merged, 147.77 kB after its seam fixes.
+147.55 kB with all of wave 59 merged, 147.77 kB after its seam fixes. The audio ads
+(wave 59a) added `ad-player.ts`, `ad-spots.ts` and `ad-slot.tsx` and turned the headers
+of `ui/window.tsx`, `takeover.tsx`, `wake-lock.ts`, `lazy-chunk.tsx`, `client.ts`,
+`threads.ts`, `pins.ts`, `presence.ts`, `lifecycle.ts` and `countdown.tsx` into `//`:
+148.25 kB.
 
 ## How a session works
 
@@ -117,6 +121,14 @@ into `//`: 147.03 kB. The shared teleprompter added
   pane, or a busy resolve) is `enterBadge`: what the page does with the link, so
   the owed release, this phone's token and the refused screen hold there too. Tests: `test/guest-scan.test.tsx`,
   `test/w58-booth-scan.test.tsx`.
+- **The audio ads** (wave 59a, [`docs/loom-w59-ads-contract.md`](../docs/loom-w59-ads-contract.md)).
+  The stream's `ad` frame goes to `AdSpots` (`ad-spots.ts`, one per session), armed by
+  `AdSlot` (`ad-slot.tsx`, inside `MomentsProvider`; never in an embedded pane). The
+  first `touchend` or `click` unlocks one shared element (`ad-player.ts`; the terminal
+  uses it too). Busy (an open card via `adCardOpen`, the moments' `held`, the
+  teleprompter, the stage, a lock, a takeover) or hidden, the phone posts `/api/ad/busy`
+  and another takes its place; getting busy mid-ad ends it. A refused play leaves
+  `▶ Play`. Tests: `test/w59-audio-ads.test.ts`, `scripts/sim/ads.spec.ts`.
 - **The read window** (wave 58). `aloud/model.ts` `ALOUD_WINDOW_MS` is 20
   minutes, past the longest read: the monologue lands at once and takes 14 at the
   prompter's pace, so a phone swapped mid-read still gets it.

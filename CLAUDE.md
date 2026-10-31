@@ -259,6 +259,18 @@ top five; the TV lets every censored word out (`award_language`, the
 screen state's `night.language`). Help:
 `docs/help/authoring/55-language-filter.md`.
 
+**The audio ads** (wave 59a, not shipped; `docs/loom-w59-ads-contract.md`, the one
+new word `DRAFT w59a`): through the second hunt, from about 3 minutes in until the
+five-minute warning, the 14 MP3s play in order, one every 3.5 minutes, on every wall
+that can and a third of the phones in turn, in a Windows 95 pop-up with an ×. Never on
+the TV, in the server room or in the tent. A busy phone is skipped and another takes
+its place. They give way to a talk scene, a read, an announcement, a cutscene, a
+blackout and paused doors. Run → Terminals → 📢 is the kill switch, journaled. No
+story change and no `sync-show`: `scripts/ops/ads-media.sh upload` (`~/loom-media/ads`,
+never in git or an image), then the release, then reload every phone and terminal. Not
+proven on a real iPhone, Android phone or old tablet. Help:
+`docs/help/play/19-house-workings.md`.
+
 **🛡 from the filter** (wave 57, not shipped; `docs/loom-w48-contract.md` C15,
 show text `DRAFT w57` on `SIGNOFF-w48.md` §6): a line in the Password Manager's
 filter offers 🛡 Send to the Internet beside ✂ Censor and Let it go, wherever a

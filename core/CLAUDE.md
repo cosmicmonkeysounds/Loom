@@ -20,7 +20,7 @@ The show, *Trapped in the Internet* (Oct 31 2026), is the Loom project in
 | `src/runtime/sim/sim.ts` | the `Sim`: world, ledger, hook drain, the executor, every journaled mutation |
 | `src/runtime/sim/` (rest) | `crews.ts` (crews, faction mode), `board.ts` (watch / countdown), `badges.ts`, `stats.ts`, `channel-types.ts`, `effects.ts`, `DESIGN.md` |
 | `src/lsp/` | `Workspace` (completion, hover, definition, references, symbols, diagnostics), `graph.ts` (the story graph), `rename.ts`, `w18-lints.ts` … `w55-lints.ts` (workspace lints L12xx) |
-| `src/*.ts` | browser-safe shared modules: `house-desk.ts` (wave 25, `@loom/core/house-desk`), `talk-back.ts` (wave 32, `@loom/core/talk-back`: `TalkView`, `readTalkPost`, `talkView`) + `talk-scenes.ts` (the show's canned talk lines, `DRAFT w32`), `cue-sheet.ts`, `pick-echo.ts` (wave 28), `voice-fx.ts` (wave 56), `host-board.ts`, `delivery.ts`, `facts.ts` + `answer-match.ts`, `casino.ts`, `go.ts`, `show-clock.ts`, `identity-kind.ts` |
+| `src/*.ts` | browser-safe shared modules: `audio-ads.ts` (wave 59a), `house-desk.ts` (wave 25, `@loom/core/house-desk`), `talk-back.ts` (wave 32, `@loom/core/talk-back`: `TalkView`, `readTalkPost`, `talkView`) + `talk-scenes.ts` (the show's canned talk lines, `DRAFT w32`), `cue-sheet.ts`, `pick-echo.ts` (wave 28), `voice-fx.ts` (wave 56), `host-board.ts`, `delivery.ts`, `facts.ts` + `answer-match.ts`, `casino.ts`, `go.ts`, `show-clock.ts`, `identity-kind.ts` |
 | `server/server.ts` | process boot, static apps (`/`, `/terminal/`, `/reinstall/`, `/cards`, `/costume`, `/webmaster/`), `/api/health`, `/api/resolve-code`, control-plane routing |
 | `server/event-runtime.ts` | one live event (`EventRuntime`, ~7,000 lines): every `/e/:id/api/*` handler, the journal commit + `fanout`, restarts, the ticker |
 | `server/registry.ts` | `EventRegistry`: one `EventRuntime` per event, rehydrated at boot |
@@ -84,7 +84,8 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   Clippy's dream takes over and whether the TV has named the bug
   (`ScreenWatch` `dreamAt` / `dreamHeard`, wave 50: a restart replays the cue
   as history and the dream is simply on), the teleprompter's scene, position and
-  holds (wave 59: a restart forgets them and the rest of the lines play), and
+  holds (wave 59: a restart forgets them and the rest of the lines play), the
+  audio ad on the air and the phones' rotation (wave 59a: the list itself is journaled), and
   most hub timers live in memory and are lost on a process restart.
   Document a new one the same way.
 - **Server changes are additive.** Old clients (terminals on old
@@ -637,6 +638,20 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   worker's `recent`, `PERSISTENT_SLIDES` holds `recount` and `purgatory`, and
   `ALOUD_WINDOW_MS` outlasts the 14-minute read. Both versions and Task Manager's
   printed copy are held to the delivered file by `test/trapped-monologue.test.ts`.
+- **The audio ads** (wave 59a, [`docs/loom-w59-ads-contract.md`](../docs/loom-w59-ads-contract.md)).
+  `src/audio-ads.ts` (`@loom/core/audio-ads`, pure) holds the 14 MP3s and the pace;
+  `server/audio-ads.ts` `AdsHub` decides, on story time, at the end of `tickOnce`.
+  `adsHold` names what keeps one off the air and cuts one on it. `signal("audio_ad_aired", …)`
+  and `signal("audio_ads_switched", …)` are journaled and no story hook hears them:
+  `restore` replays them, so a restart resumes the list and keeps the switch, and
+  `loadScenario` resets it. What is on the air, the phones' rotation and the holds are
+  memory only. The first ad waits for `Night.truther_at`; the window is `Night.phase`
+  `hunt_2` with `Night.hunt2_on`. Walls read `ScreenState.ad` (`adTerminal`: never the
+  TV, a mirror, a room terminal or `server-room`), phones the `ad` stream frame; a phone
+  that can't take one posts `/api/ad/busy` and the next takes its place. `POST
+  /api/mod/screen/ads {on}` is a director's, off the host allowlist; `GET
+  /api/mod/screen/terminals` carries `ads`. The MP3s are never in git or an image:
+  `scripts/ops/ads-media.sh`. Tests: `test/w59-audio-ads.test.ts`.
 - **The Task Manager costume** (wave 59, [`docs/trapped/costume.md`](../docs/trapped/costume.md)).
   An iPad 2 on iOS 9, so `server/costume-page.ts` is a hand-written ES5 page with
   its script and stylesheet as their own files (`test/w59-costume-page.test.ts`
