@@ -155,6 +155,7 @@ from .routing import (
 )
 from .sounds import EXTENSIONS, SoundBank, identify_label, identify_tone, placeholders_in, sound_lengths
 from .soundtrack import OFF, Director, scene_of_cue
+from .gamefeed import GameFeed
 from .tap import Tap, TapConfig, find_device
 from .voicefx import ROLE as VOICE_ROLE
 from .voicefx import VoiceFx
@@ -477,6 +478,8 @@ class AudioRouter:
         #: rate (built when the first walker comes, off this thread).
         self.walkers = Walkers(self._step_rig)
         self.steps: FootstepBank | None = None
+        #: An input heard in the reinstallation games (wave 59): duplex only.
+        self.feed = GameFeed(cfg.game_feed) if cfg.game_feed is not None and cfg.passthrough else None
 
     # -- describe / check ----------------------------------------------------
 
@@ -495,6 +498,11 @@ class AudioRouter:
             + (
                 [f"tap      : {cfg.tap.device!r}" + (f" on {cfg.tap.host_api.upper()}" if cfg.tap.host_api else "") + f" summed into input {cfg.tap.ch} ({cfg.tap.gain_db:+.0f} dB)"]
                 if cfg.tap is not None
+                else []
+            )
+            + (
+                [f"game feed: input {cfg.game_feed.ch} heard in the reinstallation games at {cfg.game_feed.spot} ({cfg.game_feed.gain_db:+.0f} dB, gate {cfg.game_feed.gate_db:.0f} dBFS)" + ("" if cfg.passthrough else ": NOT RUNNING, it needs passthrough: true")]
+                if cfg.game_feed is not None
                 else []
             ),
             f"config   : the server's audio.json (long-poll {cfg.poll_wait:.0f}s)" + (f"; local {cfg.config_file}" if cfg.config_file else "") + f"; cache {cfg.cache_dir}",
@@ -964,6 +972,14 @@ class AudioRouter:
                     log.warning("his voice's state unread (%s) — keeping the last", err or type(err).__name__)
             await asyncio.sleep(VOICEFX_POLL_S)
 
+    def feed_state(self) -> str | None:
+        """For the health line (None: no feed)."""
+        if self.feed is None:
+            return None
+        if self.engine is not None and self.engine.feed_failed:
+            return "FAILED, out of the path until the stream reopens"
+        return self.feed.stats()
+
     def tap_state(self) -> str | None:
         engine = self.engine
         if self.cfg.tap is None or engine is None:
@@ -1006,6 +1022,7 @@ class AudioRouter:
                 tap=self._tap_factory(cfg.tap),
                 voicefx=VoiceFx if voicefx_ch else None,
                 voicefx_ch=voicefx_ch,
+                feed=self.feed,
             )
             self._signature = signature
         try:
@@ -1977,6 +1994,8 @@ class AudioRouter:
             "tap": self.tap_state(),
             # Wave 56: his voice's insert, or None.
             "voicefx": self.voicefx_state(),
+            # Wave 59: the input the games hear, or None.
+            "game_feed": self.feed_state(),
         }
 
     def sound_lengths(self) -> dict[str, int]:
@@ -2023,6 +2042,7 @@ class AudioRouter:
                 + (f" | {h['walkers']} walking" if h["walkers"] else "")
                 + (f" | tap {h['tap']}" if h.get("tap") else "")
                 + (f" | voice fx {h['voicefx']}" if h.get("voicefx") else "")
+                + (f" | game feed {h['game_feed']}" if h.get("game_feed") else "")
                 + (f" | tidal {self.tidal.stats()}" if self.tidal is not None else "")
                 + (f" | ducking: {', '.join(f'{k} {v:.0%}' for k, v in h['sources'].items() if v > 0)}" if any(v > 0 for v in h["sources"].values()) else "")
                 + (f" | music {h['music']['scene'] or '—'}: " + (", ".join(f"{b['playlist']} {b['track'] or '—'}" for b in h["music"]["beds"]) or "no bed") if h.get("music") else ""),
@@ -2203,6 +2223,8 @@ class AudioRouter:
         ]
         if self.cfg.voicefx:
             tasks.append(asyncio.ensure_future(self._voicefx_loop(ctx.mod)))
+        if self.feed is not None:
+            tasks.append(asyncio.ensure_future(self.feed.run(ctx.mod)))
         if self.cfg.announce and self.lock_fd is None:
             tasks.append(asyncio.ensure_future(self._voice_lock_loop()))
         if self.music is not None:

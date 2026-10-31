@@ -93,6 +93,12 @@ audio:
   # is the server's word (Run -> Terminals: Auto / Clean / Broken); false is the
   # hard off (then restart audio) if the insert itself ever misbehaves.
   voicefx: true
+  # Wave 59: Mic 1 of the 828x is the TV's sound in both reinstallation games,
+  # heard while a program stands in The Desktop, and it goes up to the server
+  # only then (scripts/house-desktop/README.md 3.8). Not the house's sound:
+  # CueMix and the house mix never touch it. Level: gain_db (the health line's
+  # `game feed` peak). Off: delete this line, then restart audio.
+  game_feed: { ch: 1, spot: desktop-tv }
   # The soundtrack from the TIDAL app (wave 52; scripts/house-desktop/README.md
   # 3.7): TIDAL plays into "VoiceMeeter Aux Input", VoiceMeeter's AUX strip is
   # on B2 only, and the router hears B2 as the music bus's stereo bed.

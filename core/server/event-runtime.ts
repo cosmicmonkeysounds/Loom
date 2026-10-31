@@ -4366,6 +4366,7 @@ export class EventRuntime {
       ...(who.kind === "terminal" ? { kind: "terminal", spot: who.spot } : { kind: "player", session: who.session }),
       ...(mic !== undefined ? { mic } : {}),
       ...(hear !== undefined ? { hear } : {}),
+      ...(url.searchParams.get("only") === "tv" ? { only: "tv" as const } : {}),
       // A reader behind by seconds skips audio until it catches up: late
       // voice is worse than a gap. Control frames always go.
       send: (event, data) => {

@@ -264,6 +264,41 @@ describe("EventRuntime — the voice link", () => {
     rt.dispose();
   });
 
+  it("wave 59: the router as the TV: a game hears it, an old stream or an only=tv one, and the hall stays dark for only=tv", async () => {
+    const clock = { t: 9_000 };
+    const { rt, modToken, a } = await setup(clock);
+    const body = Buffer.alloc(3200, 0x55);
+    // The stream stagehand's `GameFeed` holds, with the token in its header.
+    const router = await stream(rt, "/api/spatial/voice/stream?spot=desktop-tv&mic=1&hear=0", { token: modToken });
+    expect(router.status).toBe(200);
+    expect(of(router, "hello")).toEqual([expect.objectContaining({ as: "terminal", spot: "desktop-tv", listen: false, ears: 0 })]);
+    const nobody = await call(rt, "POST", "/api/spatial/voice?seq=5000&spot=desktop-tv", body, { token: modToken });
+    expect(nobody.json).toEqual({ ok: true, listening: false, ears: 0, dropped: true });
+
+    // The stream the Quest's APK already opens: no flags at all.
+    await pose(rt, a.token, [3, 0, 7]);
+    const quest = await stream(rt, `/api/spatial/voice/stream?token=${a.token}`);
+    expect(of(router, "listen").at(-1)).toEqual({ on: true, ears: 1 });
+    const up = await call(rt, "POST", "/api/spatial/voice?seq=5001&spot=desktop-tv", body, { token: modToken });
+    expect(up.json).toEqual({ ok: true, listening: true, ears: 1 });
+    expect(of(quest, "voice").map((v) => [v.from, v.kind, v.spot, v.seq, v.data])).toEqual([["t:desktop-tv", "terminal", "desktop-tv", 5001, body.toString("base64")]]);
+
+    // The web game with its voice link off: the newest stream wins the session.
+    const hall = await stream(rt, `/api/spatial/voice/stream?token=${modToken}&spot=hall`);
+    const web = await stream(rt, `/api/spatial/voice/stream?token=${a.token}&mic=0&only=tv`);
+    expect(quest.ended).toBe(true);
+    await call(rt, "POST", "/api/spatial/voice?seq=5002&spot=desktop-tv", body, { token: modToken });
+    expect(of(web, "voice").map((v) => v.seq)).toEqual([5002]);
+    await pose(rt, a.token, AT.hall);
+    clock.t += 100;
+    await new Promise((r) => setTimeout(r, 130));
+    expect(of(web, "bye")).toEqual([{ from: "t:desktop-tv" }]);
+    expect(of(router, "listen").at(-1)).toEqual({ on: false, ears: 0 });
+    expect(of(hall, "hello")).toEqual([expect.objectContaining({ listen: false, ears: 0 })]);
+    expect(of(hall, "listen")).toEqual([]); // its mic never opened for a game that can't hear it
+    rt.dispose();
+  });
+
   it("a story reset closes every voice stream", async () => {
     const clock = { t: 5_000 };
     const { rt, modToken, a } = await setup(clock);

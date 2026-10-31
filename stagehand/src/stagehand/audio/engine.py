@@ -28,6 +28,10 @@ logged and the router plays on without it.
 A **voice insert** (wave 56, `voicefx.py`) breaks one input channel, his, on
 its way from the tap to the mixer. It needs the duplex stream like the tap,
 and any exception in it turns it off for good: he goes on speaking, dry.
+
+A **game feed** (wave 59, `gamefeed.py`) reads one input into a ring buffer for
+the reinstallation games. It only copies the column, after the tap and the
+insert, and any exception takes it out of the path: the house never hears it.
 """
 
 from __future__ import annotations
@@ -193,6 +197,7 @@ class Engine:
         tap: Callable[[int], Any] | None = None,
         voicefx: Callable[[int], Any] | None = None,
         voicefx_ch: int = 0,
+        feed: Any = None,
     ) -> None:
         self.device = device_name(device)
         #: `device.expect`: compared on every open (the router updates it).
@@ -229,6 +234,12 @@ class Engine:
         self.voicefx: Any = None
         #: It threw in the callback, and was taken out of the path.
         self.voicefx_failed = False
+        #: A `gamefeed.GameFeed`: outlives the stream. `_feed_on` is what the
+        #: callback reads: this stream's own answer (`_open_feed`), since a
+        #: reopened stream may have fewer inputs.
+        self.feed = feed
+        self._feed_on: Any = None
+        self.feed_failed = False
         self._scratch: np.ndarray | None = None
 
     def describe(self) -> str:
@@ -279,6 +290,7 @@ class Engine:
             log.warning("%s: %d in / %d out, audio.json wants %d / %d — the rest are dropped", info.name, info.inputs, info.outputs, self.want_in, self.want_out)
         rate = self.want_rate or info.rate
         mixer = Mixer(max(n_in, 1), n_out, rate, **self.mixer_args)
+        self._open_feed(rate, n_in)
         factory = self._factory
         if factory is None:
             import sounddevice as sd
@@ -304,6 +316,17 @@ class Engine:
             self.voicefx = self._voicefx_factory(rate)
             self.voicefx_failed = False
         return mixer
+
+    def _open_feed(self, rate: int, n_in: int) -> None:
+        self._feed_on = None
+        feed = self.feed
+        if feed is None:
+            return
+        if 1 <= feed.cfg.ch <= n_in:
+            feed.open(rate)
+            self._feed_on, self.feed_failed = feed, False
+        else:
+            log.error("game feed not opened: input %d, and this stream has %d inputs (passthrough: true?)", feed.cfg.ch, n_in)
 
     def _open_tap(self, rate: int, n_in: int) -> None:
         if self._tap_factory is None:
@@ -391,6 +414,14 @@ class Engine:
                     self.voicefx = None
                     self.voicefx_failed = True
             indata = scratch
+        feed = self._feed_on
+        if feed is not None:
+            try:
+                feed.write(indata[:, feed.cfg.ch - 1])
+            except Exception:  # noqa: BLE001 — never let the callback raise
+                self.errors += 1
+                self._feed_on = None
+                self.feed_failed = True
         self._run(indata, outdata)
 
     def _output_cb(self, outdata, frames, time, status) -> None:  # noqa: ARG002
