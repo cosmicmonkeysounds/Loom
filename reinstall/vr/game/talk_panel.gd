@@ -4,6 +4,8 @@
 ## trigger picks). Up to [constant HouseDescent.TALK_OPTIONS_MAX] rows; a game
 ## line, so the one text in the house besides captions. Built once, at the
 ## first deep walk; panel coordinates as [LobbyTiles]' (the panel faces +z).
+## Wave 59: it stands wherever the way to the prop puts it, a wall included, so
+## all of it draws over the house, under the HUD and the captions.
 class_name TalkPanel
 extends Node3D
 
@@ -17,9 +19,16 @@ const ROW_GAP := 0.03
 const MARGIN := 0.05
 const TEXT_H := 0.062
 const BACKDROP := "#0a1f28"
+## Draw order, all with no depth test ([method Hud._overlay]): under [Speech]'s
+## captions and [Hud]; [LobbyPointer]'s beam goes over them.
+const DRAW_BACKDROP := 46
+const DRAW_ROW := 47
+const DRAW_TEXT := 48
 
 var _backdrop: MeshInstance3D
 var _rows: Array[Node3D] = []
+var _row_look: Material
+var _row_lit: Material
 ## The rows up now, `{id, center, size}` ([method LobbyTiles.button_at]).
 var _buttons: Array = []
 var _hover := -1
@@ -33,13 +42,20 @@ func build() -> void:
 	if not _rows.is_empty():
 		return
 	top_level = true
-	_backdrop = Lobby._quad(Vector2.ONE, HouseLook.screen(BACKDROP))
+	_backdrop = Lobby._quad(Vector2.ONE, Hud._overlay(Color(BACKDROP), null, DRAW_BACKDROP))
 	_backdrop.name = "Backdrop"
 	_backdrop.position.z = -0.03
 	add_child(_backdrop)
+	_row_look = Hud._overlay(Color(Lobby.BG), null, DRAW_ROW)
+	_row_lit = Hud._overlay(Color(Lobby.BG_HOVER), null, DRAW_ROW)
 	for i in HouseDescent.TALK_OPTIONS_MAX:
 		var row := Lobby.make_button(self, "", Vector2.ZERO, ROW, TEXT_H)
 		row.name = "Row_%d" % i
+		(row.get_node("Bg") as MeshInstance3D).material_override = _row_look
+		var l := row.get_node("Label") as Label3D
+		l.no_depth_test = true
+		l.render_priority = DRAW_TEXT
+		l.outline_render_priority = DRAW_TEXT - 1
 		_rows.append(row)
 	visible = false
 
@@ -69,7 +85,7 @@ func open(texts: Array, at: Transform3D) -> void:
 		var c := Vector2(0.0, h / 2.0 - ROW.y / 2.0 - i * (ROW.y + ROW_GAP))
 		row.position = Vector3(c.x, c.y, 0.0)
 		Lobby.fit(row.get_node("Label") as Label3D, str(texts[i]), ROW.x - 0.08, TEXT_H)
-		Lobby.set_look(row, false, false)
+		_light(row, false)
 		_buttons.append({"id": str(i), "center": c, "size": ROW})
 	_backdrop.scale = Vector3(ROW.x + 2.0 * MARGIN, h + 2.0 * MARGIN, 1.0)
 	global_transform = at
@@ -123,7 +139,11 @@ func _set_hover(i: int) -> void:
 		return
 	_hover = i
 	for k in _rows.size():
-		Lobby.set_look(_rows[k], k == i, false)
+		_light(_rows[k], k == i)
+
+
+func _light(row: Node3D, on: bool) -> void:
+	(row.get_node("Bg") as MeshInstance3D).material_override = _row_lit if on else _row_look
 
 
 ## Where row `i`'s centre stands in the world (for aiming at it).

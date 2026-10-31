@@ -80,6 +80,7 @@ var _dead_polls := 0
 ## Sessions we adopted or ended — a station poll never re-offers them.
 var _seen_sessions := {}
 var _offline_count := 0
+var _offline_resets := 0
 ## The map version the server last named ("" = none yet).
 var _want_version := ""
 ## The map version the adopted session's duck was dealt on ("" = no session).
@@ -747,6 +748,27 @@ func voice_token() -> String:
 
 func mark_ready() -> void:
 	_post_session("/api/spatial/ready", {})
+
+
+## (wave 59) The server deals Gerald a new spot; its `duck` frame says so too,
+## and the second word is no change. Offline he is dealt here.
+func reset_run() -> void:
+	if not has_session():
+		return
+	if is_offline():
+		_offline_resets += 1
+		var was: Dictionary = session.get("duck", {})
+		_adopt_duck(HouseDuck.pick_duck_spot(house, "%s:reset:%d" % [session_id(), _offline_resets], [was.get("id", "")]))
+		return
+	var sid := session_id()
+	transport.send("POST", _base() + "/api/spatial/reset", {}, str(session.get("token", "")),
+		func(status_code: int, data: Variant) -> void:
+			if sid != session_id():
+				return
+			if status_code == 410 or status_code == 401:
+				_lose_session("over")
+			elif status_code == 200 and data is Dictionary:
+				_adopt_duck((data as Dictionary).get("duck")))
 
 
 ## (wave 49) The descent's words for this walk (`GET /api/spatial/descent`

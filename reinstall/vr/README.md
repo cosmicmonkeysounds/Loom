@@ -15,6 +15,7 @@ Thumbsticks, plus one button for the King (and a laser in the lobby):
 | **Trigger** (either hand) or **A / X** | hit the King, near and facing him — once per visit |
 | **Lobby** | point a controller at your program's tile and pull the **trigger** (either hand: a thin beam shows where), or walk the tiles with the stick and hold **right** for 1 s; then **START** (trigger, or hold right again) or **BACK** |
 | **A prop that talks** (wave 49) | the same beam and **trigger** (or **A**) on its panel's rows; walk off to leave it |
+| **Both triggers + A**, held 5 s (wave 59) | the run reset: a bar fills, letting go cancels; back at the spawn with Gerald somewhere new. One controller: its index and grip count as the two |
 | **The intro** | the same beam and **trigger** (or **A**) on the panel's buttons; the stick walks and turns once the tutorial says so |
 
 With only the **right** controller (the show's headsets), its stick's

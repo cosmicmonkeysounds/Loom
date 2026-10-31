@@ -63,6 +63,7 @@ func _run() -> void:
 	await _test_cam_panels()
 	_test_autopilot()
 	await _test_main_and_game()
+	await _test_run_reset()
 	await _test_wall_bump()
 	_test_lobby_geometry()
 	_test_lobby_pure()
@@ -1341,6 +1342,18 @@ func _test_server_link_map() -> void:
 	sl._on_frame("duck", {"session": "s-m", "duck": spots[2]})
 	_check(ducks.size() == 2 and ducks.back() == str(spots[2]["id"]), "link: a duck frame for us moves the duck")
 
+	# The run reset (wave 59): the server's new spot, or nothing from an old one.
+	sl.reset_run()
+	_check(tr.count("/api/spatial/reset") == 1 and str(tr.calls.back()["token"]) == "t-m", "link: the run reset posts with the session token")
+	tr.answer("/spatial/reset", 200, {"ok": true, "spawn": {}, "duck": spots[3]})
+	_check(ducks.size() == 3 and ducks.back() == str(spots[3]["id"]), "link: … and takes the new spot")
+	sl._on_frame("duck", {"session": "s-m", "duck": spots[3]})
+	_check(ducks.size() == 3, "link: … its stream frame is no second move")
+	sl.reset_run()
+	tr.answer("/spatial/reset", 404, {"error": "not found"})
+	_check(ducks.size() == 3 and sl.has_session(), "link: an older server leaves him where he is, and the walk goes on")
+	ducks.pop_back()
+
 	# A map edit: the `house` frame names a newer version → refetch (session token).
 	sl._on_frame("house", {"version": "v3"})
 	_check(tr.count("/api/spatial/house") == 3 and str(tr.calls.back()["token"]) == "t-m" and sl.map_is_stale(), "link: a house frame naming a new version refetches")
@@ -2230,6 +2243,124 @@ func _assignment(house: Dictionary, sid: String, captured: bool) -> Dictionary:
 	}
 
 
+## Wave 59: both triggers + A for 5 s, whatever the player is in.
+func _test_run_reset() -> void:
+	var house: Dictionary = _placeholder_house()
+	var link: LinkBase = preload("res://test/fake_link.gd").new()
+	link.config = StationConfig.merge(StationConfig.defaults(), {"name": "Test Headset", "trail_delay": 0, "intro": true})
+	link.house = house
+	link.house_version = "test"
+	var main: Node = load("res://main.tscn").instantiate()
+	main.link = link
+	root.add_child(main)
+	await process_frame
+	var game: Game = main.game
+	var player := game.player
+	player.read_input = false
+	var feet_at_spawn := HouseFrames.vec(house["spawn"]["pos"])
+
+	# The chord: two triggers of any kind and A; a hand of two counts.
+	_check(VrPlayer.chord(2, true) and VrPlayer.chord(3, true), "reset: two triggers and A are the chord")
+	_check(not VrPlayer.chord(1, true) and not VrPlayer.chord(4, false), "reset: one trigger, or no A, is not")
+
+	# The hold, on its own.
+	var m := HoldMeter.new(1.0)
+	_check(is_equal_approx(m.update(true, 0.25), 0.25) and is_equal_approx(m.update(true, 0.25), 0.5), "reset: the hold fills")
+	_check(m.update(false, 0.1) == 0.0 and is_equal_approx(m.update(true, 0.25), 0.25), "reset: letting go empties it")
+	m.update(true, 1.0)
+	m.spend()
+	_check(m.update(true, 9.0) == 0.0, "reset: spent, it does nothing while still held")
+	m.update(false, 0.1)
+	_check(is_equal_approx(m.update(true, 0.5), 0.5), "reset: let go, it fills again")
+
+	# In the intro it does nothing: nothing there to be stuck on.
+	var a := _assignment(house, "s-reset", true)
+	a["reinstalled"] = 2
+	link.assignment_received.emit(a)
+	_check(game.in_intro(), "reset: the walk starts in the intro")
+	player.reset_chord = true
+	game._process(HoldMeter.RESET_HOLD + 1.0)
+	_check(game.in_intro() and link.get("run_resets") == 0 and game.hud.reset_fill() == 0.0, "reset: never in the intro")
+	player.reset_chord = false
+	game._intro_events(game.intro.skip_all())
+	game._process(0.016)
+	_check(not game.in_intro(), "reset: into the house")
+
+	# A few steps away, held, let go early: nothing.
+	var duck_was: String = str(game.flow.assignment["duck"]["id"])
+	var away := feet_at_spawn + Vector3(1.0, 0.0, 0.0)
+	player.teleport(away, 0.0)
+	game.descent.running = false
+	player.reset_chord = true
+	game._process(2.0)
+	_check(is_equal_approx(game.hud.reset_fill(), 2.0 / HoldMeter.RESET_HOLD), "reset: the bar fills while held (%.2f)" % game.hud.reset_fill())
+	_check(game.hud.get_node("ResetBar").visible, "reset: the bar is up")
+	player.reset_chord = false
+	game._process(0.016)
+	_check(game.hud.reset_fill() == 0.0 and not game.hud.get_node("ResetBar").visible and link.get("run_resets") == 0, "reset: letting go cancels it")
+	_check(_v3(player.feet(), away), "reset: … and nothing moved")
+
+	# Held all the way.
+	var hit_used := game.king_hit_used
+	var played := float(game.get("_played_for"))
+	player.reset_chord = true
+	for i in 5:
+		game._process(1.01)
+	_check(link.get("run_resets") == 1, "reset: five seconds resets the run")
+	_check(_v3(player.feet(), feet_at_spawn), "reset: back at the spawn (%s)" % player.feet())
+	_check(game.state() == GameFlow.State.PLAYING and not game.in_intro(), "reset: no video, no tutorial")
+	_check(link.get("readies") == 1, "reset: the run's clock isn't restarted")
+	_check(game.king_hit_used == hit_used and float(game.get("_played_for")) >= played, "reset: no hit back, the walk's clock runs on")
+	_check(game.hud.notice_text() == Game.RESET_DONE, "reset: it says so (%s)" % game.hud.notice_text())
+	for i in 8:
+		game._process(1.0)
+	_check(link.get("run_resets") == 1, "reset: still held, it does not go again")
+	player.reset_chord = false
+	game._process(0.016)
+
+	# Gerald moves on the server's word.
+	var spots: Array = house["duck"]["spots"]
+	var other: Dictionary = {}
+	for s: Dictionary in spots:
+		if str(s["id"]) != duck_was:
+			other = s
+			break
+	link.duck_changed.emit(other)
+	_check(str(game.flow.assignment["duck"]["id"]) == str(other["id"]) and _v3(game.duck.global_position, HouseFrames.vec(other["pos"])), "reset: Gerald goes where the server says")
+
+	# Out of the void's scare: it waits for the scare, then goes.
+	player.teleport(away, 0.0)
+	game.set("_escape_t", 0.0)
+	game.hud.scare(true)
+	player.reset_chord = true
+	game._process(HoldMeter.RESET_HOLD + 0.1)
+	_check(link.get("run_resets") == 1, "reset: not on top of a scare")
+	game.set("_escape_t", -1.0)
+	game.hud.scare(false)
+	game._process(0.016)
+	_check(link.get("run_resets") == 2 and _v3(player.feet(), feet_at_spawn), "reset: straight after it")
+	player.reset_chord = false
+	game._process(0.016)
+
+	# The server's answer adds Gerald to the reset's own line, as soon as it lands.
+	var back: Dictionary = {}
+	for s: Dictionary in spots:
+		if str(s["id"]) != str(other["id"]):
+			back = s
+			break
+	var moved_line: String = Game.DUCK_MOVED_TRAIL if game.trail_revealed else Game.DUCK_MOVED
+	link.duck_changed.emit(back)
+	_check(game.hud.notice_text() == "%s %s" % [Game.RESET_DONE, moved_line], "reset: its line stays, with Gerald's added (%s)" % game.hud.notice_text())
+	game._process(Game.NOTICE_TIME + 0.1)
+	link.duck_changed.emit(other)
+	_check(game.hud.notice_text() == moved_line, "reset: a later move is the plain line (%s)" % game.hud.notice_text())
+
+	link.session_over.emit("test")
+	await process_frame
+	main.queue_free()
+	await process_frame
+
+
 func _test_main_and_game() -> void:
 	var house: Dictionary = _placeholder_house()
 	var link: LinkBase = preload("res://test/fake_link.gd").new()
@@ -2383,6 +2514,8 @@ func _test_main_and_game() -> void:
 	link.found_answered.emit(true, {"ok": true, "released": true, "already": false})
 	_check(game.state() == GameFlow.State.FOUND and game.hud.big_text() == "REINSTALLATION COMPLETE", "game: found → REINSTALLATION COMPLETE")
 	_check(game.duck.is_flying() and game.trail.count() == 0, "game: the duck flies, the trail goes")
+	game.duck._process(Duck.FLIGHT + 0.1)
+	_check(not game.duck.body_shown(), "game: … and flies right out of sight")
 	game._process(GameFlow.CELEBRATE + 0.1)
 	_check(game.state() == GameFlow.State.LOBBY and link.ended == ["found"], "game: after the celebration the session ends → lobby")
 	_check(game.cams.polling().is_empty(), "game: the session's end stops the camera feeds")
@@ -2391,6 +2524,7 @@ func _test_main_and_game() -> void:
 
 	# Not captured: "YOU FOUND GERALD".
 	link.assignment_received.emit(_assignment(house, "s-2", false))
+	_check(game.duck.body_shown(), "game: the next walk's Gerald has his body back (wave 59: he kept the last flight's hidden model)")
 	var dp2: Array = link.adopted.back()["duck"]["pos"]
 	player.teleport(Vector3(dp2[0], dp2[1], dp2[2] + 0.3), 0.0)
 	game._process(0.016)

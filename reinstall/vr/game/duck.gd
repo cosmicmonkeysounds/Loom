@@ -101,6 +101,7 @@ func place(pos: Vector3, yaw := 0.0) -> void:
 	_model.position = Vector3.ZERO
 	_model.rotation = Vector3.ZERO
 	_model.scale = Vector3.ONE
+	_model.visible = true
 	_egg.visible = false
 	_flying = -1.0
 	_placed = true
@@ -126,6 +127,11 @@ var _floor_hidden := false
 
 func is_flying() -> bool:
 	return _flying >= 0.0
+
+
+## Whether his body is drawn (his node can be up with only the ring showing).
+func body_shown() -> bool:
+	return _model.visible
 
 
 ## Lay the egg and fly off.

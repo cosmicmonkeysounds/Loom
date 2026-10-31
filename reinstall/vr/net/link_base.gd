@@ -108,6 +108,12 @@ func send_pose(_p: Array, _yaw: float, _pitch: float) -> void:
 	pass
 
 
+## (wave 59) The run reset: Gerald goes somewhere new ([signal duck_changed]).
+## An older server, or no answer, leaves him where he is.
+func reset_run() -> void:
+	pass
+
+
 ## Claim the duck ([signal found_answered]).
 func report_found() -> void:
 	pass
