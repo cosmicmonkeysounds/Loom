@@ -15,6 +15,10 @@ WLED strip, Mosquitto, stagehand `show` + `lights`, the TV —
 
 The other files here:
 
+- `costume-root.mjs`: serves ISRG Root X1 to the costume's iPad as a profile.
+  `costume-relay.mjs`: the costume's fallback, plain http on the LAN to the
+  live server. Both in [`docs/trapped/costume.md`](../../docs/trapped/costume.md).
+
 | File | What it is now |
 |---|---|
 | [`audio.md`](./audio.md) | **The fallback**: the speaker router on this Mac, if the 828x misbehaves on Windows (the Desktop README's §11 says when and how to switch) |

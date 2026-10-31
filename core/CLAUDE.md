@@ -21,7 +21,7 @@ The show, *Trapped in the Internet* (Oct 31 2026), is the Loom project in
 | `src/runtime/sim/` (rest) | `crews.ts` (crews, faction mode), `board.ts` (watch / countdown), `badges.ts`, `stats.ts`, `channel-types.ts`, `effects.ts`, `DESIGN.md` |
 | `src/lsp/` | `Workspace` (completion, hover, definition, references, symbols, diagnostics), `graph.ts` (the story graph), `rename.ts`, `w18-lints.ts` … `w55-lints.ts` (workspace lints L12xx) |
 | `src/*.ts` | browser-safe shared modules: `house-desk.ts` (wave 25, `@loom/core/house-desk`), `talk-back.ts` (wave 32, `@loom/core/talk-back`: `TalkView`, `readTalkPost`, `talkView`) + `talk-scenes.ts` (the show's canned talk lines, `DRAFT w32`), `cue-sheet.ts`, `pick-echo.ts` (wave 28), `voice-fx.ts` (wave 56), `host-board.ts`, `delivery.ts`, `facts.ts` + `answer-match.ts`, `casino.ts`, `go.ts`, `show-clock.ts`, `identity-kind.ts` |
-| `server/server.ts` | process boot, static apps (`/`, `/terminal/`, `/reinstall/`, `/cards`, `/webmaster/`), `/api/health`, `/api/resolve-code`, control-plane routing |
+| `server/server.ts` | process boot, static apps (`/`, `/terminal/`, `/reinstall/`, `/cards`, `/costume`, `/webmaster/`), `/api/health`, `/api/resolve-code`, control-plane routing |
 | `server/event-runtime.ts` | one live event (`EventRuntime`, ~7,000 lines): every `/e/:id/api/*` handler, the journal commit + `fanout`, restarts, the ticker |
 | `server/registry.ts` | `EventRegistry`: one `EventRuntime` per event, rehydrated at boot |
 | `server/views.ts`, `chat.ts` | pure projections: `GuestView` / `PrimeView` / `ModView`, and SimEvent → channel messages. The editor imports both (`@loom/core/views`, `@loom/core/chat`) |
@@ -532,6 +532,32 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   worker's `recent`, `PERSISTENT_SLIDES` holds `recount` and `purgatory`, and
   `ALOUD_WINDOW_MS` outlasts the 14-minute read. Both versions and Task Manager's
   printed copy are held to the delivered file by `test/trapped-monologue.test.ts`.
+- **The Task Manager costume** (wave 59, [`docs/trapped/costume.md`](../docs/trapped/costume.md)).
+  An iPad 2 on iOS 9, so `server/costume-page.ts` is a hand-written ES5 page with
+  its script and stylesheet as their own files (`test/w59-costume-page.test.ts`
+  parses it with acorn: keep it ES5, no grid, no `gap`). `costume.json` (schema,
+  refusals and cooldowns in `src/costume.ts`) is read live like the credits,
+  `sync-show` always replaces it, `loomcheck` lints it, and code holds the same
+  menu as a default. `secretCode(claimSecret, "costume")` opens `POST
+  /api/costume/menu` and `/fire {k, id}` and nothing else: it is no session.
+  Refusals are `momentRefusal` + `actionRefusal`, judged before anything is
+  committed, so the story's own `ad_burst` refusals never reach `# hosts`. The
+  night's end is `Night.step` 16 on (the reveal, the bobbing, Grok Prom and the
+  advice poll all play with `Night.ended` false; `step` is what a story edit must
+  keep). MUSIC is refused while anyone else's hand is on the soundtrack
+  (`AudioHub.musicHand`: the last scene or stop's `by`, memory only, corrected by
+  the router's `hand`), and AFTER PARTY's timed return stands down then too. Every
+  action uses the house's own path (`lights.test`, `audio.play`, `audio.music`,
+  `deskFire(cue, COSTUME_BY)`, the canned `say`). A light item never reaches a
+  safety fixture (`costumeFixtures`), and the show's stay on `living`, which every
+  story look covers, so re-firing `Night.lights` gives it all back; if he puts a
+  room out during the 6 s hold, only what the press moved goes back
+  (`costumeRoomOutRestore`), and nothing in the dark room. A fire journals
+  `costume_pressed` (no hook hears it) with the label as its subject: that is the
+  mod log's line. `GET` / `POST /api/mod/costume` is the link and the kill switch
+  (directors only, never on the host allowlist; `costumeOff` beside the TV mute in
+  the state dir). The cooldowns, a restore that is due and the rest of an ad storm
+  are memory only. Tests: `test/w59-costume.test.ts`.
 - **Hub files have one owner at a time.** `event-runtime.ts`,
   `views.ts`, `chat.ts` and `sim.ts` are touched by almost every
   feature; when several agents work in parallel, give each of these to

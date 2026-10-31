@@ -52,6 +52,7 @@ plays), the show's data files, the crew's printed packs, and the docs.
 | `lights.json` | The server, the stagehand `lights` module, the map editor | The server-room RGB bulb and its `heart_*` looks |
 | `descent.json` | The server (read live from the project), both reinstallation games; VR keeps a copy (`pnpm house:sync`) | Wave 49: what props and visions say as a program sinks. Schema: `house/src/descent.ts`. Edit it in the repo and `sync-show`, or in Writing. DRAFT on `SIGNOFF-w49.md` |
 | `credits.json` | The server (read live from the project), the TV, the walls, every phone, Run → 🎬 Credits | Wave 44: the end credits, the people and their parts; `"programs": true` lists the night's programs. Schema: `core/src/credits.ts`; help `docs/help/authoring/53-credits-and-video.md`. Edit it in the repo and `sync-show`, or in Writing (shows on the next roll, until the next sync) |
+| `costume.json` | The server (read live from the project), the Task Manager costume's iPad, `loomcheck` | Wave 59: the costume's menu, its cooldowns and Trabolta's poke lines (`DRAFT w59`). Schema: `core/src/costume.ts`; runbook `docs/trapped/costume.md`. Edit it in the repo and `sync-show`: no release, no reload |
 | `desk.json` | The server's house desk, Run → House, a host's Desk | Wave 25: the house's own cue list (DRAFT: tech checks only, no show cues yet). Schema: `core/src/house-desk.ts`, contract `docs/loom-house-desk.md` |
 
 ### The house soundtrack (outside this folder)

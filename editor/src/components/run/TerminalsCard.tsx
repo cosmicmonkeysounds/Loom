@@ -18,6 +18,9 @@
 //! Wave 22: its 🔌 patch bay badges follow (the cable count, ✓ complete, an
 //! amber ? for inputs between levels, red fault, amber *buttons* while the
 //! story follows the 🔌 buttons: `patchBadges`).
+//! Wave 59: 🎭 the Task Manager costume's switch, which is the crew's kill
+//! switch, and its link (`docs/trapped/costume.md`). The link carries the
+//! costume's narrow token: copy it, never post it.
 
 import { VOICE_FLAVOURS, VOICE_FLAVOUR_LABEL, VOICE_FX_MODES, type VoiceFxMode } from '@loom/core/voice-fx'
 import clsx from 'clsx'
@@ -89,6 +92,34 @@ function VoiceFxRow({ mode }: { mode: VoiceFxMode }) {
   )
 }
 
+/** Wave 59: the iPad on Task Manager's chest. Off, every press on it reads Not Responding. */
+function CostumeRow({ costume }: { costume: { on: boolean; url: string } }) {
+  const setCostume = useTerminals((s) => s.setCostume)
+  return (
+    <div className="mb-2 flex flex-wrap items-center gap-1 rounded border border-zinc-800 px-2 py-1" data-testid="run-terminals-costume">
+      <span className="mr-1 text-[11px] text-zinc-400" title="Task Manager’s CTRL ALT DELETE iPad. Anyone at the party can press it; the server decides what lands.">
+        🎭 Costume
+      </span>
+      <button
+        onClick={() => void setCostume(!costume.on)}
+        aria-pressed={costume.on}
+        className={clsx('rounded border px-2 py-0.5 text-[11px]', costume.on ? 'border-emerald-700 bg-emerald-950/40 text-emerald-200' : 'border-amber-700 bg-amber-950/40 text-amber-200')}
+        data-testid="run-terminals-costume-switch"
+      >
+        {costume.on ? 'On' : 'Off'}
+      </button>
+      <button
+        onClick={() => void navigator.clipboard?.writeText(costume.url)}
+        className="rounded border border-zinc-700 px-2 py-0.5 text-[11px] text-zinc-300 hover:bg-zinc-900"
+        title="Copy the link for the iPad. It holds the costume’s token: send it to the iPad, never post it."
+        data-testid="run-terminals-costume-link"
+      >
+        Copy link
+      </button>
+    </div>
+  )
+}
+
 export function TerminalsCard() {
   const rows = useTerminals((s) => s.rows)
   const reachable = useTerminals((s) => s.reachable)
@@ -99,6 +130,7 @@ export function TerminalsCard() {
   const setVoiceMuted = useTerminals((s) => s.setVoiceMuted)
   const muteError = useTerminals((s) => s.muteError)
   const voiceFx = useTerminals((s) => s.voiceFx)
+  const costume = useTerminals((s) => s.costume)
   const identify = useTerminals((s) => s.identify)
   const identifyError = useTerminals((s) => s.identifyError)
   const map = useTerminals((s) => s.map)
@@ -133,6 +165,7 @@ export function TerminalsCard() {
         )}
       </div>
       {voiceFx !== null && (hasTv || voiceFx !== 'auto') && <VoiceFxRow mode={voiceFx} />}
+      {costume !== null && <CostumeRow costume={costume} />}
       {muteError !== null && (
         <p className="mb-2 rounded bg-amber-950/60 px-2 py-1 text-xs text-amber-200" data-testid="run-terminals-mute-error">
           {muteError}

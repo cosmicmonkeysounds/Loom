@@ -25,6 +25,9 @@ import { splitRevealQuietly, statementToDirective } from "../src/parser/statemen
 import { Workspace } from "../src/lsp/index.ts";
 import { indexOutsideQuotes, splitArgsCommas } from "../src/parser/rust.ts";
 import { DESK_FILE, deskEvents, validateDesk, type DeskConfig } from "../src/house-desk.ts";
+import type { LightsConfig } from "@loom/house";
+import { COSTUME_FILE, parseCostume } from "../src/costume.ts";
+import { costumeHouseProblems } from "../server/costume.ts";
 import { CREDITS_FILE, parseCredits } from "../src/credits.ts";
 import { FACTS_FILE, parseFactsText, placeholderQuestions } from "../src/facts.ts";
 import { DESCENT_FILE, parseDescentText } from "../server/descent.ts";
@@ -328,6 +331,31 @@ for (const h of allHooks) {
   if (text !== null && text.trim() !== "") {
     const { file, problems } = parseCredits(text);
     for (const p of problems) report(file === null ? "ERROR" : "WARN", `${CREDITS_FILE}: ${p}`);
+  }
+}
+// Wave 59: the project's costume.json (`src/costume.ts`): a file the page can't
+// use is an error, a dropped row a warning, and so is a light item reaching a
+// safety fixture (the press leaves it out) or a look or sound the house lacks.
+{
+  let text: string | null = null;
+  try {
+    text = readFileSync(join(root, COSTUME_FILE), "utf8");
+  } catch {
+    text = null;
+  }
+  if (text !== null && text.trim() !== "") {
+    const { file, problems } = parseCostume(text);
+    for (const p of problems) report(file === null ? "ERROR" : "WARN", `${COSTUME_FILE}: ${p}`);
+    const house = (name: string): unknown => {
+      try {
+        return JSON.parse(readFileSync(join(root, name), "utf8"));
+      } catch {
+        return null;
+      }
+    };
+    const lights = house("lights.json") as LightsConfig | null;
+    const audio = house("audio.json") as { cues?: Record<string, unknown> } | null;
+    if (file !== null && lights !== null) for (const p of costumeHouseProblems(file, lights, null, Object.keys(audio?.cues ?? {}))) report("WARN", `${COSTUME_FILE}: ${p}`);
   }
 }
 // Wave 58: a hunt question whose key is still a placeholder (`titi:facts` says

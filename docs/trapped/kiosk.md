@@ -19,6 +19,7 @@ only the spot.
 | The tent (The Internet) | John's old laptop + its webcam | `tent` | `/terminal/?code=<mod>&spot=tent&announce=1` | Chrome `--kiosk`; needs WebGL2 |
 | The Server Door (the King's chess) | a tablet on the basement hall wall by the keypad | `server-room-door` | `/terminal/?code=<mod>&spot=server-room-door` | Fully Kiosk (Android) |
 | The casino (upstairs bedroom) | a tablet | `graphics-card` | `/terminal/?code=<mod>&spot=graphics-card` | Fully Kiosk (Android) |
+| The Task Manager costume | an iPad 2 on his chest | none | from Run → Terminals, 🎭 Costume ([`costume.md`](./costume.md)) | Safari on iOS 9, Add to Home Screen, Guided Access |
 | Wall terminals | tablets | `optical-drive`, `hall`, `steam-room`, `cpu`, `start-bar`, `backyard`, `bathroom-1-door`, `ram`, `upstairs-hall` | `/terminal/?code=<mod>&spot=<id>` | Fully Kiosk (Android), or an iPad |
 
 Rules for every link:

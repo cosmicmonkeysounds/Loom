@@ -227,10 +227,12 @@ describe('the chime rules', () => {
 
 const terminals = vi.fn<(id: string) => Promise<ScreenTerminals>>()
 const setVoiceMuted = vi.fn(async (_id: string, muted: boolean) => ({ muted }))
+const costume = vi.fn(async (_id: string) => ({ on: true, url: 'https://loom.test/costume?e=evt&k=token' }))
+const setCostume = vi.fn(async (_id: string, on: boolean) => ({ on }))
 const setVoiceFx = vi.fn(async (_id: string, body: { fx?: string; shot?: string }) => ({ fx: body.fx ?? 'auto' }))
 const identify = vi.fn(async (_id: string, name: string) => ({ name, until: 0 }))
 const chime = vi.fn()
-vi.mock('@/lib/api', () => ({ screensApi: { terminals: (id: string) => terminals(id), setVoiceMuted: (id: string, m: boolean) => setVoiceMuted(id, m), setVoiceFx: (id: string, b: { fx?: string; shot?: string }) => setVoiceFx(id, b), identify: (id: string, n: string) => identify(id, n) } }))
+vi.mock('@/lib/api', () => ({ screensApi: { terminals: (id: string) => terminals(id), setVoiceMuted: (id: string, m: boolean) => setVoiceMuted(id, m), setVoiceFx: (id: string, b: { fx?: string; shot?: string }) => setVoiceFx(id, b), identify: (id: string, n: string) => identify(id, n), costume: (id: string) => costume(id), setCostume: (id: string, on: boolean) => setCostume(id, on) } }))
 vi.mock('@/lib/chime', () => ({ playChime: () => chime() }))
 
 const mem = new Map<string, string>()
@@ -309,6 +311,21 @@ describe('useTerminals', () => {
     await expect(useTerminals.getState().setVoiceFx('auto')).resolves.toBeUndefined()
     expect(useTerminals.getState().voiceFx).toBe('clean')
     expect(useTerminals.getState().muteError).toMatch(/his voice: 403/)
+  })
+
+  it('reads the costume once per bind, flips its switch, and says so when it can’t (wave 59)', async () => {
+    const { useTerminals } = await import('@/store/terminals')
+    terminals.mockResolvedValue(server(poll('Kitchen', 0)))
+    useTerminals.getState().bind('evt-3')
+    await vi.advanceTimersByTimeAsync(0)
+    expect(useTerminals.getState().costume).toMatchObject({ on: true })
+    await useTerminals.getState().setCostume(false)
+    expect(setCostume).toHaveBeenCalledWith('evt-3', false)
+    expect(useTerminals.getState().costume).toMatchObject({ on: false })
+    setCostume.mockRejectedValueOnce(new Error('403 moderators only'))
+    await expect(useTerminals.getState().setCostume(true)).resolves.toBeUndefined()
+    expect(useTerminals.getState().muteError).toContain('403')
+    expect(useTerminals.getState().costume).toMatchObject({ on: false })
   })
 
   it('identify asks the server for that terminal; a failure is said on the card, never thrown', async () => {

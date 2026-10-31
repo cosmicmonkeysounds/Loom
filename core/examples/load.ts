@@ -23,6 +23,7 @@ import { join, relative, sep } from "node:path";
 import { isMapFile } from "../server/house-maps.ts";
 import { FACTS_FILE } from "../src/facts.ts";
 import { DESCENT_FILE } from "@loom/house";
+import { COSTUME_FILE } from "../src/costume.ts";
 import { CREDITS_FILE } from "../src/credits.ts";
 
 export interface ScenarioFile {
@@ -113,6 +114,15 @@ export function scenarioCreditsFile(name: string): ScenarioFile | null {
  */
 export function scenarioDescentFile(name: string): ScenarioFile | null {
   return scenarioDataFile(name, DESCENT_FILE);
+}
+
+/**
+ * The example's `costume.json` (wave 59, `src/costume.ts`) as `{ path, source
+ * }`, or null when the example has none. Not story: synced as a project file,
+ * read live by the server (`server/costume.ts`).
+ */
+export function scenarioCostumeFile(name: string): ScenarioFile | null {
+  return scenarioDataFile(name, COSTUME_FILE);
 }
 
 function scenarioDataFile(name: string, file: string): ScenarioFile | null {

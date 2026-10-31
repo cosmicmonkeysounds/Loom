@@ -8,7 +8,7 @@ import { CockpitContext, RunBackend, RunMode, nullCockpit, type CockpitState } f
 // see `setState`: the card reads a plain fake instead.
 const fake = vi.hoisted(() => ({ state: {} as Record<string, unknown> }))
 vi.mock('@/store/terminals', () => ({
-  useTerminals: (sel: (s: Record<string, unknown>) => unknown) => sel({ ack: () => {}, forget: () => {}, setVoiceMuted: async () => {}, setVoiceFx: async () => {}, fireVoiceShot: async () => {}, identify: async () => {}, loadMap: async () => {}, ...fake.state }),
+  useTerminals: (sel: (s: Record<string, unknown>) => unknown) => sel({ ack: () => {}, forget: () => {}, setVoiceMuted: async () => {}, setVoiceFx: async () => {}, setCostume: async () => {}, fireVoiceShot: async () => {}, identify: async () => {}, loadMap: async () => {}, ...fake.state }),
 }))
 import { VOICE_FLAVOURS } from '@loom/core/voice-fx'
 import { TerminalStatus, type TerminalRow } from '@/lib/terminals'
@@ -40,7 +40,7 @@ const row = (name: string, spot: string, status: TerminalStatus = TerminalStatus
 })
 
 function render(rows: TerminalRow[], map = MAP, extra: Record<string, unknown> = {}): string {
-  fake.state = { ...extra, rows, map, mapRooms: ['The Desktop', 'The Server Room'], reachable: true, voiceMuted: false, acked: new Set(), muteError: null, identifyError: null }
+  fake.state = { costume: null, ...extra, rows, map, mapRooms: ['The Desktop', 'The Server Room'], reachable: true, voiceMuted: false, acked: new Set(), muteError: null, identifyError: null }
   const store = create<CockpitState>(() => ({
     ...nullCockpit.getState(),
     run: {
@@ -103,6 +103,21 @@ describe('TerminalsCard (wave 14 spot claims + set up)', () => {
     const html = render([row('Kitchen', 'kitchen')], null as never)
     expect(html).not.toContain('not on map')
     expect(html).toContain('No house map read yet')
+  })
+})
+
+describe('TerminalsCard (wave 59 costume)', () => {
+  it('shows the switch and the copy button, and never prints the link', () => {
+    const url = 'https://loom.test/costume?e=e1&k=secrettoken'
+    const on = render([], MAP, { costume: { on: true, url } })
+    expect(on).toContain('run-terminals-costume-switch')
+    expect(on).toContain('aria-pressed="true"')
+    expect(on).not.toContain('secrettoken')
+    expect(render([], MAP, { costume: { on: false, url } })).toContain('>Off<')
+  })
+
+  it('has no row on an older server', () => {
+    expect(render([], MAP, { costume: null })).not.toContain('run-terminals-costume')
   })
 })
 

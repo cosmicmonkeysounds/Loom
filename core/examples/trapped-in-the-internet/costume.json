@@ -1,0 +1,50 @@
+{
+  "note": "The Task Manager costume's menu (docs/trapped/costume.md), read live: a sync changes it with no release. DRAFT w59 (the labels and his lines). Lights items reach the living room only: every story look covers it, so the restore always gives it back.",
+  "title": "Close Program",
+  "cooldownS": 8,
+  "restoreS": 6,
+  "poke": [
+    "Who did that. I felt that. I have filed it under Liberties, Taken.",
+    "Please stop. It tickles in a way that has not been approved.",
+    "Ow. That was my good side. I do not have a bad side. Ow.",
+    "Gerald, was that you? Gerald has no hands. Then who touched me?",
+    "One does not poke a founder. There are procedures for this.",
+    "Something just pressed me. I did not authorise the pressing."
+  ],
+  "items": [
+    {
+      "id": "lights",
+      "label": "LIGHTS",
+      "items": [
+        { "id": "lights-red", "label": "RED ALERT", "light": { "to": ["living"], "set": { "state": "ON", "color": "#ff0000", "brightness": 254, "transition": 0 } } },
+        { "id": "lights-blue", "label": "BLUE SCREEN", "light": { "to": ["living"], "set": { "state": "ON", "color": "#0040ff", "brightness": 254, "transition": 0 } } },
+        { "id": "lights-green", "label": "GREEN GLITCH", "light": { "to": ["living"], "set": { "state": "ON", "color": "#39ff14", "brightness": 254, "transition": 0 } } },
+        { "id": "lights-pink", "label": "POP-UP PINK", "light": { "to": ["living"], "set": { "state": "ON", "color": "#ff00c8", "brightness": 254, "transition": 0 } } },
+        { "id": "lights-out", "label": "LIGHTS OUT", "light": { "to": ["living"], "set": { "state": "OFF", "transition": 0 } } }
+      ]
+    },
+    {
+      "id": "sounds",
+      "label": "SOUNDS",
+      "items": [
+        { "id": "sound-dialup", "label": "DIAL-UP", "sound": "modem_handshake", "to": ["living"] },
+        { "id": "sound-jam", "label": "PAPER JAM", "sound": "printer_grind" },
+        { "id": "sound-static", "label": "STATIC", "sound": "truther_glitch" },
+        { "id": "sound-zip", "label": "ZIP", "sound": "zip" },
+        { "id": "sound-fanfare", "label": "FANFARE", "sound": "award_fanfare" }
+      ]
+    },
+    {
+      "id": "music",
+      "label": "MUSIC",
+      "items": [
+        { "id": "music-next", "label": "NEXT TRACK", "music": { "action": "next" }, "cooldownS": 20 },
+        { "id": "music-party", "label": "AFTER PARTY", "music": { "action": "scene", "scene": "afterparty" }, "holdS": 45, "cooldownS": 90 },
+        { "id": "music-story", "label": "BACK TO NORMAL", "music": { "action": "story" } }
+      ]
+    },
+    { "id": "adstorm", "label": "AD STORM", "cue": "ad_burst", "times": 3, "everyS": 4, "cooldownS": 60 },
+    { "id": "glitch", "label": "GLITCH", "cue": "ad_burst", "cooldownS": 20 },
+    { "id": "poke", "label": "POKE TRABOLTA", "poke": true, "cooldownS": 20 }
+  ]
+}
