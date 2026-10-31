@@ -49,7 +49,8 @@ the headers of `core/src/cue-sheet.ts`, `host.ts`, `moments/exits.ts` and `arm.t
 into `//`: 147.03 kB. The shared teleprompter added
 `aloud/shared.ts` and turned the headers of `chrome/taskbar.tsx`,
 `chrome/icons.tsx`, `stream/card-tray.tsx`, `moments/pins-rail.tsx`,
-`moments/surfaces.tsx`, `show-clock.ts`, `claim.ts` and `back-gesture.ts` into `//`.
+`moments/surfaces.tsx`, `show-clock.ts`, `claim.ts` and `back-gesture.ts` into `//`:
+147.55 kB with all of wave 59 merged.
 
 ## How a session works
 

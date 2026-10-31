@@ -19,7 +19,7 @@ refusal and every network failure.
 
 A press is refused:
 
-- before the doors, during a beat's lines on the TV, and while a teleprompter is open;
+- before the doors, during a beat's lines on the TV, and while a scene is on the teleprompter, until its ✓ Done;
 - from the final reveal on: the bobbing, Grok Prom and the advice poll, the endings, the songs, the monologue and the awards;
 - for 8 s after any press that landed, and for longer after a heavy one (AD STORM 60 s);
 - LIGHTS, during the alarm, a blackout, or while Trabolta has a room's lights out;
