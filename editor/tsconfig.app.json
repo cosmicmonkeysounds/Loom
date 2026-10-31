@@ -34,6 +34,7 @@
       "@loom/core/host-board": ["../core/src/host-board.ts"],
       "@loom/core/house-desk": ["../core/src/house-desk.ts"],
       "@loom/core/house-mixer": ["../core/src/house-mixer.ts"],
+      "@loom/core/voice-fx": ["../core/src/voice-fx.ts"],
       "@loom/core/credits": ["../core/src/credits.ts"],
       "@loom/core": ["../core/src/index.ts"],
       "@loom/house/three": ["../house/src/three/index.ts"],
