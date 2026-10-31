@@ -9,8 +9,8 @@ keywords: talk, paused, hijack still playing, talk card, 🤖 talk, talk scene, 
 Some stories have **talk scenes**: moments when a performer talks out loud
 with a character a machine voices, in front of the whole room, and the
 character answers live. At *Trapped in the Internet* there are four, where
-Clippy talks with Trabolta in The Desktop: right after he is introduced
-(until the hunt), between the bottle's spins, at the ad attack (until the
+Clippy talks with Trabolta in The Desktop: after his sign-off (until the
+hunt), between the bottle's spins, at the ad attack (until the
 second hunt) and at the beans (until the zip-out or his overshare). While
 one is on, every host's **Show** window carries a **🤖 Talk** card between
 NEXT and the status line. The rest of hosting is in [Hosting the
@@ -54,9 +54,15 @@ When Clippy hands off, fire NEXT from the card. The cue that ends a scene
 itself; a spin of the bottle keeps its scene open, and the ad attack turns
 the bottle's card into its own. An ending or a skip closes it too.
 
+The first scene's card comes up with 🤖, but his speech runs about three minutes
+first. Wait for his sign-off (*"it's electrifying."*): a line sent during the
+speech only waits behind it.
+
 ## ⚡ Glitch
 
-Only during a talk scene. Before the ad attack it flickers the screens. From
+Only during a talk scene, and never in the first one: he stays clean through
+his introduction, so there is no ⚡ on that card. Before the ad attack it
+flickers the screens. From
 the ad attack on it is an **ad burst**: a short advert tears through every
 screen and phone with one of Trabolta's pained lines. Two seconds apart at
 least (*⚡ Too soon* in `# hosts`), and not while the ad attack's own big

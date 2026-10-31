@@ -246,6 +246,29 @@ the show, a director or a host sets 🌀 His voice to **Clean**.
 
 ## The end of the night
 
+**The full truth comes first** (wave 58). Every ending plays out, and then a host
+or a director presses **G0 📜 The full truth**: the whole story of the night, in
+the living room, 12 to 14 minutes. Trabolta reads his own file on the TV after the
+song, the pickup line, the helped ending and the hand jive; he phones it in from
+Computer Prom after the rave; Task Manager reads it off the teleprompter after
+Combo A (a message he left before he died) and Combo B (the last thing the
+computer saved). His voice stays clean through it, unless a director breaks it.
+
+- **A dance track never ducks under him.** Press ■ Stop house sounds before 📜 if
+  the rave's, the hand jive's or the dance song is still up.
+- **No voice on the TV?** Mute it, then **📜 Task Manager reads it instead**. His
+  phone down? His printed copy, or ⊞ Start → My script on any phone signed in to
+  the part.
+- **A program who didn't come tonight** is left out of it, and stays in the
+  review.
+- **G1** waits until it should be over. A press sooner asks first, and a second
+  inside 30 s starts the ceremony anyway.
+- **After Combo A he does not come back:** no motorcycle, his messages stop, and
+  Clippy hosts every award.
+
+Nothing said at his heart ends the night any more: a program who says all they
+came to say is heard, and the terminal goes back to sleep.
+
 After the awards a director may send one last alert: *🎃 The show is
 over: you are human again. Hang out. The night is yours.* Every mark,
 capture, lock and restriction comes off at once, and the party carries on.

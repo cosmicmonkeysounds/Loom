@@ -39,7 +39,10 @@ CODEX The LiveJournal
    or types the code into their **Codex room** — a pinned room whose
    message box takes codes; every entry they hold is one folded line in
    it, grouped by category, marked NEW until they open it. Misses
-   fire the named event `wrong code` for them.
+   fire the named event `wrong code` for them. A performer's booth scans
+   codes too (📷 Scan), with no doors but its own: a miss costs it nothing
+   and fires nothing, and `program learns` hooks stay the Persons'. `secret:`
+   never limits a scan. It only hides an entry from anything with a mind.
 2. **The story:** `unlock The LiveJournal for guest` in any beat or hook.
 3. **A person:** a guest shares from their Codex; a performer shares
    their character's entries from a guest's thread. One recipient at a
