@@ -6554,7 +6554,7 @@ when Night.reveal_stage == 1:
 
 // F2: Bobbing for Truth. Nothing proceeds until someone brings up the bag.
 when bobbing_for_truth:
-  if Night.reveal_owed == true:
+  if Night.reveal_owed == true and Night.ended != true:
     // DRAFT w59a
     broadcast "🍎 Not yet: Trabolta hasn't read the final answers. 🌑 again when Clippy has finished. Nothing happens." to channel(hosts)
   else if Night.ended != true and Night.step < 17:

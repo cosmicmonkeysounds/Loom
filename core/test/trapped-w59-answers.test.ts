@@ -696,6 +696,7 @@ describe("wave 59a: 🌑", () => {
     n.press("final_reveal");
     n.press("patch_combo_a");
     expect(v(n.sim, "Night.ending")).toBe("disabled");
+    expect(n.press("bobbing_for_truth").some((m) => m.text.startsWith("🍎 Not now:"))).toBe(true);
     expect(his(n.tick(601)).some((t) => t.startsWith("Programs. It is time"))).toBe(false);
     expect(v(n.sim, "Night.reveal_read_at")).toBe(0);
   });
