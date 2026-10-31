@@ -62,9 +62,13 @@ Clippy: Then go meet your fellow programs! Your next friend could already be run
 Clippy: Hello, programs! Welcome back to the Desktop!
 Clippy: Thank you all for introducing yourselves and learning how you can interface with your fellow programs. And we barely had to configure anything.
 Clippy: Now – who got a Bingo?
+// A guest's own 🎱 BINGO! called it: we know who, and she checks the line by
+// hearing it, before any 🎱 (↩ dies at the first). Her words go straight on.
+if Night.bingo_called == true:
+  -> Winning Line
 
-// 🎱 on a winner, counted (SCRIPT:55-65): Clippy holds it open while the winner
-// reads, then ✓ Done. One section per winner.
+// 🎱 on a winner, counted (SCRIPT:55-65), or a guest's own call: Clippy holds it
+// open while the winner reads, then ✓ Done. One section per winner.
 == Winning Line
   setting: The Desktop
   cast: Clippy

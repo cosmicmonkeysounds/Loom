@@ -781,7 +781,9 @@ ROLE Program
       // w18: a big moment (the user's example: un-ignorable).
       reply "!!🎱 BINGO! Name the program for each square. Centre square last." with go: The Desktop as "🎱 To the Desktop", go: quest: The Bingo Card
       // Wave 58: Clippy's words for the winner (SCRIPT:55-65), on her teleprompter.
-      fire winning_line
+      // A guest who called it has had them already: this 🎱 only confirms the line.
+      if program.name != Night.bingo_caller:
+        fire winning_line
     else:
       // w26 (B: a stale press, # hosts)
       broadcast "🎱 Nothing happens: the Bingo round is over, or {program.name} is already a winner." to channel(hosts)
@@ -4440,6 +4442,9 @@ when bingo_time:
     if Night.bingo_briefed != true:
       set Night.bingo_briefed = true
       -> Bingo Time
+    else if Night.bingo_called == true:
+      // Wave 58: a second call, after a ↩: Clippy needs her words for this line too.
+      -> Winning Line
   else:
     broadcast "⏰ Not again: the Bingo results are already in. Nothing happens." to channel(hosts)
 

@@ -115,7 +115,7 @@ describe("wave 58: nothing but the performers' lines in the opening", () => {
     for (const b of BEATS) {
       expect(body(b), b).not.toMatch(/^Narrator/mu);
       for (const l of body(b).split("\n").slice(1)) {
-        if (l === "" || l.startsWith("//") || /^ {2}(setting|cast|aloud):/u.test(l) || /^(cue |set |-> )/u.test(l)) continue;
+        if (l === "" || l.startsWith("//") || /^ {2}(setting|cast|aloud):/u.test(l) || /^(cue |set |if |\s*-> )/u.test(l)) continue;
         expect(l, b).toMatch(/^(Clippy|Trabolta): /u);
       }
     }
@@ -161,6 +161,23 @@ describe("wave 58: the buttons bring up the script's branches", () => {
     expect(beatsOf(fire(sim, "bingo_winner", "g1", "Clippy"))).toContain("Winning Line");
     expect(beatsOf(fire(sim, "bingo_winner", "g1", "Clippy"))).not.toContain("Winning Line");
     expect(beatsOf(fire(sim, "bingo_winner", "g2", "Clippy"))).toContain("Winning Line");
+  });
+
+  it("a guest's own 🎱 BINGO! brings her words straight up, before any 🎱 of hers, so ↩ still works", () => {
+    const sim = boot();
+    for (const c of TO_BINGO.slice(0, 2)) fire(sim, c);
+    const called = fire(sim, "call_bingo", "g1");
+    expect(beatsOf(called)).toEqual(expect.arrayContaining(["Bingo Time", "Winning Line"]));
+    expect(said(called, "Clippy").at(-1)).toBe("Wonderful! Thank you for being so thorough.");
+    // ↩, then a second program's call: her words again, once, and no second Bingo Time.
+    fire(sim, "not_a_bingo", "g1", "Clippy");
+    const again = fire(sim, "call_bingo", "g2");
+    expect(beatsOf(again)).toContain("Winning Line");
+    expect(beatsOf(again)).not.toContain("Bingo Time");
+    // Her 🎱 on the caller only confirms it; on anyone else it brings up the words.
+    expect(beatsOf(fire(sim, "bingo_winner", "g2", "Clippy"))).not.toContain("Winning Line");
+    expect(v(sim, "g2.bingo")).toBe(true);
+    expect(beatsOf(fire(sim, "bingo_winner", "g3", "Clippy"))).toContain("Winning Line");
   });
 
   it("🎀 is the Bingo Floppy Disk on a winner, and a plain ribbon on anyone else", () => {
