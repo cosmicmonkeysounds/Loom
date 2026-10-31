@@ -379,7 +379,6 @@ describe.each(ROAD_NAMES)("the full truth on the road to %s", (which) => {
     expect(goals).toBe(which !== "destroyed");
     if (which === "disabled") expect(review).toContain("Trabolta is gone. The right cables came out, and nobody is keeping you here any more. You may go back to your bodies.");
     if (which === "destroyed") expect(review.some((l) => l.startsWith("The computer is off."))).toBe(true);
-    if (which === "rave") expect(review.some((l) => l.startsWith("Trabolta has left on his motorcycle."))).toBe(true);
   });
 
   it("the screens: his face on Trabolta's roads; the hung window or purgatory stands through Task Manager's, past any hold", { timeout: SLOW }, async () => {
@@ -442,7 +441,7 @@ describe("the full truth: the frames and the fallbacks", () => {
     expect(pressRefused(b, out)).toBe(true);
     expect(hostsOf(out)).toEqual(['"📜 Not yet: 🪦 Clippy reads the summary first. Nothing happens."']);
     expect(v(b, "Night.truth_told")).toBe(false);
-    const ban = await road("rave");
+    const ban = await road("verdict");
     expect(hostsOf(ban.log.length > 0 ? fire(ban.sim, "the_hand_jive") : [])[0]).toContain("Only once everyone is banished");
   });
 
@@ -463,7 +462,7 @@ describe("the full truth: the frames and the fallbacks", () => {
   });
 
   it("an old ask never carries over 📜, and 📜 inside the blackout keeps the dance off the message", { timeout: SLOW }, async () => {
-    const n = await road("song");
+    const n = await road("verdict");
     expect(pressRefused(n.sim, fire(n.sim, "start_the_ceremony"))).toBe(true);
     fire(n.sim, "tell_the_truth");
     expect(pressRefused(n.sim, fire(n.sim, "start_the_ceremony"))).toBe(true);

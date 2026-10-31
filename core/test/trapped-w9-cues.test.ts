@@ -427,8 +427,10 @@ describe("Trapped in the Internet — wave 9 (the cue sheet)", () => {
   it("T5-crew-cards-07 (D4): ✍ makes the director's own award lines replace Trabolta's template line; the fanfare and the slide stay", { timeout: SLOW }, () => {
     const sim = boot();
     toY2k(sim);
-    // Trabolta hosts on the verdict's roads (Combo A: Clippy, wave 58).
-    sim.fireBeat("Song Ending");
+    // Trabolta hosts only where he stays (wave 59a: not on the verdict's roads).
+    sim.setVar("Night.ended", "true");
+    sim.setVar("Night.ending", '"help"');
+    sim.setVar("Night.raved", "true");
     press(sim, "tell_the_truth");
     advance(sim, 830);
     press(sim, "start_the_ceremony");

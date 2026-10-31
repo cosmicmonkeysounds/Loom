@@ -16,7 +16,6 @@
 | any time | **🎀 Award a ribbon** | anyone who earns one (announced as *from the hosts*, Q28) |
 | any time | **🩹 Unmark: not going to the Internet** | a marked program a host mis-tapped, or mercy (on a marked program's card face) |
 | any time | **🖌 Signed the painting** | a program who just signed MS Paint's canvas (once each; only shows when MS Paint is here) |
-| Grok Prom | **💘 Said "You're the one that I want"** | the first program who says it to you |
 | the summons (⏳ → 🚨) | nothing to scan: programs check themselves in with the Desktop's QR. **📍 They're here** on your NOW card's *Still missing* list only for a dead or lost phone | |
 | any time, until 📄 (if you saw it) | **♟ They beat the machine** | only when the door terminal could not report it and you **saw** "checkmate" on it: it gives them the door code |
 | the four talk scenes (🤖, after his speech → 🔎 · the third 📋 → 📺 · 📺 → 📓 · 🫘 → 🗜 / 🤖) | the **🤖 Talk** card in Show: type what Clippy says, **Send** · a Clippy chip (one tap) · a Trabolta chip (**two taps**) · **⚡ Glitch** · NEXT | nobody: you are relaying Clippy to Trabolta (below) |
@@ -24,7 +23,7 @@
 **Your scenes:** every clearance (your line, in the app) · described by
 Clippy at V2 (no line of your own) · V3 the fake card if needed ·
 **relaying Clippy to Trabolta in the four talk scenes** · the help desk and
-the bank all night · 💘 in Grok Prom · **the full truth after Combo A or B** ·
+the bank all night · **the full truth after Combo A or B** ·
 applause.
 
 **The 🤖 Talk card: you are Clippy's microphone (wave 32).** Four times in
@@ -199,18 +198,18 @@ The house deals the programs files about **who they are connected to** (Codex �
   scenes. The card comes up on 🤖, but his speech runs about three minutes: wait
   for *"it's electrifying."* Relay Clippy on the 🤖 Talk card (above); fire NEXT when Clippy
   hands off.
-- **Grok Prom:** if a program says the line to you, 💘.
-- **The full truth (📜, wave 58):** on a good ending or the rave Trabolta
-  reads it himself. After **Combo A** (he is dead) or **Combo B** (the computer
+- **The full truth (📜, wave 58):** on the verdict Trabolta reads it himself on
+  ⚖. After **Combo A** (he is dead) or **Combo B** (the computer
   is off) it is yours: when the director presses 📜 your phone turns into
   📜 READ THIS OUT LOUD. About 14 minutes at the teleprompter's pace; take it
   at your own. Nothing moves on until you finish, and a program who didn't
   come tonight is already left out. Say *✓ Done* on the phone when you do, and
-  tell the director by radio: G1 is theirs. No guest's phone shows the words.
+  tell the director by radio. The rave follows when the read is done, then G1 is
+  theirs. No guest's phone shows the words.
   If your phone dies: the printed copy below (skip a part if that program
   isn't here), or ⊞ Start → My script on any phone signed in to the part. If
-  the TV loses his voice on a good ending, the director can hand it to you
-  (📜 Task Manager reads it instead).
+  the TV loses his voice on the verdict, the director can hand it to you
+  (📜 Task Manager reads it instead), and the ending follows your read.
 
 ## The talk sheet (every chip on your 🤖 Talk card, wave 32)
 

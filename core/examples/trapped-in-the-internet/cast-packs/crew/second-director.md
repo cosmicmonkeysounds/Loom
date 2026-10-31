@@ -206,10 +206,10 @@ queued.
    turns it off, so the ✓ only means it was pressed: read `# hosts` to see
    which is on (press ✍ again for the template). Without ✍ the template lines play on their own (and a
    line you post would be spoken as well, on top).
-3. **If Trabolta is gone** (Combo A, Combo B, the rave): Clippy hosts and reads each line
+3. **Trabolta is gone on every ending** (he leaves for Sandy, or Combo A or B): Clippy hosts and reads each line
    aloud; the TV shows the award slide.
-4. Fire **G0 📜** once the ending has had its moment: after the song, the hand
-   jive, the dance, 🪦. ■ Stop house sounds first if a dance track is up (the
+4. After Combo A or B, fire **G0 📜** once the dance or 🪦 has had its moment; on the
+   verdict ⚖ has already played it. ■ Stop house sounds first if a dance track is up (the
    rave's never ducks), and leave 🌀 His voice on Auto or Clean with no shots:
    a director's Broken still breaks him. It takes about 12 minutes on the TV and
    14 at the teleprompter. **📜 Task Manager reads it instead** is the way out if

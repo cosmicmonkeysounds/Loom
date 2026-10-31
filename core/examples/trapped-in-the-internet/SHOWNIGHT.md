@@ -659,17 +659,15 @@ no bonus, and their clock keeps running. It works in the house, not in the intro
 a tablet with no keyboard has no way to do it. Right beside the King the chord's first
 button is a hit, so it can spend that visit's hit.
 
-**The ending** (wave 58). Every ending plays as it did, then **G0 📜 The full
-truth** once it has had its moment: Trabolta on the TV after the song, the pickup
-line, the helped ending and the hand jive; phoned in from the prom after the
-rave; Task Manager off the teleprompter after Combo A and Combo B. ■ Stop house
-sounds first if a dance track is up (the rave's never ducks), and leave 🌀 His
-voice on Auto or Clean with no shots. About 12 minutes on the TV, 14 at the
-teleprompter. **G1** waits for it; a press sooner asks, a second inside 30 s goes
-on. Wait for his last word: G1 puts the night's phase back at once, so a press
-while he is reading breaks the rest of his voice. After Combo A he does not come
-back and Clippy hosts. The talk-down is gone:
-nothing said at his heart ends the night. **G9a 🏅** names its own winner.
+**The ending** (wave 59a, the user's two decisions). **The last answer decides, not
+lies.** ⚖ plays the full truth on the TV, about 14 minutes, clean: leave 🌀 His voice on
+Auto or Clean. When it has been heard the ending follows by itself. Found: his news
+(8-A). Nobody found it: his speech, a 6 s pause, two minutes of lines on every phone
+(💬 closes it early), he reads them all, one second's flicker, then his news (8-B). Then
+*"I'm off to see my lady"*, the song, and **the rave, on every ending**. Grok Prom, the
+advice poll and the hand jive are off the night and their rows stay grey. Combo A and B
+keep their beats and Task Manager's read; the rave follows that read. **■ Stop house
+sounds before G1, on every ending** (the rave's never ducks). Clippy hosts.
 
 **Clippy's dream** (wave 50). On *"…the Y2K BUG."*, about 30 s after 🕚, every
 terminal melts into the dream by itself, until an ending. Nothing to press. If a
@@ -729,8 +727,9 @@ stays at or under 3 Hz; no open flames; VR is played seated with a spotter.
 | Crew must enter the server room | 🔧 first (a two-minute window). |
 | A forgiven wrong patch, or a rehearsal left the room set | 🔄 `reset_server_room`, then 💡 if the house is still red. |
 | Keypad dead or jammed | The house manager's override key; prop the door; press 🚪 if The Heart didn't play. |
-| The ending's last beat has played | **G0 📜 The full truth** is NEXT: press it once the song, the hand jive, the dance or 🪦 has had its moment. Any dance track still playing (the rave's, the hand jive's, the dance song) never ducks: ■ Stop house sounds first (Run's header, a host's Desk window). |
-| 📜 is on the TV and he has no voice | Mute the TV, then **📜 Task Manager reads it instead**. |
+| Combo A or B has played | **G0 📜 The full truth** is NEXT: press it once the dance or 🪦 has had its moment. Task Manager reads, and the rave follows when the read is done. |
+| The rave is on | ■ Stop house sounds, then **G1**. A press sooner asks; a second inside 30 s goes on. |
+| 📜 is on the TV and he has no voice | Mute the TV, then **📜 Task Manager reads it instead**. The ending still follows, when the read is done. |
 | 📜 is Task Manager's and his phone is down | His printed copy (in his pack), or ⊞ Start → My script on any phone signed in to the part. G1 opens when it should be over; press it twice inside 30 s to go on sooner. |
 | A program finished the talk at his heart | `# hosts` says so. Nothing to do: it ends nothing. |
 | A filing on H1, H2 or H3 *could not be judged* | That key is still owed: nothing is recorded and Trabolta says he can't read it. Before the doors: put the answer in, `titi:facts`, commit, sync, then on the MacBook `git pull`, restart `agents` and Run → Mind → **Reset**. After the doors a sync is off the table: hosts judge what is said in the room with ✅ / 😤 / 🤷. |

@@ -395,3 +395,96 @@ answers → `predeploy.sh --vr` → the roster, in its own step → `ship.sh` �
 phone, terminal, the TV, the tablets, the tent and any open Run tab before 17:00 → the Quest's
 APK → the iPad → print → `titi:qr-lock`, committed → the keypad before 15:00. No release, sync or
 restart has happened: nothing on this sheet is live.
+
+## 8. The answers (wave 59a)
+
+The user's whole updated Trabolta script and the nine questions, on 2026-10-31 (the paste is the
+authority for his words), then the newer script and two decisions: *"[the last answer] decides, but
+we're still doing the rave in every ending"*, and the monologue goes before 8-A and 8-B. No answer
+is on this sheet: they are in `facts.json`, the story and the generated files.
+
+### 8.1 What changed
+
+- **Nine questions, 3 + 3 + 3.** H1 to H6, F1 to F3, each with the words he reads (`reading`). Round
+  1's keys are in at last. Each has a new gold card; `titi:facts` writes no WARN.
+- **The five old answers are documents** (`documents` in `facts.json`): the same entries, codes,
+  cards and gold pile, scannable by everyone, asking nothing. Her line and the rival's name stay
+  guarded; the song's guard is gone from the bait mode, because no answer is a song now.
+- **F3: he doesn't know it** (`secretFromAgents`). It is in no file his worker reads, no ruling is
+  asked on it, and the TV shows it only once someone has found it. A near miss on it waits for a
+  director on Run → Mind → Judging. A correct filing scores like any other.
+- **The rows are the same 87.** Only what a press plays, and some labels and descriptions. `no_pickup_line`
+  is now *💬 Close the pickup lines now (auto at 2 min)*.
+- 📋 ×3 reads round 1, 🧮 reads nothing, 📊 opens the chart, 🏆 names three from each end, 🫘 is his three
+  lines, 🤖 is his scenario, round 2's answers and the final questions, 🌑 is Clippy, the three final
+  answers, the trust leaderboard and the winner. **Round three closes and settles at 🌑.**
+- **⚖ is the full truth, then the last answer decides.** 8-A or 8-B follows by itself when the read is
+  over. Then his last line, the song, and the rave in every ending. Lies stay on the record, for trust,
+  the recap and the screens, and decide nothing. The spoken verdict and its TV pages are gone.
+- **The prom branch, the advice poll, the hand jive and the motorcycle** are off the night: their rows stay,
+  greyed by their `while:`. Their beats stay in the file, unreached.
+- A guest's filing or pickup line is starred by the language filter before it's stored: he reads them
+  aloud now.
+
+### 8.2 Where the script and the lists disagreed
+
+- Round 1's answers are shifted in the list of nine (Q2 shows Q3's, Q3 shows round 2's). The script has
+  them right, and that is what's in.
+- *"Everybody, boos and jeers for [PROGRAM WITH MOST TRUST]"*: he names the **least** trusted.
+- *"but I am computing this is, and it is not correct"* stays word for word: **check it isn't a typo.**
+- Stray quote marks aren't spoken. A title in the Binary Tom answer keeps its pair of quotes.
+- The first version of the paste had 8-A blank and 8-B cut off. The newer one is what's in.
+
+### 8.3 Calls we made
+
+- **Every question reads the same.** The script's third questions have no *"Here are the guesses"* or
+  Congratulations line; they read like the others. A line with nobody in it drops out, with no words added.
+- **"Some of you shared 100% confidence"** plays only if someone did. *"This is bad…"* always plays.
+- **The unconfident lists name anyone who filed under 100**, as the script says. Marks work as they did, so a
+  right answer at 90% is named and not marked.
+- **The leaderboard** is questions right so far, ties sharing a place, nobody on nought. An empty board
+  drops *"Now, the leaderboard."*
+- **The Trust Chart:** a tie goes to the first program, as it always has, nobody is named twice, and the
+  top three fill first.
+- **Greeting:** his three questions keep *"Question one."* (SIGNOFF-w58 logged it: a list number can't be
+  heard). The new paste has no numbers; say if you want them gone.
+- **🕚 is unchanged:** the script doesn't mention it.
+- **The ad:** 📺 still fires the takeover on the press, so his four lines of TRABOLTA 3 play over it. The ⚡
+  talk scene stays open behind it, though the script turns him off: hosts should leave 🤖 alone until 📓.
+- **The song before the rave**, as the first of *"some tracks I have selected"*. The rave starts **170 s** after
+  the song does, a guess until the Desktop's real file is timed: `Night.rave_at`, in `Song Ending`. The TV's
+  song picture still draws its chat, though nobody speaks it.
+- **The waits are the voice's arithmetic:** 8-A's last line 76 s, 8-B's speech 99 s plus the **6 s** pause, the
+  reading 34 s plus 7 a line. A slow TV only queues; a fast one waits.
+- **His disappearing** is the screens' one-second flicker: the blackout overlay holds for 10 s.
+- **The lines are unjudged.** Every one is kept and read. The old pickup line wins nothing.
+- **Clippy hosts every ceremony:** he has left. On her, the bathroom rule's lines from him (main.loom,
+  *Disk Cleanup, at last* and the never-went line) don't play, and the second director's award lines still
+  replace hers.
+- **"The prize you all get"** is said, and nothing is built: nobody gets anything for it, and the last answer
+  is what decides. Say what it should be if you want one.
+
+### 8.4 New words of ours
+
+Crew only, but for the first two.
+
+- `// DRAFT w59a` objective: *What should he say to her?* · *The card is in his thread. One line. Two minutes.*
+- `// DRAFT w59a` banner: !🎵 Those of you who want to leave may leave. To the Desktop for the song.
+- `// DRAFT w59a` # hosts: ⚖ The full truth is being read; the ending follows by itself. Nothing happens.
+- `// DRAFT w59a` # hosts: 🏆 The rave hasn't started. Press G1 again within 30 seconds to start anyway.
+- `// DRAFT w59a` # hosts: 📜 Trabolta reads the full truth on the TV, about 14 minutes, clean: leave 🌀 His voice on Auto or Clean, and no shots. If the TV has no voice: 📜 Task Manager reads it instead. The ending follows by itself when it is over.
+
+### 8.5 What nothing has seen
+
+No real device, voice or model has seen any of this. The TV reading these lines at the room's pace, a
+140-word line of guesses, the 8-B card on a phone, the song's length, the rave on the house, and a real
+worker in the 8-B window. A guest who tells him the last answer in a DM can still put it in his notes,
+because he holds nothing to catch it with: there are no guards on it but the bait mode. Task Manager's printed
+pack holds the monologue, and the monologue names that answer, as it always has: keep the pack face down.
+
+### 8.6 Print
+
+**Reprint:** all nine gold cards (Run → 🖨 Print sheet); the five old documents' cards are unchanged. Packs:
+`crew/director`, `crew/second-director`, `performers/clippy`, `performers/task-manager`,
+`performers/adobe-acrobat`, `performers/recycling-bin`, `all-crew`. Fill the second director's answer table in
+from `facts.json`.

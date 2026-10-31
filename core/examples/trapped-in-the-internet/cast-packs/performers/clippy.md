@@ -61,7 +61,6 @@ lights up on every Antivirus' **Wanted board**. **🛡, ✅ Mark as reinstalled,
 | 🏓 / 🌑 while judging | **🔢 Now judging question 1 / 2 / 3** (under *Also now* on your Mission) | nobody: it moves ✅ and 😤 to that question (question 1 when judging opens) |
 | 🌑 Final reveal | **✅ / 😤** (question 1, 2 or 3 = F1, F2, F3) · **🤷** | |
 | 🍎 Bobbing (with Adobe) | **🍎 Brought up the Bag of Truth** · **🍎 Failed the bob: marked for reinstallation** | |
-| Grok Prom | **💘 Said "You're the one that I want"** | the first program who says it to you |
 | any time | **🖌 Signed the painting** | a program who just signed MS Paint's canvas (once each; only shows when MS Paint is here) |
 | from the Truther Download | **📢 Defect openly** · **🤫 Tip them off** · **🤫 Let their guess slide** | see *Whose side are you on?* |
 
@@ -97,8 +96,8 @@ until they are in**, then fill the three rows from
 → **talk with him** → hunt 1 → V6: your welcome back → ⏱ your hand to him → 📋 results, one
 question at a time → 🍾 the bottle (**talk** between the spins) → 📺 **panic
 at the ad** (CI 4) and **talk** → 🏓 → 🫘 **beans = malware**, **talk** → 🌑 final
-reveal ("truth is always in binary") → 🍎 → ending → 📜 the full truth → host
-the ceremony if Trabolta is gone (after Combo A, Combo B or the rave).
+reveal ("truth is always in binary") → 🍎 → ⚖ the full truth → the ending → the rave → you
+host the ceremony: Trabolta is gone on every ending.
 
 **Your booth** is a **Mission**, like a guest's phone (wave 21): the NOW card
 on top (the CI window you are in, its checklist ticking as you press, up to
@@ -368,18 +367,14 @@ a host (or whoever is calling the show) fires **⚖** for the verdict; right aft
 program for a pickup line that works on Sandy (an answer card); the server
 judges it.
 
-**Endings.** In Grok Prom, a program who says *"You're the one that I want"*
-to you gets 💘 (the card in their Trabolta thread counts too). After every
-ending's last beat comes the full truth (📜): Trabolta on the TV, or Task
-Manager reading out loud after Combo A or B. Listen with the room. After **Combo
-B** (CI 9): dance, then a host calls **🪦 Clippy reads the summary**; read it
-aloud from the teleprompter on your phone, then the verdict: *"…We are now in
-purgatory forever together, which is pretty similar to being stuck in a
-computer."*
+**Endings.** After ⚖ Trabolta reads the full truth on the TV, about 14 minutes (or Task
+Manager reads it, after Combo A or B). Then, if someone found the last answer, he has
+news about Sandy; if nobody did, he asks every phone for a line and reads them all out.
+Either way he leaves, the song plays, then the rave. Don't talk over him
 
 **🏆 Ceremony.** The hosts call the ceremony and every award. The last three
 are the **staff awards** (Trabolta's Favourite Staff, Staff Player Of The
-Night, The Mole): you might win one. After Combo A, Combo B or the rave, **you host**: each award line pops
+Night, The Mole): you might win one. You **host the ceremony on every ending**: each award line pops
 up on your teleprompter; read it aloud, call the winner up, lead
 applause. Otherwise Trabolta hosts on the TV and you lead the applause.
 

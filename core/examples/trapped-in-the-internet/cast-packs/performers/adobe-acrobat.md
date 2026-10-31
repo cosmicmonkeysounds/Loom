@@ -12,7 +12,6 @@
 | 🍎 Bobbing for Truth (with Clippy) | **🍎 Brought up the Bag of Truth** / **🍎 Failed the bob: marked for reinstallation** | the bobber |
 | any time | **🎀 Award a ribbon** (announced as *from the hosts*, Q28) · **🤝 Vouch** · **🩹 Unmark** (on a marked program's card face) | |
 | any time | **🖌 Signed the painting** | a program who just signed MS Paint's canvas (once each) |
-| Grok Prom | **💘 Said "You're the one that I want"** | |
 | the summons (⏳ → 🚨) | nothing to scan: programs check themselves in with the Desktop's QR. **📍 They're here** on your NOW card's *Still missing* list only for a dead or lost phone | |
 
 **Marked, not captured.** 🏓 Missed, 🤷 and 🍎 Failed never send anyone
@@ -41,8 +40,8 @@ only if you can't, and a host or the director presses 🫘.
 the bag goes in the tub. When the director fires 📄, hand the printout to the
 bobber; they read it aloud while truth.txt holds on the screens. **When the
 bobber finishes, ⚖ the verdict is NEXT: fire it, or tell whoever is
-calling the show** (your booth says so too). Right after ⚖, every program's phone gets Trabolta's card
-asking for a pickup line that works on Sandy; the server judges the answers.
+calling the show** (your booth says so too). ⚖ starts the full truth on the TV. If nobody found the last answer, about 16 minutes later every program's phone gets Trabolta's card
+asking what he should say to Sandy; nothing judges the answers, and he reads them all.
 
 **Your booth is a host's** (your part has `admin: true`): the **NOW card** on
 top · the **NEXT bar** above the taskbar (the cue sheet; tap the bar for the
@@ -132,9 +131,9 @@ The house deals the programs files about **who they are connected to** (Codex �
 - **📄 truth.txt:** hand the printout to the bobber. It is short now (wave 58)
   and it stops at a locked door: *the rest of this file is locked*. When they
   finish, the director fires **⚖** for the verdict.
-- **📜 The full truth (G0):** once the ending has had its moment, any host or
-  director may fire it. If a dance track is still up, ■ Stop house sounds
-  first: the rave's never ducks. Then listen with the room; G1 waits for it.
+- **📜 The full truth (G0):** on the verdict ⚖ plays it. After Combo A or B a host or
+  director fires it when the moment has passed. G1 waits for the rave; ■ Stop house
+  sounds first: the rave's never ducks.
 
 ## Appendix: truth.txt (print, put in a zip bag)
 
