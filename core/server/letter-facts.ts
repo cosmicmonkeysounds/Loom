@@ -57,6 +57,7 @@ const LIST_LABELS: Readonly<Record<RecapList, string>> = {
   trust: "trusted",
   truths: "true facts given",
   lies: "lies you accepted from them",
+  // Wave 58. DRAFT w58
   questionsRight: "questions right",
   internetVisits: "trips to the Internet",
   codex: "files in their Codex",

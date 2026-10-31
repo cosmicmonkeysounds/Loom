@@ -6900,6 +6900,7 @@ when Night.prize_gen > Night.prize_read:
     set Night.award_winner = names([p for p in Persons where p.cleared == true and p.gone != true and p.persona != true and p.questions_right == Night.prize_top])
     set Night.award_value = Night.prize_top
   set Night.award = "most_correct"
+  // DRAFT w58 (the award's name, on the winner's phone)
   set Night.award_title = "Most Questions Correct"
   set Night.awards_given += 1
   fire present_award

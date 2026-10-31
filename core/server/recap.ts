@@ -148,6 +148,7 @@ const LIST_TITLES: Record<RecapList, string> = {
   trust: "Most trusted (trust)",
   truths: "Truths accepted",
   lies: "Confident lies accepted",
+  // Wave 58. DRAFT w58
   questionsRight: "Questions correct (G9a, the special prize)",
   internetVisits: "Trips to the Internet",
   codex: "Codex entries held",
