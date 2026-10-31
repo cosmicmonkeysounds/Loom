@@ -111,6 +111,9 @@ export const SHOW_SHAPE = {
 /** The lore marker on every hunt-answer entry (`trabolta.mind.md`
  *  `secrets.lore`); the worker hides any entry carrying it. */
 export const HUNT_MARKER = "▒ HUNT ANSWER";
+/** The old answers' stamp (wave 59a): still the worker's second door, in words a
+ *  guest can't take for that question's answer. DRAFT w59a */
+export const DOCUMENT_MARKER = "▒ FILED ▒";
 
 export const MIND_BEGIN = "# <titi-facts:secrets>";
 export const MIND_END = "# </titi-facts:secrets>";
@@ -374,12 +377,12 @@ function questionsLoom(f: FactsFile): string {
   }
   const documents = f.documents ?? [];
   if (documents.length > 0) {
-    out.push("", "// Documents that stopped being questions (wave 59a): the same entries, the", "// same codes, the same cards and the same pile. They only ask nothing now.");
+    out.push("", "// Documents that stopped being questions (wave 59a): the same entries, the", "// same codes, the same cards and the same pile. They only ask nothing now,", "// so their stamp names no question: a guest reading one mustn't take it for", "// that question's answer. It is still in the worker's `lore` list.");
     for (const d of documents) {
       const c = d.codex;
       out.push("", `// ${d.was} · a document · ${S.huntColour}`);
       if (d.draft) out.push(`// ${DRAFT_NOTE}`);
-      out.push(`CODEX ${c.id}`, `  title: ${c.title}`, `  category: ${SHOW_SHAPE.factCategory}`, `  code: ${c.code}`, "  secret: true", "  text:", textBlock(c.text, [`${HUNT_MARKER} ${d.was} ▒`]));
+      out.push(`CODEX ${c.id}`, `  title: ${c.title}`, `  category: ${SHOW_SHAPE.factCategory}`, `  code: ${c.code}`, "  secret: true", "  text:", textBlock(c.text, [DOCUMENT_MARKER]));
     }
   }
   out.push("");
@@ -773,7 +776,7 @@ export function mindBlock(f: FactsFile, combos: string[] = []): string {
   for (const q of f.questions) if (q.placeholder !== true && q.secretFromAgents !== true) for (const a of [q.answer, ...q.accept]) words.add(norm(a));
   for (const d of f.documents ?? []) for (const a of d.guard ?? []) words.add(norm(a));
   for (const w of words) out.push(`    - ${yamlScalar(w)}`);
-  out.push("  lore:", `    - ${JSON.stringify(HUNT_MARKER)}`);
+  out.push("  lore:", `    - ${JSON.stringify(HUNT_MARKER)}`, `    - ${JSON.stringify(DOCUMENT_MARKER)}`);
   const door = neverWords(f, combos);
   const line = answerNeverWords(f).filter((w) => !door.includes(w));
   const never = [...door, ...line];

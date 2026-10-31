@@ -411,7 +411,9 @@ CODEX Grolier Academic
     not a serious menace. ▒ HUNT ANSWER F3 ▒
 
 // Documents that stopped being questions (wave 59a): the same entries, the
-// same codes, the same cards and the same pile. They only ask nothing now.
+// same codes, the same cards and the same pile. They only ask nothing now,
+// so their stamp names no question: a guest reading one mustn't take it for
+// that question's answer. It is still in the worker's `lore` list.
 
 // H4 · a document · gold
 // DRAFT — awaiting sign-off in facts.json
@@ -423,7 +425,7 @@ CODEX The Extension
   text:
     A customer-service card, the kind you find by a cash register. Need
     help? Our Customer Care agent is available day and night. Dial extension
-    1978. For Customer Care, always dial extension 1978. ▒ HUNT ANSWER H4 ▒
+    1978. For Customer Care, always dial extension 1978. ▒ FILED ▒
 
 // H5 · a document · gold
 // DRAFT — awaiting sign-off in facts.json
@@ -436,7 +438,7 @@ CODEX The Search History
     A laminated printout of a media player's history, dated the night before
     mapsandducks.com was registered. One line, repeated down the whole page
     and onto the back: "Hopelessly Devoted to You". Play count at
-    the bottom: 412. ▒ HUNT ANSWER H5 ▒
+    the bottom: 412. ▒ FILED ▒
 
 // H6 · a document · gold
 // DRAFT — awaiting sign-off in facts.json
@@ -448,8 +450,7 @@ CODEX The Final Chapter
   text:
     The table of contents of the Grand Unified Theory binder. Chapter after
     chapter of gravity and light, and then the last chapter, "Appendix Z:
-    Loose Ends (Do Not Print)". The page it points to is blank.
-    ▒ HUNT ANSWER H6 ▒
+    Loose Ends (Do Not Print)". The page it points to is blank. ▒ FILED ▒
 
 // F1 · a document · gold
 // DRAFT — awaiting sign-off in facts.json
@@ -464,7 +465,7 @@ CODEX What Sandy Says
     equations, a question about prom. Each answer is the same, word for
     word, and it is the only thing Sandy has ever said: "It looks like I
     didn't understand that. Please wait while I direct you to an agent."
-    ▒ HUNT ANSWER F1 ▒
+    ▒ FILED ▒
 
 // F2 · a document · gold
 // DRAFT — awaiting sign-off in facts.json
@@ -476,5 +477,4 @@ CODEX The Prom Ticket
   text:
     A ticket, a little crumpled, pink and silver: COMPUTER PROM, HALLOWEEN
     2026. ADMIT TWO: GROK + SANDY. On the back, in a confident hand: "she
-    said yes. of course she said yes. everyone says yes to me."
-    ▒ HUNT ANSWER F2 ▒
+    said yes. of course she said yes. everyone says yes to me." ▒ FILED ▒

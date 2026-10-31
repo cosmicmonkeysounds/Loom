@@ -427,7 +427,7 @@ describe("Trapped in the Internet — facts.json (the seed)", () => {
     expect(facts.questions.map((q) => q.id)).toEqual(["H1", "H2", "H3", "H4", "H5", "H6", "F1", "F2", "F3"]);
     expect(facts.questions.some((q) => q.draft === true || q.placeholder === true)).toBe(false);
     expect(facts.questions.every((q) => q.where!.startsWith("The Desktop: "))).toBe(true);
-    expect(facts.documents!.map((d) => d.codex.id)).toEqual(["The Extension", "The Search History", "The Final Chapter", "What Sandy Says", "The Prom Ticket"]);
+    expect(facts.documents!.map((d) => d.was)).toEqual(["H4", "H5", "H6", "F1", "F2"]);
     expect(facts.questions.filter((q) => q.secretFromAgents === true).map((q) => q.id)).toEqual(["F3"]);
     for (const q of facts.questions) expect(q.codex!.text).not.toContain("▒");
   });

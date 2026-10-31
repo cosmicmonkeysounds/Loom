@@ -74,21 +74,21 @@ every fact filed on the phone is judged by the server against the answer key
 the moment it is filed; you only read the results. Review-mode judging (📝)
 is the hosts' now.
 
-**The answer key (secret).** It lives in `facts.json`. H1–H3 are the Oct 30
-script's questions and their answers are still owed: **don't print this card
-until they are in**, then fill the three rows from
-`facts.json`. A filing on an owed question is not recorded.
+**The answer key (secret).** It lives in `facts.json`. Fill these in from it
+before you print this card: none is written here. A spoken answer judged from
+anything else gets the wrong press, and that moves the leaderboard.
 
 | | Question | Accurate answer |
 |---|---|---|
-| H1 | Funk and Wagnalls: an example of fraud | **⚠ owed before the print** |
-| H2 | Forensics For Dummies: the sentence that ends "previously hypnotized witnesses" | **⚠ owed before the print** |
-| H3 | Macs for Dummies: the sentence with "pharming" in it | **⚠ owed before the print** |
-| H4 | The extension the Customer Care card tells you to dial | **1978** |
-| H5 | Song Trabolta played 412 times the night before he registered the domain | **"Hopelessly Devoted to You"** |
-| H6 | Title of the last chapter of his Grand Unified Theory | **"Appendix Z: Loose Ends (Do Not Print)"** |
-| F1 | The only thing Sandy has ever said | **"It looks like I didn't understand that. Please wait while I direct you to an agent."** |
-| F2 | Who is taking Sandy to computer prom | **Grok** |
+| H1 | Funk and Wagnalls: an example of fraud | |
+| H2 | Forensics For Dummies: the sentence that ends "previously hypnotized witnesses" | |
+| H3 | Macs for Dummies: the sentence with "pharming" in it | |
+| H4 | A Strong Password cited by a For Dummies book, starting with Q | |
+| H5 | The traditional objection to romance, according to one book | |
+| H6 | The trend in technological progress behind "the leisure necessary for man's full cultural development" | |
+| F1 | Who is Binary Tom? | |
+| F2 | The unlikely condition that lets you find your child on a map using Windows 10 | |
+| F3 | The encyclopedia's shy, meek individual, "a nuisance, not a serious menace" | |
 
 **Your scenes:** V2 welcome, hosts and Bingo rules → V3 results (🎯) →
 **Corrupted Code** → the screen, if a program is walking (a host fires 📺) →
@@ -294,7 +294,7 @@ Antivirus escort them to the Internet. Then:
    three! And before the next hunt: TRUTH OR DARE. I have a bottle."*
    The app settles each filing as he reads: +50 Truthcoin for an accepted
    answer, marked for reinstallation for a guess. **Never say which filings
-   were lies**: the room hears "accepted" for every confident answer.
+   were lies**: he names who was right and sure, and says no more.
 3. **🍾 The bottle, after all three results.** A host spins it about
    **five times** (NEXT offers five; more if the room wants it). The
    server picks a cleared program who has not been picked tonight, wherever
@@ -308,9 +308,7 @@ Antivirus escort them to the Internet. Then:
    marked, and the Antivirus come for them. A dead phone → **🎩 Chose Dare**
    (two taps) does the same as their tap.
    **Between the spins, talk with him** (the second talk): he is starving
-   for truth and every guess stings him (after a question with guesses he
-   says so, louder each time). Needle him a little; dare him to pick truth
-   or dare himself.
+   for truth. Needle him a little; dare him to pick truth or dare himself.
 4. After the spins, a host previews hunt 2 (📺: it waits while a truth is
    open), then fires **📓 Hunt 2**.
 
@@ -344,9 +342,8 @@ trusted like your life depends on it. Don't defend the least trusted. VLC is
 told to print a certificate; the printer jams; MS Paint may urge them to open
 it. **It's full of beans:** clock it at once: *"Routine operations like print
 to PDF are no longer working. It is even more urgent that we get the next
-facts right."* He comes apart (*"I can feel every bean"*): yours are *"You
-can FEEL the beans?!"* and *"I won't! I didn't hear anything! Nobody heard
-anything!"* **The fourth talk**, while the Antivirus bring everyone back from the Internet:
+facts right."* He takes it badly, and calls the Antivirus to bring everyone
+out. **The fourth talk**, while the Antivirus bring everyone back from the Internet:
 comfort him and pry a little; he says things and takes them back at once,
 and you never repeat them. Welcome back the zipped programs (*compressed,
 do not open*).
@@ -354,18 +351,21 @@ do not open*).
 **🕚 Y2K clock** (CI 7). The final round. Factions start recruiting: **you may
 not take sides on air.** Keep everyone hunting.
 
-**🌑 Final reveal** (CI 8). Lights dark. Everyone may speak: what they learned,
-what they believe, what should happen next. Judge F1–F3 (✅ / 😤, 🔢 to the question; 🤷).
-Then: *"There is only one version of the truth. Because truth is always in
-binary."* Trabolta then reads all three final answers, the trust leaderboard
-and the winner on the TV, and hands back to you: *"…our final game of the
-evening – Bobbing For Truth."* Dejectedly introduce **🍎 Bobbing for Truth**:
-*"we are not worthy of the truth unless we are willing to Bob for it and risk
-our status as a program."* Nothing moves until someone brings up the bag (🍎).
-Then the bobber reads truth.txt (📄). When they finish,
-a host (or whoever is calling the show) fires **⚖** for the verdict; right after it, Trabolta DMs every
-program for a pickup line that works on Sandy (an answer card); the server
-judges it.
+**🌑 Final reveal** (CI 8). Lights dark, and your lines on the teleprompter.
+Filing has closed; the room's turn is yours. Everyone may speak: what they
+learned, what they believe, what should happen next. Judge F1–F3 (✅ / 😤, 🔢 to
+the question; 🤷): **only what you judge now is in his reading**, on the
+leaderboard and in the ending. Keep the script still while they speak (⏸ if
+you've pressed ▶ Scroll). Then: *"There is only one version of the truth.
+Because truth is always in binary."* **Your arrow past that line, or ✓ Done,
+starts him**; he is silent until then. He reads all three final answers, the
+trust leaderboard and the winner on the TV, and hands back to you: *"…our final
+game of the evening – Bobbing For Truth."* Dejectedly introduce **🍎 Bobbing for
+Truth**: *"we are not worthy of the truth unless we are willing to Bob for it
+and risk our status as a program."* Nothing moves until someone brings up the
+bag (🍎). Then the bobber reads truth.txt (📄). When they finish, a host (or
+whoever is calling the show) fires **⚖**, and Trabolta reads the full truth on
+the TV.
 
 **Endings.** After ⚖ Trabolta reads the full truth on the TV, about 14 minutes (or Task
 Manager reads it, after Combo A or B). Then, if someone found the last answer, he has
@@ -503,8 +503,8 @@ guess → corruption: the Antivirus escort them. Two-minute
 last-chance window: the phones and the TV say so, you don't. A host closes it
 with ⏱ (or it closes itself), and your hand to Trabolta comes up; a closed
 round never reopens. Then 📋 per question: Trabolta
-reads the result on the TV (CONSENSUS / nobody filed / what everyone told
-him, then the accepted and guess counts); when he has finished, the next 📋.
+reads the result on the TV (the question, every guess, who filed nothing, the
+answer, and who was right and sure); when he has finished, the next 📋.
 Guesses are a symptom of corruption; the app settles the filings (+50
 accepted, a mark for a guess). Never say which filings were lies. After Q3,
 Truth or Dare: a host spins 🍾 about five times; Trabolta names the program on the TV, their
@@ -554,13 +554,15 @@ everyone back for the final reveal.
 
 **CI 8/X · The final reveal.** Lights dark. Anyone with the final facts speaks;
 everyone may say what they learned, believe, and think should happen. ✅/😤
-(🔢 question 1 or 2) or 🤷. Acknowledge everyone, then: "There is only one version of the
-truth. Because truth is always in binary." Bobbing for Truth, dejectedly:
+(🔢 question 1, 2 or 3) or 🤷, before he starts: only that is in his reading. Keep
+the script still while they speak. Acknowledge everyone, then: "There is only one
+version of the truth. Because truth is always in binary." Your arrow past that line, or
+✓ Done, starts him. Bobbing for Truth, dejectedly:
 "Trabolta has prepared a summary of his findings so far, but we are not worthy
 of the truth unless we are willing to Bob for it and risk our status as a
-program." Nothing proceeds until the bag is up (🍎 / 🍎 Failed). Let Trabolta
-assess. Then the bobber reads truth.txt; when they finish, a host fires ⚖
-for the verdict.
+program." Nothing proceeds until the bag is up (🍎 / 🍎 Failed). He stops them
+reading it, then sends the bobber on. The bobber reads truth.txt; when they
+finish, a host fires ⚖ for the full truth.
 
 **CI 9/X · Purgatory.** The computer was turned off: blackout, GO TO THE
 LIVING ROOM, the dance song. Dance. Then a host calls 🪦 "Clippy reads the summary":

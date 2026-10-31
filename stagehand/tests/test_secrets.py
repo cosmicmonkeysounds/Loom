@@ -30,8 +30,11 @@ SHOW = Path(__file__).resolve().parents[2] / "core/examples/trapped-in-the-inter
 MARKER = "▒ HUNT ANSWER"
 #: The folders of the show whose CODEX entries the shipped-show tests read.
 CODEX_DIRS = ("codex", "generated")
-#: Hunt-answer entries in the shipped show: H1–H6, F1–F3, and the five old answers kept as documents.
-HUNT_ENTRIES = 14
+#: Hunt-answer entries in the shipped show: H1–H6, F1–F3.
+HUNT_ENTRIES = 9
+#: The five old answers kept as documents, and their stamp.
+DOCUMENT_ENTRIES = 5
+DOCUMENT_MARKER = "▒ FILED ▒"
 
 SECRETS = Secrets(topics=("billboard", "pet cemetery"), match=("pickles", "eleven years"), lore=(MARKER,))
 PERSONA = parse_persona("---\ncharacter: Trabolta\nvariables: truth\n---\nYou are TRABOLTA.")
@@ -262,6 +265,9 @@ def test_the_shipped_show_never_shows_a_hunt_answer_to_a_model():
     stamped = [e for e in entries if MARKER in e["text"]]
     assert len(stamped) == HUNT_ENTRIES
     assert all(not s.lore_ok(e) for e in stamped)
+    documents = [e for e in entries if DOCUMENT_MARKER in e["text"]]
+    assert len(documents) == DOCUMENT_ENTRIES
+    assert all(not s.lore_ok(e) for e in documents)
     block = lore_block(Facts({"codex": entries}), [e["title"] for e in entries], secrets=s)
     assert block and not any(e["title"] in block for e in stamped)
     # The standing order and the orchestrator's prompt name topics, never answers.

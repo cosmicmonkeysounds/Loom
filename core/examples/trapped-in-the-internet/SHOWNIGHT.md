@@ -47,14 +47,10 @@ the print. Its map is
 [`docs/loom-w59-contract.md`](../../../docs/loom-w59-contract.md), its words and
 decisions are on [`SIGNOFF-w59.md`](./SIGNOFF-w59.md).
 
-1. **The answers.** H1–H3's answers go into `facts.json` (`answer`, `accept`,
-   `where`, `codex.text`, and delete `placeholder`), then `titi:facts`, and
-   commit. Later than the sync works too, but then run `titi:facts`, commit and
-   sync again, before the doors: the owed flags live in the generated story, so
-   `facts.json` alone judges H1–H3 while G9a still skips them. `titi:facts` also
-   writes the answers into his mind's never-list, which a sync doesn't reach, so
-   once more on the MacBook: `git pull`, restart `agents`, Run → Mind → **Reset**
-   (step 7).
+1. **The answers.** All nine are in `facts.json` (wave 59a). A later edit to one:
+   `titi:facts`, commit and sync, before the doors. `titi:facts` also writes the
+   answers into his mind's never-list, which a sync doesn't reach, so once more on
+   the MacBook: `git pull`, restart `agents`, Run → Mind → **Reset** (step 7).
 2. **Note the fallback:** the master this replaces. A re-sync of the old story
    stays possible until the staff upload at 17:00; after that a rollback costs
    every staff upload, and after the doors it is impossible.
@@ -571,11 +567,13 @@ back from Truth Pong and stops on *"Before we get to the answers for Round 2."*
 📊 opens the chart, 🏆 names three from each end and asks for the certificate. 🫘
 is his three lines about the beans. 🤖 is one long press: his scenario (Scenario 4
 says nothing), round two's answers, the leaderboard, the unconfident list and the
-three final questions. 🕚 is unchanged. 🌑 (by hand, or midnight's) is Clippy's
-lines, then all three final answers, the trust leaderboard and the winner, and
-closes round three there, so a phone can't file after it. 🍎 and 📄 as ever. ⚖ plays
-his speech about the truth first if nobody found the last answer (about a minute,
-and it goes on by itself), then the verdict. A line with nobody in it is left out.
+three final questions. 🕚 is unchanged. 🌑 (by hand, or midnight's) closes round
+three's filing and gives Clippy the room, with ✅ and 😤 on what's said. Her arrow
+past her last line, or her ✓ Done, starts him: all three final answers, the trust
+leaderboard and the winner. With no reader, **🌑 again** when she has finished; it
+stays NEXT, 🍎 refuses until he has read, and after ten minutes he starts by himself.
+🍎 and 📄 as ever. ⚖ plays the full truth, then 8-A or 8-B by itself. A line with
+nobody in it is left out.
 
 **The teleprompter** (wave 59). A scene on the prompter is one shared position:
 Clippy, anyone with a line in it and every host see the same place, and the
@@ -728,11 +726,10 @@ stays at or under 3 Hz; no open flames; VR is played seated with a spotter.
 | A forgiven wrong patch, or a rehearsal left the room set | 🔄 `reset_server_room`, then 💡 if the house is still red. |
 | Keypad dead or jammed | The house manager's override key; prop the door; press 🚪 if The Heart didn't play. |
 | Combo A or B has played | **G0 📜 The full truth** is NEXT: press it once the dance or 🪦 has had its moment. Task Manager reads, and the rave follows when the read is done. |
-| The rave is on | ■ Stop house sounds, then **G1**. A press sooner asks; a second inside 30 s goes on. |
-| 📜 is on the TV and he has no voice | Mute the TV, then **📜 Task Manager reads it instead**. The ending still follows, when the read is done. |
+| The rave is on, on any ending | ■ Stop house sounds, then **G1**. A press sooner asks; a second inside 30 s goes on. |
+| 📜 is on the TV and he has no voice | Mute the TV, then **📜 Task Manager reads it instead**. The ending still follows when the read is done, and it is his voice: **unmute the TV before then**. |
 | 📜 is Task Manager's and his phone is down | His printed copy (in his pack), or ⊞ Start → My script on any phone signed in to the part. G1 opens when it should be over; press it twice inside 30 s to go on sooner. |
 | A program finished the talk at his heart | `# hosts` says so. Nothing to do: it ends nothing. |
-| A filing on H1, H2 or H3 *could not be judged* | That key is still owed: nothing is recorded and Trabolta says he can't read it. Before the doors: put the answer in, `titi:facts`, commit, sync, then on the MacBook `git pull`, restart `agents` and Run → Mind → **Reset**. After the doors a sync is off the table: hosts judge what is said in the room with ✅ / 😤 / 🤷. |
 | Run → Mind shows `engine macbook` | Claude refused a line and the Ollama standby wrote it, about 99 s at the median. One now and then is fine. A run of them: tell the tech op; Task Manager's canned lines carry a talk scene. |
 | A guest lost their phone or session | On the new phone they scan or type their badge and tap 🙋 Ask a host, and a host presses **Let them in** on Needs (§6, *One phone per card*). No badge: ask by program name on Get back in, ⏏ Release in People (tick **Offline (n)**), or Inspector → 🔁 Re-pair (a single-use QR that signs the old phone out). A loaner phone if they have none. |
 | A performer's phone died | The same Ask a host from their staff badge on the loaner, or ⏏ Release the part (More, or Run) and they sign in again with the badge or the performer code. |

@@ -71,11 +71,11 @@ does ends the night or needs you; you may read their numbers in Run → World
 | 14 | **🤖** Trabolta shares the next facts (press it; the scenario picks itself) | one long press on the TV: his scenario, round two's three answers, the leaderboard, who is submitted for reinstallation, the three final questions | |
 | 15 | wait for **IN** from the patch-bay watch → **🕚** Y2K clock (60 min) | (auto majority; clock warnings) | *desperate* |
 | 16 | door / patch bay (or the Tier 0 buttons 🚪 🔌 💥 ❌) | blackout → (auto 🪩) | |
-| 17 | **🪦** (after Combo B), else auto **🌑** at midnight | 🌑: Clippy's lines, then all three final answers, the trust leaderboard and the winner on one press; round three closes and settles here | *last act* at 🌑 |
+| 17 | **🪦** (after Combo B), else auto **🌑** at midnight | 🌑: round three's filing closes and Clippy has the room, with ✅ and 😤 on what's said. Her arrow past her last line, or her ✓ Done, starts him: all three final answers, the trust leaderboard and the winner, and round three settles. **With no reader, 🌑 again when she has finished** (it stays NEXT; after ten minutes he starts by himself). 🍎 waits for him | *last act* at 🌑 |
 | 18 | **🍎** Bobbing for Truth → **📄** Read truth.txt (the slide holds while the bobber reads) → **⚖** when they finish | ⚖ plays the full truth on the TV, about 14 minutes. The last answer then decides, by itself: **found**, his news, the song, the rave; **nobody found it**, his speech, a pause, two minutes of lines on every phone (auto, or **💬** to close it early), he reads them all, the song, the rave. Lies stay on the record and decide nothing | |
-| 19 | The TV lost its voice during ⚖'s monologue: mute the TV, **📜 Task Manager reads it instead**; the ending still follows | | |
+| 19 | The TV lost its voice during ⚖'s monologue: mute the TV, **📜 Task Manager reads it instead**; the ending still follows when the read is over: **unmute the TV before it does** | | |
 | 19b | **G0 📜** After Combo A or B only: Task Manager reads the monologue, and the rave follows it | | |
-| 20 | **■ Stop house sounds**, then (**✍** first, only if the second director wrote award lines) **G1 🏆** ceremony, once the rave is on (a press sooner asks, a second inside 30 s goes on). Clippy hosts every ending | | |
+| 20 | **■ Stop house sounds**, then **G1 🏆** ceremony, once the rave is on (a press sooner asks, a second inside 30 s goes on). Clippy hosts every ending, so **✍** changes nothing tonight | | |
 
 **The talk scenes (wave 32).** At the four 🤖 marks above, Clippy talks
 with Trabolta live in front of the room: Task Manager types what Clippy
@@ -115,8 +115,8 @@ the moment it is filed: accurate (matches the key or an alias), confident
 lie (no match at 100), uncertain (no match below 100). The verdict never
 reaches a guest's phone or Trabolta's worker (`# hosts` logs each filing with
 it, for staff only); credits (+50) land when the round settles (round 1 per
-question at 📋, round 2 at 🧮, the final at 🌑); marks for a filed guess land
-only in rounds 1 and 2 — a guess filed for F1–F3 is simply dropped at 🌑,
+question at 📋, round 2 at 🧮, the final when he starts reading at 🌑); marks for a filed guess land
+only in rounds 1 and 2 — a guess filed for F1–F3 is simply dropped there,
 nobody is escorted during the verdict. The Judging card on Run → Mind shows
 the mode: **`auto`** (the default; leave it)
 or **`review`** (every verdict is a proposal in `# hosts` until you confirm
@@ -213,7 +213,7 @@ membership; everyone trained at the **10-25 read-through** (the never-list,
 the call words, the blackout rule, the Wanted board, the 📝 buttons).
 
 **The facts loop (yours, with the team):** `facts.json` is the one file the
-team edits: the eight hunt questions (DRAFT until replaced), their answers
+team edits: the nine hunt questions, their answers
 and accepted aliases, where each document hides, the scannable facts, the
 character facts, the bottle's 20 truth questions. After every edit run
 `pnpm --filter @loom/core titi:facts` (it regenerates

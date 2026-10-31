@@ -503,7 +503,7 @@ Trabolta's persona `facts:` whitelist (he sees it).
 | Night.warn_at | number | dispersal end − 300 s: the five-minute warning | |
 | Night.summons_open / Night.summons_end / Night.summons_closed | bool false / number / bool false | the 5-minute summons window | |
 | Night.auto_sweep | bool false | if a director sets it true, late programs are captured automatically | |
-| Night.facts_requested | number 0 | facts Trabolta has asked for (3 + 3 + 2 = 8 by the end) | yes |
+| Night.facts_requested | number 0 | facts Trabolta has asked for (3 + 3 + 3 = 9 by the end) | yes |
 | Night.facts_accepted | number 0 | accepted answers (accurate + confident lies; he cannot tell them apart) | yes |
 | Night.r1_accepted / Night.r2_accepted / Night.r3_accepted | number 0 | accepted answers per round | |
 | Night.r2_requested | number 3 | round-2 questions (display only; the collection is judged per question on `Kernel.q4`–`q6`) | |
@@ -565,7 +565,7 @@ in ROLE hooks and story rules.
 |---|---|---|
 | `combo_a: text? = none` | seeded in Power On (`main.loom`) | Combo A (disable Trabolta). Canonical: wire pairs (`V<k>-D<i>`), sorted by V. Wave 57: new, for the panel as built. |
 | `combo_b: text? = none` | seeded in Power On (`main.loom`) | Combo B (self-destruct). |
-| `q1` … `q9: text? = none` | | per-question verdict record: `"accurate"` or `"lie"` (H1–H3 = q1–q3, H4–H6 = q4–q6, F1–F2 = q7–q8). A lie is sticky (§3 B8). |
+| `q1` … `q9: text? = none` | | per-question verdict record: `"accurate"` or `"lie"` (H1–H3 = q1–q3, H4–H6 = q4–q6, F1–F3 = q7–q9). A lie is sticky (§3 B8). |
 | `lies_accepted: 0 to 50 = 0` | | accepted confident-but-false answers |
 | `all_accurate: bool = false` | | the verdict (§3 F3) |
 | `virus_planted: bool = false` | | any program inserted a virus disk (flavour) |
@@ -920,8 +920,8 @@ reads as a cue sheet):**
 | bobbing_for_truth | `🍎 Bobbing for Truth` |
 | read_truth_txt | `📄 Read truth.txt` (holds the slide; wave 8 split the verdict off) |
 | the_verdict | `⚖ truth.txt read → the verdict` (wave 8) |
-| no_pickup_line | `💔 Nobody has the line → confession → rave` |
-| ask_for_advice | `💌 (Alt, after a lie → Grok Prom) Trabolta begs for relationship advice` |
+| no_pickup_line | `💬 Close the pickup lines now (auto at 2 min)` |
+| ask_for_advice | `💌 (Off the night) Trabolta begs for relationship advice` |
 | advice_tally | `🗳 (Alt) Count the advice poll` |
 | advice_helped | `💞 (Alt) They helped him` |
 | advice_thwarted | `⛈ (Alt) They thwarted him: banish everyone` |
@@ -1104,7 +1104,7 @@ confidently to count, and a confident wrong guess poisons the verdict.
 
 Each judged answer is recorded against its question on `Kernel.q1` … `Kernel.q9` (§3 B8):
 the judge presses "question N **of this round**" and the round maps it (round 1 → q1–q3,
-round 2 → q4–q6, round 3 → q7–q8).
+round 2 → q4–q6, round 3 → q7–q9).
 
 ### 2.12 CODEX registry
 
@@ -1221,14 +1221,14 @@ one as a share — he must never know what he is asking for.
 
 | Name | title | code | ✚ | Gist |
 |---|---|---|---|---|
-| Funk And Wagnalls | Funk and Wagnalls | (`facts.json`) | ✚ | H1 answer, owed (wave 58). Ends `▒ HUNT ANSWER H1 ▒` |
-| Forensics For Dummies | Forensics For Dummies | (`facts.json`) | ✚ | H2 answer, owed. `▒ HUNT ANSWER H2 ▒` |
-| Macs For Dummies | Macs for Dummies | (`facts.json`) | ✚ | H3 answer, owed. `▒ HUNT ANSWER H3 ▒` |
-| The Extension | The Extension | `EXT-1978` | ✚ | Old H4, a document since wave 59a. `▒ HUNT ANSWER H4 ▒` |
-| The Search History | The Search History | `SEARCH-HISTORY` | ✚ | Old H5, a document since wave 59a ("Hopelessly Devoted to You", 412 plays). `▒ HUNT ANSWER H5 ▒` |
-| The Final Chapter | The Final Chapter | `APPENDIX-Z` | ✚ | Old H6, a document since wave 59a ("Appendix Z: Loose Ends (Do Not Print)"). `▒ HUNT ANSWER H6 ▒` |
-| What Sandy Says | What Sandy Says | (`facts.json`) | ✚ | Old F1, a document since wave 59a (Sandy's line verbatim). `▒ HUNT ANSWER F1 ▒` |
-| The Prom Ticket | Grok's Prom Ticket | `COMPUTER-PROM` | ✚ | Old F2, a document since wave 59a ("Computer Prom, Halloween 2026. Admit two: GROK + SANDY."; the gold print stack: the ticket slipped into the atlas, `facts.json`, DRAFT). `▒ HUNT ANSWER F2 ▒` |
+| Funk And Wagnalls | Funk and Wagnalls | (`facts.json`) | ✚ | H1 answer. Ends `▒ HUNT ANSWER H1 ▒` |
+| Forensics For Dummies | Forensics For Dummies | (`facts.json`) | ✚ | H2 answer. `▒ HUNT ANSWER H2 ▒` |
+| Macs For Dummies | Macs for Dummies | (`facts.json`) | ✚ | H3 answer. `▒ HUNT ANSWER H3 ▒` |
+| The Extension | The Extension | `EXT-1978` | ✚ | Old H4, a document since wave 59a. |
+| The Search History | The Search History | `SEARCH-HISTORY` | ✚ | Old H5, a document since wave 59a ("Hopelessly Devoted to You", 412 plays). |
+| The Final Chapter | The Final Chapter | `APPENDIX-Z` | ✚ | Old H6, a document since wave 59a ("Appendix Z: Loose Ends (Do Not Print)"). |
+| What Sandy Says | What Sandy Says | (`facts.json`) | ✚ | Old F1, a document since wave 59a (Sandy's line verbatim). |
+| The Prom Ticket | Grok's Prom Ticket | `COMPUTER-PROM` | ✚ | Old F2, a document since wave 59a ("Computer Prom, Halloween 2026. Admit two: GROK + SANDY."; the gold print stack: the ticket slipped into the atlas, `facts.json`, DRAFT). |
 
 #### codex/4-trabolta.loom (T1, T2, L, P, X)
 
@@ -2412,8 +2412,8 @@ checked_in for program with at: The Desktop`, bare); the director (`checked_in`,
   `if/else` divert to `Overshare One` … `Overshare Four` (last). (Late arrivals get The Final
   Facts from the `Night.step >= 13` catch-up watcher. A non-Excel plant is flavour only; it
   does not change the scenario.)
-- All four (public, Trabolta) open the same way: he shares the next facts — reads F1 and F2
-  verbatim (§2.11).
+- All four (public, Trabolta) then run on the same way: round two's answers, then the three
+  final questions (§2.11).
   - **Overshare One** (virus planted AND 20 facts): he overshares: `I am only trying to prove
     the Unified Field Theory to win back my ex. Sandy.` · admits that depending on whether he
     gets all accurate facts, everyone may be trapped in the computer forever · brief lucidity:
@@ -3516,11 +3516,10 @@ Definitions:
   `Kernel.majority_reached != true`, **and only once G's leader has done their task**
   (stay: `Kernel.excel_planted`; leave: `Kernel.openoffice_dossier`; either:
   `Kernel.waive_leader_tasks`). First faction to cross wins; it latches.
-- **all facts accurate** = none of `Kernel.q1` … `Kernel.q8` is `"lie"` (8 requested: H1–H6
-  + F1–F2), and no review-mode filing is pending as a lie (wave 4, U14: only answered
-  questions count). A question with no accepted answer is `"none"` and does **not** fail it
-  (zero answers → Song). A lie stays a lie unless a host corrects the verdict (wave 6, B11).
-  Several answers to one question count once.
+- **the last answer decides** (wave 59a): at ⚖ the night goes by what Reading F3 said
+  (`Kernel.res_found`): found → 8-A, ending `song`; nobody → 8-B, ending `song_pickup`. Lies stay
+  on the record (`Kernel.q1` … `Kernel.q9`) for trust, the recap and the screens, and decide
+  nothing. A question nobody answered is `"none"`, not a lie.
 - Only one final ending: every ending beat sets `Night.ended = true` first, and every finale
   trigger is guarded `Night.ended != true`. `banished` is the one non-final ending.
 
@@ -3707,11 +3706,10 @@ at a time.
 15. **Final reveal + verdicts.** `advance` past midnight → `y2k_midnight` → final_reveal
     (not when already ended); `bobbing_for_truth` → `brought_up_the_bag` → bobber holds The
     Truth File, Final Assessment names; `failed_the_bob` → marked; `read_truth_txt` →
-    everyone holds The Truth File + all backstories; all eight questions accurate → Song
-    Ending (Sandy's line verbatim, ending song); eight accurate answers that skip F2 → Grok
-    Prom; one lie → Grok Prom; `pickup_line_works` (actor Clippy) → ending song_pickup;
-    fresh: `no_pickup_line` → rave text + cues; Trabolta has no power to accept the line (a
-    retired `the_line_works` fire does nothing).
+    everyone holds The Truth File + all backstories; ⚖ → The Full Truth, then 8-A if someone
+    found the last answer (ending song), else 8-B (ending song_pickup): a lie decides nothing;
+    every line on the 8-B card is kept and read; `no_pickup_line` closes it early; his last
+    line, the song, The Rave, on every ending. (The old Grok Prom road below is off the night.)
 16. **Alternate advice ending.** `ask_for_advice` in bobbing → nothing; in grok_prom → poll
     widget; poll answers tally; `advice_helped` → help + released; fresh: `advice_thwarted` → every program
     captured, holds The Hand Jive Exception, ending banished, not ended; `the_hand_jive` →

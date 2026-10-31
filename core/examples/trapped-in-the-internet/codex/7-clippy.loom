@@ -111,14 +111,14 @@ CODEX Clippy Instructions 3
     minutes), and your hand-over to Trabolta pops up. A closed round never
     reopens.
     - (App) A host fires 📋 Results for each question in turn: nod to
-    them when the room is ready. Trabolta reads the result on the TV: CONSENSUS (every answer
-    matches and everyone was sure), nobody filed, or the list of what
-    everyone told him, with how many were accepted and how many were
-    guesses. When he has finished, the next 📋. Then say that guesses are
-    a symptom of corruption. The app settles the filings on its own:
-    +50 Truthcoin for an accepted answer, a mark for a guess.
-    - Never say which filings were lies: the room hears "accepted" for
-    every confident answer.
+    them when the room is ready. Trabolta reads the result on the TV: the
+    question, every guess, who filed nothing, the answer, and who was right
+    and sure. When he has finished, the next 📋. After the third he reads the
+    leaderboard and who he recommends for reinstallation, and ends on your
+    name. The app settles the filings on its own: +50 Truthcoin for an
+    accepted answer, a mark for a guess.
+    - Never say which filings were lies: he names who was right and sure,
+    and says no more.
     - After question three, Truth or Dare: when he has finished the third,
     a host spins 🍾 the bottle, about five spins (NEXT offers five; spin
     more if the room wants it). The bottle's program pops up on your phone. Trabolta names the program on the TV;
@@ -244,11 +244,14 @@ CODEX Clippy Instructions 8
     gathered, what they believe but cannot prove, and what they think
     SHOULD happen next.
     - (App) Judge the final facts as before: ✅ or 😤 for question 1, 2 or 3
-    (🔢 picks it), or 🤷 to the Internet.
+    (🔢 picks it), or 🤷 to the Internet. Only what you judge now is in his
+    reading. Your lines are on the teleprompter: keep it still while they
+    speak.
     - Acknowledge every contribution. Then: "There is only one version of
     the truth. Because truth is always in binary."
-    - Trabolta then reads all three final answers, the trust leaderboard and
-    the winner on the TV, and hands back to you.
+    - (App) Your arrow past that line, or ✓ Done, starts him. Trabolta reads
+    all three final answers, the trust leaderboard and the winner on the TV,
+    and hands back to you.
     - (App) A host fires 🍎 Bobbing for Truth: your phone says your game is on.
     - Dejectedly introduce the final Truth Game of the night: "Trabolta has
     prepared a summary of his findings so far, but we are not worthy of
@@ -257,10 +260,8 @@ CODEX Clippy Instructions 8
     - Nothing proceeds until someone successfully bobs and brings up the
     Bag of Truth. (App) 🍎 Brought up the Bag of Truth on the winner. A
     program who comes up empty: 🍎 Failed the bob, to the Internet.
-    - Before the bag can be read, Trabolta stops everyone to deliver his
-    assessment of everyone's trustworthiness. Let him.
-    - Then the program who brought up the bag reads truth.txt aloud, when
-    a host fires it.
+    - Trabolta stops anyone reading the bag, then sends the program who
+    brought it up to read truth.txt aloud, when a host fires it.
 
 CODEX Clippy Instructions 9
   title: CLIPPY INSTRUCTIONS - 9/X - PURGATORY

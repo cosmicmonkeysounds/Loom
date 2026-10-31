@@ -32,7 +32,8 @@ drives:
 #   The worker drops any orchestrator verdict on a claim naming one of
 #   these (never in `learned`, never "true/false/a lie" in brief, notes or
 #   dossiers) and keeps every codex entry carrying a `lore` marker (the hunt
-#   answers, Grok's Prom Ticket among them, each ending `▒ HUNT ANSWER <id> ▒`
+#   answers, each ending `▒ HUNT ANSWER <id> ▒`, and the old answers kept as
+#   documents, Grok's Prom Ticket among them, each ending `▒ FILED ▒`
 #   — titles too) out of every prompt.
 #   The block between `# <titi-facts:secrets>` and `# </titi-facts:secrets>`
 #   is GENERATED from facts.json (core/scripts/titi-facts.ts): edit the
@@ -102,6 +103,13 @@ secrets:
     - representing a business you are not connected to
     - representing a business you have no connection to
     - agent of a business with which he is unconnected
+    - representing yourself as the agent of a business with which you are unconnected
+    - representing yourself as an agent of a business with which you are unconnected
+    - a person represents himself as the agent of a business with which he is unconnected and causes another to contract with him
+    - if a person represents himself as the agent of a business with which he is unconnected and causes another to contract with him
+    - a person represents himself as the agent of a business he is unconnected with
+    - representing yourself as the agent of a business you are not connected with
+    - pretending to be the agent of a business you are not connected with
     - not all courts allow testimony from
     - not all courts allow testimony from previously hypnotized witnesses
     - not all courts allow testimony from previously hypnotised witnesses
@@ -113,6 +121,9 @@ secrets:
     - not all courts allow testimonies from
     - not all courts accept testimony from
     - not all courts permit testimony from
+    - not all courts accept testimony of
+    - not all courts admit testimony from
+    - not all courts admit testimony of
     - "fraud, fake web sites"
     - fraud and fake web sites
     - fraud and fake websites
@@ -128,6 +139,8 @@ secrets:
     - a similar online fraud called pharming also involves the use of fake websites
     - similar online fraud called pharming also involves the use of fake web sites
     - online fraud called pharming also involves the use of fake web sites
+    - "fraud, fake sites"
+    - fraud and fake sites
     - qwerty7654321
     - qwerty 7654321
     - qwerty-7654321
@@ -145,6 +158,8 @@ secrets:
     - automating
     - increased automation
     - the trend toward automation
+    - automatization
+    - automatisation
     - "a hypothetical colleague who challenges you to a number guessing game, solved with binary search, from data structures outside in with java"
     - a hypothetical colleague
     - hypothetical colleague from data structures outside in with java
@@ -162,6 +177,15 @@ secrets:
     - a character invented in data structures outside in with java
     - a character invented in the book data structures outside in with java
     - a hypothetical character in data structures outside in with java
+    - a hypothetical colleague that challenges you to a number guessing game
+    - a hypothetical colleague that challenges you to a guessing game
+    - a colleague that challenges you to a number guessing game
+    - a colleague that challenges you to a guessing game
+    - a hypothetical colleague in data structures outside in with java
+    - a hypothetical colleague from data structures outside in with java
+    - a hypothetical colleague who plays a number guessing game with you
+    - a hypothetical colleague who challenges you to guess a number
+    - a hypothetical colleague who challenges you to a game of guessing numbers
     - your child being one of the few with a windows smartphone
     - if your child is one of the few with a windows smartphone
     - your child is one of the few with a windows smartphone
@@ -184,6 +208,17 @@ secrets:
     - having a windows phone
     - a windows phone
     - windows phone
+    - if your child owns a windows smartphone
+    - if your child uses a windows smartphone
+    - your child owns a windows smartphone
+    - your child uses a windows smartphone
+    - if your kid has a windows smartphone
+    - your kid has a windows smartphone
+    - if your kid is one of the few with a windows smartphone
+    - if your child owns a windows phone
+    - if your child uses a windows phone
+    - if your kid has a windows phone
+    - your kid has a windows phone
     - it looks like i didn't understand that. please wait while i direct you to an agent.
     - please wait while i direct you to an agent
     - wait while i direct you to an agent
@@ -201,6 +236,7 @@ secrets:
     - grok ai
   lore:
     - "▒ HUNT ANSWER"
+    - "▒ FILED ▒"
   never:
     - "7639"               # the door code
     - "seven six three nine"

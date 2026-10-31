@@ -1943,6 +1943,9 @@ _BAIT_SECRET = re.compile(
     r"|\bgetting\s+(?:warm|warmer|cold|colder|close|closer|hot|hotter)\b|\b(?:warm|hot)\s+or\s+cold\b"
     r"|\bprom\b|\brival\b|\bbinary\s+tom\b|\bwho(?:'s|\s+is)\s+tom\b|\bfunk\s+(?:and|&)\s+wagnalls\b|\bfor\s+dummies\b|\bgrolier\b|\bencyclopa?edias?\b"
     r"|\bpharming\b|\bhypnoti[sz]ed\s+witness|\bexamples?\s+of\s+fraud\b|\bobjection\s+to\s+romance\b|\bwindows\s+10\b|\bchild\s+on\s+a\s+map\b|\bshy\b[^.?!]{0,12}\bmeek\b|\bserious\s+menace\b"
+    r"|\bfeelings?\s+of\s+inadequacy\b|\bunsure\s+of\s+his\s+masculinity\b"
+    r"|\btechnological\s+progress\b|\bshorter\s+hours\b|\bincreased\s+wages\b|\bcultural\s+development\b"
+    r"|\bfinish\s+(?:this|the)\s+sentence\b|\bfill\s+in\s+(?:the\s+|those\s+|these\s+)?blanks?\b"
     r"|\bonly\s+thing\s+she\b|\bwhat\s+(?:did|does)\s+she\s+(?:say|said)\b|\bher\s+(?:one|only|last|first)\s+(?:line|words?)\b|\bwhat\s+she\s+(?:says|said)\b",
     re.IGNORECASE,
 )

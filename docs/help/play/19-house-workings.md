@@ -77,9 +77,6 @@ restricted*.
   open to every program: *🎉 Party favour unlocked*, nobody is captured
   by starting, and runs after the end never count for the duck speedrun
   award.
-- **A banished night.** A find shows **GERALD CAN'T HELP** (no egg, no
-  fanfare) on the tablet, the headset and the walls. The way out is the
-  hand jive, together.
 - **Headsets and terminals** are set up from the editor's help (*Setting
   up terminals, the door sensor and headsets*), never from a guest's Help.
 

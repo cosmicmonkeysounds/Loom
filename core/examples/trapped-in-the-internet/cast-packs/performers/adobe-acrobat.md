@@ -24,10 +24,9 @@ moving; the Antivirus do the walking. A mis-tap: 🩹 Unmark.
 📝 round-2 filings count: at the tally a program with no 🏓 Made on record is
 "not counted: no cup", even if they sank it.
 
-**Round 2 answers (secret):** Q1 = H4 **1978** (the extension the Customer
-Care card says to dial) · Q2 = H5 **"Hopelessly Devoted to You"** · Q3 = H6
-**"Appendix Z: Loose Ends (Do Not Print)"**. From `facts.json`. Accurate and
-confident look the same in public.
+**Round 2 answers (secret),** to fill in from `facts.json` before you print this
+card (none is written here): Q1 = H4 ______ · Q2 = H5 ______ · Q3 = H6 ______.
+Accurate and confident look the same in public.
 Never say which.
 
 **The printer:** at 🏆 your booth says *🖨 Stand by the printer*. VLC presses

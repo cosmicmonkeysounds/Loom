@@ -287,6 +287,7 @@ The refused screen and its neighbours carry no marker, because they are app word
 | `beats/server-room.loom` | 36, 150, 1210, 1223 |
 | `codex/1-world.loom` | 36, 115, 176 |
 | `codex/2-files.loom` | 106 |
+| `core/scripts/titi-facts.ts` | 116 |
 | `core/server/costume-page.ts` | 101 |
 | `core/server/event-runtime.ts` | 357 |
 | `core/server/push.ts` | 290 |
@@ -428,8 +429,9 @@ is on this sheet: they are in `facts.json`, the story and the generated files.
   the recap and the screens, and decide nothing. The spoken verdict and its TV pages are gone.
 - **The prom branch, the advice poll, the hand jive and the motorcycle** are off the night: their rows stay,
   greyed by their `while:`. Their beats stay in the file, unreached.
-- A guest's filing or pickup line is starred by the language filter before it's stored: he reads them
-  aloud now.
+- A guest's filing or pickup line has its **slurs** starred before it's stored, as every guest's line does: he
+  reads them aloud now. Only slurs: a curse is read on the TV as typed. These lines don't reach the Password
+  Manager's filter, so she can't ✂ them.
 
 ### 8.2 Where the script and the lists disagreed
 
@@ -468,6 +470,11 @@ is on this sheet: they are in `facts.json`, the story and the generated files.
   all. The flicker that was here dips over his face and breaks his voice.
 - **The dream ends at ⚖:** his face and captions take the TV and the walls for the read. 🌀 still works.
 - **The lines are unjudged.** Every one is kept and read. The old pickup line wins nothing.
+- **The old documents end `▒ FILED ▒`, not ▒ HUNT ANSWER.** That mark is on the phone's copy, with the same ids
+  as the new questions, so an old document told a guest it answered H4. The entry's other words, its code, its
+  card and its pile are as they were, and the new stamp keeps it from his worker as the old one did.
+- **G1 waits on the same record:** the 🖼 totals on a results slide count a wrong filing at 100 as ACCEPTED, as
+  they always have, beside his correct-only Congratulations. Not viewed on a page; left alone.
 - **The reveal's order:** the answers can't land while she asks for them, or they would be on every phone
   in the chat, so 🌑 waits for her. A script that holds only the TV would have left them on the phones. If she
   lets ▶ Scroll run through the room's turn, he starts: ⏸ while they speak (her pack says so).
@@ -479,10 +486,11 @@ is on this sheet: they are in `facts.json`, the story and the generated files.
 
 ### 8.4 New words of ours
 
-Crew only, but for the first three. **The first is new, read out by Clippy on 8-A and 8-B:** the old line had him
+Crew only, but for the first four. **The first is new, read out by Clippy on 8-A and 8-B:** the old line had him
 leave on his motorcycle, which the script says he doesn't.
 
 - `// DRAFT w59a` Clippy: Trabolta has gone to see his lady. He left the awards behind. Somebody has to read them. It might as well be me.
+- `DRAFT w59a` stamp, on the phone's copy of the five old documents: ▒ FILED ▒
 - `// DRAFT w59a` objective: *What should he say to her?* · *The card is in his thread. One line. Two minutes.*
 - `// DRAFT w59a` banner: !🎵 Those of you who want to leave may leave. To the Desktop for the song.
 - `// DRAFT w59a` # hosts: ⚖ The full truth is being read; the ending follows by itself. Nothing happens.
@@ -506,5 +514,6 @@ pack holds the monologue, and the monologue names that answer, as it always has:
 
 **Reprint:** all nine gold cards (Run → 🖨 Print sheet); the five old documents' cards are unchanged. Packs:
 `crew/director`, `crew/second-director`, `performers/clippy`, `performers/task-manager`,
-`performers/adobe-acrobat`, `performers/recycling-bin`, `all-crew`. Fill the second director's answer table in
-from `facts.json`.
+`performers/adobe-acrobat`, `performers/norton`, `performers/installation-wizard`, `performers/recycling-bin`,
+`all-crew`. Before printing, fill in from `facts.json` the second director's answer table, Clippy's answer key
+and Adobe Acrobat's round-2 line: none is written in the files. A right answer judged from an old copy gets 😤.

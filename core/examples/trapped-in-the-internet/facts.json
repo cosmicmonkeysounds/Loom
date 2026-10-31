@@ -132,7 +132,14 @@
         "falsely representing a business",
         "representing a business you are not connected to",
         "representing a business you have no connection to",
-        "agent of a business with which he is unconnected"
+        "agent of a business with which he is unconnected",
+        "representing yourself as the agent of a business with which you are unconnected",
+        "representing yourself as an agent of a business with which you are unconnected",
+        "a person represents himself as the agent of a business with which he is unconnected and causes another to contract with him",
+        "if a person represents himself as the agent of a business with which he is unconnected and causes another to contract with him",
+        "a person represents himself as the agent of a business he is unconnected with",
+        "representing yourself as the agent of a business you are not connected with",
+        "pretending to be the agent of a business you are not connected with"
       ],
       "topics": [
         "funk and wagnalls",
@@ -163,7 +170,10 @@
         "not all courts allow the testimony of",
         "not all courts allow testimonies from",
         "not all courts accept testimony from",
-        "not all courts permit testimony from"
+        "not all courts permit testimony from",
+        "not all courts accept testimony of",
+        "not all courts admit testimony from",
+        "not all courts admit testimony of"
       ],
       "topics": [
         "forensics for dummies",
@@ -198,7 +208,9 @@
         "a similar online fraud called pharming also involves the use of fake web sites",
         "a similar online fraud called pharming also involves the use of fake websites",
         "similar online fraud called pharming also involves the use of fake web sites",
-        "online fraud called pharming also involves the use of fake web sites"
+        "online fraud called pharming also involves the use of fake web sites",
+        "fraud, fake sites",
+        "fraud and fake sites"
       ],
       "topics": [
         "macs for dummies",
@@ -272,7 +284,9 @@
       "accept": [
         "automating",
         "increased automation",
-        "the trend toward automation"
+        "the trend toward automation",
+        "automatization",
+        "automatisation"
       ],
       "topics": [
         "trend in technological progress",
@@ -309,7 +323,16 @@
         "a character from data structures outside in with java",
         "a character invented in data structures outside in with java",
         "a character invented in the book data structures outside in with java",
-        "a hypothetical character in data structures outside in with java"
+        "a hypothetical character in data structures outside in with java",
+        "a hypothetical colleague that challenges you to a number guessing game",
+        "a hypothetical colleague that challenges you to a guessing game",
+        "a colleague that challenges you to a number guessing game",
+        "a colleague that challenges you to a guessing game",
+        "a hypothetical colleague in data structures outside in with java",
+        "a hypothetical colleague from data structures outside in with java",
+        "a hypothetical colleague who plays a number guessing game with you",
+        "a hypothetical colleague who challenges you to guess a number",
+        "a hypothetical colleague who challenges you to a game of guessing numbers"
       ],
       "topics": [
         "binary tom"
@@ -349,7 +372,18 @@
         "they have a windows phone",
         "having a windows phone",
         "a windows phone",
-        "windows phone"
+        "windows phone",
+        "if your child owns a windows smartphone",
+        "if your child uses a windows smartphone",
+        "your child owns a windows smartphone",
+        "your child uses a windows smartphone",
+        "if your kid has a windows smartphone",
+        "your kid has a windows smartphone",
+        "if your kid is one of the few with a windows smartphone",
+        "if your child owns a windows phone",
+        "if your child uses a windows phone",
+        "if your kid has a windows phone",
+        "your kid has a windows phone"
       ],
       "topics": [
         "unlikely condition",

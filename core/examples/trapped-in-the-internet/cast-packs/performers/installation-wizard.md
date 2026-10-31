@@ -47,11 +47,7 @@ helping them, say so on the radio.
    *FIND GERALD*: no trail, no compass. Then the golden trail lights up and
    they follow it to **Gerald, the golden duck**, and walk right up to him.
    A re-scan starts the minute again. That is normal; don't point the way. He lays a golden egg and flies away: they're released
-   automatically, back to the Desktop. **On a banished night** (everyone
-   was banished in Grok Prom) Gerald can't release anyone: the laptop says
-   **GERALD CAN'T HELP** (*"…The Internet keeps you — your phone says what
-   happens next."*), with no egg and no fanfare. The way out is the hand
-   jive; that is expected.
+   automatically, back to the Desktop.
    **The King** (both games, the laptop and the headset): a big gold chess
    king guards the server-room door of the virtual house, with **one health
    bar for everyone, all night** (15 points; it never comes back by

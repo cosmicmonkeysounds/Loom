@@ -20,6 +20,7 @@ import {
   DESIGN_BEGIN,
   DESIGN_END,
   DRAFT_NOTE,
+  DOCUMENT_MARKER,
   HUNT_MARKER,
   LOOM_BANNER,
   MD_BANNER,
@@ -350,12 +351,12 @@ describe("titi-facts — generated/questions.loom", () => {
     }
     // The marker is never split across lines (stagehand reads the raw file).
     const documents = facts.documents ?? [];
-    expect(text.match(/▒ HUNT ANSWER [A-Z0-9]+ ▒/gu)).toHaveLength(facts.questions.length + documents.length);
-    expect(text.match(/▒ HUNT/gu)).toHaveLength(facts.questions.length + documents.length);
+    expect(text.match(/▒ HUNT ANSWER [A-Z0-9]+ ▒/gu)).toHaveLength(facts.questions.length);
+    expect(text.match(/▒ HUNT/gu)).toHaveLength(facts.questions.length);
     // A kept document's entry is the entry it always was (wave 59a).
     for (const d of documents) {
       const entry = m.codex.get(d.codex.id)!;
-      expect(entry.text.endsWith(`${HUNT_MARKER} ${d.was} ▒`), d.was).toBe(true);
+      expect(entry.text.endsWith(DOCUMENT_MARKER), d.was).toBe(true);
       expect(entry.secret, d.was).toBe(true);
     }
     // A draft is flagged above its entry.
@@ -600,7 +601,7 @@ describe("titi-facts — the trabolta.mind.md secrets block", () => {
     expect(mind).not.toContain("- stale");
     const block = mind.slice(mind.indexOf(MIND_BEGIN), mind.indexOf(MIND_END));
     expect(block).toBe(`${MIND_BEGIN}\n${mindBlock(facts, comboSeeds([read("main.loom")]))}\n`);
-    expect(block).toContain('  lore:\n    - "▒ HUNT ANSWER"\n');
+    expect(block).toContain(`  lore:\n    - "▒ HUNT ANSWER"\n    - "${DOCUMENT_MARKER}"\n`);
     expect(block).toContain("DO NOT EDIT");
     const entries = block.split("\n").filter((l) => l.startsWith("    - "));
     const unquote = (s: string): string => (s.startsWith('"') ? (JSON.parse(s) as string) : s);
@@ -622,7 +623,7 @@ describe("titi-facts — the trabolta.mind.md secrets block", () => {
     expect(block).toContain("# the door code");
     expect(block).toContain("# the patch-bay pairs");
     expect(block).toContain("# the pickup line");
-    expect(entries.length).toBe(topics.length + match.length + 1 + never.length);
+    expect(entries.length).toBe(topics.length + match.length + 2 + never.length); // two lore marks
     // Numbers and times are quoted so YAML keeps them strings.
     expect(yamlScalar("412")).toBe('"412"');
     expect(yamlScalar("9:00")).toBe('"9:00"');

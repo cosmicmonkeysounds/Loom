@@ -17,7 +17,7 @@ import { READING_BEATS } from "../server/agent-recent.ts";
 import { LETTER_ENDINGS } from "../server/letter-facts.ts";
 import { spokenMs } from "../server/prompter.ts";
 import { foldName } from "../src/parser/names.ts";
-import { answerNeverWords, mindBlock, neverWords } from "../scripts/titi-facts.ts";
+import { answerNeverWords, DOCUMENT_MARKER, mindBlock, neverWords } from "../scripts/titi-facts.ts";
 import { TO_Y2K } from "../../scripts/accept/chains.ts";
 
 const SHOW = "trapped-in-the-internet";
@@ -230,12 +230,16 @@ describe("wave 59a: the old documents", () => {
     for (const d of FACTS.documents!) {
       expect(m.codexCodes.get(foldCode(d.codex.code)), d.was).toBe(d.codex.id);
       expect(m.codex.get(d.codex.id)!.secret, d.was).toBe(true);
+      // A phone shows the entry: it mustn't read as that question's answer.
+      expect(m.codex.get(d.codex.id)!.text, d.was).not.toContain("HUNT ANSWER");
+      expect(m.codex.get(d.codex.id)!.text, d.was).toContain(DOCUMENT_MARKER);
     }
     const stacks = read("generated/print-stacks.md");
     for (const d of FACTS.documents!) expect(stacks, d.was).toContain(d.codex.code);
   });
   it("keep her line and the rival's name guarded", () => {
     const block = mindBlock(FACTS);
+    expect(block).toContain(DOCUMENT_MARKER); // his worker's second door, on `lore`
     for (const d of FACTS.documents!) for (const g of d.guard ?? []) expect(block, g).toContain(g.toLowerCase());
     expect(FACTS.documents!.filter((d) => d.guard !== undefined).map((d) => d.was)).toEqual(["F1", "F2"]);
   });
@@ -339,7 +343,7 @@ describe("wave 59a: what he is told about the endings", () => {
     for (const ending of ["song", "song_pickup"]) {
       const note = LETTER_ENDINGS[ending]!;
       for (const stale of ["every fact", "some facts", "sang", "gave you the line"]) expect(note, ending).not.toContain(stale);
-      expect(note, ending).toMatch(/she said yes/iu);
+      expect(note, ending).toMatch(/(?:sandy|she) said yes/iu);
     }
     expect(LETTER_ENDINGS["song"]).toContain("you solved the Grand Unified Theory");
     expect(LETTER_ENDINGS["song_pickup"]).toContain("you never solved the Grand Unified Theory");

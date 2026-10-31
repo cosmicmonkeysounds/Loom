@@ -722,7 +722,7 @@ Server Room. Never say the code on the radio.
 
 | Director fires | Performers do | What happens |
 |---|---|---|
-| **🌑 Final Truth Scavenger Hunt reveal** (`final_reveal`, or *auto* at midnight) | Clippy (CI 8): *"truth is always in binary"*; judges F1–F3 with ✅/😤 Q1–Q3 / 🤷 | Lights go dark. Set stage *last act*. Wave 59a: Trabolta then reads all three final answers (the last one branches on whether anyone found it), the trust leaderboard and the winner, and hands to Clippy. **Round three closes and settles here**, midnight\'s press included. **The server room stays live** (deliberate): a combo entered before 📄 truth.txt still ends the night. From 📄 on the verdict is in: the patch bay and the door only post a note to `# hosts`. |
+| **🌑 Final Truth Scavenger Hunt reveal** (`final_reveal`, or *auto* at midnight) | Clippy (CI 8): *"truth is always in binary"*; judges F1–F3 with ✅/😤 Q1–Q3 / 🤷 | Lights go dark. Set stage *last act*. Wave 59a: **two halves.** Round three's filing closes and Clippy has the room. Her arrow past her last line, her ✓ Done, a second 🌑 or ten minutes (`Night.reveal_owed`) settles round three, and Trabolta reads all three final answers (the last one branches on whether anyone found it), the trust leaderboard and the winner, and hands to Clippy. Midnight\'s press goes the same way. **The server room stays live** (deliberate): a combo entered before 📄 truth.txt still ends the night. From 📄 on the verdict is in: the patch bay and the door only post a note to `# hosts`. |
 | **🍎 Bobbing for Truth** (`bobbing_for_truth`) | Clippy / Adobe Acrobat: **🍎 Brought up the Bag of Truth** / **🍎 Failed the bob** (marked for reinstallation) | Nothing moves until someone brings up the bag. Then the bobber is told to read truth.txt. |
 | **📄 Read truth.txt** (`read_truth_txt`; only once the bag is up) | the bobber reads it aloud (Adobe Acrobat has the printout; her booth says to wait for ⚖) | truth.txt goes up on every screen and **holds** there while it is read. Everyone gets every backstory; *The Final Facts* completes. Nothing else happens until ⚖. A second 📄 only tells `# hosts` to press ⚖. |
 | **⚖ truth.txt read → the verdict** (`the_verdict`; after 📄, when the bobber has finished) | — | Wave 59a: the last answer decides, not lies. The record goes down in silence (**Verdict Record**, `do fact_truth H1` … `F3`, off `Kernel.t1`–`t9`), and **The Full Truth** plays on the TV. When `Night.truth_until` has passed (`Night.truth_first`), the ending follows by itself: **found**, **Truth Found** (8-A); **nobody found it**, **Nobody Found It**, a 6 s pause, **Ask Her For A Dance**, two minutes of lines on the `answer` card, unjudged, **Read The Lines**, a flicker, **She Said Yes** (8-B). Both go to **Off To See My Lady**, **Song Ending**, then **The Rave** 170 s on. Grok Prom, the advice poll and the hand jive are off the night: their rows stay, grey. |
@@ -811,7 +811,7 @@ delivery). An entry reaches a holder in one of five ways:
 | Tier | File | What it is |
 |---|---|---|
 | **E** environmental | `1-world` (21), `2-files` (22) | Halifax, the billboard, the sinkhole, the pet cemetery, the Halifax Computer, the printer, the Y2K clock, the virus QRs, *The Cold Door* (the keypad sign, secret: four notes or the King, no riddle since wave 11), and **21 coded "files"** hidden around the house. The **ID** files point at someone's human identity without naming them (a casino deed, an FBI lanyard, a 1988 campaign button…). |
-| **H** hunt answers | `generated/questions.loom` (8, from `facts.json`) | One per question, each on a document in the Desktop's books. Each ends `▒ HUNT ANSWER <id> ▒`, the lore marker Trabolta's worker hides. The six-stamp pickup-line mechanic was retired 2026-10-16 (U9): the line is learnable from Sandy's lore and asked on the pickup-line card. |
+| **H** hunt answers | `generated/questions.loom` (9, from `facts.json`) | One per question, each on a document in the Desktop's books. Each ends `▒ HUNT ANSWER <id> ▒`, the lore marker Trabolta's worker hides. The six-stamp pickup-line mechanic was retired 2026-10-16 (U9): the line is learnable from Sandy's lore and asked on the pickup-line card. |
 | **F** facts | `9-facts` (115 coded, from `facts.json`) | The team's scannable facts, scattered through the house by **rarity tier** (wave 35): **common** (green, in the open), **rare** (blue, odd but findable places; most of the ties between programs), **very rare** (purple, tucked away; each changes the plot: the King, the notes, the cables, the heart, the majority) and **legendary** (black, one to a room at most; the deep truths about Sandy, Grok and the machine). 115 generated from `facts.json`'s 116 rows, by topic: **main** (61 rows, every one generated), **trabolta** (12 rows: 11 generated, T5 hand-written as *The Rival* in `2-files`), **character** (24: two coded facts per invitee — their secret and their goal tonight — the second and third of the three entries each invitation promises; the first is the identity entry, and all three reach the invitee at Featured Briefing) and **relations** (19: who is tied to whom; no `about:`, so nobody holds one until they find it). Every very-rare and legendary card but V11 is `secret: true`, and T3 and T4 are too: `secret` hides a card from Trabolta (never in his requests, refused as a share) and never limits a scan. `generated/print-stacks.md` lists each tier, its count and how it hides. The hand-written entries that used to tell ten of these facts keep their own posters and codes (wave 58), and The Whole Truth unlocks them by hand. |
 | **T1** Trabolta surface | `4-trabolta` | *Jean Trabolta*, *The Grand Unified Theory*, *Target Selection*, *The Trust Chart* (`about: Trabolta`, so he holds and may share them). |
 | **T2** Trabolta private | `4-trabolta` | *The Sandy File*, *The Question Of Force*, *The LiveJournal* (`TRABOLTA-4EVER`), *Omnipotence*, *Oil And Lightning* (was *Greased Lightning*: no film in his own files since 2026-10-19). His stage rules keep these back until *unravelling*. |
@@ -1157,7 +1157,7 @@ question's codex QR. A question's `reading` is what he says for the answer (wave
 | H3 | According to Macs for Dummies, finish this sentence: “A similar online _, called pharming, also involves the use of __ ___ __.” | (in `facts.json`) | Macs For Dummies |
 | H4 | What is an example of a Strong Password, cited by a For Dummies book, that starts with Q? | (in `facts.json`) | Computers For Seniors |
 | H5 | What, according to one book, is the traditional objection to romance? | (in `facts.json`) | Grolier On Romance |
-| H6 | According to one encyclopedia, what trend in technological progress will lead to this outcome: “Increased wages and shorter hours will provide the leisure necessary for man’s full cultural development.” | (in `facts.json`) | Funk And Wagnalls Leisure |
+| H6 | According to one encyclopedia, what trend in technological progress will lead to this outcome: “Increased wages and shorter hours will provide the leisure necessary for man’s full cultural development.” | (in `facts.json`) | Funk and Wagnalls, the 1980s |
 | F1 | Who is Binary Tom? | (in `facts.json`) | Data Structures Outside In |
 | F2 | What is the unlikely condition that will enable you to find your child on a map using Windows 10? | (in `facts.json`) | Windows 10 For Dummies |
 | F3 | According to one encyclopedia, who is: “[...] often a shy, meek individual bothered by feelings of inadequacy and perhaps unsure of his masculinity – while a nuisance, not a serious menace.” | (in `facts.json`; **he doesn't know it**) | Grolier Academic |
@@ -1167,11 +1167,11 @@ key is in no file his worker reads, no ruling is asked on it, and no screen
 shows it until someone has found it. If nobody did, his reading says it is not
 correct and the verdict is preceded by **Nobody Found It**.
 
-**The five old answers are documents now** (`documents` in `facts.json`). The
-Extension, The Search History, The Final Chapter, What Sandy Says and The Prom
-Ticket keep their entries, codes, cards and gold pile; anyone can still scan
-them, and they answer no question. Sandy's line and the rival's name stay
-guarded (`guard`).
+**The five old answers are documents now** (`documents` in `facts.json`). They
+keep their entries, codes, cards and gold pile; anyone can still scan them, and
+they answer no question, so they end `▒ FILED ▒` instead of ▒ HUNT ANSWER, which
+named a question on a guest's phone. It is on his worker's `lore` list as the
+other is. Sandy's line and the rival's name stay guarded (`guard`).
 
 A filing matches if its folded text equals the answer or one of its
 `accept` aliases (case, accents, apostrophes and punctuation ignored, one
@@ -1198,9 +1198,9 @@ prints them with the join poster and the room check-in signs (skip The
 Server Room's sign — the check-in rule doesn't handle it).
 
 **The print stacks** (`generated/print-stacks.md`, from `facts.json`):
-the 8 hunt answers (gold, each on its own document in the Desktop: the
-pages of H1–H3 in their three books, the Customer Care card in the atlas,
-…), then the facts by
+the 9 hunt answers (gold, each on a page in one of the Desktop's books),
+the 5 old documents that were answers before wave 59a (gold, the same cards,
+answering nothing), then the facts by
 rarity tier (wave 35), scattered through the whole house with no list of
 where each one went: **common** (green, out in the open), **rare** (blue,
 odd but findable), **very rare** (purple, tucked away, counted with the
