@@ -672,8 +672,9 @@ Pictures of the room, one every 15 s from each terminal with a working camera, w
 (the Desk, a host's phone, or Run → Terminals). Nothing shows on a terminal. Never the Tent or the
 TV; the Server Room only while its camera is running (`docs/loom-w59-photos-contract.md`).
 
-- **Arm it** when the director says, after the doors, and **SAFE it** before the staff strike. An arm
-  holds through a restart and a story reload: only a press changes it, so look at it before the doors.
+- **Arm it** as the doors open, unless the director says otherwise, and **SAFE it** at the end of the
+  night. An arm holds through a restart and a story reload: only a press changes it, so look at it before
+  the doors, and 🗑 Delete all if a rehearsal left any.
 - **The panel** names any terminal that should be shooting and isn't: not heard from, page hidden, no
   camera, *reload it* (an old build).
 - **Where they go:** the VPS, `/data/photos/<event>/<spot>/`. 3 GB is the stop (about 400 MB a night

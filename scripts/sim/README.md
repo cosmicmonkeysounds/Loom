@@ -32,7 +32,7 @@ every route, reads the tar, and opens the Desk on a phone. About two minutes. Bu
 `terminal` first.
 
 ```bash
-SIM_PHOTOS_PORT=7701 SIM_PHOTOS_STATE=<an empty scratch dir> SIM_SHOTS=<dir> \
+SIM_PHOTOS_PORT=7701 SIM_PHOTOS_STATE=<a scratch dir> SIM_SHOTS=<dir> \
   pnpm --filter loom-app exec playwright test -c ../scripts/sim/playwright.config.ts photos.spec
 ```
 

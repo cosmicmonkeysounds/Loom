@@ -2,15 +2,15 @@
 // with Chromium's fake camera, against a scratch server this spec starts and stops
 // itself, because a restart is part of the test. It arms from a host's token, sees
 // the stills land about 15 s apart, disarms, restarts, opens the Desk on a phone, and
-// refuses a guest from every route. About three minutes. Build `play` and `terminal` first.
+// refuses a guest from every route. About two minutes. Build `play` and `terminal` first.
 //
-//   SIM_PHOTOS_PORT=7701 SIM_PHOTOS_STATE=<an empty scratch dir> SIM_SHOTS=<dir> \
+//   SIM_PHOTOS_PORT=7701 SIM_PHOTOS_STATE=<a scratch dir> SIM_SHOTS=<dir> \
 //     pnpm --filter loom-app exec playwright test -c ../scripts/sim/playwright.config.ts photos.spec
 import { spawn, execFileSync, type ChildProcess } from "node:child_process";
 import { mkdirSync, readFileSync, readdirSync, existsSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { test, expect } from "../../editor/node_modules/@playwright/test/index.mjs";
-import type { BrowserContext, Page } from "../../editor/node_modules/@playwright/test/index.mjs";
+import type { Browser, Page } from "../../editor/node_modules/@playwright/test/index.mjs";
 
 const PORT = Number(process.env["SIM_PHOTOS_PORT"] ?? 7701);
 const STATE = process.env["SIM_PHOTOS_STATE"] ?? "";
@@ -20,7 +20,9 @@ const API = `${BASE}/e/default`;
 const MOD = "MODPH7";
 const PRIME = "PRMPH7";
 const EVENT = "EVTPH7";
-const PHOTOS = join(STATE, "photos", "default");
+/** Each test its own state: a booth is one phone's, so a second boot of the same state can't sign in again. */
+let state = STATE;
+const photosDir = (): string => join(state, "photos", "default");
 
 let server: ChildProcess | null = null;
 
@@ -30,7 +32,7 @@ async function boot(): Promise<void> {
   server = spawn(join(core, "node_modules", ".bin", "tsx"), ["server/server.ts"], {
     cwd: core,
     stdio: "ignore",
-    env: { ...process.env, LOOM_PORT: String(PORT), LOOM_HOST: "127.0.0.1", LOOM_STATE_DIR: STATE, LOOM_MOD_PASS: MOD, LOOM_EVENT_PASS: EVENT, LOOM_PRIME_PASS: PRIME, LOOM_WIKI: "off", LOOM_DB_WAIT: "off", DATABASE_URL: "postgres://nobody@127.0.0.1:1/none", LOOM_FACTS: join(core, "examples/trapped-in-the-internet/facts.json") },
+    env: { ...process.env, LOOM_PORT: String(PORT), LOOM_HOST: "127.0.0.1", LOOM_STATE_DIR: state, LOOM_MOD_PASS: MOD, LOOM_EVENT_PASS: EVENT, LOOM_PRIME_PASS: PRIME, LOOM_WIKI: "off", LOOM_DB_WAIT: "off", DATABASE_URL: "postgres://nobody@127.0.0.1:1/none", LOOM_FACTS: join(core, "examples/trapped-in-the-internet/facts.json") },
   });
   for (let i = 0; i < 100; i++) {
     if (await fetch(`${BASE}/api/health`).then((r) => r.ok, () => false)) return;
@@ -61,7 +63,7 @@ async function get(path: string, token: string): Promise<{ status: number; json:
   return { status: res.status, json, body };
 }
 
-const shots = (spot: string): string[] => (existsSync(join(PHOTOS, spot)) ? readdirSync(join(PHOTOS, spot)).filter((f) => f.endsWith(".jpg")).sort() : []);
+const shots = (spot: string): string[] => (existsSync(join(photosDir(), spot)) ? readdirSync(join(photosDir(), spot)).filter((f) => f.endsWith(".jpg")).sort() : []);
 const timeOf = (f: string): number => Date.parse(f.replace(/^(.*T\d\d)-(\d\d)-(\d\d\.\d{3}Z)\.jpg$/u, "$1:$2:$3"));
 
 /** A JPEG's size, off its SOF marker. */
@@ -75,7 +77,10 @@ function jpegSize(b: Buffer): { w: number; h: number } {
   return { w: 0, h: 0 };
 }
 
-async function terminal(ctx: BrowserContext, query: string): Promise<Page> {
+/** Each terminal its own context, like its own tablet: one browser's six connections to a
+ *  host would go to the first pages' streams, and every page's polls would stall behind them. */
+async function terminal(browser: Browser, query: string): Promise<Page> {
+  const ctx = await browser.newContext({ permissions: ["camera"], viewport: { width: 800, height: 600 } });
   const page = await ctx.newPage();
   await page.goto(`${BASE}/terminal/?code=${MOD}&${query}`);
   return page;
@@ -86,6 +91,8 @@ test.use({ launchOptions: { args: ["--use-fake-device-for-media-stream", "--use-
 test("the terminals' photos, armed, disarmed and restarted", async ({ browser }) => {
   test.setTimeout(300_000);
   expect(STATE, "SIM_PHOTOS_STATE: an empty scratch dir").not.toBe("");
+  state = join(STATE, "night");
+  mkdirSync(state, { recursive: true });
   mkdirSync(SHOTS, { recursive: true });
   await boot();
   try {
@@ -94,19 +101,18 @@ test("the terminals' photos, armed, disarmed and restarted", async ({ browser })
     const host = (await post("/api/prime/login", { character: "Task Manager", passcode: PRIME })).json as { token: string };
     const guest = (await post("/api/guest/register", { name: "Winamp", passcode: EVENT })).json["token"] as string;
 
-    const ctx = await browser.newContext({ permissions: ["camera"], viewport: { width: 800, height: 600 } });
-    const hall = await terminal(ctx, "spot=hall");
-    await terminal(ctx, "spot=cpu&cam=0");
-    await terminal(ctx, "spot=server-room&crt=1");
-    await terminal(ctx, "spot=tent");
-    await terminal(ctx, "spot=desktop-tv");
+    const hall = await terminal(browser, "spot=hall");
+    await terminal(browser, "spot=cpu&cam=0");
+    await terminal(browser, "spot=server-room&crt=1");
+    await terminal(browser, "spot=tent");
+    await terminal(browser, "spot=desktop-tv");
 
     // Every terminal reporting, the hall's camera sending, nothing shot.
     await expect.poll(async () => ((await get("/api/mod/screen/terminals", mod)).json["terminals"] as unknown[]).length, { timeout: 20_000 }).toBeGreaterThanOrEqual(5);
     await expect.poll(async () => hall.evaluate(() => document.querySelectorAll("video").length), { timeout: 15_000 }).toBeGreaterThan(0);
     await hall.waitForTimeout(3000);
     const before = await hall.evaluate(() => ({ videos: document.querySelectorAll("video").length, canvases: document.querySelectorAll("canvas").length, images: document.querySelectorAll("img").length }));
-    expect(existsSync(PHOTOS) ? readdirSync(PHOTOS) : []).toEqual([]);
+    expect(existsSync(photosDir()) ? readdirSync(photosDir()) : []).toEqual([]);
 
     // Arm it from a host's token: about 15 s apart, 640 × 480, the sacred three silent.
     expect((await post("/api/mod/photos/arm", { armed: true }, host.token)).status).toBe(200);
@@ -118,7 +124,7 @@ test("the terminals' photos, armed, disarmed and restarted", async ({ browser })
       expect(g).toBeGreaterThan(13_000);
       expect(g).toBeLessThan(17_500);
     }
-    const first = readFileSync(join(PHOTOS, "hall", files[0]!));
+    const first = readFileSync(join(photosDir(), "hall", files[0]!));
     expect(first[0]).toBe(0xff);
     expect(first[1]).toBe(0xd8);
     console.log(`hall: a still is ${(first.length / 1024).toFixed(0)} KB`, jpegSize(first));
@@ -185,6 +191,8 @@ test("the terminals' photos, armed, disarmed and restarted", async ({ browser })
 
 test("the Desk on a phone: ARMED in red, a thumbnail, and a press makes it safe", async ({ browser }) => {
   test.setTimeout(90_000);
+  state = join(STATE, "desk");
+  mkdirSync(state, { recursive: true });
   mkdirSync(SHOTS, { recursive: true });
   await boot();
   try {
@@ -193,8 +201,7 @@ test("the Desk on a phone: ARMED in red, a thumbnail, and a press makes it safe"
     await post("/api/mod/signal", { name: "wave_staff_through" }, mod);
     const host = (await post("/api/prime/login", { character: "Task Manager", passcode: PRIME })).json as { token: string; admin?: boolean; host?: boolean };
     await post("/api/mod/photos/arm", { armed: true }, host.token);
-    const ctx = await browser.newContext({ permissions: ["camera"], viewport: { width: 800, height: 600 } });
-    await terminal(ctx, "spot=ram");
+    await terminal(browser, "spot=ram");
     await expect.poll(() => shots("ram").length, { timeout: 25_000, intervals: [500] }).toBeGreaterThanOrEqual(1);
 
     const auth = { token: host.token, character: "Task Manager", admin: host.admin === true, host: host.host === true, eventId: "default" };
