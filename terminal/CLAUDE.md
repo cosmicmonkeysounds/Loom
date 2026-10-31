@@ -67,6 +67,7 @@ play app's own `useChatStream` (imported as source) and narrows it to
 | `src/raycast/` | the no-WebGL2 Canvas 2D raycaster (lazy, never imports three); `swarm.ts`: its ghosts, a small Canvas 2D swarm |
 | `src/shadow/` | `view=shadow`: the camera with ghosts, the world view's swarm with shards dropping out on the flicker (lazy) |
 | `src/camfeed.ts` | the camera feed to the games (`POST /api/mod/spatial/cam`); one frame / 2 s while the reply says `watched: false`; never from the tent; wave 59: `FeedTuner` (the ladder, the climb back and the pace) |
+| `src/photos.ts`, `src/photo-status.ts` | wave 59p: one still every 15 s while the screen state says `photos`, off the running camera: `StillTuner` (the size and the route), `takeStill`, `runPhotos`; `photo-status.ts` is the heartbeat's `ph=` and ⚙'s one line (`docs/loom-w59-photos-contract.md`) |
 | `src/software-canvas.ts` | wave 59: `sizeCanvas`, `softwareCanvas`: a 2D canvas off the GPU on Chrome 95 |
 | `src/link-stats.ts` | wave 59: the link to the games, counted: `linkStats` (frames sent, received, drawn, the last error), `linkQuery` (the heartbeat's `cs cr cd ce`), `linkReadout` (⚙). The codes' words are `core/src/link-health.ts` |
 | `src/voice/` | the voice link: `roles.ts` (who takes part, `micReport`), `mic.ts`, `capture.ts`, `uplink.ts`, `stream.ts`, `playback.ts`, `link.ts` (lazy `VoiceLink`), `hook.ts`, `MicCue.tsx` |
@@ -603,6 +604,10 @@ that differs on the tablets is most likely the GPU (see *A software canvas*).
 - **One camera stream.** The scanner, camera feed and shadow view share
   `camera.ts`'s ref-counted stream; the voice link opens its own audio-only
   stream (`MicHub`). Never add a second video `getUserMedia`.
+- **The photos open nothing.** A still is read off the stream the feed already holds, from
+  the `<video>` already in the page. Never `hub.acquire` from `photos.ts`: an arm must never
+  prompt or open a camera. Never a change to the screen or a sound: on the Server Room,
+  the Tent and the TV above all (the last two never shoot). A failure stays silent.
 - **Sound.** Terminals play only synthesised accents through `sfx()`,
   dropped while a voice holds the floor. Never play a story `sound X` here;
   those are the house router's. Every voice on the page waits on the one

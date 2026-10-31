@@ -26,7 +26,7 @@ The show, *Trapped in the Internet* (Oct 31 2026), is the Loom project in
 | `server/registry.ts` | `EventRegistry`: one `EventRuntime` per event, rehydrated at boot |
 | `server/views.ts`, `chat.ts` | pure projections: `GuestView` / `PrimeView` / `ModView`, and SimEvent → channel messages. The editor imports both (`@loom/core/views`, `@loom/core/chat`) |
 | `server/routes/` | route modules split out of the runtime: `host.ts` (the host allowlist), `screen.ts` (the terminals' screen state + heartbeat), `claims.ts`, `crews.ts`, `sides.ts`, `cards.ts`, `recap.ts`, `mod-log.ts`, `metrics.ts`, `press-lines.ts`, and the OCT31 item files `k12.ts` (print sheet, wave 54's `actions` signs), `k13.ts` (check-in), `k31.ts` / `k31b.ts` (push), `n02.ts` (re-pair, release), `rejoin.ts` (wave 23: badges, invitations re-entering, ask a host, per-part staff badges; wave 54: invited badges), `printed.ts` (wave 59: a typed code back to its QR's link) |
-| `server/` hubs | transport-free, clock-injected classes: `agents.ts` (`AgentHub`), `spatial.ts` (`SpatialHub`), `spatial-voice.ts`, `spatial-cams.ts`, `wallet.ts` (`WalletBook`), `facts.ts` (`FactsBook`), `push.ts` (`PushHub`), `audio.ts`, `lights.ts`, `lights-shown.ts` (wave 39: the lights estimate + the games' `lights` frame feed), `desk.ts` (`DeskHub`, wave 25: the house desk's runs, playhead, check marks; pure model `src/house-desk.ts`), `collab.ts` (`CollabHub`, Yjs), `live-file.ts` (`LiveFileSource`: a project file read live; `credits.ts`, `descent.ts`) |
+| `server/` hubs | transport-free, clock-injected classes: `agents.ts` (`AgentHub`), `spatial.ts` (`SpatialHub`), `spatial-voice.ts`, `spatial-cams.ts`, `photos.ts` (`PhotoBook`, wave 59p), `wallet.ts` (`WalletBook`), `facts.ts` (`FactsBook`), `push.ts` (`PushHub`), `audio.ts`, `lights.ts`, `lights-shown.ts` (wave 39: the lights estimate + the games' `lights` frame feed), `desk.ts` (`DeskHub`, wave 25: the house desk's runs, playhead, check marks; pure model `src/house-desk.ts`), `collab.ts` (`CollabHub`, Yjs), `live-file.ts` (`LiveFileSource`: a project file read live; `credits.ts`, `descent.ts`) |
 | `server/` control plane | `config.ts` (env), `boot.ts`, `db/` (`queries.ts`: access is `getProjectFor` / `listProjectsFor`), `auth-server.ts` (BetterAuth), `projects.ts`, `events-api.ts`, `collab-api.ts`, `mail.ts`, `migrate.ts` |
 | `server/store.ts` | the per-event state dir: journal, codes, sessions, meta (scenario source + phase), project snapshots |
 | `scripts/` | `titi-facts.ts`, `titi-qr-lock.ts`, `loomcheck.ts`, `show-page.ts`, `sync-example.ts`, `live-guard.ts` |
@@ -704,6 +704,20 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   `view: "tv"` terminals, for the web game with its voice link off. The filter is the
   relay's so no other terminal is told `listen {on}`. Memory only, like all voice.
   Tests: `test/spatial-voice.test.ts`, `test/spatial-voice-routes.test.ts`.
+- **The terminals' photos** (wave 59p,
+  [`docs/loom-w59-photos-contract.md`](../docs/loom-w59-photos-contract.md)). **Pictures
+  of people.** `server/photos.ts` (`PhotoBook`, a clock and the free space injected):
+  `<state dir>/photos/<event>/<spot>/<time>.jpg` and `arm.json` beside them, so the arm
+  survives a restart and a story reload and only a press changes it. Never journaled,
+  nothing in memory but the tally, no path in a log, and `deploy/backup.sh` leaves the
+  folder out on every label. Stops at `PHOTO_CAP_BYTES` (3 GB) or with the disk inside
+  `PHOTO_MIN_FREE_BYTES` (2 GB). `routes/photos.ts`: the panel, the thumbnail and the arm
+  are on the host allowlist, and never the still (`/api/mod/photos/shot`, a mod token,
+  read off the header before the body), the download (`streamTar`, one file in memory at
+  a time) or Delete all. `photoSpots()` leaves out the tent and the TV, and `photosFor`
+  says `photos: true` on the screen state only to a spot that may shoot. The heartbeat's
+  `ph=` feeds the panel's notes (`photoNote`). Tests: `test/w59-photos.test.ts`,
+  `scripts/sim/photos.spec.ts`.
 - **Hub files have one owner at a time.** `event-runtime.ts`,
   `views.ts`, `chat.ts` and `sim.ts` are touched by almost every
   feature; when several agents work in parallel, give each of these to

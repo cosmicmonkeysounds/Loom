@@ -313,6 +313,18 @@ The refused screen and its neighbours carry no marker, because they are app word
 | `terminal/src/idle-show/ads.ts` | 100, 131 |
 | `terminal/src/slides.ts` | 608 |
 
+### 4.12 The terminals' photos (`DRAFT w59p`, `docs/loom-w59-photos-contract.md`)
+
+What the crew reads. No guest sees any of it, and neither does a terminal in use.
+
+| Where | Words |
+|---|---|
+| `core/src/photos.ts` | **ARMED** · **SAFE** · *n photos · n MB of 3.0 GB* · *Stopped: the 3.0 GB cap is reached. Download them and delete them on Run → Terminals to carry on.* · *Stopped: the server's disk is nearly full. Nothing more is being kept.* |
+| `core/server/photos.ts` | *Not heard from: is it on?* · *Its page is hidden: the screen is off, or another app is up.* · *No camera: it's off in ⚙, refused, or missing.* · *Camera on, but no picture yet.* · *Its photos aren't getting through.* · *Reports fine, but no recent photo.* · *Not reporting: reload it (an old build).* |
+| `play/src/host/photos-model.ts` | *Press to arm* · *Press to make safe* · *This server takes no photos yet.* |
+| `terminal/src/photo-status.ts` (⚙ only) | *photos armed — one every 15 s* and its four other states |
+| `editor/src/components/run/PhotosCard.tsx` | 📷 Photos · ⬇ Download all · 🗑 Delete all · *Delete all n photos from the server, for good?* · *Yes, delete them* · *Keep them* · *Download before End: End stops the event, and the files stay on the server with no button to reach them.* |
+
 ## 5. Real-device checks owed
 
 None of this could be done from the MacBook's tests. Scratch server first, then the

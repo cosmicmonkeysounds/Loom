@@ -23,6 +23,19 @@ node --experimental-strip-types --no-warnings scripts/sim/evening.ts --base … 
 The server plays the show's story from disk (event `default`); no sync is
 needed. Build `play` and `terminal` first if you want to watch in a browser.
 
+## The terminals' photos, on real pages
+
+`photos.spec.ts` (wave 59p) starts its own scratch server, because a restart is part of the
+test: Chromium's fake camera on a wall page, one with its camera setting off, the Tent and the TV.
+It arms from a host's token, sees the stills land 15 s apart, disarms, restarts, refuses a guest from
+every route, reads the tar, and opens the Desk on a phone. About two minutes. Build `play` and
+`terminal` first.
+
+```bash
+SIM_PHOTOS_PORT=7701 SIM_PHOTOS_STATE=<an empty scratch dir> SIM_SHOTS=<dir> \
+  pnpm --filter loom-app exec playwright test -c ../scripts/sim/playwright.config.ts photos.spec
+```
+
 ## The teleprompter, on real pages
 
 `prompter.spec.ts` (wave 59) drives Clippy's phone, a host's phone and the real TV

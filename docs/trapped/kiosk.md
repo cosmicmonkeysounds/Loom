@@ -582,7 +582,8 @@ find Gerald (the celebration, then *— REINSTALLATION COMPLETE.*).
 on the studio wall beside Bathroom 1's door (room `ram`, facing into the
 RAM), so its camera looks at the studio, not the bathroom. Provision it
 with `spot=bathroom-1-door`. If it ever has to go inside, run it as
-`view=face` with the camera taped and tell the tech op.
+`view=face` with the camera taped and tell the tech op, and turn its camera setting
+off in ⚙: a wall terminal also takes the armed photos (`docs/loom-w59-photos-contract.md`).
 
 ## The mirror fallback
 

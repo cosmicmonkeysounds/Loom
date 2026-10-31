@@ -369,7 +369,7 @@ function drained(out: TarSink): Promise<void> {
 export async function streamTar(out: TarSink, files: readonly PhotoFile[], now: () => number = Date.now): Promise<number> {
   let sent = 0;
   const put = async (chunk: Buffer): Promise<void> => {
-    if (!out.write(chunk)) await drained(out);
+    if (!out.destroyed && !out.write(chunk) && !out.destroyed) await drained(out);
   };
   for (const f of files) {
     if (out.destroyed) return sent;

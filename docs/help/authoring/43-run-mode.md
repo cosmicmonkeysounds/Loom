@@ -182,7 +182,14 @@ Front of house: getting people in.
   and it holds through a restart like the mute. **Fire a flavour** breaks his
   next words one way for 8 seconds, in any mode, which is how to audition them;
   `/terminal/?preview=voice` on a set-up terminal does the same with no show
-  running. Each row
+  running. **📷 Photos** is the terminals' photos: **SAFE** takes none; press it
+  and it reads **ARMED**, in red, and each terminal with a working camera takes one
+  every 15 s, showing nothing on its screen. Never the Tent or the TV. A terminal
+  that should be shooting and isn't says why under its thumbnail. **⬇ Download all**
+  saves a tar, one folder per terminal; **🗑 Delete all** asks on the page first. Do
+  both before End, which leaves the files on the server with no button to reach
+  them. These are pictures of people: the upload's 🎥 card only asked about video,
+  and a photo can't leave out someone who opted out. Each row
   shows what the tablet reports: **🔇** nobody has touched it yet so it
   can't speak, **💤** its screen is off or another app is on top, **⛶**
   it is not full screen (on a tablet, touch it once: it asks again on
