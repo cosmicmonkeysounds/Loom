@@ -634,10 +634,10 @@ describe("GET /api/screen/state?voice= — the TV room voice", () => {
 
     // The mute: mod-gated, read back by every TV poll.
     expect((await call(rt, "POST", "/api/mod/screen/voice", { muted: true })).status).toBe(403);
-    expect((await call(rt, "POST", "/api/mod/screen/voice", { muted: true }, { moderator: true })).json).toEqual({ muted: true });
+    expect((await call(rt, "POST", "/api/mod/screen/voice", { muted: true }, { moderator: true })).json).toEqual({ muted: true, fx: "auto" });
     expect((await tv(s.voice!.head)).voice!.muted).toBe(true);
-    expect((await call(rt, "POST", "/api/mod/screen/voice", {}, { moderator: true })).json).toEqual({ muted: true });
-    expect((await call(rt, "POST", "/api/mod/screen/voice", { muted: false }, { moderator: true })).json).toEqual({ muted: false });
+    expect((await call(rt, "POST", "/api/mod/screen/voice", {}, { moderator: true })).json).toEqual({ muted: true, fx: "auto" });
+    expect((await call(rt, "POST", "/api/mod/screen/voice", { muted: false }, { moderator: true })).json).toEqual({ muted: false, fx: "auto" });
 
     // An unknown room answers an empty voice, never another room's lines.
     const r = await call(rt, "GET", `/api/screen/state?name=TV&view=tv&character=Trabolta&voice=Nowhere&after=0`, {}, { moderator: true });
@@ -774,7 +774,7 @@ describe("GET /api/screen/state?room= — the room terminal", () => {
     ]);
 
     // The TV's mute: the TV is muted, the room terminal is not.
-    expect((await call(rt, "POST", "/api/mod/screen/voice", { muted: true }, { moderator: true })).json).toEqual({ muted: true });
+    expect((await call(rt, "POST", "/api/mod/screen/voice", { muted: true }, { moderator: true })).json).toEqual({ muted: true, fx: "auto" });
     expect((await tv(0)).voice!.muted).toBe(true);
     expect((await room(s.voice!.head)).voice!.muted).toBe(false);
     // A room terminal that also names a voice room speaks that one.
@@ -880,7 +880,7 @@ describe("GET /api/mod/screen/terminals — the heartbeat card", () => {
     const mk = () => new EventRuntime({ eventId: "evt", store: new Store(dir), codes: CODES, scenarioName: "t", scenarioSource: AGENT_SOURCE, joinBase: () => "http://localhost" });
     const rt = mk();
     rt.openDoors();
-    expect((await call(rt, "POST", "/api/mod/screen/voice", { muted: true }, { moderator: true })).json).toEqual({ muted: true });
+    expect((await call(rt, "POST", "/api/mod/screen/voice", { muted: true }, { moderator: true })).json).toEqual({ muted: true, fx: "auto" });
     rt.dispose();
     // A mute kept from before the start is said on boot (a rehearsal's
     // mute would otherwise silence the show's TV unnoticed).
@@ -901,6 +901,62 @@ describe("GET /api/mod/screen/terminals — the heartbeat card", () => {
     third.restore();
     expect(((await call(third, "GET", "/api/mod/screen/terminals", {}, { moderator: true })).json as unknown as ScreenTerminals).voiceMuted).toBe(false);
     third.dispose();
+  });
+
+  it("his voice's mode outlives a restart beside the mute, and says so on boot (wave 56)", async () => {
+    const dir = freshDir();
+    const mk = () => new EventRuntime({ eventId: "evt", store: new Store(dir), codes: CODES, scenarioName: "t", scenarioSource: AGENT_SOURCE, joinBase: () => "http://localhost" });
+    const rt = mk();
+    rt.openDoors();
+    await call(rt, "POST", "/api/mod/screen/voice", { muted: true }, { moderator: true });
+    expect((await call(rt, "POST", "/api/mod/screen/voice", { fx: "clean" }, { moderator: true })).json).toEqual({ muted: true, fx: "clean" });
+    rt.dispose();
+    const logged: string[] = [];
+    const spy = vi.spyOn(process.stderr, "write").mockImplementation((chunk: string | Uint8Array) => {
+      logged.push(String(chunk));
+      return true;
+    });
+    const again = mk();
+    spy.mockRestore();
+    expect(logged.some((l) => l.includes("voice is on clean"))).toBe(true);
+    again.restore();
+    const read = (await call(again, "GET", "/api/mod/screen/terminals", {}, { moderator: true })).json as unknown as ScreenTerminals;
+    expect(read.voiceFx).toBe("clean");
+    expect(read.voiceMuted).toBe(true); // saving one never clears the other
+    again.dispose();
+  });
+
+  it("a bad mode or flavour changes nothing; a body of neither reads the state (wave 56)", async () => {
+    const rt = new EventRuntime({ eventId: "evt", store: new Store(freshDir()), codes: CODES, scenarioName: "t", scenarioSource: AGENT_SOURCE, joinBase: () => "http://localhost" });
+    expect((await call(rt, "POST", "/api/mod/screen/voice", { fx: "nope", shot: "nope" }, { moderator: true })).json).toEqual({ muted: false, fx: "auto" });
+    expect((await call(rt, "POST", "/api/mod/screen/voice", { fx: "clean" })).status).toBe(403);
+    rt.dispose();
+  });
+});
+
+describe("the screen state's voiceFx (wave 56)", () => {
+  it("every answer carries it, clean by default, before any story", () => {
+    const w = new ScreenWatch({ now: () => 5000 });
+    expect(w.poll(null, { name: "", spot: "", view: "", character: "" }, () => false).voiceFx).toEqual({ mode: "auto", level: 0, spike: null });
+  });
+  it("a director's mode and shot reach the next answer", () => {
+    let t = 5000;
+    const w = new ScreenWatch({ now: () => t });
+    w.setVoiceFxMode("broken");
+    w.fireVoiceShot("kernel");
+    t += 100;
+    const fx = w.poll(null, { name: "", spot: "", view: "", character: "" }, () => false).voiceFx;
+    expect(fx.level).toBe(1);
+    expect(fx.spike).toMatchObject({ kind: "shot", flavours: ["kernel"], at: 5000 });
+    t += 8000;
+    expect(w.poll(null, { name: "", spot: "", view: "", character: "" }, () => false).voiceFx.spike).toBeNull();
+  });
+  it("persists the mode through its hook", () => {
+    const saved: string[] = [];
+    const w = new ScreenWatch({ onVoiceFx: (m) => saved.push(m) });
+    w.setVoiceFxMode("clean");
+    expect(saved).toEqual(["clean"]);
+    expect(w.voiceFxMode).toBe("clean");
   });
 });
 

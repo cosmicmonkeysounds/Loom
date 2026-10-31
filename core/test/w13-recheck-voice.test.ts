@@ -18,7 +18,7 @@ describe("8: the TV-voice mute on the host panel", () => {
       rt.openDoors();
       expect((await hostRead(rt)).terminals?.voiceMuted).toBe(false);
       const r = await mod(rt, "/api/mod/screen/voice", { muted: true });
-      expect(r.json).toEqual({ muted: true });
+      expect(r.json).toEqual({ muted: true, fx: "auto" });
       expect((await hostRead(rt)).terminals?.voiceMuted).toBe(true);
       await mod(rt, "/api/mod/screen/voice", { muted: false });
       expect((await hostRead(rt)).terminals?.voiceMuted).toBe(false);
