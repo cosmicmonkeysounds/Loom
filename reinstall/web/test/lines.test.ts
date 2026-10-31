@@ -262,6 +262,7 @@ describe("deviceSpeaker — the game's own voice on the page's floor", () => {
     await flushAll();
     expect(done).toBe(true);
     void sp.speak("After.");
+    await new Promise((r) => setTimeout(r, 100)); // a line behind a stop waits out the cancel
     await flushAll();
     expect(f.said).toEqual(["Long.", "After."]); // the speaker still works after a cut
   });

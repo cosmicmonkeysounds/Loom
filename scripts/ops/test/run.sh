@@ -377,6 +377,10 @@ echo "\$PWD|\$*" >> "$T/tsx"; echo "\${LOOM_QR_MOVED-}" >> "$T/tsx.env"; exit "\
 EOF2
 chmod +x "$T/bin/ssh" "$T/bin/tsx"
 ss() { env PATH="$T/bin:$PATH" TSX="$T/bin/tsx" LOOM_SSH=u@vps POSTGRES_PASSWORD=pw "$@" bash "$ROOT/scripts/sync-show.sh" --i-know-this-is-live; }
+# The real lock, once one is committed, steps aside so these start with none.
+lock="$ROOT/core/examples/trapped-in-the-internet/qr-lock.json"
+held=""
+if [ -e "$lock" ]; then held="$T/qr-lock.held"; mv "$lock" "$held"; fi
 check "--dry-run passes --i-know-this-is-live through" bash -c "LOOM_SSH=u@vps bash '$ROOT/scripts/sync-show.sh' --dry-run --i-know-this-is-live | grep -q 'sync-example.ts .*--i-know-this-is-live'"
 out="$(ss 2>&1)"; rc=$?
 check "a sync runs sync-example from core" eq "$rc" 0
@@ -389,7 +393,6 @@ check "any other failure is passed through too" eq "$rc" 1
 : > "$T/tsx"
 out="$(ss 2>&1)"
 check "no qr-lock.json, no lock check" bash -c "! grep -q titi-qr-lock '$T/tsx'"
-lock="$ROOT/core/examples/trapped-in-the-internet/qr-lock.json"
 if [ ! -e "$lock" ]; then
   echo '{"version":1,"items":{}}' > "$lock"
   out="$(ss FAKE_TSX_RC=1 2>&1)"; rc=$?
@@ -407,6 +410,7 @@ if [ ! -e "$lock" ]; then
   check "LOOM_QR_MOVED=1 reaches the lock tool, as its own error says" eq "$(head -n 1 "$T/tsx.env")" 1
   rm -f "$lock"
 fi
+[ -z "$held" ] || mv "$held" "$lock"
 teardown
 
 echo "── checklist"
