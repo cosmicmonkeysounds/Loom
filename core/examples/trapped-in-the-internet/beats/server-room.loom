@@ -536,7 +536,7 @@ set Night.heart_talker_layer = program.heart_layer
   set program.heart_pick = "show_file"
   -> Heart Pick
 // w27 (Heart Evidence: shown while one of its four is left)
-+ (if (Night.scenario == 1 and program.heart_shown_overshare != true) or (program.read_livejournal == true and program.heart_shown_journal != true) or (program.codex.the_question_of_force == true and program.heart_shown_force != true) or (program.codex.omnipotence == true and program.heart_shown_all != true)) ⟦SHOW HIM⟧ I found more of yours.
++ (if ((Night.scenario == 1 or Night.scenario == 3) and program.heart_shown_overshare != true) or (program.read_livejournal == true and program.heart_shown_journal != true) or (program.codex.the_question_of_force == true and program.heart_shown_force != true) or (program.codex.omnipotence == true and program.heart_shown_all != true)) ⟦SHOW HIM⟧ I found more of yours.
   set program.heart_menu = false
   set program.heart_pick = "evidence"
   -> Heart Pick
@@ -583,7 +583,7 @@ else:
   set program.heart_menu = false
   set program.heart_pick = "journal"
   -> Heart Pick
-+ (if Night.scenario == 1 and program.heart_shown_overshare != true) ⟦OVERSHARE⟧ The whole house heard about her tonight.
++ (if (Night.scenario == 1 or Night.scenario == 3) and program.heart_shown_overshare != true) ⟦OVERSHARE⟧ The whole house heard about her tonight.
   set program.heart_menu = false
   set program.heart_pick = "overshare"
   -> Heart Pick

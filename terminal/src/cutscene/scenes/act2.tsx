@@ -55,7 +55,7 @@ import {
   type Emitter,
 } from "../kit/index.ts";
 import { ColdDoor, DriftingPopups, Frost, Glass, HealthBar, KingPiece, MirrorBall, PatchBay, Phone, PrinterArt, Shake, WallCard, useEndAt, useFirstSeen, useFrozen, useLatch, type PopMsg } from "../kit/tv2-parts.tsx";
-import { CUPS, THROW_MS, Y2K_CHIME_TEXT, beanHeap, chartLayout, chartRowAt, chimeFlash, danceBeat, driftLandings, equaliser, glitchYear, kingBar, kingHeard, kingHpAt, kingLine, liveNow, liveRemaining, nightSummary, onGrid, scenarioFor, tallyOf, throwAt, y2kLevel, y2kRaceClosed } from "../kit/tv2-time.ts";
+import { CUPS, THROW_MS, Y2K_CHIME_TEXT, beanHeap, chartLayout, chartRowAt, chimeFlash, danceBeat, driftLandings, equaliser, glitchYear, kingBar, kingHeard, kingHpAt, kingLine, liveNow, liveRemaining, nightSummary, onGrid, scenarioFor, tallyNumber, throwAt, y2kLevel, y2kRaceClosed } from "../kit/tv2-time.ts";
 
 type Sfx = SceneProps["sfx"];
 type SfxCue = readonly [number, Parameters<Sfx>[0], Parameters<Sfx>[1]?];
@@ -469,9 +469,10 @@ function TruthPongWall(p: SceneProps) {
 
 // ══ D5: the round-two tally (slide `tally`, wave 18b) ═══════════════════════════════════
 //
-// `round_two_tally` publishes H4–H6 (`do fact_read`) and cues the held
-// `tally` slide; Round Two Tally has Trabolta read every filing aloud (the
-// TV's voice), then say the number.
+// `round_two_tally` cues the held `tally` slide. Wave 59a: he reads no answers
+// and says no number here (the answers come on 🤖), so there are no pages and
+// no number: the bar, then the gauge comes to rest on TALLY COMPLETE. The pages
+// and the number below stay for a preview and an older server's story.
 //
 //   0–900      the room dims; THE SECOND COLLECTION IS CLOSED
 //   900 →      one page per question (H4, H5, H6): QUESTION n and its text, the
@@ -557,7 +558,7 @@ function TallyPageView({ page, pages, t, reduced }: { page: TallyPage; pages: re
 function RoundTwoTallyTv(p: SceneProps) {
   const { t, sfx, reduced, state } = p;
   const results = useHeldResults(state, "read");
-  const value = useLatch(p.seq, tallyOf(state.voice, p.night));
+  const value = useLatch(p.seq, tallyNumber(state.voice));
   const high = value === 61;
   const { pages, g } = tallyPlan(results);
   const page = tallyPageAt(pages, t);
@@ -637,7 +638,7 @@ function RoundTwoTallyWall(p: SceneProps) {
   const { t, sfx, reduced, state } = p;
   const results = useHeldResults(state, "read");
   const qs = results?.questions ?? [];
-  const value = useLatch(p.seq, tallyOf(state.voice, p.night));
+  const value = useLatch(p.seq, tallyNumber(state.voice));
   const high = value === 61;
   const spin = qs.length === 0 ? WALL_TALLY.spin : Math.max(WALL_TALLY.spin, 1500 + qs.length * 1600);
   const land = spin + (WALL_TALLY.land - WALL_TALLY.spin);
@@ -1079,38 +1080,33 @@ function ZipWall(p: SceneProps) {
 // ══ D9: overshare — and its four scenarios (beats Overshare One … Four) ═════════════════
 //
 //   0–1500    TRABOLTA.EXE tears onto the screen (glitch, static); "…" types
-//   hold      the window hangs there, typing and deleting an ellipsis; the two
+//   hold      the window hangs there, typing and deleting an ellipsis; the three
 //             final facts drop into the Quest Log (toast); the files drift
-//   scenario  ~14 s after the scenario's beat (the open and both questions are
-//             spoken first): every screen goes black but one cursor ("the face on
-//             every screen is just a cursor") — then back, and the scenario's own
-//             windows: One — Sandy's name in a file slammed shut, VIRUS DETECTED,
-//             the LiveJournal accessed; Two — routine facts, the LiveJournal; Three
-//             — VIRUS DETECTED, everything depends; Four — composed, one slip.
+//   scenario  just after the scenario's beat (wave 59a: his scenario comes first
+//             now): every screen goes black but one cursor, then back, and the
+//             scenario's own windows: One — her name, VIRUS DETECTED, the
+//             LiveJournal; Two — the LiveJournal; Three — her name, VIRUS
+//             DETECTED; Four — none, he says nothing.
 
-/** The cursor beat comes this long after the scenario's beat (ms): the open line and both questions are said first. */
-export const OVERSHARE_CURSOR_DELAY = 14_000;
+/** The cursor beat comes this long after the scenario's beat (ms). */
+export const OVERSHARE_CURSOR_DELAY = 1500;
 const CURSOR_MS = 4200;
 
 const SCENARIO_WINDOWS: Record<1 | 2 | 3 | 4, ReadonlyArray<{ at: number; title: string; text: string; kind: "error" | "warning" | "info" | "question"; tone?: "red" | "navy" | "black" | "purple"; x: number; y: number; close?: number }>> = {
   1: [
-    { at: 0, title: "unified_field_theory.txt", text: "…to win back my ex. Sandy.", kind: "info", tone: "purple", x: 8, y: 14, close: 2600 },
-    { at: 2800, title: "TRABOLTA.EXE", text: "That was not for you.", kind: "warning", x: 30, y: 30 },
+    { at: 0, title: "TRABOLTA.EXE", text: "Her name is Sandy.", kind: "info", tone: "purple", x: 8, y: 14, close: 2600 },
+    { at: 2800, title: "TRABOLTA.EXE", text: "To impress a sweet gal.", kind: "warning", x: 30, y: 30 },
     { at: 4800, title: "VIRUS DETECTED", text: "Someone brought a virus back from the Internet.", kind: "error", tone: "red", x: 54, y: 12 },
-    { at: 7200, title: "LiveJournal", text: "Your context was accessed by 1 user. I know who.", kind: "warning", tone: "black", x: 12, y: 56 },
+    { at: 7200, title: "LiveJournal", text: "Do not attempt to find out who read my LiveJournal.", kind: "warning", tone: "black", x: 12, y: 56 },
   ],
   2: [
-    { at: 0, title: "final_facts.txt", text: "These facts are routine. They are simply the last two.", kind: "info", x: 10, y: 16 },
-    { at: 3200, title: "LiveJournal", text: "Your context was accessed by 1 user. I know who.", kind: "warning", tone: "black", x: 40, y: 46 },
+    { at: 0, title: "LiveJournal", text: "Do not attempt to find out who read my LiveJournal.", kind: "warning", tone: "black", x: 40, y: 46 },
   ],
   3: [
-    { at: 0, title: "VIRUS DETECTED", text: "Someone brought a virus back from the Internet.", kind: "error", tone: "red", x: 12, y: 18 },
-    { at: 3000, title: "TRABOLTA.EXE", text: "Everything depends on these facts. Everything.", kind: "warning", x: 42, y: 44 },
+    { at: 0, title: "TRABOLTA.EXE", text: "Her name is Sandy.", kind: "info", tone: "purple", x: 12, y: 18 },
+    { at: 3000, title: "VIRUS DETECTED", text: "Someone brought a virus back from the Internet.", kind: "error", tone: "red", x: 42, y: 44 },
   ],
-  4: [
-    { at: 0, title: "TRABOLTA.EXE", text: "That is all. Thank you for your continued cooperation.", kind: "info", x: 14, y: 18 },
-    { at: 3600, title: "TRABOLTA.EXE", text: "She will— the theory will be complete.", kind: "warning", tone: "purple", x: 40, y: 46 },
-  ],
+  4: [],
 };
 
 /**
@@ -1150,7 +1146,7 @@ function OvershareTv(p: SceneProps) {
         </Win98Window>
       </Glitch>
       <div className="tv2-over-files">
-        {["FINAL_FACT_1.TXT", "FINAL_FACT_2.TXT"].map((f, i) => (
+        {["FINAL_FACT_1.TXT", "FINAL_FACT_2.TXT", "FINAL_FACT_3.TXT"].map((f, i) => (
           <div key={f} className="tv2-over-file" style={{ transform: reduced ? undefined : `translate3d(${(Math.sin(t / 1700 + i * 2) * 0.6).toFixed(3)}em, ${(Math.cos(t / 2100 + i) * 0.5).toFixed(3)}em, 0)`, opacity: progress(t, 2000 + i * 500, 400) }}>
             <Win98Icon kind="document" size="3.4em" />
             <span>{f}</span>
@@ -1158,7 +1154,7 @@ function OvershareTv(p: SceneProps) {
         ))}
       </div>
       <div className="tv2-toast" style={{ transform: `translate3d(0, ${((1 - eased(t, 2400, 400, ease.outBack)) * 8).toFixed(2)}em, 0)` }}>
-        <Win98Icon kind="info" size="1.4em" /> <b>Quest Log:</b> The Final Facts — 2 new
+        <Win98Icon kind="info" size="1.4em" /> <b>Quest Log:</b> The Final Facts — 3 new
       </div>
       {after !== null && sc !== null && (
         <div className="kit-fill">

@@ -2,11 +2,11 @@
 // Fact and the four patch-combo halves, and the two finale artefacts.
 //
 // He holds every T1/T2 entry, and his own entries reach his prompts whole,
-// so none of them may carry a hunt answer (facts.json answer or alias):
-// he must never know what he is asking for. His diary cannot parse Sandy's
-// one line (F1) and does not know who asked her to prom (F2): the guests
-// find both (What Sandy Says, The Prom Ticket, and The Rival, which he never
-// sees). Pinned by core/test/trabolta-answers.test.ts.
+// so none of them may carry a hunt answer (facts.json answer or alias) or a
+// document's guarded words. His diary cannot parse Sandy's one line and does
+// not know who asked her to prom: the guests find both (What Sandy Says, The
+// Prom Ticket, and The Rival, which he never sees). Pinned by
+// core/test/trabolta-answers.test.ts.
 //
 // The coded entries here keep their own QR posters. Since wave 58 the facts
 // that used to be told by them (M02, M06, M07, M24, T4, T6) are new cards in

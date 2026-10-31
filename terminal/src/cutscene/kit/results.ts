@@ -13,7 +13,7 @@
 //!   (D11). His ruling there shows at ⚖, as the 🤖 on a liar's name.
 //! - **The timelines.** A reading reveals one row every `ROW_MS`; the tally
 //!   pages the round's questions, then lands its gauge; the verdict flips
-//!   eight tiles, then (the TV only, O2) one page per question: the truth,
+//!   nine tiles, then (the TV only, O2) one page per question: the truth,
 //!   the key answer and who lied.
 //!
 //! Every time here is ms into the scene (`t`); a scene from history is drawn
@@ -228,7 +228,7 @@ export function tallyGauge(gauge: number): { gauge: number; land: number } {
 
 /** The verdict's timeline (ms into the scene; O2 / D11). */
 export const VERDICT_PLAN = {
-  /** The eight tiles begin to flip, one every `tileEvery`. */
+  /** The nine tiles begin to flip, one every `tileEvery`. */
   tiles: 800,
   tileEvery: 700,
   /** "x TRUE · y LIES · z UNANSWERED". */
@@ -240,8 +240,8 @@ export const VERDICT_PLAN = {
   pageMs: 2500,
 } as const;
 
-/** The verdict scene's length: the pages for all eight questions, then it holds on the last. */
-export const VERDICT_PAGES_MAX = 8;
+/** The verdict scene's length: the pages for all nine questions, then it holds on the last. */
+export const VERDICT_PAGES_MAX = 9;
 export const VERDICT_MS = VERDICT_PLAN.pages + VERDICT_PAGES_MAX * VERDICT_PLAN.pageMs + 2500;
 /** A wall's verdict (tiles + totals + stamp) ends here. */
 export const VERDICT_WALL_MS = VERDICT_PLAN.pages + 1500;

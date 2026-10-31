@@ -191,7 +191,7 @@ CODEX The Domain Receipt
 
 // T5, the one fact that stays `existing` (wave 58: facts.json's new words
 // live here, so the id and the code stay; DRAFT w58, the text, so Grok finds
-// her in the end, as F2 and Grok Prom say). It names F2's answer, so it is
+// her in the end, as The Prom Ticket and Grok Prom say). It names her date, so it is
 // `secret: true`: any program can scan it (secret never limits a scan), but
 // no agent request or facts document ever carries it and Trabolta won't take
 // it as a share (he must not know who is taking Sandy to prom;

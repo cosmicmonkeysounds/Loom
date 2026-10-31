@@ -23,11 +23,13 @@
 //! award) stays: that value already rides every request's `world`.
 //!
 //! Wave 18b: every line he says in a **reading beat** (`READING_BEATS`:
-//! Question Results, Round Two Tally, The Verdict) is dropped whatever its
-//! text — he reads the guests' filings aloud there (`{Kernel.res_said}`,
-//! `said_4–6`), and a guest's near miss or free text is no answer form
-//! `answerMentions` could catch. Wave 58: The Full Truth too, his whole file
-//! read aloud, which no later reply should quote or carry on from.
+//! Question Results, the `Reading <id>` beats, The Verdict) is dropped whatever
+//! its text — he reads the guests' filings aloud there (`{Kernel.res_said}`)
+//! and, since wave 59a, every answer, whole, which no form in the book covers,
+//! and a guest's near miss or free text is no answer form `answerMentions`
+//! could catch. The talk thread's history drops them too. Wave 58: The Full
+//! Truth, his whole file read aloud, which no later reply should quote or
+//! carry on from.
 
 import { mentionsKey, nearTokens } from "../src/answer-match.ts";
 import { foldName } from "../src/parser/names.ts";
@@ -37,7 +39,9 @@ import { CHART_NOBODY, SCREEN_CHARTS } from "./routes/screen.ts";
 
 /** The beats where he reads the filings aloud (folded): none of their
  *  lines is ever a `recent` house item (wave 18b, §3). */
-export const READING_BEATS: ReadonlySet<string> = new Set(["Question Results", "Round Two Tally", "The Verdict", "The Full Truth"].map(foldName));
+export const READING_BEATS: ReadonlySet<string> = new Set(
+  ["Question Results", "Round One Close", "Round Two Tally", "Overshare Answers", "Round Two Close", "Final Trust", "The Verdict", "The Full Truth", ...["H1", "H2", "H3", "H4", "H5", "H6", "F1", "F2", "F3"].map((id) => `Reading ${id}`)].map(foldName),
+);
 
 /** Was this line said in a reading beat? */
 export function inReadingBeat(m: Pick<ChatMessage, "beat">): boolean {

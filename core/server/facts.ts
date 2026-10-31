@@ -83,6 +83,10 @@ export interface FactsKey {
   /** The key isn't in yet (`Question.placeholder`): nothing is judged on it,
    *  and no screen shows `answer`. */
   placeholder: boolean;
+  /** The reader doesn't know it (`Question.secretFromAgents`): no ruling is
+   *  asked on it, so it never reaches a worker, and no screen shows `answer`
+   *  until someone has found it. */
+  secretFromAgents: boolean;
 }
 
 export interface FactsBook {
@@ -93,6 +97,9 @@ export interface FactsBook {
   confirm: Record<FactVerdict, string>;
   questions: FactsKey[];
   answers: FactsKey[];
+  /** The forms of a document's `guard` (wave 59a): judged by nobody, but still
+   *  left out of everything an agent reads, like any key's. */
+  guards: FactsKey[];
   /** The validated file (the generator's sections ride along, unread here). */
   raw: FactsFile;
 }
@@ -104,7 +111,7 @@ export interface ParsedFactsBook {
 
 /** A validated file as a book. */
 export function bookOf(facts: FactsFile): FactsBook {
-  const key = (id: string, round: number | null, text: string, answer: string, accept: readonly string[], placeholder = false): FactsKey => ({
+  const key = (id: string, round: number | null, text: string, answer: string, accept: readonly string[], placeholder = false, secretFromAgents = false): FactsKey => ({
     id,
     round,
     text,
@@ -113,13 +120,15 @@ export function bookOf(facts: FactsFile): FactsBook {
     spelled: new Set([answer, ...accept].map((f) => spellOut(foldAnswer(f))).filter((s) => s !== "")),
     forms: [answer, ...accept],
     placeholder,
+    secretFromAgents,
   });
   return {
     version: 1,
     modeVar: facts.judge?.mode_var ?? DEFAULT_MODE_VAR,
     confirm: { ...DEFAULT_CONFIRM, ...(facts.judge?.confirm ?? {}) },
-    questions: facts.questions.map((q) => key(q.id, q.round, q.text, q.answer, q.accept, q.placeholder === true)),
+    questions: facts.questions.map((q) => key(q.id, q.round, q.text, q.answer, q.accept, q.placeholder === true, q.secretFromAgents === true)),
     answers: facts.answers.map((a) => key(a.id, null, a.text, a.answer, a.accept)),
+    guards: (facts.documents ?? []).flatMap((d) => (d.guard !== undefined && d.guard.length > 0 ? [key(d.was, null, d.codex.title, d.guard[0]!, d.guard.slice(1))] : [])),
     raw: facts,
   };
 }
@@ -633,9 +642,9 @@ export interface ScreenResultsOptions {
  */
 export function screenResultsOf(view: FactsView, book: FactsBook, ids: readonly string[] | null, o: ScreenResultsOptions): ScreenResultQuestion[] {
   const byId = new Map(view.questions.map((q) => [q.id, q]));
-  // D11: a reading never publishes the book's final round (in the show, F1 /
-  // F2, still open at truth.txt and the pickup line's clue): the verdict
-  // names its liars like every other round's. A one-round book has no final.
+  // D11: a reading never publishes the book's final round (in the show, F1 to
+  // F3): the verdict names its liars like every other round's. A one-round
+  // book has no final.
   const rounds = book.questions.map((k) => k.round ?? 0);
   const finalRound = new Set(rounds).size > 1 ? Math.max(...rounds) : null;
   const readable = (k: FactsKey) => o.kind === "verdict" || k.round === null || k.round !== finalRound;
@@ -654,7 +663,9 @@ export function screenResultsOf(view: FactsView, book: FactsBook, ids: readonly 
     }
     const consensus = tallyFilings(filings).consensus;
     if (o.kind === "verdict") {
-      const q: ScreenResultQuestion = { id, n, round: key.round, ...counts, consensus, answer: o.tv && !key.placeholder ? key.answer : null };
+      // A key the reader doesn't know stays off the screens until someone found it.
+      const found = !key.secretFromAgents || filings.some((f) => f.final === "accurate" || (f.final === null && f.verdict === "accurate"));
+      const q: ScreenResultQuestion = { id, n, round: key.round, ...counts, consensus, answer: o.tv && !key.placeholder && found ? key.answer : null };
       const truth = o.truths?.get(id);
       if (truth !== undefined) q.truth = truth;
       if (o.tv) {

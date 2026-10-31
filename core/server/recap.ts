@@ -16,13 +16,14 @@
 //!   nearest preceding person-headed `worldSet` or `signal` subject (both
 //!   lie hooks write the program's own var just before the Kernel's). A
 //!   fall (a host corrects a mis-tapped lie) comes off the same way (B11).
-//!   A round-3 DM lie (`lie_q7` / `lie_q8`) counts only once 📄 truth.txt
-//!   settles it (`Night.r3_closed`): in auto mode the counter rises at
+//!   A round-3 DM lie (`lie_q7` to `lie_q9`) counts only once 🌑 settles it
+//!   (`Night.r3_filing_closed`, or 📄 truth.txt's `Night.r3_closed` on a
+//!   story from before wave 59a): in auto mode the counter rises at
 //!   filing, but a server-room ending (Combo A / B) never settles round
 //!   3, so that bluff was never accepted and stays out of both lists.
 //! - **questionsRight** (wave 58) — the questions a program got right, live:
 //!   G9a's count (main.loom, ROLE Program), which the story writes only when
-//!   G9a is pressed. Once a question: a filing standing accurate (or pending
+//!   G9a or a leaderboard asks. Once a question: a filing standing accurate (or pending
 //!   on an accurate proposal) or a spoken answer accepted ✅ and no 😤 took
 //!   back. Never `truths_accepted`. A key still owed (`Night.owed_*`) counts
 //!   for nobody.
@@ -60,9 +61,11 @@ import type { DuckRun } from "./spatial.ts";
 /** The story's lie counter (cast/props.loom: `Kernel.lies_accepted`). */
 export const LIE_COUNTER = "Kernel.lies_accepted";
 /** A program's round-3 lie flags (main.loom `verdict_q7` / `verdict_q8`). */
-export const UNSETTLED_LIE_VARS = ["lie_q7", "lie_q8"] as const;
+export const UNSETTLED_LIE_VARS = ["lie_q7", "lie_q8", "lie_q9"] as const;
 /** Set at 📄 truth.txt, when round 3 settles. */
 export const ROUND3_CLOSED = "Night.r3_closed";
+/** Wave 59a: he reads round 3 at the reveal, so it settles there. */
+export const ROUND3_FILING_CLOSED = "Night.r3_filing_closed";
 
 export interface RecapRow {
   id: string;
@@ -165,8 +168,8 @@ function num(sim: Sim, path: string): number | null {
   return asNumber(sim.world.get(path));
 }
 
-/** The eight questions, as the story numbers them (`fact_v1` is H1's). */
-const QUESTION_SLOTS = ["h1", "h2", "h3", "h4", "h5", "h6", "f1", "f2"] as const;
+/** The nine questions, as the story numbers them (`fact_v1` is H1's). */
+const QUESTION_SLOTS = ["h1", "h2", "h3", "h4", "h5", "h6", "f1", "f2", "f3"] as const;
 
 /** (wave 58) G9a's count, read live: main.loom's `questions_right` rule, once
  *  a question. `trapped-w58-prize.test.ts` holds the two to the same number. */
@@ -309,7 +312,7 @@ export function duckBoard(sim: Sim, runs: readonly DuckRun[], personas: RecapOpt
 
 /** Round-3 lies the counter already holds that truth.txt has not settled. */
 function unsettledLies(sim: Sim, person: string): number {
-  if (display(sim.world.get(ROUND3_CLOSED)) === "true") return 0;
+  if (display(sim.world.get(ROUND3_CLOSED)) === "true" || display(sim.world.get(ROUND3_FILING_CLOSED)) === "true") return 0;
   return UNSETTLED_LIE_VARS.filter((v) => display(sim.world.get(`${person}.${v}`)) === "true").length;
 }
 

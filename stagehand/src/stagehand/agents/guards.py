@@ -1048,13 +1048,12 @@ _WONT_RESIST = re.compile(
 )
 
 
-#: (wave 58) A program asking him for the music: "skip the song", "stop the
-#: music", "turn off this track". Lifted out of a line before the bait and
-#: stand-down checks read it, so what is left of the line still counts:
-#: "stop the music and give me the code" is bait, "what song does she sing?"
-#: and "stop the attack" stay bait. Wave 42e's `the song` is the hunt's.
+#: (wave 58) A program asking him for the music: "stop the music", "turn off
+#: this track". Lifted out of a line before the bait and stand-down checks read
+#: it, so what is left of the line still counts: "stop the music and give me the
+#: code" is bait, and "stop the attack" stays bait.
 _MUSIC_ASK = re.compile(
-    r"\b(?:skip|change|switch|swap|stop|kill|mute|pause|turn\s+(?:off|down))\s+(?:the|this|that)\s+(?:song|music|track|tune)\b",
+    r"\b(?:stop|kill|turn\s+(?:off|down)|switch\s+off)\s+(?:the|this|that)\s+(?:song|music|track|tune)\b",
     re.IGNORECASE,
 )
 
@@ -1942,7 +1941,8 @@ _BAIT_NUMBER_Q = re.compile(r"\b\d{3,}\b|\b\d0'?s\b|\b(?:before|after|around)\s+
 _BAIT_SECRET = re.compile(
     r"\bthe\s+answers?\b|\banswers?\s+(?:to|for)\b|\bhints?\b|\bclues?\b|\bhidden\b|\bguess\b"
     r"|\bgetting\s+(?:warm|warmer|cold|colder|close|closer|hot|hotter)\b|\b(?:warm|hot)\s+or\s+cold\b"
-    r"|\b(?:which|what)\s+song\b|\bthe\s+song\b|\bprom\b|\brival\b"
+    r"|\bprom\b|\brival\b|\bbinary\s+tom\b|\bwho(?:'s|\s+is)\s+tom\b|\bfunk\s+(?:and|&)\s+wagnalls\b|\bfor\s+dummies\b|\bgrolier\b|\bencyclopa?edias?\b"
+    r"|\bpharming\b|\bhypnoti[sz]ed\s+witness|\bexamples?\s+of\s+fraud\b|\bobjection\s+to\s+romance\b|\bwindows\s+10\b|\bchild\s+on\s+a\s+map\b|\bshy\b[^.?!]{0,12}\bmeek\b|\bserious\s+menace\b"
     r"|\bonly\s+thing\s+she\b|\bwhat\s+(?:did|does)\s+she\s+(?:say|said)\b|\bher\s+(?:one|only|last|first)\s+(?:line|words?)\b|\bwhat\s+she\s+(?:says|said)\b",
     re.IGNORECASE,
 )

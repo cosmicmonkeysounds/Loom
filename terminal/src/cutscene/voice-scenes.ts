@@ -57,7 +57,7 @@ export const VOICE_SCENES: Readonly<Record<string, VoiceScene>> = {
   // of picture after him. Pinned against the story once both lanes merge.
   dare_chosen: { beats: ["Dare Chosen"], marks: [1200, 2400, 2800, 3000, 3500, 4200], tail: 3000 },
   // "I have compared…" while the tiles flip; the counts as the totals land.
-  verdict: { beats: ["The Verdict"], marks: [1200, VERDICT_PLAN.tiles + 7 * VERDICT_PLAN.tileEvery + 100, VERDICT_PLAN.totals - 500, VERDICT_PLAN.totals] },
+  verdict: { beats: ["The Verdict"], marks: [1200, VERDICT_PLAN.tiles + 8 * VERDICT_PLAN.tileEvery + 100, VERDICT_PLAN.totals - 500, VERDICT_PLAN.totals] },
   // "…The house says YES." while the card is up; "That is the line." on the stamp.
   pickup_line: { beats: ["Pickup Line"], marks: [1500, 4200], tail: 8000 - 5400 },
   // His first two lines before her window opens (the window stays shut, his

@@ -399,7 +399,7 @@ def test_the_buried_truth_reaches_no_prompt_before_his_file():
     assert not held(**{"Night.phase": "finale_truth", "Night.truth_told": "true"})
     assert held(**told())
     flat = " ".join(block.prompt.split())
-    assert "exhibitionist" in flat and "VR headset" in flat and "printer" in flat
+    assert "1967 encyclopedia" in flat and "VR headset" in flat and "printer" in flat
     assert "Oculus" not in flat  # no brand in his free lines (stagehand/CLAUDE.md, the fiction boundary)
     assert "what the accident was stays yours" in flat
     # The film and the answers stay out, even here.

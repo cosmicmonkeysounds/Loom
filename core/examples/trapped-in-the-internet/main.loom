@@ -1604,7 +1604,7 @@ ROLE Program
   // own record (`fact_n`, `fact_label`, `last_fact_q`, `fact_a/c/j/vN`) is
   // written only when it is accepted. `verdict`, `confidence` and (on an
   // accurate filing) `key_answer`, the key's canonical answer the
-  // consensus read-out speaks, are the server's event args (a local rehearsal has no judge: no verdict, so
+  // record keeps, are the server's event args (a local rehearsal has no judge: no verdict, so
   // the filing is refused out loud in # hosts).
   when fact answered for program:
     // The card just answered is done on the phone: nothing live to close.
@@ -2146,7 +2146,7 @@ ROLE Program
   // is pending and the press overrides the latest. A verdict already on
   // record is not re-counted. An
   // override to accurate the judge missed (an alias facts.json lacks)
-  // carries no `key_answer`: the consensus read-out falls back to what
+  // carries no `key_answer`: the record falls back to what
   // that program filed, never "none".
   when fact_accurate for program:
     set program.fact_try = program.fact_n
@@ -3559,7 +3559,7 @@ INTERACTION zip_everyone_out
   sequence: false
 
 INTERACTION trabolta_overshares
-  label: 🤖 Trabolta overshares, reads round 2, asks the final facts (scenario 1–4)
+  label: 🤖 Trabolta shares the next facts (scenario 1–4)
   who: admin
   description: One long press on the TV. His scenario (Scenario 4 says nothing), round two's three answers, the leaderboard, who is submitted for reinstallation, then the three final questions.
   while: Night.step >= 11 and Night.step < 14 and Night.scenario == 0 and Night.clock == "--:--"
@@ -4443,7 +4443,7 @@ INTERACTION judging_q3
   label: 🔢 Now judging question 3
   who: performer
   by: Hosts, Clippy
-  while: Night.judging == true and Night.judge_now != 3 and Night.round != 3 and program.uploaded != true
+  while: Night.judging == true and Night.judge_now != 3 and program.uploaded != true
 
 // The quiet favours (🤫), from the Truther Download (when the players learn
 // what Trabolta is): each is counted in the player's private `covert`

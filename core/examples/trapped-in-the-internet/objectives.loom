@@ -254,7 +254,7 @@ OBJECTIVE The Overshare
   title: Trabolta overshares: the final facts
   go: The Desktop
   text:
-    Trabolta is sharing the last facts at the Desktop. The questions are in your Quest Log. Listen: he may say more than he means to.
+    Trabolta is at the Desktop with the answers to round two and the last three questions, which go in your Quest Log. Listen: he may say more than he means to.
 
 OBJECTIVE Zipped Out
   for: Program
@@ -272,7 +272,7 @@ OBJECTIVE Full Of Beans
   title: Print failed: the printer is full of beans
   go: The Desktop
   text:
-    Routine operations like print to PDF are no longer working. Clippy says it is malware. Stay close: Trabolta has two last facts to ask for.
+    Routine operations like print to PDF are no longer working. Clippy says it is malware. Stay close: Trabolta has three last facts to ask for.
 
 OBJECTIVE Where You Stand
   for: Program
@@ -292,7 +292,7 @@ OBJECTIVE The Y2K Hour
   title: Midnight is coming: the final facts
   go: sides
   text:
-    The clock was reset to 11 PM, December 31, 1999. File the two final facts. Unlimited Power and The Way Out are recruiting now, beside every faction founded since the Truther Download: join one on the Factions screen, found your own, or neither, and scan a program's pass to recruit them. The count starts now.
+    The clock was reset to 11 PM, December 31, 1999. File the three final facts. Unlimited Power and The Way Out are recruiting now, beside every faction founded since the Truther Download: join one on the Factions screen, found your own, or neither, and scan a program's pass to recruit them. The count starts now.
     - Filed final Q1, done when program.fact_f1 == true
     - Filed final Q2, done when program.fact_f2 == true
   buttons: scan
@@ -741,7 +741,7 @@ OBJECTIVE The Final Round
   go: The Desktop
   title: Lights down, everyone speaks
   text:
-    Judge the final facts: ✅ / 😤 for the question being judged (Q1 to start; 🔢 moves it to Q2), 🤷 for a guess. ⭐ +5 each. Then: "There is only one version of the truth. Because truth is always in binary."
+    Judge the final facts: ✅ / 😤 for the question being judged (Q1 to start; 🔢 moves it on), 🤷 for a guess. ⭐ +5 each. Then: "There is only one version of the truth. Because truth is always in binary."
   buttons: judge_accurate, judge_confident, uncertain_answer
 
 // 🔢 The question ✅ / 😤 judge (wave 21): after the judging objectives, so

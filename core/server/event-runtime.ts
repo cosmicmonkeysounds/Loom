@@ -188,7 +188,7 @@ import {
 import { agentDossierOn, buildDossier, codeMentions, dossierVerdictOf } from "./agent-dossier.ts";
 import { TALK_AGENT, TALK_AS, TALK_ROOM, readTalkPost, talkScene, talkView, type TalkScene, type TalkView } from "../src/talk-back.ts";
 import { TALK_SCENES } from "../src/talk-scenes.ts";
-import { agentRecentOn, answerMentions, buildRecent, HUNT_ANSWER_MARK, secretMentions, storyTag, storyTexts, worldString, type StoryTagContext } from "./agent-recent.ts";
+import { agentRecentOn, answerMentions, buildRecent, HUNT_ANSWER_MARK, inReadingBeat, secretMentions, storyTag, storyTexts, worldString, type StoryTagContext } from "./agent-recent.ts";
 
 
 /** Wave 59: a reader's stream closed this recently still counts as a phone in
@@ -2943,7 +2943,7 @@ export class EventRuntime {
       // Only a filer who already knew it (or all but typed it) ever puts it
       // in the journal.
       const auto = judgeMode(book, worldReader(this.sim!)) === "auto";
-      const ruler = auto && judged.ask ? this.rulerOnline() : null;
+      const ruler = auto && judged.ask && factsKey(book, q)?.secretFromAgents !== true ? this.rulerOnline() : null;
       return {
         args: verdict === "accurate" ? { verdict, key_answer: factsKey(book, q)!.answer } : { verdict },
         review: auto && (judged.near !== null || ruler !== null),
@@ -3041,7 +3041,8 @@ export class EventRuntime {
     const f = this.filingOf(person, question);
     if (f === null || f.final !== null) return false;
     const key = factsKey(book, question);
-    if (key === null || isExact(book, question, f.answer)) return false;
+    // A key the reader doesn't know is never put in front of his worker.
+    if (key === null || key.secretFromAgents || isExact(book, question, f.answer)) return false;
     const near = this.factsWatch.nearOf(book, question, f.answer);
     const asked = `${person}\u0000${question}\u0000${f.answer}`;
     if (this.agents.judging.some((j) => j.filing.person === person && j.filing.question === question)) return false;
@@ -3961,7 +3962,7 @@ export class EventRuntime {
     const sim = this.sim!;
     const book = this.factsBook();
     const topics = new Map((book?.raw.questions ?? []).map((q) => [q.id, q.topics ?? []] as const));
-    const mentionsAnswer = book === null ? undefined : answerMentions([...book.questions, ...book.answers].map((k) => ({ forms: k.forms, topics: topics.get(k.id) ?? [] })));
+    const mentionsAnswer = book === null ? undefined : answerMentions([...book.questions, ...book.answers, ...book.guards].map((k) => ({ forms: k.forms, topics: topics.get(k.id) ?? [] })));
     const secretHeads = new Set([...sim.model.characters.values()].filter((c) => c.secret).map((c) => c.id));
     const secretValues = sim.world
       .entries()
@@ -3998,9 +3999,10 @@ export class EventRuntime {
     const leaks = (text: string): boolean => text.includes(HUNT_ANSWER_MARK) || mentionsSecret(text) || mentionsCode(text) || (mentionsAnswer?.(text) ?? false);
     let asked: ChatMessage | undefined;
     for (let i = room.length - 1; i >= 0 && asked === undefined; i--) if (room[i]!.from === performer) asked = room[i];
-    for (let i = room.length - 1; i >= 0 && asked === undefined; i--) if (room[i]!.from !== thread.character && !leaks(room[i]!.text)) asked = room[i];
+    for (let i = room.length - 1; i >= 0 && asked === undefined; i--) if (room[i]!.from !== thread.character && !leaks(room[i]!.text) && !inReadingBeat(room[i]!)) asked = room[i];
     if (asked === undefined) return null; // nothing said to answer
-    const lines = room.filter((m) => m === asked || !leaks(m.text));
+    // A reading quotes guests and says the answers: no line of one reaches him.
+    const lines = room.filter((m) => m === asked || (!leaks(m.text) && !inReadingBeat(m)));
     const history: AgentLine[] = lines.slice(-AGENT_HISTORY).map((m) => ({
       seq: m.seq,
       mine: m.from === thread.character,

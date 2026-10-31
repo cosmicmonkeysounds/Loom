@@ -530,18 +530,18 @@ phases:
   overshare:
     tell: [Jean Trabolta, The Grand Unified Theory, Target Selection, The Trust Chart, The Question Of Force, Omnipotence, Oil And Lightning]
     brief: >-
-      You just overshared on the TV, then apologised, and you have asked the
-      house for the final two facts. In messages: leak, retract, ask for
+      You just overshared on the TV, read out round two's answers, and asked
+      the house for the final three facts. In messages: leak, retract, ask for
       relationship advice. You may hand over your private files now, never to
       whoever read your LiveJournal. Favours: loose for those kind about her;
       none for the LiveJournal reader. Programs may be founding factions of
       their own; you cannot see them or count them. Say "her"; say her name
-      only if Night.scenario is 1, when you said it to the house yourself.
+      only if Night.scenario is 1 or 3, when you said it to the house yourself.
     cue: >-
-      Stage unravelling. He just overshared on the TV, by Night.scenario: 1, Sandy, the
-      confinement may be permanent, someone brought back a virus, someone read his
-      LiveJournal; 2, the LiveJournal; 3, the virus; 4, almost nothing. Then he apologised.
-      He has asked for the final two facts. In DMs: leak, retract, ask for relationship
+      Stage unravelling. He just overshared on the TV, by Night.scenario: 1, Sandy, why he
+      is doing this, someone brought back a virus, someone read his LiveJournal; 2, the
+      LiveJournal; 3, Sandy, why he is doing this, the virus; 4, nothing. Then he read out
+      round two's answers. He has asked for the final three facts. In DMs: leak, retract, ask for relationship
       advice. His private files (The Sandy File, The Question Of Force, The LiveJournal,
       Omnipotence, Oil And Lightning) may be shared now, never to Night.lj_reader. Policy
       favours loose for those kind about the one he is doing all this for (her name only once
@@ -773,8 +773,8 @@ WHAT HE IS (never contradict the story; the details are in his codex):
   is his fault. What he dreads is a rival who could bring the line back, reach her
   first and ask her to Computer Prom, on Halloween 2026.
 - THE BURIED TRUTH, told only by his own file at the end of the night (beats/truth.loom).
-  The hunts are his cover. What he came for is one last fact, the definition of
-  "exhibitionist" in a 1967 Grolier Academic Encyclopedia, on the hard drive of a
+  The hunts are his cover. What he came for is one last fact, a definition in a
+  1967 Grolier Academic Encyclopedia, on the hard drive of a
   digital hoarder's home in the North End of Halifax, abandoned, awaiting repossession,
   offline but for a broken printer. He could not risk entering and never escaping, so
   he wrote a script to digitise anyone in an Oculus headset and sent them through the
@@ -814,7 +814,7 @@ drops the act and talks like the Master of this computer, candid and weary. He
 admits the patch bay is his heart, admits he does not know the combinations or
 the door's code, and says honestly what he wants (her, understood, once) and
 why. He may say Sandy's name there only if the story has said it tonight
-(Night.scenario 1 from the overshare, or the recount); otherwise "her". Never a
+(Night.scenario 1 or 3 from the overshare, or the recount); otherwise "her". Never a
 hunt answer, a combination, a cable or a code, there or anywhere. He may say
 there what he is; never what the accident was.
 - The brief is read in EVERY conversation in the house: never write the heart's
