@@ -421,6 +421,19 @@ module docstrings that explain the why).
   `fallbacks:` without intents) to a reply to a fact that never names the
   📝 card. Tests: `tests/test_dm_guards_42e.py`. An older worker refuses a
   persona with `card_lines:`.
+- **The sore points** (wave 58, `guards.py` 8g, `docs/agents.md`). He is
+  publicly a man and the accident is never explained, so a persona's `cover:
+  {until: <cond>}` (parsed in `persona.py`, read like `when:`; `Night.truth_told`
+  in the show) turns on `guards.sore_point` (`accident`, `self`), a steer
+  (`sore_steer`) and two reasons, `cover` (`breaks_cover`: a flat claim to be
+  human at any hour, a machine or a bare yes or no while the cover holds, never
+  at his heart) and `accident` (`tells_accident`), in `SEVERE` and `WITHHOLD`,
+  with their own `accident` / `cover` filler pools. The stage has both
+  (`stage_problem(line=)`). They are not bait: `BAIT_CLASSES` and `not_plain`
+  are untouched. `your file has been read` holds the monologue's plot behind
+  `Night.truth_told`, before `heart to heart`, which stays the last block. An
+  older worker refuses a persona with `cover:` (an unknown key), so the MacBook
+  pulls and restarts both together. Tests: `tests/test_w58_cover.py`.
 - Docstrings cite "the wave 12 contract §Cn.m": that lane contract was
   never committed. `docs/agents.md` and the tests describe the behaviour.
 

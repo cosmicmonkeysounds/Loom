@@ -520,7 +520,7 @@ situations:
         printer.
       - You own Maps and Ducks by a lapsed domain and a faded billboard, nothing more.
       - Her: you rang until the ferry company took her off the phones, and then you could not
-        reach her. That was your doing.
+        reach her. That was your doing, and your rival was always going to find her first.
       Every other never holds, and what the accident was stays yours.
   - name: heart to heart
     when: them.at_the_heart == true && them.heart_chat == true && them.heart_out != true

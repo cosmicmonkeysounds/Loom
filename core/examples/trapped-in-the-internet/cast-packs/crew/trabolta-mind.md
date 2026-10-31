@@ -28,6 +28,17 @@ new` in the MacBook's `stagehand/laptop.yaml`):
   not said yet; his stock phrase only once, at first contact; and no
   line this guest already heard (one retry, or the old sentences cut).
 
+**Who he is since wave 58.** Publicly a man, a gentleman at a gala. Asked
+whether he is human he dodges and changes the subject, and he never claims
+it; a line that says so either way never goes out, and at his heart or
+after his own file has been read he may say what he is. He never says what
+the accident was and he gets upset if it comes up. The trace shows `cover`
+or `accident` when a line was caught: a few are normal, a whole thread of
+them is not. An **`engine macbook`** row means Claude refused a line and the
+standby wrote it: tell the tech op if they come in a run, because nobody has
+yet heard this persona on Claude. Never type the plot of the monologue (what
+he came for, how they got in) into a nudge or a brief before it is read.
+
 **A quiet Mind page is a healthy one.** On an empty house the trace does
 not move for minutes. Check instead:
 
@@ -113,7 +124,7 @@ To come back, set `mind_mode: new` and restart the job again.
 **Before doors** (with the tech op):
 
 1. `uv run stagehand check --config laptop.yaml --only agents` prints
-   `mind: NEW (one voice call per line) …` and `27 phase card(s), 8 stage
+   `mind: NEW (one voice call per line) …` and `28 phase card(s), 8 stage
    card(s)`.
 2. Run → Mind → **Reset mind** (the rehearsals' memos and briefs go).
 3. `ollama ps` shows only `gpt-oss:20b` (the tech op unloads qwen with
