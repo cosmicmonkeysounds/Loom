@@ -2,7 +2,7 @@
   "version": 1,
   "variant": "Tent",
   "name": "Trapped in the Internet — the house (the Internet in the tent)",
-  "origin": "The front door's outside threshold, main-floor level. +x east, +y up, +z south (north is -z). Metres. Drawn from the real house in the /reinstall/map editor (2026-10-20): the basement (the RAM = the studio, the Fan Closet = the laundry corner of the basement hall, the Server Room = cold storage behind its keypad door, Bathroom 1 off the studio), the main floor (the Optical Drive = the mud room at the front door, the Desktop = the living room, the Steam Room = the game room, the CPU = the office, the Start Bar = the kitchen, with the basement stairs) and the top floor (the Graphics Card = bedroom 2, the Hard Drive = the crawl space, Bathroom 2), joined by the hall, the basement hall and the upstairs hall (the Tube), plus the backyard (the Cloud) with the tent (the Internet) in its south-east corner.",
+  "origin": "The front door's outside threshold, main-floor level. +x east, +y up, +z south (north is -z). Metres. Drawn from the real house in the /reinstall/map editor (2026-10-20): the basement (the RAM = the studio, the Fan Closet = the laundry corner of the basement hall, the Server Room = cold storage behind its keypad door, Bathroom 1 off the studio), the main floor (the Optical Drive = the mud room at the front door, the Desktop = the living room, the Power Supply = the game room, the CPU = the office, the Start Bar = the kitchen, with the basement stairs) and the top floor (the Casino = bedroom 2, the Hard Drive = the crawl space, Bathroom 2), joined by the hall, the basement hall and the upstairs hall (the Tube), plus the backyard (the Cloud) with the tent (the Internet) in its south-east corner.",
   "floors": [
     {
       "id": "basement",
@@ -76,9 +76,9 @@
     },
     {
       "id": "steam-room",
-      "label": "Steam Room (game room)",
+      "label": "Power Supply (game room)",
       "floor": "main",
-      "location": "The Steam Room",
+      "location": "The Power Supply",
       "color": "#4a3f6b",
       "poly": [
         [
@@ -452,9 +452,9 @@
     },
     {
       "id": "graphics-card",
-      "label": "Graphics Card (bedroom 2)",
+      "label": "Casino (bedroom 2)",
       "floor": "top",
-      "location": "The Graphics Card",
+      "location": "The Casino",
       "color": "#2f5a6b",
       "poly": [
         [
@@ -693,7 +693,7 @@
     },
     {
       "id": "steam-room",
-      "name": "Steam Room",
+      "name": "Power Supply",
       "room": "steam-room",
       "pos": [
         -3,
@@ -1055,7 +1055,7 @@
         1.6
       ],
       "color": "#1f1f2a",
-      "label": "STEAM"
+      "label": "POWER"
     },
     {
       "id": "beanbag",
@@ -1839,7 +1839,7 @@
         1.4
       ],
       "color": "#6e4f33",
-      "label": "GPU",
+      "label": "CASINO",
       "model": "desk"
     },
     {

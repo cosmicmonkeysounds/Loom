@@ -2,7 +2,7 @@
   "version": 1,
   "variant": "Shed",
   "name": "Trapped in the Internet — the house, rain variant (PLACEHOLDER layout until the real house is measured; the Internet in the shed)",
-  "origin": "PLACEHOLDER, not yet surveyed: the front door's outside threshold, main-floor level, east jamb. +x east, +y up, +z south (north is -z). Metres. The structure matches the real house (2026-10-15): three levels — the basement (the RAM = the studio, the Fan Closet = the laundry, the Server Room = cold storage, Bathroom 1), the main floor (the Optical Drive = the mud room, the Start Bar = the kitchen, the CPU = the office, the Steam Room = the game room, the Desktop = the living room) and the top floor (the Graphics Card = bedroom 2, the Hard Drive = the crawl space, Bathroom 2) — joined by the hall and its two stairs (the Tube), plus the backyard (the Cloud) with the shed at the back of it. Every footprint and elevation is a guess. The rain variant of house.json: identical but for The Internet, which is the shed instead of the tent.",
+  "origin": "PLACEHOLDER, not yet surveyed: the front door's outside threshold, main-floor level, east jamb. +x east, +y up, +z south (north is -z). Metres. The structure matches the real house (2026-10-15): three levels — the basement (the RAM = the studio, the Fan Closet = the laundry, the Server Room = cold storage, Bathroom 1), the main floor (the Optical Drive = the mud room, the Start Bar = the kitchen, the CPU = the office, the Power Supply = the game room, the Desktop = the living room) and the top floor (the Casino = bedroom 2, the Hard Drive = the crawl space, Bathroom 2) — joined by the hall and its two stairs (the Tube), plus the backyard (the Cloud) with the shed at the back of it. Every footprint and elevation is a guess. The rain variant of house.json: identical but for The Internet, which is the shed instead of the tent.",
   "floors": [
     { "id": "basement", "label": "Basement", "elevation": -2.7, "height": 2.4 },
     { "id": "main", "label": "Main floor", "elevation": 0, "height": 2.5 },
@@ -27,9 +27,9 @@
     },
     {
       "id": "steam-room",
-      "label": "Steam Room (game room)",
+      "label": "Power Supply (game room)",
       "floor": "main",
-      "location": "The Steam Room",
+      "location": "The Power Supply",
       "color": "#4a3f6b",
       "poly": [[-7, 0], [-3, 0], [-3, 6], [-7, 6]]
     },
@@ -141,9 +141,9 @@
     },
     {
       "id": "graphics-card",
-      "label": "Graphics Card (bedroom 2)",
+      "label": "Casino (bedroom 2)",
       "floor": "top",
-      "location": "The Graphics Card",
+      "location": "The Casino",
       "color": "#2f5a6b",
       "poly": [[3, 4], [7, 4], [7, 12], [3, 12]]
     }
@@ -207,7 +207,7 @@
     { "id": "tube-hall", "room": "hall", "kind": "box", "pos": [-1, 0, 7.5], "size": [0.9, 0.01, 9], "color": "#18c8ff", "solid": false },
     { "id": "coat-rack", "room": "hall", "kind": "cylinder", "pos": [-2.6, 0, 3.4], "size": [0.4, 1.8, 0.4], "color": "#4a3a2a" },
 
-    { "id": "tv-console", "room": "steam-room", "kind": "box", "pos": [-6.75, 0, 3], "size": [0.5, 0.6, 1.6], "color": "#1f1f2a", "label": "STEAM" },
+    { "id": "tv-console", "room": "steam-room", "kind": "box", "pos": [-6.75, 0, 3], "size": [0.5, 0.6, 1.6], "color": "#1f1f2a", "label": "POWER" },
     { "id": "beanbag", "room": "steam-room", "kind": "cylinder", "pos": [-5.2, 0, 3], "size": [0.9, 0.5, 0.9], "color": "#8c2f4a" },
     { "id": "game-shelf", "room": "steam-room", "kind": "box", "pos": [-5, 0, 0.2], "size": [1.8, 1.8, 0.35], "color": "#5a4030" },
 
@@ -268,7 +268,7 @@
     { "id": "sink-2", "room": "bathroom-2", "kind": "box", "pos": [-3.75, 2.8, 8.5], "size": [0.45, 0.85, 0.6], "color": "#e6e6e6" },
 
     { "id": "bed", "room": "graphics-card", "kind": "box", "pos": [5.5, 2.8, 6], "size": [2, 0.55, 1.6], "color": "#3a5a8c" },
-    { "id": "drawing-desk", "room": "graphics-card", "kind": "box", "pos": [6.6, 2.8, 10], "size": [0.7, 0.75, 1.4], "color": "#6e4f33", "label": "GPU" }
+    { "id": "drawing-desk", "room": "graphics-card", "kind": "box", "pos": [6.6, 2.8, 10], "size": [0.7, 0.75, 1.4], "color": "#6e4f33", "label": "CASINO" }
   ],
   "spaces": {
     "vr": { "offset": [0, 0, 0], "yaw": 0, "scale": 1 },

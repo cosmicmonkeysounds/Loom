@@ -256,7 +256,7 @@ so the names never collide).
 |---|---|---|---|
 | `optical-drive` | Optical Drive (mud room) | main | The Optical Drive (the login cutscene; the front door opens into it) |
 | `hall` | Hall | main | The Tube (the upstairs; the basement stairs come up in the kitchen) |
-| `steam-room` | Steam Room (game room) | main | The Steam Room |
+| `steam-room` | Power Supply (game room) | main | The Power Supply |
 | `start-bar` | Start Bar (kitchen) | main | The Start Bar (the basement stairs' head) |
 | `cpu` | CPU (office) | main | The CPU |
 | `desktop` | Desktop (living room) | main | The Desktop (the TV above the fireplace) |
@@ -270,7 +270,7 @@ so the names never collide).
 | `upstairs-hall` | Upstairs hall | top | The Tube |
 | `hard-drive` | Hard Drive (crawl space) | top | The Hard Drive |
 | `bathroom-2` | Bathroom 2 | top | **Disk Cleanup** |
-| `graphics-card` | Graphics Card (bedroom 2) | top | The Graphics Card |
+| `graphics-card` | Casino (bedroom 2) | top | The Casino |
 
 **Wave 14:** the map is the floor plan the user drew in `/reinstall/map` (basement −2.7, main 0,
 top +2.8; the placeholder it replaced is frozen at `house/test/maps/three-floor{,.shed}.json` for
@@ -440,12 +440,12 @@ not refuse hidden groups; §7.)
 | 4 | The Internet | `The Internet (Reinstallation — backyard)` | `prison: true`, `sealed: true`, `hidden: true`, `capacity: 3` | The tent in the backyard, reached through the tunnel (decision 18). The only prison. |
 | 5 | The Start Bar | `The Start Bar (kitchen)` | `ambient: fridge-hum`, `hidden: true` | Was The Cache. The Router lives here. |
 | 6 | The CPU | `The CPU (office)` | `ambient: processor-whine`, `hidden: true` | Main floor. The theory binder + filing box (APPENDIX-Z, PAGE-999, CARNEY-OFFER). |
-| 7 | The Steam Room | `The Steam Room (game room)` | `ambient: startup-chimes`, `hidden: true` | Main floor (bedroom / game room). TENNIS-FOR-TWO. |
+| 7 | The Power Supply | `The Power Supply (game room)` | `ambient: startup-chimes`, `hidden: true` | Main floor (bedroom / game room). TENNIS-FOR-TWO. |
 | 8 | Disk Cleanup | `Disk Cleanup (bathrooms)` | `ambient: dripping-tap`, `hidden: true` | Recycling Bin's domain: Bathroom 1 (basement) and Bathroom 2 (top). |
 | 9 | The Cloud | `The Cloud (backyard — Truth Pong)` | `hidden: true` | |
 | 10 | The RAM | `The RAM (studio)` | `ambient: dial-tone`, `hidden: true` | Was The Registry. The pet-cemetery codes. |
 | 11 | The Fan Closet | `The Fan Closet (laundry)` | `ambient: dryer-tumble`, `hidden: true` | FBI-HALIFAX (a coat pocket). |
-| 12 | The Graphics Card | `The Graphics Card (bedroom 2)` | `ambient: coil-whine`, `hidden: true` | NSCAD-LETTER (the sketchbook). |
+| 12 | The Casino | `The Casino (bedroom 2)` | `ambient: coil-whine`, `hidden: true` | NSCAD-LETTER (the sketchbook). |
 | 13 | The Hard Drive | `The Hard Drive (crawl space)` | `ambient: platter-spin`, `hidden: true` | TRABOLTA-4EVER, hidden. |
 | 14 | The Server Room | `The Server Room (cold storage)` | `hidden: true`, `checkin: false` | Trabolta's heart (the video patch bay). Keypad lock (standalone, wave 7); the patch bay is alarmed, the door is not. Off the basement hall. |
 
@@ -1149,7 +1149,7 @@ everyone at the end) · **X** finale artefact · **D** the server-room door code
 | The Y2K Clock | The Y2K Clock | E | | | | The Y2K Clock (everyone) | ✚ | System clock reset to 11 p.m., 31 Dec 1999. Midnight: back to 1 Jan 1900 (94 years to wait for Internet in Halifax) or the Y2K Bug. |
 | The Cold Door | The Cold Door | E | | | | with The Y2K Clock (every cleared program, the final round); wave 11: also with the first digit note (`door_digit_found`) | | Wave 7, replaces *The Cold Lock*; `secret: true`, no code. The keypad sign, word for word (`facts.json` `door.clue`; wave 11: "FOUR DIGITS. FOUR NOTES ARE HIDDEN IN THE HOUSE, ONE DIGIT ON EACH. OR BEAT THE KING AT THE TERMINAL BY THIS DOOR.", no riddle), "He plays chess. Only checkmate counts. A draw is not a win. Neither is crying.", and "The patch bay forgives one wrong combination. Not two." |
 | The Door Code | The Door Code | D | | | | a checkmate at the Server Door terminal (`chess_won`, until 📄; wave 11, was from step 14); all four digit notes (`door_digit_found`, until 📄); The Whole Truth (last) | ✚ (last) | Wave 7: generated from `facts.json` `door` into `codex/9-facts.loom`, `secret: true`, no code; its text holds the keypad's four digits. Never held by Trabolta. |
-| Server Room First Digit … Server Room Fourth Digit | Server Room · the first digit … the fourth digit | D | | `door.clues` in `facts.json` | | scanned at the Start Bar's kettle · the Graphics Card's mirror · the Fan Closet's dryer · the Steam Room's board-game box (silver, `generated/print-stacks.md`), or shared / sold | | Wave 11: generated from `facts.json` `door.clues` into `codex/9-facts.loom`, `secret: true`; each text names its position in words and the digit; no digit in any id, title or code; four of four → *The Door Code* (§3 E2d). |
+| Server Room First Digit … Server Room Fourth Digit | Server Room · the first digit … the fourth digit | D | | `door.clues` in `facts.json` | | scanned at the Start Bar's kettle · the Casino's mirror · the Fan Closet's dryer · the Power Supply's board-game box (silver, `generated/print-stacks.md`), or shared / sold | | Wave 11: generated from `facts.json` `door.clues` into `codex/9-facts.loom`, `secret: true`; each text names its position in words and the digit; no digit in any id, title or code; four of four → *The Door Code* (§3 E2d). |
 | The Truther Download | TRUTHER DOWNLOAD v0.9 | E | | | | Truther Download Arrives (every program) | | The user's text verbatim (below), `secret: true`, with **Sandy's name blacked out** `█████` (wave 6, decision 5: no Sandy before the overshare). Every holder then gets `The Truther Download Unredacted` (TRUTHER DOWNLOAD v1.0 (correction), `secret: true`: "The name we had to black out: SANDY.") once the story names her: `trabolta_overshares` on a scenario-1 night (`Night.step >= 13`), else the recount / truth.txt. |
 | ILOVEYOU | LOVE-LETTER-FOR-YOU.TXT.vbs | E | | `LOVE-LETTER-FOR-YOU` | | QR taped under VR station 2 (The Internet) | | A virus. Learning it sets `carries_virus`. |
 | Free Antivirus Trial | FREE_ANTIVIRUS_TRIAL.EXE | E | | `FREE-TRIAL-30-DAYS` | | QR on the tablet stand (The Internet) | | "Another antivirus" that turns out to be a virus anyway. Learning it sets `carries_virus`. |
@@ -1196,11 +1196,11 @@ Bundle = "all environmental facts"). No `about:`. All content here is invented (
 | The Protest Flyer | Save The Pet Cemetery | E | `SAVE-THE-PETS` | taped in the hall (The Tube) | "No data centre on our dead pets. Rally at the cemetery gates." Halifax said no. The City built it anyway. |
 | The Explosion Of 1917 | The Explosion Of 1917 | E | `HALIFAX-1917` | a museum postcard (The RAM) | Why the cemetery existed: the pets lost in the Halifax Explosion, 6 December 1917, buried together by a city that remembered. |
 | The Valley Library Cuts | Notice Of Position Elimination | E · ID (Jeeves) | `VALLEY-CUTS` | pinned in Disk Cleanup | Annapolis Valley Regional Library: "youth services positions eliminated, effective immediately." Someone has written "they were the best one" on it. |
-| The NSCAD Letter | Thesis Decision, NSCAD | E · ID (MS Paint) | `NSCAD-LETTER` | inside a sketchbook (The Graphics Card) | Senior year, 2022: the graduation panel "cannot accept" the thesis "MS Paint Is The Most Pure Art Tool: All Art Is Just Pixels If You Take A Picture And Zoom In Close Enough," and the degree is not conferred (never expelled: her invitation is canon, wave 6 decision 11; C09 / C10 agree). Doodled in the margin, in MS Paint pixels: a middle finger. |
+| The NSCAD Letter | Thesis Decision, NSCAD | E · ID (MS Paint) | `NSCAD-LETTER` | inside a sketchbook (The Casino) | Senior year, 2022: the graduation panel "cannot accept" the thesis "MS Paint Is The Most Pure Art Tool: All Art Is Just Pixels If You Take A Picture And Zoom In Close Enough," and the degree is not conferred (never expelled: her invitation is canon, wave 6 decision 11; C09 / C10 agree). Doodled in the margin, in MS Paint pixels: a middle finger. |
 | Face Off | Livestream Screenshot | E · ID (VLC) | `FACE-OFF-LIVE` | taped to the bathroom mirror (Disk Cleanup) | "VLC The Playa — LIVE — 2.1M watching." The next frame: a sneeze. The next: 0 watching. |
 | The Bugdom Sketch | Concept Art: Bugdom VR, v212 | E · ID (Bugdom) | `BUGDOM-VR` | a singed sketch in the shed (The Cloud); **on a rain night, The Optical Drive** (wave 6, decision 4) | A lovingly detailed VR beetle, a pet-store name tag stapled to it, scorch marks where fire ants went through the laptop. |
 | The Wharton Thesis | Toward A Gold Standard | E · ID (Runescape) | `GOLD-STANDARD` | a bound thesis by the toaster (The Start Bar) | Wharton PhD, economics: "Lessons from the Grand Exchange for the modern central bank." 24 years of playtime in the acknowledgements. |
-| The Oscilloscope Diagram | Tennis For Two, Brookhaven 1958 | E · ID (Pong) | `TENNIS-FOR-TWO` | rolled in a tube (The Steam Room) | The original wiring of the first video game, signed "W.H. — for my kid, who will understand it." |
+| The Oscilloscope Diagram | Tennis For Two, Brookhaven 1958 | E · ID (Pong) | `TENNIS-FOR-TWO` | rolled in a tube (The Power Supply) | The original wiring of the first video game, signed "W.H. — for my kid, who will understand it." |
 | The Saline Invoice | Invoice: 500 Vials, Saline | E · ID (Clippy) | `SALINE-INVOICE` | in the kitchen drawer (The Start Bar) | A "veterinary non-profit" that ordered nothing but saline for five years. |
 | The Termination Letter | Notice Of Termination | E · ID (Task Manager) | `TERMINATION-UO` | in the printer tray (The Desktop) | Urban Outfitters IT: "your role will be performed by an AI assistant (Clippy)." |
 | The Bootleg DVD | MASTERCLASS (BOOTLEG) | E · ID (Adobe Acrobat) | `MASTERCLASS-RIP` | in the DVD stack (The Desktop) | A pirated copy of Sheryl Terrio's masterclass. Whoever watched it never paid her a cent. |
@@ -2255,8 +2255,8 @@ when checked_in for program:
     set program.checked_in = "The Start Bar"
     set program.checked_in_time = Time.elapsed
     reply 📍 Checked in at the Start Bar.
-  … one arm each for The CPU, The Steam Room, The Tube, Disk Cleanup, The Cloud, The RAM,
-    The Fan Closet, The Graphics Card, The Hard Drive (never The Internet, The Optical Drive
+  … one arm each for The CPU, The Power Supply, The Tube, Disk Cleanup, The Cloud, The RAM,
+    The Fan Closet, The Casino, The Hard Drive (never The Internet, The Optical Drive
     or The Server Room); the new rooms' replies hint at what is hidden there …
   else:
     reply That check-in point is not in this computer.
@@ -2833,9 +2833,9 @@ digit"). `facts.json` `door.clues` holds four secret notes, one per digit of `do
 | Note | Code | Where |
 |---|---|---|
 | Server Room First Digit | in `facts.json` | The Start Bar (kitchen): wedged behind the kettle |
-| Server Room Second Digit | in `facts.json` | The Graphics Card (bedroom two): taped to the back of the mirror |
+| Server Room Second Digit | in `facts.json` | The Casino (bedroom two): taped to the back of the mirror |
 | Server Room Third Digit | in `facts.json` | The Fan Closet (laundry): in the dryer's lint-filter slot |
-| Server Room Fourth Digit | in `facts.json` | The Steam Room (game room): inside the lid of a board-game box |
+| Server Room Fourth Digit | in `facts.json` | The Power Supply (game room): inside the lid of a board-game box |
 
 However a note arrives (a scan, a share, a sale), a ROLE hook (`when program learns Server Room
 First Digit:` …) fires `door_digit_found for program`, which sets `program.door_digits` (0 to 4,
@@ -3907,8 +3907,8 @@ Cloud** `SITE-SCHEDULE` (shed clipboard) · `BUGDOM-VR` (singed sketch) — on a
 hang in **The Optical Drive** (wave 6, decision 4) · `GROK-ONLINE` (fridge
 sticky note). **The RAM** `PET-CEMETERY` (memorial pamphlet) · `HALIFAX-1917` (postcard). **The
 Fan Closet** `FBI-HALIFAX` (coat pocket by the dryer). **The CPU** `PAGE-999` (the theory
-binder) · `CARNEY-OFFER` (filing box). **The Steam Room** `TENNIS-FOR-TWO` (cardboard tube
-behind the games). **The Graphics Card** `NSCAD-LETTER` (the sketchbook on the bed). **The
+binder) · `CARNEY-OFFER` (filing box). **The Power Supply** `TENNIS-FOR-TWO` (cardboard tube
+behind the games). **The Casino** `NSCAD-LETTER` (the sketchbook on the bed). **The
 Hard Drive** `TRABOLTA-4EVER` (the LiveJournal, hidden). **The Internet (tent)**
 `LOVE-LETTER-FOR-YOU` (under VR station 2) · `FREE-TRIAL-30-DAYS` (tablet stand).
 **Server-room door** `COLD-STORAGE` · `HUMMING-WALL`. (No Antivirus personnel files: the plan is dropped, wave 6 decision 12 — Bugdom's hunt is the

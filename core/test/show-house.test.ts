@@ -7,7 +7,8 @@
 //! walkable from the spawn — on either variant, with the same terminal ids
 //! (the tablets are provisioned with `spot=<id>`).
 
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
@@ -60,6 +61,24 @@ const roomFor = (house: HouseMap, location: string): Room => {
   expect(rooms.map((r) => r.id), location).toHaveLength(1);
   return rooms[0]!;
 };
+
+describe("the rooms' names (wave 59)", () => {
+  // The game room is The Power Supply and bedroom 2 The Casino. Hidden ids
+  // (`steam-room`, `graphics-card`, `steam-1`) stay; the words don't.
+  const OLD = /Steam Room|Graphics Card/iu;
+  const root = fileURLToPath(new URL("../examples/trapped-in-the-internet/", import.meta.url));
+  const read = (p: string): string => readFileSync(join(root, p), "utf8");
+  const loomFiles = (dir: string): string[] =>
+    readdirSync(join(root, dir), { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? loomFiles(join(dir, e.name)) : e.name.endsWith(".loom") ? [join(dir, e.name)] : []));
+
+  it("no line of the story says the old names, and neither do the maps, the facts or his persona", () => {
+    for (const f of loomFiles(".")) {
+      const lines = read(f).split("\n").filter((l) => !l.trimStart().startsWith("//"));
+      expect(lines.filter((l) => OLD.test(l)), f).toEqual([]);
+    }
+    for (const f of ["house.json", "house.shed.json", "audio.json", "facts.json", "trabolta.persona.md"]) expect(OLD.test(read(f)), f).toBe(false);
+  });
+});
 
 describe.each(Object.entries(VARIANTS))("the show's house map (%s)", (variant, house) => {
   it("validates, and every room is a LOCATION the story declares", () => {
@@ -141,9 +160,9 @@ describe.each(Object.entries(VARIANTS))("the show's house map (%s)", (variant, h
     // The user's floor plan (2026-10-15); both bathrooms are Disk Cleanup.
     expect(on("basement")).toEqual(["Disk Cleanup", "The Fan Closet", "The RAM", "The Server Room"]);
     expect(on("main").filter((l) => l !== "The Cloud" && l !== "The Internet")).toEqual(
-      ["The CPU", "The Desktop", "The Optical Drive", "The Start Bar", "The Steam Room"],
+      ["The CPU", "The Desktop", "The Optical Drive", "The Power Supply", "The Start Bar"],
     );
-    expect(on("top")).toEqual(["Disk Cleanup", "The Graphics Card", "The Hard Drive"]);
+    expect(on("top")).toEqual(["Disk Cleanup", "The Casino", "The Hard Drive"]);
     expect(house.stairs.map((s) => [s.from, s.to])).toEqual([
       ["basement-hall", "start-bar"],
       ["hall", "upstairs-hall"],

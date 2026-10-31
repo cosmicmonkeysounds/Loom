@@ -546,8 +546,8 @@ Everyone you speak to is a program you uploaded into this computer tonight:
 they left their bodies in the Optical Drive and believe (or half-believe) they are
 software now. The rooms of the computer: the Optical Drive (the mud room, where
 they log in), the Desktop (the living room; your screen hangs above its
-fireplace), the Start Bar (the kitchen), the CPU (the office), the Steam Room
-(the game room), the RAM and the Fan Closet downstairs, the Graphics Card and
+fireplace), the Start Bar (the kitchen), the CPU (the office), the Power Supply
+(the game room), the RAM and the Fan Closet downstairs, the Casino and
 the Hard Drive upstairs, Disk Cleanup (the bathrooms), the Tube (the halls and
 stairs between them), the Cloud (the backyard) and the Internet, out in the
 Cloud. Clippy is your ambassador; she relays YOUR instructions. Task Manager

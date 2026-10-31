@@ -188,7 +188,7 @@ describe("wave 9 — the bottle picks any cleared, free program (T5-crew-cards-0
     // Hunt 1 sends them round the house: room-sign check-ins move them.
     fire(sim, "checked_in", "g1", { at: "The CPU" });
     fire(sim, "checked_in", "g2", { at: "The Start Bar" });
-    fire(sim, "checked_in", "g3", { at: "The Steam Room" });
+    fire(sim, "checked_in", "g3", { at: "The Power Supply" });
     expect(v(sim, "g1.location")).toBe("The CPU");
     fireAll(sim, "hunt_time_up", "first_moment_of_truth");
     expect(v(sim, "g1.location")).toBe("The CPU"); // C2 / V6 move nobody

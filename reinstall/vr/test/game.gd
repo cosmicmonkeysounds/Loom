@@ -349,7 +349,7 @@ func _test_floor_underside() -> void:
 	var under_y := top_y - HouseBuilder.UNDERSIDE_GAP
 	var ceil := b.part("Floor_top/Ceilings") as MeshInstance3D
 	var faces: PackedVector3Array = ceil.mesh.get_faces() if ceil != null else PackedVector3Array()
-	# The backyard under the Graphics Card's overhang, and the upstairs stair's middle.
+	# The backyard under the Casino's overhang, and the upstairs stair's middle.
 	var yard := Vector2(-4.0, 22.0)
 	var r: Array = []
 	for st: Dictionary in house["stairs"]:

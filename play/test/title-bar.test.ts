@@ -19,7 +19,7 @@ describe("the NOW title bar", () => {
   });
 
   it("with no objective: the open room's name, else the story's title (D4)", () => {
-    expect(titleFallback("The Steam Room", "Trapped in the Internet")).toBe("The Steam Room");
+    expect(titleFallback("The Power Supply", "Trapped in the Internet")).toBe("The Power Supply");
     expect(titleFallback(null, "Trapped in the Internet")).toBe("Trapped in the Internet");
     expect(titleFallback("", "Trapped in the Internet")).toBe("Trapped in the Internet");
     expect(titleFallback(undefined, null)).toBe("");

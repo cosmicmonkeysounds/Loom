@@ -31,7 +31,7 @@
         "id": "Server Room Second Digit",
         "title": "Server Room · the second digit",
         "code": "FROSTED-MIRROR",
-        "where": "The Graphics Card (bedroom two): taped to the back of the mirror",
+        "where": "The Casino (bedroom two): taped to the back of the mirror",
         "text": "THE SECOND DIGIT IS {digit}"
       },
       {
@@ -45,7 +45,7 @@
         "id": "Server Room Fourth Digit",
         "title": "Server Room · the fourth digit",
         "code": "LOST-PIECE",
-        "where": "The Steam Room (game room): inside the lid of a board-game box",
+        "where": "The Power Supply (game room): inside the lid of a board-game box",
         "text": "THE FOURTH DIGIT IS {digit}"
       }
     ]

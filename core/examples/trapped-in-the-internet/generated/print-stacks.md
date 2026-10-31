@@ -192,9 +192,9 @@ the door code.
 | Digit | Colour | Code | Title | Where in the house | What it is |
 |---|---|---|---|---|---|
 | first | silver | `FOGGED-KETTLE` | Server Room · the first digit | The Start Bar (kitchen): wedged behind the kettle | the first digit of the door code (of four) |
-| second | silver | `FROSTED-MIRROR` | Server Room · the second digit | The Graphics Card (bedroom two): taped to the back of the mirror | the second digit of the door code (of four) |
+| second | silver | `FROSTED-MIRROR` | Server Room · the second digit | The Casino (bedroom two): taped to the back of the mirror | the second digit of the door code (of four) |
 | third | silver | `WARM-LINT` | Server Room · the third digit | The Fan Closet (laundry): in the dryer's lint-filter slot | the third digit of the door code (of four) |
-| fourth | silver | `LOST-PIECE` | Server Room · the fourth digit | The Steam Room (game room): inside the lid of a board-game box | the fourth digit of the door code (of four) |
+| fourth | silver | `LOST-PIECE` | Server Room · the fourth digit | The Power Supply (game room): inside the lid of a board-game box | the fourth digit of the door code (of four) |
 
 ## The cold door — the keypad sign
 

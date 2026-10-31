@@ -131,8 +131,8 @@ GROUP The Way Out
 // Every LOCATION is also a room in the app, named for the part of the
 // computer it plays. Three floors and the yard: the basement (the RAM,
 // the Fan Closet, the Server Room, a bathroom), the main floor (the
-// Optical Drive, the Start Bar, the CPU, the Steam Room, the Desktop),
-// the top floor (the Graphics Card, the Hard Drive, a bathroom), and out
+// Optical Drive, the Start Bar, the CPU, the Power Supply, the Desktop),
+// the top floor (the Casino, the Hard Drive, a bathroom), and out
 // back the Cloud, with the tent (the Internet) in it. The Tube is the
 // hall and the stairs that join the floors; both bathrooms are Disk
 // Cleanup.
@@ -177,8 +177,8 @@ LOCATION The CPU
   ambient: processor-whine
   hidden: true
 
-LOCATION The Steam Room
-  label: The Steam Room (game room)
+LOCATION The Power Supply
+  label: The Power Supply (game room)
   ambient: startup-chimes
   hidden: true
 
@@ -201,8 +201,8 @@ LOCATION The Fan Closet
   ambient: dryer-tumble
   hidden: true
 
-LOCATION The Graphics Card
-  label: The Graphics Card (bedroom 2)
+LOCATION The Casino
+  label: The Casino (bedroom 2)
   ambient: coil-whine
   hidden: true
 
@@ -744,12 +744,12 @@ ROLE Program
       set self.cleared = true
       reveal The Start Bar for self quietly
       reveal The CPU for self quietly
-      reveal The Steam Room for self quietly
+      reveal The Power Supply for self quietly
       reveal Disk Cleanup for self quietly
       reveal The Cloud for self quietly
       reveal The RAM for self quietly
       reveal The Fan Closet for self quietly
-      reveal The Graphics Card for self quietly
+      reveal The Casino for self quietly
       reveal The Hard Drive for self quietly
       reveal task manager for self quietly
     // Back from the Internet with no live 📝 card (an old one closed while
@@ -2548,11 +2548,12 @@ ROLE Program
       set program.checked_in = "The CPU"
       set program.checked_in_time = Time.elapsed
       reply 📍 Checked in at the CPU. A filing box is open on the desk, next to a very thick binder.
-    else if at == "The Steam Room":
-      move program to The Steam Room
-      set program.checked_in = "The Steam Room"
+    else if at == "The Power Supply":
+      move program to The Power Supply
+      set program.checked_in = "The Power Supply"
       set program.checked_in_time = Time.elapsed
-      reply 📍 Checked in at the Steam Room. Something is rolled up in a cardboard tube behind the games.
+      // DRAFT w59 (the room was the Steam Room; the tube stays behind the games)
+      reply 📍 Checked in at the Power Supply. Everything in here hums like it is one plug away from a blackout. Something is rolled up in a cardboard tube behind the games.
     else if at == "The Tube":
       move program to The Tube
       set program.checked_in = "The Tube"
@@ -2590,11 +2591,12 @@ ROLE Program
       set program.checked_in = "The Fan Closet"
       set program.checked_in_time = Time.elapsed
       reply 📍 Checked in at the Fan Closet. A coat hangs by the dryer, waiting to be washed. Check the pockets.
-    else if at == "The Graphics Card":
-      move program to The Graphics Card
-      set program.checked_in = "The Graphics Card"
+    else if at == "The Casino":
+      move program to The Casino
+      set program.checked_in = "The Casino"
       set program.checked_in_time = Time.elapsed
-      reply 📍 Checked in at the Graphics Card. A sketchbook lies open on the bed, every drawing in pixels.
+      // DRAFT w59 (the room was the Graphics Card; the sketchbook stays on the bed)
+      reply 📍 Checked in at the Casino. The house always wins. Somebody staked a sketchbook on the bed and never came back for it, every drawing in pixels.
     else if at == "The Hard Drive":
       move program to The Hard Drive
       set program.checked_in = "The Hard Drive"

@@ -685,7 +685,7 @@ set Night.alerts = "sticky"
     sim.createPerson("g1", "Microsoft Internet Explorer", "Program");
     let t = 1_760_000_000_000;
     const w = new ScreenWatch({ now: () => t });
-    const terminals = ["Optical Drive", "Hall", "TV", "Steam Room", "CPU", "Start Bar", "Backyard", "Bathroom 1 door", "RAM", "Server Room", "Server Door", "Upstairs hall", "Casino", "Tent"];
+    const terminals = ["Optical Drive", "Hall", "TV", "Power Supply", "CPU", "Start Bar", "Backyard", "Bathroom 1 door", "RAM", "Server Room", "Server Door", "Upstairs hall", "Casino", "Tent"];
     for (const name of terminals) w.poll(sim, { name, spot: name.toLowerCase(), view: "auto", character: "Trabolta", device: { audio: true, visible: true, battery: 88, charging: true, version: "w17-1021.abcdef" } }, () => false);
     sim.signal("call");
     sim.signal("present");

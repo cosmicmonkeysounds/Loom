@@ -334,7 +334,7 @@ def processor_whine(rng: np.random.Generator) -> np.ndarray:
     return _finish(x, low_cut=60)
 
 
-# -- the Steam Room ---------------------------------------------------------------------
+# -- the Power Supply ---------------------------------------------------------------------
 
 #: F major pentatonic (no half steps: any two chimes sound well together).
 CHIME_NOTES = ("F5", "G5", "A5", "C6", "D6", "F6", "G6", "A6", "C7")
@@ -348,7 +348,7 @@ def _chime(f: float, t60: float, ratio: float) -> np.ndarray:
 
 
 def startup_chimes(rng: np.random.Generator) -> np.ndarray:
-    """The Steam Room (game room): a waiting room of start-up sounds. A warm
+    """The Power Supply (game room): a waiting room of start-up sounds. A warm
     pad that slowly swells and brightens, and every few seconds a soft
     chime or a little rising or falling run of two to four, from a
     pentatonic scale, never the same twice in the loop."""
@@ -508,11 +508,11 @@ def dryer_tumble(rng: np.random.Generator) -> np.ndarray:
     return _finish(x, 35, dsp.Biquad.highshelf(4000, -5))
 
 
-# -- the Graphics Card -------------------------------------------------------------------
+# -- the Casino -------------------------------------------------------------------
 
 
 def coil_whine(rng: np.random.Generator) -> np.ndarray:
-    """The Graphics Card (bedroom 2): a graphics card under a jumpy load. Its
+    """The Casino (bedroom 2): a machine under a jumpy load. Its
     coils whine in steps that jump with the frame load (a light idle, busy
     stretches, quick chirps), and its fan rises and falls more slowly
     behind them."""
@@ -616,7 +616,7 @@ SOUNDS: list[Spec] = [
     Spec("processor-whine", "ambient", processor_whine, 30.0, loop=True,
          note="the CPU: a busy computer's fan and blade tone, a soft electronic whine drifting with the load"),
     Spec("startup-chimes", "ambient", startup_chimes, 36.0, loop=True,
-         note="the Steam Room: a warm slowly-opening pad and sparse random pentatonic chimes"),
+         note="the Power Supply: a warm slowly-opening pad and sparse random pentatonic chimes"),
     Spec("dripping-tap", "ambient", dripping_tap, 30.0, loop=True, level_db=-28,
          note="Disk Cleanup: a tap dripping unevenly in a tiled room, a deeper drip into a puddle"),
     Spec("dial-tone", "ambient", dial_tone, 24.0, loop=True, level_db=-22,
@@ -624,7 +624,7 @@ SOUNDS: list[Spec] = [
     Spec("dryer-tumble", "ambient", dryer_tumble, 32.0, loop=True, level_db=-22,
          note="the Fan Closet: a clothes dryer, motor hum, blower, thumping load, the odd zipper clink"),
     Spec("coil-whine", "ambient", coil_whine, 30.0, loop=True,
-         note="the Graphics Card: coil whine stepping with a jumpy load, the card's fan following slowly"),
+         note="the Casino: coil whine stepping with a jumpy load, a fan following slowly"),
     Spec("platter-spin", "ambient", platter_spin, 30.0, loop=True,
          note="the Hard Drive: platters at 7200 rpm, bearing hiss, heads seeking now and then"),
     Spec("server-room-fans", "ambient", server_room_fans, 30.0, loop=True,

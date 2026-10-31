@@ -514,7 +514,7 @@ before the doors.**
 
 ## The casino tablet
 
-A tablet in the upstairs bedroom (The Graphics Card). Provision with
+A tablet in the upstairs bedroom (The Casino). Provision with
 `/terminal/?code=<mod>&spot=graphics-card` (the map says `view:
 "casino"`). Awake all night: a program scans a pass and bets 1–50
 Truthcoin on the coin, the dice or the slots. The server rolls every bet;

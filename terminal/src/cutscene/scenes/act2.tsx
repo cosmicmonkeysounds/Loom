@@ -195,10 +195,10 @@ const LATE_ROWS: ReadonlyArray<{ room: string; mark: "ok" | "excused" | "late" }
   { room: "The Desktop", mark: "ok" },
   { room: "Disk Cleanup", mark: "excused" },
   { room: "The Start Bar", mark: "late" },
-  { room: "The Steam Room", mark: "late" },
+  { room: "The Power Supply", mark: "late" },
   { room: "The Cloud", mark: "late" },
   { room: "The RAM", mark: "late" },
-  { room: "The Graphics Card", mark: "late" },
+  { room: "The Casino", mark: "late" },
 ];
 const LATE_EVERY = 520;
 

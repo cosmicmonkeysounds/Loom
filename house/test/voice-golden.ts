@@ -143,7 +143,7 @@ export function hearingPoses(): Vec3[] {
     [-3, 0, 2], // the optical drive
     [-1, 0, 12], // the hall
     [6, 0, 7], // the desktop, by the TV
-    [-6, 0, 9], // the steam room
+    [-6, 0, 9], // the power supply
     [4, 0, 13], // the start bar
     [-4, 0, 20], // the backyard
     [3, -2.7, 25], // the server room

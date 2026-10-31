@@ -99,7 +99,7 @@ const ANTIVIRUS = ["Norton Anti-Virus", "McAfee Anti-Virus", "Password Manager",
 const PATROL = ANTIVIRUS;
 /** The rooms an Antivirus clearance (or a release) opens: the whole house
  *  but the Optical Drive, the Tube, the Internet and the Server Room. */
-const HOUSE_ROOMS = ["The Start Bar", "The CPU", "The Steam Room", "Disk Cleanup", "The Cloud", "The RAM", "The Fan Closet", "The Graphics Card", "The Hard Drive"];
+const HOUSE_ROOMS = ["The Start Bar", "The CPU", "The Power Supply", "Disk Cleanup", "The Cloud", "The RAM", "The Fan Closet", "The Casino", "The Hard Drive"];
 const fold = (s: string) =>s.toLowerCase().replace(/[_-]/g, " ").replace(/\s+/g, " ").trim();
 
 /** Register → CAPTCHA (pass = INCORRECT, then CORRECT) → the problem (skipped
@@ -157,7 +157,7 @@ describe("Trapped in the Internet — compile", () => {
     expect(m.factions.get("Antivirus")!.joinable).toBe(false);
     expect(m.factions.get("Unlimited Power")!.hidden).toBe(true);
     expect(m.factions.get("The Way Out")!.hidden).toBe(true);
-    expect([...m.locations.keys()]).toEqual(["The Desktop", "The Optical Drive", "The Tube", "The Internet", "The Start Bar", "The CPU", "The Steam Room", "Disk Cleanup", "The Cloud", "The RAM", "The Fan Closet", "The Graphics Card", "The Hard Drive", "The Server Room", "The Script"]);
+    expect([...m.locations.keys()]).toEqual(["The Desktop", "The Optical Drive", "The Tube", "The Internet", "The Start Bar", "The CPU", "The Power Supply", "Disk Cleanup", "The Cloud", "The RAM", "The Fan Closet", "The Casino", "The Hard Drive", "The Server Room", "The Script"]);
     const inet = m.locations.get("The Internet")!;
     expect(inet.prison).toBe(true);
     expect(inet.sealed).toBe(true);
@@ -5772,7 +5772,7 @@ describe("Trapped in the Internet — wave 6 (story lane)", () => {
     const evs = upload(sim, "g1", "Calculator");
     expect(composeGuestMessages(sim, evs).filter((m) => m.text.includes("open now"))).toEqual([]);
     const rooms = guestView(sim, "g1").channels.map((c) => c.id);
-    for (const r of ["loc:The Start Bar", "loc:The CPU", "loc:The Steam Room", "loc:Disk Cleanup", "loc:The Cloud", "loc:The RAM", "loc:The Fan Closet", "loc:The Graphics Card", "loc:The Hard Drive"]) expect(rooms, r).toContain(r);
+    for (const r of ["loc:The Start Bar", "loc:The CPU", "loc:The Power Supply", "loc:Disk Cleanup", "loc:The Cloud", "loc:The RAM", "loc:The Fan Closet", "loc:The Casino", "loc:The Hard Drive"]) expect(rooms, r).toContain(r);
     expect(evs.filter((e) => e.type === "revealed").every((e) => (e as Ev<"revealed">).quiet === true)).toBe(true);
     // Task Manager still says the help desk is open.
     expect(lines(evs, "Task Manager").some((t) => t.includes("# task-manager is open"))).toBe(true);

@@ -237,7 +237,7 @@ describe("buildHouseScene (the show's map, headless)", () => {
   it("an upper floor has an underside: from the backyard nobody sees up into the bedroom", () => {
     const scene = buildHouseScene(show, { labels: false });
     scene.root.updateMatrixWorld(true);
-    // The backyard under the Graphics Card's overhang, looking straight up.
+    // The backyard under the Casino's overhang, looking straight up.
     const ray = new Raycaster(new Vector3(-4, 1.6, 22), new Vector3(0, 1, 0));
     const hit = ray.intersectObject(scene.root, true).find((h) => (h.object as Mesh).isMesh);
     expect(hit?.object.name).toBe("ceilings:top");

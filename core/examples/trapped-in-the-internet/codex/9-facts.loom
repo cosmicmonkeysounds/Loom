@@ -1511,7 +1511,7 @@ CODEX Server Room First Digit
   text:
     THE FIRST DIGIT IS 7
 
-// second digit · silver · The Graphics Card (bedroom two): taped to the back of the mirror
+// second digit · silver · The Casino (bedroom two): taped to the back of the mirror
 CODEX Server Room Second Digit
   title: Server Room · the second digit
   category: The cold door
@@ -1531,7 +1531,7 @@ CODEX Server Room Third Digit
   text:
     THE THIRD DIGIT IS 3
 
-// fourth digit · silver · The Steam Room (game room): inside the lid of a board-game box
+// fourth digit · silver · The Power Supply (game room): inside the lid of a board-game box
 CODEX Server Room Fourth Digit
   title: Server Room · the fourth digit
   category: The cold door

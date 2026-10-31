@@ -38,7 +38,7 @@ ROLE="$(printf '%s' "$hit" | json role)"
 # The check-in points the story's `when checked_in for program:` chain handles
 # (main.loom). The server folds a slug onto the exact LOCATION name.
 cells=""
-for room in "The Desktop" "The Start Bar" "The CPU" "The Steam Room" "The Tube" "Disk Cleanup" "The Cloud" "The RAM" "The Fan Closet" "The Graphics Card" "The Hard Drive"; do
+for room in "The Desktop" "The Start Bar" "The CPU" "The Power Supply" "The Tube" "Disk Cleanup" "The Cloud" "The RAM" "The Fan Closet" "The Casino" "The Hard Drive"; do
   slug="$(printf '%s' "$room" | tr '[:upper:]' '[:lower:]' | tr ' ' '-')"
   link="$SERVER/?code=$LOOM_EVENT_CODE&checkin=$slug"
   enc="$(node -e 'process.stdout.write(encodeURIComponent(process.argv[1]))' "$link")"

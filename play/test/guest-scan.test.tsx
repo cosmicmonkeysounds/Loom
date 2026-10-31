@@ -87,7 +87,7 @@ describe("the wrong-browser landing", () => {
     expect(roomFromSlug("the-cpu")).toBe("The CPU");
     expect(roomFromSlug("the-ram")).toBe("The RAM");
     expect(roomFromSlug("the-fan-closet")).toBe("The Fan Closet");
-    expect(roomFromSlug("the-graphics-card")).toBe("The Graphics Card");
+    expect(roomFromSlug("the-casino")).toBe("The Casino");
   });
 
   it("shows the code in big type to type in the app the guest joined with — not the picker", () => {

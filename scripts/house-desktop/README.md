@@ -269,7 +269,7 @@ in `audio.json`:
 | 3 | Analog 1 (back) | the living-room **subwoofer** (speaker `living-sub`, its own trim) |
 | 4 | Analog 2 (back) | spare |
 | 5–6 | Analog 3–4 (back) | the kitchen L/R |
-| 7–9 | Analog 5–7 (back) | the hall (The Tube), the Steam Room, the CPU: no speaker yet |
+| 7–9 | Analog 5–7 (back) | the hall (The Tube), the Power Supply, the CPU: no speaker yet |
 | 10 | Analog 8 (back) | The Optical Drive (the mud room) |
 | 11–12 | S/PDIF L/R | unused |
 | 13–14 | **Phones L/R**, a front headphone jack | unused |
@@ -755,7 +755,7 @@ name doesn't matter; put it in that room.
 | `hall_main` | the main floor hall | **safety** |
 | `hall_up` | the upstairs hall | **safety** |
 | `hall_basement` | the basement hall | **safety** |
-| `casino` | The Graphics Card (bedroom 2, upstairs; the casino) | — |
+| `casino` | The Casino (bedroom 2, upstairs; the casino) | — |
 | `bath_down` | the basement bathroom | **safety** |
 | `bath_up` | the upstairs bathroom | **safety** |
 | `fan_closet_1`, `fan_closet_2` | the fan closet | — |

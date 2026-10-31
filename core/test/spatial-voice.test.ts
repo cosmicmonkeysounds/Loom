@@ -113,7 +113,7 @@ describe("VoiceRelay — who hears whom", () => {
     expect(relay.upload({ kind: "terminal", spot: "desktop-tv" }, 1, chunk(4, 0x80))).toEqual({ listening: true, dropped: false, ears: 1 });
     const v = events(player, "voice");
     expect(v.map((s) => s.data)).toEqual([{ from: "t:desktop-tv", kind: "terminal", spot: "desktop-tv", name: expect.any(String), gain: 1, seq: 1, data: Buffer.from([0x80, 0x80, 0x80, 0x80]).toString("base64") }]);
-    // The steam room is next door, a wall away: nobody hears it (before wave 26: 0.28).
+    // The power supply is next door, a wall away: nobody hears it (before wave 26: 0.28).
     expect(relay.upload({ kind: "terminal", spot: "steam-room" }, 1, chunk())).toEqual({ listening: false, dropped: true, ears: 0 });
     // A terminal never hears a terminal.
     expect(events(tv, "voice")).toEqual([]);
