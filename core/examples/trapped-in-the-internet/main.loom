@@ -3178,12 +3178,15 @@ ROLE Program
     if self.group == Unlimited_Power:
       The Uploader: You chose to stay in the machine forever. You got your wish. The machine is gone, and you went with it.
     else if self.group == The_Way_Out:
-      The Uploader: You fought to get out. You did: into purgatory, with everyone else. Your body is in the Maps and Ducks building. It is not breathing.
+      // DRAFT w58 (where the bodies are, as Purgatory has it)
+      The Uploader: You fought to get out. You did: into purgatory, with everyone else. Your body is in the Optical Drive. It is not breathing.
     else if faction_of(self) != null:
       // w18b (R4): a founded faction's member.
-      The Uploader: {faction_name(faction_of(self))} wanted its own way out. It got the same one as everyone. Your body is in the Maps and Ducks building. It is not breathing.
+      // DRAFT w58 (where the bodies are, as Purgatory has it)
+      The Uploader: {faction_name(faction_of(self))} wanted its own way out. It got the same one as everyone. Your body is in the Optical Drive. It is not breathing.
     else:
-      The Uploader: Your body is in the Maps and Ducks building. It is not breathing.
+      // DRAFT w58 (where the bodies are, as Purgatory has it)
+      The Uploader: Your body is in the Optical Drive. It is not breathing.
 
 // ── The buttons the app offers ──────────────────────────────────────
 // Every INTERACTION is a named event. `admin` ones are the director's cue
@@ -6429,7 +6432,9 @@ when start_the_ceremony:
     fire lift_the_takeover
     if Night.phase == "finale_truth":
       set Night.phase = Night.truth_phase
-    // 📜 skipped on Combo A: nobody else says they may go.
+    // 📜 skipped: every identity is still out, and on Combo A nobody else
+    // says they may go.
+    set Night.recount = true
     if Night.ending == "disabled":
       set Night.everyone_free = true
     if Night.ending == "destroyed" or Night.ending == "rave" or Night.ending == "disabled":

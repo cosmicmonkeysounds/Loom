@@ -858,6 +858,8 @@ describe("Trapped in the Internet — wave 13: the sign-off sheet", () => {
         if (w32Sheet !== null) expect(w32Sheet, id).toContain(id);
         continue;
       }
+      // Wave 58's words go on its own sheet.
+      if (new RegExp(`// DRAFT w58[^\n]*\nOBJECTIVE ${id}\n`, "u").test(objectives)) continue;
       expect(sheets.some((s) => s.includes(id)), id).toBe(true);
     }
     expect(["Talk With Trabolta", "Relay Clippy To Trabolta"].filter(draft32)).toHaveLength(2);

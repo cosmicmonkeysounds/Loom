@@ -774,6 +774,16 @@ OBJECTIVE Purgatory
   text:
     After the dance a host calls 🪦 the summary: read it from the teleprompter. "We are now in purgatory forever together."
 
+// DRAFT w58
+OBJECTIVE Read The Full Truth
+  for: Task Manager
+  while: Night.truth_reader == "Task Manager" and Night.ceremony != true
+  act: G
+  go: The Desktop
+  title: Read the full truth out loud
+  text:
+    It is on your teleprompter (⊞ Start → My script reopens it). Every word, at your own pace. Tell the director by radio when you finish: G1 is theirs.
+
 // w21 (wave 21: points, no 🎤 bar, no All buttons…)
 OBJECTIVE Host The Ceremony
   for: Clippy

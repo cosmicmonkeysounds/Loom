@@ -15,7 +15,7 @@ import { VOICE_PHASE_LEVEL, voiceLevel } from "../src/voice-fx.ts";
 import { buildRecent, inReadingBeat } from "../server/agent-recent.ts";
 import { composeGuestMessages, type ChatMessage } from "../server/chat.ts";
 import { ScreenWatch, slidePersists, voiceLinesOf } from "../server/routes/screen.ts";
-import { cueState, guestView, modView, notePress, pressRefused } from "../server/views.ts";
+import { cueState, guestView, modView, notePress, pressRefused, primeView } from "../server/views.ts";
 import { CEREMONY, TO_Y2K, Y2K_TO_DESTROYED, Y2K_TO_DISABLED, Y2K_TO_VERDICT, pressChain, type ChainStep } from "../../scripts/accept/chains.ts";
 
 // The phone's own reader (by path: core's typecheck has no DOM for play's types).
@@ -260,6 +260,8 @@ describe.each(ROAD_NAMES)("the full truth on the road to %s", (which) => {
     expect(v(n.sim, "Night.recount")).toBe(true); // every identity is out, Combo B too
     expect(v(n.sim, "Trabolta.awake")).toBe(want.awake);
     expect(cuesOf(evs).filter((c) => c.includes("motorcycle"))).toEqual([]);
+    // Task Manager's NOW says so; the fallback's copy is in his pack.
+    if (want.reader === "Task Manager") expect(primeView(n.sim, "Task Manager").objectives?.[0]?.title).toBe("Read the full truth out loud");
   });
 
   it("reaches its audience: the TV takes every line of Trabolta's, the teleprompter every line of Task Manager's, no guest the latter", { timeout: SLOW }, async () => {
@@ -476,6 +478,7 @@ describe("the full truth: the frames and the fallbacks", () => {
     expect(said(go, "Clippy").some((l) => l.startsWith("Clippy is Tippi"))).toBe(true);
     expect(said(go, "Clippy").some((l) => l.startsWith("Microsoft Excel is"))).toBe(true);
     expect(said(go, "Trabolta")).toEqual([]);
+    expect(v(n.sim, "Night.recount")).toBe(true); // every identity is out anyway
     expect(hostsOf(fire(n.sim, "tell_the_truth"))).toEqual(['"📜 The ceremony has started: too late for the full truth. Nothing happens."']);
   });
 
