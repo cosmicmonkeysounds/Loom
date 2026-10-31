@@ -82,8 +82,8 @@ export function DeskHouseBody({ view, rows, auth, calls, act, live, refresh, try
           <ActButton className="host-desk-wide" label="⚡ Glitch" onClick={() => send((a) => glitchText(a as Record<string, unknown>), () => calls.cue(glitch, null, null))} />
         </HostSection>
       )}
-      {auth !== undefined && <PhotosSection auth={auth} calls={calls} />}
       {t?.ads !== undefined && <AdsBox ads={t.ads} calls={calls} send={send} />}
+      {auth !== undefined && <PhotosSection auth={auth} calls={calls} />}
       {tryIt}
       {t !== null && <TerminalsBox terminals={t} live={live} calls={calls} send={send} />}
       <p className="host-note" data-testid="host-desk-run-only">
