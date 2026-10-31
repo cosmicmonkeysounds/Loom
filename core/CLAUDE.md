@@ -516,6 +516,12 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   worker's `recent`, `PERSISTENT_SLIDES` holds `recount` and `purgatory`, and
   `ALOUD_WINDOW_MS` outlasts the 14-minute read. Both versions and Task Manager's
   printed copy are held to the delivered file by `test/trapped-monologue.test.ts`.
+  He does not return from Combo A or B: a reply written while `awake` read true
+  and landing after it went false is dropped (410, `asleepSinceAsked`) and the
+  thread is asked again, because the worker's gate answers through the same
+  `/api/agent/reply` (the `unavailable` and distress lines). Never gate that route
+  on `awake` alone. Tests: `test/w58-agent-late-reply.test.ts`,
+  `test/trapped-w58-gone.test.ts`.
 - **The special prize** (wave 58, the contract's C5, G9a `award_most_correct`). `questions_right`
   is written per program only when G9a is pressed (a role watcher on
   `Night.prize_gen`; a watcher pass runs the programs' before the story's, so
