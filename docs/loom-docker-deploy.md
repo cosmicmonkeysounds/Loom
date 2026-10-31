@@ -234,7 +234,8 @@ domain's MX points (e.g. ImprovMX → your Gmail) — Resend only sends.
   `LOOM_RL_REGISTER` (guest registrations per IP, 20/60),
   `LOOM_RL_LOGIN_FAILURES` (wrong passcodes per IP before the lockout,
   10/300), `LOOM_RL_REDEEM_MISSES` (wrong codex codes per guest, then 429
-  and nothing journaled, 8/60), `LOOM_RL_WIDGETS` (widget answers per
+  and nothing journaled, 8/60), `LOOM_RL_PRINTED` (typed codes that are no
+  printed code, per guest or booth part, 30/60), `LOOM_RL_WIDGETS` (widget answers per
   guest, 20/60), `LOOM_RL_WALLET` (wallet calls per guest — sends,
   requests, offers, the stimulus — 30/60, the only brake on a phone
   flooding the approver's queue), `LOOM_RL_QR` (`/api/qr` per IP, 60/60:
