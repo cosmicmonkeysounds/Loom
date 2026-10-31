@@ -477,8 +477,10 @@ Crew only, but for the first two.
 ### 8.5 What nothing has seen
 
 No real device, voice or model has seen any of this. The TV reading these lines at the room's pace, a
-140-word line of guesses, the 8-B card on a phone, the song's length, the rave on the house, and a real
-worker in the 8-B window. A guest who tells him the last answer in a DM can still put it in his notes,
+long line of guesses, the 8-B card on a phone, the song's length, the rave on the house, and a real
+worker in the 8-B window. 🤖 and 🌑 are the longest presses of the night: a poll carries 40 lines and
+16,000 characters, and past that the oldest are dropped. By the arithmetic they fit a house of 40 filing
+short answers; a house of essays would lose his first lines. A guest who tells him the last answer in a DM can still put it in his notes,
 because he holds nothing to catch it with: there are no guards on it but the bait mode. Task Manager's printed
 pack holds the monologue, and the monologue names that answer, as it always has: keep the pack face down.
 

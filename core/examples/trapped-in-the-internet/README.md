@@ -469,7 +469,7 @@ window too (V6 once hunt 1 is over, ⏱ while the filing window is open, 📋
 while a round-one question is left, 📺 / 📓 / 🏓 / 🧮 / 📊 / 🏆 / 🤖 / 🕚
 each in its own step), and from 🌑 on each cue's `while:` names its branch
 (🌑 in the Y2K hour before the final round, 🍎 after 🌑, 📄 → ⚖ in the bob,
-💔 / 💌 in Grok Prom, the advice cues during the poll, 🕺 while banished,
+💬 only in 8-B's two minutes, and the prom branch's rows stay grey,
 🪦 after Combo B, 📜 after any ending's last beat, G1 once the reading is over, the
 awards and G11 once G1 has run, **G10 only when MS Paint was cleared
 tonight**: without her NEXT goes G9a → G10a). So **the sheet suggests
