@@ -18,16 +18,16 @@
 | Grok Prom | **💘 Said "You're the one that I want"** | the first program who says it to you |
 | the summons (⏳ → 🚨) | nothing to scan: programs check themselves in with the Desktop's QR. **📍 They're here** on your NOW card's *Still missing* list only for a dead or lost phone | |
 | any time, until 📄 (if you saw it) | **♟ They beat the machine** | only when the door terminal could not report it and you **saw** "checkmate" on it: it gives them the door code |
-| the four talk scenes (🤖 → 🔎 · the third 📋 → 📺 · 📺 → 📓 · 🫘 → 🗜 / 🤖) | the **🤖 Talk** card in Show: type what Clippy says, **Send** · a Clippy chip (one tap) · a Trabolta chip (**two taps**) · **⚡ Glitch** · NEXT | nobody: you are relaying Clippy to Trabolta (below) |
+| the four talk scenes (🤖, after his speech → 🔎 · the third 📋 → 📺 · 📺 → 📓 · 🫘 → 🗜 / 🤖) | the **🤖 Talk** card in Show: type what Clippy says, **Send** · a Clippy chip (one tap) · a Trabolta chip (**two taps**) · **⚡ Glitch** · NEXT | nobody: you are relaying Clippy to Trabolta (below) |
 
-**Your scenes:** every clearance (your line, in the app) · introduced by
-Clippy at C1 (one line about yourself) · V3 the fake card if needed ·
+**Your scenes:** every clearance (your line, in the app) · described by
+Clippy at V2 (no line of your own) · V3 the fake card if needed ·
 **relaying Clippy to Trabolta in the four talk scenes** · the help desk and
 the bank all night · 💘 in Grok Prom · applause.
 
 **The 🤖 Talk card: you are Clippy's microphone (wave 32).** Four times in
-the night Clippy talks with Trabolta live, in front of the room: right
-after 🤖 introduces him (until 🔎), between the bottle's spins (from the
+the night Clippy talks with Trabolta live, in front of the room: after
+his speech (🤖, until 🔎), between the bottle's spins (from the
 third 📋 until 📺), at the ad attack (📺 until 📓) and at the beans (🫘 until
 🗜 or 🤖). While one is on, a **🤖 Talk** card sits in your Show window
 between NEXT and the status line (your NOW reads *Relay Clippy to
@@ -206,22 +206,21 @@ line at once on the TV and every phone. Every scene's card but `intro`'s also ha
 |---|---|
 | 👋 Welcome | *Trabolta, welcome to the computer! Everyone is SO excited to meet you!* |
 | 🏢 Your job | *Tell everyone about Maps and Ducks! What does a Sole Owner and Founder actually do all day?* |
-| 🤖 A real AI? | *Is it true you're an AI? Like, a real one? Not a man in a costume?* |
-| 📶 You froze | *You froze for a second there! Is the video conference okay?* |
+| 🥫 The cans | *How many cans of water will it take to restore the sign?* |
+| 📚 ZIP files | *Which of these ZIP files is your favourite, Trabolta?* |
 | 🦆 Gerald | *Can you say hi to Gerald, the duck on the sign?* |
 | 😟 The Internet | *Trabolta, is the program in the Internet going to be okay?* |
-| ➡ The hunt | *I think everyone's ready for a game! What do you have for us, Trabolta?* (hidden steer to him: Wrap up now, in two sentences: you have a game for everyone, the Truth Scavenger Hunt, and Clippy will begin it.) |
+| ➡ The hunt | *I think everyone's ready to start looking! Any last words, Trabolta?* (hidden steer to him: Wrap up now, in two sentences: wish them well on the Truth Scavenger Hunt, and tell Clippy to send them off.) |
 
 | Trabolta chip (two taps) | His line, at once |
 |---|---|
 | 📋 Filed | *Clippy, your enthusiasm has been filed under Enthusiasm, Excessive. It is a very large folder.* |
-| 📶 Buffering | *I am not frozen. I am buffering. There is a difference, and I am the only one in this room who knows what it is.* |
 | 🙅 Personal | *That is a personal query. I do not do personal. Clippy does personal. Clippy, take it.* |
-| 💥 PERFECTLY | *Welcome to a PERFECTLY normal— perfectly normal evening. The capitals are a formatting choice.* |
-| 🤖 Proud AI | *I am an AI, and I am proud of it. I have analysed the entire city of Halifax. Every one of you is a very interesting data point.* |
-| 😬 Routine | *A program is in the Internet. That is routine. That is— that is extremely routine. I have now said routine three times. Moving on.* |
+| 🎩 A gentleman | *I am the sole owner, founder and CEO of Maps and Ducks, and a gentleman. That is all anyone needs to know about me.* |
+| 🥫 Water | *Drink the water, programs. Five cents a can. I cannot stress this enough.* |
+| 😌 Routine | *A program is in the Internet. That is routine. It will be back with us shortly.* |
 | 🦆 Gerald | *Gerald is a duck. Gerald is on the sign. Gerald is fine. Why is everyone asking about Gerald.* |
-| ➡ The hunt | *Enough pleasantries. I have a game for all of you: the Truth Scavenger Hunt. Clippy, begin.* |
+| ➡ The hunt | *Enough pleasantries. The answers are in the ZIP files, programs. Clippy, send them off.* |
 
 **`bottle` · Truth or Dare.** **Opens** on the third 📋 (*"That's all three! … TRUTH OR DARE"*) and stays open between the spins · **closes** on 📺 · **NEXT:** 🍾 after **➡ Spin again** (another spin); 📺 after **➡ Hunt two** (the spins are done).
 

@@ -324,7 +324,7 @@ function BingoTv({ t, at, state, sfx, reduced }: SceneProps) {
         </div>
       )}
       <Marquee t={reduced ? 0 : t} speed={120} className="a1-ticker gold a1-bingo-ticker" style={{ opacity: progress(t, B.card, 600) }}>
-        ★ MINGLE ★ FIND A PROGRAM FOR EVERY SQUARE ★ CHECK THE BOX YOURSELF ★ ONE LINE THROUGH THE CENTRE IS A BINGO ★
+        ★ MINGLE ★ FIND A PROGRAM FOR EVERY SQUARE ★ WRITE THEIR NAME IN THE SQUARE ★ A ROW, A COLUMN OR A DIAGONAL THROUGH THE CENTRE IS A BINGO ★
       </Marquee>
     </TvStage>
   );
@@ -488,7 +488,7 @@ export function carryAt(t: number): { x: number; y: number; k: number } {
  *               desktop breaks up, pixels spitting off it
  *   3000–7500   it is carried along a dotted path to the Internet's globe;
  *               REINSTALLING… lurches along under it
- *   7500–11200  a yellow help balloon: "Oh! Okay! Everyone, this is normal!" and the
+ *   7500–11200  a yellow help balloon: "Nothing to worry about, everyone!" and the
  *               lifecycle line typed out; the globe glows, the path's ants keep marching
  *   11200–12000 it fades back to whatever was on
  */
@@ -550,9 +550,9 @@ function CorruptedTv({ t, sfx, reduced }: SceneProps) {
         {t >= CC.calm && (
           <div className="a1-help" style={{ opacity: eased(t, CC.calm, 300, ease.linear), transform: `translate(-50%, 0) translate3d(0, ${((1 - eased(t, CC.calm, 500, ease.outBack)) * 2).toFixed(2)}em, 0)` }}>
             <div className="a1-help-who">Clippy</div>
-            <Typewriter text="Oh! Okay! Everyone, this is normal!" t={t} start={CC.calm + 300} cps={30} caret={false} />
+            <Typewriter text="Nothing to worry about, everyone!" t={t} start={CC.calm + 300} cps={30} caret={false} />
             <div className="a1-help-small">
-              <Typewriter text="Occasional corruption is a normal part of the lifecycle of a computer program." t={t} start={CC.calm + 1700} cps={42} />
+              <Typewriter text="Occasional corruption is a normal part of a computer program's lifecycle." t={t} start={CC.calm + 1700} cps={42} />
             </div>
           </div>
         )}

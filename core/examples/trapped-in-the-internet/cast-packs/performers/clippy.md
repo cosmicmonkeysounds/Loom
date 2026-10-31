@@ -414,17 +414,17 @@ as it goes: the phones caption it as yours, the TV never says it. The steer
 in brackets goes only to Trabolta, never on a screen. Task Manager also has
 a row of Trabolta's own canned lines (their pack lists them).
 
-**`intro` · Trabolta comes online.** **Opens** on 🤖 (the introduction ends on his *"Not yet, Clippy."*) · **closes** on 🔎 · **NEXT:** 🔎, after **➡ The hunt**.
+**`intro` · Trabolta comes online.** **Opens** on 🤖, for after his speech (it ends *"…it's electrifying."*) · **closes** on 🔎 · **NEXT:** 🔎, after **➡ The hunt**.
 
 | Chip | You say (sent as your line) |
 |---|---|
 | 👋 Welcome | *Trabolta, welcome to the computer! Everyone is SO excited to meet you!* |
 | 🏢 Your job | *Tell everyone about Maps and Ducks! What does a Sole Owner and Founder actually do all day?* |
-| 🤖 A real AI? | *Is it true you're an AI? Like, a real one? Not a man in a costume?* |
-| 📶 You froze | *You froze for a second there! Is the video conference okay?* |
+| 🥫 The cans | *How many cans of water will it take to restore the sign?* |
+| 📚 ZIP files | *Which of these ZIP files is your favourite, Trabolta?* |
 | 🦆 Gerald | *Can you say hi to Gerald, the duck on the sign?* |
 | 😟 The Internet | *Trabolta, is the program in the Internet going to be okay?* |
-| ➡ The hunt | *I think everyone's ready for a game! What do you have for us, Trabolta?* (hidden steer to him: Wrap up now, in two sentences: you have a game for everyone, the Truth Scavenger Hunt, and Clippy will begin it.) |
+| ➡ The hunt | *I think everyone's ready to start looking! Any last words, Trabolta?* (hidden steer to him: Wrap up now, in two sentences: wish them well on the Truth Scavenger Hunt, and tell Clippy to send them off.) |
 
 **`bottle` · Truth or Dare.** **Opens** on the third 📋 (*"That's all three! … TRUTH OR DARE"*) and stays open between the spins · **closes** on 📺 · **NEXT:** 🍾 after **➡ Spin again** (another spin); 📺 after **➡ Hunt two** (the spins are done).
 

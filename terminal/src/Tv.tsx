@@ -31,7 +31,7 @@ import type { ScreenState } from "./screen.ts";
 import { SpeechQueue, alternateCount, audioUnlocked, gapsFor, unlock, voiceEngines, voiceFloor, voiceNote, type EngineKind } from "./speech/engine.ts";
 import { isCleanBeat, voiceShaper } from "./speech/glitch.ts";
 import { revealOffsets, splitSentences } from "./speech/split.ts";
-import { LinePlayer, TvSpeechFeed, cursorAfterGap, planVoice, postVoiceMute, showsNameplate, type TvLine } from "./tv.ts";
+import { LinePlayer, TvSpeechFeed, cursorAfterGap, mirrorBeforeHim, planVoice, postVoiceMute, showsNameplate, type TvLine } from "./tv.ts";
 import { useSpatialStream, useWorld, type Gone, type WorldStore } from "./world/stream.ts";
 import { linkedNow, usePresenceLatch } from "./world/presence.ts";
 import { hash32 } from "./idle-show/rng.ts";
@@ -301,7 +301,9 @@ export function Tv({
   // house-wide rule (anyone in the simulation) only when a placed TV gets no
   // `here`. A TV with no spot never shows it (`linkedNow`, as the walls).
   const linked = usePresenceLatch(linkedNow({ view: "tv", spot: config.spot, here: state?.spot, anyone: inSimulation }));
-  const showWorld = canDraw && linked && !attract;
+  // Wave 58: the host's 📺, before he is online: the world alone, no face.
+  const mirrorFirst = canDraw && mirrorBeforeHim(state, attract, linked);
+  const showWorld = canDraw && linked && (!attract || mirrorFirst);
   // Wave 50: Clippy's dream fills his place on the TV; his face comes through
   // it for a line, data moshed. `tv-attract` has its own, in the idle show.
   const dream = useDreamPhase(state) === "through" && !attract;
@@ -316,7 +318,7 @@ export function Tv({
     [caption],
   );
   return (
-    <div className={`terminal tv${showWorld ? " with-world" : ""}`} data-muted={String(muted)} data-speaking={String(speaking)}>
+    <div className={`terminal tv${showWorld ? " with-world" : ""}${mirrorFirst ? " mirror-first" : ""}`} data-muted={String(muted)} data-speaking={String(speaking)}>
       <section className="tv-face">
         <Face mood={mood} speaking={speaking} handle={face} paused={attract || (dream && !yields)} />
         {showsNameplate(state) && <div className="nameplate">{config.character.toUpperCase()}</div>}
@@ -329,7 +331,7 @@ export function Tv({
           {captionText(caption, spoken, captionPieces)}
         </div>
       )}
-      {attract && <div className="tv-attract">{attractScreen}</div>}
+      {attract && !mirrorFirst && <div className="tv-attract">{attractScreen}</div>}
       <div className="tv-status">
         <button type="button" className={`tv-mute${muted ? " on" : ""}`} onClick={toggleMute} title="Mute the TV voice (M)">
           {muted ? "🔇 VOICE MUTED" : "🔊 VOICE"}

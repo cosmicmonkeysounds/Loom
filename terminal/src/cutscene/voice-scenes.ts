@@ -33,8 +33,9 @@ import type { VoiceScene } from "./voice-clock.ts";
 
 /** The scenes that wait for his voice, by `SceneDef.id`. */
 export const VOICE_SCENES: Readonly<Record<string, VoiceScene>> = {
-  // HELLO, PROGRAMS. then a sentence at a time; (wave 32) he talks on through
-  // the setup and the hand-back, every sentence of his in the beat a mark.
+  // "Thank you, Clippy…" then a sentence at a time, every sentence of his in the
+  // beat a mark, through the setup and the hand-back; the rest of his speech
+  // (`Trabolta Greeting`) runs under the plain face, on no scene's clock.
   trabolta_introduction: {
     beats: ["Trabolta Introduction"],
     marks: INTRO_CAPTIONS.map((c) => c.start),

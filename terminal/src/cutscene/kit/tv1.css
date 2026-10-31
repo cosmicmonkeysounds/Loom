@@ -275,8 +275,8 @@
   will-change: transform, opacity;
 }
 
-/* --- the introduction, wave 32: he talks on through the setup and the hand-back ----------- */
-/* His sentence after the greeting, along the bottom (dark behind it: it stays legible over the mirror). */
+/* --- the introduction, wave 32: he talks on through the setup --------------------------------- */
+/* His sentence after the greeting, along the bottom (dark behind it). */
 .a1-in-say {
   position: absolute;
   left: 6%;
@@ -292,20 +292,3 @@
   border-top: 2px solid #1d6b36;
   text-shadow: 0 0 0.3em rgba(61, 255, 122, 0.5);
 }
-/* The corner window he keeps talking from over the mirror. */
-.a1-in-face[data-pip] { background: #000; border: 0.5em solid #1d6b36; box-shadow: 0 0 2em rgba(0, 0, 0, 0.8); border-radius: 1em; }
-.a1-in-live {
-  position: absolute;
-  left: 41em;
-  width: 20em;
-  top: 31.5%;
-  text-align: center;
-  font-family: var(--mono);
-  font-size: 1em;
-  letter-spacing: 0.12em;
-  color: #fff;
-}
-.a1-in-live > span { display: inline-block; padding: 0.2em 0.7em; background: #c00000; border: 2px solid #000; }
-.a1-in-online[data-loud] { color: #ff5a5a; }
-.a1-in-online[data-loud] .a1-in-dot { background: #ff3030; box-shadow: 0 0 0.5em #ff3030; }
-.a1-in-logged.kit-win { font-size: 0.9em; }

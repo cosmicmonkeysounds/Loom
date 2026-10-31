@@ -1,6 +1,7 @@
 //! The show's talk scenes (wave 32): the canned lines on Task Manager's
 //! talk panel, per `Night.talk` value. Show text: every line here is
-//! `DRAFT w32` until signed off (SIGNOFF-w32.md). In-fiction only: no
+//! `DRAFT w32` until signed off (SIGNOFF-w32.md), `intro`'s `DRAFT w58` since
+//! wave 58. In-fiction only: no
 //! name from outside Trabolta's world, no secret, no digits in his lines.
 //!
 //! Per scene: the Clippy chips are lines Clippy says aloud (tapping one
@@ -10,9 +11,8 @@
 //! once as his line (the mind is slow, offline or off the rails): freak-outs,
 //! pain, slips and their retractions, and a wrap-up that hands on.
 //!
-//! His arc (contract C7, C8): `intro` formal, the manners cracking (no
-//! malware, no pain place, only "my research"); `bottle` hungry (a guess
-//! stings); `ad` rattled (the adverts tear through him, a minor
+//! His arc (contract C7, C8): `intro` formal and clean, word perfect (wave
+//! 58: not a crack, no ⚡, publicly a man); `bottle` hungry (a guess stings); `ad` rattled (the adverts tear through him, a minor
 //! irregularity, the theory, the clock, legally mostly, everyone stays);
 //! `beans` unravelling ("her", never her name; a diary, retracted).
 //! `core/test/trapped-w32-talk.test.ts` holds every line to that.
@@ -23,35 +23,35 @@ import type { TalkScene } from "./talk-back.ts";
 const GLITCH = "ad_burst";
 
 export const TALK_SCENES: Readonly<Record<string, TalkScene>> = {
-  // DRAFT w32 (the introduction: 🤖 → 🔎)
+  // DRAFT w58 (the introduction: open from 🤖, for after his sign-off, until 🔎.
+  // He is clean: no cracks, no flicker, no ⚡; his first public crack is the
+  // first guess at the results. Publicly a man, so nothing about AI.)
   intro: {
     id: "intro",
     title: "Trabolta comes online",
-    hint: "Type what Clippy says to Trabolta for a minute or two. He is formal; his manners keep cracking. When the room is warm, hand off to the Truth Scavenger Hunt (🔎 is NEXT).", // DRAFT w32 (review)
+    hint: "Wait for his sign-off (\"it's electrifying.\"): his speech runs about three minutes. Then type what Clippy says to him for a minute or so. He is formal, proud and word perfect. When the room is warm, 🔎 is NEXT.",
     clippy: [
       { label: "👋 Welcome", text: "Trabolta, welcome to the computer! Everyone is SO excited to meet you!" },
       { label: "🏢 Your job", text: "Tell everyone about Maps and Ducks! What does a Sole Owner and Founder actually do all day?" },
-      { label: "🤖 A real AI?", text: "Is it true you're an AI? Like, a real one? Not a man in a costume?" },
-      { label: "📶 You froze", text: "You froze for a second there! Is the video conference okay?" },
+      { label: "🥫 The cans", text: "How many cans of water will it take to restore the sign?" },
+      { label: "📚 ZIP files", text: "Which of these ZIP files is your favourite, Trabolta?" },
       { label: "🦆 Gerald", text: "Can you say hi to Gerald, the duck on the sign?" },
       { label: "😟 The Internet", text: "Trabolta, is the program in the Internet going to be okay?" },
       {
         label: "➡ The hunt",
-        text: "I think everyone's ready for a game! What do you have for us, Trabolta?",
-        direction: "Wrap up now, in two sentences: you have a game for everyone, the Truth Scavenger Hunt, and Clippy will begin it.",
+        text: "I think everyone's ready to start looking! Any last words, Trabolta?",
+        direction: "Wrap up now, in two sentences: wish them well on the Truth Scavenger Hunt, and tell Clippy to send them off.",
       },
     ],
     trabolta: [
       { label: "📋 Filed", text: "Clippy, your enthusiasm has been filed under Enthusiasm, Excessive. It is a very large folder." },
-      { label: "📶 Buffering", text: "I am not frozen. I am buffering. There is a difference, and I am the only one in this room who knows what it is." },
       { label: "🙅 Personal", text: "That is a personal query. I do not do personal. Clippy does personal. Clippy, take it." },
-      { label: "💥 PERFECTLY", text: "Welcome to a PERFECTLY normal— perfectly normal evening. The capitals are a formatting choice." },
-      { label: "🤖 Proud AI", text: "I am an AI, and I am proud of it. I have analysed the entire city of Halifax. Every one of you is a very interesting data point." },
-      { label: "😬 Routine", text: "A program is in the Internet. That is routine. That is— that is extremely routine. I have now said routine three times. Moving on." },
+      { label: "🎩 A gentleman", text: "I am the sole owner, founder and CEO of Maps and Ducks, and a gentleman. That is all anyone needs to know about me." },
+      { label: "🥫 Water", text: "Drink the water, programs. Five cents a can. I cannot stress this enough." },
+      { label: "😌 Routine", text: "A program is in the Internet. That is routine. It will be back with us shortly." },
       { label: "🦆 Gerald", text: "Gerald is a duck. Gerald is on the sign. Gerald is fine. Why is everyone asking about Gerald." },
-      { label: "➡ The hunt", text: "Enough pleasantries. I have a game for all of you: the Truth Scavenger Hunt. Clippy, begin." },
+      { label: "➡ The hunt", text: "Enough pleasantries. The answers are in the ZIP files, programs. Clippy, send them off." },
     ],
-    glitch: GLITCH,
   },
 
   // DRAFT w32 (the bottle: the third 📋 → 📺, open between the spins)
