@@ -129,20 +129,25 @@ game, and about one every 2 seconds means nobody is. Both are working. **📷
 - *the camera was refused*: a touch on the tablet asks again. If Chrome doesn't
   ask, allow the camera for the site in Chrome's settings and reload.
 - *the camera opened but no picture has arrived*, or *the pictures are blank*:
-  the terminal tries two other ways of reading the camera by itself, so give it
-  ten seconds. If the number stays at 0, reload, then restart Chrome.
+  the terminal tries other ways of reading the camera by itself, so give it ten
+  seconds. If the number stays at 0, reload, then restart Chrome. A number with
+  *the pictures are blank* beside it is the terminal sending what it gets: check
+  the lens and the room's lights first. A room going dark after it has shown a
+  picture isn't a fault: the games just see a dark room.
 - *the house map has no such spot*: tap this tablet's spot again.
 
 An old tablet may send smaller pictures, or fewer: it drops them to what it can
-keep up with, and a slow window into the game beats a frozen tablet. It draws
+keep up with, tries the full size again every so often, and a slow window into
+the game beats a frozen tablet. It draws
 the game as a simple old-school 3D view, at 5 to 20 frames a second.
 
 ## No ad sounds or bleeps
 
 The TV, the tent and the server room make no ad sounds, pop-up dings, cutscene
 stings or button bleeps. ⚙ → advanced → **🔇 No ad sounds or bleeps** sets it for
-any one terminal, and that choice stays. On a link it's `&bleeps=0` (none) or
-`&bleeps=1` (they play). His voice, the house announcements with their chime,
+any one terminal, and that choice stays, even when the kiosk opens its link again.
+On a link it's `&bleeps=0` (none) or `&bleeps=1` (they play), and a link that says
+so wins. His voice, the house announcements with their chime,
 the players' voices and the reinstallation game's own sounds are never touched.
 
 ## A headset

@@ -54,7 +54,8 @@ The app's half is `terminal/src/kiosk.ts` and `fullscreen.ts`:
   setup.
 - **No ad sounds or bleeps on the TV, the tent and the server room** (wave 59).
   ⚙ → advanced → *🔇 No ad sounds or bleeps*, or `&bleeps=0` / `&bleeps=1`, sets
-  it for one tablet, and the choice stays.
+  it for one tablet. The choice stays, through a restart that opens the
+  terminal's link again, unless that link has its own `bleeps=`.
 - **Is the picture getting through?** ⚙ and Run → Terminals read out the camera
   frames sent, the simulation frames received and the last error
   (`docs/help/authoring/48-terminal-setup.md`).
