@@ -36,6 +36,7 @@
       "@loom/core/house-mixer": ["../core/src/house-mixer.ts"],
       "@loom/core/voice-fx": ["../core/src/voice-fx.ts"],
       "@loom/core/link-health": ["../core/src/link-health.ts"],
+      "@loom/core/photos": ["../core/src/photos.ts"],
       "@loom/core/credits": ["../core/src/credits.ts"],
       "@loom/core": ["../core/src/index.ts"],
       "@loom/house/three": ["../house/src/three/index.ts"],

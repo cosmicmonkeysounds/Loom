@@ -25,6 +25,7 @@ import { lettersViewOf, type LettersView } from '@/components/run/letters'
 import { videoConsentViewOf, type VideoConsentView } from '@/components/run/video-consent'
 import { creditsViewOf } from '@/components/run/credits-card'
 import type { CreditsView } from '@loom/core/credits'
+import { photosViewOf, type PhotosView } from '@loom/core/photos'
 
 const BASE = import.meta.env.VITE_LOOM_API ?? ''
 
@@ -829,6 +830,36 @@ export const videoApi = {
     const res = await fetch(`${BASE}/e/${eventId}/api/mod/video?format=csv`, { credentials: 'include' })
     if (!res.ok) throw new ApiError(res.status, (await res.json().catch(() => ({}))) as Record<string, unknown>)
     return await res.text()
+  },
+}
+
+// --- the terminals' photos (wave 59p, `docs/loom-w59-photos-contract.md`) ----
+
+function photosOf(raw: unknown): PhotosView {
+  const v = photosViewOf(raw)
+  if (v === null) throw new ApiError(502, { error: 'the server’s photos answer is not one' })
+  return v
+}
+
+/** The photos' panel. Pictures of people: a director's session, or a host's token, on every call. */
+export const photosApi = {
+  async view(eventId: string): Promise<PhotosView> {
+    return photosOf(await req<unknown>('GET', `/e/${encodeURIComponent(eventId)}/api/mod/photos`))
+  },
+  async arm(eventId: string, armed: boolean): Promise<PhotosView> {
+    return photosOf(await req<unknown>('POST', `/e/${encodeURIComponent(eventId)}/api/mod/photos/arm`, { armed }))
+  },
+  async deleteAll(eventId: string): Promise<PhotosView> {
+    const out = await req<{ view: unknown }>('POST', `/e/${encodeURIComponent(eventId)}/api/mod/photos/delete`, { confirm: 'delete' })
+    return photosOf(out.view)
+  },
+  /** One spot's latest still, by the session cookie; `step` keeps the browser from caching it for good. */
+  thumbUrl(eventId: string, spot: string, step: number): string {
+    return `${BASE}/e/${encodeURIComponent(eventId)}/api/mod/photos/thumb?spot=${encodeURIComponent(spot)}&step=${step}`
+  },
+  /** The tar, a plain link: the browser saves it as it comes. */
+  downloadUrl(eventId: string): string {
+    return `${BASE}/e/${encodeURIComponent(eventId)}/api/mod/photos/download`
   },
 }
 
