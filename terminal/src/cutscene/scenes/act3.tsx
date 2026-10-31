@@ -58,7 +58,7 @@ import {
 } from "../kit/index.ts";
 import { AwardEmblem, BinaryRain, ChatWindow, Curtains, DiscoBall, EqBars, FloatLayer, Heart, Lasers, Motorcycle, Notepad, RainCanvas, SpotCones, Sunburst, Trophy } from "../kit/tv3-parts.tsx";
 import { ASSESSMENT_MS, AWARDS, AWARD_CONFETTI, HAND_JIVE, TRUTH_TXT, awardConfettiAt, awardOf, awardValue, bathTime, bobStateOf, brokenYear, chatAt, handJivePhase, karaokeAt, notepadAt, sinceMoment, spinAngle, tallyOf, vortexAt, wrapLines, type BobState, type ChatLine } from "../kit/tv3-time.ts";
-import { LanguageScene } from "./language.tsx";
+import { LanguageScene, whoSize } from "./language.tsx";
 
 // --- small shared helpers ---------------------------------------------------------------------
 
@@ -1317,7 +1317,7 @@ function AwardScene({ t, value, night, sfx, reduced, target }: SceneProps) {
       <div className="tv3-award-lists" style={{ opacity: fade(t, 2200, 400) }}>
         {staff ? "The staff file lists…" : "The report lists…"}
       </div>
-      <div className="tv3-award-name" style={named ? { ...slam(t, 3200, reduced, 380), textShadow: `0 0 ${(0.25 * glow).toFixed(2)}em rgba(255, 210, 63, ${(0.9 * glow).toFixed(2)})` } : { opacity: 0 }}>
+      <div className={`tv3-award-name${whoSize(winner ?? "")}`} style={named ? { ...slam(t, 3200, reduced, 380), textShadow: `0 0 ${(0.25 * glow).toFixed(2)}em rgba(255, 210, 63, ${(0.9 * glow).toFixed(2)})` } : { opacity: 0 }}>
         {winner ?? "Please come forward"}
       </div>
       {num !== null && t >= 4000 && (

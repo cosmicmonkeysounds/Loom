@@ -45,9 +45,9 @@ const CEREMONY = readFileSync(join(SHOW, "beats/ceremony.loom"), "utf8");
 // --- the pure timelines -----------------------------------------------------------------
 
 describe("tv3 timelines — the awards", () => {
-  it("knows all nine of the programs' awards, the Bathroom Report (wave 45) and the Language Report (wave 48), each with a slide in the story", () => {
+  it("knows all ten of the programs' awards, the Bathroom Report (wave 45) and the Language Report (wave 48), each with a slide in the story", () => {
     const programs = AWARDS.filter((a) => a.kind !== "Staff award");
-    expect(programs.map((a) => a.id)).toEqual(["most_trusted", "least_trusted", "frequent_flyer", "lore_hoarder", "truthcoin_tycoon", "best_liar", "duck_speedrun", "quest_completionist", "the_painting", "bathroom", "language"]);
+    expect(programs.map((a) => a.id)).toEqual(["most_trusted", "least_trusted", "frequent_flyer", "lore_hoarder", "truthcoin_tycoon", "best_liar", "duck_speedrun", "quest_completionist", "most_correct", "the_painting", "bathroom", "language"]);
     for (const a of programs) {
       const cue = `cue screens_award_${a.id}`;
       expect(CEREMONY, a.id).toContain(cue);
@@ -79,6 +79,11 @@ describe("tv3 timelines — the awards", () => {
 
   it("names the Language Report (wave 48; its breach is `lang-breach.test.ts`)", () => {
     expect(awardOf("award_language")).toMatchObject({ title: "The Language Report", kind: "Bonus award", emblem: "key" });
+  });
+
+  it("names the special prize (wave 58, G9a): an award of its own, never the secrets prize", () => {
+    expect(awardOf("award_most_correct")).toMatchObject({ title: "Most Questions Correct", kind: "Award", emblem: "trophy", label: "Questions correct" });
+    expect(awardOf("award_lore_hoarder")).toMatchObject({ title: "Lore Hoarder", label: "Codex entries held" });
   });
 
   it("reads an award off its slide value, and makes one up for a value it doesn't know", () => {

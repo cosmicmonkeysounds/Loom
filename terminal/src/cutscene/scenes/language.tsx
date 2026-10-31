@@ -165,7 +165,7 @@ export function ringOf(lines: readonly BreachLine[]): BreachLine[] {
 }
 
 /** A name's size on its card: a long tie steps down. */
-function whoSize(who: string): string {
+export function whoSize(who: string): string {
   return who.length > 56 ? " longer" : who.length > 26 ? " long" : "";
 }
 
