@@ -30,13 +30,67 @@ is on the director's card.
 
 ## 1. Before the night: the pending deploy
 
-The VPS runs **`w27`** (2026-10-27: master through wave 27, the heart's
-first meeting; rollback `w26`), and the preview event is synced on it. What
-is left of the deploy is on the house machines and the screens: steps 4–5
-and 7–10 of the root `CLAUDE.md`'s *Shipping master* (the Desktop's
-stagehand, the router, the M4, reloading every terminal and the TV, the
-Quest APK). Verify what runs with
-`ssh loom-vps 'tail ~/loom-ops/releases.log'`. Land it in this order:
+The VPS runs **`w56`** (2026-10-30; rollback `w53b`), and the preview event is
+synced on it. **Wave 58, the Oct 30 story, is not shipped:** land it first, in
+the order below. Verify what runs with
+`ssh loom-vps 'tail ~/loom-ops/releases.log'`.
+
+### Landing wave 58 (the morning of 10-31)
+
+Go / no-go is 09:00. If something has to give, the cut order is on
+[`SIGNOFF-w58.md`](./SIGNOFF-w58.md). This needs a release, a sync, a worker
+restart and every screen reloaded, in this order: a piece on its own shows old
+captions under the new speech, or a story the worker doesn't know.
+
+1. **The answers.** H1–H3's answers go into `facts.json` (`answer`, `accept`,
+   `where`, `codex.text`, and delete `placeholder`), then `titi:facts`, and
+   commit. Later than the sync works too, but then run `titi:facts` and sync
+   again, before the doors: the owed flags live in the generated story, so
+   `facts.json` alone judges H1–H3 while G9a still skips them.
+2. **Note the fallback:** the master this replaces. A re-sync of the old story
+   stays possible until the staff upload at 17:00; after that a rollback costs
+   every staff upload, and after the doors it is impossible.
+3. **Merge, then `scripts/ops/predeploy.sh --vr`.** It needs a clean tree, and
+   it names any key still owed. Push: `ship.sh` needs the commit on origin. Any
+   ship also carries wave 57, which master already holds.
+4. **Check the preview's roster, in its own step** (`pnpm showctl roster`).
+   If anyone is on, ask first.
+5. **Ship:** `LOOM_VPS=loom-vps scripts/ops/ship.sh show-1031`. Stop if it
+   fails. Then `/api/health` and `deploy/release.sh --check-env`.
+6. **The sync, only after the ship succeeds:** §2's morning reset at 10:00.
+   Pause first; a plain sync, no `--replace-*`; Go live in place.
+7. **MacBook, Trabolta:** `git pull`, then `cd stagehand && uv run stagehand
+   launchd restart --job agents`, then Run → Mind → **Reset**. `sync-show` does
+   not reach his persona, his mind or the door code's never-list: they load at
+   boot from this checkout. Pull and restart together, never from a half-merged
+   tree: an older worker refuses a persona with `cover:`.
+8. **Reload the TV, every terminal, the tablets, the tent and every booth**, and
+   check the build stamps on Run → Terminals, before the booths sign in at
+   17:00: a reload after that costs every staff upload.
+9. **Print only now** (§3, 12:00), and only with no *placeholder* WARN: the
+   sheet prints what the event holds, so a print before the sync prints the
+   old codes. Raise the per-tier counts for a full run (the default is 4).
+10. **Reprint the packs:** `clippy` (with its script appendix), `task-manager`
+    (with the monologue, and put that copy in his pocket), `norton`, `mcafee`,
+    `password-manager` (wave 57 too), `cra-agent`, `adobe-acrobat`,
+    `recycling-bin`, `installation-wizard`, `crew/director`,
+    `crew/second-director`, `crew/tech-operator`, `crew/house-manager`,
+    `crew/trabolta-mind`, `all-crew`, `patch-bay-watch`, and Clippy's CI cards.
+11. **The keypad, by hand, before the 15:00 test** (step 16 below).
+12. **The warm standby:** if one was built on 10-30 it runs an older image, with
+    no booth scanning and old terminal bundles. Run `ship.sh` against it, or
+    know it needs that before it can take over.
+13. **Rehearse before the doors, scratch server first, then the preview:** the
+    checks on `SIGNOFF-w58.md` §5. The Desktop needs nothing new from this wave
+    (its owed `w56` pull stands, once, after the merge), and neither does the
+    Quest.
+
+### The steps of the older deploys
+
+What is left of those is on the house machines and the screens: steps 4–5 and
+7–10 of the root `CLAUDE.md`'s *Shipping master* (the Desktop's stagehand, the
+router, the M4, reloading every terminal and the TV, the Quest APK). In this
+order:
 
 1. **The sign-off is done** (2026-10-27): every line of waves 13–29 ships
    as written (`SIGNOFF-w13.md` … `SIGNOFF-w28.md`, `history/SIGNOFF-w18b.md`,
@@ -197,7 +251,7 @@ Quest APK). Verify what runs with
     within a second, with no fault and no *override*; then 🔄
     `reset_server_room` (and 🚪 *Trust the door sensor again* if anyone
     pressed a 🚪).
-18. **Reprints (the sign-off is done, 2026-10-27):** Clippy, the director and
+18. **Reprints** (wave 58's list is above) **(the sign-off is done, 2026-10-27):** Clippy, the director and
     second-director packs, the four Antivirus, the hosts, all-crew, the
     patch-bay watch card, the emergency card, Excel's and OpenOffice's
     sheets, every featured card, the Bingo card, and the four Patch Sheets
@@ -235,6 +289,8 @@ cannot take it back.
 7. The map page's status line reads "the project's map". If it reads "this
    event's map", a rehearsal's director save is still in force: Save to
    project to keep it, or switch variants and back to drop it.
+8. **Wave 58:** now the worker restart and the reloads (§1, *Landing wave 58*,
+   steps 7–8), then the print.
 
 From now on: **never Restart, Push draft, Go live or End after the doors.**
 Each one wipes every guest.
@@ -254,7 +310,7 @@ Each one wipes every guest.
 | 19:45 | Everyone | Places. Lights to screensaver. Run → Director: 🔄 on the sheet, the TV voice not muted |
 | 19:00 or 20:00 | Director | **Doors** (§5) |
 | by 21:00 | Director | **C1** 📣, the first cue |
-| ≈ 02:10 ADT | | Ending and ceremony done (a projection: the plan's budget adds up to 5 h 10 min from C1) |
+| ≈ 02:10 ADT | | Ending and ceremony done (a projection: the plan's budget adds up to 5 h 10 min from C1, before wave 58's 12 to 14 minutes of the full truth; the clocks fall back at 02:00) |
 
 ### By machine
 
@@ -362,8 +418,8 @@ $env:LOOM_MOD_CODE = '<mod>'                # Windows
 2. The morning reset is done: paused first, then a plain sync (no replace flags), Push draft, the door QR scanned on cellular, Go live in place, before any registration; Run → World shows `Kernel.door_code` not yet set; the codes are the printed ones.
 3. The map page's *Map:* bar shows Tent or Shed (the 10:00 call) as `● live`, and its status line reads "the project's map".
 4. Every machine's preflight is green: `pnpm showctl preflight macbook`, `desktop` (via `preflight.ps1`), `serverroom` and `tent`; `pnpm showctl doctor` shows no red.
-5. Trabolta: the worker connected (a *mind · story* chip), the mind Reset, `ollama ps` shows `gpt-oss:20b` alone, the MacBook on its charger; `uv run stagehand check --config laptop.yaml --only agents` shows `ctx 20480` and no warning; he is hidden and asleep.
-6. Terminals: every tablet green on `pnpm showctl terminals`, on the idle show, and every wall terminal's ⚙ names Trabolta; the TV on the screensaver, clicked once after its last boot; the Server Door terminal on THE KING.
+5. Trabolta: the worker restarted on the final merge and connected (a *mind · story* chip), the mind Reset, `ollama ps` shows `gpt-oss:20b` alone, the MacBook on its charger; `uv run stagehand check --config laptop.yaml --only agents` shows `ctx 20480` and no warning; he is hidden and asleep.
+6. Terminals: every terminal, the TV, the tablets and the tent reloaded after the release (build stamps on Run → Terminals), every tablet green on `pnpm showctl terminals`, on the idle show, and every wall terminal's ⚙ names Trabolta; the TV on the screensaver, clicked once after its last boot; the Server Door terminal on THE KING.
 7. Audio: the `audio` job running on the Desktop (on the MacBook only in the fallback) with the MOTU at 32 / 30 and no placeholder left, Run → House → Setup's 🔊 Sound row green, a 🔈 Test per speaker at show level (the sub with music), one announcement heard through the router (this needs the Desktop's `show` job and broker too). The soundtrack: the SFX library rendered on the Desktop (`start-stagehand.ps1`, or `stagehand sounds library --story`), TIDAL up (`scripts\house-desktop\tidal.ps1 -Check`), `media/music/ceremony/` filled and each act's folder filled as the fallback if TIDAL or the internet fails, and `stagehand music status` shows the scene (`off` or none before the doors) with no `no files :` line. The sidechain walk: a TV line ducks the music on every speaker, Clippy's mic ducks the living room's, and the TV's own speakers stay silent for Chrome (Trabolta is heard once).
 8. Lights: the server-room bulb answers 💡 Identify and sits on `heart_idle`; `stagehand check --only lights` is green, `health/lights` online and Run → House → Setup's 💡 Lights row green; the bulb never drops under 80 / 254. Every placed Hue and ZL1 bulb and the WLED strip answer 💡 Identify; one `lights_blackout` test (the halls and both bathrooms stay at their dim floor, the server room on its heart look).
 9. The server-room door: the keypad was re-set by hand to the new `facts.json` `door.code` (wave 58 changed it) and tested at 15:00, and it opens from inside with no code; the keypad sign hangs beside it; the sensor reads 🚪 shut / open on Run → Terminals within a second, with no fault and no override; then 🔄.
@@ -371,10 +427,10 @@ $env:LOOM_MOD_CODE = '<mod>'                # Windows
 11. The server-room terminal (Steph's laptop) is green and asleep on its screensaver, the M4 on USB, the GameCube controller walks the choices, and the webcam reads a pass in the room's light; Run → Director shows 🔄 reset.
 12. The King: Run → House map's King row reads 15 / 15; the Server Door tablet is charging.
 13. The tent: the old laptop on spot `tent` with WebGL2, the Quest charged (if go), the Installation Wizard video loaded on the second device, the heater on its GFCI leg, the EXIT sign on.
-14. Push: the staff test alert arrived on every performer phone. Every part has done its upload on its own phone (Run's watch *Staff uploaded* gone or at 8), before the doors: the booth is the upload until then, so an Antivirus who signs in at the door is not at the door. Stuck: ⏭ Wave the staff through their upload (Anytime).
+14. Push: every booth reloaded after the release; the staff test alert arrived on every performer phone. Every part has done its upload on its own phone (Run's watch *Staff uploaded* gone or at 8), before the doors: the booth is the upload until then, so an Antivirus who signs in at the door is not at the door. Stuck: ⏭ Wave the staff through their upload (Anytime).
 15. Facts and wallet: `titi:facts --check` passed at predeploy with no *placeholder* WARN (every hunt key is in); Run → Mind's Judging card reads auto; a test phone shows the Wallet room and a 🪙 balance; `# quarantine` is empty; Run → Wallet names CRA Agent Software as the approver and Runescape as the minter.
 16. Knobs: on the VPS, `deploy/release.sh --check-env` ends "the night's knobs are set ✔"; `LOOM_SNAPSHOT_MS` and `LOOM_HOMESCREEN` are blank unless the K-32 run failed (then `LOOM_SNAPSHOT_MS=500`) or the iPhone Home Screen call was yes (then `LOOM_HOMESCREEN=on`).
-17. Print: codex posters up and clue props hidden (photos match), the four silver digit notes hidden, the invitations sent with their claim QRs, check-in signs up, Bingo cards and pens, the fact stacks per `generated/print-stacks.md`, trophies, cheat-sheets; on a shed night the SITE-SCHEDULE clipboard and the BUGDOM-VR sketch hang in The Optical Drive.
+17. Print, all of it after the sync: codex posters up and clue props hidden (photos match), the four silver digit notes hidden, the invitations sent with their claim QRs, check-in signs up, Bingo cards and pens, the cans of water out, Task Manager's printed monologue on him, the fact stacks per `generated/print-stacks.md`, trophies, cheat-sheets; on a shed night the SITE-SCHEDULE clipboard and the BUGDOM-VR sketch hang in The Optical Drive.
 18. Safety: first aid and an ABC extinguisher placed, egress clear, glow tape, GFCIs tested, no strobe over 3 Hz, the server door opens from inside with no code, the patch-bay gear taped off, the emergency card posted at the door, the override key and spare batteries with the house manager.
 19. Phones: loaners (2–3) charged, the guest charging station live, power banks for every performer, radios charged with earpieces.
 20. Backups: `scripts/ops/showbackup.sh install` armed on the MacBook for 19:00–03:00; the ISP router boxed nearby as the cold spare.
@@ -428,6 +484,26 @@ Radio call words: INTRO · BEANS · LATE · IN · DOOR OPEN / DOOR SHUT ·
 A / B / WRONG · ALARM · LIGHTS · HOLD · ARRIVAL · **ALL STOP**. Say the call
 word, where, who.
 
+**The opening** (wave 58: the Oct 30 script, word for word on Clippy's
+teleprompter; each press brings up her next words). V2 🎱 → V3 ⏰ → Clippy's
+🎱 🎀 🎯 🤐 (or 🃏, Task Manager's) → Norton takes the program out → radio **INTRO**
+→ 📺 *only if a program is walking* → 🎤 her paragraph on him → 🤖 **on** *"Trabolta,
+would you explain the rules?"*: his speech, the three questions and his sign-off,
+about three minutes, clean → the 🤖 Talk card, a minute or so after *"it's
+electrifying."* → 🔎 (nothing is said on it). ⚖️ brings up her welcome back; the
+two minutes; ⏱ her hand to him. ⚡ is refused during his introduction, and his
+first public crack is the first guess at the results.
+
+**The ending** (wave 58). Every ending plays as it did, then **G0 📜 The full
+truth** once it has had its moment: Trabolta on the TV after the song, the pickup
+line, the helped ending and the hand jive; phoned in from Computer Prom after the
+rave; Task Manager off the teleprompter after Combo A and Combo B. ■ Stop house
+sounds first if a dance track is up (the rave's never ducks), and leave 🌀 His
+voice on Auto or Clean with no shots. About 12 minutes on the TV, 14 at the
+teleprompter. **G1** waits for it; a press sooner asks, a second inside 30 s goes
+on. After Combo A he does not come back and Clippy hosts. The talk-down is gone:
+nothing said at his heart ends the night. **G9a 🏅** names its own winner.
+
 **Clippy's dream** (wave 50). On *"…the Y2K BUG."*, about 30 s after 🕚, every
 terminal melts into the dream by itself, until an ending. Nothing to press. If a
 terminal stays on its old screen it couldn't reach the video (`pnpm showctl
@@ -467,7 +543,7 @@ stays at or under 3 Hz; no open flames; VR is played seated with a spotter.
 | The server-room bulb ignores the story | On the Desktop: `.\scripts\house-desktop\start-stagehand.ps1 -Restart lights`; `.\scripts\house-desktop\zigbee2mqtt.ps1 -Check` (a moved stick has a new COM port) |
 | House internet down | Guests turn Wi-Fi off and use cellular. Keep firing cues from Run on a phone hotspot. Stagehand catches the lights up once it reconnects. |
 | Server restarted | Nothing to press. Everything reconnects; the server answers 503 `starting` until the events are back. Reinstallation walks end (rescan in the tent). |
-| VPS dead | Start the warm standby, restore the newest 10-minute backup from the MacBook (`~/LoomBackups`), repoint DNS. |
+| VPS dead | Start the warm standby, restore the newest 10-minute backup from the MacBook (`~/LoomBackups`), repoint DNS. A standby built before tonight's release runs the older image: `ship.sh` against it, or it has no booth scanning and old terminal bundles. |
 | Rain or wind | Switch to the shed on the Run page's House map card (*Tent \| Shed*), or at `/reinstall/map` on a phone. |
 | A terminal silent, or red ⛶ | Its Wi-Fi, power, is the page open? Relaunch Chrome with `--kiosk` (TV, laptops) or touch the tablet once. A terminal that loops or loses its camera: hold ⚙ 2 s → View `mirror` (`docs/trapped/kiosk.md` → *The mirror fallback*). |
 | His voice is too broken to follow, or sounds wrong | Run → Terminals: 🌀 His voice → **Clean** (a host's phone: More → Terminals). It takes effect on his next words on the terminals and within a second on the speakers. Captions were never touched. **Auto** puts it back |
@@ -482,6 +558,8 @@ stays at or under 3 Hz; no open flames; VR is played seated with a spotter.
 | 📜 is on the TV and he has no voice | Mute the TV, then **📜 Task Manager reads it instead**. |
 | 📜 is Task Manager's and his phone is down | His printed copy (in his pack), or ⊞ Start → My script on any phone signed in to the part. G1 opens when it should be over; press it twice inside 30 s to go on sooner. |
 | A program finished the talk at his heart | `# hosts` says so. Nothing to do: it ends nothing. |
+| A filing on H1, H2 or H3 *could not be judged* | That key is still owed: nothing is recorded and Trabolta says he can't read it. Before the doors: put the answer in, `titi:facts`, sync. After the doors a sync is off the table: hosts judge what is said in the room with ✅ / 😤 / 🤷. |
+| Run → Mind shows `engine macbook` | Claude refused a line and the Ollama standby wrote it, about 99 s at the median. One now and then is fine. A run of them: tell the tech op; Task Manager's canned lines carry a talk scene. |
 | A guest lost their phone or session | Inspector → 🔁 Re-pair (a single-use QR); a loaner phone. |
 | A performer's phone died | ⏏ Release the part; they sign in again on a loaner with the performer code. |
 | A late arrival after C1 | Run → Inspector → *scan as Norton* (routes to Clearance). |
