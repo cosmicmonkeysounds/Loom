@@ -59,7 +59,8 @@ a `takeover`: the beds on its speakers fall silent until it ends.
 
 "Stop all house sounds" (wave 18b, Q7) is one-shot and never journaled: every
 sfx voice, speaker test and music bed fades over 0.3 s (the scene is
-forgotten: the next scene cue, even the same one, brings the beds back);
+forgotten: the next scene cue, even the same one, brings the beds back, and
+nothing else does but Follow the story: the Stop is a hand);
 `+ announcements` also cuts the
 line playing now and empties the queue. The TV, the terminals and the live
 inputs are untouched, and the story clock is not (the dance still lands on
@@ -155,7 +156,7 @@ from .routing import (
     split_targets,
 )
 from .sounds import EXTENSIONS, SoundBank, identify_label, identify_tone, placeholders_in, sound_lengths
-from .soundtrack import OFF, Director, scene_of_cue, stereo_of_cue
+from .soundtrack import HAND_PREFIX, OFF, Director, scene_of_cue, stereo_of_cue
 from .tap import Tap, TapConfig, find_device
 from .voicefx import ROLE as VOICE_ROLE
 from .voicefx import VoiceFx
@@ -1222,8 +1223,11 @@ class AudioRouter:
             mixer.stop(bus="sfx", fade_s=STOP_FADE_S)
             mixer.stop(bus="test", fade_s=STOP_FADE_S)
         if self.music is not None:
-            if self._music_loan:
-                self._music_loan = self._music_hand = False
+            # A hand (ALL STOP: nothing restarts until the house manager says
+            # so): a catch-up and Trabolta stand down, the panels show Follow
+            # the story, and a live music cue still wins. His loan ends here.
+            self._music_loan = False
+            self._music_hand = True
             self.music.stop(STOP_FADE_S, "stop house sounds")
         self._test_epoch += 1
         if announce:
@@ -1470,8 +1474,9 @@ class AudioRouter:
     def on_stereo(self, cmd: dict[str, str]) -> str | None:
         """Trabolta at the stereo, off the feed (wave 58, the music contract's C4). The
         story has judged him already; here a director's hand still wins, so
-        `skip`, `hush` and `play` are ignored under it, and `back` touches
-        nothing but his own loan. → what was done, or None."""
+        `skip`, `hush` and `play` are ignored under it, or under a held ⏸ or
+        a Stop, and `back` touches nothing but his own loan. → what was done,
+        or None."""
         if self.music is None:
             return None
         action = cmd.get("action")
@@ -1482,7 +1487,7 @@ class AudioRouter:
             self._music_hand = False
             self.schedule_music_catch_up("Trabolta let go")
             return "back"
-        if self._music_hand and not self._music_loan:
+        if (self._music_hand or self.music.paused or self.music.scene is None) and not self._music_loan:
             log.info("🎵 soundtrack: Trabolta's %s is ignored: a director holds the music", action)
             return None
         if action == "skip":
@@ -1594,7 +1599,15 @@ class AudioRouter:
         if action == "previous":
             return "previous" if self.music.previous() else None
         if action == "pause":
-            return "pause" if self.music.pause(True) else None
+            if not self.music.pause(True):
+                return None
+            if self._music_loan:
+                # A host's ⏸ takes it from Trabolta (C0: it holds until told),
+                # so his timed `back` finds no loan. His playlist stays in
+                # their hand; a pause over his hush is the story's scene.
+                self._music_loan = False
+                self._music_hand = self.music.scene is not None and self.music.scene.startswith(HAND_PREFIX)
+            return "pause"
         if action == "resume":
             self.music.pause(False)
             return "resume"

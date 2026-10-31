@@ -363,12 +363,120 @@ def test_stop_house_sounds_ends_his_loan_but_never_a_directors_hand(tmp_path):
         r = router(tmp_path)
         stereo(r, "music, action: play, playlist: b")
         r.stop_all()
-        assert not r._music_loan and not r._music_hand
+        assert not r._music_loan
+        assert stereo(r, "music, action: back") is None  # his timed back finds no loan
 
         r2 = router(tmp_path)
         r2.serve_music({"seq": 1, "at": 1, "action": "scene", "scene": "two"})
         r2.stop_all()
         assert r2._music_hand
+
+    run(go())
+
+
+def test_stop_house_sounds_is_a_hand_a_catch_up_and_his_moves_cannot_undo(tmp_path):
+    """ALL STOP: nothing restarts until the house manager says so. The panels show
+    Follow the story, a dropped feed's catch-up stands down, and his moves are ignored."""
+
+    async def go():
+        r = router(tmp_path)
+        assert r.stop_all(False, "Host") is not None
+        assert r.music.scene is None and r.music_status()["hand"] is True  # the panel's ↺
+        await r.music_catch_up("feed")
+        assert r.music.scene is None
+        for move in ("music, action: play, playlist: b", "music, action: skip", "music, action: hush"):
+            assert stereo(r, move) is None, move
+        assert r.music.scene is None
+
+        r.serve_music({"seq": 1, "at": 1, "action": "story", "by": "Host"})  # Follow the story
+        await r._music_catch_up
+        assert r.music.scene == "one" and not r._music_hand
+
+    run(go())
+
+
+def test_a_live_cue_lets_go_of_a_stop(tmp_path):
+    async def go():
+        r = router(tmp_path)
+        r.stop_all(False, "Host")
+        r.on_sim({"type": "directive", "verb": "cue", "args": "music_two"})
+        assert r.music.scene == "two" and not r._music_hand
+
+    run(go())
+
+
+def app_router(tmp_path):
+    """The show's shape: every playlist on the app, so ⏸ really holds it."""
+    live = {
+        "playlists": {"a": {"tidal": ACT_1, "dir": "music/a", "shuffle": False}, "b": {"tidal": ACT_2, "dir": "music/b", "shuffle": False}},
+        "scenes": {"one": [{"to": "everywhere", "play": "a"}], "two": [{"to": "everywhere", "play": "b"}], "off": []},
+    }
+    r = with_house(music_router(tmp_path, live))
+    r.music.live = FakeLive()
+    r.loop = asyncio.get_running_loop()
+    r._mod = FakeMod([{"night": {"music": "one"}}] * 8)
+    r.apply(answer("v1"))
+    r.on_sim({"type": "directive", "verb": "cue", "args": "music_one"})
+    spin(r, 5)
+    return r
+
+
+def pause(r, seq=1):
+    return r.serve_music({"seq": seq, "at": seq, "action": "pause", "by": "Task Manager"})
+
+
+def test_a_held_pause_binds_him(tmp_path):
+    """The music contract's C0: a pause holds until told. Not by him."""
+
+    async def go():
+        r = app_router(tmp_path)
+        assert pause(r) == "pause"
+        assert stereo(r, "music, action: play, playlist: b") is None
+        assert r.music.paused and r.music.scene == "one" and not r._music_loan
+        assert stereo(r, "music, action: skip") is None
+        assert r.music.live.skips == 0
+        assert stereo(r, "music, action: hush") is None and not r._music_loan
+        assert stereo(r, "music, action: back") is None
+        assert r.music.paused
+
+    run(go())
+
+
+def test_a_hosts_pause_takes_his_loan_and_his_back_finds_nothing(tmp_path):
+    async def go():
+        r = app_router(tmp_path)
+        stereo(r, "music, action: play, playlist: b")
+        assert r._music_loan
+        assert pause(r) == "pause"
+        assert not r._music_loan and r._music_hand  # his playlist plays on in the host's hand
+        assert r.music_status()["hand"] is True and r.music_status()["loan"] is False
+        assert stereo(r, "music, action: back") is None
+        assert r.music.paused and r.music.scene == f"{HAND_PREFIX}b"
+
+    run(go())
+
+
+def test_a_hosts_pause_over_his_hush_holds_when_the_hush_runs_out(tmp_path):
+    async def go():
+        r = app_router(tmp_path)
+        stereo(r, "music, action: hush")
+        assert r.music.paused and r._music_loan
+        assert pause(r) == "pause"
+        assert not r._music_loan and not r._music_hand  # the story's scene, paused
+        assert stereo(r, "music, action: back") is None
+        assert r.music.paused
+        assert r.serve_music({"seq": 2, "at": 2, "action": "resume", "by": "Task Manager"}) == "resume"
+        assert not r.music.paused
+
+    run(go())
+
+
+def test_a_pause_that_cannot_land_leaves_his_loan_alone(tmp_path):
+    async def go():
+        r = router(tmp_path)  # file beds: no app to hold
+        stereo(r, "music, action: play, playlist: b")
+        assert pause(r) is None
+        assert r._music_loan and r._music_hand
 
     run(go())
 
