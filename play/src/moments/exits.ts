@@ -1,13 +1,13 @@
-//! Moment exits (wave 18, the moments lane; GUEST-SPEC §6, CONTRACTS C2):
-//! the buttons every moment offers, from every surface — a balloon, a sticky,
-//! a dialog, a blue screen, a big moment, a Notifications row, a push tap.
-//! A moment says where it goes as a `Nav` (a place in the guest app); the
-//! guest lane's `go(nav)` (`guest/nav.ts`) lands there. Pure — tested in
-//! `test/moments-exits.test.ts`.
-//!
-//! The one rule the user asked for in so many words: an exit never lands on
-//! the lobby (the room named after the story, the far-away Chat log). With no
-//! better target a moment's exit is Mission ("What do I do?").
+// Moment exits (wave 18, the moments lane; GUEST-SPEC §6, CONTRACTS C2):
+// the buttons every moment offers, from every surface — a balloon, a sticky,
+// a dialog, a blue screen, a big moment, a Notifications row, a push tap.
+// A moment says where it goes as a `Nav` (a place in the guest app); the
+// guest lane's `go(nav)` (`guest/nav.ts`) lands there. Pure — tested in
+// `test/moments-exits.test.ts`.
+//
+// The one rule the user asked for in so many words: an exit never lands on
+// the lobby (the room named after the story, the far-away Chat log). With no
+// better target a moment's exit is Mission ("What do I do?").
 
 import { noticeKey } from "../../../core/src/delivery.ts";
 import type { IconName } from "../chrome/icons.tsx";

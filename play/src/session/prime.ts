@@ -7,6 +7,7 @@ import { ApiError, api, useChatStream, withTimeout } from "../client.ts";
 import { shareErrorText } from "../codex.ts";
 import { usePlayHost } from "../host.ts";
 import { phoneAnnounce } from "../phone-voice.ts";
+import { letGo } from "../rejoin.ts";
 import { BOOTH_SIGNED_OUT, SessionRole, eventGone, lifecycleDropsSession, lifecycleNotice, lifecycleStartsNewRun, performerSessionDead } from "../lifecycle.ts";
 import { isOnline, locationOfRoom, occupantsByLocation, type Presence } from "../presence.ts";
 import { CODEX_ROOM, PINNED_SPACE, QUEST_LOG, STORY_SPACE, WALLET_ROOM } from "../rooms/spaces.ts";
@@ -306,6 +307,8 @@ export interface PrimeSession {
   notice: string | null;
   threads: Threads;
   login: (character: string, passcode: string) => Promise<void>;
+  /** Wave 59: become the booth a host let in (Ask a host, `held.tsx`). */
+  adopt: (booth: PrimeAuth) => void;
   /** Scan a guest's pass (`/api/scan`); the answer carries the guest's card (wave 13). */
   scan: (target: string) => Promise<ScanResult>;
   /** What this booth may do to one guest right now (`/api/prime/card`, wave 13). */
@@ -492,6 +495,12 @@ export function usePrimeSession(): PrimeSession {
     setAuth(a);
     setNotice(null);
   }, []);
+  const adopt = useCallback((a: PrimeAuth) => {
+    crawl.reset();
+    save(PK, a);
+    setAuth(a);
+    setNotice(null);
+  }, []);
   // C4: the host capability rides every snapshot (`PrimeView.host`), so a
   // booth signed in before the story marked its part `admin: true` (or
   // before a reload / restart / the Players seat) becomes a host from the
@@ -665,15 +674,15 @@ export function usePrimeSession(): PrimeSession {
   const leave = useCallback(() => {
     // Sign out frees the part on the server too, so the same performer can
     // sign in from another phone (the iPhone Home Screen icon) without a
-    // director's ⏏ Release. Fire-and-forget: signing out never waits.
-    if (auth !== null) void api(`${base}/api/prime/logout`, {}, auth.token).catch(() => {});
+    // director's ⏏ Release. Signing out never waits; with no signal it stays owed.
+    letGo(host.storage, auth, "prime");
     drop(PK);
     setAuth(null);
     setView(null);
     setReady(false);
     setNotice(null);
     host.onEnded("prime", null);
-  }, [drop, host, auth, base]);
+  }, [drop, host, auth]);
 
   const boothFilter = useMemo(() => (auth !== null ? boothAlertFilter(auth.character) : undefined), [auth]);
   const alerts = useAlerts({
@@ -697,5 +706,5 @@ export function usePrimeSession(): PrimeSession {
   useTheme(auth === null ? landing.theme : view?.theme);
   const arrive = useCallback(() => post("/api/prime/arrive", {}, auth!.token), [post, auth]);
   const choose = useCallback((index: number, menu: { id: number; text: string }) => post("/api/prime/choose", { index, choice: menu.id, text: menu.text }, auth!.token), [post, auth]);
-  return { auth, view, alert: alerts.alert, dismissAlert: alerts.dismiss, alerts, messages, connected, ready, notice, threads, login, scan, card, say, inviteToChannel, leaveChannel, becomeAdmin, act, lastPressedOn, cue, shareCodex, redeem, walletApprove, walletDeny, moderate, setHidden, answerWidget, widgetAnswers, letter, censor, filterLevel, arrive, choose, leave, roomLinkPending };
+  return { auth, view, alert: alerts.alert, dismissAlert: alerts.dismiss, alerts, messages, connected, ready, notice, threads, login, adopt, scan, card, say, inviteToChannel, leaveChannel, becomeAdmin, act, lastPressedOn, cue, shareCodex, redeem, walletApprove, walletDeny, moderate, setHidden, answerWidget, widgetAnswers, letter, censor, filterLevel, arrive, choose, leave, roomLinkPending };
 }

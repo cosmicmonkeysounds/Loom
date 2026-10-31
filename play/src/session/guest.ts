@@ -11,7 +11,7 @@ import { ApiError, RequestTimeout, api, useChatStream, withTimeout } from "../cl
 import { pmChannelId, shareErrorText, unlockFromSearch, withoutUnlock } from "../codex.ts";
 import { usePlayHost } from "../host.ts";
 import { phoneAnnounce } from "../phone-voice.ts";
-import { SessionRole, eventGone, guestSessionDead, lifecycleDropsSession, lifecycleNotice, performerSessionDead } from "../lifecycle.ts";
+import { SessionRole, deadTokenKind, eventGone, guestSessionDead, lifecycleDropsSession, lifecycleNotice, performerSessionDead } from "../lifecycle.ts";
 import { CODEX_ROOM, channelHead } from "../rooms/spaces.ts";
 import { roomOrder } from "../rooms/order.ts";
 import { useThreads, type Threads } from "../rooms/threads-state.ts";
@@ -29,7 +29,7 @@ import { linkFromMessage, linkFromSearch, navFromSearch, withoutRoom } from "../
 import { lobbyHidden } from "../guest/wire.ts";
 import type { Nav } from "../moments/exits.ts";
 import { guestStreamHandlers } from "./stream-handlers.ts";
-import { badgeLinkOf, forgetBadge, storedBadge, type BadgeLink } from "../rejoin.ts";
+import { badgeLinkOf, forgetBadge, letGo, storedBadge, type BadgeLink } from "../rejoin.ts";
 import type { AdoptedGuest } from "../resume.ts";
 
 interface GuestId {
@@ -506,7 +506,7 @@ export function useGuestSession(): GuestSession {
         if (lockedRefusal(e)) setLocked403(true);
         if (e instanceof ApiError && me !== null) {
           if (eventGone(e.status, e.message)) dropSession(lifecycleNotice("ended", SessionRole.Guest));
-          else if (guestSessionDead(e.status, e.message)) dropSession(lifecycleNotice("reset", SessionRole.Guest));
+          else if (guestSessionDead(e.status, e.message)) dropSession(lifecycleNotice(deadTokenKind(e.message), SessionRole.Guest));
         }
         throw e;
       }
@@ -616,13 +616,16 @@ export function useGuestSession(): GuestSession {
   const pictures = useCallback(() => post<PictureChoices>("/api/guest/picture", {}), [post]);
   const setPicture = useCallback((picture: string) => post<PictureChoices>("/api/guest/picture", { picture }), [post]);
   const leave = useCallback(() => {
+    // Leaving frees the Person on the server too (wave 59), so their badge
+    // signs in again on any phone. Never waits; with no signal it stays owed.
+    letGo(host.storage, me, "guest");
     drop(GK);
     setMe(null);
     setStatus(null);
     setReady(false);
     setNotice(null);
     host.onEnded("guest", null);
-  }, [drop, host]);
+  }, [drop, host, me]);
 
   const adopt = useCallback(
     (guest: AdoptedGuest) => {

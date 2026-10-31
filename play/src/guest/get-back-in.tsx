@@ -1,7 +1,8 @@
 //! "Already playing? Get back in" (wave 23) — on the join screen, for a
 //! guest whose session this browser lost: scan or type their badge, or ask
 //! a host to let them be their program again. Every path ends in the same
-//! Person (`session.adopt`), never a second program. The calls and copy are
+//! Person (`session.adopt`), never a second program. A badge another phone
+//! holds is refused (`held.tsx`, wave 59). The calls and copy are
 //! `rejoin-calls.ts`'s. A lazy part (`register.tsx`): never in the first load.
 
 import { useEffect, useRef, useState } from "react";
@@ -9,12 +10,17 @@ import { guestCameraProblem } from "../guest-scan-sheet.tsx";
 import type { CameraState } from "../scan.ts";
 import { CameraScanner } from "../scanner.tsx";
 import { usePlayHost } from "../host.ts";
-import { badgeFromText, rememberBadge } from "../rejoin.ts";
-import { ASK_POLL_MS, askHost, askLine, enterBy, filterNames, joinedNames, pollAsk, type Ask, type AskState } from "../rejoin-calls.ts";
+import { HeldPanel } from "../held.tsx";
+import { rememberClaim } from "../claim.ts";
+import { badgeFromText, heldOf, rememberBadge, type HeldCard } from "../rejoin.ts";
+import { ASK_POLL_MS, askHost, askLine, cancelAsk, enterBy, filterNames, joinedNames, payOwed, pollAsk, type Ask, type AskState } from "../rejoin-calls.ts";
 import type { AdoptedGuest } from "../resume.ts";
 
 /** The panel's step. */
-type Step = { kind: "menu" } | { kind: "scan" } | { kind: "names"; eventId: string; title?: string; names: string[] } | { kind: "waiting"; ask: Ask; state: AskState };
+type Step = { kind: "menu" } | { kind: "scan" } | { kind: "names"; eventId: string; title?: string; names: string[] } | { kind: "waiting"; ask: Ask; state: AskState } | { kind: "held"; card: HeldCard };
+
+/** This panel only reads guest badges, so a refused one never comes back a booth. */
+const noBooth = () => {};
 
 export const BADGE_BLANK = "That badge isn't linked to anyone yet — pick your program below and it links to you.";
 export const NEED_CODE = "Type the event code above first (it's on the signs around the house).";
@@ -41,15 +47,21 @@ export function GetBackIn({ code, open, onOpen, onIn, onBlankBadge }: { code: st
     setBusy(true);
     setNote("🪪 Checking your badge…");
     try {
+      await payOwed(host.storage);
       const r = await enterBy(eventCode, { badge });
       if (r.kind === "in") return onIn(r.guest);
       rememberBadge(host.storage, eventCode, badge);
+      rememberClaim(host.storage, eventCode, r.claim);
       onBlankBadge();
       setStep({ kind: "menu" });
       setOpen(false);
       setNote("");
     } catch (e) {
-      setNote(e instanceof Error ? e.message : "That badge didn't work.");
+      const shown = heldOf(e);
+      if (shown !== null) {
+        setNote("");
+        setStep({ kind: "held", card: { code: eventCode, by: { badge }, ...shown } });
+      } else setNote(e instanceof Error ? e.message : "That badge didn't work.");
     } finally {
       setBusy(false);
       reading.current = false;
@@ -91,8 +103,9 @@ export function GetBackIn({ code, open, onOpen, onIn, onBlankBadge }: { code: st
     let timer: ReturnType<typeof setTimeout> | null = null;
     const tick = async () => {
       const state = await pollAsk(waitingAsk);
-      if (!live) return;
+      // Before `live`: that poll moved the Person here (`held.tsx`).
       if (state.kind === "approved") return onIn(state.guest);
+      if (!live) return;
       if (state.kind !== "pending") return setStep({ kind: "waiting", ask: waitingAsk, state });
       timer = setTimeout(() => void tick(), ASK_POLL_MS);
     };
@@ -117,6 +130,7 @@ export function GetBackIn({ code, open, onOpen, onIn, onBlankBadge }: { code: st
     setStep({ kind: "menu" });
     setNote("");
   };
+  if (step.kind === "held") return <HeldPanel card={step.card} onGuest={onIn} onBooth={noBooth} onBack={back} />;
   const problem = guestCameraProblem(cam);
   return (
     <div className="rejoin rejoin-panel cast-pick" role="group" aria-label="Get back in">
@@ -189,7 +203,14 @@ export function GetBackIn({ code, open, onOpen, onIn, onBlankBadge }: { code: st
             {askLine(step.state, step.ask.name)}
           </p>
           {step.state.kind === "pending" ? (
-            <button type="button" className="link" onClick={back}>
+            <button
+              type="button"
+              className="link"
+              onClick={() => {
+                cancelAsk(step.ask);
+                back();
+              }}
+            >
               Cancel
             </button>
           ) : (

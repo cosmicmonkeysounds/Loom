@@ -194,9 +194,9 @@ describe("N-02 re-pair a guest", () => {
     expect(view.json).toMatchObject({ id: ana.id, name: "Winamp", score: 7 });
     expect(view.json.codex.map((e: { id: string }) => e.id)).toEqual(["The Secret"]);
     expect(rt.liveSim!.persons.size).toBe(before);
-    // It can act as her; the old token still works too (a loaner move).
+    // It can act as her; the spent code was a release, so the old phone is out.
     expect((await post(rt, "/api/guest/say", { channel: "lobby", text: "back in" }, token)).status).toBe(200);
-    expect((await state(rt, "guest", ana.token)).status).toBe(200);
+    expect((await state(rt, "guest", ana.token)).status).toBe(401);
 
     // Persisted like a registration: a server restart keeps it…
     const again = runtimeAt(d);
@@ -240,10 +240,14 @@ describe("N-02 re-pair a guest", () => {
     expect((await state(rt, "guest", ana.token)).status).toBe(401);
     expect((await state(rt, "guest", token)).json.id).toBe(ana.id);
     expect((await state(rt, "guest", bob.token)).status).toBe(200);
-    // Without the flag, the old token survives (the loaner move).
-    const again = await pairToken(rt, ana.id);
-    expect(again.paired.revoked).toBe(0);
+    // Without the flag the old token holds until the code is spent…
+    const paired2 = await mod(rt, "/api/mod/guest/pair", { id: ana.id });
+    expect(paired2.json.revoked).toBe(0);
     expect((await state(rt, "guest", token)).status).toBe(200);
+    // …and spending it signs that phone out too: one holder.
+    const moved = await resume(rt, paired2.json.pair as string);
+    expect((await state(rt, "guest", token)).status).toBe(401);
+    expect((await state(rt, "guest", moved.json.token as string)).json.id).toBe(ana.id);
   });
 });
 

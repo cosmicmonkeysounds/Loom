@@ -13,6 +13,9 @@ export const LifecycleKind = {
   GoLive: "golive",
   /** The run ended. */
   Ended: "ended",
+  /** Wave 59: this phone alone was signed out (a release, or a host moved
+   *  the part or Person to another phone). The run goes on. */
+  Released: "released",
 } as const;
 export type LifecycleKind = (typeof LifecycleKind)[keyof typeof LifecycleKind];
 
@@ -34,6 +37,7 @@ export function lifecycleDropsSession(kind: string, role: SessionRole): boolean 
       return role === SessionRole.Guest;
     case LifecycleKind.GoLive:
     case LifecycleKind.Ended:
+    case LifecycleKind.Released:
       return true;
     default:
       return false;
@@ -68,9 +72,19 @@ export function lifecycleNotice(kind: string, role: SessionRole): string | null 
       return `The rehearsal ended and the show is starting — ${again}.`;
     case LifecycleKind.Ended:
       return "This event has ended.";
+    case LifecycleKind.Released:
+      return role === SessionRole.Guest ? "This phone was signed out. To come back, scan your badge or ask a host." : BOOTH_SIGNED_OUT;
     default:
       return null;
   }
+}
+
+/** The 401 a cut token hears after a release (`routes/n02.ts` `SIGNED_OUT`). */
+const SIGNED_OUT = "signed out on this phone";
+
+/** Why a guest's token is dead, from its 401's message. */
+export function deadTokenKind(message: string): "released" | "reset" {
+  return message === SIGNED_OUT ? "released" : "reset";
 }
 
 /**

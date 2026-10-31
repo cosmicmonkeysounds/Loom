@@ -43,7 +43,10 @@ turned the headers of `alerts.ts`, `cutscene.tsx`, `chrome/keyboard.ts` and
 `rooms/order.ts` into `//`: 147.63 kB. Wave 55 added the teleprompter's eager
 part and turned the headers of `moments/model.ts`, `moments/provider.tsx`,
 `guest-scan.tsx`, `avatars.ts`, `resume.ts` and `room.ts` into `//`: 146.71 kB. Wave 58
-added `fullscreen.ts`, with a `//` header: 147.53 kB.
+added `fullscreen.ts`, with a `//` header: 147.53 kB. Wave 59's one holder added
+about 0.7 kB (the owed release's loop is in the lazy `rejoin-calls.ts`) and turned
+the headers of `core/src/cue-sheet.ts`, `host.ts`, `moments/exits.ts` and `arm.ts`
+into `//`: 147.03 kB.
 
 ## How a session works
 
@@ -67,18 +70,27 @@ added `fullscreen.ts`, with a `//` header: 147.53 kB.
 - **Getting back in** (wave 23, `rejoin.ts` + the lazy `rejoin-calls.ts`,
   server `core/server/routes/rejoin.ts`). A printed badge
   (`?code=&badge=`, an invited one with `&claim=` too) links to a guest at
-  join or from Me (🪪) and then signs them in on any phone
-  (`/api/guest/enter`) and is their pass at a booth (`scan.ts`). Wave 54: the
+  join or from Me (🪪) and then signs them in on a phone once no other phone
+  holds them (`/api/guest/enter`) and is their pass at a booth (`scan.ts`).
+  Wave 59: a held card lands on `held.tsx` (lazy): what is printed on it, and
+  Ask a host, for a guest and a part; `enterBy` / `enterPart` take this phone's
+  own token. A join that lost its card lands there too (`joinHeld`). Cancel posts
+  `cancelAsk`; a `closed` poll goes back to the card (`tryCard`), in or refused.
+  A badge link on a phone with a stored guest checks that session first
+  (`ui.tsx`, entry `link`): a dead one goes to the card, never to the picker, so a
+  slept phone can't make a second Person. A phone that stops being someone calls
+  `letGo`: the release is owed in host storage (`loom.owed.release`) until the
+  server has it (`payOwed`: on load, on `online`, every 15 s while the page lives,
+  and before a sign-in), so Leave with no signal never strands its own badge. Wave 54: the
   join screen hides the event code once a badge or claim resolves, an invited
   badge lands on *You are …* with one button (`Identities.invited`, no picture
-  pick), and `ui.tsx` keeps a badge beside a possibly stale session, so it
-  still links at the join; a signed-in guest opening someone else's badge gets
+  pick); a signed-in guest opening someone else's badge gets
   the Recruit sheet, never a switch. A featured guest's `?claim=`
   re-enters once joined. The join screen's *Already playing? Get back in*
   (`guest/get-back-in.tsx`, lazy) scans / types a badge or asks a host
   (`/api/guest/rejoin` → Needs and the director phone's *Let them in*). A
   staff badge (`?code=&part=`, the guest code since wave 54) signs in as its
-  part and takes it from a lost booth; on a guest's phone it asks first, with
+  part; on a guest's phone it asks first, with
   Stay as the primary button. `main.tsx` strips `badge` / `part` before render; `ui.tsx` runs
   the entry (`cardPlan`). The page's store falls back to memory when
   `localStorage` is blocked (`host.ts`).

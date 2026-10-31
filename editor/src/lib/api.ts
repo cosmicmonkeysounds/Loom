@@ -411,6 +411,12 @@ export const modApi = {
   async pairGuest(eventId: string, id: string, opts: { revokeOthers?: boolean } = {}): Promise<GuestPairing> {
     return await req<GuestPairing>('POST', `/e/${eventId}/api/mod/guest/pair`, { id, ...(opts.revokeOthers ? { revokeOthers: true } : {}) })
   },
+  /** Sign a guest's phone out (wave 59): their badge or invitation signs in
+   *  again on any phone. Answers how many tokens went. */
+  async releaseGuest(eventId: string, id: string): Promise<number> {
+    const r = await req<{ released?: number }>('POST', `/e/${eventId}/api/mod/guest/release`, { id })
+    return r.released ?? 0
+  },
   /** Release a performer's part (N-10): drop the session holding it so the
    *  performer can re-sign on a loaner. Resolves to how many sessions held it. */
   async releasePart(eventId: string, character: string): Promise<number> {

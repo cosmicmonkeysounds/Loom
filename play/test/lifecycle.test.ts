@@ -3,7 +3,7 @@
 // mean "the run restarted while this phone wasn't listening".
 
 import { describe, expect, it } from "vitest";
-import { BOOTH_SIGNED_OUT, LifecycleKind, SessionRole, eventGone, guestSessionDead, lifecycleDropsSession, lifecycleNotice } from "../src/lifecycle.ts";
+import { BOOTH_SIGNED_OUT, LifecycleKind, SessionRole, deadTokenKind, eventGone, guestSessionDead, lifecycleDropsSession, lifecycleNotice } from "../src/lifecycle.ts";
 
 describe("lifecycle policy", () => {
   it("every restart drops a guest; only go-live / ended drop a performer", () => {
@@ -38,6 +38,18 @@ describe("lifecycle policy", () => {
     expect(eventGone(404, "unknown event")).toBe(true);
     expect(eventGone(404, "unknown guest")).toBe(false);
     expect(eventGone(401, "unknown event")).toBe(false);
+  });
+});
+
+describe("a phone that was released (wave 59)", () => {
+  it("drops the session and says how to come back, not that the story restarted", () => {
+    expect(lifecycleDropsSession(LifecycleKind.Released, SessionRole.Guest)).toBe(true);
+    expect(lifecycleNotice(LifecycleKind.Released, SessionRole.Guest)).toBe("This phone was signed out. To come back, scan your badge or ask a host.");
+    expect(lifecycleNotice(LifecycleKind.Released, SessionRole.Performer)).toBe(BOOTH_SIGNED_OUT);
+  });
+  it("reads a dead token's 401", () => {
+    expect(deadTokenKind("signed out on this phone")).toBe("released");
+    expect(deadTokenKind("not signed in — register first")).toBe("reset");
   });
 });
 
@@ -89,7 +101,8 @@ describe("a booth's readouts on a story restart (B5)", () => {
     expect(afterLifecycle(readouts, LifecycleKind.Reload)).toEqual([]);
     // A notice this build doesn't know keeps them.
     expect(afterLifecycle(readouts, "something-new")).toBe(readouts);
-    for (const k of Object.values(LifecycleKind)) expect(lifecycleStartsNewRun(k)).toBe(true);
+    // Every transition of the run does; a release is one phone, the run goes on.
+    for (const k of Object.values(LifecycleKind)) expect(lifecycleStartsNewRun(k)).toBe(k !== LifecycleKind.Released);
     expect(lifecycleStartsNewRun("something-new")).toBe(false);
   });
 });

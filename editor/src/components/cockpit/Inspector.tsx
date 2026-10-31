@@ -41,10 +41,42 @@ import type { ObjectiveView } from '@loom/core/views'
 /** How many recent messages "Their feed" shows. */
 const FEED_LIMIT = 60
 
+/** Wave 59: a guest's phone is signed out, so their badge or invitation signs
+ *  in on any phone. The guest keeps their codex, quests and score. */
+function ReleaseGuest({ id, name }: { id: string; name: string }) {
+  const releaseGuest = useCockpit((s) => s.releaseGuest)
+  const release = async () => {
+    const ok = await confirmAction({
+      title: `Release ${name}?`,
+      body: `Signs out the phone that is ${name} right now, so their badge or invitation signs in again. ${name} keeps their codex and score.`,
+      confirmLabel: 'Release',
+      danger: true,
+    })
+    if (!ok) return
+    const n = await releaseGuest(id)
+    if (n === null) return
+    await notify({
+      title: n > 0 ? `${name} is free` : `No phone held ${name}`,
+      body: n > 0 ? `Their badge or invitation signs in again on any phone.` : `${name} was already free to sign in to.`,
+    })
+  }
+  return (
+    <button
+      onClick={() => void release()}
+      className="rounded border border-red-900 px-2 py-0.5 text-[10px] text-red-300 hover:bg-red-950"
+      title={`Sign the phone that is ${name} out, so their badge signs in again`}
+      data-testid={`inspector-release-${id}`}
+    >
+      ⏏ Release
+    </button>
+  )
+}
+
 /** N-02: a lost guest's way back in — a fresh session for the SAME guest
  *  (codex, quests, score intact; no ghost), shown as a QR their new phone
  *  scans (`?code=<event>&pair=<code>`). The code works once, for ten
- *  minutes; the panel only lives while it is open, and Done forgets it. */
+ *  minutes, and spending it signs the old phone out; the panel only lives
+ *  while it is open, and Done forgets it. */
 function RePair({ id, name }: { id: string; name: string }) {
   const pairGuest = useCockpit((s) => s.pairGuest)
   const [link, setLink] = useState<string | null>(null)
@@ -79,7 +111,7 @@ function RePair({ id, name }: { id: string; name: string }) {
     <div className="mt-2 w-full rounded border border-amber-900/70 bg-amber-950/20 p-2 text-center" data-testid={`inspector-repair-qr-${id}`}>
       <p className="mb-1 text-[11px] text-amber-200">Have {name} scan this with their phone's camera.</p>
       <LocalQr text={link} label={`Re-pair QR for ${name}`} />
-      <p className="mt-1 text-[10px] text-zinc-500">It signs one phone in as {name}, once, within 10 minutes — keep it off the big screen.</p>
+      <p className="mt-1 text-[10px] text-zinc-500">It signs one phone in as {name}, once, within 10 minutes, and signs the old phone out — keep it off the big screen.</p>
       <div className="mt-1 flex justify-center gap-2">
         <button
           onClick={() => void navigator.clipboard?.writeText(link)}
@@ -94,7 +126,7 @@ function RePair({ id, name }: { id: string; name: string }) {
           onClick={() => void mint(true)}
           disabled={busy || revoked}
           className="rounded border border-red-900 px-2 py-0.5 text-[10px] text-red-300 hover:bg-red-950 disabled:opacity-50"
-          title={`Someone else has ${name}'s old phone? Sign every other phone out of ${name} (a fresh code replaces this one)`}
+          title={`Someone else has ${name}'s old phone? Sign it out now, before this code is used (a fresh code replaces this one)`}
           data-testid={`inspector-repair-revoke-${id}`}
         >
           {revoked ? 'Old phones signed out' : 'Sign out old phones'}
@@ -584,6 +616,7 @@ function GuestInspector({ id }: { id: string }) {
         {server && !row.owner && (
           <div className="mt-1 flex flex-wrap">
             <RePair id={id} name={row.name} />
+            <ReleaseGuest id={id} name={row.name} />
           </div>
         )}
       </div>
@@ -820,7 +853,7 @@ function CharacterInspector({ id }: { id: string }) {
     if (n === null) return
     await notify({
       title: n > 0 ? `${id} is free` : `Nobody held ${id}`,
-      body: n > 0 ? `The performer can sign in again with the performer code and pick ${id}.` : `${id} was already free to sign in to.`,
+      body: n > 0 ? `The performer can sign in again with their badge, or the performer code and pick ${id}.` : `${id} was already free to sign in to.`,
     })
   }
 

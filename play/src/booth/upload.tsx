@@ -33,8 +33,9 @@ export function boothDecision(view: Pick<PrimeView, "choices"> | null, choose: (
 }
 
 /** Is the booth on rails, and report it in while its arrival is due. A
- *  failed report is tried again on the next view. */
-export function useBoothRails(s: Pick<PrimeSession, "view" | "arrive">): { showing: boolean; over: boolean; leave: () => void } {
+ *  failed report is tried again on the next view. A booth signed out on the
+ *  stage leaves it at once, for the sign-in that says why. */
+export function useBoothRails(s: Pick<PrimeSession, "view" | "arrive"> & Partial<Pick<PrimeSession, "auth">>): { showing: boolean; over: boolean; leave: () => void } {
   const host = usePlayHost();
   const view = s.view;
   const cut = useCutscene(!host.embedded && view?.cutscene === true);
@@ -49,7 +50,7 @@ export function useBoothRails(s: Pick<PrimeSession, "view" | "arrive">): { showi
         reporting.current = false;
       });
   }, [host.embedded, view, report]);
-  return cut;
+  return s.auth === null ? { ...cut, showing: false } : cut;
 }
 
 /** The part's way out of a stage it should not be on: two taps. */

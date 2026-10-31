@@ -107,7 +107,7 @@ Front of house: getting people in.
   with a hairline to cut along.
   - **Badges** are 3 × 2 inches, ten to a sheet, one QR per person. A
     **staff badge** (black edge) per performer part signs its phone straight
-    in as that part, and takes the part back from a lost phone. An **invited
+    in as that part. An **invited
     badge** (gold edge) per `reserved: true` program ([live
     shows](live-shows.md)) lands its guest on their own program with one tap.
     The numbered **blank badges** (B001…) are for everyone else: the phone
@@ -115,7 +115,13 @@ Front of house: getting people in.
     links to the program they pick. Pick how many blanks (60 by default) and
     the first number, then **Load**; to print more later, start from the
     *next batch* number the toolbar shows. Whichever badge a guest has, it
-    gets them back in on any phone and it is their pass at the booths. A
+    gets them back in on any phone once they've let go of the last one, and
+    it is their pass at the booths. **Every printed sign-in is one phone's:**
+    while a phone holds a part or a guest, their badge, invitation or printed
+    code on any other phone is refused, with **🙋 Ask a host**. Being offline
+    is no release. A release is their own Leave the event or Sign out, ⏏
+    Release, a host's *Let them in* on Needs (once the waiting phone has
+    it), or a spent Re-pair. A story restart frees the guests; a booth stays signed in until Go live. A
     staff badge is a sign-in: keep it with its performer, QR side in, and
     never post one. On screen only, a linked badge names its guest, and an
     invited badge has **🔓 lost? open 2 min** (two taps): it opens that
@@ -674,17 +680,23 @@ Wanted board. To mark or unmark the way the story does, fire its event under
 `unmark_for_reinstallation`) or have a host press 🩹 Unmark. On a live run
 it asks first for a real guest.
 
-**Someone lost their phone.** On a server run, a guest's Inspector has
-**🔁 Re-pair**: it shows a QR that signs whatever phone scans it back in
-*as that guest* — same program, codex, quests and score, no new guest
-left behind. Use it for a dead phone, a cleared browser, a camera that
-opened another browser, or a loaner. The code works once, for ten
-minutes. **Sign out old phones** cuts every other phone signed in as
-them (one someone else picked up). Keep the QR off the big screen: it
-is their sign-in. A character's Inspector has **⏏ Release**: it signs
-out whichever booth holds that part, so the performer can sign in again
-on another phone with the performer code. The character's threads and
-buttons stay.
+**Someone lost their phone.** Their badge on a new phone is refused and
+offers **🙋 Ask a host**: *Let them in*, on a host's Needs or the director
+phone, signs the old phone out and the new one in within a few seconds, same
+program, codex, quests and score. It moves only if that phone is still
+waiting: one that cancelled or closed the page changes nothing, and a sign-in
+or release of that guest or part clears the ask off Needs. On a server run, a guest's Inspector also has **🔁
+Re-pair**: it shows a QR that signs whatever phone scans it back in *as that
+guest*, with no new guest left behind, and signs the old phone out. Use it
+for a dead phone, a cleared browser, a camera that opened another browser, or
+a loaner. The code works once, for ten minutes. **Sign out old phones** cuts
+the old phone at once, before the code is used (one someone else picked up).
+Keep the QR off the big screen: it is their sign-in. **⏏ Release** on a
+guest's Inspector signs their phone out with no QR, so their badge or
+invitation signs in again (a host has it on People too). A character's
+Inspector has **⏏ Release**: it signs out whichever booth holds that part, so
+the performer can sign in again on another phone with their badge or the
+performer code. The character's threads and buttons stay.
 
 ## Directing together
 

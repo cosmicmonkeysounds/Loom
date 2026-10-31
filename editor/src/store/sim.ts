@@ -554,6 +554,10 @@ export const useSim = create<SimState>((set, get) => {
       run((s) => void s.setVar(`${id}.gone`, gone ? 'true' : 'false'))
       return true
     },
+    releaseGuest: async () => {
+      set({ error: 'Phones sign in to an event server — there is nothing to release in an in-browser run.' })
+      return null
+    },
     releasePart: async () => {
       set({ error: 'Performer booths sign in to an event server — there is nothing to release in an in-browser run.' })
       return null

@@ -4,6 +4,7 @@
 
 import { useMemo, useState, type ComponentProps } from "react";
 import type { GetBackIn as GetBackInPanel } from "./get-back-in.tsx";
+import type { HeldPanel as HeldPanelPart } from "../held.tsx";
 import { PersonAvatar } from "../ui/primitives.tsx";
 import { usePlayHost } from "../host.ts";
 import { avatarUrl, hitNote, hitPickable, initialPick, orderPicker, rowNote, rowPickable, rowTitle, type IdentityRow, type PictureChoice, type PictureChoices, type ProgramHit } from "../avatars.ts";
@@ -11,7 +12,7 @@ import { claimFromSearch, joinClaim, registerErrorText } from "../claim.ts";
 import { PictureGrid } from "../picture-pick.tsx";
 import { codeFromUrl, fetchPictures, searchPrograms, useIdentities, useLandingBrand } from "../session/shared.ts";
 import type { GuestSession } from "../session/guest.ts";
-import { printedBadge, storedBadge } from "../rejoin.ts";
+import { forgetBadge, joinHeld, joinReserved, printedBadge, storedBadge, type HeldCard } from "../rejoin.ts";
 import { lazyPart } from "./lazy-part.tsx";
 
 /**
@@ -35,6 +36,12 @@ export function reservedFoldLabel(n: number): string {
 /** Wave 23's "Already playing? Get back in" (its own chunk). */
 const GetBackIn = lazyPart<ComponentProps<typeof GetBackInPanel>>(() => import("./get-back-in.tsx").then((m) => ({ default: m.GetBackIn })), "Get back in");
 
+/** Wave 59's refused screen, for a join that lost its card (its own chunk). */
+const HeldPanel = lazyPart<ComponentProps<typeof HeldPanelPart>>(() => import("../held.tsx").then((m) => ({ default: m.HeldPanel })), "This page");
+
+/** This screen only joins guests, so a refused card never comes back a booth. */
+const noBooth = () => {};
+
 export function GuestRegister({ session }: { session: GuestSession }) {
   const host = usePlayHost();
   const [code, setCode] = useState(codeFromUrl);
@@ -56,6 +63,8 @@ export function GuestRegister({ session }: { session: GuestSession }) {
   const [searching, setSearching] = useState(false);
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
+  // Wave 59: another phone got to this card first.
+  const [heldCard, setHeldCard] = useState<HeldCard | null>(null);
   const eventTitle = useLandingBrand().title;
   // The code opens the picker: the story's unclaimed programs, with their
   // pictures, and (when the server has the program directory) a search.
@@ -70,6 +79,7 @@ export function GuestRegister({ session }: { session: GuestSession }) {
   // the box steps aside, and an invited one lands on its own program.
   const filledIn = resolved !== null && (badge !== null || claim !== null);
   const invited = programs.find((r) => r.name === resolved?.invited && !r.claimed) ?? null;
+  const invitedTaken = programs.some((r) => r.name === resolved?.invited && r.claimed);
   const sections = pickerSections(programs);
   const [reservedOpen, setReservedOpen] = useState(false);
   // Having picked a program, the guest picks its picture (when there is
@@ -82,6 +92,17 @@ export function GuestRegister({ session }: { session: GuestSession }) {
     try {
       await session.register(name, code.trim(), wiki, picture, claim);
     } catch (e) {
+      const refused = joinHeld(e, code.trim(), badge, claim);
+      if (refused !== null) {
+        setPicking(null);
+        setHeldCard(refused);
+        return;
+      }
+      // A badge printed for another program: dropped, so the next pick joins.
+      if (joinReserved(e)) {
+        forgetBadge(host.storage);
+        setBadgeSeen((n) => n + 1);
+      }
       setErr(registerErrorText(e));
       setPicking(null);
       refresh(); // someone may have just taken it — refresh the list
@@ -123,14 +144,32 @@ export function GuestRegister({ session }: { session: GuestSession }) {
     }
   };
   const picture = (key: string | null) => (resolved !== null && key !== null ? avatarUrl(resolved.eventId, key) : null);
+  if (heldCard !== null) {
+    return (
+      <div className="hero">
+        <div className="glyph">🔒</div>
+        <HeldPanel
+          card={heldCard}
+          onGuest={session.adopt}
+          onBooth={noBooth}
+          onBack={() => {
+            forgetBadge(host.storage);
+            setBadgeSeen((n) => n + 1);
+            setHeldCard(null);
+            refresh();
+          }}
+        />
+      </div>
+    );
+  }
   return (
     <div className="hero">
       <div className="glyph">🎟️</div>
       <h1>{resolved?.title ?? fallback?.title ?? eventTitle ?? "Loom"}</h1>
       {session.notice && <p className="notice">{session.notice}</p>}
       {!filledIn && <p className="sub">Enter the code from your host, then pick the program you are tonight.</p>}
-      {claim !== null && invited === null && <p className="pick-hint">Your invitation saved your program for you — pick it below.</p>}
-      {badge !== null && invited === null && <p className="pick-hint">🪪 Badge {printedBadge(badge)} links to the program you pick. Lose this page? Scan your badge to get back in.</p>}
+      {claim !== null && invited === null && !invitedTaken && <p className="pick-hint">Your invitation saved your program for you — pick it below.</p>}
+      {badge !== null && invited === null && <p className="pick-hint">🪪 Badge {printedBadge(badge)} links to the program you pick. Lose this page? Scan your badge, and a host can let you back in.</p>}
       {!filledIn && (
         <input
           placeholder="Event code (from the host)"

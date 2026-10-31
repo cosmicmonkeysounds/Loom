@@ -1,14 +1,14 @@
-//! Where the participant app is running — the seam that lets the SAME app
-//! run standalone on a phone (the default: the whole page, `localStorage`
-//! sessions, `?code=` / `?unlock=` links, viewport breakpoints) or embedded
-//! several times over inside the editor's Run → Players page (`embed.tsx`:
-//! each copy in its own shadow root, an in-memory session handed in by the
-//! director, breakpoints from its own pane width, keys scoped to its pane).
-//!
-//! Everything that used to reach for a page-global (`localStorage`,
-//! `document.documentElement`, `window` keydown, the URL, the typewriter's
-//! crawl-once memory) goes through the host instead, so two panes never
-//! share a session, a theme, a keystroke, or a crawl.
+// Where the participant app is running — the seam that lets the SAME app
+// run standalone on a phone (the default: the whole page, `localStorage`
+// sessions, `?code=` / `?unlock=` links, viewport breakpoints) or embedded
+// several times over inside the editor's Run → Players page (`embed.tsx`:
+// each copy in its own shadow root, an in-memory session handed in by the
+// director, breakpoints from its own pane width, keys scoped to its pane).
+//
+// Everything that used to reach for a page-global (`localStorage`,
+// `document.documentElement`, `window` keydown, the URL, the typewriter's
+// crawl-once memory) goes through the host instead, so two panes never
+// share a session, a theme, a keystroke, or a crawl.
 
 import { createContext, useContext } from "react";
 import { createCrawl } from "./crawl.ts";

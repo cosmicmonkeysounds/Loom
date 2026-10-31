@@ -46,6 +46,8 @@ const HOST_POSTS: ReadonlySet<string> = new Set([
   // Wave 23: approve / deny a guest's ask to get back in (routes/rejoin.ts).
   "/api/mod/guest/rejoin",
   "/api/mod/prime/release",
+  // Wave 59: sign a guest's phone out, so their badge signs in again.
+  "/api/mod/guest/release",
   "/api/mod/scan",
   // The doors (fix round, C2): open them (`/api/mod/start` — also the resume
   // after a pause) and pause (`/api/mod/stop`), for a fire alarm or the night

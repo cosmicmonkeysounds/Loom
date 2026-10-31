@@ -110,6 +110,8 @@ describe('local run store', () => {
     expect(useSim.getState().error).toMatch(/event server/)
     expect(await useSim.getState().releasePart('Greeter')).toBeNull()
     expect(useSim.getState().error).toMatch(/event server/)
+    expect(await useSim.getState().releaseGuest(useSim.getState().personas[0]!)).toBeNull()
+    expect(useSim.getState().error).toMatch(/event server/)
   })
 
   it('startRun(Live) is refused on a folder', async () => {

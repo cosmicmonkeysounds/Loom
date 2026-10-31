@@ -12,9 +12,9 @@ import { LazyHelpSheet as HelpSheet } from "./help-lazy.tsx";
 import { initialRole, roleForBrand, type AppRole } from "./app-role.ts";
 import { ChunkBoundary, ChunkFailed, retryImport } from "./lazy-chunk.tsx";
 import { resumeToAdopt, storedGuestName, type ResumeLink } from "./resume.ts";
-import { cardPlan, rememberBadge, type CardLink } from "./rejoin.ts";
-import { claimField, claimFromSearch } from "./claim.ts";
-import { codeFromUrl, useDocumentTitle, useLandingBrand, useTheme } from "./session/shared.ts";
+import { cardPlan, heldOf, letGo, rememberBadge, settleOwed, type CardLink, type HeldCard } from "./rejoin.ts";
+import { claimField, claimFromSearch, rememberClaim } from "./claim.ts";
+import { codeFromUrl, tokenDead, useDocumentTitle, useLandingBrand, useTheme } from "./session/shared.ts";
 import { browserHost } from "./host.ts";
 
 // A guest's first load is the guest app only (fix round): the booth (with
@@ -26,6 +26,8 @@ const PerformerApp = lazy(retryImport(() => import("./booth/app.tsx").then((m) =
 // only when the page opened with one.
 const loadRejoinCalls = retryImport(() => import("./rejoin-calls.ts"));
 const DirectorApp = lazy(retryImport(() => import("./director.tsx").then((m) => ({ default: m.DirectorApp }))));
+// Wave 59: a card a phone already holds. Only a refused page fetches it.
+const HeldPanel = lazy(retryImport(() => import("./held.tsx").then((m) => ({ default: m.HeldPanel }))));
 
 /** What shows while a lazily loaded app arrives. */
 function Loading() {
@@ -46,27 +48,30 @@ function storedRaw(key: string): string | null {
   return v === null ? null : JSON.stringify(v);
 }
 
-/** A sign-in the page opened with (wave 23): a badge, an invitation, a cast card. */
-type Entry = { kind: "badge"; code: string; badge: string; claim: string | null } | { kind: "claim"; code: string; claim: string } | { kind: "part"; code: string; part: string };
+/** The token a stored session holds: on a re-scan it proves this phone is the holder. */
+function storedToken(key: string): string | undefined {
+  const token = browserHost.storage.load<{ token?: unknown }>(key)?.token;
+  return typeof token === "string" ? token : undefined;
+}
+
+/** A sign-in the page opened with (wave 23): a badge, an invitation, a cast
+ *  card, or a badge on a phone that says it has a guest (`link`: wave 59
+ *  checks that session first). */
+type Entry = { kind: "badge"; code: string; badge: string; claim: string | null } | { kind: "link"; code: string; badge: string; claim: string | null } | { kind: "claim"; code: string; claim: string } | { kind: "part"; code: string; part: string };
 
 /** What the page's link asks to sign in as, before any app mounts. */
-function entryFor(card: CardLink | null, search: string, stored: (k: string) => string | null): { entry: Entry | null; confirm: string | null; link: string | null } {
+function entryFor(card: CardLink | null, search: string, stored: (k: string) => string | null): { entry: Entry | null; confirm: string | null } {
   const guestName = storedGuestName(stored("loom.guest"));
   const plan = cardPlan(card, guestName, (stored("loom.prime") ?? "") !== "");
-  if (plan.kind === "enter") return { entry: { kind: "badge", code: plan.code, badge: plan.badge, claim: claimFromSearch(search) }, confirm: null, link: null };
-  if (plan.kind === "part") return { entry: { kind: "part", code: plan.code, part: plan.part }, confirm: plan.confirm, link: null };
-  if (plan.kind === "link") {
-    // Kept beside the session: a stale one (a rehearsal's, cut by Go live)
-    // falls to the join screen, and the badge still links there.
-    rememberBadge(browserHost.storage, card!.code, plan.badge);
-    return { entry: null, confirm: null, link: plan.badge };
-  }
+  if (plan.kind === "enter") return { entry: { kind: "badge", code: plan.code, badge: plan.badge, claim: claimFromSearch(search) }, confirm: null };
+  if (plan.kind === "part") return { entry: { kind: "part", code: plan.code, part: plan.part }, confirm: plan.confirm };
+  if (plan.kind === "link") return { entry: { kind: "link", code: card!.code, badge: plan.badge, claim: claimFromSearch(search) }, confirm: null };
   // An invitation opened with no session: its program may have joined
   // already (a featured guest who lost their phone) — in at once if so.
   const claim = claimFromSearch(search);
   const code = codeFromUrl();
-  if (claim !== null && code !== "" && guestName === null && (stored("loom.prime") ?? "") === "") return { entry: { kind: "claim", code, claim }, confirm: null, link: null };
-  return { entry: null, confirm: null, link: null };
+  if (claim !== null && code !== "" && guestName === null && (stored("loom.prime") ?? "") === "") return { entry: { kind: "claim", code, claim }, confirm: null };
+  return { entry: null, confirm: null };
 }
 
 export function App({ resume = null, card = null }: { resume?: ResumeLink | null; card?: CardLink | null }) {
@@ -99,22 +104,57 @@ export function App({ resume = null, card = null }: { resume?: ResumeLink | null
   const [entry, setEntry] = useState<Entry | null>(first.entry);
   const [entryConfirm, setEntryConfirm] = useState<string | null>(first.confirm);
   // A signed-in guest's badge link: the guest app links it (or reads it as a pass).
-  const badgeLink = first.link;
+  const [badgeLink, setBadgeLink] = useState<string | null>(null);
+  // Wave 59: the card this page opened with is held by a phone.
+  const [held, setHeld] = useState<HeldCard | null>(null);
+  /** This phone is a booth now: whoever it was lets go of their card. */
+  const adoptBooth = (booth: { token: string }) => {
+    const before = browserHost.storage.load<{ token?: unknown; eventId?: unknown }>("loom.prime");
+    letGo(browserHost.storage, browserHost.storage.load<{ token?: unknown; eventId?: unknown }>("loom.guest"), "guest");
+    if (before?.token !== booth.token) letGo(browserHost.storage, before, "prime");
+    browserHost.storage.drop("loom.guest");
+    browserHost.storage.save("loom.prime", booth);
+    setHeld(null);
+    setRole("prime");
+  };
+  // A sign-out this phone owes (Leave with no signal): told as soon as the
+  // server is there, or its own badge would read as held.
+  useEffect(() => {
+    const pay = () => void settleOwed(browserHost.storage);
+    pay();
+    window.addEventListener("online", pay);
+    return () => window.removeEventListener("online", pay);
+  }, []);
   useEffect(() => {
     if (entry === null || entryConfirm !== null) return;
     let live = true;
     const done = () => {
       if (live) setEntry(null);
     };
-    if (entry.kind === "part") {
-      void loadRejoinCalls()
-        .then((m) => m.enterPart(entry.code, entry.part))
-        .then((booth) => {
+    if (entry.kind === "link") {
+      // A session that died while the phone slept (a release, a move) is no
+      // session: the card decides, in or the refused screen, never the join.
+      const stored = browserHost.storage.load<{ token?: unknown; eventId?: unknown }>("loom.guest");
+      void tokenDead(`/e/${encodeURIComponent(String(stored?.eventId ?? ""))}`, "guest", String(stored?.token ?? "")).then((dead) => {
+        if (!live) return;
+        if (dead === null) {
+          setBadgeLink(entry.badge);
+          setEntry(null);
+        } else {
           browserHost.storage.drop("loom.guest");
-          browserHost.storage.save("loom.prime", booth);
-          setRole("prime");
+          setEntry({ ...entry, kind: "badge" });
+        }
+      });
+    } else if (entry.kind === "part") {
+      void loadRejoinCalls()
+        .then(async (m) => {
+          await m.payOwed(browserHost.storage);
+          return m.enterPart(entry.code, entry.part, undefined, storedToken("loom.prime"));
         })
+        .then(adoptBooth)
         .catch((e: unknown) => {
+          const shown = heldOf(e);
+          if (shown !== null) return setHeld({ code: entry.code, by: { part: entry.part }, ...shown });
           setResumeError(e instanceof Error ? e.message : "That staff badge didn't work.");
           setRole("none");
         })
@@ -122,16 +162,25 @@ export function App({ resume = null, card = null }: { resume?: ResumeLink | null
     } else {
       const by = entry.kind === "badge" ? { badge: entry.badge, ...claimField(entry.claim) } : { claim: entry.claim };
       void loadRejoinCalls()
-        .then((m) => m.enterBy(entry.code, by))
+        .then(async (m) => {
+          await m.payOwed(browserHost.storage);
+          return m.enterBy(entry.code, by, undefined, storedToken("loom.guest"));
+        })
         .then((r) => {
           if (r.kind === "in") browserHost.storage.save("loom.guest", r.guest);
-          // A blank badge rides into the join and links to the program picked.
-          else if (entry.kind === "badge") rememberBadge(browserHost.storage, entry.code, entry.badge);
+          else if (entry.kind === "badge") {
+            // A blank badge rides into the join and links to the program
+            // picked; an invited one takes its invitation with it.
+            rememberBadge(browserHost.storage, entry.code, entry.badge);
+            rememberClaim(browserHost.storage, entry.code, r.claim);
+          }
           setRole("guest");
         })
         .catch((e: unknown) => {
+          const shown = heldOf(e);
           // An invitation that won't re-enter still opens the join as before.
-          if (entry.kind === "claim") setRole("guest");
+          if (shown !== null) setHeld({ code: entry.code, by, ...shown });
+          else if (entry.kind === "claim") setRole("guest");
           else {
             setResumeError(e instanceof Error ? e.message : "That badge didn't work.");
             setRole("none");
@@ -147,7 +196,13 @@ export function App({ resume = null, card = null }: { resume?: ResumeLink | null
     if (pending === null || confirmFor !== null) return;
     setResuming(true);
     void loadRejoinCalls()
-      .then((m) => m.adoptResume(pending))
+      .then(async (m) => {
+        const guest = await m.adoptResume(pending);
+        // "Switch this phone": the guest it was lets go of their card.
+        const before = browserHost.storage.load<{ id?: unknown; token?: unknown; eventId?: unknown }>("loom.guest");
+        if (before?.id !== guest.id) letGo(browserHost.storage, before, "guest");
+        return guest;
+      })
       .then((guest) => {
         browserHost.storage.save("loom.guest", guest);
         setRole("guest");
@@ -206,6 +261,28 @@ export function App({ resume = null, card = null }: { resume?: ResumeLink | null
       <div className="hero">
         <div className="glyph">🔁</div>
         <p className="sub">Getting you back in…</p>
+      </div>
+    );
+  }
+
+  if (held !== null) {
+    return (
+      <div className="hero">
+        <div className="glyph">🔒</div>
+        <ChunkBoundary fallback={() => <ChunkFailed what="This page" onBack={() => setHeld(null)} />}>
+          <Suspense fallback={<p className="sub">One moment…</p>}>
+            <HeldPanel
+              card={held}
+              onGuest={(guest) => {
+                browserHost.storage.save("loom.guest", guest);
+                setHeld(null);
+                setRole("guest");
+              }}
+              onBooth={adoptBooth}
+              onBack={() => setHeld(null)}
+            />
+          </Suspense>
+        </ChunkBoundary>
       </div>
     );
   }
