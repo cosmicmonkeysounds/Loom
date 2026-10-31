@@ -1087,14 +1087,15 @@ where each document hides are in `facts.json` and never in a doc._
 
 | # | Round | Question (exact, as shown on the TV and in the quest log) | Key |
 |---|---|---|---|
-| H1 | 1 | According to Funk and Wagnalls, what is an example of fraud? | ⚠ owed |
-| H2 | 1 | According to Forensics For Dummies, finish this sentence: “___ ___ ___ ___ ___ previously hypnotized witnesses.” | ⚠ owed |
-| H3 | 1 | According to Macs for Dummies, finish this sentence: “A similar online _, called pharming, also involves the use of __ ___ __.” | ⚠ owed |
-| H4 | 2 | What extension does the Customer Care card tell you to dial? | in `facts.json` |
-| H5 | 2 | Which song did Trabolta play 412 times the night before he registered mapsandducks.com? | in `facts.json` |
-| H6 | 2 | What is the title of the last chapter of Trabolta's unfinished Grand Unified Theory? | in `facts.json` |
-| F1 | 3 | What is the only thing Sandy has ever said? | in `facts.json` |
-| F2 | 3 | Who is taking Sandy to computer prom? | in `facts.json` |
+| H1 | 1 | According to Funk and Wagnalls, what is an example of fraud? | in `facts.json` |
+| H2 | 1 | According to Forensics For Dummies, finish this sentence: “___ ___ ___ ___ ___ previously hypnotized witnesses.” | in `facts.json` |
+| H3 | 1 | According to Macs for Dummies, finish this sentence: “A similar online _, called pharming, also involves the use of __ ___ __.” | in `facts.json` |
+| H4 | 2 | What is an example of a Strong Password, cited by a For Dummies book, that starts with Q? | in `facts.json` |
+| H5 | 2 | What, according to one book, is the traditional objection to romance? | in `facts.json` |
+| H6 | 2 | According to one encyclopedia, what trend in technological progress will lead to this outcome: “Increased wages and shorter hours will provide the leisure necessary for man’s full cultural development.” | in `facts.json` |
+| F1 | 3 | Who is Binary Tom? | in `facts.json` |
+| F2 | 3 | What is the unlikely condition that will enable you to find your child on a map using Windows 10? | in `facts.json` |
+| F3 | 3 | According to one encyclopedia, who is: “[...] often a shy, meek individual bothered by feelings of inadequacy and perhaps unsure of his masculinity – while a nuisance, not a serious menace.” | in `facts.json` |
 <!-- /titi-facts:questions -->
 
 `Night.facts_requested` = 3 after start_the_hunt, 6 after start_the_second_hunt, 8 after

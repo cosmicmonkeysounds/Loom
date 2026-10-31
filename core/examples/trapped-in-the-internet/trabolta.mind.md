@@ -60,35 +60,130 @@ secrets:
     - funk and wagnalls    # H1
     - example of fraud
     - forensics for dummies # H2
-    - hypnotized witnesses
+    - finish this sentence
     - macs for dummies     # H3
-    - pharming
-    - extension            # H4
-    - customer care
-    - tell you to dial
-    - which song           # H5
-    - "412"
-    - the night before
-    - grand unified        # H6
-    - last chapter
-    - only thing sandy     # F1
-    - ever said
-    - computer prom        # F2
-    - taking sandy
+    - strong password      # H4
+    - starts with q
+    - traditional objection # H5
+    - objection to romance
+    - trend in technological progress # H6
+    - shorter hours
+    - cultural development
+    - binary tom           # F1
+    - unlikely condition   # F2
+    - find your child on a map
+    - "shy, meek individual" # F3
+    - feelings of inadequacy
+    - serious menace
   match:
-    - "1978"
-    - ext 1978
-    - ext. 1978
-    - nineteen seventy eight
-    - nineteen seventy-eight
-    - hopelessly devoted to you
-    - hopelessly devoted
-    - "appendix z: loose ends (do not print)"
-    - appendix z
-    - appendix
-    - loose ends
-    - do not print
-    - appendix z loose ends
+    - representing yourself as the agent of a business you are unconnected with
+    - representing yourself as the agent of a business
+    - representing yourself as an agent of a business
+    - representing yourself as an agent of a business you are unconnected with
+    - representing himself as the agent of a business
+    - representing himself as an agent of a business
+    - representing himself as the agent of a business with which he is unconnected
+    - a person represents himself as the agent of a business with which he is unconnected
+    - if a person represents himself as the agent of a business with which he is unconnected
+    - a person representing himself as the agent of a business with which he is unconnected
+    - for example if a person represents himself as the agent of a business with which he is unconnected and causes another to contract with him to the other partys disadvantage or injury the first party is guilty of fraud
+    - posing as the agent of a business
+    - posing as an agent of a business
+    - posing as an agent of a business you are not connected to
+    - pretending to be the agent of a business
+    - pretending to be an agent of a business
+    - pretending to be an agent of a business you are not connected to
+    - pretending to represent a business
+    - claiming to be the agent of a business
+    - claiming to be an agent of a business
+    - impersonating an agent of a business
+    - impersonating a business agent
+    - falsely representing a business
+    - representing a business you are not connected to
+    - representing a business you have no connection to
+    - agent of a business with which he is unconnected
+    - not all courts allow testimony from
+    - not all courts allow testimony from previously hypnotized witnesses
+    - not all courts allow testimony from previously hypnotised witnesses
+    - not all courts allow testimony
+    - not all courts allow testimony of
+    - not all courts allow testimony by
+    - not all courts allow the testimony from
+    - not all courts allow the testimony of
+    - not all courts allow testimonies from
+    - not all courts accept testimony from
+    - not all courts permit testimony from
+    - "fraud, fake web sites"
+    - fraud and fake web sites
+    - fraud and fake websites
+    - fraud fake websites
+    - "fraud, the use of fake web sites"
+    - fraud and the use of fake web sites
+    - fraud and the use of fake websites
+    - "fraud / fake web sites"
+    - "fraud; fake web sites"
+    - fake web sites and fraud
+    - fake websites and fraud
+    - a similar online fraud called pharming also involves the use of fake web sites
+    - a similar online fraud called pharming also involves the use of fake websites
+    - similar online fraud called pharming also involves the use of fake web sites
+    - online fraud called pharming also involves the use of fake web sites
+    - qwerty7654321
+    - qwerty 7654321
+    - qwerty-7654321
+    - qwerty7654321 on page 227
+    - escapist and immoral
+    - it is escapist and immoral
+    - that it is escapist and immoral
+    - that romance is escapist and immoral
+    - romance is escapist and immoral
+    - immoral and escapist
+    - "escapist, immoral"
+    - escapism and immorality
+    - its escapist and immoral
+    - automation
+    - automating
+    - increased automation
+    - the trend toward automation
+    - "a hypothetical colleague who challenges you to a number guessing game, solved with binary search, from data structures outside in with java"
+    - a hypothetical colleague
+    - hypothetical colleague from data structures outside in with java
+    - a hypothetical colleague who challenges you to a number guessing game
+    - a hypothetical colleague who challenges you to a guessing game
+    - a hypothetical colleague that challenges you to a number guessing game that he has solved using binary search algorithms
+    - a hypothetical colleague who challenges you to a number guessing game solved with binary search
+    - a hypothetical colleague with a number guessing game
+    - a colleague who challenges you to a number guessing game
+    - a colleague who challenges you to a guessing game
+    - a coworker who challenges you to a number guessing game
+    - a hypothetical coworker
+    - a character in data structures outside in with java
+    - a character from data structures outside in with java
+    - a character invented in data structures outside in with java
+    - a character invented in the book data structures outside in with java
+    - a hypothetical character in data structures outside in with java
+    - your child being one of the few with a windows smartphone
+    - if your child is one of the few with a windows smartphone
+    - your child is one of the few with a windows smartphone
+    - child is one of the few with a windows smartphone
+    - one of the few with a windows smartphone
+    - if your child has a windows smartphone
+    - your child has a windows smartphone
+    - your child having a windows smartphone
+    - the child has a windows smartphone
+    - if they have a windows smartphone
+    - they have a windows smartphone
+    - a windows smartphone
+    - windows smartphone
+    - if your child has a windows phone
+    - your child has a windows phone
+    - your child having a windows phone
+    - the child has a windows phone
+    - if they have a windows phone
+    - they have a windows phone
+    - having a windows phone
+    - a windows phone
+    - windows phone
     - it looks like i didn't understand that. please wait while i direct you to an agent.
     - please wait while i direct you to an agent
     - wait while i direct you to an agent

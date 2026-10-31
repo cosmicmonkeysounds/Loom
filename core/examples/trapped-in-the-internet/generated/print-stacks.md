@@ -19,14 +19,20 @@ carry the key.
 
 | # | Colour | Code | Title | Where in the Desktop | The question |
 |---|---|---|---|---|---|
-| H1 · DRAFT | gold | `WAGNALLS-FRAUD` | Funk and Wagnalls | The Desktop: in Funk and Wagnalls, among the books (the page is owed) | According to Funk and Wagnalls, what is an example of fraud? |
-| H2 · DRAFT | gold | `DUMMIES-FORENSICS` | Forensics For Dummies | The Desktop: in Forensics For Dummies, among the books (the page is owed) | According to Forensics For Dummies, finish this sentence: “___ ___ ___ ___ ___ previously hypnotized witnesses.” |
-| H3 · DRAFT | gold | `DUMMIES-MACS` | Macs for Dummies | The Desktop: in Macs for Dummies, among the books (the page is owed) | According to Macs for Dummies, finish this sentence: “A similar online _, called pharming, also involves the use of __ ___ __.” |
-| H4 · DRAFT | gold | `EXT-1978` | The Extension | The Desktop: the Customer Care card, tucked into the atlas — hint: A card the size of a business card. It is in the atlas. | What extension does the Customer Care card tell you to dial? |
-| H5 · DRAFT | gold | `SEARCH-HISTORY` | The Search History | The Desktop: the laminated play history, inside encyclopaedia volume M — hint: A laminated printout. Look under M, for music. | Which song did Trabolta play 412 times the night before he registered mapsandducks.com? |
-| H6 · DRAFT | gold | `APPENDIX-Z` | The Final Chapter | The Desktop: the binder's table of contents, inside encyclopaedia volume U — hint: A table of contents torn from a binder. Look under U, for universe. | What is the title of the last chapter of Trabolta's unfinished Grand Unified Theory? |
-| F1 · DRAFT | gold | `CALL-LOG-S` | What Sandy Says | The Desktop: the forty-page call log, in the back pages of encyclopaedia volume S — hint: Forty pages, double-sided, every answer the same. Look under S. | What is the only thing Sandy has ever said? |
-| F2 · DRAFT | gold | `COMPUTER-PROM` | Grok's Prom Ticket | The Desktop: the prom ticket, slipped into the atlas — hint: A pink and silver ticket. It is in the atlas, near the back. | Who is taking Sandy to computer prom? |
+| H1 | gold | `WAGNALLS-FRAUD` | Funk and Wagnalls | The Desktop: in Funk and Wagnalls, among the books | According to Funk and Wagnalls, what is an example of fraud? |
+| H2 | gold | `DUMMIES-FORENSICS` | Forensics For Dummies | The Desktop: in Forensics For Dummies, among the books | According to Forensics For Dummies, finish this sentence: “___ ___ ___ ___ ___ previously hypnotized witnesses.” |
+| H3 | gold | `DUMMIES-MACS` | Macs for Dummies | The Desktop: in Macs for Dummies, among the books | According to Macs for Dummies, finish this sentence: “A similar online _, called pharming, also involves the use of __ ___ __.” |
+| H4 | gold | `DUMMIES-SENIORS` | Computers For Seniors For Dummies | The Desktop: in Computers For Seniors For Dummies, among the books | What is an example of a Strong Password, cited by a For Dummies book, that starts with Q? |
+| H5 | gold | `GROLIER-ROMANCE` | Grolier's Encyclopedia, 1967 | The Desktop: in the 1967 Grolier, among the books | What, according to one book, is the traditional objection to romance? |
+| H6 | gold | `WAGNALLS-LEISURE` | Funk and Wagnalls, the 1980s | The Desktop: in Funk and Wagnalls, among the books | According to one encyclopedia, what trend in technological progress will lead to this outcome: “Increased wages and shorter hours will provide the leisure necessary for man’s full cultural development.” |
+| F1 | gold | `OUTSIDE-IN-JAVA` | Data Structures Outside In With Java | The Desktop: in Data Structures Outside In With Java, among the books | Who is Binary Tom? |
+| F2 | gold | `DUMMIES-WINDOWS` | Windows 10 For Dummies | The Desktop: in Windows 10 For Dummies, among the books | What is the unlikely condition that will enable you to find your child on a map using Windows 10? |
+| F3 | gold | `GROLIER-MENACE` | Grolier Academic Encyclopedia, 1967 | The Desktop: in the 1967 Grolier, among the books | According to one encyclopedia, who is: “[...] often a shy, meek individual bothered by feelings of inadequacy and perhaps unsure of his masculinity – while a nuisance, not a serious menace.” |
+| H4 · DRAFT | gold | `EXT-1978` | The Extension | The Desktop: the Customer Care card, tucked into the atlas — hint: A card the size of a business card. It is in the atlas. | (a document: no question asks for it now) |
+| H5 · DRAFT | gold | `SEARCH-HISTORY` | The Search History | The Desktop: the laminated play history, inside encyclopaedia volume M — hint: A laminated printout. Look under M, for music. | (a document: no question asks for it now) |
+| H6 · DRAFT | gold | `APPENDIX-Z` | The Final Chapter | The Desktop: the binder's table of contents, inside encyclopaedia volume U — hint: A table of contents torn from a binder. Look under U, for universe. | (a document: no question asks for it now) |
+| F1 · DRAFT | gold | `CALL-LOG-S` | What Sandy Says | The Desktop: the forty-page call log, in the back pages of encyclopaedia volume S — hint: Forty pages, double-sided, every answer the same. Look under S. | (a document: no question asks for it now) |
+| F2 · DRAFT | gold | `COMPUTER-PROM` | Grok's Prom Ticket | The Desktop: the prom ticket, slipped into the atlas — hint: A pink and silver ticket. It is in the atlas, near the back. | (a document: no question asks for it now) |
 
 ## The tiers
 

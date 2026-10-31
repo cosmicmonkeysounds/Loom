@@ -163,6 +163,7 @@ export function codexStacks(facts: FactsFile | null): Record<string, CodexStack>
     if (!Object.hasOwn(out, id)) out[id] = s;
   };
   for (const q of facts.questions) if (q.codex) claim(q.codex.id, { colour: HUNT_COLOUR, stack: "hunt answers", where: q.where ?? null });
+  for (const d of facts.documents ?? []) claim(d.codex.id, { colour: HUNT_COLOUR, stack: "hunt answers", where: d.where });
   for (const c of facts.door?.clues ?? []) claim(c.id, { colour: CLUE_COLOUR, stack: CLUE_STACK, where: c.where });
   for (const f of facts.facts) {
     const tier = f.tier === undefined ? undefined : facts.tiers?.[f.tier];

@@ -28,24 +28,25 @@ QUEST Hunt Two
     It is more important than ever that I get the information I need. One
     hour. The books have not moved. Return to the Desktop for the Second
     Moment of Truth.
-    - Q1. What extension does the Customer Care card tell you to dial?
-    - Q2. Which song did Trabolta play 412 times the night before he registered mapsandducks.com?
-    - Q3. What is the title of the last chapter of Trabolta's unfinished Grand Unified Theory?
+    - Q1. What is an example of a Strong Password, cited by a For Dummies book, that starts with Q?
+    - Q2. What, according to one book, is the traditional objection to romance?
+    - Q3. According to one encyclopedia, what trend in technological progress will lead to this outcome: “Increased wages and shorter hours will provide the leisure necessary for man’s full cultural development.”
 
 QUEST The Final Facts
   title: The Final Fact-Finding Round
   from: Trabolta
   text:
-    The last two facts. Everything depends on these facts.
-    - Q1. What is the only thing Sandy has ever said?
-    - Q2. Who is taking Sandy to computer prom?
+    The last three facts. Everything depends on these facts.
+    - Q1. Who is Binary Tom?
+    - Q2. What is the unlikely condition that will enable you to find your child on a map using Windows 10?
+    - Q3. According to one encyclopedia, who is: “[...] often a shy, meek individual bothered by feelings of inadequacy and perhaps unsure of his masculinity – while a nuisance, not a serious menace.”
 
 == Hunt One Questions
   setting: The Desktop
   cast: Trabolta
 
 Trabolta: Question one. According to Funk and Wagnalls, what is an example of fraud?
-Trabolta: Question two. According to Forensics For Dummies, finish this sentence: blank, blank, blank, blank, blank, previously hypnotized witnesses.
+Trabolta: Question two. According to Forensics For Dummies, finish this sentence: “Blank blank blank blank blank previously hypnotized witnesses.”
 Trabolta: Question three. According to Macs for Dummies, finish this sentence: A similar online blank, called pharming, also involves the use of blank, blank, blank.
 -> Hunt One Go
 
@@ -53,18 +54,177 @@ Trabolta: Question three. According to Macs for Dummies, finish this sentence: A
   setting: The Desktop
   cast: Trabolta
 
-Trabolta: Round two, question one. What extension does the Customer Care card tell you to dial?
-Trabolta: Round two, question two. Which song did Trabolta play 412 times the night before he registered mapsandducks.com?
-Trabolta: Round two, question three. What is the title of the last chapter of Trabolta's unfinished Grand Unified Theory?
+Trabolta: Question one: What is an example of a Strong Password, cited by a For Dummies book, that starts with Q?
+Trabolta: Question two: What, according to one book, is the traditional objection to romance?
+Trabolta: Question three: According to one encyclopedia, what trend in technological progress will lead to this outcome: “Increased wages and shorter hours will provide the leisure necessary for man’s full cultural development.”
 -> Hunt Two Go
 
 == Final Questions
   setting: The Desktop
   cast: Trabolta
 
-Trabolta: Final fact one. What is the only thing Sandy has ever said?
-Trabolta: Final fact two. Who is taking Sandy to computer prom?
--> Overshare Go
+Trabolta: Question one: Who is Binary Tom?
+Trabolta: Question two: What is the unlikely condition that will enable you to find your child on a map using Windows 10?
+Trabolta: Question three: According to one encyclopedia, who is: “often a shy, meek individual bothered by feelings of inadequacy and perhaps unsure of his masculinity – while a nuisance, not a serious menace.”
+-> Final Round Go
+
+// The reading of each question, the script's words: the question, what each
+// program filed, who filed nothing, the answer, who was right and sure. A line
+// with nobody in it drops out. A filing still pending, under review or waiting
+// on a ruling counts by its proposal, and a spoken answer a host accepted counts
+// as filed. core/server/agent-recent.ts keeps every one of these beats out of his
+// worker's `recent` and the talk history: they carry the answers and quote guests.
+
+== Reading H1
+  setting: The Desktop
+  cast: Trabolta
+
+set Kernel.res_said = Kernel.said_1
+set Kernel.res_absent = names([p for p in Persons where p.cleared == true and p.gone != true and p.persona != true and p.fact_v1 == "none" and p.judged_q1 != true])
+set Kernel.res_correct = names([p for p in Persons where p.cleared == true and p.gone != true and p.persona != true and ((p.fact_c1 == 100 and (p.fact_v1 == "accurate" or (p.fact_v1 == "pending" and p.fact_j1 == "accurate"))) or (p.judged_q1 == true and p.hunt_lie_q1 != true))])
+Trabolta: Question one. The question was: According to Funk and Wagnalls, what is an example of fraud?
+if Kernel.res_said != "":
+  Trabolta: Here are the guesses you have submitted: {Kernel.res_said}
+if Kernel.res_absent != "":
+  Trabolta: These programs did not submit any truth: {Kernel.res_absent}
+Trabolta: The answer was: “For example, if a person represents himself as the agent of a business with which he is unconnected, and causes another to contract with him to the other party’s disadvantage or injury, the first party is guilty of fraud.”
+if Kernel.res_correct != "":
+  Trabolta: Congratulations to these programs for getting a correct answer: {Kernel.res_correct}
+
+== Reading H2
+  setting: The Desktop
+  cast: Trabolta
+
+set Kernel.res_said = Kernel.said_2
+set Kernel.res_absent = names([p for p in Persons where p.cleared == true and p.gone != true and p.persona != true and p.fact_v2 == "none" and p.judged_q2 != true])
+set Kernel.res_correct = names([p for p in Persons where p.cleared == true and p.gone != true and p.persona != true and ((p.fact_c2 == 100 and (p.fact_v2 == "accurate" or (p.fact_v2 == "pending" and p.fact_j2 == "accurate"))) or (p.judged_q2 == true and p.hunt_lie_q2 != true))])
+Trabolta: Now. Question two. The question was: According to Forensics For Dummies, finish this sentence: “Blank blank blank blank blank previously hypnotized witnesses.”
+if Kernel.res_said != "":
+  Trabolta: Here are the guesses you have submitted: {Kernel.res_said}
+if Kernel.res_absent != "":
+  Trabolta: These programs did not submit any truth: {Kernel.res_absent}
+Trabolta: The answer was: “People who are under the influence of hypnosis often are highly susceptible to suggestion, such that merely asking them questions can alter their memories of certain events. It’s possible for these new memories to become part of their real memory, thus jeopardizing any future interviews or court testimony they may provide. Not all courts allow testimony from previously hypnotized witnesses.”
+if Kernel.res_correct != "":
+  Trabolta: Congratulations to these programs for getting a correct answer: {Kernel.res_correct}
+
+== Reading H3
+  setting: The Desktop
+  cast: Trabolta
+
+set Kernel.res_said = Kernel.said_3
+set Kernel.res_absent = names([p for p in Persons where p.cleared == true and p.gone != true and p.persona != true and p.fact_v3 == "none" and p.judged_q3 != true])
+set Kernel.res_correct = names([p for p in Persons where p.cleared == true and p.gone != true and p.persona != true and ((p.fact_c3 == 100 and (p.fact_v3 == "accurate" or (p.fact_v3 == "pending" and p.fact_j3 == "accurate"))) or (p.judged_q3 == true and p.hunt_lie_q3 != true))])
+Trabolta: Now. Question three. The question was: According to Macs for Dummies, finish this sentence: A similar online blank, called pharming, also involves the use of blank, blank, blank.
+if Kernel.res_said != "":
+  Trabolta: Here are the guesses you have submitted: {Kernel.res_said}
+if Kernel.res_absent != "":
+  Trabolta: These programs did not submit any truth: {Kernel.res_absent}
+Trabolta: The answer was: “A similar online fraud, called pharming, also involves the use of fake Web sites. Only this time, traffic is redirected from a legitimate bank or other destination to a bogus Web site that looks virtually identical. If you smell a rat, proceed gingerly.”
+if Kernel.res_correct != "":
+  Trabolta: Congratulations to these programs for getting a correct answer: {Kernel.res_correct}
+
+== Reading H4
+  setting: The Desktop
+  cast: Trabolta
+
+set Kernel.res_said = Kernel.said_4
+set Kernel.res_absent = names([p for p in Persons where p.cleared == true and p.gone != true and p.persona != true and p.fact_v4 == "none" and p.judged_q4 != true])
+set Kernel.res_correct = names([p for p in Persons where p.cleared == true and p.gone != true and p.persona != true and ((p.fact_c4 == 100 and (p.fact_v4 == "accurate" or (p.fact_v4 == "pending" and p.fact_j4 == "accurate"))) or (p.judged_q4 == true and p.hunt_lie_q4 != true))])
+Trabolta: Question one. The question was: What is an example of a Strong Password, cited by a For Dummies book, that starts with Q?
+if Kernel.res_said != "":
+  Trabolta: Here are the guesses you have submitted: {Kernel.res_said}
+if Kernel.res_absent != "":
+  Trabolta: These programs did not submit any truth: {Kernel.res_absent}
+Trabolta: The answer was: “The book Computers For Seniors For Dummies recommends a secure password of QWERTY7654321 on page 227. This is truly the worst password I have ever seen.”
+if Kernel.res_correct != "":
+  Trabolta: Congratulations to these programs for getting a correct answer: {Kernel.res_correct}
+
+== Reading H5
+  setting: The Desktop
+  cast: Trabolta
+
+set Kernel.res_said = Kernel.said_5
+set Kernel.res_absent = names([p for p in Persons where p.cleared == true and p.gone != true and p.persona != true and p.fact_v5 == "none" and p.judged_q5 != true])
+set Kernel.res_correct = names([p for p in Persons where p.cleared == true and p.gone != true and p.persona != true and ((p.fact_c5 == 100 and (p.fact_v5 == "accurate" or (p.fact_v5 == "pending" and p.fact_j5 == "accurate"))) or (p.judged_q5 == true and p.hunt_lie_q5 != true))])
+Trabolta: Now. Question two. The question was: What, according to one book, is the traditional objection to romance?
+if Kernel.res_said != "":
+  Trabolta: Here are the guesses you have submitted: {Kernel.res_said}
+if Kernel.res_absent != "":
+  Trabolta: These programs did not submit any truth: {Kernel.res_absent}
+Trabolta: The answer, from Grolier’s encyclopedia in 1967 was: “The traditional objection to romance – that it is escapist and immoral – is given further validity by contemporary examples of the form: the sentimental erotic adventures produced for the mass market.”
+if Kernel.res_correct != "":
+  Trabolta: Congratulations to these programs for getting a correct answer: {Kernel.res_correct}
+
+== Reading H6
+  setting: The Desktop
+  cast: Trabolta
+
+set Kernel.res_said = Kernel.said_6
+set Kernel.res_absent = names([p for p in Persons where p.cleared == true and p.gone != true and p.persona != true and p.fact_v6 == "none" and p.judged_q6 != true])
+set Kernel.res_correct = names([p for p in Persons where p.cleared == true and p.gone != true and p.persona != true and ((p.fact_c6 == 100 and (p.fact_v6 == "accurate" or (p.fact_v6 == "pending" and p.fact_j6 == "accurate"))) or (p.judged_q6 == true and p.hunt_lie_q6 != true))])
+Trabolta: Now. Question three. The question was: According to one encyclopedia, what trend in technological progress will lead to this outcome: “Increased wages and shorter hours will provide the leisure necessary for man’s full cultural development.”
+if Kernel.res_said != "":
+  Trabolta: Here are the guesses you have submitted: {Kernel.res_said}
+if Kernel.res_absent != "":
+  Trabolta: These programs did not submit any truth: {Kernel.res_absent}
+Trabolta: The answer was: “Automation. Yes, Funk and Wagnalls encyclopedia from the 1980s said automation would be responsible for man’s full cultural development. I am inclined to agree with their estimation, because automation is what has made Jean Trabolta’s Truth Scavenger Hunt possible.”
+if Kernel.res_correct != "":
+  Trabolta: Congratulations to these programs for getting a correct answer: {Kernel.res_correct}
+
+== Reading F1
+  setting: The Desktop
+  cast: Trabolta
+
+set Kernel.res_said = Kernel.said_7
+set Kernel.res_absent = names([p for p in Persons where p.cleared == true and p.gone != true and p.persona != true and p.fact_v7 == "none" and p.judged_q7 != true])
+set Kernel.res_correct = names([p for p in Persons where p.cleared == true and p.gone != true and p.persona != true and ((p.fact_c7 == 100 and (p.fact_v7 == "accurate" or (p.fact_v7 == "pending" and p.fact_j7 == "accurate"))) or (p.judged_q7 == true and p.hunt_lie_q7 != true))])
+Trabolta: Question one. The question was: Who is Binary Tom?
+if Kernel.res_said != "":
+  Trabolta: Here are the guesses you have submitted: {Kernel.res_said}
+if Kernel.res_absent != "":
+  Trabolta: These programs did not submit any truth: {Kernel.res_absent}
+Trabolta: The answer was: “Binary Tom is a character invented in the book “Data Structures Outside In With Java” who is a hypothetical colleague that challenges you to a number guessing game that he has solved using binary search algorithms.”
+if Kernel.res_correct != "":
+  Trabolta: Congratulations to these programs for getting a correct answer: {Kernel.res_correct}
+
+== Reading F2
+  setting: The Desktop
+  cast: Trabolta
+
+set Kernel.res_said = Kernel.said_8
+set Kernel.res_absent = names([p for p in Persons where p.cleared == true and p.gone != true and p.persona != true and p.fact_v8 == "none" and p.judged_q8 != true])
+set Kernel.res_correct = names([p for p in Persons where p.cleared == true and p.gone != true and p.persona != true and ((p.fact_c8 == 100 and (p.fact_v8 == "accurate" or (p.fact_v8 == "pending" and p.fact_j8 == "accurate"))) or (p.judged_q8 == true and p.hunt_lie_q8 != true))])
+Trabolta: Now. Question two. The question was: What is the unlikely condition that will enable you to find your child on a map using Windows 10?
+if Kernel.res_said != "":
+  Trabolta: Here are the guesses you have submitted: {Kernel.res_said}
+if Kernel.res_absent != "":
+  Trabolta: These programs did not submit any truth: {Kernel.res_absent}
+Trabolta: The answer, from Windows 10 for Dummies, is: “Find Child on a Map feature: If your child is one of the few with a Windows smartphone, this flip switch lets you locate the device – and, hopefully, your child – on a map.”
+if Kernel.res_correct != "":
+  Trabolta: Congratulations to these programs for getting a correct answer: {Kernel.res_correct}
+
+== Reading F3
+  setting: The Desktop
+  cast: Trabolta
+
+set Kernel.res_said = Kernel.said_9
+set Kernel.res_absent = names([p for p in Persons where p.cleared == true and p.gone != true and p.persona != true and p.fact_v9 == "none" and p.judged_q9 != true])
+set Kernel.res_correct = names([p for p in Persons where p.cleared == true and p.gone != true and p.persona != true and ((p.fact_c9 == 100 and (p.fact_v9 == "accurate" or (p.fact_v9 == "pending" and p.fact_j9 == "accurate"))) or (p.judged_q9 == true and p.hunt_lie_q9 != true))])
+set Kernel.res_found = count([p for p in Persons where p.fact_v9 == "accurate" or (p.fact_v9 == "pending" and p.fact_j9 == "accurate") or (p.judged_q9 == true and p.hunt_lie_q9 != true)])
+set Kernel.res_sure = count([p for p in Persons where p.fact_c9 == 100])
+Trabolta: Now. Question three. The final, and most important question. The question was: According to one encyclopedia, who is: “often a shy, meek individual bothered by feelings of inadequacy and perhaps unsure of his masculinity – while a nuisance, not a serious menace.”
+if Kernel.res_said != "":
+  Trabolta: Here are the guesses you have submitted: {Kernel.res_said}
+if Kernel.res_absent != "":
+  Trabolta: These programs did not submit any truth: {Kernel.res_absent}
+if Kernel.res_found > 0:
+  Trabolta: The answer appears to be: “Exhibitionist.” Yes, I have finally verified it, and this is true. This encyclopedia, scanned into the computer, says the exhibitionist is mostly harmless. How disturbing. They really had to put that in there.
+  if Kernel.res_correct != "":
+    Trabolta: Congratulations to these programs for getting a correct answer: {Kernel.res_correct}
+else:
+  if Kernel.res_sure > 0:
+    Trabolta: Some of you shared 100% confidence for your answers for this question … but I am computing this is, and it is not correct.
+  Trabolta: This is bad. This is very bad. We will return to this one.
 
 // The 📝 card lines (main.loom `when deal_fact_card`), which keys are still owed (G9a skips them), the truth count and the door code.
 == Facts Seed
@@ -73,19 +233,21 @@ Trabolta: Final fact two. Who is taking Sandy to computer prom?
 set Night.q_h1 = "H1: Round 1 Q1. According to Funk and Wagnalls, what is an example of fraud?"
 set Night.q_h2 = "H2: Round 1 Q2. According to Forensics For Dummies, finish this sentence: “___ ___ ___ ___ ___ previously hypnotized witnesses.”"
 set Night.q_h3 = "H3: Round 1 Q3. According to Macs for Dummies, finish this sentence: “A similar online _, called pharming, also involves the use of __ ___ __.”"
-set Night.q_h4 = "H4: Round 2 Q1. What extension does the Customer Care card tell you to dial?"
-set Night.q_h5 = "H5: Round 2 Q2. Which song did Trabolta play 412 times the night before he registered mapsandducks.com?"
-set Night.q_h6 = "H6: Round 2 Q3. What is the title of the last chapter of Trabolta's unfinished Grand Unified Theory?"
-set Night.q_f1 = "F1: Final Q1. What is the only thing Sandy has ever said?"
-set Night.q_f2 = "F2: Final Q2. Who is taking Sandy to computer prom?"
-set Night.owed_h1 = true
-set Night.owed_h2 = true
-set Night.owed_h3 = true
+set Night.q_h4 = "H4: Round 2 Q1. What is an example of a Strong Password, cited by a For Dummies book, that starts with Q?"
+set Night.q_h5 = "H5: Round 2 Q2. What, according to one book, is the traditional objection to romance?"
+set Night.q_h6 = "H6: Round 2 Q3. According to one encyclopedia, what trend in technological progress will lead to this outcome: “Increased wages and shorter hours will provide the leisure necessary for man’s full cultural development.”"
+set Night.q_f1 = "F1: Final Q1. Who is Binary Tom?"
+set Night.q_f2 = "F2: Final Q2. What is the unlikely condition that will enable you to find your child on a map using Windows 10?"
+set Night.q_f3 = "F3: Final Q3. According to one encyclopedia, who is: “[...] often a shy, meek individual bothered by feelings of inadequacy and perhaps unsure of his masculinity – while a nuisance, not a serious menace.”"
+set Night.owed_h1 = false
+set Night.owed_h2 = false
+set Night.owed_h3 = false
 set Night.owed_h4 = false
 set Night.owed_h5 = false
 set Night.owed_h6 = false
 set Night.owed_f1 = false
 set Night.owed_f2 = false
+set Night.owed_f3 = false
 set Night.truth_count = 17
 set Kernel.door_code = "7639"
 
@@ -141,39 +303,117 @@ else:
 // with the lore marker the voice worker hides too.
 
 // H1 · the hunt answer · gold
-// DRAFT — awaiting sign-off in facts.json
 CODEX Funk And Wagnalls
   title: Funk and Wagnalls
   category: Facts
   code: WAGNALLS-FRAUD
   secret: true
   text:
-    PLACEHOLDER. A page of Funk and Wagnalls goes here. Its words are owed.
-    ▒ HUNT ANSWER H1 ▒
+    For example, if a person represents himself as the agent of a business
+    with which he is unconnected, and causes another to contract with him to
+    the other party’s disadvantage or injury, the first party is guilty of
+    fraud. ▒ HUNT ANSWER H1 ▒
 
 // H2 · the hunt answer · gold
-// DRAFT — awaiting sign-off in facts.json
 CODEX Forensics For Dummies
   title: Forensics For Dummies
   category: Facts
   code: DUMMIES-FORENSICS
   secret: true
   text:
-    PLACEHOLDER. A page of Forensics For Dummies goes here. Its words are
-    owed. ▒ HUNT ANSWER H2 ▒
+    People who are under the influence of hypnosis often are highly
+    susceptible to suggestion, such that merely asking them questions can
+    alter their memories of certain events. It’s possible for these new
+    memories to become part of their real memory, thus jeopardizing any
+    future interviews or court testimony they may provide. Not all courts
+    allow testimony from previously hypnotized witnesses. ▒ HUNT ANSWER H2 ▒
 
 // H3 · the hunt answer · gold
-// DRAFT — awaiting sign-off in facts.json
 CODEX Macs For Dummies
   title: Macs for Dummies
   category: Facts
   code: DUMMIES-MACS
   secret: true
   text:
-    PLACEHOLDER. A page of Macs for Dummies goes here. Its words are owed.
-    ▒ HUNT ANSWER H3 ▒
+    A similar online fraud, called pharming, also involves the use of fake
+    Web sites. Only this time, traffic is redirected from a legitimate bank
+    or other destination to a bogus Web site that looks virtually identical.
+    If you smell a rat, proceed gingerly. ▒ HUNT ANSWER H3 ▒
 
 // H4 · the hunt answer · gold
+CODEX Computers For Seniors
+  title: Computers For Seniors For Dummies
+  category: Facts
+  code: DUMMIES-SENIORS
+  secret: true
+  text:
+    The book Computers For Seniors For Dummies recommends a secure password
+    of QWERTY7654321 on page 227. This is truly the worst password I have
+    ever seen. ▒ HUNT ANSWER H4 ▒
+
+// H5 · the hunt answer · gold
+CODEX Grolier On Romance
+  title: Grolier's Encyclopedia, 1967
+  category: Facts
+  code: GROLIER-ROMANCE
+  secret: true
+  text:
+    The traditional objection to romance – that it is escapist and immoral –
+    is given further validity by contemporary examples of the form: the
+    sentimental erotic adventures produced for the mass market.
+    ▒ HUNT ANSWER H5 ▒
+
+// H6 · the hunt answer · gold
+CODEX Funk And Wagnalls Leisure
+  title: Funk and Wagnalls, the 1980s
+  category: Facts
+  code: WAGNALLS-LEISURE
+  secret: true
+  text:
+    Automation. Yes, Funk and Wagnalls encyclopedia from the 1980s said
+    automation would be responsible for man’s full cultural development. I
+    am inclined to agree with their estimation, because automation is what
+    has made Jean Trabolta’s Truth Scavenger Hunt possible.
+    ▒ HUNT ANSWER H6 ▒
+
+// F1 · the hunt answer · gold
+CODEX Data Structures Outside In
+  title: Data Structures Outside In With Java
+  category: Facts
+  code: OUTSIDE-IN-JAVA
+  secret: true
+  text:
+    Binary Tom is a character invented in the book “Data Structures Outside
+    In With Java” who is a hypothetical colleague that challenges you to a
+    number guessing game that he has solved using binary search algorithms.
+    ▒ HUNT ANSWER F1 ▒
+
+// F2 · the hunt answer · gold
+CODEX Windows 10 For Dummies
+  title: Windows 10 For Dummies
+  category: Facts
+  code: DUMMIES-WINDOWS
+  secret: true
+  text:
+    Find Child on a Map feature: If your child is one of the few with a
+    Windows smartphone, this flip switch lets you locate the device – and,
+    hopefully, your child – on a map. ▒ HUNT ANSWER F2 ▒
+
+// F3 · the hunt answer · gold
+CODEX Grolier Academic
+  title: Grolier Academic Encyclopedia, 1967
+  category: Facts
+  code: GROLIER-MENACE
+  secret: true
+  text:
+    Exhibitionist. [...] often a shy, meek individual bothered by feelings
+    of inadequacy and perhaps unsure of his masculinity – while a nuisance,
+    not a serious menace. ▒ HUNT ANSWER F3 ▒
+
+// Documents that stopped being questions (wave 59a): the same entries, the
+// same codes, the same cards and the same pile. They only ask nothing now.
+
+// H4 · a document · gold
 // DRAFT — awaiting sign-off in facts.json
 CODEX The Extension
   title: The Extension
@@ -185,7 +425,7 @@ CODEX The Extension
     help? Our Customer Care agent is available day and night. Dial extension
     1978. For Customer Care, always dial extension 1978. ▒ HUNT ANSWER H4 ▒
 
-// H5 · the hunt answer · gold
+// H5 · a document · gold
 // DRAFT — awaiting sign-off in facts.json
 CODEX The Search History
   title: The Search History
@@ -198,7 +438,7 @@ CODEX The Search History
     and onto the back: "Hopelessly Devoted to You". Play count at
     the bottom: 412. ▒ HUNT ANSWER H5 ▒
 
-// H6 · the hunt answer · gold
+// H6 · a document · gold
 // DRAFT — awaiting sign-off in facts.json
 CODEX The Final Chapter
   title: The Final Chapter
@@ -211,7 +451,7 @@ CODEX The Final Chapter
     Loose Ends (Do Not Print)". The page it points to is blank.
     ▒ HUNT ANSWER H6 ▒
 
-// F1 · the hunt answer · gold
+// F1 · a document · gold
 // DRAFT — awaiting sign-off in facts.json
 CODEX What Sandy Says
   title: What Sandy Says
@@ -226,7 +466,7 @@ CODEX What Sandy Says
     didn't understand that. Please wait while I direct you to an agent."
     ▒ HUNT ANSWER F1 ▒
 
-// F2 · the hunt answer · gold
+// F2 · a document · gold
 // DRAFT — awaiting sign-off in facts.json
 CODEX The Prom Ticket
   title: Grok's Prom Ticket

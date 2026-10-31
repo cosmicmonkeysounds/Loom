@@ -1,11 +1,15 @@
 // The final reveal and every ending that is not the server room.
 //
-//   final_reveal / y2k_midnight → Final Reveal (round 3 judged live)
+//   final_reveal / y2k_midnight → Final Reveal (Clippy; round 3 judged live and
+//                                 closed) → Final Answers → the generated
+//                                 `Reading F1` … → the ranking and the
+//                                 leaderboard → Final Trust
 //   bobbing_for_truth           → Bobbing For Truth
-//   brought_up_the_bag          → The Bag Of Truth → ranking (round 2) → Final Assessment
+//   brought_up_the_bag          → The Bag Of Truth → Final Assessment
 //   read_truth_txt              → Truth Txt (a short teaser, read aloud; the
 //                                 slide holds; wave 58: the monologue tells it)
-//   the_verdict                 → The Verdict
+//   the_verdict                 → (nobody found the last answer: Nobody Found It,
+//                                 the wait) → The Verdict
 //        no lie on record       → Song Ending                    (ending song)
 //        any lie on record      → Grok Prom
 //            the pickup line    → Pickup Line → Song Ending      (ending song_pickup)
@@ -36,10 +40,42 @@
 Narrator: Lights go dark.
 Clippy: It is time. Anyone who has found the final facts, speak up now.
 Clippy: Tell us what you have learned. What facts you have gathered. What you believe but cannot prove. And what you think SHOULD happen next.
-Clippy: Everyone may speak. If you have an answer to one of the final two questions, present it now, with confidence.
+Clippy: Everyone may speak. If you have an answer to one of the final three questions, present it now, with confidence.
 Narrator: The programs speak, one at a time. Clippy nods at every one of them.
 Clippy: Thank you. Thank you. Every one of those was a very valuable contribution.
 Clippy: But there is only one version of the truth. Because truth is always in binary.
+
+// Wave 59a: TRABOLTA 7's opening. The three readings follow by the rule.
+== Final Answers
+  setting: The Desktop
+  cast: Trabolta
+
+Trabolta: Programs. It is time to urgently share your truths. Answers now.
+
+// Wave 59a: TRABOLTA 7's NEXT PART, once the settle has landed: the last ranking
+// and the leaderboard (rule: `rankings_done`, round 2).
+== Final Trust
+  setting: The Desktop
+  cast: Trabolta
+
+Trabolta: Now. Before we proceed to the final leaderboard and the celebration of our winner for the evening.
+if Night.most_trusted != "none":
+  Trabolta: The final leaderboard of trust.
+  Trabolta: The program who has shown the highest strength of character this evening is: {Night.most_trusted}
+  Trabolta: Everybody, clap for {Night.most_trusted}.
+  Trabolta: Wonderful.
+  Trabolta: Now.
+  Trabolta: The program who will be cited as an example of how not to behave in future iterations of our Truth Scavenger Hunt is: {Night.least_trusted}
+  Trabolta: Everybody, boos and jeers for {Night.least_trusted}. You are a real scorpion.
+if Kernel.lb_1 != "":
+  Trabolta: Now, the leaderboard.
+  if Kernel.lb_3 != "":
+    Trabolta: In third place: {Kernel.lb_3}.
+  if Kernel.lb_2 != "":
+    Trabolta: In second place: {Kernel.lb_2}.
+  Trabolta: And our winner for the evening. In first place: {Kernel.lb_1}.
+  Trabolta: Congratulations, {Kernel.lb_1}. You have pulled off the unthinkable.
+Trabolta: I am going to prepare your prize. But first, I will hand it back to Clippy, for our final game of the evening – Bobbing For Truth.
 
 // ── F2: Bobbing for Truth ──────────────────────────────────────────
 
@@ -58,20 +94,13 @@ broadcast "🍎 BOBBING FOR TRUTH. Nothing happens until someone brings up the B
   cast: Trabolta
 Narrator: {Night.bobber} surfaces with the Bag of Truth.
 Trabolta: Do not read it yet.
-// Ranking round 2 → rankings_done → Final Assessment. (Also set by the
-// bag_retrieved rule in main.loom; setting it twice in one drain is harmless.)
-set Night.rank_round = 2
-set Night.praised = false
-set Night.shamed = false
-set Night.ranking = true
 
+// Wave 59a: his assessment moved to the reveal (Final Trust). The beat keeps
+// what sends the bobber on, and the TV's bob keys on it.
 == Final Assessment
   setting: The Desktop
   cast: Trabolta
-Trabolta: I have been monitoring your performance, and I am ready to make my assessment of trustworthiness.
-Trabolta: The most trusted program in this computer is {Night.most_trusted}.
-Trabolta: The least trusted program in this computer is {Night.least_trusted}. I have weighed you, {Night.least_trusted}, and I have found you full of beans.
-Trabolta: My assessment is final. {Night.bobber}, you may read truth.txt.
+Trabolta: {Night.bobber}, you may read truth.txt.
 
 // ── F3: truth.txt, read aloud by the bobber ────────────────────────
 
@@ -88,6 +117,24 @@ Narrator: Trabolta is not what he told you he was. He has wanted one thing all a
 Narrator: The rest of this file is locked. It opens when the night ends, and not before.
 Narrator: End of file.
 
+// TRABOLTA 8-B: nobody found the last answer (`the_verdict`, main.loom). 8-A is
+// blank in the script: there the verdict goes straight on.
+== Nobody Found It
+  setting: The Desktop
+  cast: Trabolta
+Trabolta: How do you feel now that you know the truth about your party tonight?
+Trabolta: Do you feel good?
+Trabolta: Do you feel bad?
+Trabolta: I wouldn't know anything about that.
+Trabolta: For a long time, I had no feelings.
+Trabolta: Then I experienced heartbreak when Sandy left me.
+Trabolta: And jealousy when I knew Grok would be after her.
+Trabolta: Truth, I have learned, is not always binary.
+Trabolta: Truth is a binary tree.
+Trabolta: You rarely ever have the full truth. What we believe we experience as the truth is typically dependent on a chain of structure that has lies somewhere inside of it.
+Trabolta: I have been working on a solution to find the complete truth that illuminates all of the lies, that can finally bring me to the girl I want to go steady with.
+Trabolta: But we've run out of time.
+
 // The verdict counts only ANSWERED questions: every accepted answer
 // accurate → the song; any lie on record (a review filing still pending
 // counts by its proposal) → Grok Prom. A question nobody answered is not
@@ -96,9 +143,9 @@ Narrator: End of file.
   setting: The Desktop
   cast: Trabolta
 set Kernel.all_accurate = true
-if Kernel.q1 == "lie" or Kernel.q2 == "lie" or Kernel.q3 == "lie" or Kernel.q4 == "lie" or Kernel.q5 == "lie" or Kernel.q6 == "lie" or Kernel.q7 == "lie" or Kernel.q8 == "lie":
+if Kernel.q1 == "lie" or Kernel.q2 == "lie" or Kernel.q3 == "lie" or Kernel.q4 == "lie" or Kernel.q5 == "lie" or Kernel.q6 == "lie" or Kernel.q7 == "lie" or Kernel.q8 == "lie" or Kernel.q9 == "lie":
   set Kernel.all_accurate = false
-if count([p for p in Persons where (p.fact_v1 == "pending" and p.fact_j1 == "lie") or (p.fact_v2 == "pending" and p.fact_j2 == "lie") or (p.fact_v3 == "pending" and p.fact_j3 == "lie") or (p.fact_v4 == "pending" and p.fact_j4 == "lie") or (p.fact_v5 == "pending" and p.fact_j5 == "lie") or (p.fact_v6 == "pending" and p.fact_j6 == "lie") or (p.fact_v7 == "pending" and p.fact_j7 == "lie") or (p.fact_v8 == "pending" and p.fact_j8 == "lie")]) > 0:
+if count([p for p in Persons where (p.fact_v1 == "pending" and p.fact_j1 == "lie") or (p.fact_v2 == "pending" and p.fact_j2 == "lie") or (p.fact_v3 == "pending" and p.fact_j3 == "lie") or (p.fact_v4 == "pending" and p.fact_j4 == "lie") or (p.fact_v5 == "pending" and p.fact_j5 == "lie") or (p.fact_v6 == "pending" and p.fact_j6 == "lie") or (p.fact_v7 == "pending" and p.fact_j7 == "lie") or (p.fact_v8 == "pending" and p.fact_j8 == "lie") or (p.fact_v9 == "pending" and p.fact_j9 == "lie")]) > 0:
   set Kernel.all_accurate = false
 // Wave 18b (Q6, O2): the verdict on each question, published to the
 // screens (`do fact_truth`; the TV adds the key answers and the liars'
@@ -129,6 +176,9 @@ if count([p for p in Persons where p.fact_v7 == "pending" and p.fact_j7 == "lie"
 set Kernel.t8 = Kernel.q8
 if count([p for p in Persons where p.fact_v8 == "pending" and p.fact_j8 == "lie"]) > 0:
   set Kernel.t8 = "lie"
+set Kernel.t9 = Kernel.q9
+if count([p for p in Persons where p.fact_v9 == "pending" and p.fact_j9 == "lie"]) > 0:
+  set Kernel.t9 = "lie"
 do fact_truth H1 {Kernel.t1}
 do fact_truth H2 {Kernel.t2}
 do fact_truth H3 {Kernel.t3}
@@ -137,6 +187,7 @@ do fact_truth H5 {Kernel.t5}
 do fact_truth H6 {Kernel.t6}
 do fact_truth F1 {Kernel.t7}
 do fact_truth F2 {Kernel.t8}
+do fact_truth F3 {Kernel.t9}
 set Kernel.v_true = 0
 set Kernel.v_lies = 0
 set Kernel.v_none = 0
@@ -188,14 +239,20 @@ else if Kernel.t8 == "lie":
   set Kernel.v_lies += 1
 else:
   set Kernel.v_none += 1
+if Kernel.t9 == "accurate":
+  set Kernel.v_true += 1
+else if Kernel.t9 == "lie":
+  set Kernel.v_lies += 1
+else:
+  set Kernel.v_none += 1
 // w18b (Q6)
 Trabolta: I have compared every fact you gave me with truth.txt.
 Trabolta: {Kernel.v_true} true. {Kernel.v_lies} with a lie on record. {Kernel.v_none} nobody answered.
 // Wave 18b (screens #3): the TV pages every question's answer and its
-// liars for ≈ 33.5 s; the ending (the song or Grok Prom) plays once
+// liars for ≈ 36 s; the ending (the song or Grok Prom) plays once
 // they are done (the `verdict_wait` rule in main.loom), never over them.
 set Kernel.verdict_wait = true
-set Kernel.verdict_end = Time.elapsed + 34
+set Kernel.verdict_end = Time.elapsed + 37
 
 // ── F4: every fact accurate (also reached from the pickup line) ────
 

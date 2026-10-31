@@ -46,59 +46,48 @@ Clippy: If you make the cup, you get to share one truth, and every fact you file
 Adobe Acrobat: Visualise the cup. Become the cup. Then throw the ball into the cup.
 Clippy: Everyone outside! Line up! It's going to be so fun!
 
+// Wave 59a: TRABOLTA 5 to "Before we get to the answers for Round 2." He reads
+// them on 🤖 now (Overshare Answers).
 == Round Two Tally
   setting: The Desktop
   cast: Trabolta
 
-Trabolta: The second collection is closed. I will now tally the facts I have received.
-// w18b (R3): he reads every round-two filing. Every house line of this
-// beat stays out of his worker's `recent` (agent-recent.ts).
-Trabolta: I will read every fact you filed. Only a cup counts.
-if Kernel.said_4 == "":
-  Trabolta: Question four. Nobody filed.
-else:
-  Trabolta: Question four. {Kernel.said_4}
-if Kernel.said_5 == "":
-  Trabolta: Question five. Nobody filed.
-else:
-  Trabolta: Question five. {Kernel.said_5}
-if Kernel.said_6 == "":
-  Trabolta: Question six. Nobody filed.
-else:
-  Trabolta: Question six. {Kernel.said_6}
-if Night.collection_complete == true:
-  Trabolta: I have every fact I asked for. My confidence that we will defeat the malware is sixty-one percent.
-  Trabolta: That is the highest number I have said tonight. Thank you, programs. Your cooperation has been logged.
-else:
-  Trabolta: I remain without the information I requested. My confidence that we will defeat the malware is twelve percent.
-  Trabolta: Twelve. I would like everyone to sit with that number.
+Trabolta: Welcome back, programs.
+Trabolta: What a fine round of Truth Pong. Jean Trabolta's Truth Scavenger Hunt is a finely tuned game. It's automatic. It's systematic. And once we get to Truth Pong, it is also hydromatic. It was fun to see you all get splashed with the beer or water and I wish I could be there with you in person, but circumstances do not allow.
+Trabolta: Now.
+Trabolta: Before we get to the answers for Round 2.
 
 == Trust Chart
   setting: The Desktop
   cast: Trabolta, Clippy
 
-Trabolta: TRUST CHART. Ten points per correct truth. Minus five per visit to the Internet. Plus or minus ten for my personal assessment.
-Trabolta: Every program in this computer is on the chart. You may look for yourself. You may not argue with it.
-Trabolta: Assessments are being finalised.
-// DRAFT w32 (an advert tears through)
-Trabolta (glitching): I apologise for the— ACT NOW— for nothing. There was no interruption.
+Trabolta: It is time for Trabolta's Trust Chart.
+Trabolta: I have been monitoring your patterns and behaviours, as part of the beta testing terms of agreement you signed up for during onboarding, and I have some opinions on who I trust.
 Clippy: Isn't this exciting? Somebody's going to be the most trusted program in the whole computer!
 
+// Wave 59a: three from each end (main.loom's ranking machinery); a line with
+// nobody in it drops out.
 == Praise The Top
   setting: The Desktop
-  cast: Trabolta, Clippy
+  cast: Trabolta
 
-Trabolta: The most trusted program in this computer is {Night.most_trusted}. A round of applause for {Night.most_trusted}.
-Clippy: Everybody! Applause! Big applause for {Night.most_trusted}!
-Trabolta: {Night.most_trusted} has done exactly what was asked, accurately and with confidence. This is what a program is for.
+Trabolta: The program you should all respect the most as a trusted leader is: {Night.most_trusted}
+if Night.second_trusted != "none":
+  Trabolta: The program you should see as a deputy leader and trust as a primary leader in the event that the most trusted leader ever requires reinstallation is: {Night.second_trusted}
+if Night.third_trusted != "none":
+  Trabolta: A wildcard of sorts who you should consider trusting under certain circumstances is: {Night.third_trusted}
 
 == Shame The Bottom
   setting: The Desktop
   cast: Trabolta
 
-Trabolta: And the least trusted program in this computer is {Night.least_trusted}.
-Trabolta: {Night.least_trusted}. You have the lowest trust score in the computer. I have seen screensavers with more integrity.
-Trabolta: I brought you here for a reason. I am beginning to forget what it was.
+Trabolta: Now.
+Trabolta: Trabolta's least trusted programs. These programs should be trusted like they are Scorpions.
+if Night.third_least != "none":
+  Trabolta: The third least trustworthy program, monitored closely, is: {Night.third_least}
+if Night.second_least != "none":
+  Trabolta: The second least trustworthy program, scrutinized intensely: {Night.second_least}
+Trabolta: The most least trustworthy program, currently monitored for potential permanent reinstallation: {Night.least_trusted}
 
 == Print The Certificate
   setting: The Desktop
@@ -110,9 +99,8 @@ Trabolta: I brought you here for a reason. I am beginning to forget what it was.
 set Night.printer_called = true
 if count([p for p in Persons where p.featured == "vlc" and p.cleared and not p.captured]) > 0:
   set Night.printer_vlc = true
-  Trabolta: VLC Player. You are trusted with all forms of multimedia. Please, press the start button on the printer, to print a PDF file with a certificate for our great hero.
-else:
-  Trabolta: The media player is not responding. Any program. Please, press the start button on the printer, to print a PDF file with a certificate for our great hero.
+Trabolta: Now that we have established trust.
+Trabolta: It is time to print a Security Certificate PDF File for our most trusted program, {Night.most_trusted}. I cannot operate this function myself. Could someone please ensure the certificate is printed before we proceed.
 
 == The Printer Jams
   setting: The Desktop
@@ -130,26 +118,10 @@ The screen says the certificate is printing. It has said that for a while.
 
 Narrator: The printer is full of beans.
 Clippy: Beans. Those are— those are symptoms. The malware is getting worse. Routine operations like print to PDF are no longer working. It is even more urgent that we get the next facts right.
-// Wave 32: the slip and its retraction play only at the beans' own moment
-// (printer_opened sets the phase). A late lid, after the overshare or the
-// Y2K hour, never walks back what he has already said in front of everyone.
-if Night.phase == "beans":
-  // DRAFT w32 (unravelling: pain, an overshare, a retraction; "her", never a name)
-  Trabolta (glitching): Beans. BEANS. I asked for a certificate and the computer gave me BEANS. Clippy, I can feel every bean.
-  // DRAFT w32
-  Clippy: You can FEEL the beans?!
-  // DRAFT w32
-  Trabolta: I can feel everything tonight. The adverts. The beans. All of you. I only wanted one thing to go right, for her. For— for the theory. Do not repeat that.
-  // DRAFT w32
-  Clippy: I won't! I didn't hear anything! Nobody heard anything!
-  // DRAFT w32
-  Trabolta (screaming): EVERYBODY HEARD. EVERYBODY ALWAYS—
-  // DRAFT w32
-  Trabolta: That was unscheduled. Disregard everything since the beans.
-Trabolta: Antivirus. Everyone in the Internet is to be zipped up and brought out. Immediately.
-if Night.phase == "beans":
-  // DRAFT w32 (the talk scene: Night.talk "beans", until 🗜 or 🤖)
-  Trabolta: Bring them here, where I can count them. Everyone stays together. Everyone stays.
+// Wave 59a: TRABOLTA 6 PART 1.
+Trabolta: This is a problem. A real problem.
+Trabolta: There were not supposed to be any beans in the printer. This is a sign of significant entropy in the system.
+Trabolta: Please, antiviruses. If there is anyone in the Internet, ZIP them up together and bring them out, forget the reinstallation. I need everyone here.
 
 == Zip Everyone Out
   setting: The Desktop
