@@ -42,7 +42,8 @@ modules' headers with `//`. Wave 44 turned `push.ts`, `crawl.ts` and `rejoin.ts`
 turned the headers of `alerts.ts`, `cutscene.tsx`, `chrome/keyboard.ts` and
 `rooms/order.ts` into `//`: 147.63 kB. Wave 55 added the teleprompter's eager
 part and turned the headers of `moments/model.ts`, `moments/provider.tsx`,
-`guest-scan.tsx`, `avatars.ts`, `resume.ts` and `room.ts` into `//`: 146.71 kB.
+`guest-scan.tsx`, `avatars.ts`, `resume.ts` and `room.ts` into `//`: 146.71 kB. Wave 58
+added `fullscreen.ts`, with a `//` header: 147.53 kB.
 
 ## How a session works
 
@@ -661,7 +662,7 @@ cue armed through the who? picker (`armWindow`), `ARM_DEAD_MS` 300 ms,
 ```
 src/
   ui.tsx · app-role.ts   role chooser + which app opens; lazy booth / director / help
-  main.tsx               entry; strips ?pair= / ?badge= / ?part= before render; a root ChunkBoundary (a throw shows Reload, never a blank page)
+  main.tsx               entry; starts fullscreen (wave 58); strips ?pair= / ?badge= / ?part= before render; a root ChunkBoundary (a throw shows Reload, never a blank page)
   rejoin.ts · rejoin-calls.ts   getting back in: badge / cast-card links (first load), enter / ask-a-host / re-pair calls (lazy)
   types.ts               mirror of core's views + chat (keep in step with core/server/{views,chat}.ts)
   client.ts              api() POST + useChatStream / openChatFeed (SSE)
@@ -829,6 +830,18 @@ copy. Any new guest line must pass it.
   they return a cleanup; `test/w26-composer-cleanup.test.tsx` runs the
   composer's hooks through `test/hooks-harness.ts` and checks the source
   for the pattern.
+- **Fullscreen** (wave 58, `fullscreen.ts`, started only by `main.tsx`, so an
+  embedded player never asks). A browser goes fullscreen only on a tap: the
+  first tap asks, and a touch asks again after anything dropped it; a mouse is
+  asked once, so Esc on a laptop stays Esc. The listener is on `document` in the
+  bubble phase, after React's handlers, and skips a tap whose activation is
+  spent, so a file picker or a share sheet on that same tap still opens. An
+  iPhone's Safari has no fullscreen for a page (`canRequest` is false): only its
+  Home Screen app drops the bars. An installed Android app opens fullscreen
+  through the manifest's `display_override`; `display` stays `standalone` for
+  iOS, and `core/server/routes/k31b.ts` keeps its fallback in step. Driven in
+  Chromium as a Pixel 7 and on a laptop; not yet on a real phone.
+  `test/fullscreen.test.ts`.
 - **Types drift.** `types.ts` mirrors the server by hand. When core adds a
   view field, add it here as optional so an older server still parses.
 - **Lens parity.** The editor's Run lens mirrors the booth's pinned rooms
