@@ -11,7 +11,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import { afterAll, describe, expect, it } from "vitest";
 
 import type { Assignment, HouseMap } from "@loom/house";
-import { CAM_FRESH_MS, CAM_MAX_BYTES, CAM_MIN_GAP_MS, CamStore, parseCamUpload } from "../server/spatial-cams.ts";
+import { CAM_FRESH_MS, CAM_MAX_BYTES, CAM_MIN_GAP_MS, CAM_RATE_WINDOW_MS, CamStore, parseCamUpload } from "../server/spatial-cams.ts";
 import { EventRuntime } from "../server/event-runtime.ts";
 import { PayloadTooLarge } from "../server/http-util.ts";
 import { wantsModRead } from "../server/routing.ts";
@@ -50,6 +50,22 @@ describe("parseCamUpload", () => {
 });
 
 describe("CamStore", () => {
+  it("counts what a feed took and the games read, per second, and forgets a removed spot (wave 59)", () => {
+    const clock = { t: 1000 };
+    const s = new CamStore({ now: () => clock.t });
+    expect(s.rate("hall")).toEqual({ got: 0, read: 0 });
+    for (let i = 0; i < 30; i++) {
+      s.put("hall", jpeg(10), 320, 240);
+      s.noteRead("hall");
+      clock.t += 333;
+    }
+    expect(s.rate("hall")).toEqual({ got: 3, read: 3 });
+    clock.t += CAM_RATE_WINDOW_MS + 1;
+    expect(s.rate("hall")).toEqual({ got: 0, read: 0 });
+    s.put("hall", jpeg(10), 320, 240);
+    s.retain(new Set());
+    expect(s.rate("hall")).toEqual({ got: 0, read: 0 });
+  });
   it("keeps the latest frame per spot, drops a burst < 150 ms, forgets after 15 s", () => {
     const clock = { t: 1000 };
     const s = new CamStore({ now: () => clock.t });

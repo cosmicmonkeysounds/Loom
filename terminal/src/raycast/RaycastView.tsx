@@ -20,6 +20,13 @@
 //! (`world/stream.ts` + `world/state.ts`) — no three.js, so it runs on
 //! Chrome 87 / Safari 14 / the old Android tablets. Capped at 20 fps,
 //! stopped while the page is hidden.
+//!
+//! Wave 59: only a tablet with no WebGL2 draws this, and on the SM-T280s the
+//! GPU's 2D path is the leading suspect for a page that shows nothing (see
+//! `terminal/CLAUDE.md`, a software canvas). Both canvases are kept off the GPU
+//! (`sizeCanvas`), the overlay is drawn at one pixel per CSS pixel, and the pace
+//! follows what a frame really costs (`nextPace`), so a slow tablet shows a
+//! slower window, never a frozen page.
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { fnv1a32, roomById, type Vec3 } from "@loom/house";
@@ -46,9 +53,18 @@ import {
 import { drawSwarm, swarmPieces } from "./swarm.ts";
 import "./raycast.css";
 import { noteWorldShowing } from "../cutscene/world-bus.ts";
+import { linkStats } from "../link-stats.ts";
+import { sizeCanvas } from "../software-canvas.ts";
 
 const FRAME_MS = 1000 / 20;
-const MAX_PIXEL_RATIO = 2;
+/** The slowest pace a slow tablet falls to (ms): 5 fps. */
+export const SLOWEST_FRAME_MS = 200;
+/** A frame costing more than this share of the pace slows it… */
+const PACE_OVER = 0.6;
+/** …one costing less than this share speeds it back up. */
+const PACE_UNDER = 0.3;
+/** A current Chrome reads this. Chrome 95 doesn't: `sizeCanvas` is what works there. */
+const SOFTWARE: CanvasRenderingContext2DSettings = { willReadFrequently: true };
 const TOAST_MS = 4000;
 /** The players must want another floor this long before the inset follows them (ms). */
 const FLOOR_HOLD_MS = 2500;
@@ -65,6 +81,13 @@ interface Toast {
 }
 
 type Ctx = CanvasRenderingContext2D;
+
+/** The next frame's pace (ms) after one that cost `costMs` (pure). */
+export function nextPace(pace: number, costMs: number): number {
+  if (costMs > pace * PACE_OVER) return Math.min(SLOWEST_FRAME_MS, pace * 1.25);
+  if (costMs < pace * PACE_UNDER) return Math.max(FRAME_MS, pace / 1.1);
+  return pace;
+}
 
 export function RaycastView({ store, spotId, size }: { store: WorldStore; spotId: string; size: "pane" | "full" }) {
   const info = useWorld(store, (s) => s.house);
@@ -115,8 +138,8 @@ export function RaycastView({ store, spotId, size }: { store: WorldStore; spotId
     const over = hud.current;
     const host = box.current;
     if (info === null || el === null || over === null || host === null) return;
-    const ctx = el.getContext("2d");
-    const hctx = over.getContext("2d");
+    const ctx = el.getContext("2d", SOFTWARE);
+    const hctx = over.getContext("2d", SOFTWARE);
     if (ctx === null || hctx === null) return;
     const { house, walls } = info;
     const floorsRay = new Map<string, RayWall[]>();
@@ -144,16 +167,12 @@ export function RaycastView({ store, spotId, size }: { store: WorldStore; spotId
     let ih = 180;
     let cw = 1;
     let ch = 1;
-    let dpr = 1;
     const resize = () => {
       cw = Math.max(1, host.clientWidth);
       ch = Math.max(1, host.clientHeight);
       ({ w: iw, h: ih } = internalSize(cw, ch));
-      el.width = iw;
-      el.height = ih;
-      dpr = Math.min(window.devicePixelRatio || 1, MAX_PIXEL_RATIO);
-      over.width = Math.round(cw * dpr);
-      over.height = Math.round(ch * dpr);
+      sizeCanvas(el, ctx, iw, ih);
+      sizeCanvas(over, hctx, Math.round(cw), Math.round(ch));
     };
     resize();
     const ro = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(resize);
@@ -165,11 +184,13 @@ export function RaycastView({ store, spotId, size }: { store: WorldStore; spotId
     let shownWhere = "";
     let raf = 0;
     let last = 0;
+    let pace = FRAME_MS;
     const frame = (t: number) => {
       raf = requestAnimationFrame(frame);
-      if (last !== 0 && t - last < FRAME_MS - 2) return;
+      if (last !== 0 && t - last < pace - 2) return;
       const dt = last === 0 ? 0 : (t - last) / 1000;
       last = t;
+      const started = performance.now();
       const world = store.snapshot.world;
       const list = [...world.players.values()];
       const sample = (p: WorldPlayer) => p.buffer.sample(t) ?? p.pose;
@@ -291,7 +312,6 @@ export function RaycastView({ store, spotId, size }: { store: WorldStore; spotId
       for (const s of depthSorted(sprites)) s.draw();
 
       // The overlay at full resolution: name tags, then the inset.
-      hctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       hctx.clearRect(0, 0, cw, ch);
       const sx = cw / iw;
       const sy = ch / ih;
@@ -310,6 +330,8 @@ export function RaycastView({ store, spotId, size }: { store: WorldStore; spotId
       }
       hold = holdFloor(hold, chooseFloor(house, list, cam.floor), t, FLOOR_HOLD_MS);
       drawInset(hctx, planOn(hold.shown!), cam, list, sample, cw, ch);
+      pace = nextPace(pace, performance.now() - started);
+      linkStats.drawn(Date.now());
     };
     const start = () => {
       cancelAnimationFrame(raf);

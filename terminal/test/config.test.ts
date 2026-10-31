@@ -86,7 +86,7 @@ describe("terminal config", () => {
   });
   it("reads provisioning hints off the URL and scrubs them back out", () => {
     const h = hintsFromSearch("?code=MOD111&name=Kitchen&character=Trabolta&camera=environment&engine=browser&spot=start-bar&view=world&keep=1");
-    expect(h).toEqual({ code: "MOD111", name: "Kitchen", character: "Trabolta", camera: "environment", engine: "browser", spot: "start-bar", view: "world", room: null, announce: null, camFeed: null, mic: null, voices: null, door: null, keys: null, bay: null, pause: null, webcam: null, pad: null, whisper: null, crt: null });
+    expect(h).toEqual({ code: "MOD111", name: "Kitchen", character: "Trabolta", camera: "environment", engine: "browser", spot: "start-bar", view: "world", room: null, announce: null, camFeed: null, mic: null, voices: null, door: null, keys: null, bay: null, pause: null, webcam: null, pad: null, whisper: null, crt: null, bleeps: null });
     expect(withoutSecrets("?code=MOD111&name=Kitchen&spot=start-bar&view=mirror&keep=1")).toBe("?keep=1");
     expect(withoutSecrets("?code=MOD111")).toBe("");
     // The TV (K-18): view=tv + the room it speaks for.

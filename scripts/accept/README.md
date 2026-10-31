@@ -39,7 +39,7 @@ anytime.
 | K-12 | `K-12.md` | Run → 🖨 Print sheet: join poster, codex posters, room signs (no typed code on a sign). Print one and scan it |
 | K-13 | `k13.sh` | iPhone camera scans room-sign QRs: refused while on rails, then checked in after a booth clears the guest |
 | K-14 | `K-14.sh [--no-build]` | Builds terminal + reinstall for `chrome87`/`safari14` and scans the bundles. Then the oldest tablet loads both |
-| K-15 | `K-15.md` | Fully Kiosk tablet stays awake 2 h on the charger. A short tap on ⚙ does nothing (hold 2 s) |
+| K-15 | `K-15.md` | Fully Kiosk tablet stays awake 2 h on the charger. A short tap on the hidden ⚙ does nothing (hold the top right corner 2 s) |
 | K-16 | `K-16.sh [--watch]` | `/api/screen/state` says attract. Time the flip to the face after `introduce_trabolta` (≤ 2 s) |
 | K-17 + N-03 | `K-17.sh [--watch\|--fire <event>…]` | Fire cues and watch the TV and terminals layer overlays, slides and the ⏱ corner in the right precedence |
 | K-18 + N-04b | `K-18.sh [--watch\|--say\|--beat\|--fire\|--mute]` | TV (`view=tv`) speaks Trabolta's Desktop lines, captions the song beats, honours the mute |

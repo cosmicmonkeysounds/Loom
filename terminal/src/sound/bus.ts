@@ -3,16 +3,24 @@
 //! (`speech/engine.ts`), and the effects (`sfx`) through their own sub-bus —
 //! a per-view level and a soft compressor, so a pile of popups never clips:
 //!
-//!   sfx parts → sfx bus (view level: tv 0.35, others 0.6) → compressor ─┐
+//!   sfx parts → sfx bus (view level: tv 0, others 0.6) → compressor ───┐
 //!   the announcement chime, the casino's jingles ───────────────────────┤
 //!   the players' voices (wave 19, `voice/playback.ts`) → voices bus ────┴→ master → speakers
 //!
 //! The rules for an effect (`sfxGate`, pure): it is **dropped, never
 //! queued**, when sound is still locked (no gesture yet), when the page is
-//! muted (`setSoundMuted` — the TV's director mute), or while the voice floor
-//! is busy (the character or an announcement is speaking) — unless asked
-//! with `{over: true}`, which plays it under the voice at a lower level.
+//! muted (`setSoundMuted` — the TV's director mute), when this terminal has
+//! no bleeps (`setBleeps`, wave 59), or while the voice floor is busy (the
+//! character or an announcement is speaking) — unless asked with
+//! `{over: true}`, which plays it under the voice at a lower level.
 //! The same sound twice inside `MIN_GAP_MS` plays once (a typewriter's keys).
+//!
+//! No bleeps (wave 59, `config.ts` `bleepsOn`: the TV, the tent, the server
+//! room) stops every effect (the idle show, the cutscenes, the ad burst, the
+//! glitch, the scan box, the door, chess) and the casino's jingles before
+//! anything is scheduled. It leaves what isn't one: his voice and the noise
+//! inside it, the announcement chime, the players' voices, and the
+//! reinstallation game's own sounds on the tent laptop.
 //!
 //! The announcement chime (`ringChime`, which rings *while* the floor is
 //! held for the announcement it opens) and the casino jingles keep their old
@@ -40,6 +48,8 @@ import { CHIME_PARTS, VOICE_NOISE_PARTS, partsLength, recipe, type NoisePart, ty
  *  cabled into the house router as Trabolta's channel, so an effect here would
  *  play on every house speaker and duck the music under it like his voice. */
 export const VIEW_VOLUME = { tv: 0, other: 0.6 } as const;
+/** (wave 59) The TV's effects when ⚙ turned them on there: its old wave 17 level. */
+export const TV_ASKED_VOLUME = 0.35;
 /** An effect asked `{over: true}` while a voice speaks plays at this share of its level. */
 export const OVER_GAIN = 0.4;
 /** The same effect again inside this long plays once (ms). */
@@ -63,8 +73,8 @@ export interface SfxOpts {
 }
 
 /** What the gate says about one effect (pure). */
-export function sfxGate(s: { running: boolean; muted: boolean; floorBusy: boolean; over: boolean }): { play: boolean; gain: number } {
-  if (!s.running || s.muted) return { play: false, gain: 0 };
+export function sfxGate(s: { running: boolean; muted: boolean; floorBusy: boolean; over: boolean; bleeps?: boolean }): { play: boolean; gain: number } {
+  if (!s.running || s.muted || s.bleeps === false) return { play: false, gain: 0 };
   if (s.floorBusy) return s.over ? { play: true, gain: OVER_GAIN } : { play: false, gain: 0 };
   return { play: true, gain: 1 };
 }
@@ -89,6 +99,7 @@ interface Bus {
 let override: SoundContext | null | undefined;
 let bus: Bus | null = null;
 let muted = false;
+let bleeps = true;
 let volume: number = VIEW_VOLUME.other;
 let ducked = false;
 /** Context seconds when the last effect / jingle / chime scheduled ends. */
@@ -154,6 +165,15 @@ export function setSoundMuted(on: boolean): void {
   }
 }
 
+/** (wave 59) Whether this page makes its ad sounds and bleeps at all (`config.ts` `bleepsOn`). */
+export function setBleeps(on: boolean): void {
+  bleeps = on;
+}
+
+export function soundBleeps(): boolean {
+  return bleeps;
+}
+
 /** Duck the players' voices under the voice floor (the voice link polls `voiceFloor.busy`). */
 export function setVoicesDucked(on: boolean): void {
   ducked = on;
@@ -183,6 +203,15 @@ export function soundMuted(): boolean {
 /** The effects' level for this terminal's view (`VIEW_VOLUME`). */
 export function setSoundView(view: string | null | undefined): void {
   setSoundVolume(view === "tv" ? VIEW_VOLUME.tv : VIEW_VOLUME.other);
+}
+
+/** (wave 59) The effects' level for a terminal (pure): the view's, none on
+ *  the CRT, but a bleeps choice made in ⚙ is heard wherever it was made: the
+ *  TV then plays them at `TV_ASKED_VOLUME`, through the house. */
+export function effectsLevel(c: { view?: string | null; crt?: boolean; bleeps?: boolean }): number {
+  if (c.bleeps === true) return c.view === "tv" ? TV_ASKED_VOLUME : VIEW_VOLUME.other;
+  if (c.crt === true || c.view === "tv") return VIEW_VOLUME.tv;
+  return VIEW_VOLUME.other;
 }
 
 /** The effects' level, 0..1. */
@@ -298,7 +327,7 @@ export function voiceNoise(kind: VoiceNoise): boolean {
 export function sfx(name: SfxName, opts: SfxOpts = {}): boolean {
   try {
     const ctx = context();
-    const gate = sfxGate({ running: ctx !== null && ctx.state === "running", muted, floorBusy: voiceFloor.busy, over: opts.over === true });
+    const gate = sfxGate({ running: ctx !== null && ctx.state === "running", muted, floorBusy: voiceFloor.busy, over: opts.over === true, bleeps });
     if (!gate.play) return false;
     const b = ensureBus();
     if (b === null) return false;
@@ -315,9 +344,10 @@ export function sfx(name: SfxName, opts: SfxOpts = {}): boolean {
 }
 
 /** Notes one after another straight onto the master bus (the casino's
- *  jingles): `[Hz, s]`, one envelope each. Silent while locked. */
+ *  jingles): `[Hz, s]`, one envelope each. Silent while locked, and with no bleeps. */
 export function playNotes(notes: ReadonlyArray<readonly [number, number]>, o: { wave: OscillatorType; peak: number; attack: number }): void {
   try {
+    if (!bleeps) return;
     const ctx = context();
     if (ctx === null || ctx.state !== "running") return;
     const b = ensureBus();

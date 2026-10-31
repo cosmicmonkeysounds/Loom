@@ -39,6 +39,13 @@
 //! `patchFault`. The 🔌 badges (`patchBadges`) read them, plus *buttons*
 //! while the story follows the 🔌 buttons (`night.patch_override`,
 //! `patchOverrideFromScreen`).
+//!
+//! Wave 59: a terminal's link to the games, both ways (`linkBadges`). 📷 what
+//! its camera sends a second and, in the title, what the server took and the
+//! games read; 🎞 the simulation it receives and draws; ⚠ its last error in
+//! words. So a tablet that shows nothing says why with nobody plugged into it.
+
+import { LINK_ERRORS, isLinkError } from '@loom/core/link-health'
 
 /** One entry of the server's heartbeat list (`ScreenPoll & {ago}`). */
 export interface TerminalPoll {
@@ -81,6 +88,16 @@ export interface TerminalPoll {
   patchBetween?: number
   /** Why `patch === 'fault'` (`no_port` | `stale` | `dup`). */
   patchFault?: string
+  /** (wave 59) Camera frames it sends the games, per second; absent: no feed there. */
+  camSent?: number
+  /** (wave 59) Simulation frames it receives, per second; absent: no stream open. */
+  simReceived?: number
+  /** (wave 59) Simulation frames it draws, per second. */
+  simDrawn?: number
+  /** (wave 59) The last thing wrong with that link, for a minute. */
+  linkError?: string
+  /** (wave 59) Its spot's feed as the server measures it: frames taken and read, per second. */
+  cam?: { got: number; read: number }
 }
 
 /** What a terminal's `door=` says (wave 20, `DOOR_STATES` on the server). */
@@ -95,7 +112,7 @@ export type MicState = 'live' | 'muted' | 'denied' | 'insecure' | 'locked' | 'of
 /** A row's device health, as its last listed poll said. */
 export type TerminalDevice = Pick<
   TerminalPoll,
-  'audio' | 'visible' | 'battery' | 'charging' | 'fullscreen' | 'mic' | 'version' | 'announce' | 'door' | 'doorLevel' | 'doorFault' | 'doorWarn' | 'patch' | 'patchComplete' | 'patchBetween' | 'patchFault'
+  'audio' | 'visible' | 'battery' | 'charging' | 'fullscreen' | 'mic' | 'version' | 'announce' | 'door' | 'doorLevel' | 'doorFault' | 'doorWarn' | 'patch' | 'patchComplete' | 'patchBetween' | 'patchFault' | 'camSent' | 'simReceived' | 'simDrawn' | 'linkError' | 'cam'
 >
 
 /** `GET /api/mod/screen/terminals`. */
@@ -180,6 +197,11 @@ export function mergeTerminals(
       patchComplete: p.patchComplete,
       patchBetween: p.patchBetween,
       patchFault: p.patchFault,
+      camSent: p.camSent,
+      simReceived: p.simReceived,
+      simDrawn: p.simDrawn,
+      linkError: p.linkError,
+      cam: p.cam,
     })
     const lastSeen = clientNow - Math.max(0, p.ago)
     const prev = next[p.name]
@@ -257,7 +279,7 @@ export function strayRoom(row: Pick<TerminalRow, 'room' | 'spot'>): boolean {
 export const LOW_BATTERY = 20
 
 export interface TerminalBadge {
-  key: 'audio' | 'hidden' | 'fullscreen' | 'mic' | 'battery' | 'version' | 'announce' | 'door' | 'door-warn' | 'door-override' | 'patch' | 'patch-between' | 'patch-override'
+  key: 'audio' | 'hidden' | 'fullscreen' | 'mic' | 'battery' | 'version' | 'announce' | 'door' | 'door-warn' | 'door-override' | 'patch' | 'patch-between' | 'patch-override' | 'link-cam' | 'link-sim' | 'link-error'
   text: string
   title: string
   /** Needs a hand: red (amber for an odd version). */
@@ -464,6 +486,22 @@ export function micBadge(row: Pick<TerminalRow, 'spot' | 'view'>, mic: MicState)
   }
 }
 
+/** (wave 59) The link to the games, both ways, and its last error. A silent
+ *  row's last numbers mean nothing, so they stay off it. */
+export function linkBadges(d: TerminalDevice, silent: boolean): TerminalBadge[] {
+  if (silent) return []
+  const out: TerminalBadge[] = []
+  if (typeof d.camSent === 'number') {
+    const server = d.cam === undefined ? '' : ` The server took ${d.cam.got} a second, the games read ${d.cam.read}.`
+    out.push({ key: 'link-cam', text: `📷 ${d.camSent}/s`, title: `Camera frames it sends the games, per second. About 0.5 while nobody is in its room, about 3 while someone is.${server}`, warn: d.camSent === 0 })
+  }
+  if (typeof d.simReceived === 'number') {
+    out.push({ key: 'link-sim', text: `🎞 ${d.simReceived}/s · ${d.simDrawn ?? 0} drawn`, title: 'Simulation frames it receives from the games, per second, and the frames it draws. Both are 0 while nobody is playing.', warn: false })
+  }
+  if (isLinkError(d.linkError)) out.push({ key: 'link-error', text: `⚠ ${LINK_ERRORS[d.linkError]}`, title: 'The last thing that went wrong with its link to the games, in the last minute', warn: true })
+  return out
+}
+
 /** A row's install-day badges: the 🚪 door sensor first (wave 20,
  *  `doorBadges`), the 🔌 patch bay beside it (wave 22, `patchBadges`), 🔇 sound locked, 💤 page hidden, ⛶ not full
  *  screen (only when the build says so: one that can't be sends nothing), 🎤
@@ -479,6 +517,7 @@ export function terminalBadges(row: TerminalRow, majority: string | null, doorOv
   if (d.visible === false) out.push({ key: 'hidden', text: '💤', title: 'The page is hidden: the screen is off, or another app / a screensaver is on top', warn: true })
   if (d.fullscreen === false) out.push({ key: 'fullscreen', text: '⛶', title: fullscreenTitle(row), warn: true })
   if (d.mic !== undefined) out.push(micBadge(row, d.mic))
+  out.push(...linkBadges(d, silent))
   if (d.announce === true) {
     out.push({ key: 'announce', text: '📢', title: 'Says the house announcements aloud (its own ⚙ setting, or the house list for its spot)', warn: false })
   }

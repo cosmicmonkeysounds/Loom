@@ -32,6 +32,7 @@ import { countsLine, windowCounts } from "./overlay.ts";
 import { avatarUrl, byActivity, celebrationLine, laysEgg, type WorldPlayer } from "./state.ts";
 import { useWorld, type WorldStore } from "./stream.ts";
 import { noteWorldShowing } from "../cutscene/world-bus.ts";
+import { linkStats } from "../link-stats.ts";
 
 const FRAME_MS = 1000 / 30;
 const MAX_PIXEL_RATIO = 1.5;
@@ -184,6 +185,7 @@ export function WorldView({ store, spotId, size }: { store: WorldStore; spotId: 
       for (const d of ducks.values()) d.update(dt);
       built.update(dt, camera);
       renderer.render(scene, camera);
+      linkStats.drawn(Date.now());
 
       // Tell React only when the overlays would change.
       const key = `${shotKey(director.shot)}|${director.shot.kind === "mount" ? director.shot.subject : ""}`;

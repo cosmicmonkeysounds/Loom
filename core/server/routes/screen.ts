@@ -90,6 +90,8 @@
 //! injected clock for tests.
 
 import { isVoiceFlavour, isVoiceFxMode, voiceFxOf, type VoiceFlavour, type VoiceFx, type VoiceFxMode, type VoiceShot } from "../../src/voice-fx.ts";
+import { isLinkError, type LinkError } from "../../src/link-health.ts";
+import type { CamRate } from "../spatial-cams.ts";
 import type { ShowClock } from "../../src/show-clock.ts";
 import type { IncomingMessage, ServerResponse } from "node:http";
 
@@ -1100,6 +1102,14 @@ export interface ScreenDevice {
    *  0), or `chunk: null` once that line is done. Kept only from a `view=tv`
    *  poller (`ScreenState.tvSpeech`); dropped from any other. */
   speech?: { seq: number; chunk: number | null };
+  /** (wave 59) `cs=`: camera frames it sent to the games, per second (absent: no feed there). */
+  camSent?: number;
+  /** (wave 59) `cr=`: simulation frames it received, per second (absent: no stream open). */
+  simReceived?: number;
+  /** (wave 59) `cd=`: simulation frames it drew, per second. */
+  simDrawn?: number;
+  /** (wave 59) `ce=`: the last thing that went wrong with that link, for a minute. */
+  linkError?: LinkError;
 }
 
 /** (wave 26) How long a TV's `sp=` report stays `tvSpeech` without a newer poll. */
@@ -1180,6 +1190,15 @@ export function screenDeviceOf(q: (k: string) => string): ScreenDevice {
   const sp = speechReportOf(q("sp"));
   if (sp !== null) d.speech = sp;
   if (q("bug") === "1") d.bug = true;
+  const rate = (v: string): number | null => (/^\d{1,2}(\.\d)?$/u.test(v) ? Number(v) : null);
+  const cs = rate(q("cs"));
+  if (cs !== null) d.camSent = cs;
+  const cr = rate(q("cr"));
+  if (cr !== null) d.simReceived = cr;
+  const cd = rate(q("cd"));
+  if (cd !== null) d.simDrawn = cd;
+  const ce = q("ce");
+  if (isLinkError(ce)) d.linkError = ce;
   return d;
 }
 
@@ -2106,8 +2125,9 @@ export function speechWatchOf(watch: ScreenWatch, model: SimModel | null, room: 
 export interface ScreenTerminals {
   /** Server epoch ms. */
   now: number;
-  /** Each terminal's last poll, most recent first (`ago` in ms). */
-  terminals: Array<ScreenPoll & { ago: number }>;
+  /** Each terminal's last poll, most recent first (`ago` in ms). `cam`
+   *  (wave 59): its spot's feed as the server measures it. */
+  terminals: Array<ScreenPoll & { ago: number; cam?: CamRate }>;
   /** The TV-voice mute (K-18), so the card can flip it. */
   voiceMuted: boolean;
   /** (wave 56) The director's mode for his voice. */
@@ -2117,20 +2137,21 @@ export interface ScreenTerminals {
 }
 
 /** The heartbeat list, read-only (pure apart from the watch's clock). */
-export function screenTerminals(watch: ScreenWatch): ScreenTerminals {
-  return { now: watch.clock(), terminals: watch.seen(), voiceMuted: watch.voiceMuted, voiceFx: watch.voiceFxMode, silentMs: TERMINAL_SILENT_MS };
+export function screenTerminals(watch: ScreenWatch, camRate?: (spot: string) => CamRate): ScreenTerminals {
+  const terminals = watch.seen();
+  return { now: watch.clock(), terminals: camRate === undefined ? terminals : terminals.map((t) => (t.spot === "" ? t : { ...t, cam: camRate(t.spot) })), voiceMuted: watch.voiceMuted, voiceFx: watch.voiceFxMode, silentMs: TERMINAL_SILENT_MS };
 }
 
 /**
  * `GET /api/mod/screen/terminals` — moderator-gated (the author's session or a
  * mod token). Reading it never records a poll, so the editor isn't a terminal.
  */
-export function handleScreenTerminalsGet(watch: ScreenWatch, req: IncomingMessage, res: ServerResponse, url: URL, authorized: (token: string | undefined) => boolean): boolean {
+export function handleScreenTerminalsGet(watch: ScreenWatch, req: IncomingMessage, res: ServerResponse, url: URL, authorized: (token: string | undefined) => boolean, camRate?: (spot: string) => CamRate): boolean {
   if (!authorized(queryTokenOf(req, url))) {
     sendJson(res, 403, { error: "moderators only" });
     return true;
   }
   res.setHeader?.("cache-control", "no-store");
-  sendJson(res, 200, screenTerminals(watch));
+  sendJson(res, 200, screenTerminals(watch, camRate));
   return true;
 }

@@ -4425,6 +4425,7 @@ export class EventRuntime {
       const allowed = seen === null || seen.has(spot);
       const frame = allowed ? this.cams.get(spot) : null;
       const send = (jpeg: Buffer, at: number): void => {
+        if (seen !== null) this.cams.noteRead(spot);
         res.writeHead(200, { "content-type": "image/jpeg", "content-length": String(jpeg.length), "cache-control": "no-store", "x-cam-at": String(at) });
         res.end(jpeg);
       };
@@ -6087,7 +6088,7 @@ export class EventRuntime {
     }
     // --- the house lights (wave 20, lights.ts): the config + the lights module's long poll ---
     if (method === "GET" && path === "/api/mod/lights") return handleLightsGet(this.lights, this.lightsContext(), req, res, url, (t) => opts.moderator === true || this.sessions.canModerate(t));
-    if (method === "GET" && path === "/api/mod/screen/terminals") return handleScreenTerminalsGet(this.screens, req, res, url, (t) => opts.moderator === true || this.sessions.canModerate(t));
+    if (method === "GET" && path === "/api/mod/screen/terminals") return handleScreenTerminalsGet(this.screens, req, res, url, (t) => opts.moderator === true || this.sessions.canModerate(t), (spot) => this.cams.rate(spot));
     // A host booth may mute the TV and identify a terminal (§2.7). Both are
     // host-visible writes handled before the generic body parse, so they
     // drop the host panel's cached build themselves (recheck item 8: the
