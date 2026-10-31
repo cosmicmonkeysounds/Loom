@@ -150,7 +150,10 @@ export function CardTray({
   }, [open, card, seen]);
   // Wave 59a: nothing floats over an open card, an audio ad included.
   const shownOpen = open && card !== undefined;
-  useEffect(() => (shownOpen ? adCardOpen() : undefined), [shownOpen]);
+  useEffect(() => {
+    if (!shownOpen) return undefined;
+    return adCardOpen();
+  }, [shownOpen]);
   const body = useRef<HTMLDivElement>(null);
   const more = useMoreBelow(body, open && card !== undefined);
   if (card === undefined) return null;

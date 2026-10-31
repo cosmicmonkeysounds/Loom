@@ -395,3 +395,18 @@ answers → `predeploy.sh --vr` → the roster, in its own step → `ship.sh` �
 phone, terminal, the TV, the tablets, the tent and any open Run tab before 17:00 → the Quest's
 APK → the iPad → print → `titi:qr-lock`, committed → the keypad before 15:00. No release, sync or
 restart has happened: nothing on this sheet is live.
+
+## 8. The audio ads (wave 59a)
+
+Your note: *"after the 2nd round of questions, there should be audio ads that pop up on the
+terminals and peoples' phones."* Built on `oct31-w59/audio-ads`, not shipped. The contract is
+`docs/loom-w59-ads-contract.md`, with the ship order and what no real device has seen.
+
+- **The words we added:** `▶ Play` (`play/src/ad-slot.tsx`, `terminal/src/AdSpot.tsx`), which a
+  phone or a wall shows until it may make a sound, and the crew's lines on Run's 📢 row
+  (`editor/src/lib/terminals.ts`). The ads' names are the files'. Root `CLAUDE.md` names the marker.
+- **A call to check:** the first ad starts about 2¾ minutes in, not 1. The Truther Download lands
+  2 minutes in and takes the screens, which would cut ad 1 off a minute into itself, so the first
+  one waits for it and its slide. The other 13 keep the 3.5-minute pace and all 14 still fit.
+- **Real-device checks owed:** a real iPhone, a real Android phone and an old tablet each play one,
+  and the balance in the rooms.

@@ -21,8 +21,13 @@ export function AdSlot({ spots, busy, tell }: { spots: AdSpots | undefined; busy
   const told = useRef(tell);
   told.current = tell;
   const armable = !host.embedded && spots !== undefined && tell !== undefined;
-  useEffect(() => (armable ? spots.arm((seq) => told.current?.(seq)) : undefined), [armable, spots]);
-  useEffect(() => spots?.setBusy(blocked), [spots, blocked]);
+  useEffect(() => {
+    if (!armable) return undefined;
+    return spots.arm((seq) => told.current?.(seq));
+  }, [armable, spots]);
+  useEffect(() => {
+    spots?.setBusy(blocked);
+  }, [spots, blocked]);
   const none = () => null;
   const shown = useSyncExternalStore(spots?.subscribe ?? (() => () => {}), spots?.shown ?? none, none);
   if (shown === null || spots === undefined) return null;

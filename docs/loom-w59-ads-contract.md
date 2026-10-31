@@ -143,7 +143,6 @@ at once if its time has passed. It holds through a restart. `GET
    phone still takes its turn in the rotation, silently.
 4. Touch every wall once, as ever: a wall nobody touched shows ▶ instead of sound.
 5. `pnpm showctl doctor`: the *Audio ads* row.
-6. If Clippy's reading habits or the night's timing argue, 📢 Off is the safe state.
 
 ## What no real device has seen
 
@@ -153,9 +152,8 @@ at once if its time has passed. It holds through a restart. `GET
   Power Mode or the ring switch silences it was not checked.
 - **A real Android phone**, and an SM-T280 on Chrome 95: neither has played one.
   `K-14.sh` passes the bundle for the old tablets.
-- **Sixty phones at once.** 26 MB, a third of the house per ad, from the VPS, over the
-  house wifi: about 200 streams an hour's worth at 192 kbps peak of ~4 Mbps for 20
-  phones. Not load tested.
+- **A full house.** Sixty guests is 20 phones an ad at 192 kbps, about 4 Mbps from the
+  VPS, plus the walls, on top of everything else on the house wifi. Not load tested.
 - **The room.** Tablet speakers, walls overlapping phones, whether the balance is
   right. Headless Chromium is muted.
 - Run's row is drawn by a render test, not a browser: a scratch server has no control
