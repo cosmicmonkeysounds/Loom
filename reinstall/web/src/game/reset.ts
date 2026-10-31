@@ -10,9 +10,14 @@ export const RESET_HOLD_MS = 5000;
 /** The key that holds it (a `KeyboardEvent.code`). */
 export const RESET_KEY = "KeyR";
 
-/** DRAFT w59 (UI copy): over the bar, and the notice once it has happened. */
+/** DRAFT w59 (UI copy): over the bar, and the notice once it has happened (`movedOverReset` adds Gerald's line to it). */
 export const RESET_HOLDING = "Keep holding R to go back to the start";
 export const RESET_DONE = "Back at the start.";
+
+/** The line for Gerald moving, over the line up now: the reset's own re-deal adds to its notice, so neither is lost. */
+export function movedOverReset(up: string | null, moved: string): string {
+  return up === RESET_DONE ? `${RESET_DONE} ${moved}` : moved;
+}
 
 /** A hold that fills over `ms`, once per press: it must be let go before it can fill again. */
 export class HoldMeter {
@@ -45,8 +50,13 @@ export function keyTarget(e: Pick<Event, "target"> & Partial<Pick<Event, "compos
   return e.composedPath?.()[0] ?? e.target;
 }
 
+/** The inputs nothing is typed into. ⚙ Graphics stays open with a radio holding the focus after a pick: that must not take the keyboard. */
+const UNTYPED_INPUTS = new Set(["radio", "checkbox", "range", "button", "submit", "reset", "color", "file", "image"]);
+
 /** Is that somewhere text is being typed? */
 export function typingIn(target: unknown): boolean {
-  const t = target as { tagName?: string; isContentEditable?: boolean } | null;
-  return t !== null && t !== undefined && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable === true);
+  const t = target as { tagName?: string; type?: string; isContentEditable?: boolean } | null;
+  if (t === null || t === undefined) return false;
+  if (t.tagName === "INPUT") return !UNTYPED_INPUTS.has((t.type ?? "text").toLowerCase());
+  return t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable === true;
 }
