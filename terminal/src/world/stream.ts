@@ -20,6 +20,7 @@ import { buildWalls, validateHouse, type HouseMap, type SpatialFrame, type WallS
 import showHouse from "../../../core/examples/trapped-in-the-internet/house.json";
 import { baseOf, type TerminalConfig } from "../config.ts";
 import { EMPTY_WORLD, FRAME_NAMES, decodeFrame, prune, reduce, type WorldState } from "./state.ts";
+import { linkStats } from "../link-stats.ts";
 
 export interface HouseInfo {
   house: HouseMap;
@@ -185,6 +186,7 @@ export function openSpatialFeed(store: WorldStore, opts: FeedOptions): () => voi
     me.onerror = () => {
       store.setConnected(false);
       armStale();
+      linkStats.error(Date.now(), "stream_down");
       // CLOSED = refused (401 / 404 / the server gone mid-handshake); the
       // browser retries every other drop by itself.
       if (me.readyState !== CLOSED || !alive) return;
@@ -204,6 +206,7 @@ export function openSpatialFeed(store: WorldStore, opts: FeedOptions): () => voi
     for (const event of FRAME_NAMES) {
       me.addEventListener(event, (e) => {
         const frame = decodeFrame(event, (e as MessageEvent<string>).data);
+        linkStats.received(Date.now());
         if (frame) store.dispatch(frame, now());
       });
     }
@@ -236,7 +239,9 @@ export function useSpatialStream(config: TerminalConfig, enabled: boolean): Worl
         ),
     });
     const prune = window.setInterval(() => store.tick(performance.now()), 1000);
+    linkStats.watch(1);
     return () => {
+      linkStats.watch(-1);
       window.clearInterval(prune);
       close();
     };

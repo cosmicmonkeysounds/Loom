@@ -14,6 +14,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { DEFAULT_TV_ROOM, VIEWS, VIEW_INFO, announceChoiceValue, announceFromChoice, baseOf, bleepsOn, connect, defaultConfig, pickCharacter, roomChoices, savedCharacter, TV_SPEED, withViewDefaults, type DoorConfig, type TerminalConfig, type TerminalView } from "./config.ts";
 import { feedStatusText, feedWanted, useFeedStatus } from "./camfeed.ts";
+import { linkReadout, linkStats } from "./link-stats.ts";
 import { micBox, voiceRoles } from "./voice/roles.ts";
 import { DoorSetup } from "./heart/DoorSetup.tsx";
 import { RigSetup } from "./gamepad/RigSetup.tsx";
@@ -53,6 +54,24 @@ interface Access {
   eventId: string;
   token: string;
   title: string;
+}
+
+/** (wave 59) The link to the games, live: frames each way and the last error.
+ *  The games' half stops with the screen behind ⚙, so it reads as ⚙ found it. */
+function LinkReadout() {
+  const [seen] = useState(() => linkStats.snapshot(Date.now()));
+  const [now, setNow] = useState(() => linkStats.snapshot(Date.now()));
+  useEffect(() => {
+    const t = window.setInterval(() => setNow(linkStats.snapshot(Date.now())), 1000);
+    return () => window.clearInterval(t);
+  }, []);
+  return (
+    <div className={`link-readout small ${now.error !== null ? "warn" : "muted"}`} data-link-readout="">
+      {linkReadout(now, seen).map((line) => (
+        <div key={line.slice(0, 12)}>{line}</div>
+      ))}
+    </div>
+  );
 }
 
 /** The heartbeats (`GET /api/mod/screen/terminals`), every 5 s while open. */
@@ -318,6 +337,7 @@ export function Setup({
             <p className="muted">
               {access?.title ? `${access.title} — ` : ""}tap the spot this tablet hangs on. The list is the event's house map (set up in the house map editor).
             </p>
+            {current !== null && current.spot !== "" && <LinkReadout />}
             {mapFailed && <div className="warn small">Couldn't read the event's house map — showing the show's own terminals.</div>}
             {map === null && !mapFailed && <div className="muted">reading the house map…</div>}
             {groups.map((g) => (

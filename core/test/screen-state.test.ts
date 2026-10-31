@@ -1090,3 +1090,20 @@ describe("the heartbeat's device health and the director's identify", () => {
     rt.dispose();
   });
 });
+
+describe("the link to the games on the heartbeat (wave 59)", () => {
+  const q = (o: Record<string, string>) => (k: string) => o[k] ?? "";
+  it("carries the rates and a known error, and drops anything malformed", () => {
+    expect(screenDeviceOf(q({ cs: "2.9", cr: "10.0", cd: "18.5", ce: "blank" }))).toMatchObject({ camSent: 2.9, simReceived: 10, simDrawn: 18.5, linkError: "blank" });
+    const junk = screenDeviceOf(q({ cs: "fast", cr: "1000", cd: "-1", ce: "<script>" }));
+    for (const k of ["camSent", "simReceived", "simDrawn", "linkError"]) expect(junk).not.toHaveProperty(k);
+  });
+  it("adds each spot's measured feed to the terminals answer", () => {
+    const watch = new ScreenWatch();
+    watch.poll(null, { name: "Hall", spot: "hall", view: "auto", character: "" }, () => false);
+    watch.poll(null, { name: "Loose", spot: "", view: "face", character: "" }, () => false);
+    const out = screenTerminals(watch, () => ({ got: 3, read: 2.9 }));
+    expect(out.terminals.find((t) => t.name === "Hall")!.cam).toEqual({ got: 3, read: 2.9 });
+    expect(out.terminals.find((t) => t.name === "Loose")).not.toHaveProperty("cam");
+  });
+});

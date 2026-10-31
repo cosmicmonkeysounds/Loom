@@ -16,6 +16,8 @@ export const CAM_MIN_GAP_MS = 150;
 /** The upload's JSON body cap: base64 of `CAM_MAX_BYTES` (4/3) plus the
  *  envelope. A bigger body is refused 413 before it is parsed. */
 export const CAM_BODY_LIMIT = 140 * 1024;
+/** (wave 59) A feed's rates are counted over this long. */
+export const CAM_RATE_WINDOW_MS = 10_000;
 
 /** One stored frame. */
 export interface CamFrame {
@@ -32,6 +34,12 @@ export interface CamInfo {
   at: number;
   w: number;
   h: number;
+}
+
+/** (wave 59) A feed's frames per second: what the server took, what the games read. */
+export interface CamRate {
+  got: number;
+  read: number;
 }
 
 /** A parsed upload body, or why it is refused. */
@@ -72,6 +80,7 @@ export function parseCamUpload(body: Record<string, unknown>): CamUpload {
 /** The latest frame per terminal spot. */
 export class CamStore {
   private readonly frames = new Map<string, CamFrame>();
+  private readonly hits = new Map<string, { got: number[]; read: number[] }>();
   private readonly now: () => number;
 
   constructor(opts: { now?: () => number } = {}) {
@@ -85,7 +94,33 @@ export class CamStore {
     const last = this.frames.get(spot);
     if (last !== undefined && now - last.at >= 0 && now - last.at < CAM_MIN_GAP_MS) return { at: last.at, dropped: true };
     this.frames.set(spot, { jpeg, w, h, at: now });
+    this.hit(spot).got.push(now);
     return { at: now, dropped: false };
+  }
+
+  private hit(spot: string): { got: number[]; read: number[] } {
+    let h = this.hits.get(spot);
+    if (h === undefined) this.hits.set(spot, (h = { got: [], read: [] }));
+    const from = this.now() - CAM_RATE_WINDOW_MS;
+    for (const list of [h.got, h.read]) {
+      let i = 0;
+      while (i < list.length && list[i]! < from) i++;
+      if (i > 0) list.splice(0, i);
+    }
+    return h;
+  }
+
+  /** A game read this spot's frame. */
+  noteRead(spot: string): void {
+    this.hit(spot).read.push(this.now());
+  }
+
+  /** This spot's frames per second over the last `CAM_RATE_WINDOW_MS`. */
+  rate(spot: string): CamRate {
+    if (!this.hits.has(spot)) return { got: 0, read: 0 };
+    const h = this.hit(spot);
+    const per = (n: number) => Math.round((n / (CAM_RATE_WINDOW_MS / 1000)) * 10) / 10;
+    return { got: per(h.got.length), read: per(h.read.length) };
   }
 
   /** The latest frame, if fresh. */
@@ -113,6 +148,7 @@ export class CamStore {
    *  feed goes with it). */
   retain(ids: ReadonlySet<string>): void {
     for (const spot of [...this.frames.keys()]) if (!ids.has(spot)) this.frames.delete(spot);
+    for (const spot of [...this.hits.keys()]) if (!ids.has(spot)) this.hits.delete(spot);
   }
 
   get size(): number {

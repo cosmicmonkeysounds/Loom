@@ -8,12 +8,16 @@
 //! (⚙ changed the camera) reopens it for everyone.
 //!
 //! Always opened at the scanner's resolution — a pass reads at 720p, and the
-//! feed and the shadow view scale the same frames down themselves.
+//! feed and the shadow view scale the same frames down themselves. A tablet
+//! with no WebGL2 (wave 59: the SM-T280s) opens it at 640 × 480: it decodes at
+//! `JSQR_WIDTH` (480 px) anyway, and each 720p frame costs that tablet far more
+//! than the feed does.
 //!
 //! `getUserMedia` needs a secure context (`https://` or `localhost`).
 
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { browserDevices, openDevice, type DeviceList } from "./devices.ts";
+import { hasWebGL2 } from "./webgl.ts";
 
 export type Facing = "user" | "environment";
 export type CameraState = "starting" | "live" | "insecure" | "denied" | "none" | "error";
@@ -31,17 +35,19 @@ export interface CameraEnv {
   getUserMedia: ((c: MediaStreamConstraints) => Promise<MediaStream>) | null;
   /** The devices by name (wave 52, `prefer`); absent: only the default. */
   devices?: DeviceList;
+  /** Open it small (wave 59: a tablet with no WebGL2). */
+  small?: boolean;
 }
 
 function browserEnv(): CameraEnv {
   const secure = typeof window !== "undefined" && window.isSecureContext;
   const md = typeof navigator !== "undefined" ? navigator.mediaDevices : undefined;
-  return { secure, getUserMedia: typeof md?.getUserMedia === "function" ? (c) => md.getUserMedia(c) : null, devices: browserDevices };
+  return { secure, getUserMedia: typeof md?.getUserMedia === "function" ? (c) => md.getUserMedia(c) : null, devices: browserDevices, small: !hasWebGL2() };
 }
 
 /** `deviceId`: that exact camera (wave 52); null: whichever faces `facing`. */
-export function constraintsFor(facing: Facing, deviceId: string | null = null): MediaStreamConstraints {
-  const size = { width: { ideal: 1280 }, height: { ideal: 720 } };
+export function constraintsFor(facing: Facing, deviceId: string | null = null, small = false): MediaStreamConstraints {
+  const size = small ? { width: { ideal: 640 }, height: { ideal: 480 } } : { width: { ideal: 1280 }, height: { ideal: 720 } };
   return { video: deviceId === null ? { facingMode: facing, ...size } : { deviceId: { exact: deviceId }, ...size }, audio: false };
 }
 
@@ -106,7 +112,7 @@ export class CameraHub {
       return Promise.resolve(null);
     }
     const getUserMedia = env.getUserMedia;
-    const p = openDevice({ kind: "videoinput", label: this.webcam, list: env.devices ?? null, open: (id) => getUserMedia(constraintsFor(facing, id)) }).then(
+    const p = openDevice({ kind: "videoinput", label: this.webcam, list: env.devices ?? null, open: (id) => getUserMedia(constraintsFor(facing, id, env.small === true)) }).then(
       (stream) => {
         if (this.opening !== p) {
           // Released (or the facing changed) while it opened.

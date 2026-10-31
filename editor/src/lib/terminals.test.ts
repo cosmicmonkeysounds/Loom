@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
+  linkBadges,
+  type TerminalDevice,
   DEFAULT_SILENT_MS,
   doorBadges,
   doorOverrideFromScreen,
@@ -466,5 +468,27 @@ describe('the 🔌 patch bay badges (wave 22)', () => {
     expect(patchOverrideFromScreen({ night: {} })).toBe(false)
     expect(patchOverrideFromScreen(null)).toBe(false)
     expect(doorOverrideFromScreen({ night: { patch_override: true } })).toBe(false)
+  })
+})
+
+describe('the link to the games (wave 59)', () => {
+  const quiet = { audio: undefined, visible: undefined, battery: undefined, charging: undefined, fullscreen: undefined, mic: undefined, version: undefined, announce: undefined, door: undefined, doorLevel: undefined, doorFault: undefined, doorWarn: undefined, patch: undefined, patchComplete: undefined, patchBetween: undefined, patchFault: undefined }
+  it('shows frames both ways and the last error in words', () => {
+    const out = linkBadges({ ...quiet, camSent: 2.9, simReceived: 10, simDrawn: 18, linkError: 'blank', cam: { got: 2.8, read: 2.7 } } as TerminalDevice, false)
+    expect(out.map((b) => b.key)).toEqual(['link-cam', 'link-sim', 'link-error'])
+    expect(out[0]!.text).toBe('📷 2.9/s')
+    expect(out[0]!.title).toMatch(/server took 2.8 a second, the games read 2.7/)
+    expect(out[0]!.warn).toBe(false)
+    expect(out[1]!.text).toBe('🎞 10/s · 18 drawn')
+    expect(out[2]!.text).toMatch(/blank/)
+    expect(out[2]!.warn).toBe(true)
+  })
+  it('warns on a camera sending nothing, says nothing of a half that isn\'t there or a code it doesn\'t know', () => {
+    expect(linkBadges({ ...quiet, camSent: 0 } as TerminalDevice, false)[0]!.warn).toBe(true)
+    expect(linkBadges({ ...quiet, linkError: 'nonsense' } as TerminalDevice, false)).toEqual([])
+    expect(linkBadges(quiet as TerminalDevice, false)).toEqual([])
+  })
+  it('a silent row shows no stale numbers', () => {
+    expect(linkBadges({ ...quiet, camSent: 3 } as TerminalDevice, true)).toEqual([])
   })
 })

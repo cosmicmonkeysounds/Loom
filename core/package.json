@@ -24,7 +24,8 @@
     "./house-mixer": "./src/house-mixer.ts",
     "./talk-back": "./src/talk-back.ts",
     "./credits": "./src/credits.ts",
-    "./voice-fx": "./src/voice-fx.ts"
+    "./voice-fx": "./src/voice-fx.ts",
+    "./link-health": "./src/link-health.ts"
   },
   "scripts": {
     "test": "vitest run",

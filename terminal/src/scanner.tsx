@@ -26,9 +26,11 @@ export const JSQR_FAST_MS = 3000;
 /** jsQR decodes frames at most this wide (px): plenty for a phone-screen QR. */
 export const JSQR_WIDTH = 480;
 
-/** The next look's delay: the native detector always at its pace, jsQR fast only just after a read. */
-export function scanDelay(native: boolean, now: number, lastRead: number): number {
-  return native || now - lastRead < JSQR_FAST_MS ? SCAN_EVERY_MS : JSQR_EVERY_MS;
+/** The next look's delay: the native detector always at its pace, jsQR fast
+ *  only just after a read. `costMs` (wave 59): what the last decode took, so an
+ *  old tablet's jsQR never takes more than half the page beside the feed. */
+export function scanDelay(native: boolean, now: number, lastRead: number, costMs = 0): number {
+  return Math.max(native || now - lastRead < JSQR_FAST_MS ? SCAN_EVERY_MS : JSQR_EVERY_MS, Math.round(costMs));
 }
 
 /** The size jsQR decodes a frame at. */
@@ -129,6 +131,7 @@ export function Scanner({
       const ctx = canvas.getContext("2d", { willReadFrequently: true });
       const scan = async () => {
         if (stopped) return;
+        const started = performance.now();
         // Hidden (screen off, app switched): no decoding, just look again later.
         if (!document.hidden && v.readyState >= 2 && v.videoWidth > 0) {
           try {
@@ -152,7 +155,7 @@ export function Scanner({
             /* a frame failed to decode — try the next */
           }
         }
-        timer = window.setTimeout(() => void scan(), scanDelay(native !== null, Date.now(), lastRead));
+        timer = window.setTimeout(() => void scan(), scanDelay(native !== null, Date.now(), lastRead, native === null ? performance.now() - started : 0));
       };
       void scan();
     })();
