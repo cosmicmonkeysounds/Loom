@@ -136,6 +136,7 @@ from ..show.directives import parse_directive, unquote
 from .config import AudioConfig, parse_audio_section
 from .engine import Engine, device_name, enable_host_api, layout_problem, probe, with_host_api
 from .footsteps import WALKERS_TICK_S, FootstepBank, StepRig, Walkers
+from .gamefeed import GameFeed
 from .mix import MixGains, mix_gains, mix_levels_of
 from .mixer import Mixer, SidechainSource, lin_to_db
 from .mp3len import length_problem as mp3_length_problem
@@ -155,7 +156,6 @@ from .routing import (
 )
 from .sounds import EXTENSIONS, SoundBank, identify_label, identify_tone, placeholders_in, sound_lengths
 from .soundtrack import OFF, Director, scene_of_cue
-from .gamefeed import GameFeed
 from .tap import Tap, TapConfig, find_device
 from .voicefx import ROLE as VOICE_ROLE
 from .voicefx import VoiceFx
