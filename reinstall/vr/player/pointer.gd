@@ -34,6 +34,8 @@ const MOVE_FOR := 0.15
 ## The trigger counts as down past this, up again under [constant TRIGGER_OFF].
 const TRIGGER_ON := 0.8
 const TRIGGER_OFF := 0.4
+## The beam and its dot: over a [TalkPanel], under the HUD and the captions.
+const DRAW_ON_TOP := 49
 
 ## The rig whose hands / camera point (set by [Game]).
 var player: VrPlayer
@@ -60,7 +62,8 @@ func _ready() -> void:
 	var box := BoxMesh.new()
 	box.size = Vector3.ONE
 	_beam.mesh = box
-	_beam.material_override = HouseLook.screen("#3df2e8")
+	# Wave 59: over the talkers' panel, which draws over the walls ([TalkPanel]).
+	_beam.material_override = Hud._overlay(Color("#3df2e8"), null, DRAW_ON_TOP)
 	_beam.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_beam.top_level = true
 	_beam.visible = false
@@ -71,7 +74,7 @@ func _ready() -> void:
 	sphere.radius = DOT_SIZE / 2.0
 	sphere.height = DOT_SIZE
 	_dot.mesh = sphere
-	_dot.material_override = HouseLook.glow_gold()
+	_dot.material_override = Hud._overlay(HouseLook.GOLD, null, DRAW_ON_TOP)
 	_dot.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_dot.top_level = true
 	_dot.visible = false

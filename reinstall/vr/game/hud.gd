@@ -1,8 +1,9 @@
 ## Head-locked text, only when there is something to say: the big found
 ## screen ("REINSTALLATION COMPLETE" / "YOU FOUND GERALD"), a short notice,
-## and the void's scare. While walking the view is clear: no room name, no
-## instruction, no mic line. It never shows the King's health (that hangs
-## over him, [HouseBuilder]). Parented to the camera by [Game].
+## the run reset's bar (wave 59) and the void's scare. While walking the view
+## is clear: no room name, no instruction, no mic line. It never shows the
+## King's health (that hangs over him, [HouseBuilder]). Parented to the camera
+## by [Game].
 class_name Hud
 extends Node3D
 
@@ -29,9 +30,66 @@ func _label(height: float, color: Color, pos: Vector3) -> Label3D:
 func hide_all() -> void:
 	for l: Label3D in [_big, _sub]:
 		l.text = ""
+	reset_bar(0.0)
 	_scare_alpha = 0.0
 	_scare_target = 0.0
 	_apply_scare()
+
+
+# --- the run reset's bar (wave 59) --------------------------------------------
+
+## DRAFT w59 (UI copy): over the bar.
+const RESET_TEXT := "KEEP HOLDING TO GO BACK TO THE START"
+const RESET_AT := Vector3(0, 0.3, -1.8)
+const RESET_SIZE := Vector2(0.9, 0.07)
+
+var _reset: Node3D
+var _reset_fill: MeshInstance3D
+
+
+## The bar at `fill` (0 to 1), 0 taking it down.
+func reset_bar(fill: float) -> void:
+	if fill <= 0.0:
+		if _reset != null:
+			_reset.visible = false
+		return
+	if _reset == null:
+		_build_reset()
+	_reset.visible = true
+	_reset_fill.scale.x = fill
+	_reset_fill.position.x = -RESET_SIZE.x * (1.0 - fill) / 2.0
+
+
+## The bar's fill now (0 when it is down).
+func reset_fill() -> float:
+	return _reset_fill.scale.x if _reset != null and _reset.visible else 0.0
+
+
+func _build_reset() -> void:
+	_reset = Node3D.new()
+	_reset.name = "ResetBar"
+	_reset.position = RESET_AT
+	add_child(_reset)
+	var back := MeshInstance3D.new()
+	var bq := QuadMesh.new()
+	bq.size = RESET_SIZE + Vector2(0.03, 0.03)
+	back.mesh = bq
+	back.material_override = _overlay(Color("#0a1f28"), null, 53)
+	_reset.add_child(back)
+	_reset_fill = MeshInstance3D.new()
+	_reset_fill.name = "Fill"
+	var fq := QuadMesh.new()
+	fq.size = RESET_SIZE
+	_reset_fill.mesh = fq
+	_reset_fill.material_override = _overlay(HouseLook.GOLD, null, 54)
+	_reset_fill.position.z = 0.001
+	_reset.add_child(_reset_fill)
+	var text := HouseLook.label(RESET_TEXT, 0.05, HouseLook.INK)
+	text.no_depth_test = true
+	text.render_priority = 54
+	text.outline_render_priority = 53
+	text.position = Vector3(0, 0.1, 0.002)
+	_reset.add_child(text)
 
 
 # --- the void's jump scare (wave 26, R4) -------------------------------------

@@ -883,6 +883,29 @@ func _only_talker(game: Game, house: Dictionary, id: String) -> Dictionary:
 
 
 ## Aim the pointer at row `i` of the open panel, press `down`.
+## Wave 59: everything of the panel draws over the house, whatever stands in
+## the way, under the captions and the HUD, and the beam stays over it.
+func _talk_on_top(game: Game) -> void:
+	var panel := game.talk
+	var quads: Array = panel.find_children("Bg", "MeshInstance3D", true, false)
+	quads.append(panel.get_node("Backdrop"))
+	_check(quads.size() == HouseDescent.TALK_OPTIONS_MAX + 1, "talk: every box is looked at (%d)" % quads.size())
+	for q: MeshInstance3D in quads:
+		var m := q.material_override as StandardMaterial3D
+		_check(m.no_depth_test and m.render_priority < 50, "talk: %s draws through walls, under the HUD" % q.get_path())
+	var labels: Array = panel.find_children("Label", "Label3D", true, false)
+	_check(labels.size() == HouseDescent.TALK_OPTIONS_MAX, "talk: every row's text is looked at (%d)" % labels.size())
+	for l: Label3D in labels:
+		_check(l.no_depth_test and l.render_priority > TalkPanel.DRAW_ROW and l.render_priority < 50, "talk: the row's text draws over its box and through walls")
+	var beam := game.pointer.get_node("Beam") as MeshInstance3D
+	var dot := game.pointer.get_node("Dot") as MeshInstance3D
+	for b: MeshInstance3D in [beam, dot]:
+		var m := b.material_override as StandardMaterial3D
+		_check(m.no_depth_test and m.render_priority > TalkPanel.DRAW_TEXT, "talk: the %s stays over the panel" % b.name)
+	var cap := game.speech.get_node("PropCaption") as Label3D
+	_check(cap.no_depth_test and cap.render_priority > TalkPanel.DRAW_TEXT, "talk: a line over a prop draws through walls, over the panel")
+
+
 func _aim_row(game: Game, i: int, down := false) -> void:
 	var eye := game.player.camera.global_position
 	game.pointer.inject(eye, game.talk.row_world(i) - eye, down)
@@ -934,7 +957,8 @@ func _test_talk() -> void:
 	game.player.xr_active = false
 	_check(game.pointer.beam_visible() and game.talk.hovered() == 1 and d.trigger_taken(), "talk: the beam shows, the row under it lights up")
 	var bg := game.talk.get_node("Row_1/Bg") as MeshInstance3D
-	_check(bg.material_override == HouseLook.screen(Lobby.BG_HOVER), "talk: highlighted")
+	_check((bg.material_override as StandardMaterial3D).albedo_color == Color(Lobby.BG_HOVER), "talk: highlighted")
+	_talk_on_top(game)
 	# Off the rows: nothing to pick.
 	game.pointer.inject(game.player.camera.global_position, Vector3.UP, false)
 	game._process(DT)

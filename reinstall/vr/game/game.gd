@@ -87,6 +87,12 @@
 ##   the mic shut while it plays ([method VoiceLink.hold_for]); the hum
 ##   pauses while a terminal listens, so no game sound reaches the mic.
 ##
+## - **The run reset** (wave 59, [HoldMeter]): both triggers + A held for
+##   5 s, a bar filling in the HUD and letting go cancelling it, puts a player
+##   stuck on geometry back at the spawn with Gerald somewhere new. In the
+##   house only: the intro has no geometry to be stuck on, and this never goes
+##   back through it. No level, clock, hit or score moves.
+##
 ## The session also ends when the server says so ([signal
 ## LinkBase.session_over]) or the headset comes off ([method presence_changed],
 ## [method focus_changed], [method app_paused], [method headset_gone]).
@@ -136,6 +142,8 @@ const KING_PAUSED := "The show is paused."
 const TRAIL_NOTICE := "A golden trail flickers on."
 const DUCK_MOVED := "Gerald moved."
 const DUCK_MOVED_TRAIL := "Gerald moved — follow the arrows."
+## (DRAFT w59) The run reset's notice.
+const RESET_DONE := "Back at the start."
 ## `--autopilot` gives up (exit 1) after this many seconds.
 const AUTOPILOT_LIMIT := 180.0
 ## `--hit-king`: the autopilot stops this far (plan m) in front of the King,
@@ -225,6 +233,8 @@ var _quack_in := Sfx.QUACK_FIRST
 var _fanfare_in := -1.0
 ## Seconds left on the lobby's TEST MIC.
 var _mic_test_left := 0.0
+## The run reset's hold (wave 59).
+var _reset_hold := HoldMeter.new()
 ## The void (R4): seconds into an escape (< 0: none), its answer once it
 ## came (`{result, data}`), and when (wall-clock s, [member clock]) the last
 ## escape went up (< 0: none this session). The cooldown counts from the
@@ -1083,6 +1093,7 @@ func _process(delta: float) -> void:
 	if check_away():
 		return
 	_catch_fall()
+	_tick_reset(delta)
 	match flow.state:
 		GameFlow.State.LOBBY:
 			_tick_lobby(delta)
@@ -1246,6 +1257,45 @@ func _tick_play(delta: float) -> void:
 	if _tick_descent(house, feet):
 		return
 	_tick_king(house, feet, builder.yaw_to_house(player.head_yaw()))
+
+
+# --- the run reset (wave 59) ---
+
+
+## One frame of the hold: in the house only, a void's scare finishing first.
+## Anything else the player is stuck in gives way to it.
+func _tick_reset(delta: float) -> void:
+	var walking := flow.state == GameFlow.State.PLAYING and not intro.running()
+	var fill := _reset_hold.update(walking and player.reset_chord, delta)
+	hud.reset_bar(fill)
+	if fill < 1.0 or _escape_t >= 0.0:
+		return
+	_reset_hold.spend()
+	hud.reset_bar(0.0)
+	_run_reset()
+
+
+## Back at the spawn at once, whatever the server says; Gerald's new spot is
+## its word ([method LinkBase.reset_run] → [method _on_duck_changed]). The
+## walk's clocks, its level and the visit's hit stay as they were.
+func _run_reset() -> void:
+	descent.interrupt()
+	_close_hallway()
+	_clear_trail()
+	var spawn: Dictionary = builder.house["spawn"]
+	player.teleport(builder.to_world(spawn["pos"]), builder.yaw_to_world(float(spawn.get("yaw", 0.0))))
+	player.locomotion_enabled = true
+	player.pulse(0.25, 0.08)
+	_trail_in = 0.0
+	_found_retry = 0.0
+	_found_buzzed = false
+	_sight_room = null
+	_tick_sight(spawn["pos"])
+	_notice(RESET_DONE)
+	print("reinstall-vr: run reset — %s back at the start" % flow.assignment.get("name", ""))
+	if autopilot != null:
+		autopilot.plan(route_house, builder.to_house(player.feet()), _autopilot_goal())
+	link.reset_run()
 
 
 # --- the descent (wave 49) ---
