@@ -556,8 +556,8 @@ uv run stagehand music stop --config trapped.desktop.yaml         # scene off
   the TV page mutes him).
 - `pnpm showctl doctor` prints the scene and the input levels too.
 
-**The mixer** (wave 40). Run → House → 🎚 Mixer in the editor, or 🎚 Mixer
-in a host's Desk window, balances the house live: Music, Featured tracks,
+**The mixer** (wave 40). Run → House → 🎚 Mixer in the editor, or 🎚 Mix on
+a host's Desk, balances the house live: Music, Featured tracks,
 Sound effects, Announcements and Trabolta's TV, everywhere, per room and
 per speaker (the sub has its own fader), with live meters while the panel
 is open. Now playing moved to 🎵 Music (wave 58): each bed's track with ⏭
