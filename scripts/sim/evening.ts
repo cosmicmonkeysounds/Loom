@@ -13,8 +13,8 @@
 // posts (the door sensor, `terminal opened`, the docked `Heart …` menus by
 // text). The bots do the quests on the way: the arrival, Bingo, the hunts
 // and their 📝 filings, DMs, wave 32's talk scenes (Task Manager relays
-// Clippy and Trabolta answers the whole Desktop; ⚡ a flicker in the
-// introduction, an ad burst in the ad attack; 🫘 the beans), the bottle, a
+// Clippy and Trabolta answers the whole Desktop, in the introduction after his
+// sign-off; ⚡ an ad burst in the ad attack; 🫘 the beans), the bottle, a
 // reinstallation at the tent, the
 // Truther Download's featured missions, a crew, Truthcoin, the summons,
 // Truth Pong, the sides and the majority, chess → the door code, the
@@ -658,9 +658,9 @@ async function act1(): Promise<void> {
   );
 
   await beat(
-    "🤖 Clippy introduces Trabolta",
+    "🎤 Clippy tells the room about Trabolta; 🤖 he comes online",
     async (c) => {
-      await press(c, chain("introduce_trabolta", "introduce_trabolta"));
+      await press(c, chain("clippy_on_trabolta", "introduce_trabolta"));
       c.must("DM Trabolta", await say(bots[0]!.token, "dm:Trabolta", "Hello? Are you the one who invited me?"));
     },
     () => ({ "Night.step": "4", "Trabolta.awake": "true", "Night.talk": "intro" }),
@@ -715,10 +715,11 @@ const glitch = (tm: string) => http.post("/api/mod/signal", { name: "ad_burst" }
 
 /** 🤖 Talk in the introduction: Task Manager relays a canned Clippy line;
  *  Trabolta answers the whole Desktop (the probe worker's public reply, or,
- *  with no worker, a canned line of his fired by hand); then ⚡, a flicker. */
+ *  with no worker, a canned line of his fired by hand). No ⚡ here since wave
+ *  58: it is refused, and he stays clean until the results. */
 async function talkIntro(): Promise<void> {
   await beat(
-    "🤖 Talk: Task Manager relays Clippy, Trabolta answers the whole Desktop; ⚡ a flicker",
+    "🤖 Talk: after his sign-off Task Manager relays Clippy, Trabolta answers the whole Desktop; ⚡ refused",
     async (c) => {
       const tm = booths.get("Task Manager");
       if (tm === undefined) return c.fail("no Task Manager booth");
@@ -756,8 +757,8 @@ async function talkIntro(): Promise<void> {
         }
       }
       const before = await world();
-      c.must("⚡ ad_burst (a flicker)", await glitch(tm));
-      for (const p of burstProblems(scene, before, await world())) c.fail(p);
+      await glitch(tm);
+      if (read(await world(), "Night.burst_n") !== read(before, "Night.burst_n")) c.fail("a ⚡ went through in his introduction: he stays clean until the results");
     },
     () => ({ "Night.talk": "intro", "Night.glitch_kind": "none" }),
   );
@@ -835,7 +836,7 @@ async function act2(): Promise<void> {
       // The cold door's four digit notes, scanned around the house (granted
       // as the scans would): the fourth assembles the code (never printed).
       const notes = bots[9 % bots.length]!;
-      for (const d of ["First", "Second", "Third", "Fourth"]) c.must(`digit note ${d}`, await http.post("/api/mod/codex", { who: notes.id, entry: `Cold Door ${d} Digit` }, mod));
+      for (const d of ["First", "Second", "Third", "Fourth"]) c.must(`digit note ${d}`, await http.post("/api/mod/codex", { who: notes.id, entry: `Server Room ${d} Digit` }, mod));
       await questIs(c, "The Cold Door", notes, "done");
       if (excel !== undefined) await questIs(c, "Excel Mission", excel, "done");
       // MS Paint's painting: a host signs every other program on it.

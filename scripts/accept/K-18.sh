@@ -98,7 +98,7 @@ Device check (≤ 10 min) — the TV on the house Mac, the preview event:
      Sound out of the MOTU's living-room pair. A laptop runs: MOD_CODE=<mod code> scripts/accept/K-18.sh --watch
   1. Run → header: Restart. PASS: the TV shows the screensaver (Trabolta hidden).
   2. scripts/accept/K-18.sh --fire call_to_the_desktop start_the_bingo bingo_time introduce_trabolta
-     PASS: within 3 s of introduce_trabolta the TV shows his face and SAYS "HELLO, PROGRAMS…"
+     PASS: within 3 s of introduce_trabolta the TV shows his face and SAYS "Thank you, Clippy…"
      (mouth moving with the audio, caption under it); Clippy's lines are NOT spoken.
   3. scripts/accept/K-18.sh --say "Testing. This is Trabolta, live from the director's desk."
      PASS: spoken within 3 s.

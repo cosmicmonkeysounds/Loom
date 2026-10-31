@@ -363,18 +363,27 @@ the tent laptop the mounted reinstall game adds its own
   as `SceneVoice.mark` (`CutsceneLayer` `sceneVoiceOf`), and a scene may
   give each spoken line its own marks (`byLine`, so a short name merged
   into the next sentence never steals a mark).
-- **The introduction (wave 32).** *Trabolta Introduction* is 17 sentences
-  now: `INTRO_LINE` plus `INTRO_MORE` (his new lines word for word,
+- **The introduction (wave 58).** *Trabolta Introduction* is the first 5
+  sentences of his speech: `INTRO_LINE` plus `INTRO_MORE` (word for word,
   pinned against the beat), captioned by `lineCaptions` (a sentence gap
   inside a line, `LINE_GAP_MS` between lines). The picture's beats wait
-  for the sentences in `INTRO_SAYS` (the frozen word stalls VOICE.DRV, ALL
-  SYSTEMS ONLINE on *"I did not freeze."*, the ALL CAPS word tears the
-  face, MANNERS.DLL's log entry `INTRO_LOG`, the hand-back to the mirror on
-  *"The copy of my house…"* with his face in a corner window, the
-  `INTRO_LIVE_TAB` on *"Not yet, Clippy."*). `INTRO_MS` is computed from
-  them (≈ 54 s; up to ≈ 74 s with the voice's stretch). The TV says his
-  lines back to back: it does not wait for Clippy's lines between them.
-  *Bottle Landed* adds `BOTTLE_HUNGER` (`kit/tv1-time.ts`, two marks).
+  for the sentences in `INTRO_SAYS` (`captionWith` throws at import if a
+  word goes, so change them with the beat): *Happy Halloween, programs.*
+  types big, the setup, TRABOLTA and ALL SYSTEMS ONLINE run under his long
+  sentence, and it hands back to the live face. `INTRO_MS` is computed from
+  them (≈ 34 s; up to ≈ 54 s with the voice's stretch). *Trabolta Greeting*,
+  the questions and his sign-off run after it under the plain face with
+  `.tv-caption`, on no scene's clock: that is deliberate, so about three
+  minutes of speech never holds a scene up. He plays it clean: nothing
+  stalls or tears. The TV says his lines back to back: it does not wait for
+  Clippy's. The `bingo_time` slide can still be up under it: the beat's
+  `cue tv_mirror` clears it. *Bottle Landed* adds `BOTTLE_HUNGER`
+  (`kit/tv1-time.ts`, two marks).
+- **The mirror before him (wave 58).** The TV keeps the screensaver until
+  he is revealed, but Clippy's *"We can follow their progress!"* comes
+  first: on the host's 📺 (`Night.screen` "mirror") `tv.ts` `mirrorBeforeHim`
+  lets a linked walker through attract, full screen and with no face
+  (`.mirror-first`), only while he is hidden.
 - **`sp=`.** The TV also reports `sp=<seq>:<chunk>` / `sp=<seq>:d`; the
   server keeps it as `tvSpeech`. The walls don't follow it yet: they keep
   the server clock.

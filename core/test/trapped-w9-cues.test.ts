@@ -97,7 +97,8 @@ describe("Trapped in the Internet — wave 9 (the cue sheet)", () => {
     expect(sheet(sim)).toEqual({ last: null, next: "call_to_the_desktop" });
     step("call_to_the_desktop", "start_the_bingo");
     step("start_the_bingo", "bingo_time");
-    step("bingo_time", "introduce_trabolta");
+    step("bingo_time", "clippy_on_trabolta");
+    step("clippy_on_trabolta", "introduce_trabolta");
     step("introduce_trabolta", "start_the_hunt");
     // Hunt 1: fifteen minutes on the clock, nothing to suggest.
     step("start_the_hunt", null);

@@ -7,35 +7,27 @@
 // QR (generated/questions.loom, from facts.json), so a program who finds
 // one can prove it on their phone — and hold it, and trade it. The
 // questions are also in everyone's Quest Log (`Hunt One`, generated too).
+// Clippy's lines to the first 📋 are CLIPPY PART 3 of the Oct 30 script, word
+// for word (core/test/trapped-w58-script.test.ts).
 // All the beats are public, in the Desktop's room. Every filing on the 📝
 // card is judged by the server (facts.json); the results are read here
 // and settled by main.loom (+50, or marked for a guess).
 
-// V4 / V5 — `start_the_hunt`. Trabolta reads round 1 (H1–H3) from the
-// generated `Hunt One Questions`, which hands back to `Hunt One Go`
-// (every divert is the last item of its beat, so the chain is the same
-// under the Sim and a true divert).
+// V4 / V5 — `start_the_hunt`. Everything he says about the hunt is said before
+// 🔎 now (Trabolta Greeting, the generated `Hunt One Questions`, `Hunt One Go`):
+// the press only starts the clock, the quests and the screens, in main.loom's
+// rule. The beat stays for what keys on it. Clippy has no line: the script
+// hands straight from his sign-off to CLIPPY PART 3.
 == Truth Scavenger Hunt One
   setting: The Desktop
-  cast: Clippy, Trabolta
-  aloud: Clippy
 
-Clippy: Everyone! We're ready for our second game: the TRUTH SCAVENGER HUNT! Trabolta will explain the rules.
-Trabolta: As our computer completely relies on me, it is important that you participate in regular training, so I have all the information I need to keep improving. There are files scattered around the computer that I need your help to interpret.
-// DRAFT w32
-Clippy: Ooh, training! Isn't that fun?
-// DRAFT w32 (an ALL CAPS word, corrected)
-Trabolta: It is not fun, Clippy. It is NECESSARY. Necessary. The questions.
--> Hunt One Questions
-
+// His sign-off (SCRIPT:149), where `Hunt One Questions` hands back: the last
+// line of the chain 🤖 starts. The talk scene carries on from here until 🔎.
 == Hunt One Go
   setting: The Desktop
-  cast: Clippy, Trabolta
+  cast: Trabolta
 
-Trabolta: Fifteen minutes. The facts are obscure. They are in the books in this room, and in the print media on the walls.
-// DRAFT w32 (formal, hungry underneath)
-Trabolta: Bring every fact you find to me. I am— I am very much looking forward to them. Thank you.
-Clippy: Go! Find! Interpret! The questions are in your Quest Log. If you find a code, put it in your Codex!
+Trabolta: Please. Search for the truth, and have fun. Jean Trabolta's Truth Scavenger Hunt - it's electrifying.
 
 // C2 — `hunt_time_up` (auto at 15 minutes).
 == Hunt Time Up
@@ -43,23 +35,27 @@ Clippy: Go! Find! Interpret! The questions are in your Quest Log. If you find a 
 
 The Antivirus sweep the house, room by room, herding programs back to the Desktop.
 
-// V6 — `first_moment_of_truth` (Clippy Instructions 3/X).
+// V6 — `first_moment_of_truth` (SCRIPT:155-159). Part 3 is split around the
+// two-minute last-chance window: the phones, the TV's countdown and the objective
+// carry the window, and she never says it out loud.
 == First Moment Of Truth
   setting: The Desktop
   cast: Clippy
   aloud: Clippy
 
-Clippy: Welcome back, programs! It's time for the First Moment of Truth! Is anyone able to answer the questions?
-// w26 (G1: Clippy explains nothing; the rules are never said out loud)
-Clippy: Every answer you filed with Trabolta will be judged. Trabolta knows best!
-Clippy: You have two minutes. File anything you found with Trabolta NOW. Then we read the results, one question at a time.
+Clippy: Welcome back to the Desktop, programs!
+Clippy: I hope you all had an awesome time exploring all the parts of the computer and finding truths for Trabolta. Did you all manage to stay out of the Internet?
+Clippy: It's kind of crazy being Clippy, you know. I love watching you have so much fun, but sometimes I wish you all just had more problems so that I could help you solve them!
 
 // `filing_closed` — the last-chance window shut (⏱, or two minutes).
+// SCRIPT:161-163: her hand to Trabolta, and the first 📋 follows.
 == Filing Closed
   setting: The Desktop
   cast: Clippy
+  aloud: Clippy
 
-Clippy: Pencils down! Trabolta is reading. Question one, coming up.
+Clippy: Well, Trabolta has been tallying up your responses, and it's time to review what you found!
+Clippy: Trabolta, are you there? Tell us how our programs are doing!
 
 // `read_the_results` — one question's result (Kernel.res_* are set by the
 // rule). The settle watcher (+50 / marked) runs right after this beat.

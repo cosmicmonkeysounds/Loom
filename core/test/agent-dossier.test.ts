@@ -677,7 +677,7 @@ describe("on the show: the dossier never carries a secret", () => {
     };
     const q = (id: string) => FACTS.questions.find((x) => x.id === id)!;
 
-    for (const n of TO_Y2K.slice(0, 4)) await mod(n); // → introduce_trabolta
+    for (const n of TO_Y2K.slice(0, TO_Y2K.indexOf("introduce_trabolta") + 1)) await mod(n); // → introduce_trabolta
     await mod("mark_for_reinstallation", { subject: pad.id, args: { reason: "a test" } });
     await mod("start_the_hunt");
     for (const g of guests) for (const id of ["H1", "H2", "H3"]) await call(rt, "POST", "/api/guest/codex/redeem", { code: q(id).codex!.code }, { token: g.token });

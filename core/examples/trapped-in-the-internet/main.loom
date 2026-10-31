@@ -613,8 +613,9 @@ ROLE Program
   // Trabolta's formal hello, in every cleared program's own thread, the
   // moment he comes online (and on clearance for anyone later).
   when Trabolta.awake == true and self.cleared:
-    // w18b (R18): his owner's title.
-    Trabolta: Hello, {self.name}. I am Jean Trabolta, Sole Owner and Founder of Maps and Ducks, and proud to be the world's first AI small business owner. Your requests have been logged. Personal queries are routed to Clippy.
+    // w18b (R18): his owner's title. Wave 58: publicly a man until the Truther
+    // Download, so nothing here says AI.
+    Trabolta: Hello, {self.name}. I am Jean Trabolta, Sole Owner and Founder of Maps and Ducks. Your requests have been logged. Personal queries are routed to Clippy.
 
   // ── The Password Manager's filter (wave 48, 48b) ──
   // The server fires this after every line this program types that the
@@ -762,7 +763,7 @@ ROLE Program
     if program.from_jeeves == 10:
       set Kernel.jeeves_reached += 1
 
-  // ── Computer Bingo (performer buttons; the ribbon's lines, w13 Q24 / Q28) ──
+  // ── Computer Bingo (performer buttons; the prize's lines, w13 Q24 / Q28) ──
   // Wave 21: each game button Clippy may press clears
   // `Kernel._pressed_by` first (Clippy's own hook, after this one, stamps it)
   // and fires `game_credit` when the press counted: ⭐ for Clippy only when
@@ -779,6 +780,10 @@ ROLE Program
       fire game_credit with points: 10, gain: 0, counts: 0
       // w18: a big moment (the user's example: un-ignorable).
       reply "!!🎱 BINGO! Name the program for each square. Centre square last." with go: The Desktop as "🎱 To the Desktop", go: quest: The Bingo Card
+      // Wave 58: Clippy's words for the winner (SCRIPT:55-65), on her teleprompter.
+      // A guest who called it has had them already: this 🎱 only confirms the line.
+      if program.name != Night.bingo_caller:
+        fire winning_line
     else:
       // w26 (B: a stale press, # hosts)
       broadcast "🎱 Nothing happens: the Bingo round is over, or {program.name} is already a winner." to channel(hosts)
@@ -792,9 +797,11 @@ ROLE Program
       unlock Computer Bingo for program
       // Wave 18 (B7): the winner's medal is a big moment; the house cheer is
       // a big one that closes itself (the story rule `ribbon_cheer`).
-      reply "!!🎀 You won the Bingo Ribbon. Take a bow." with go: codex: Computer Bingo
+      // DRAFT w58 (the Bingo Floppy Disk in words; the id, the 🎀 and the TV's art stay)
+      reply "!!🎀 You won the Bingo Floppy Disk. Take a bow." with go: codex: Computer Bingo
       set Night.ribbon_winner = program.name
       fire ribbon_cheer
+      fire bingo_prize
     else:
       broadcast "~🎀 {program.name} receives a ribbon from the hosts. Everyone cheer!" to everyone
       reply 🎀 You received a ribbon. Take a bow.
@@ -805,6 +812,10 @@ ROLE Program
     if Night.phase == "bingo_results" and Night.bingo_winners < 1 and Night.bingo_called != true and Night.bingo_done != true:
       set program.framed = true
       reply 🃏 A completed Bingo card with your name on it has been handed to Clippy. You did not fill it in.
+      // Wave 58: Clippy reads it out (SCRIPT:81-89), the first card only.
+      if Night.framed_name == "none":
+        set Night.framed_name = program.name
+        fire no_bingos
     else if Night.bingo_called == true and Night.bingo_done != true:
       // w26 (B2: a 🃏 during an open call, # hosts)
       broadcast "🃏 Nothing happens: {Night.bingo_caller} called BINGO. Clippy checks that line first (🎱 or ↩)." to channel(hosts)
@@ -894,8 +905,10 @@ ROLE Program
       broadcast "↩ The Director pressed Not a Bingo for {program.name}. Bingo is back on; its time was already up: call ⏰ when the room is ready." to channel(hosts)
     set Kernel._undo_n = 0
 
-  // B3: the winner names nobody at the centre square (Clippy, on the
-  // winner). Nobody is marked; the round is over. ⭐ +5 for Clippy.
+  // B3: the winner refuses at the centre square (Clippy, on the winner).
+  // Wave 58 (reverses w26's "nobody is reinstalled"; SCRIPT:75-77): Clippy says
+  // there's no need to be shy, and Norton picks who goes and presses 🛡, which the
+  // closed round opens on every card. Nobody is marked by this press. ⭐ +5 for Clippy.
   when named_nobody for program:
     set Kernel._pressed_by = "none"
     if Night.phase == "bingo_results" and Night.bingo_done != true and program.bingo == true:
@@ -903,8 +916,9 @@ ROLE Program
       set Night.bingo_done = true
       // w26 (B3: ⭐ +5)
       fire game_credit with points: 5, gain: 0, counts: 0
-      // w26 (B3)
-      broadcast "🤐 {program.name} names nobody at the centre square. Nobody is marked." to channel(hosts)
+      // DRAFT w58
+      broadcast "🤐 {program.name} refuses to name anyone at the centre square. Norton decides who needs reinstallation: 🛡." to channel(hosts)
+      fire shy_winner
     else:
       // w26 (B: a stale press, # hosts)
       broadcast "🤐 Nothing happens: only on a winner, before the round is over." to channel(hosts)
@@ -3240,14 +3254,37 @@ INTERACTION bingo_time
   repeat: true
   while: Night.step == 2
 
-INTERACTION introduce_trabolta
-  label: Clippy 2/X · 🤖 Clippy introduces Trabolta
+// Wave 58: Clippy's paragraph about him (SCRIPT:109-117), its own cue so her
+// words and his never land together: it ends on "Trabolta, would you explain
+// the rules?", and that is 🤖.
+// DRAFT w58 (the button's label and description)
+INTERACTION clippy_on_trabolta
+  label: Clippy 2/X · 🎤 Clippy tells the room about Trabolta
   who: admin
-  description: Only after the Bingo results. Trabolta comes online; check the terminals show his face.
+  while: Night.step == 3 and Night.clippy_handed != true
+  description: After the first reinstallation (or when the Bingo is done with). Her paragraph pops up on her teleprompter; it closes the Bingo round if it is still open. It ends "Trabolta, would you explain the rules?": then 🤖.
 
+// Wave 58: only if a program is walking (SCRIPT:99-107): the TV's mirror, before
+// he is online, and Clippy's cheerful words. Off the sequence: most nights skip it.
+// DRAFT w58 (the button's label and description)
+INTERACTION follow_the_reinstallation
+  label: Clippy 2/X · 📺 Follow the reinstallation (only if a program is walking)
+  who: admin
+  sequence: false
+  while: Night.step == 3 and Night.first_reinstall_done == true and Night.mirror_followed != true
+  description: Press it only once a program is walking in the Internet. The TV shows them while they are in the Desktop's room of the copy, and Clippy's words pop up on her teleprompter. Nobody walking: skip it.
+
+// DRAFT w58 (the description)
+INTERACTION introduce_trabolta
+  label: Clippy 2/X · 🤖 Trabolta comes online
+  who: admin
+  description: On Clippy's "Trabolta, would you explain the rules?". He comes online and gives his whole speech, the three questions and his sign-off on the TV, about three minutes; check the terminals show his face. The 🤖 Talk card stays open behind it for the banter after.
+
+// DRAFT w58 (the description)
 INTERACTION start_the_hunt
   label: V4/V5 · 🔎 Truth Scavenger Hunt 1 (15 min)
   who: admin
+  description: After his sign-off and a short exchange with Clippy (🤖 Talk). Starts the clock, the questions in the Quest Log, the 📝 card and the countdown. Nothing is said on it.
 
 INTERACTION hunt_time_up
   label: C2 · ⏰ Hunt over: everyone back to the Desktop (auto at 15 min)
@@ -3700,8 +3737,9 @@ INTERACTION simulation pickup taken
 
 // Wave 32 (C2), appended after the games' moments so no cue number moves; it
 // rides Anytime. The talk panel's ⚡ chip (and the story's own timer) fire it
-// while a talk scene is on: a flicker before the ad attack, an ad burst from
-// it on. No `by:` (a player is never a caller, L1222).
+// while a talk scene is on, the introduction's excepted (wave 58): a flicker
+// before the ad attack, an ad burst from it on. No `by:` (a player is never a
+// caller, L1222).
 // DRAFT w32 (the button's label and description)
 INTERACTION ad_burst
   label: ⚡ Glitch: an ad burst through Trabolta (talk scenes)
@@ -3709,8 +3747,8 @@ INTERACTION ad_burst
   act: Anytime
   sequence: false
   repeat: true
-  while: Night.talk != "none"
-  description: Only while a talk scene is on (🤖 Talk on the hosts' phones). Before the ad attack the screens flicker; from the ad attack on, a short ad bursts through every screen and phone with one of Trabolta's pained lines. The scene also glitches on its own every 45 seconds or so. Two seconds apart at least.
+  while: Night.talk != "none" and Night.talk != "intro"
+  description: Only while a talk scene is on (🤖 Talk on the hosts' phones), never his introduction's. Before the ad attack the screens flicker; from the ad attack on, a short ad bursts through every screen and phone with one of Trabolta's pained lines. The scene also glitches on its own every 45 seconds or so. Two seconds apart at least.
 
 // Wave 44 (C3), appended last so no cue number moves; it rejoins the
 // awards ceremony (G). G11 rolls the credits once; this rolls them again.
@@ -3856,16 +3894,17 @@ INTERACTION not_a_bingo
   description: The caller's line doesn't hold. Bingo picks up with the time it had left (none if it was already up: then call ⏰ as usual).
 
 // Wave 26 (B3): the winner won't name anyone at the centre square.
-// w26 (the button's label and description)
+// DRAFT w58 (the button's label and description)
 INTERACTION named_nobody
-  label: 🤐 Names nobody at the centre square
+  label: 🤐 Refuses to name anyone
   who: performer
   by: Clippy
   while: Night.phase == "bingo_results" and Night.bingo_done != true and program.bingo == true
-  description: Clippy, on the winner. Nobody is marked, and the Bingo round is over.
+  description: Clippy, on the winner. Your line pops up, the Bingo round is over, and Norton decides who needs reinstallation and presses 🛡.
 
+// DRAFT w58 (the Bingo Floppy Disk in the label)
 INTERACTION award_the_ribbon
-  label: 🎀 Award a ribbon (the Bingo Ribbon for a Bingo winner)
+  label: 🎀 Award a ribbon (the Bingo Floppy Disk for a Bingo winner)
   who: performer
   // Wave 21: Clippy runs this game too (a player, no longer in Hosts).
   by: Hosts, Clippy
@@ -4403,6 +4442,9 @@ when bingo_time:
     if Night.bingo_briefed != true:
       set Night.bingo_briefed = true
       -> Bingo Time
+    else if Night.bingo_called == true:
+      // Wave 58: a second call, after a ↩: Clippy needs her words for this line too.
+      -> Winning Line
   else:
     broadcast "⏰ Not again: the Bingo results are already in. Nothing happens." to channel(hosts)
 
@@ -4414,21 +4456,58 @@ when Night.bingo_done == true and Night.bingo_closed != true:
   set Night.bingo_closed = true
   complete quest The Bingo Card for everyone
   complete quest Run The Bingo for Clippy "Winners celebrated. Norton takes it from here."
-  if Night.bingo_none == true:
-    // w26 (B3: nobody was named)
-    complete quest The Selected Antivirus for Norton Anti-Virus "Nobody was named. Patrol the Tube."
 
-// The Bingo Ribbon's house cheer (wave 18, B7): fired by 🎀 on a Bingo
+// The Bingo Floppy Disk's house cheer (wave 18, B7): fired by 🎀 on a Bingo
 // winner (ROLE Program). A story rule, so the big moment to the whole house
 // is the cue's own (lint L1218); it closes itself after six seconds.
 when ribbon_cheer:
-  broadcast "!!🎀 {Night.ribbon_winner} won the Bingo Ribbon! Cheer for them at the Desktop." to everyone with close: 6s
+  // DRAFT w58
+  broadcast "!!🎀 {Night.ribbon_winner} won the Bingo Floppy Disk! Cheer for them at the Desktop." to everyone with close: 6s
+
+// Wave 58: Clippy's script at the results, one beat per button, each reached the
+// way Corrupted Code is (a hook fires an unbound signal, a story rule diverts), so
+// it lands in the Desktop's room and on her teleprompter.
+when winning_line:
+  -> Winning Line
+
+when bingo_prize:
+  -> Bingo Prize
+
+when shy_winner:
+  -> Shy Winner
+
+when no_bingos:
+  -> No Bingos
 
 // Fired (unbound) by the first Bingo-phase capture: `send to the internet`
 // or the tent's `reinstallation begun`.
 when first_reinstallation:
   complete quest The Selected Antivirus for Norton Anti-Virus "The first reinstallation. Patrol the Tube."
   -> Corrupted Code
+
+// Clippy 2/X · 📺 (SCRIPT:99-107): a host's cue, pressed only if a program is
+// walking. The mirror comes up before he is online (Tv.tsx lets it through
+// attract on `Night.screen`), and Clippy cheers them on.
+when follow_the_reinstallation:
+  if Night.step == 3 and Night.first_reinstall_done == true and Night.mirror_followed != true:
+    set Night.mirror_followed = true
+    cue tv_mirror
+    set Night.screen = "mirror"
+    -> Following The Reinstallation
+  else:
+    // DRAFT w58
+    broadcast "📺 Nothing happens: this is for the first reinstallation, once, before 🤖." to channel(hosts)
+
+// Clippy 2/X · 🎤 (SCRIPT:109-117): unconditional, once, before 🤖.
+when clippy_on_trabolta:
+  if Night.step == 3 and Night.clippy_handed != true:
+    set Night.clippy_handed = true
+    // The Bingo round is over by now, as at 🤖.
+    set Night.bingo_done = true
+    -> Clippy On Trabolta
+  else:
+    // DRAFT w58
+    broadcast "🎤 Nothing happens: Clippy's paragraph comes once, after the Bingo results (V3 ⏰), before 🤖." to channel(hosts)
 
 // B5 · Clippy 2/X: Trabolta comes online. Refused before the Bingo
 // results, so he stays strictly offline until then. (His own hook in
@@ -4446,11 +4525,12 @@ when introduce_trabolta:
     cue terminals_trabolta_online
     set Night.terminals = "trabolta"
     // w18b (R18)
-    broadcast "!🤖 TRABOLTA IS ONLINE. Jean Trabolta, Sole Owner and Founder of Maps and Ducks, is speaking at the Desktop by video conference. His thread is open: say hello." to everyone with go: Trabolta
-    // Wave 32 (C1): the first talk scene, until 🔎.
+    // DRAFT w58 (digital conference)
+    broadcast "!🤖 TRABOLTA IS ONLINE. Jean Trabolta, Sole Owner and Founder of Maps and Ducks, is speaking at the Desktop by digital conference. His thread is open: say hello." to everyone with go: Trabolta
+    // Wave 58: the first talk scene stays open behind his speech until 🔎, for a
+    // short live exchange after his sign-off (the card says when to start). No
+    // flickers: his first public crack is the first guess at the results.
     set Night.talk = "intro"
-    set Night.burst_auto = 0
-    set Night.burst_at = Time.elapsed + 45
     -> Trabolta Introduction
   else if Night.trabolta_introduced == true:
     broadcast "🤖 Trabolta is already online. Nothing happens." to channel(hosts)
@@ -4670,7 +4750,7 @@ when truth_question:
 
 // ── Wave 32: the talk scenes (C1) and their glitches (C2) ──
 // `Night.talk` names the talk scene that is on ("none" when none): intro
-// (🤖 → 🔎), bottle (the third 📋 → 📺), ad (📺 → 📓) and beans (🫘 → 🗜 or
+// (🤖 → 🔎, after his sign-off), bottle (the third 📋 → 📺), ad (📺 → 📓) and beans (🫘 → 🗜 or
 // 🤖). While one is on, the hosts' phones carry the 🤖 Talk card: Task
 // Manager types what Clippy says aloud and Trabolta answers on the TV
 // (core/src/talk-back.ts; the canned lines are core/src/talk-scenes.ts).
@@ -4692,9 +4772,9 @@ when Night.talk == "beans" and Night.step >= 13:
 when Night.talk != "none" and Night.ended == true:
   set Night.talk = "none"
 
-// ⚡ (the talk card's chip, or the timer below). Before the ad attack it is
-// a flicker on the screens only: the ad hijack is the malware's first
-// public sign. From the ad attack on it is an ad burst: a short glitch on
+// ⚡ (the talk card's chip, or the timer below). Never in the introduction
+// (wave 58: he is clean until the results). At the bottle it is a flicker on
+// the screens only: the ad hijack is the malware's first public sign. From the ad attack on it is an ad burst: a short glitch on
 // every screen and phone (`glitch_kind` "burst": the phones' light
 // takeover, never the 📺's full one) carrying the next of Trabolta's
 // pained lines. Two seconds apart at least: the phones play a glitch only
@@ -4702,13 +4782,16 @@ when Night.talk != "none" and Night.ended == true:
 when ad_burst:
   if Night.talk == "none" or Night.ended == true:
     broadcast "⚡ No talk scene is on (🤖 Talk): nothing glitches." to channel(hosts)
+  else if Night.talk == "intro":
+    // DRAFT w58
+    broadcast "⚡ Not during his introduction: he stays clean until the results. Nothing happens." to channel(hosts)
   else if Night.glitch_kind == "full" and Time.elapsed < Night.glitch_at + 8:
     // DRAFT w32: the 📺's takeover plays 8 s on the terminals; a burst
     // inside it would cut it short everywhere.
     broadcast "⚡ The ad hijack is still playing: wait for it to end. Nothing happens." to channel(hosts)
   else if Night.burst_last > 0 and Time.elapsed < Night.burst_last + 2:
     broadcast "⚡ Too soon: two seconds between glitches. Nothing happens." to channel(hosts)
-  else if Night.talk == "intro" or Night.talk == "bottle":
+  else if Night.talk == "bottle":
     set Night.burst_last = Time.elapsed
     set Night.burst_at = Time.elapsed + 45
     cue screens_flicker
@@ -4743,7 +4826,7 @@ when ad_burst:
 
 // The scene glitches on its own too: about every 45 seconds of story time
 // (re-armed by every ⚡), at most four ad bursts in the ad attack and at
-// the beans, at most two flickers in the introduction and at the bottle.
+// the beans, at most two flickers at the bottle.
 // Guarded by the scene itself (a closed scene, or an ending, stops it).
 when Night.talk != "none" and Night.ended != true and Night.burst_at > 0 and Time.elapsed >= Night.burst_at and (Night.burst_auto < 2 or (Night.burst_auto < 4 and (Night.talk == "ad" or Night.talk == "beans"))):
   set Night.burst_auto += 1
@@ -6741,6 +6824,10 @@ set Night.bingo_named = 0
 set Night.bingo_ribbons = 0
 set Night.first_reinstall = "none"
 set Night.first_reinstall_done = false
+// Wave 58: 🃏's name for Clippy's line, and the once of her two host cues.
+set Night.framed_name = "none"
+set Night.mirror_followed = false
+set Night.clippy_handed = false
 set Night.trabolta_introduced = false
 set Night.ads_started = false
 // Wave 32 (C1, C2): no talk scene; the glitch's kind, "full" (the 📺

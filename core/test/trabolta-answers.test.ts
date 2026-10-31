@@ -332,7 +332,7 @@ describe("Trabolta never knows what he is asking for", () => {
       return reqs[0]!;
     };
 
-    for (const n of TO_HUNT2.slice(0, 4)) await mod(n); // → introduce_trabolta
+    for (const n of TO_HUNT2.slice(0, TO_HUNT2.indexOf("introduce_trabolta") + 1)) await mod(n); // → introduce_trabolta
     await look("introduced");
 
     await mod("start_the_hunt");

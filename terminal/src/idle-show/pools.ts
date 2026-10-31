@@ -6,7 +6,7 @@
 //! shows the same show minus anything naming the character, and before the
 //! introduction nothing on any screen names him). Wave 18b (D19): an
 //! `owner: true` item names "Jean Trabolta" only in the third person, as
-//! the owner of Maps and Ducks who joins by video conference later tonight;
+//! the owner of Maps and Ducks who joins by digital conference later tonight;
 //! it plays from the Desktop (`Night.phase` desktop / bingo) onward, asleep
 //! or not, never at the doors (no phase, `arrivals`).
 

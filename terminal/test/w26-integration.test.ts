@@ -14,7 +14,7 @@ describe("I1: the TV's world pane links by room (R5)", () => {
   it("gates the pane on linkedNow (the walls' rule), not the house-wide rule", () => {
     expect(tv).toMatch(/import \{ linkedNow, usePresenceLatch \} from "\.\/world\/presence\.ts";/u);
     expect(tv).toMatch(/const linked = usePresenceLatch\(linkedNow\(\{ view: "tv", spot: config\.spot, here: state\?\.spot, anyone: inSimulation \}\)\);/u);
-    expect(tv).toMatch(/const showWorld = canDraw && linked && !attract;/u);
+    expect(tv).toMatch(/const showWorld = canDraw && linked && \(!attract \|\| mirrorFirst\);/u);
     expect(tv).not.toMatch(/const showWorld = canDraw && inSimulation/u);
     expect(tv).not.toMatch(/useRoomLinked/u);
   });

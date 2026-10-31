@@ -89,10 +89,11 @@ outside; never go in (the pop-out says 🚻 when it knows). A captured poster
 shows **CAUGHT BY** for a minute, then leaves the board.
 
 **V3, your big moment.** Your Quest Log says it: *Patrol: the Bingo.*
-When the centre-square program is named (or the winner refuses to name
-anyone, or the framed program denies the card): Clippy presses 🎯 and the
-program is marked (if the winner names nobody, Clippy presses 🤐 and nobody
-is marked: follow the room); stand at attention and interrupt. *It is inappropriate for
+When the centre-square program is named (or the framed program denies the
+card): Clippy presses 🎯 and the
+program is marked. If the winner refuses to name anyone, Clippy presses 🤐: then
+you decide who needs reinstallation, and Clippy follows your direction. Stand
+at attention and interrupt. *It is inappropriate for
 that program to have not agreed to be ruled by AI, because that is what
 computer programs are here for. They must have a virus that was not caught at
 the door. They need to be taken to the Internet for a reinstallation.* They light up

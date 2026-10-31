@@ -689,6 +689,9 @@ button.gear { border-color: transparent; opacity: 0.55; font-size: 1.3em; paddin
 .tv-face .face { width: min(100%, 86vh); }
 .terminal.tv.with-world .tv-face { right: 62%; }
 .tv-world { position: absolute; top: 0; bottom: 0; right: 0; left: 38%; border-left: 2px solid var(--phosphor-faint); }
+/* Wave 58: the mirror before he is online, the world alone (his face stays hidden). */
+.terminal.tv.mirror-first .tv-face { display: none; }
+.terminal.tv.mirror-first .tv-world { left: 0; border-left: 0; }
 .tv-caption {
   position: absolute;
   left: 50%;

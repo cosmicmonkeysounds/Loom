@@ -557,12 +557,13 @@ export interface SlideCopy {
   /** A slide that is just a dark screen. */
   dark?: boolean;
   /** Its copy names "Jean Trabolta" only in the third person, as the owner
-   *  who joins by video conference later (wave 18b, D19; only `OWNER_LINES`). */
+   *  who joins by digital conference later (wave 18b, D19; only `OWNER_LINES`). */
   owner?: boolean;
 }
 
 /** The owner's line on the bingo slide (D19: third person, before the introduction). */
-export const OWNER_LINE = "Jean Trabolta joins by video conference later tonight.";
+// DRAFT w58 (digital conference)
+export const OWNER_LINE = "Jean Trabolta joins by digital conference later tonight.";
 /** The only lines that may name him on a slide that can show before the introduction. */
 export const OWNER_LINES: readonly string[] = [OWNER_LINE];
 

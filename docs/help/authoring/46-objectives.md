@@ -141,7 +141,7 @@ OBJECTIVE Celebrate The Winners
   pick: program.location == "The Desktop" and program.cleared == true
   text:
     - 🎱 Who shouted BINGO?, done when Night.bingo_winners >= 1
-    - 🎀 Give the winner the Bingo Ribbon, done when Night.bingo_ribbons >= 1
+    - 🎀 Give the winner the Bingo Floppy Disk, done when Night.bingo_ribbons >= 1
     - 🎯 Who did the winner name?, done when Night.bingo_named >= 1
   buttons: bingo_winner, award_the_ribbon, named_at_bingo
 ```

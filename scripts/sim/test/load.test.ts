@@ -291,7 +291,7 @@ test("SecretBook redacts by label and names only labels; facts and the Kernel fe
 test("phases press the chain in order and never twice", () => {
   assert.ok(TO_Y2K.includes(PHASES.intro.through) && TO_Y2K.includes(PHASES.y2k.through));
   const a = pressesTo(TO_Y2K, 0, "intro");
-  assert.deepEqual(a.presses, ["call_to_the_desktop", "start_the_bingo", "bingo_time", "introduce_trabolta"]);
+  assert.deepEqual(a.presses, ["call_to_the_desktop", "start_the_bingo", "bingo_time", "clippy_on_trabolta", "introduce_trabolta"]);
   const b = pressesTo(TO_Y2K, a.cursor, "hunt1");
   assert.deepEqual(b.presses, ["start_the_hunt"]);
   const c = pressesTo(TO_Y2K, b.cursor, "hunt2");

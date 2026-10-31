@@ -53,10 +53,12 @@ does ends the night or needs you; you may read their numbers in Run → World
 | 1 | **C1/V1 📣** Call everyone to the Desktop (by 21:00) | Clippy welcomes, hosts | |
 | 2 | **V2 🎱** Start Computer Bingo (20 min) | | |
 | 3 | **V3 ⏰** Bingo time: results | Norton interrupts; Corrupted Code | |
-| 4 | radio **INTRO** → **Clippy 2/X 🤖** introduces Trabolta | 🤖 talk scene *intro* until 🔎 | *formal* |
-| 5 | **V4/V5 🔎** Hunt 1 (15 min) | (auto **C2 ⏰** at 15 min) | *hungry* at C2 |
+| 3a | radio **INTRO**, then **Clippy 2/X 📺** only if a program is walking | the TV follows them; Clippy cheers | |
+| 3b | **Clippy 2/X 🎤** Clippy tells the room about Trabolta | her paragraph, ending *"Trabolta, would you explain the rules?"* | |
+| 4 | **Clippy 2/X 🤖** Trabolta comes online | his speech, the questions, his sign-off, about three minutes; 🤖 talk scene *intro* after it, until 🔎 | *formal* |
+| 5 | **V4/V5 🔎** Hunt 1 (15 min) (nothing is said on it) | (auto **C2 ⏰** at 15 min) | *hungry* at C2 |
 | 6 | **V6 ⚖️** First Moment of Truth (two-minute filing window) | the server judges every filing | |
-| 6a | **⏱** Close round-one filings (auto at 2 min) | Clippy: "Pencils down" | |
+| 6a | **⏱** Close round-one filings (auto at 2 min) | Clippy hands to Trabolta | |
 | 6b | **📋** Results: the next question (press three times: Q1, Q2, Q3) | Trabolta reads the result on the TV; filings settle (+50 / marked) | |
 | 6c | **🍾** Truth or Dare after the third result (NEXT offers five spins; more is fine) | the TV asks Truth or dare; Clippy 🗣 / 🙅; 🤖 talk scene *bottle* from the third 📋 | |
 | 7 | **📺** Preview hunt 2 → the ad hijack | Clippy panics; 🤖 talk scene *ad* until 📓 | *rattled* |

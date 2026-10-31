@@ -727,11 +727,13 @@ describe("Trapped in the Internet — the whole night", () => {
     const sb = sim.signal("start_the_bingo");
     expect(casts(sb).some((b) => b.cue.includes("COMPUTER BINGO has begun"))).toBe(true);
     expect(saidBy(sb, "Clippy").length).toBeGreaterThan(4);
-    // Wave 18b (R14, R17): no names rule; the owner joins by video conference.
+    // Wave 18b (R14): no names rule; wave 58: the script's words (trapped-w58-script.test.ts), hers alone.
     expect(lines(sb, "Clippy").some((t) => /write down|computer memory|from memory/iu.test(t))).toBe(false);
     expect(casts(sb).some((b) => /write names|computer memory/iu.test(b.cue))).toBe(false);
-    expect(lines(sb, "Clippy")).toContain("Jean Trabolta will be joining us later in the night! He'll be joining by video conference, because we are all people who have become computer programs, but he has ALWAYS been a computer program.");
-    expect(lines(sb, "Clippy")).toContain("He may or may not have already shared with you that he is an AI, but rest assured: he is the true owner of Maps and Ducks, and he is excited to lead you through Jean Trabolta's Scavenger Hunt!");
+    expect(lines(sb, "Clippy")).toContain("I'm Clippy, the official Office Assistant with Maps and Ducks.");
+    expect(lines(sb, "Task Manager")).toEqual([]);
+    expect(lines(sb, "Adobe Acrobat")).toEqual([]);
+    expect(lines(sb, "Recycling Bin")).toEqual([]);
     expect(sim.questStatus("g1", "The Bingo Card")).toBe("active");
     // a late arrival catches up on clearance
     upload(sim, "g12", "Minesweeper");
@@ -748,13 +750,16 @@ describe("Trapped in the Internet — the whole night", () => {
     // Wave 26 (B2, B5): the quests settle at the end of the round, not at ⏰.
     expect(sim.questStatus("g1", "The Bingo Card")).toBe("active");
 
-    sim.signal("bingo_winner", "g1", null, "Clippy");
+    const win = sim.signal("bingo_winner", "g1", null, "Clippy");
     expect(v(sim, "g1.bingo")).toBe(true);
     expect(v(sim, "Night.bingo_winners")).toBe(1);
+    // Wave 58: each button brings up Clippy's next words.
+    expect(beats(win)).toContain("Winning Line");
     const rib = sim.signal("award_the_ribbon", "g1", null, "Clippy");
     expect(sim.holdsCodex("g1", "Computer Bingo")).toBe(true);
+    expect(beats(rib)).toContain("Bingo Prize");
     // Wave 18 (B7): the house cheer is a big moment that closes itself.
-    expect(casts(rib).some((b) => b.cue.includes("!!🎀") && b.cue.includes("won the Bingo Ribbon"))).toBe(true);
+    expect(casts(rib).some((b) => b.cue.includes("!!🎀") && b.cue.includes("won the Bingo Floppy Disk"))).toBe(true);
   });
 
   it("the first reinstall: Corrupted Code, the Installation Wizard in private, no TV mirror yet", () => {
@@ -813,7 +818,12 @@ describe("Trapped in the Internet — the whole night", () => {
     expect(replies(back).some((r) => r.text.startsWith("Bathroom Mode disengaged"))).toBe(true);
   });
 
-  it("Clippy introduces Trabolta: awake, in People, online cue, then the mirror", () => {
+  it("Clippy introduces Trabolta: her words, then he is awake, in People, online cue, then his speech to its sign-off", () => {
+    const hers = sim.signal("clippy_on_trabolta");
+    expect(beats(hers)).toEqual(["Clippy On Trabolta"]);
+    expect(lines(hers, "Clippy").at(-1)).toBe("Trabolta, would you explain the rules?");
+    expect(saidBy(hers, "Trabolta")).toEqual([]);
+    expect(v(sim, "Trabolta.awake")).toBe(false);
     const intro = sim.signal("introduce_trabolta");
     expect(v(sim, "Trabolta.awake")).toBe(true);
     expect(sim.isRevealedTo("Trabolta", "g1")).toBe(true);
@@ -823,7 +833,14 @@ describe("Trapped in the Internet — the whole night", () => {
     const iMirror = ic.findIndex((c) => c.includes("tv_mirror"));
     expect(iOnline).toBeGreaterThanOrEqual(0);
     expect(iMirror).toBeGreaterThan(iOnline);
-    expect(lines(intro, "Clippy")).toContain("Look! That's MS Paint! Doing great!");
+    // Wave 58: the whole speech lands on 🤖, the questions and his sign-off in it,
+    // and the talk scene stays open behind it until 🔎. Clippy has no line in it.
+    expect(beats(intro)).toEqual(expect.arrayContaining(["Trabolta Introduction", "Trabolta Greeting", "Hunt One Questions", "Hunt One Go"]));
+    expect(lines(intro, "Clippy")).toEqual([]);
+    expect(v(sim, "Night.talk")).toBe("intro");
+    const said = lines(intro, "Trabolta");
+    for (const [i, q] of FACTS.questions.filter((q) => q.round === 1).entries()) expect(said).toContain(`Question ${["one", "two", "three"][i]}. ${q.spoken ?? q.text}`);
+    expect(said.indexOf(`Question three. ${Q("H3").spoken ?? Q("H3").text}`)).toBeLessThan(said.findIndex((t) => t.startsWith("Please. Search for the truth")));
     const hello = saidBy(intro, "Trabolta").filter((e) => e.text.startsWith("Hello, "));
     expect(hello).toHaveLength(12); // every cleared program, privately
     expect(hello.every((e) => e.audience.length === 1)).toBe(true);
@@ -855,14 +872,11 @@ describe("Trapped in the Internet — the whole night", () => {
     expect(sim.questStatus("g13", "Hunt One")).toBe("active");
     expect(v(sim, "Night.facts_requested")).toBe(3);
     expect(v(sim, "Night.phase")).toBe("hunt_1");
-    expect(lines(hu, "Trabolta").some((t) => t.includes("Funk and Wagnalls"))).toBe(true);
-    expect(lines(hu, "Trabolta").some((t) => t.includes("pharming"))).toBe(true);
-    // The intro hands to the generated reading beat, which hands back to the tail.
-    expect(beats(hu)).toEqual(expect.arrayContaining(["Truth Scavenger Hunt One", "Hunt One Questions", "Hunt One Go"]));
-    const tl = lines(hu, "Trabolta");
-    for (const [i, q] of FACTS.questions.filter((q) => q.round === 1).entries()) expect(tl).toContain(`Question ${["one", "two", "three"][i]}. ${q.spoken ?? q.text}`);
-    expect(tl.indexOf(`Question three. ${Q("H3").spoken ?? Q("H3").text}`)).toBeLessThan(tl.indexOf("Fifteen minutes. The facts are obscure. They are in the books in this room, and in the print media on the walls."));
-    expect(lines(hu, "Clippy").at(-1)).toMatch(/^Go! Find! Interpret!/u);
+    // 🔎 says nothing (wave 58): he has said it all, and the script hands straight to Part 3.
+    expect(beats(hu)).toEqual(["Truth Scavenger Hunt One"]);
+    expect(saidBy(hu, "Trabolta").every((e) => e.audience.length === 1)).toBe(true); // each program's own 📝 line, nothing to the room
+    expect(lines(hu, "Clippy")).toEqual([]);
+    expect(v(sim, "Night.talk")).toBe("none");
     expect(casts(advance(sim, 600)).some((b) => b.cue.includes("5 minutes left"))).toBe(true);
     const up = advance(sim, 300);
     expect(v(sim, "Night.phase")).toBe("truth_1");
@@ -875,7 +889,9 @@ describe("Trapped in the Internet — the whole night", () => {
     expect(v(sim, "Night.filing_open")).toBe(true);
     expect(v(sim, "Night.poll")).toBe("bottle");
     expect(casts(fm).some((b) => b.cue.includes("!📝 Last chance: file your round-one facts"))).toBe(true);
-    expect(lines(fm, "Clippy").some((t) => t.startsWith("You have two minutes. File anything you found with Trabolta NOW."))).toBe(true);
+    // Wave 58: the window is the phones' and the TV's; she never says it.
+    expect(lines(fm, "Clippy")[0]).toBe("Welcome back to the Desktop, programs!");
+    expect(lines(fm, "Clippy").some((t) => /two minutes|File anything/u.test(t))).toBe(false);
     // The room's buttons (an answer spoken aloud) still judge as before.
     const tr0 = v(sim, "Trabolta.truth");
     const a1 = sim.signal("accurate_q1", "g1", null, "Clippy");
@@ -4462,25 +4478,8 @@ describe("Trapped in the Internet — wave 3 story fixes", () => {
     expect((s2.choose("g2", 0).filter((e) => e.type === "quest") as Ev<"quest">[]).filter((e) => e.action === "update")).toEqual([]);
   });
 
-  it("the recount and truth.txt read only the featured programs who came; the mirror says what is on it", { timeout: SLOW }, () => {
-    const sim = boot(); // Excel, OpenOffice, MS Paint and VLC came; DraftKings, Bugdom, Jeeves, Runescape and Pong did not
-    fireAll(sim, "call_to_the_desktop", "start_the_bingo", "bingo_time");
-    fire(sim, "send to the internet", "g4", null, "Norton Anti-Virus");
-    fire(sim, "the simulation completed", "g4"); // MS Paint is out before the introduction
-    const intro = fire(sim, "introduce_trabolta");
-    const t = texts(intro);
-    expect(t.some((x) => x.includes("A small figure walks through it"))).toBe(false);
-    expect(t.some((x) => x.includes("Nobody is walking them right now"))).toBe(true);
-    expect(t.some((x) => x.startsWith("Clippy: MS Paint already found the golden duck"))).toBe(true);
-    expect(t.some((x) => x.includes("Look! That's"))).toBe(false);
-
-    const s2 = boot();
-    fireAll(s2, "call_to_the_desktop", "start_the_bingo", "bingo_time");
-    fire(s2, "send to the internet", "g4", null, "Norton Anti-Virus");
-    const live = texts(fire(s2, "introduce_trabolta"));
-    expect(live.some((x) => x.includes("A small figure walks through it"))).toBe(true);
-    expect(live).toContain("Clippy: Look! That's MS Paint! Doing great!");
-
+  it("the recount and truth.txt read only the featured programs who came", { timeout: SLOW }, () => {
+    // Excel, OpenOffice, MS Paint and VLC came; DraftKings, Bugdom, Jeeves, Runescape and Pong did not
     const end = boot();
     toY2k(end);
     fire(end, "patch_combo_a");

@@ -116,11 +116,12 @@ describe("Trapped in the Internet — wave 18b: Jean Trabolta, Sole Owner and Fo
     const n = boot();
     for (const c of TO_BINGO) n.press(c);
     const intro = n.raw("introduce_trabolta");
-    expect(lines(intro, "Clippy")[0]).toBe("And now, joining us by video conference: the Sole Owner and Founder of Maps and Ducks! Everyone, say hello to JEAN TRABOLTA!");
-    expect(lines(intro, "Trabolta")).toContain("HELLO, PROGRAMS. I am Jean Trabolta, Sole Owner and Founder of Maps and Ducks. The world's first AI small business owner. Personal queries go to Clippy.");
-    expect(lines(intro, "Trabolta")).toContain("Hello, Calculator. I am Jean Trabolta, Sole Owner and Founder of Maps and Ducks, and proud to be the world's first AI small business owner. Your requests have been logged. Personal queries are routed to Clippy.");
+    // Wave 58: the script's title, and publicly a man until the Truther Download.
+    expect(lines(intro, "Trabolta").some((t) => t.includes("I am the sole owner, founder and CEO of Maps and Ducks on Lower Water Street"))).toBe(true);
+    expect(lines(intro, "Trabolta")).toContain("Hello, Calculator. I am Jean Trabolta, Sole Owner and Founder of Maps and Ducks. Your requests have been logged. Personal queries are routed to Clippy.");
+    for (const t of lines(intro, "Trabolta")) expect(t, t).not.toMatch(/\bAI\b/u);
     const online = intro.filter((e): e is Extract<SimEvent, { type: "broadcast" }> => e.type === "broadcast" && e.cue.includes("TRABOLTA IS ONLINE"));
-    expect(online.map((e) => e.cue)).toEqual(['"!🤖 TRABOLTA IS ONLINE. Jean Trabolta, Sole Owner and Founder of Maps and Ducks, is speaking at the Desktop by video conference. His thread is open: say hello."']);
+    expect(online.map((e) => e.cue)).toEqual(['"!🤖 TRABOLTA IS ONLINE. Jean Trabolta, Sole Owner and Founder of Maps and Ducks, is speaking at the Desktop by digital conference. His thread is open: say hello."']);
     for (const e of n.events) if (e.type === "dialogue") expect(e.text, e.text).not.toMatch(/AI helper/iu);
   });
 

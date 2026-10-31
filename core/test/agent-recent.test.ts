@@ -780,7 +780,7 @@ describe("on the show: recent and the history never carry a secret (C1.6)", () =
     const keyOf = (q: string) => FACTS.questions.find((x) => x.id === q)!.answer;
 
     // Walk the night, asking him at every turn.
-    for (const n of TO_Y2K.slice(0, 4)) await mod(n); // → introduce_trabolta
+    for (const n of TO_Y2K.slice(0, TO_Y2K.indexOf("introduce_trabolta") + 1)) await mod(n); // → introduce_trabolta
     await askAll();
     await mod("mark_for_reinstallation", { subject: mine.id, args: { reason: "a test" } });
     await mod("start_the_hunt");
@@ -791,7 +791,7 @@ describe("on the show: recent and the history never carry a secret (C1.6)", () =
     expect((await file(pad, "H2", "a wrong guess")).status).toBe(200);
     await offerAll();
     await askAll();
-    for (const n of TO_Y2K.slice(5, 13)) await mod(n); // → the second hunt
+    for (const n of TO_Y2K.slice(TO_Y2K.indexOf("hunt_time_up"), TO_Y2K.indexOf("five_minute_warning"))) await mod(n); // → the second hunt
     rt.tickOnce(120_000); // the Truther Download
     for (const g of guests.slice(0, 3)) for (const q of ["H4", "H5", "H6"]) await call(rt, "POST", "/api/guest/codex/redeem", { code: codeOf(q) }, { token: g.token });
     expect((await file(calc, "H4", keyOf("H4"))).status).toBe(200);
@@ -802,7 +802,7 @@ describe("on the show: recent and the history never carry a secret (C1.6)", () =
     expect(sim().world.peek("Kernel.virus_planter")).toMatchObject({ value: amp.name });
     await offerAll();
     await askAll();
-    for (const n of TO_Y2K.slice(13, 19)) await mod(n); // → the Trust Chart and the rankings
+    for (const n of TO_Y2K.slice(TO_Y2K.indexOf("five_minute_warning"), TO_Y2K.indexOf("trabolta_overshares"))) await mod(n); // → the Trust Chart and the rankings
     await askAll();
     await mod("printer_opened");
     await mod("trabolta_overshares");

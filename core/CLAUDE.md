@@ -177,7 +177,9 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   The story's `Night.talk` names one (`intro`, `bottle`, `ad`, `beans`;
   `"none"` otherwise) and `src/talk-scenes.ts` `TALK_SCENES` holds each
   one's title, hint and canned chips (`EventRuntimeInit.talkScenes`
-  injects a fixture's). `POST /api/mod/talk {as: "Clippy" | "Trabolta",
+  injects a fixture's). Since wave 58 `intro` opens on 🤖 for after his
+  sign-off and has no ⚡ (its `glitch` is absent; `ad_burst` refuses it).
+  `POST /api/mod/talk {as: "Clippy" | "Trabolta",
   text, direction?}` (mod auth, on the host allowlist; never named
   `/api/mod/agent…`) commits a `say` in `loc:The Desktop` with audience
   `"all"` `by` the host (400 `as|empty|too_long|direction`, 409

@@ -9,7 +9,7 @@
 // An entry with a `code:` is a QR on a wall or a prop (see README §8.3:
 // codes never contain apostrophes). An entry without one is handed out
 // by the story: the Optical Drive, the Reinstallation beat, the tutorial, the
-// Bingo ribbon, the Printer, the Truther Download, the clock.
+// Bingo Floppy Disk, the Printer, the Truther Download, the clock.
 //
 // The hunt answers (Grok's Prom Ticket among them, all `secret: true`, so
 // Trabolta never reads or takes one) are not here: they are
@@ -148,13 +148,14 @@ CODEX The Golden Duck
     right up to him. He lays a golden egg and flies away, and you are free
     to return to the computer.
 
+// DRAFT w58 (a name in every square, the script)
 CODEX Computer Bingo
   title: Computer Bingo
   category: How it works
   known to: Clippy
   text:
     The card is a big asterisk: two diagonals, a centre column and a centre
-    row, with a checkbox on every square. Most squares are frivolous.
+    row, with a name to write in every square. Most squares are frivolous.
     One is not. The centre square asks: "Would you never agree to a life
     where AI makes all of your decisions?" Everyone agreed to the Terms Of
     Service to join the party at all, so everyone says no. Everyone except
