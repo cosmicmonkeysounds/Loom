@@ -17,7 +17,7 @@ import {
   type VoiceNight,
 } from "../src/voice-fx.ts";
 
-const night = (o: Partial<VoiceNight> = {}): VoiceNight => ({ phase: null, composure: null, remaining: null, talkedDown: null, alarmOn: null, heartStage: null, reading: false, ...o });
+const night = (o: Partial<VoiceNight> = {}): VoiceNight => ({ phase: null, composure: null, remaining: null, alarmOn: null, heartStage: null, reading: false, ...o });
 const read = (p: string): string => readFileSync(fileURLToPath(new URL(p, import.meta.url)), "utf8");
 
 describe("the night's arc", () => {
@@ -51,9 +51,7 @@ describe("the night's arc", () => {
   it("composure never makes a clean phase break", () => {
     expect(voiceLevel(night({ phase: "hunt_1", composure: 0 }))).toBe(0);
   });
-  it("heals: a talk-down and the helped ending are clean", () => {
-    expect(voiceLevel(night({ phase: "y2k", talkedDown: true, composure: 0 }))).toBe(0);
-    expect(voiceLevel(night({ phase: "finale_killed", talkedDown: true }))).toBe(0);
+  it("heals: the helped ending is clean", () => {
     expect(voiceLevel(night({ phase: "finale_help", composure: 0 }))).toBe(0);
   });
   it("banishment is everything", () => {

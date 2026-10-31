@@ -147,7 +147,7 @@ describe("Trapped in the Internet — wave 18: big moments with their exits (C12
     expect(storm).toMatchObject({ moment: "big", go: [{ kind: "room", id: "loc:The Internet" }] });
     const jive = n.press("the_hand_jive");
     expect(bigFor(jive, "g1").map((m) => m.text)).toContain("🕺 The hand jive broke his hold. You are out of the Internet.");
-    n.press("start_the_ceremony");
+    (n.press("start_the_ceremony"), n.press("start_the_ceremony"));
     const award = n.press("award_most_trusted", "g3");
     expect(bigFor(award, "g3").find((m) => m.text.startsWith("🏆 You won Most Trusted!"))).toMatchObject({ go: [{ kind: "room", id: "loc:The Desktop" }] });
   }, SLOW);

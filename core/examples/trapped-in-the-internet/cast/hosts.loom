@@ -85,7 +85,8 @@ CHARACTER Clippy is Greeter, Player
       reply !!🍎 YOUR GAME IS ON · Bobbing for Truth, with Adobe. ⭐ +15 for the program who brings up the Bag.
 
   when start_the_ceremony:
-    if Night.ended == true and Night.ceremony != true:
+    // Wave 58: only the press the story takes (main.loom), never G1's ask.
+    if Night.ended == true and Night.ceremony != true and ((Night.truth_told == true and Time.elapsed >= Night.truth_until) or (Night._ceremony_ask_at > 0 and Time.elapsed <= Night._ceremony_ask_at + 30)):
       reply !!🏆 YOUR GAME IS ON · The awards ceremony. Lead the applause; the staff awards come last, and one of them might be yours.
 
   // Character hooks run before the story rule, so step is still 3 on the

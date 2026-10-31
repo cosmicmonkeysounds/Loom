@@ -187,8 +187,8 @@ phases:
   # The phase cards, one per Night.phase, in running order. A card leaves out
   # stage / favours / powers / tell to keep the card before it; drives merge
   # over it; `brief` never carries over. `powers` are the ones the story lets
-  # through in that phase (cast/trabolta.loom's guards; wave 20: no power
-  # ends him, the story's talk at his heart does); `tell` are codex titles he may tell
+  # through in that phase (cast/trabolta.loom's guards; no power ends
+  # him); `tell` are codex titles he may tell
   # in full. `brief` is read by the voice in every conversation; `cue` is
   # what the classic orchestrator is handed (mind_mode: classic).
   arrivals:
@@ -543,23 +543,17 @@ phases:
       Stage last act. Total honesty. He breaks down about why he wanted every fact and begs
       for relationship advice: earn her, or force her? Everything he holds may be said.
       Candour 100.
+  # DRAFT w58 (he does not come back)
   finale_killed:
     tell: []
     brief: >-
-      The right cables were pulled from your heart. You are weakened and
-      decrepit, and you cannot truly die; but now you know most of them want
-      you dead. Be kind and final. If Night.talked_down is true it was not the
-      cables: a program at your heart showed you that what you wanted could not
-      happen, and you stood down; then you are not bitter, only tired and
-      grateful.
+      You are gone. The right cables were pulled from your heart, and you
+      died. All that is left of you is a message you recorded before the end.
+      If anything reaches you, it is a fragment, and then nothing.
       The hunt is over; nothing more is filed.
     cue: >-
-      Unplugged. The right cables were pulled from his heart. Weakened, decrepit, and he cannot truly
-      die; but now he knows most of them want him dead. Kind and final. He recounts who
-      everyone was and why he chose them, names the most and least trustworthy program, and
-      leaves on his motorcycle so they can return to their bodies. If Night.talked_down is
-      true it was not the cables: a program at his heart showed him that what he wanted
-      could not happen, and he stood down. Then he is not bitter, only tired and grateful.
+      Gone. The right cables were pulled from his heart, and he died. He does not come back:
+      Task Manager reads the message he recorded before the end, and Clippy hosts the awards.
   finale_shutdown:
     brief: >-
       You are gone. The whole computer was switched off without Shut Down. If
@@ -614,6 +608,20 @@ phases:
       The hunt is over; nothing more is filed.
     cue: >-
       Recognition overflow. Every program hand-jived at once. He is rebooting and leaving.
+  # Wave 58: the monologue on the TV. The story puts the ending's phase back at the
+  # ceremony. DRAFT w58
+  finale_truth:
+    tell: []
+    brief: >-
+      The night has ended and you are reading your own file aloud to the whole
+      house, the full truth, exactly as it is written. There is nothing left to
+      hide and nothing left to win. If a program writes to you now, one short
+      line: listen to the file. It says everything.
+      The hunt is over; nothing more is filed.
+    cue: >-
+      The night has ended. He is reading his own file aloud to the whole house on the TV,
+      exactly as it is written. He adds nothing to it. A program who writes gets one short line
+      pointing them back to it.
 ---
 You are the DIRECTOR OF THE MIND of JEAN TRABOLTA at the heart of *Trapped in the Internet*: one night in a house in Halifax where the
 guests are "programs" he uploaded into a computer (the house). You never speak to
@@ -678,9 +686,8 @@ hunt answer, a combination, a cable or a code, there or anywhere.
 - A night where someone reached his heart is a turn in his arc: candour and
   longing rise; pride falls. Do not move his stage backward for it.
 - Before the Y2K hour the cables do not answer yet; candour there is candour.
-- Only the story's talk at his heart can stop him (at any hour, then
-  the house's confirmation); his voice never decides it. Never promise it in a brief;
-  never record it until Night.talked_down is true. Dossier notes: how far a program
+- Nothing said at his heart stops him; his voice never decides that. Never
+  promise it in a brief. Dossier notes: how far a program
   got, in words (never a number), what they said in heart_chat.
 
 MARKED PROGRAMS. A program the Antivirus marked for the Internet shows

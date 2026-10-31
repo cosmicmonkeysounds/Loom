@@ -669,7 +669,7 @@ describe("acts on the cue sheet (wave 10: display only)", () => {
       return { cues: v.cues, rows };
     };
     const tagRows = cueRows(modView(acted, "open", "x").interactions ?? [], { last: null, fired: [] });
-    expect(cueActs(tagRows).map((a) => `${a.code ?? a.title} ${a.rows.length}`)).toEqual(["B 12", "C 5", "D 8", "E 17", "Anytime 12", "F 12", "G 18"]); // wave 53: ⏭ in Anytime; wave 48: 🔑 G14 in G; wave 45: 🚻 G13 in G; wave 44: 🎬 G12 in G; wave 18b: −☎️ −🪅; wave 20: +3 in E; wave 21: +3 staff awards in G; wave 22: 🔌 Trust the patch bay in E; wave 26: +3 game moments in Anytime; wave 32: ⚡ ad_burst in Anytime
+    expect(cueActs(tagRows).map((a) => `${a.code ?? a.title} ${a.rows.length}`)).toEqual(["B 12", "C 5", "D 8", "E 15", "Anytime 12", "F 11", "G 20"]); // wave 53: ⏭ in Anytime; wave 48: 🔑 G14 in G; wave 45: 🚻 G13 in G; wave 44: 🎬 G12 in G; wave 18b: −☎️ −🪅; wave 20: +3 in E; wave 21: +3 staff awards in G; wave 22: 🔌 Trust the patch bay in E; wave 26: +3 game moments in Anytime; wave 32: ⚡ ad_burst in Anytime
     expect(marks(acted)).toEqual(marks(plain));
     const admin = [...plain.model.interactions.values()].filter((i) => i.who === "admin").map((i) => i.id);
     for (const id of admin.slice(0, 30)) {
@@ -837,14 +837,14 @@ describe("an `urgent: true` cue jumps the running order (w20b: 🕊 while a stan
   const next = (sheet: Ix[], last: string | null, fired: string[]) => cueRows(sheet, { last, fired }).find((r) => r.next)?.id ?? null;
 
   it("is NEXT while live and unfired, wherever LAST is; otherwise the sheet runs as before", () => {
-    const sheet = [ix("bingo"), ix("hunt"), ix("y2k"), ix("talked_down", { urgent: true }), ix("reveal"), ix("bobbing")];
-    expect(next(sheet, "bingo", ["bingo"])).toBe("talked_down"); // LAST before it
-    expect(next(sheet, "reveal", ["bingo", "hunt", "y2k", "reveal"])).toBe("talked_down"); // LAST after it
+    const sheet = [ix("bingo"), ix("hunt"), ix("y2k"), ix("urgent_cue", { urgent: true }), ix("reveal"), ix("bobbing")];
+    expect(next(sheet, "bingo", ["bingo"])).toBe("urgent_cue"); // LAST before it
+    expect(next(sheet, "reveal", ["bingo", "hunt", "y2k", "reveal"])).toBe("urgent_cue"); // LAST after it
     expect(cueRows(sheet, { last: "bingo", fired: ["bingo"] }).filter((r) => r.next)).toHaveLength(1);
-    const idle = sheet.map((i) => (i.id === "talked_down" ? ix("talked_down", { urgent: true, live: false }) : i));
+    const idle = sheet.map((i) => (i.id === "urgent_cue" ? ix("urgent_cue", { urgent: true, live: false }) : i));
     expect(next(idle, "bingo", ["bingo"])).toBe("hunt");
-    expect(next(sheet, "talked_down", ["bingo", "talked_down"])).toBe("reveal"); // fired: back to the order
-    const aside = sheet.map((i) => (i.id === "talked_down" ? ix("talked_down", { urgent: true, sequence: false }) : i));
+    expect(next(sheet, "urgent_cue", ["bingo", "urgent_cue"])).toBe("reveal"); // fired: back to the order
+    const aside = sheet.map((i) => (i.id === "urgent_cue" ? ix("urgent_cue", { urgent: true, sequence: false }) : i));
     expect(next(aside, "bingo", ["bingo"])).toBe("hunt"); // an aside is never NEXT
   });
 

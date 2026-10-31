@@ -96,8 +96,8 @@ questions are DRAFT until the team replaces them). Re-print this table from
 → **talk with him** → hunt 1 → V6: your welcome back → ⏱ your hand to him → 📋 results, one
 question at a time → 🍾 the bottle (**talk** between the spins) → 📺 **panic
 at the ad** (CI 4) and **talk** → 🏓 → 🫘 **beans = malware**, **talk** → 🌑 final
-reveal ("truth is always in binary") → 🍎 → ending → host the ceremony if
-Trabolta is gone (after Combo B or the rave).
+reveal ("truth is always in binary") → 🍎 → ending → 📜 the full truth → host
+the ceremony if Trabolta is gone (after Combo A, Combo B or the rave).
 
 **Your booth** is a **Mission**, like a guest's phone (wave 21): the NOW card
 on top (the CI window you are in, its checklist ticking as you press, up to
@@ -366,7 +366,9 @@ program for a pickup line that works on Sandy (an answer card); the server
 judges it.
 
 **Endings.** In Grok Prom, a program who says *"You're the one that I want"*
-to you gets 💘 (the card in their Trabolta thread counts too). After **Combo
+to you gets 💘 (the card in their Trabolta thread counts too). After every
+ending's last beat comes the full truth (📜): Trabolta on the TV, or Task
+Manager reading out loud after Combo A or B. Listen with the room. After **Combo
 B** (CI 9): dance, then a host calls **🪦 Clippy reads the summary**; read it
 aloud from the teleprompter on your phone, then the verdict: *"…We are now in
 purgatory forever together, which is pretty similar to being stuck in a
@@ -374,7 +376,7 @@ computer."*
 
 **🏆 Ceremony.** The hosts call the ceremony and every award. The last three
 are the **staff awards** (Trabolta's Favourite Staff, Staff Player Of The
-Night, The Mole): you might win one. After Combo B or the rave, **you host**: each award line pops
+Night, The Mole): you might win one. After Combo A, Combo B or the rave, **you host**: each award line pops
 up on your teleprompter; read it aloud, call the winner up, lead
 applause. Otherwise Trabolta hosts on the TV and you lead the applause.
 
@@ -564,7 +566,7 @@ for the verdict.
 
 **CI 9/X · Purgatory.** The computer was turned off: blackout, GO TO THE
 LIVING ROOM, the dance song. Dance. Then a host calls 🪦 "Clippy reads the summary":
-read it from the teleprompter on your phone, tell its backstory,
+read it from the teleprompter on your phone,
 deliver: "Because of our actions, the computer was turned off without Shut
 Down properly being followed, and all of our progress has been erased. Our
 corporeal forms are in the Optical Drive, and they have all passed

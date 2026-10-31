@@ -342,8 +342,8 @@ unmarked so a mid-game phone is never blocked. Every phone needs a reload. Help:
 decisions on `SIGNOFF-w56.md`, no new show text): towards the end of the night
 and in the major glitches Trabolta's speech breaks, in nine flavours. The server
 says how much (`voiceFx`, `core/src/voice-fx.ts`: a curve over the phases and the
-Y2K clock, scaled by `Trabolta.composure`, healed by a talk-down or the helped
-ending; a spike for the hijack, ⚡ and the dream). Every terminal that speaks him
+Y2K clock, scaled by `Trabolta.composure`, healed by the helped ending and the
+monologue; a spike for the hijack, ⚡ and the dream). Every terminal that speaks him
 plans each sentence (`terminal/src/speech/glitch.ts`: pace, pitch, voice, real
 cut-offs, only ever his own words), and the Desktop's router tears the sound
 itself up on its way to the speakers (`stagehand/audio/voicefx.py`). Run →

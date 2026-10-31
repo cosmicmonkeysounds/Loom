@@ -317,7 +317,7 @@ describe("Trapped in the Internet — wave 21: the staff awards (S7)", () => {
     toTruther(n);
     n.take(n.sim.setVar("Night.ended", "true"));
     n.take(n.sim.setVar("Night.ending", "song"));
-    n.press("start_the_ceremony");
+    (n.press("start_the_ceremony"), n.press("start_the_ceremony"));
   }
 
   it("Favourite Staff, Staff Player Of The Night and The Mole name the players; The Mole closes the ceremony", () => {

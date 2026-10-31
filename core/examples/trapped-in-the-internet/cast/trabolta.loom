@@ -332,10 +332,9 @@ CHARACTER Trabolta is Person
   // `pickup_line_accepted`: a line in the giver's thread + Night.line_by).
   // The host's 💘 pickup_line_works and a director's fire stay the fallback.
 
-  // Persuaded like the Fallout Master: since wave 20 that is the STORY's
-  // own talk at his heart (beats/server-room.loom, the four layers), never
-  // a power. The old `stand_down` power is gone (D13): a model can't end
-  // the night, or offer to, from a conversation.
+  // The old `stand_down` power is gone (D13), and since wave 58 the story's
+  // own talk at his heart (beats/server-room.loom, the three layers) ends
+  // nothing either: neither a model nor a conversation can end the night.
 
 // ── Trabolta's powers (the app never shows these; the worker may use
 //    them — see the hooks above and `trabolta.persona.md`). The args are

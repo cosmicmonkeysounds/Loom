@@ -107,7 +107,7 @@ test("options are found by tag or by folded text, never by index", () => {
 test("the heart bot backs out of a sub-menu, skips an optional step, and says when it is stuck", () => {
   const reasons = menu("Heart Reasons", ["⟦EARN IT⟧ You can't earn someone.", "⟦BACK⟧ Not that."]);
   assert.deepEqual(decide(reasons, { pick: "⟦EARN IT⟧" }), { kind: "pick", index: 0, text: reasons.options[0], step: { pick: "⟦EARN IT⟧" } });
-  assert.equal(decide(reasons, { pick: "Then let me finish." }).kind, "back");
+  assert.equal(decide(reasons, { pick: "That's all I came to say." }).kind, "back");
   const l3 = menu("Heart Layer Three", ["⟦TELL HIM⟧ I have reasons.", "I need to go."]);
   assert.equal(decide(l3, { pick: "⟦PROOF⟧", optional: true }).kind, "skip");
   const stuck = decide(l3, { pick: "⟦PROOF⟧" });

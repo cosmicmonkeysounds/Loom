@@ -496,12 +496,24 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
 - **His voice** (wave 56, [`docs/loom-w56-contract.md`](../docs/loom-w56-contract.md)).
   `src/voice-fx.ts` (`@loom/core/voice-fx`, pure) decides how broken Trabolta
   sounds: `voiceLevel` (a curve over `Night.phase`, the Y2K clock, scaled by
-  `Trabolta.composure`; healed by `Night.talked_down`), `voiceSpikeOf` (the
+  `Trabolta.composure`; clean at `finale_help` and `finale_truth`), `voiceSpikeOf` (the
   glitch, burst, flicker and dream shots, a director's shot) and the mode
   (`auto | clean | broken`). `ScreenWatch` puts `voiceFx` on every answer. The
   mode lives beside the mute (`Store.loadVoiceFx`, in the state dir); the shot
   is memory only. `POST /api/mod/screen/voice {fx?, shot?}` is on the host
   allowlist. Tests: `test/voice-fx.test.ts`, `test/trapped-w56-voice.test.ts`.
+- **The full truth** (wave 58, `examples/.../beats/truth.loom`, story only but
+  for three small reads). The monologue plays on the director's 📜
+  `tell_the_truth`, after an ending's last beat: `The Full Truth` (Trabolta, 18
+  merged lines, `MAX_VOICE_LINES` keeps a poll's newest 40; phase `finale_truth`,
+  level 0) or `The Full Truth Read` (`Task Manager:` lines under `aloud:` in the
+  hidden, no-check-in room `The Script`: narration under a part's `aloud:` reaches
+  nobody, and a guest's line of it is delivered but never listed). G1's `while:`
+  waits for `Night.truth_until`, and its rule asks first (as G11's does; a host
+  hook on G1 must not fire on the ask). `READING_BEATS` keeps his lines out of the
+  worker's `recent`, `PERSISTENT_SLIDES` holds `recount` and `purgatory`, and
+  `ALOUD_WINDOW_MS` outlasts the 14-minute read. Both versions and Task Manager's
+  printed copy are held to the delivered file by `test/trapped-monologue.test.ts`.
 - **Hub files have one owner at a time.** `event-runtime.ts`,
   `views.ts`, `chat.ts` and `sim.ts` are touched by almost every
   feature; when several agents work in parallel, give each of these to

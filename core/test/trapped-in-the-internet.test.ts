@@ -157,7 +157,7 @@ describe("Trapped in the Internet — compile", () => {
     expect(m.factions.get("Antivirus")!.joinable).toBe(false);
     expect(m.factions.get("Unlimited Power")!.hidden).toBe(true);
     expect(m.factions.get("The Way Out")!.hidden).toBe(true);
-    expect([...m.locations.keys()]).toEqual(["The Desktop", "The Optical Drive", "The Tube", "The Internet", "The Start Bar", "The CPU", "The Steam Room", "Disk Cleanup", "The Cloud", "The RAM", "The Fan Closet", "The Graphics Card", "The Hard Drive", "The Server Room"]);
+    expect([...m.locations.keys()]).toEqual(["The Desktop", "The Optical Drive", "The Tube", "The Internet", "The Start Bar", "The CPU", "The Steam Room", "Disk Cleanup", "The Cloud", "The RAM", "The Fan Closet", "The Graphics Card", "The Hard Drive", "The Server Room", "The Script"]);
     const inet = m.locations.get("The Internet")!;
     expect(inet.prison).toBe(true);
     expect(inet.sealed).toBe(true);
@@ -247,11 +247,7 @@ describe("Trapped in the Internet — compile", () => {
     const flat = (id: string) => m.codex.get(id)!.text.replace(/\s+/gu, " ");
     expect(flat("The Carney Letter")).toContain("approve or deny every third transaction.");
     expect(flat("Approve Or Deny")).toContain("Truthcoin transactions as possible and to approve or deny every third one");
-    expect(flat("The Truth File")).toContain("brought in to approve or deny every third transaction, to the cent.");
     expect(pack("cra-agent.md")).toContain("approve or deny every third");
-    expect(pack("adobe-acrobat.md")).toContain("brought in to approve or deny every third transaction, to the cent.");
-    const finale = FILES.find((f) => f.path === "beats/finale.loom")!.source;
-    expect(finale).toContain("Narrator: The intern, CRA Agent Software, was brought in to approve or deny every third transaction, to the cent.");
     // Nowhere does the demand stay "every transaction" / "every one of them".
     const packs = (d: string): string[] => readdirSync(d, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? packs(join(d, e.name)) : e.name.endsWith(".md") ? [join(d, e.name)] : []));
     const texts = [...FILES.map((f) => [f.path, f.source] as const), ...packs(packDir).map((p) => [p, readFileSync(p, "utf8")] as const)];
@@ -1359,7 +1355,7 @@ describe("Trapped in the Internet — the whole night", () => {
     expect(sim.holdsCodex("g13", "The Door Code")).toBe(true);
   });
 
-  it("the server room: the door opens on The Heart, one wrong patch is forgiven, combo A, the dance, Trabolta recounts", () => {
+  it("the server room: the door opens on The Heart, one wrong patch is forgiven, combo A, the dance, Task Manager reads his message", () => {
     const door = sim.signal("server_door_opened");
     expect(beats(door)).toContain("The Heart");
     expect(v(sim, "Night.alarms") ?? 0).toBe(0);
@@ -1381,22 +1377,20 @@ describe("Trapped in the Internet — the whole night", () => {
     expect(v(sim, "Night.screen")).toBe("screensaver");
 
     sim.signal("send to the internet", "g9", null, "Norton Anti-Virus");
-    const rc = sim.signal("trabolta_recounts");
+    const rc = sim.signal("tell_the_truth");
     expect(diags(rc)).toEqual([]);
-    expect(beats(rc)).toContain("Trabolta Recounts");
+    expect(beats(rc)).toContain("The Full Truth Read");
     for (const g of ["g1", "g9", "g13"]) {
       expect(sim.holdsCodex(g, "Dana Anderson"), g).toBe(true);
       expect(sim.holdsCodex(g, "Julie Horton-Norton"), g).toBe(true);
       expect(sim.holdsCodex(g, "Miniature Doses"), g).toBe(true);
     }
-    expect(has(cues(rc), "motorcycle")).toBe(true);
+    // He does not come back: no motorcycle, and they are free.
+    expect(has(cues(rc), "motorcycle")).toBe(false);
     expect(sim.isCaptured("g9")).toBe(false);
-    const t = lines(rc, "Trabolta");
-    expect(t.some((x) => x.startsWith("Broken Ask Jeeves is Virgil Jeeves, a children's librarian from Lawrencetown"))).toBe(true);
-    expect(t.some((x) => x.startsWith("Bugdom is Bea Nunes"))).toBe(true);
-    expect(t.some((x) => x.includes("trustworthy program"))).toBe(true);
-    expect(t.some((x) => x.includes("worst program"))).toBe(true);
-    expect(t.some((x) => x.includes("Microsoft Excel planted a virus"))).toBe(true);
+    expect(lines(rc, "Trabolta")).toEqual([]);
+    const t = lines(rc, "Task Manager");
+    expect(t.some((x) => x.startsWith("This message was recorded by Jean Trabolta"))).toBe(true);
     sim.signal("patch_combo_b");
     expect(v(sim, "Night.ending")).toBe("disabled"); // a later combo B does nothing
   });
@@ -1440,6 +1434,11 @@ const pastTheVerdict = (sim: Sim, name: string): SimEvent[] => {
 };
 const fire = (sim: Sim, name: string, subject: string | null = null, args: Args | null = null, actor?: string) => [...sim.signal(name, subject ?? undefined, args, actor), ...pastTheVerdict(sim, name)];
 const fireAll = (sim: Sim, ...names: string[]) => names.flatMap((n) => sim.signal(n));
+/** G1 past its ask (wave 58): the first press only asks while the monologue is untold. */
+const g1 = (sim: Sim) => {
+  fire(sim, "start_the_ceremony");
+  return fire(sim, "start_the_ceremony");
+};
 /** Through the first Moment of Truth (round-1 judging open). */
 const toTruth1 = (sim: Sim) => fireAll(sim, "call_to_the_desktop", "start_the_bingo", "bingo_time", "introduce_trabolta", "start_the_hunt", "hunt_time_up", "first_moment_of_truth");
 /** ⏱ (if the window is open) and 📋 until the three results are read:
@@ -1675,7 +1674,7 @@ describe("Trapped in the Internet — combo B", () => {
     const fate = saidBy(b, "The Uploader");
     expect(fate.some((e) => e.audience[0] === "g2" && e.text.includes("you went with it"))).toBe(true); // Unlimited Power
     expect(fate.some((e) => e.audience[0] === "g3" && e.text.includes("into purgatory"))).toBe(true); // The Way Out
-    expect(fate.some((e) => e.audience[0] === "g5" && e.text.startsWith("Your body is in the Maps and Ducks building"))).toBe(true); // nobody's
+    expect(fate.some((e) => e.audience[0] === "g5" && e.text.startsWith("Your body is in the Optical Drive"))).toBe(true); // nobody's
     expect(has(cues(b), "windows_shutdown")).toBe(true);
     const dance = advance(sim, 10);
     expect(has(cues(dance), "lights_dance")).toBe(true);
@@ -2053,10 +2052,10 @@ describe("Trapped in the Internet — The Heart: the cold door opens (wave 7)", 
     // The server-room look goes up, but the house look stays (catch-up would replay the Y2K look under server_open).
     expect(has(cues(e), "lights_server_open")).toBe(true);
     expect(v(sim, "Night.lights")).toBe(lights0);
-    // Nothing in the room ends the night yet: the patch bay and 🕊 refuse.
+    // Nothing in the room ends the night yet: the patch bay refuses.
     fire(sim, "terminal opened", "g1", { at: "The Server Room" }, "Terminal · Server Room");
     expect(v(sim, "g1.at_the_heart")).toBe(true);
-    for (const n of ["patch_combo_a", "patch_combo_b", "talked_down"]) {
+    for (const n of ["patch_combo_a", "patch_combo_b"]) {
       fire(sim, n);
       expect(v(sim, "Night.ended"), n).toBe(false);
     }
@@ -3737,7 +3736,7 @@ describe("Trapped in the Internet — secrecy (§6.1 item 21)", () => {
   });
 });
 
-describe("Trapped in the Internet — talked down, like the Fallout Master (wave 7)", () => {
+describe("Trapped in the Internet — at his heart (wave 7)", () => {
   /** Y2K hour, the door open, g1 (Calculator) at the server-room terminal
    *  (asked to shut the door first: wave 20). */
   function atTheHeart(): Sim {
@@ -3747,7 +3746,6 @@ describe("Trapped in the Internet — talked down, like the Fallout Master (wave
     fire(sim, "terminal opened", "g1", { at: "The Server Room" }, "Terminal · Server Room");
     return sim;
   }
-  const hostsOnly = (evs: SimEvent[]) => casts(evs).filter((b) => b.scope === "channel(hosts)").map((b) => b.cue.replace(/^"|"$/gu, ""));
 
   it("a lost `terminal closed` never keeps a program at his heart once the next one scans in", { timeout: SLOW }, () => {
     const sim = atTheHeart();
@@ -3765,60 +3763,10 @@ describe("Trapped in the Internet — talked down, like the Fallout Master (wave
     expect([v(sim, "g1.at_the_heart"), v(sim, "g4.at_the_heart")]).toEqual([true, false]);
   });
 
-  it("🕊 talked_down is the Combo A ending without a cable, and the recount and the ceremony say who did it", { timeout: SLOW }, () => {
-    const sim = atTheHeart();
-    // Heart Shutdown records who (wave 20: the story's talk, never a power;
-    // the tree itself is core/test/trapped-heart.test.ts).
-    sim.setVar("Night.stand_down_by", "Calculator");
-    const td = fire(sim, "talked_down");
-    expect(hostsOnly(td)).toContain("🕊 Trabolta stands down. Calculator talked him down.");
-    expect(v(sim, "Night.ending")).toBe("disabled");
-    expect(v(sim, "Night.talked_down")).toBe(true);
-    expect(beats(td)).toContain("Trabolta Disabled");
-    expect(narr(td).map((e) => e.text)[0]).toBe("In the cold room the patch bay goes quiet on its own. Nobody touched a cable.");
-    expect(has(cues(td), "lights_blackout")).toBe(true);
-    expect(v(sim, "g1.at_the_heart")).toBe(false); // the ending sends everyone away
-    advance(sim, 10);
-    const rc = fire(sim, "trabolta_recounts");
-    const t = lines(rc, "Trabolta");
-    expect(t).toContain("Calculator came to my heart and told me the truth. She was never going to answer. Nobody pulled a cable. I stopped.");
-    expect(t.some((x) => x.startsWith("You thought you followed instructions to kill me"))).toBe(false);
-    const cer = lines(fire(sim, "start_the_ceremony"), "Trabolta");
-    // Wave 18b: The Night In Review is read first, then The Ceremony's opener.
-    expect(cer).toContain("Before I go. One last report. You talked me down, so I can at least hand out the awards myself.");
-    // A second press changes nothing.
-    expect(hostsOnly(fire(sim, "talked_down"))).toEqual(["🕊 Nothing to stand down: nobody talked him down at his heart, and without that it needs the Y2K hour, before any ending."]);
-  });
-
-  it("with no offer on record 🕊 still works (the director's call) and says so; never before the Y2K hour", { timeout: SLOW }, () => {
-    const early = boot();
-    toTruth1(early);
-    expect(hostsOnly(fire(early, "talked_down"))).toEqual(["🕊 Nothing to stand down: nobody talked him down at his heart, and without that it needs the Y2K hour, before any ending."]);
-    expect(v(early, "Night.ended")).toBe(false);
-    const sim = boot();
-    toY2k(sim);
-    const td = fire(sim, "talked_down");
-    expect(hostsOnly(td)[0]).toBe("🕊 No offer on record: Trabolta stands down on the director's call.");
-    expect(v(sim, "Night.ending")).toBe("disabled");
-    advance(sim, 10);
-    expect(lines(fire(sim, "trabolta_recounts"), "Trabolta")).toContain("Somebody came to my heart and told me the truth. Nobody pulled a cable. I stopped.");
-    // Combo A's own recount is unchanged.
-    const a = boot();
-    toY2k(a);
-    fire(a, "patch_combo_a");
-    advance(a, 10);
-    expect(lines(fire(a, "trabolta_recounts"), "Trabolta").some((x) => x.startsWith("You thought you followed instructions to kill me"))).toBe(true);
-  });
-
-  it("the cue sheet: 🕊 is a director's cue, NEXT ahead of the order only while a stand-down waits (w20b, Q3); no power of his ends the night (wave 20, D13)", () => {
+  it("no power of his ends the night (wave 20, D13), and no talk does (wave 58)", () => {
     const m = fresh().model;
-    const td = m.interactions.get("talked_down")!;
-    expect(td.who).toBe("admin");
-    expect(td.label).toBe("🕊 Trabolta stands down (talked down)");
-    expect(td.sequence).toBe(true);
-    expect(td.urgent).toBe(true);
-    expect(td.while).toContain('Night.stand_down_by != "none"');
     expect(m.interactions.has("stand_down")).toBe(false);
+    expect(m.interactions.has("talked_down")).toBe(false);
   });
 });
 
@@ -4112,7 +4060,7 @@ describe("Trapped in the Internet — the awards ceremony (K-25)", () => {
 
   it("refuses before the ending: no ceremony, no award, nothing leaks", () => {
     const sim = boot();
-    const s = fire(sim, "start_the_ceremony");
+    const s = g1(sim);
     expect(beats(s)).toEqual([]);
     expect(v(sim, "Night.ceremony")).toBe(false);
     const a = fire(sim, "award_best_liar", "g1", { value: 3 });
@@ -4125,7 +4073,7 @@ describe("Trapped in the Internet — the awards ceremony (K-25)", () => {
 
   it("an ending → Trabolta hosts in The Desktop; awards carry the winner's name and number", () => {
     const sim = ended("song");
-    const s = fire(sim, "start_the_ceremony");
+    const s = g1(sim);
     expect(v(sim, "Night.ceremony_host")).toBe("Trabolta");
     expect(beats(s)).toContain("The Ceremony");
     expect(cues(s)).toContain("cue screens_ceremony");
@@ -4163,7 +4111,7 @@ describe("Trapped in the Internet — the awards ceremony (K-25)", () => {
 
   it("every award reads a fallback with no number, and the director's value when given", () => {
     const sim = ended("help");
-    fire(sim, "start_the_ceremony");
+    g1(sim);
     for (const a of AWARDS) {
       const out = fire(sim, a, "g2");
       const said = desktop(sim, out);
@@ -4184,10 +4132,10 @@ describe("Trapped in the Internet — the awards ceremony (K-25)", () => {
     expect(desktop(sim, fire(sim, "award_best_liar", "g4"))[0]).not.toContain("accepted:");
   });
 
-  it("the host changes per ending: Clippy after destroyed and rave, a weakened Trabolta after disabled", () => {
-    for (const [ending, host] of [["destroyed", "Clippy"], ["rave", "Clippy"], ["disabled", "Trabolta"], ["song_pickup", "Trabolta"], ["hand_jive", "Trabolta"]] as const) {
+  it("the host changes per ending: Clippy after disabled, destroyed and rave, Trabolta otherwise", () => {
+    for (const [ending, host] of [["destroyed", "Clippy"], ["rave", "Clippy"], ["disabled", "Clippy"], ["song_pickup", "Trabolta"], ["hand_jive", "Trabolta"]] as const) {
       const sim = ended(ending);
-      const s = fire(sim, "start_the_ceremony");
+      const s = g1(sim);
       expect(v(sim, "Night.ceremony_host"), ending).toBe(host);
       expect(desktop(sim, s).every((l) => l.startsWith(`${host}: `)), ending).toBe(true);
       const a = fire(sim, "award_least_trusted", "g1");
@@ -4200,9 +4148,9 @@ describe("Trapped in the Internet — the awards ceremony (K-25)", () => {
     }
     const d = ended("disabled");
     // Wave 18b: after The Night In Review's lines.
-    expect(saidBy(fire(d, "start_the_ceremony"), "Trabolta").some((l) => /^Before I go\./u.test(l.text))).toBe(true);
+    expect(saidBy(g1(d), "Trabolta")).toEqual([]);
     const c = ended("destroyed");
-    expect(lines(fire(c, "start_the_ceremony"), "Clippy").some((l) => /^The computer is off\./u.test(l))).toBe(true);
+    expect(lines(g1(c), "Clippy").some((l) => /^The computer is off\./u.test(l))).toBe(true);
   });
 
   it("banished is not final: no ceremony until the hand jive ends the night", () => {
@@ -4213,7 +4161,7 @@ describe("Trapped in the Internet — the awards ceremony (K-25)", () => {
 
   it("runs once: a second start replays nothing", () => {
     const sim = ended("song");
-    fire(sim, "start_the_ceremony");
+    g1(sim);
     expect(beats(fire(sim, "start_the_ceremony"))).toEqual([]);
   });
 
@@ -4222,7 +4170,7 @@ describe("Trapped in the Internet — the awards ceremony (K-25)", () => {
     toBobbing(sim);
     truthTxt(sim);
     expect(v(sim, "Night.ending")).toBe("song");
-    const s = fire(sim, "start_the_ceremony");
+    const s = g1(sim);
     expect(beats(s)).toContain("The Ceremony");
     const a = fire(sim, "award_most_trusted", "g1");
     expect(desktop(sim, a)[0]).toMatch(/^Trabolta: Most Trusted\. Trust score -?\d+\. Calculator\./u);
@@ -4478,22 +4426,15 @@ describe("Trapped in the Internet — wave 3 story fixes", () => {
     expect((s2.choose("g2", 0).filter((e) => e.type === "quest") as Ev<"quest">[]).filter((e) => e.action === "update")).toEqual([]);
   });
 
-  it("the recount and truth.txt read only the featured programs who came", { timeout: SLOW }, () => {
+  it("the review reads only the featured programs who came", { timeout: SLOW }, () => {
     // Excel, OpenOffice, MS Paint and VLC came; DraftKings, Bugdom, Jeeves, Runescape and Pong did not
     const end = boot();
     toY2k(end);
     fire(end, "patch_combo_a");
-    const rc = lines(fire(end, "trabolta_recounts"), "Trabolta");
+    const rc = lines(g1(end), "Clippy");
     for (const here of ["Microsoft Excel is", "OpenOffice is", "MS Paint is Maria", "VLC is Victor"]) expect(rc.some((x) => x.startsWith(here)), here).toBe(true);
     for (const gone of ["DraftKings is the artist", "Bugdom is Bea", "Broken Ask Jeeves is", "Runescape is Poppy", "Pong is the child"]) expect(rc.some((x) => x.startsWith(gone)), gone).toBe(false);
     for (const cast of ["Clippy is Tippi", "Norton Anti-Virus is Julie Horton-Norton", "McAfee Anti-Virus is John McAfee", "Password Manager is Bridget Troelsen", "CRA Agent Software is Sharon Penney"]) expect(rc.some((x) => x.startsWith(cast)), cast).toBe(true); // the cast always
-
-    const tt = boot();
-    toBobbing(tt);
-    const txt = narr(fire(tt, "read_truth_txt")).map((e) => e.text);
-    expect(txt.some((x) => x.startsWith("The former Mayor"))).toBe(true);
-    expect(txt.some((x) => x.startsWith("The gambler"))).toBe(false);
-    expect(txt.some((x) => x.startsWith("The organiser, Clippy"))).toBe(true);
   });
 
   it("the tent tablet's scan is the Wizard's video; an uncorrupted visitor gains doubt; a pop-up is an alert", { timeout: SLOW }, () => {
@@ -4666,7 +4607,7 @@ describe("Trapped in the Internet — the WIP demo (DEMO.md)", () => {
     return sim;
   }
 
-  it("ending A — the server room: forced majority → Combo A → the recount → the ceremony", { timeout: SLOW }, () => {
+  it("ending A — the server room: forced majority → Combo A → the message he left → the ceremony", { timeout: SLOW }, () => {
     const sim = demo();
     fire(sim, "force_majority_leave");
     expect(v(sim, "Kernel.majority")).toBe("leave");
@@ -4674,9 +4615,9 @@ describe("Trapped in the Internet — the WIP demo (DEMO.md)", () => {
     expect(v(sim, "Night.ending")).toBe("disabled");
     advance(sim, 10);
     expect(v(sim, "Night.lights")).toBe("dance");
-    const rc = fire(sim, "trabolta_recounts");
-    expect(beats(rc)).toContain("Trabolta Recounts");
-    const c = fire(sim, "start_the_ceremony");
+    const rc = fire(sim, "tell_the_truth");
+    expect(beats(rc)).toContain("The Full Truth Read");
+    const c = g1(sim);
     expect(beats(c)).toContain("The Ceremony");
     const a = fire(sim, "award_most_trusted", "g3");
     expect(beats(a)).toContain("Present Award");
@@ -4694,7 +4635,7 @@ describe("Trapped in the Internet — the WIP demo (DEMO.md)", () => {
     expect(widgets(tt).filter((w) => w.widget === "answer").map((w) => w.audience[0]).sort()).toEqual(["g1", "g2", "g3"]);
     fire(sim, "answer answered", "g2", { question: "P1", text: "You're the one that I want", verdict: "accurate", card: 1 });
     expect(v(sim, "Night.ending")).toBe("song_pickup");
-    expect(beats(fire(sim, "start_the_ceremony"))).toContain("The Ceremony");
+    expect(beats(g1(sim))).toContain("The Ceremony");
   });
 });
 
@@ -4766,11 +4707,11 @@ describe("Trapped in the Internet — wave 4 facts (lane A)", () => {
     expect(lines(ev, "Password Manager")).toEqual([expect.stringMatching(/^That is not a password I recognise, .+, and I have reviewed every one of them\. Unsubstantiated claims are removed\./u)]);
   });
 
-  it("the recount unlocks every identity entry and every character fact for everyone", { timeout: SLOW }, () => {
+  it("📜 after Combo A unlocks every identity entry and every character fact for everyone", { timeout: SLOW }, () => {
     const sim = boot();
     toY2k(sim);
     fire(sim, "patch_combo_a");
-    fire(sim, "trabolta_recounts");
+    fire(sim, "tell_the_truth");
     const m = sim.model;
     const abouts = [...m.codex.values()].filter((e) => e.about !== null && !["Trabolta", "The Server Room"].includes(e.about!) && e.id !== "The DSL Line");
     expect(abouts.length).toBeGreaterThanOrEqual(12 + 24);
@@ -4781,22 +4722,21 @@ describe("Trapped in the Internet — wave 4 facts (lane A)", () => {
     }
   });
 
-  it("truth.txt reads the cast in the invitations' words (the featured only when they came)", { timeout: SLOW }, () => {
-    const sim = boot(); // Excel, OpenOffice, MS Paint and VLC came; Jeeves did not
+  it("truth.txt is a short teaser, the same every night: the monologue tells the rest (wave 58)", { timeout: SLOW }, () => {
+    const sim = boot();
     toBobbing(sim);
     const txt = narr(fire(sim, "read_truth_txt")).map((e) => e.text);
-    expect(txt.some((x) => x.startsWith("The librarian, Broken Ask Jeeves"))).toBe(false);
-    for (const line of [
-      "The former Mayor, Microsoft Excel, was brought in to persuade everyone to remain. He would say yes to everlasting life.",
-      "The artist, MS Paint, was brought in to improve the vibes and the morale, for a million dollars and one painting. She wanted out the moment she arrived.",
-      "The stable manager, Norton Anti-Virus, was brought in as someone with experience administering antiviral regimes, who could not afford to fail twice.",
-      "The dead man, McAfee Anti-Virus, was brought in because only a trickster can keep tricksters on track, and he can be made to.",
-      "The candidate, Password Manager, was brought in to decide what gets left out without ever asking for a vote.",
-      "The intern, CRA Agent Software, was brought in to approve or deny every third transaction, to the cent.",
-    ]) {
-      expect(txt, line).toContain(line);
+    expect(txt[0]).toBe("📄 truth.txt — Notepad");
+    expect(txt.at(-1)).toBe("End of file.");
+    expect(txt.join(" ").split(/\s+/u).length).toBeLessThan(90);
+    expect(txt.some((x) => x.includes("brought in"))).toBe(false);
+    // The printout and the codex entry carry the same words.
+    const pack = readFileSync(join(scenarioDir(SHOW), "cast-packs", "performers", "adobe-acrobat.md"), "utf8");
+    const entry = sim.model.codex.get("The Truth File")!.text.replace(/\s+/gu, " ");
+    for (const line of txt.slice(2, -1)) {
+      expect(pack.replace(/\s+/gu, " "), line).toContain(line);
+      expect(entry, line).toContain(line);
     }
-    expect(txt.some((x) => x.includes("Red Bull") || x.includes("Yu-gi-oh") || x.includes("subreddit"))).toBe(false);
   });
 });
 
@@ -5400,16 +5340,16 @@ describe("Trapped in the Internet — wave 5 (lane B): the takeover, the resurre
     expect(v(sim, "Night.takeover")).toBe(false);
     expect(pins(advance(sim, 12), "unpinned")).toEqual([]);
     expect(pins(fire(sim, "clippy_reads_summary"), "unpinned")).toEqual([]);
-    expect(pins(fire(sim, "start_the_ceremony"), "unpinned")).toEqual([]);
+    expect(pins(g1(sim), "unpinned")).toEqual([]);
   });
 
-  it("B13: Combo A's takeover survives no exit: the recount and the ceremony are backstops", () => {
+  it("B13: Combo A's takeover survives no exit: 📜 and the ceremony are backstops", () => {
     const a = boot();
     fire(a, "trabolta_disabled");
-    expect(pins(fire(a, "trabolta_recounts"), "unpinned")).toEqual(["||💃 Dance."]);
+    expect(pins(fire(a, "tell_the_truth"), "unpinned")).toEqual(["||💃 Dance."]);
     const c = boot();
     fire(c, "trabolta_disabled");
-    expect(pins(fire(c, "start_the_ceremony"), "unpinned")).toEqual(["||💃 Dance."]);
+    expect(pins(g1(c), "unpinned")).toEqual(["||💃 Dance."]);
     // A mid-show dance (no takeover up) posts no notice.
     expect(pins(fire(boot(), "lights_dance"), "unpinned")).toEqual([]);
   });
@@ -5435,7 +5375,7 @@ describe("Trapped in the Internet — wave 5 (lane B): the takeover, the resurre
     expect(offstage(fire(sim, "resurrection"))).toEqual([]);
     expect(v(sim, "Night.resurrected")).toBe(false);
     expect(sim.isRestricted("g1")).toBe(true);
-    fire(sim, "start_the_ceremony");
+    g1(sim);
     fire(sim, "award_most_trusted", "g3");
     expect(sim.isCaptured("g2")).toBe(true);
     // Before the last award a press only asks (wave 6); a second one ends the show.
@@ -5506,7 +5446,7 @@ describe("Trapped in the Internet — wave 5 (lane B): the takeover, the resurre
 
     sim.setVar("Night.ended", "true");
     sim.setVar("Night.ending", "song");
-    fire(sim, "start_the_ceremony");
+    g1(sim);
     // G10 goes only to MS Paint (B14): on anyone else it is refused in # hosts.
     const given = v(sim, "Night.awards_given");
     const wrong = fire(sim, "award_the_painting", "g1");
@@ -5533,7 +5473,7 @@ describe("Trapped in the Internet — wave 5 (lane B): the takeover, the resurre
     const c = boot();
     c.setVar("Night.ended", "true");
     c.setVar("Night.ending", "destroyed");
-    fire(c, "start_the_ceremony");
+    g1(c);
     const line = composeGuestMessages(c, fire(c, "award_the_painting", "g4")).filter((m) => m.channel === "loc:The Desktop" && m.kind === "line").map((m) => `${m.from}: ${m.text}`);
     expect(line).toEqual(["Clippy: Bonus award. The Million Dollar Painting. The report lists MS Paint, the artist. The painting goes to silent auction. Please come forward."]);
   });
@@ -5838,11 +5778,11 @@ describe("Trapped in the Internet — wave 6 (story lane)", () => {
     expect(lines(evs, "Task Manager").some((t) => t.includes("# task-manager is open"))).toBe(true);
   });
 
-  it("B16: count copy agrees with its number: the recount, Clippy's Purgatory summary and G10's signatures", () => {
+  it("B16: count copy agrees with its number: the deeds, Clippy's Purgatory summary and G10's signatures", () => {
     const at = (n: number) => {
       const sim = boot();
       sim.setVar("Night.facts_accepted", String(n));
-      return lines(sim.fireBeat("Trabolta Recounts"), "Trabolta").filter((t) => t.startsWith("You gave me"));
+      return lines(sim.fireBeat("What You Did"), "Trabolta").filter((t) => t.startsWith("You gave me"));
     };
     expect(at(0)).toEqual([]);
     expect(at(1)).toEqual(["You gave me 1 fact I accepted. It might even have been true."]);
@@ -5914,7 +5854,7 @@ describe("Trapped in the Internet — wave 6 (story lane)", () => {
     const sim = boot(); // MS Paint is here
     expect(v(sim, "Night.painting")).toBe(true);
     fire(sim, "computer_destroyed");
-    fire(sim, "start_the_ceremony");
+    g1(sim);
     fire(sim, "award_quest_completionist", "g1");
     expect(v(sim, "Night.ceremony_done")).toBe(false);
     expect(hosts(fire(sim, "resurrection"))).toEqual([ASK]);
@@ -5933,7 +5873,7 @@ describe("Trapped in the Internet — wave 6 (story lane)", () => {
     c.fireBeat("Power On");
     upload(c, "g1", "Calculator");
     fire(c, "computer_destroyed");
-    fire(c, "start_the_ceremony");
+    g1(c);
     fire(c, "award_quest_completionist", "g1");
     expect(v(c, "Night.ceremony_done")).toBe(false);
     fire(c, "award_staff_mole");
@@ -5967,7 +5907,7 @@ describe("Trapped in the Internet — wave 6 (story lane)", () => {
     expect(rain).toContain("`BUGDOM-VR`");
   });
 
-  it("the Truther Download blacks out Sandy until the story names her: the overshare on scenario 1, else the recount", { timeout: SLOW }, () => {
+  it("the Truther Download blacks out Sandy until the story names her: the overshare on scenario 1, else truth.txt or 📜", { timeout: SLOW }, () => {
     const sim = boot();
     expect(sim.model.codex.get("The Truther Download")!.text).not.toMatch(/Sandy/u);
     expect(sim.model.codex.get("The Truther Download Unredacted")!.text).toMatch(/SANDY/u);
@@ -6068,7 +6008,7 @@ describe("Trapped in the Internet — wave 8 (story lane)", () => {
       expect(m.interactions.get(id)!.sequence, id).toBe(false);
     }
     // The night's steps stay in sequence.
-    for (const id of ["y2k_clock", "trabolta_recounts", "clippy_reads_summary", "final_reveal"]) {
+    for (const id of ["y2k_clock", "tell_the_truth", "clippy_reads_summary", "final_reveal"]) {
       expect(m.interactions.get(id)!.sequence, id).toBe(true);
     }
     const sim = boot();
@@ -6080,11 +6020,11 @@ describe("Trapped in the Internet — wave 8 (story lane)", () => {
     expect(sheet(sim)).toEqual({ last: "y2k_clock", next: null });
   });
 
-  it("integration: NEXT follows tonight's ending (each branch cue's while:), and a refused 🏍 / 🪦 counts for nothing", { timeout: SLOW }, () => {
-    // Combo A: 🏍 is NEXT after the dance, then the ceremony.
+  it("integration: NEXT follows tonight's ending (each branch cue's while:), and a refused 📜 / 🪦 counts for nothing", { timeout: SLOW }, () => {
+    // Combo A: 📜 is NEXT after the dance, then the ceremony once it is told.
     const a = boot();
     toY2k(a);
-    for (const early of ["trabolta_recounts", "clippy_reads_summary"]) {
+    for (const early of ["tell_the_truth", "clippy_reads_summary"]) {
       const evs = fire(a, early);
       expect(cues(evs), early).not.toContain("fire lift_the_takeover");
       expect(hostsSaid(evs).length, early).toBe(1);
@@ -6093,30 +6033,34 @@ describe("Trapped in the Internet — wave 8 (story lane)", () => {
     expect(sheet(a)).toEqual({ last: "y2k_clock", next: null });
     fire(a, "patch_combo_a");
     advance(a, 10);
-    expect(sheet(a).next).toBe("trabolta_recounts");
-    fire(a, "trabolta_recounts");
-    expect(sheet(a)).toEqual({ last: "trabolta_recounts", next: "start_the_ceremony" });
-    // Combo B: 🪦, then the ceremony.
+    expect(sheet(a).next).toBe("tell_the_truth");
+    fire(a, "tell_the_truth");
+    expect(sheet(a)).toEqual({ last: "tell_the_truth", next: null }); // NEXT waits for the reader
+    advance(a, 830);
+    expect(sheet(a)).toEqual({ last: "tell_the_truth", next: "start_the_ceremony" });
+    // Combo B: 🪦, 📜, then the ceremony.
     const b = boot();
     toY2k(b);
     fire(b, "patch_combo_b");
     advance(b, 10);
     expect(sheet(b).next).toBe("clippy_reads_summary");
     fire(b, "clippy_reads_summary");
-    expect(sheet(b)).toEqual({ last: "clippy_reads_summary", next: "start_the_ceremony" });
+    expect(sheet(b)).toEqual({ last: "clippy_reads_summary", next: "tell_the_truth" });
+    fire(b, "tell_the_truth");
+    expect(sheet(b)).toEqual({ last: "tell_the_truth", next: null });
     // The hour runs out: midnight fires 🌑, and a Combo A after it still
-    // reaches 🏍 (declared after the finale's cues, before G1).
+    // reaches 📜 (declared after the finale's cues, before G1).
     const late = boot();
     toY2k(late);
     advance(late, 3600);
     expect(sheet(late)).toEqual({ last: "final_reveal", next: "bobbing_for_truth" });
     fire(late, "patch_combo_a");
     advance(late, 10);
-    expect(sheet(late).next).toBe("trabolta_recounts");
-    fire(late, "trabolta_recounts");
-    expect(sheet(late)).toEqual({ last: "trabolta_recounts", next: "start_the_ceremony" });
+    expect(sheet(late).next).toBe("tell_the_truth");
+    fire(late, "tell_the_truth");
+    expect(sheet(late)).toEqual({ last: "tell_the_truth", next: null });
     // The ceremony: G1, then the awards; G11 last.
-    fire(late, "start_the_ceremony");
+    g1(late);
     expect(sheet(late).next).toBe("award_most_trusted");
     // The verdict: the song goes to the ceremony; Grok Prom to 💔 / 💌.
     for (const lie of [false, true]) {
@@ -6124,7 +6068,7 @@ describe("Trapped in the Internet — wave 8 (story lane)", () => {
       toBobbing(sim, { lie });
       expect(sheet(sim).next).toBe("read_truth_txt");
       truthTxt(sim);
-      expect(sheet(sim), `lie ${lie}`).toEqual({ last: "the_verdict", next: lie ? "no_pickup_line" : "start_the_ceremony" });
+      expect(sheet(sim), `lie ${lie}`).toEqual({ last: "the_verdict", next: lie ? "no_pickup_line" : "tell_the_truth" });
     }
   });
 
@@ -6197,7 +6141,7 @@ describe("Trapped in the Internet — wave 8 (story lane)", () => {
     expect(hostsSaid(run).filter((h) => h.includes("Nothing happens"))).toEqual([]);
     refused(sim, "call_to_the_desktop", "📣 Not again: the Desktop call has already played. Nothing happens.");
     refused(sim, "introduce_trabolta", "🤖 Trabolta is already online. Nothing happens.");
-    refused(sim, "trabolta_recounts", "🏍 Only after Combo A or a talk-down, once. Nothing happens.");
+    refused(sim, "tell_the_truth", "📜 Not yet: the night has not ended. Nothing happens.");
     refused(sim, "the_verdict", "⚖ Not yet: 🍎 Bobbing for Truth, then 📄 truth.txt first. Nothing happens.");
     refused(sim, "start_the_ceremony", "🏆 No ceremony yet: the night has not ended. Nothing happens.");
     const early = boot();
@@ -6221,7 +6165,7 @@ describe("Trapped in the Internet — wave 8 (story lane)", () => {
     refused(ban, "start_the_ceremony", "🏆 No ceremony yet: banished is not an ending (🕺 the hand jive first). Nothing happens.");
     expect(v(ban, "Night.ceremony")).toBe(false);
     fire(ban, "the_hand_jive");
-    expect(beats(fire(ban, "start_the_ceremony"))).toContain("The Ceremony");
+    expect(beats(g1(ban))).toContain("The Ceremony");
     refused(ban, "start_the_ceremony", "🏆 The ceremony has already started. Nothing happens.");
   });
 
@@ -6337,8 +6281,8 @@ describe("Trapped in the Internet — wave 8 (story lane)", () => {
     expect(casts(P1(song, "g3")).map((b) => b.cue)).toEqual(['"~💘 OpenOffice knew the line."']); // wave 13: a per-person notice
   });
 
-  it("T2-03: once truth.txt is read the server room is quiet: the patch bay, 🕊 and the door only tell # hosts", { timeout: SLOW }, () => {
-    const QUIET = ["patch_combo_a", "patch_combo_b", "patch_rejected", "talked_down", "server_door_opened"];
+  it("T2-03: once truth.txt is read the server room is quiet: the patch bay and the door only tell # hosts", { timeout: SLOW }, () => {
+    const QUIET = ["patch_combo_a", "patch_combo_b", "patch_rejected", "server_door_opened"];
     const quiet = (sim: Sim, where: string) => {
       const phase = v(sim, "Night.phase");
       for (const cue of QUIET) {

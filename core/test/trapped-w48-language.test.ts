@@ -64,6 +64,7 @@ class Night {
   ceremony(ending = "song"): ChatMessage[] {
     this.sim.setVar("Night.ending", ending);
     this.sim.setVar("Night.ended", "true");
+    this.press("start_the_ceremony"); // wave 58: the first press only asks
     return this.press("start_the_ceremony");
   }
 }

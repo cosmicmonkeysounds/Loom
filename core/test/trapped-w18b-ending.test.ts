@@ -1,6 +1,6 @@
 //! Trapped in the Internet, wave 18b `ending` lane: the ties (R9), Broken Ask
 //! Jeeves's DSL Line (R7) and the ending monologue (R8: The Night In Review,
-//! Your File, and the canonical copy Trabolta Recounts and Purgatory share).
+//! Your File, and the canonical copy the review and Purgatory share).
 //!
 //! The hooks that reach these beats (clearance → Program Briefing, the
 //! ceremony → The Night In Review + Your File) land at integration
@@ -243,7 +243,7 @@ function ceremony(ending: string): Sim {
   const sim = house();
   sim.setVar("Night.ending", ending);
   sim.setVar("Night.ended", "true");
-  sim.setVar("Night.ceremony_host", ending === "destroyed" || ending === "rave" ? "Clippy" : "Trabolta");
+  sim.setVar("Night.ceremony_host", ending === "destroyed" || ending === "rave" || ending === "disabled" ? "Clippy" : "Trabolta");
   return sim;
 }
 const review = (sim: Sim) => sim.fireBeat("The Night In Review");
@@ -282,6 +282,7 @@ describe("wave 18b ending — The Night In Review (R8)", () => {
     ["Calculator", "WinZip", "GarageBand", "LimeWire"].forEach((n, i) => upload(sim, `p-${PROBLEMS[i]}`, n, i));
     // Every deed line, and a goal met and missed.
     for (const [k, v] of [["Night.facts_accepted", "7"], ["Night.first_reinstall", "WinZip"], ["Kernel.virus_planter", "Microsoft Excel"], ["Night.lj_reader", "VLC"], ["Night.most_trusted", "Pong"], ["Night.least_trusted", "WinZip"], ["f-pong.quest.keep_the_ball_in_play", "done"], ["Night.ending", "song"], ["Night.ended", "true"]] as const) sim.setVar(k, v);
+    sim.signal("start_the_ceremony"); // wave 58: the first press only asks
     const msgs = composeGuestMessages(sim, sim.signal("start_the_ceremony")).map((m, i) => ({ ...m, seq: 1000 + i, hidden: false }));
     const his = msgs.filter((m) => m.channel === "loc:The Desktop" && m.from === "Trabolta" && m.kind === "line");
     expect(his.some((m) => m.text.startsWith("Met their goal tonight: Pong."))).toBe(true);
@@ -320,28 +321,29 @@ describe("wave 18b ending — The Night In Review (R8)", () => {
     expect(c).toContain("OpenOffice did not meet their goal.");
   });
 
-  it("after `disabled` skips who everyone was and the deeds (Recounts just read them), keeps the goals", { timeout: SLOW }, () => {
+  it("after `disabled` Clippy reads the report: he is gone, and nothing has read it yet", { timeout: SLOW }, () => {
     const sim = ceremony("disabled");
     sim.setVar("Night.facts_accepted", "2");
     const evs = review(sim);
-    const t = lines(evs, "Trabolta");
-    expect(t.some((l) => / is (Randy|Dana|Tippi)/u.test(l))).toBe(false);
-    expect(t.some((l) => l.startsWith("You gave me"))).toBe(false);
-    expect(t).toContain("Calculator. You came because of your debt. Debt is not relevant in the computer. It was never relevant to me.");
-    expect(t.find((l) => l.startsWith("Did not meet their goal: "))).toContain("OpenOffice");
-    expect(beats(evs)).not.toContain("Who You Were");
+    const c = lines(evs, "Clippy");
+    expect(lines(evs, "Trabolta")).toEqual([]);
+    expect(c.filter(isIdentity).length).toBe(18);
+    expect(c).toContain("Microsoft Excel did not meet their goal.");
+    expect(c).toContain("Trabolta accepted 2 facts from us.");
     expect(beats(evs).at(-1)).toBe("The Ceremony");
   });
 
-  it("speaks in the ending's voice: weak after `disabled` and `hand_jive`, quiet when talked down, rebooting before The Ceremony's \"Reboot complete.\"", { timeout: SLOW }, () => {
+  it("with the monologue told, the review reads only those it leaves out, in either voice", { timeout: SLOW }, () => {
+    for (const [ending, who] of [["song", "Trabolta"], ["disabled", "Clippy"]] as const) {
+      const told = ceremony(ending);
+      told.setVar("Night.truth_told", "true");
+      const t = lines(review(told), who).filter(isIdentity);
+      expect(t.map((l) => l.split(" ").slice(0, 2).join(" ")).sort(), ending).toEqual(["Adobe Acrobat", "McAfee Anti-Virus", "Pong is", "Recycling Bin", "Task Manager", "The Installation", "VLC is"]);
+    }
+  });
+
+  it("speaks in the ending's voice: weak after `hand_jive`, rebooting before The Ceremony's \"Reboot complete.\"", { timeout: SLOW }, () => {
     const opener = (sim: Sim) => said(review(sim)).filter((e) => e.speaker === "Trabolta");
-    const dis = opener(ceremony("disabled"));
-    expect(dis[0]!.text).toMatch(/^I am going\. First, a review of the night\./u);
-    expect(dis[0]!.manner).toBe("weakly");
-    expect(dis.find((e) => e.text.startsWith("That is the review."))!.manner).toBe("weakly");
-    const td = ceremony("disabled");
-    td.setVar("Night.talked_down", "true");
-    expect(opener(td)[0]!.manner).toBe("quietly");
     const hj = opener(ceremony("hand_jive"));
     expect(hj[0]!.text).toMatch(/^Rebooting\. While I reboot, a review of the night\./u);
     expect(hj[0]!.manner).toBe("weakly");
@@ -350,8 +352,9 @@ describe("wave 18b ending — The Night In Review (R8)", () => {
     expect(opener(ceremony("song"))[0]!.manner).toBeUndefined();
   });
 
-  it("after `destroyed` (Clippy hosts) skips who everyone was, the goals and the deeds (Purgatory just read them)", { timeout: SLOW }, () => {
+  it("after `destroyed` (Clippy hosts) skips who the monologue told, the goals and the deeds (Purgatory just read them)", { timeout: SLOW }, () => {
     const sim = ceremony("destroyed");
+    sim.setVar("Night.truth_told", "true");
     const evs = review(sim);
     expect(lines(evs, "Trabolta")).toEqual([]);
     const c = lines(evs, "Clippy");
@@ -361,13 +364,10 @@ describe("wave 18b ending — The Night In Review (R8)", () => {
     expect(beats(evs).at(-1)).toBe("The Ceremony");
   });
 
-  it("after `rave` Clippy reads the whole report: the same canonical copy Purgatory reads", { timeout: SLOW }, () => {
+  it("after `rave` with the monologue skipped Clippy reads the whole report", { timeout: SLOW }, () => {
     const sim = ceremony("rave");
     const c = lines(review(sim), "Clippy");
-    const purg = lines(sim.fireBeat("Purgatory"), "Clippy");
-    const ident = c.filter(isIdentity);
-    expect(ident.length).toBe(18);
-    for (const l of ident) expect(purg, l).toContain(l);
+    expect(c.filter(isIdentity).length).toBe(18);
     expect(c).toContain("Microsoft Excel did not meet their goal.");
     expect(c).toContain("Trabolta did not accept a single fact from us.");
   });
@@ -383,34 +383,17 @@ describe("wave 18b ending — The Night In Review (R8)", () => {
   });
 });
 
-describe("wave 18b ending — Recounts and Purgatory read the canonical copy (R8)", () => {
-  it("Trabolta Recounts reads Who You Were and What You Did, with his new title", { timeout: SLOW }, () => {
-    const sim = house();
-    const evs = sim.fireBeat("Trabolta Recounts");
-    const t = lines(evs, "Trabolta");
-    expect(t).toContain("My name is Jean Trabolta. Sole Owner and Founder of Maps and Ducks, the world's first AI small business owner, if you ask the domain registry.");
-    expect(t.join("\n")).not.toMatch(/AI helper/u);
-    expect(beats(evs)).toEqual(expect.arrayContaining(["Trabolta Recounts", "Who You Were", "What You Did"]));
-    // The same identity lines as the review's.
-    const r = ceremony("song");
-    const rev = lines(review(r), "Trabolta");
-    const ident = t.filter(isIdentity);
-    expect(ident.length).toBe(18);
-    for (const l of ident) expect(rev, l).toContain(l);
-    // The recount still ends on his motorcycle.
-    expect(t.at(-1)).toMatch(/^I have the confidence I need/u);
-  });
-
-  it("Purgatory reads who everyone was, the founded majority and his title", { timeout: SLOW }, () => {
+describe("wave 18b ending — Purgatory (R8; wave 58)", () => {
+  it("Purgatory reads the count, the deeds, the founded majority, the goals and the verdict; the monologue tells the rest", { timeout: SLOW }, () => {
     const sim = house();
     sim.setVar("Kernel.majority", "founded");
     sim.setVar("Kernel.majority_name", "The Pickle Club");
     const c = lines(sim.fireBeat("Purgatory"), "Clippy");
     expect(c).toContain("The Pickle Club won the majority, a faction founded tonight.");
-    expect(c).toContain("The report also lists who everyone really was.");
-    expect(c.some((l) => l.startsWith("Microsoft Excel is Randy Barkmore Sr."))).toBe(true);
-    expect(c.join("\n")).not.toMatch(/AI helper/u);
-    expect(c).toContain("Here is the backstory. Jean Trabolta, the Sole Owner and Founder of Maps and Ducks, registered the lapsed mapsandducks.com because there was a billboard on Lower Water Street, and if there is a billboard downtown everyone thinks it is legit.");
+    expect(c).not.toContain("The report also lists who everyone really was.");
+    expect(c.some(isIdentity)).toBe(false);
+    expect(c.some((l) => l.startsWith("Here is the backstory."))).toBe(false);
+    expect(c).toContain("Microsoft Excel did not meet their goal.");
     expect(c.at(-1)).toBe("It looks like you're trying to leave. I can't help you with that anymore.");
   });
 });

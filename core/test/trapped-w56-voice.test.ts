@@ -52,14 +52,6 @@ describe("the arc on the real story", () => {
     expect(fx().level).toBeGreaterThan(flat); // a quarter of an hour to midnight
   });
 
-  it("a talk-down heals him", { timeout: SLOW }, () => {
-    const { sim, fx } = night();
-    at(sim, "y2k");
-    expect(fx().level).toBeGreaterThan(0.3);
-    sim.setVar("Night.talked_down", "true");
-    expect(fx().level).toBe(0);
-  });
-
   it("the helped ending is clean, the banishment is everything", { timeout: SLOW }, () => {
     const { sim, fx } = night();
     at(sim, "finale_help");

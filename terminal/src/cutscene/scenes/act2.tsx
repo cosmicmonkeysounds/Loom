@@ -54,8 +54,8 @@ import {
   useSfxCues,
   type Emitter,
 } from "../kit/index.ts";
-import { ColdDoor, DriftingPopups, Frost, Glass, HealthBar, KingPiece, MirrorBall, Motorcycle, PatchBay, Phone, PrinterArt, Shake, WallCard, useEndAt, useFirstSeen, useFrozen, useLatch, type PopMsg } from "../kit/tv2-parts.tsx";
-import { CUPS, THROW_MS, Y2K_CHIME_TEXT, beanHeap, chartLayout, chartRowAt, chimeFlash, danceBeat, driftLandings, equaliser, glitchYear, kingBar, kingHeard, kingHpAt, kingLine, liveNow, liveRemaining, nightSummary, onGrid, recountRideAt, scenarioFor, tallyOf, throwAt, y2kLevel, y2kRaceClosed } from "../kit/tv2-time.ts";
+import { ColdDoor, DriftingPopups, Frost, Glass, HealthBar, KingPiece, MirrorBall, PatchBay, Phone, PrinterArt, Shake, WallCard, useEndAt, useFirstSeen, useFrozen, useLatch, type PopMsg } from "../kit/tv2-parts.tsx";
+import { CUPS, THROW_MS, Y2K_CHIME_TEXT, beanHeap, chartLayout, chartRowAt, chimeFlash, danceBeat, driftLandings, equaliser, glitchYear, kingBar, kingHeard, kingHpAt, kingLine, liveNow, liveRemaining, nightSummary, onGrid, scenarioFor, tallyOf, throwAt, y2kLevel, y2kRaceClosed } from "../kit/tv2-time.ts";
 
 type Sfx = SceneProps["sfx"];
 type SfxCue = readonly [number, Parameters<Sfx>[0], Parameters<Sfx>[1]?];
@@ -1823,19 +1823,17 @@ function TrabDisabledWall(p: SceneProps) {
   );
 }
 
-// ══ E5: recount — he flickers back, weaker, decrepit ════════════════════════════════════════
+// ══ E5: recount — what is left of him while Task Manager reads his message ═════════════════
 //
 //   0–2500    static; TRABOLTA.EXE (Not Responding) redraws in strips, greyed
 //   hold      the hung window drifts and smears (the old trail of copies), the
 //             face inside sags and jitters, the brightness gutters, System
-//             resources: 3% free; End Task / Wait — Wait is pressed, again
-//   the end   ten seconds before the slide lets go, a motorcycle rides across
-//             the bottom, Greased Lightning; the window fades — he does not come
-//             back. (The story's `sound motorcycle` lands in the same drain as the
-//             slide, before the TV has said a word of the recount, so the ride is
-//             timed off the hold, never off that moment.)
+//             resources: 3% free; End Task / Wait — Wait is pressed, again.
+//             It holds until the ceremony: he is dead and does not come back
+//             (wave 58: no ride, and its errors stop after the first half minute
+//             so that nothing sounds under the reading).
 
-const RECOUNT_RIDE_MS = 6000;
+const RECOUNT_ERRORS_TO = 30_000;
 
 function DecrepitFace({ t, reduced }: { t: number; reduced: boolean }) {
   const j = reduced ? 0 : (noise1(5, Math.floor(t / 120)) - 0.5) * 2;
@@ -1853,12 +1851,9 @@ function DecrepitFace({ t, reduced }: { t: number; reduced: boolean }) {
 }
 
 function RecountTv(p: SceneProps) {
-  const { t, sfx, reduced, target, night } = p;
+  const { t, sfx, reduced, night } = p;
   const summary = nightSummary(night);
-  const rideAt = recountRideAt(target);
-  const rideT = t >= rideAt ? t - rideAt : null;
-  const gone = rideT !== null && rideT > 1200 ? progress(rideT, 1200, 2400) : 0;
-  useSfxCues(t, sfx, [[0, "static", { gain: 0.5 }], [1800, "glitch", { gain: 0.4 }], ...onGrid(t, 9000, 9000, "error", { gain: 0.25 }, rideAt), [rideAt + 900, "whoosh", { gain: 0.35, pitch: 0.7 }], [rideAt + 1400, "shutdown", { gain: 0.25 }]]);
+  useSfxCues(t, sfx, [[0, "static", { gain: 0.5 }], [1800, "glitch", { gain: 0.4 }], ...onGrid(t, 9000, 9000, "error", { gain: 0.25 }, RECOUNT_ERRORS_TO)]);
   const draw = progress(t, 400, 2000);
   const drift = reduced ? { x: 0, y: 0 } : { x: Math.sin(t / 5200) * 3, y: Math.cos(t / 6100) * 2 };
   const gutter = reduced ? 0.85 : 0.62 + 0.25 * noise1(9, Math.floor(t / 90)) + 0.1 * pulse(t, 3000);
@@ -1885,49 +1880,25 @@ function RecountTv(p: SceneProps) {
   return (
     <Stage bg="#0a0d10" fit className="tv2">
       <div className="kit-fill tv2-recount-bg" />
-      <div className="kit-fill" style={{ opacity: gutter * (1 - gone), filter: "grayscale(0.6)" }}>
+      <div className="kit-fill" style={{ opacity: gutter, filter: "grayscale(0.6)" }}>
         {Array.from({ length: trail }, (_, i) => trail - i).map((i) => win(i))}
         {win(0)}
         <Win98Dialog title="TRABOLTA.EXE" message="This program is not responding." kind="warning" actions={["End Task", "Wait"]} pressed={waitPressed ? 1 : undefined} x={60} y={66} width="22em" open={progress(t, 2600, 300)} inactive zIndex={20} />
       </div>
       {t < 2500 && !reduced && <Noise t={t} alpha={0.5 * (1 - progress(t, 0, 2500))} />}
-      {rideT !== null && rideT >= 0 && rideT < RECOUNT_RIDE_MS + 4000 && (
-        <>
-          <div className="tv2-ride" style={{ transform: reduced ? undefined : `translate3d(${lerp(-20, 110, progress(rideT, 0, RECOUNT_RIDE_MS)).toFixed(2)}vw, 0, 0)`, opacity: reduced ? 1 - progress(rideT, RECOUNT_RIDE_MS, 600) : 1 }}>
-            <Motorcycle t={t} size="12em" />
-          </div>
-          <div className="tv2-ride-line" style={{ opacity: Math.min(progress(rideT, 800, 600), 1 - progress(rideT, RECOUNT_RIDE_MS + 2400, 1000)) }}>
-            Greased Lightning. <span style={{ opacity: progress(rideT, 3000, 800) }}>It does not come back.</span>
-          </div>
-          {!reduced && <Particles t={t} emitters={[{ x: 0.5, y: 0.9, w: 1, start: t - rideT, end: t - rideT + RECOUNT_RIDE_MS, rate: 30, life: 1600, speed: 0.06, angle: -150, spread: 40, size: 14, sizeJitter: 0.5, colors: ["rgba(180,160,130,0.4)"], shape: "dot", seed: 161, fade: 0.8 }]} />}
-        </>
-      )}
       <Glass t={t} reduced={reduced} strength={1.2} />
     </Stage>
   );
 }
 
 function RecountWall(p: SceneProps) {
-  const { t, reduced, target, night } = p;
+  const { t, reduced, night } = p;
   const summary = nightSummary(night);
-  const rideT = t - recountRideAt(target);
-  const riding = rideT >= 0 && rideT < RECOUNT_RIDE_MS + 2000;
-  const gone = rideT > 1200 ? progress(rideT, 1200, 2000) : 0;
   return (
     <div className="kit-fill">
-      <div className="kit-fill" style={{ opacity: 1 - gone }}>
+      <div className="kit-fill">
         <WallCard t={t} value="recount" lines={summary.length > 0 ? ["(not responding)", ...summary] : undefined} icon="computer" tone="black" bg="#14181c" reduced={reduced} accent={<span style={{ opacity: 0.6 + 0.3 * noise1(9, Math.floor(t / 90)), display: "inline-block", width: "10em" }}><DecrepitFace t={t} reduced={reduced} /></span>} />
       </div>
-      {riding && (
-        <>
-          <div className="tv2-ride wall" style={{ transform: reduced ? undefined : `translate3d(${lerp(-30, 120, progress(rideT, 0, RECOUNT_RIDE_MS)).toFixed(2)}vw, 0, 0)`, opacity: reduced ? 1 - progress(rideT, RECOUNT_RIDE_MS, 600) : 1 }}>
-            <Motorcycle t={t} size="7em" />
-          </div>
-          <div className="tv2-ride-line wall" style={{ opacity: Math.min(progress(rideT, 800, 600), 1 - progress(rideT, RECOUNT_RIDE_MS + 800, 1000)) }}>
-            Greased Lightning.
-          </div>
-        </>
-      )}
     </div>
   );
 }

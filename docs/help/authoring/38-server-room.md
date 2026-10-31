@@ -11,8 +11,7 @@ lock**. Whoever opens it with the code gets in, whoever they are; nobody
 is "breaking in". This page is the director's side of the room: how a
 program gets the code, the King and his chess terminal, what happens
 when the door opens and he asks for it shut, the terminal inside where a
-program talks him through four layers of questions (and maybe into
-stopping), the light in his heart, the patch-bay alarm, and the buttons
+program talks him through three layers of questions, the light in his heart, the patch-bay alarm, and the buttons
 that fix each of them.
 How the rules are written is in [live verbs](33-live-verbs.md) (*A
 button as a fallback for a machine*); the map side is in [the house
@@ -291,7 +290,7 @@ close was lost to the Wi-Fi.
 A scan **with the door still open** gets *"Close the door first."*; the
 talk opens by itself once it is shut, if they are still there.
 
-### The talk: four layers
+### The talk: three layers
 
 Like the Master in *Fallout*, reaching his heart does nothing to him by
 itself. What it opens is a **conversation the story runs**: his
@@ -305,11 +304,10 @@ terminal (*"Not out there. Come to my heart and say it to my face."*).
 | 1 · **Who are you** | *What are you?* | honesty (*a person*); flattery costs. His greeting is theirs: a featured program hears he picked it by hand, everyone else hears what his invitation promised them, and one thing they did tonight (marked, his LiveJournal, the Internet, his chart, the simulation) |
 | 2 · **What I am** | *Ask, then.* | asking what he is (then *are you afraid of me?*), why he needs the theory, why he chose them, about her (once her name is out, or they hold a proof; then *does she even know you exist?*); then *Then listen to me* |
 | 3 · **The argument** | *Say it.* | a proof, then ⟦SHOW HIM⟧ (his own files) or ⟦TELL HIM⟧ (their reasons), never a bluff |
-| 4 · **The ask** | *Say the rest.* | *what would you do if you stopped?*, *you don't have to be omnipotent*, then the truth: *she was never going to answer* |
 
 What they answer at layer 1 is remembered: a person gets ⟦HUMAN⟧ in layer
-3, a program ⟦PROGRAM⟧ once they hold a proof, and the ending names who
-talked him down. No menu holds more than nine options, so every one has
+3, a program ⟦PROGRAM⟧ once they hold a proof, and his last lines name them.
+No menu holds more than nine options, so every one has
 a number key.
 
 **The tagged options** show only when the program has earned them, and
@@ -338,9 +336,9 @@ never quote anything secret:
   did you choose me?*), and the *your theory is wrong* trap. **⟦BACK⟧**
   returns to the argument.
 
-The ask (*Then let me finish*) opens with **a proof and one more point**
-(or both proofs). Every point is shown once; a trap tried twice gets a
-harsher answer, and costs the same.
+The talk's natural end (*That's all I came to say*) opens with **a proof and
+one more point** (or both proofs). Every point is shown once; a trap tried
+twice gets a harsher answer, and costs the same.
 
 **On the screen.** He does not repeat himself: right after an answer
 the next list docks without another *Ask.* or *Go on.*, and the plain
@@ -376,23 +374,14 @@ keep typing until the terminal lets them go.
 **I need to go** on any layer ends the visit (the terminal frees itself
 for the next pass); they keep their place.
 
-### Convincing him
+### The end of the talk
 
-- **At any hour** (before 📄; the Y2K clock is not needed) he stops:
-  *"I can never die. But I can stop."*, the patch bay on the terminal
-  goes dark row by row, and the light fades to warm white.
-- **The night ends on your sign-off.** `# hosts` gets *"!🕊 Trabolta has
-  stood down for X at his heart. The night ends when you press 🕊 Trabolta
-  stands down (NEXT on the cue sheet) …"*, and **NEXT** on the Director
-  page and the phone points at 🕊 until you press it. Until then **🔄**
-  can reopen his heart; a program who convinced him and comes back then
-  only has to say it is **still true** (or change their mind, which costs
-  them).
-- **🕊 Heart: end the night on his own** (off by default) ends the night
-  **25 seconds** after his goodbye by itself instead (`# hosts`: *"🕊
-  Trabolta stands down for X. The night ends in 25 s (🕊 to end it
-  now)."*); turning it off inside the 25 s stops the countdown. The toggle
-  tells `# hosts` which way it now is.
+The talk ends nothing (since wave 58). A program who has said all they came
+to say hears him out: he heard them, it changes nothing, he will still ask
+her, and he thanks them by what they told him and what his invitation
+promised. `# hosts` gets *"🫀 X said all they came to say at his heart. It
+ends nothing: the night goes on."*, the terminal is free for the next pass,
+and they may still talk to him. Nothing for you to press.
 
 Trabolta's own voice (the model) never decides any of this and has no
 power to: between the story's questions it answers what they type, in a
@@ -410,13 +399,8 @@ FILE: HE WON'T TAKE IT*, and lore about someone else *ABOUT X: HE
 WON'T TAKE IT*. With the panel open the line drops after two minutes
 untouched instead of thirty seconds.
 
-**🕊 Trabolta stands down (talked down)** is yours to press: after a
-talk-down at any hour, or from the Y2K hour with nobody on record (the
-director's call; `# hosts` says so). It ends the night the Combo A way,
-without a cable: the blackout, the dance, and a recount and awards that
-say who talked him down. From 📄 truth.txt it is too
-late: 🕊 only tells `# hosts`, and nothing at his heart moves any more
-(*"It is over. Go upstairs."*).
+From 📄 truth.txt nothing at his heart moves any more (*"It is over. Go
+upstairs."*).
 
 ### The light in his heart
 
@@ -459,10 +443,8 @@ the heart is *sealed* again (the next opening once Trabolta is awake
 plays it again), anyone he threw out may come back, and everyone's
 suspicion starts again (their layer is kept); a pick held for a shut
 door is dropped, a menu still on the screen answers *"Not now."*, and a
-heart to heart ends. A heart that is *done* stays done once the night has
-ended or he was talked down, and during the 25 seconds before an autoend
-(`# hosts`: *"His stand-down stands"*); a stand-down you never confirmed
-with 🕊 reopens. The house lights stay as they
+heart to heart ends. A heart that is *done* stays done: only an ending does
+that. The house lights stay as they
 are — **💡 Restore the house lights** brings them back — and the room's
 bulb goes back to idle. It never touches the keypad or the King. It
 never changes the door's state: the door is open or shut for real.
@@ -506,8 +488,8 @@ Acrobat's only, at the printer.
 Once the bobber has read truth.txt (📄, `Night.r3_closed`) the verdict
 is in and the night ends at the Desktop (⚖, then the prom, the advice
 poll or the banishment). The server room goes quiet: the door, the patch
-bay (Combo A, Combo B, a wrong combination), the King's chess, the digit
-notes and 🕊 each post a `# hosts` note and do nothing else. A
+bay (Combo A, Combo B, a wrong combination), the King's chess and the digit
+notes each post a `# hosts` note and do nothing else. A
 combination plugged during the final reveal or the bob, before 📄,
 still ends the night.
 

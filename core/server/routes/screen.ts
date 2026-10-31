@@ -207,8 +207,10 @@ export const SCREEN_BASES = ["screensaver", "attract", "trabolta_online", "mirro
  *  The finale's waits are among them (wave 17): the bob until 📄, the advice
  *  poll until its tally, Grok Prom and the banishment until the story's next
  *  screen cue — each one's scene keeps moving the whole time. Wave 44 (C3):
- *  the credits hold their end card until the next cue. */
-const PERSISTENT_SLIDES: ReadonlySet<string> = new Set(["bingo", "y2k", "trust_chart", "truth_txt", "bobbing", "advice", "grok_prom", "banish", "hunt_results", "tally", "ad_hijack", "credits"]);
+ *  the credits hold their end card until the next cue. Wave 58: the recount
+ *  and purgatory stand through Task Manager's reading (attract would follow
+ *  them otherwise, and he is gone: no face to come back to). */
+const PERSISTENT_SLIDES: ReadonlySet<string> = new Set(["bingo", "y2k", "trust_chart", "truth_txt", "bobbing", "advice", "grok_prom", "banish", "hunt_results", "tally", "ad_hijack", "credits", "recount", "purgatory"]);
 export function slidePersists(value: string): boolean {
   return PERSISTENT_SLIDES.has(value) || /^(award|ceremony)/u.test(value);
 }
@@ -520,10 +522,10 @@ export const GAME_MOMENT_SIGNALS: readonly string[] = [ESCAPE_SIGNAL, HEART_SIGN
 /** Never a moment: a checkmate (the story tells only the winner and
  *  `# hosts` — a public one would hint who now holds the door code). Folded,
  *  so the show's admin `chess_won` press is quiet too. Wave 20: the server
- *  room's admin door cues and the heart's autoend toggle (a door that opens
+ *  room's admin door cues (a door that opens
  *  and shuts is no house-wide event; the sensor's own `door_sensor_*` and
  *  the story's `heart_door_*` are not admin cues, so never moments anyway). */
-export const QUIET_MOMENT_SIGNALS: readonly string[] = [KING_SIGNALS.won, "server_door_opened", "server_door_closed", "server_door_trust", "heart_autoend", "trust_patch_bay", ...GAME_MOMENT_SIGNALS].map(foldName);
+export const QUIET_MOMENT_SIGNALS: readonly string[] = [KING_SIGNALS.won, "server_door_opened", "server_door_closed", "server_door_trust", "trust_patch_bay", ...GAME_MOMENT_SIGNALS].map(foldName);
 
 /** (wave 20) Subject-free beats that never become a `beat` moment, folded:
  *  the server room's door chatter (the nag, the door again, the shut, the
@@ -780,7 +782,6 @@ export const SCREEN_NIGHT_VARS = {
   // Wave 50: Clippy's dream, on from the Y2K bug until an ending or a 🌀.
   dream: "Night.dream",
   // Wave 56: what his voice is made of; only the level ever leaves the server.
-  talked_down: "Night.talked_down",
   composure: "Trabolta.composure",
   // Wave 48: the Language Report (G14), only while its slide is up.
   lang_flagged: "Night.lang_flagged",
@@ -1930,7 +1931,7 @@ export class ScreenWatch {
       ...(voice !== undefined ? { voice } : {}),
       voiceFx: voiceFxOf(
         this.voiceFxMode,
-        { phase: night.phase, composure: num(SCREEN_NIGHT_VARS.composure), remaining, talkedDown: flag(SCREEN_NIGHT_VARS.talked_down), alarmOn: night.alarm_on, heartStage: night.heart_stage, reading: awardUp || summaryUp },
+        { phase: night.phase, composure: num(SCREEN_NIGHT_VARS.composure), remaining, alarmOn: night.alarm_on, heartStage: night.heart_stage, reading: awardUp || summaryUp },
         { now: this.now(), glitch: program.glitch ?? null, flicker: program.flicker, dreamAt: this.dreamOf(sim)?.at ?? null, shot: this.voiceShot },
       ),
       ...(room !== undefined ? { room } : {}),

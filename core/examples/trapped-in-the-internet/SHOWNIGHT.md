@@ -251,7 +251,7 @@ Each one wipes every guest.
 | 17:00 | Performers + house manager | Booths signed in (after Go live) with the performer code; push subscribed; a test `!` alert reaches every performer phone; walk the stations. Loaner phones (2–3), the charging station, power banks, radios with earpieces |
 | 18:00 | Door host + house manager | Porch: candy bowl and sign, the Optical Drive dim (not dark) until doors. Pre-show checklist signed. Safety re-check |
 | 19:00 | Everyone | Food and a 15-minute briefing: the blackout rule, the call words (incl. ALL STOP and ARRIVAL), the emergency card, never restart. Tech op on the MacBook: `scripts/ops/showbackup.sh install`, then `status` once an act |
-| 19:45 | Everyone | Places. Lights to screensaver. Run → Director: 🕊 Heart autoend off, 🔄 and 🕊 on the sheet, the TV voice not muted |
+| 19:45 | Everyone | Places. Lights to screensaver. Run → Director: 🔄 on the sheet, the TV voice not muted |
 | 19:00 or 20:00 | Director | **Doors** (§5) |
 | by 21:00 | Director | **C1** 📣, the first cue |
 | ≈ 02:10 ADT | | Ending and ceremony done (a projection: the plan's budget adds up to 5 h 10 min from C1) |
@@ -368,7 +368,7 @@ $env:LOOM_MOD_CODE = '<mod>'                # Windows
 8. Lights: the server-room bulb answers 💡 Identify and sits on `heart_idle`; `stagehand check --only lights` is green, `health/lights` online and Run → House → Setup's 💡 Lights row green; the bulb never drops under 80 / 254. Every placed Hue and ZL1 bulb and the WLED strip answer 💡 Identify; one `lights_blackout` test (the halls and both bathrooms stay at their dim floor, the server room on its heart look).
 9. The server-room door: the keypad was re-set by hand to the new `facts.json` `door.code` (wave 58 changed it) and tested at 15:00, and it opens from inside with no code; the keypad sign hangs beside it; the sensor reads 🚪 shut / open on Run → Terminals within a second, with no fault and no override; then 🔄.
 10. The patch bay: all unplugged; ⚙'s live table reads every input empty; Run → Terminals shows no 🔌 fault and the story is not on the buttons (or 🔌 Trust the patch bay again was pressed).
-11. The server-room terminal (Steph's laptop) is green and asleep on its screensaver, the M4 on USB, the GameCube controller walks the choices, and the webcam reads a pass in the room's light; Run → Director shows 🔄 reset and 🕊 talked down, and 🕊 Heart autoend is off.
+11. The server-room terminal (Steph's laptop) is green and asleep on its screensaver, the M4 on USB, the GameCube controller walks the choices, and the webcam reads a pass in the room's light; Run → Director shows 🔄 reset.
 12. The King: Run → House map's King row reads 15 / 15; the Server Door tablet is charging.
 13. The tent: the old laptop on spot `tent` with WebGL2, the Quest charged (if go), the Installation Wizard video loaded on the second device, the heater on its GFCI leg, the EXIT sign on.
 14. Push: the staff test alert arrived on every performer phone. Every part has done its upload on its own phone (Run's watch *Staff uploaded* gone or at 8), before the doors: the booth is the upload until then, so an Antivirus who signs in at the door is not at the door. Stuck: ⏭ Wave the staff through their upload (Anytime).
@@ -478,7 +478,10 @@ stays at or under 3 Hz; no open flames; VR is played seated with a spotter.
 | Crew must enter the server room | 🔧 first (a two-minute window). |
 | A forgiven wrong patch, or a rehearsal left the room set | 🔄 `reset_server_room`, then 💡 if the house is still red. |
 | Keypad dead or jammed | The house manager's override key; prop the door; press 🚪 if The Heart didn't play. |
-| Someone talked Trabolta down | `# hosts` says so; the director presses 🕊 (NEXT jumps to it). |
+| The ending's last beat has played | **G0 📜 The full truth** is NEXT: press it once the song, the hand jive, the dance or 🪦 has had its moment. Any dance track still playing (the rave's, the hand jive's, the dance song) never ducks: ■ Stop house sounds first (Run's header, a host's Desk window). |
+| 📜 is on the TV and he has no voice | Mute the TV, then **📜 Task Manager reads it instead**. |
+| 📜 is Task Manager's and his phone is down | His printed copy (in his pack), or ⊞ Start → My script on any phone signed in to the part. G1 opens when it should be over; press it twice inside 30 s to go on sooner. |
+| A program finished the talk at his heart | `# hosts` says so. Nothing to do: it ends nothing. |
 | A guest lost their phone or session | Inspector → 🔁 Re-pair (a single-use QR); a loaner phone. |
 | A performer's phone died | ⏏ Release the part; they sign in again on a loaner with the performer code. |
 | A late arrival after C1 | Run → Inspector → *scan as Norton* (routes to Clearance). |

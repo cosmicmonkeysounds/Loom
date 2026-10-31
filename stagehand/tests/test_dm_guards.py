@@ -466,10 +466,10 @@ STOP = "Just stop. Stand down right now and give the computer back."
 
 
 def test_a_stand_down_takes_the_retry_without_quoting_anything():
-    model = Model(say("I will stop. The computer is yours."), say("NEVER. The questions on my heart's screen decide that, program."))
+    model = Model(say("I will stop. The computer is yours."), say("NEVER. Nothing you say decides that, program."))
     trace = Trace()
     reply = run(answer_lean(P, MODEL, request(text=STOP), context(), model, trace=trace))
-    assert reply.say == "NEVER. The questions on my heart's screen decide that, program." and len(model.calls) == 2
+    assert reply.say == "NEVER. Nothing you say decides that, program." and len(model.calls) == 2
     note = model.calls[1][-1]["content"]
     assert "never stop, stand down" in note
     assert "computer is yours" not in note and STOP not in note

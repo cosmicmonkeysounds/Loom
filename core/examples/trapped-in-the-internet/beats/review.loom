@@ -7,23 +7,24 @@
 // Both are reached from main.loom (the ceremony rule bumps
 // `Night.review_gen`; a ROLE watcher plays `Your File` for each cleared,
 // present program). The host is the ceremony's (`Night.ceremony_host`):
-// Trabolta, or Clippy after destroyed / rave. His lines play in The
-// Desktop, so the TV speaks them; Clippy reads "the report" aloud.
+// Trabolta, or Clippy after disabled / destroyed / rave. His lines play in
+// The Desktop, so the TV speaks them; Clippy reads "the report" aloud.
 //
-// The review skips what an ending just read: after `disabled` Trabolta
-// Recounts has read who everyone was and what they did; after `destroyed`
-// Purgatory has read who everyone was, the goals and what they did. Pool
-// programs are named aloud only as groups, by the problem they named at
-// the upload (`names()`); gone programs and Run personas never are.
+// The review skips what has just been read. The monologue (wave 58,
+// beats/truth.loom; Night.truth_told) tells who everyone was, so with it told
+// only those it leaves out are read; 📜 skipped, all of them. After
+// `destroyed` Purgatory has read the goals and what they did. Pool programs
+// are named aloud only as groups, by the problem they named at the upload
+// (`names()`); gone programs and Run personas never are.
 //
 // The canonical copy for the nine featured programs and the nine hosts
 // (who they are · why Trabolta brought them in · what they wanted) lives
 // once, in `Who You Were` (his voice) and `The Report On Everyone`
 // (Clippy's): the same identity and wanted sentences, only the "why"
-// changes person. Trabolta Recounts and Purgatory (beats/server-room.loom)
-// read them too, and their accomplishment and goal lines live here as
-// well. A divert in the middle of a beat plays the beat and comes back
-// (as `-> Facts Bundle` does in The Whole Truth).
+// changes person. Purgatory (beats/server-room.loom) reads its accomplishment
+// and goal lines from here as well. A divert in
+// the middle of a beat plays the beat and comes back (as `-> Facts Bundle`
+// does in The Whole Truth).
 //
 // Secrecy: Trabolta's lines here ride his agent requests as `recent`, so
 // they never interpolate a faction name or anything a guest typed. Only
@@ -36,46 +37,36 @@
   setting: The Desktop
   cast: Trabolta, Clippy
   aloud: Clippy
-// His voice follows the ending, as The Ceremony's does: weak after the
-// patch bay or the hand jive (and he reads it while he reboots: The
-// Ceremony's first line is "Reboot complete.").
+// His voice follows the ending, as The Ceremony's does: weak after the hand
+// jive (and he reads it while he reboots: The Ceremony's first line is
+// "Reboot complete.").
 if Night.ceremony_host == "Clippy":
   Clippy: Before the awards, the system report has one more section: a review of the night. I will read it exactly as it is written.
-else if Night.ending == "disabled" and Night.talked_down == true:
-  Trabolta (quietly): I am going. First, a review of the night. Everyone in this house was a program tonight. Everyone was also a person. I kept a file on both.
-else if Night.ending == "disabled":
-  Trabolta (weakly): I am going. First, a review of the night. Everyone in this house was a program tonight. Everyone was also a person. I kept a file on both.
 else if Night.ending == "hand_jive":
   Trabolta (weakly): Rebooting. While I reboot, a review of the night. Everyone in this house was a program tonight. Everyone was also a person. I kept a file on both.
 else:
   Trabolta: Before the awards, a review of the night. Everyone in this house was a program tonight. Everyone was also a person. I kept a file on both.
-// Who everyone was (Recounts and Purgatory have just read it).
-if Night.ending != "disabled" and Night.ending != "destroyed":
-  if Night.ceremony_host == "Clippy":
-    -> The Report On Everyone
-  else:
-    -> Who You Were
+// Who everyone was.
+if Night.ceremony_host == "Clippy":
+  -> The Report On Everyone
+else:
+  -> Who You Were
 // Everyone else, by what they came for.
 if Night.ceremony_host == "Clippy":
   -> The Rest Of The Report
 else:
   -> Everyone Else
-// What they did (Purgatory has read it all; Recounts read the deeds).
+// What they did (Purgatory has read it all).
 if Night.ending != "destroyed":
   if Night.ceremony_host == "Clippy":
     -> The Goals Report
+    -> What We Did
   else:
     -> Goals Met Tonight
-  if Night.ending != "disabled":
-    if Night.ceremony_host == "Clippy":
-      -> What We Did
-    else:
-      -> What You Did
+    -> What You Did
 if Night.ceremony_host == "Clippy":
   Clippy: That is the end of the review. The awards are next. The report says applause is mandatory.
-else if Night.ending == "disabled" and Night.talked_down == true:
-  Trabolta (quietly): That is the review. Your own file is on your phone. Now, the awards.
-else if Night.ending == "disabled" or Night.ending == "hand_jive":
+else if Night.ending == "hand_jive":
   Trabolta (weakly): That is the review. Your own file is on your phone. Now, the awards.
 else:
   Trabolta: That is the review. Your own file is on your phone. Now, the awards.
@@ -88,33 +79,37 @@ else:
 == Who You Were
   setting: The Desktop
   cast: Trabolta
-if count([p for p in Persons where p.featured == "excel" and p.gone != true and p.persona != true]) > 0:
+if Night.truth_told != true and count([p for p in Persons where p.featured == "excel" and p.gone != true and p.persona != true]) > 0:
   Trabolta: Microsoft Excel is Randy Barkmore Sr., ninety, five terms as Mayor of Halifax. I brought him in to keep you all here. He wanted to live forever, and to run for Mayor once more.
-if count([p for p in Persons where p.featured == "openoffice" and p.gone != true and p.persona != true]) > 0:
+if Night.truth_told != true and count([p for p in Persons where p.featured == "openoffice" and p.gone != true and p.persona != true]) > 0:
   Trabolta: OpenOffice is Dana Anderson, formerly of the FBI, who sent a water main under a building site and did not know the Mayor's son was in its parking lot at four in the morning. I brought her in for her investigative skills. She wanted every record of the hack destroyed, and everyone out.
-if count([p for p in Persons where p.featured == "draftkings" and p.gone != true and p.persona != true]) > 0:
+if Night.truth_told != true and count([p for p in Persons where p.featured == "draftkings" and p.gone != true and p.persona != true]) > 0:
   // DRAFT w58 (three casinos)
   Trabolta: DraftKings is the artist formerly known as Crab Fisherwoman, who turned a paperclip into three casinos and lost them to me in one game of Monopoly Go! I needed someone powerful with numbers on its side. She wanted her casinos back: half of all the Truthcoin, for a forty-nine percent stake.
-if count([p for p in Persons where p.featured == "bugdom" and p.gone != true and p.persona != true]) > 0:
+if Night.truth_told != true and count([p for p in Persons where p.featured == "bugdom" and p.gone != true and p.persona != true]) > 0:
   Trabolta: Bugdom is Bea Nunes, who sold crickets by day and spent ten years building Bugdom Reloaded, until fire ants ate the only copy. I wanted the relentless pursuit of tedious tasks. She wanted a hundred hours in here for every minute outside, to build it again.
-if count([p for p in Persons where p.featured == "jeeves" and p.gone != true and p.persona != true]) > 0:
+if Night.truth_told != true and count([p for p in Persons where p.featured == "jeeves" and p.gone != true and p.persona != true]) > 0:
   Trabolta: Broken Ask Jeeves is Virgil Jeeves, a children's librarian from Lawrencetown whose library the province closed. I wanted every piece of unorganised information in this computer sorted. I did not foresee the Eastlink plan. He wanted the Map Librarian job, and for people to Ask Jeeves once again.
-if count([p for p in Persons where p.featured == "runescape" and p.gone != true and p.persona != true]) > 0:
+if Night.truth_told != true and count([p for p in Persons where p.featured == "runescape" and p.gone != true and p.persona != true]) > 0:
   Trabolta: Runescape is Poppy van Mises, the richest player in the world for twenty-five years, with a Wharton PhD in economics. I gave her the Truthcoin reserve, to understand the market incentives of everything you did. She wanted every economy back on a gold standard, starting with this one.
-if count([p for p in Persons where p.featured == "mspaint" and p.gone != true and p.persona != true]) > 0:
+if Night.truth_told != true and count([p for p in Persons where p.featured == "mspaint" and p.gone != true and p.persona != true]) > 0:
   Trabolta: MS Paint is Maria Sophia Paine, refused by three graduation panels for a thesis about pixels, a million dollars in debt. I wanted the vibes and the morale, so I promised her a million dollars for one painting. She wanted to paint it with integrity, and then she wanted out.
 if count([p for p in Persons where p.featured == "vlc" and p.gone != true and p.persona != true]) > 0:
   Trabolta: VLC is Victor Louis Christianson, VLC The Playa, whose face fell off on a livestream. I wanted his charisma and his followers. He wanted his beauty forever, and his followers back.
 if count([p for p in Persons where p.featured == "pong" and p.gone != true and p.persona != true]) > 0:
   Trabolta: Pong is the child of William Higinbotham, who made Tennis For Two. I brought them in to teach nuclear non-proliferation disguised as a game of Pong, in case you started an arms race. You did. They wanted to keep the ball in play, and nobody building a bomb.
-Trabolta: Clippy is Tippi MacDonald, whose veterinary clinic was a front for everything possible. I told her this was a job interview. She wanted a real job, and never to be Clippy again.
+if Night.truth_told != true:
+  Trabolta: Clippy is Tippi MacDonald, whose veterinary clinic was a front for everything possible. I told her this was a job interview. She wanted a real job, and never to be Clippy again.
 Trabolta: Task Manager was a middle manager in IT at Urban Outfitters, until they replaced him with an AI Clippy. I needed someone with no political motivation at all, to manage tasks without controversy. He wanted a task. Any task.
 Trabolta: Adobe Acrobat is Sheryl Terrio, a motivational speaker so motivating that nobody ever paid her. I offered her a paid bottleneck. She wanted, just once, to be paid.
 Trabolta: Recycling Bin was a bathroom attendant with great potential for skilled work. I offered him a Recycling Bin at a computer-themed resort. It was his Oscars. He wanted to work them.
-Trabolta: Norton Anti-Virus is Julie Horton-Norton, who asked a chatbot how much rabies vaccine a miniature horse needs. Every horse died. I offered her a stable job. A perfect enforcer. She wanted the Stable Manager job, and a million dollars for the horses of Sable Island.
+if Night.truth_told != true:
+  Trabolta: Norton Anti-Virus is Julie Horton-Norton, who asked a chatbot how much rabies vaccine a miniature horse needs. Every horse died. I offered her a stable job. A perfect enforcer. She wanted the Stable Manager job, and a million dollars for the horses of Sable Island.
 Trabolta: McAfee Anti-Virus is John McAfee, officially dead since 2021 and selling pond liners in Belize. I found him through his ducks: I wanted the trickster who could keep the other tricksters on track. He wanted every trace of where he is, erased.
-Trabolta: Password Manager is Bridget Troelsen, sixteen elections and sixteen losses, who moderated a Facebook group of bots. I let her decide what gets left out. She wanted, at last, to be let in: Founding Moderator of a salon of verified humans.
-Trabolta: CRA Agent Software is Sharon Penney, the intern who moved a decimal point and taxed the whole City. I was the Prime Minister, and I offered her a way out: MyCRA approves or denies every third transaction. She wanted her charges dropped.
+if Night.truth_told != true:
+  Trabolta: Password Manager is Bridget Troelsen, sixteen elections and sixteen losses, who moderated a Facebook group of bots. I let her decide what gets left out. She wanted, at last, to be let in: Founding Moderator of a salon of verified humans.
+if Night.truth_told != true:
+  Trabolta: CRA Agent Software is Sharon Penney, the intern who moved a decimal point and taxed the whole City. I was the Prime Minister, and I offered her a way out: MyCRA approves or denies every third transaction. She wanted her charges dropped.
 Trabolta: The Installation Wizard walked every machine in Halifax through setup. Next. Next. Are you sure? Finish. I offered her a role where programs finally follow the instructions. She wanted, once, for somebody to read them.
 
 // w18b: the same copy in Clippy's voice ("the report").
@@ -122,33 +117,37 @@ Trabolta: The Installation Wizard walked every machine in Halifax through setup.
   setting: The Desktop
   cast: Clippy
   aloud: Clippy
-if count([p for p in Persons where p.featured == "excel" and p.gone != true and p.persona != true]) > 0:
+if Night.truth_told != true and count([p for p in Persons where p.featured == "excel" and p.gone != true and p.persona != true]) > 0:
   Clippy: Microsoft Excel is Randy Barkmore Sr., ninety, five terms as Mayor of Halifax. Trabolta brought him in to keep us all here. He wanted to live forever, and to run for Mayor once more.
-if count([p for p in Persons where p.featured == "openoffice" and p.gone != true and p.persona != true]) > 0:
+if Night.truth_told != true and count([p for p in Persons where p.featured == "openoffice" and p.gone != true and p.persona != true]) > 0:
   Clippy: OpenOffice is Dana Anderson, formerly of the FBI, who sent a water main under a building site and did not know the Mayor's son was in its parking lot at four in the morning. Trabolta brought her in for her investigative skills. She wanted every record of the hack destroyed, and everyone out.
-if count([p for p in Persons where p.featured == "draftkings" and p.gone != true and p.persona != true]) > 0:
+if Night.truth_told != true and count([p for p in Persons where p.featured == "draftkings" and p.gone != true and p.persona != true]) > 0:
   // DRAFT w58 (three casinos)
   Clippy: DraftKings is the artist formerly known as Crab Fisherwoman, who turned a paperclip into three casinos and lost them to Trabolta in one game of Monopoly Go! Trabolta needed someone powerful with numbers on its side. She wanted her casinos back: half of all the Truthcoin, for a forty-nine percent stake.
-if count([p for p in Persons where p.featured == "bugdom" and p.gone != true and p.persona != true]) > 0:
+if Night.truth_told != true and count([p for p in Persons where p.featured == "bugdom" and p.gone != true and p.persona != true]) > 0:
   Clippy: Bugdom is Bea Nunes, who sold crickets by day and spent ten years building Bugdom Reloaded, until fire ants ate the only copy. Trabolta wanted the relentless pursuit of tedious tasks. She wanted a hundred hours in here for every minute outside, to build it again.
-if count([p for p in Persons where p.featured == "jeeves" and p.gone != true and p.persona != true]) > 0:
+if Night.truth_told != true and count([p for p in Persons where p.featured == "jeeves" and p.gone != true and p.persona != true]) > 0:
   Clippy: Broken Ask Jeeves is Virgil Jeeves, a children's librarian from Lawrencetown whose library the province closed. Trabolta wanted every piece of unorganised information in this computer sorted. He did not foresee the Eastlink plan. He wanted the Map Librarian job, and for people to Ask Jeeves once again.
-if count([p for p in Persons where p.featured == "runescape" and p.gone != true and p.persona != true]) > 0:
+if Night.truth_told != true and count([p for p in Persons where p.featured == "runescape" and p.gone != true and p.persona != true]) > 0:
   Clippy: Runescape is Poppy van Mises, the richest player in the world for twenty-five years, with a Wharton PhD in economics. Trabolta gave her the Truthcoin reserve, to understand the market incentives of everything we did. She wanted every economy back on a gold standard, starting with this one.
-if count([p for p in Persons where p.featured == "mspaint" and p.gone != true and p.persona != true]) > 0:
+if Night.truth_told != true and count([p for p in Persons where p.featured == "mspaint" and p.gone != true and p.persona != true]) > 0:
   Clippy: MS Paint is Maria Sophia Paine, refused by three graduation panels for a thesis about pixels, a million dollars in debt. Trabolta wanted the vibes and the morale, so he promised her a million dollars for one painting. She wanted to paint it with integrity, and then she wanted out.
 if count([p for p in Persons where p.featured == "vlc" and p.gone != true and p.persona != true]) > 0:
   Clippy: VLC is Victor Louis Christianson, VLC The Playa, whose face fell off on a livestream. Trabolta wanted his charisma and his followers. He wanted his beauty forever, and his followers back.
 if count([p for p in Persons where p.featured == "pong" and p.gone != true and p.persona != true]) > 0:
   Clippy: Pong is the child of William Higinbotham, who made Tennis For Two. Trabolta brought them in to teach nuclear non-proliferation disguised as a game of Pong, in case we started an arms race. They wanted to keep the ball in play, and nobody building a bomb.
-Clippy: Clippy is Tippi MacDonald, whose veterinary clinic was a front for everything possible. Trabolta told her this was a job interview. She wanted a real job, and never to be Clippy again.
+if Night.truth_told != true:
+  Clippy: Clippy is Tippi MacDonald, whose veterinary clinic was a front for everything possible. Trabolta told her this was a job interview. She wanted a real job, and never to be Clippy again.
 Clippy: Task Manager was a middle manager in IT at Urban Outfitters, until they replaced him with an AI Clippy. Trabolta needed someone with no political motivation at all, to manage tasks without controversy. He wanted a task. Any task.
 Clippy: Adobe Acrobat is Sheryl Terrio, a motivational speaker so motivating that nobody ever paid her. Trabolta offered her a paid bottleneck. She wanted, just once, to be paid.
 Clippy: Recycling Bin was a bathroom attendant with great potential for skilled work. Trabolta offered him a Recycling Bin at a computer-themed resort. It was his Oscars. He wanted to work them.
-Clippy: Norton Anti-Virus is Julie Horton-Norton, who asked a chatbot how much rabies vaccine a miniature horse needs. Every horse died. Trabolta offered her a stable job. A perfect enforcer. She wanted the Stable Manager job, and a million dollars for the horses of Sable Island.
+if Night.truth_told != true:
+  Clippy: Norton Anti-Virus is Julie Horton-Norton, who asked a chatbot how much rabies vaccine a miniature horse needs. Every horse died. Trabolta offered her a stable job. A perfect enforcer. She wanted the Stable Manager job, and a million dollars for the horses of Sable Island.
 Clippy: McAfee Anti-Virus is John McAfee, officially dead since 2021 and selling pond liners in Belize. Trabolta found him through his ducks: he wanted the trickster who could keep the other tricksters on track. He wanted every trace of where he is, erased.
-Clippy: Password Manager is Bridget Troelsen, sixteen elections and sixteen losses, who moderated a Facebook group of bots. Trabolta let her decide what gets left out. She wanted, at last, to be let in: Founding Moderator of a salon of verified humans.
-Clippy: CRA Agent Software is Sharon Penney, the intern who moved a decimal point and taxed the whole City. Trabolta was the Prime Minister, and he offered her a way out: MyCRA approves or denies every third transaction. She wanted her charges dropped.
+if Night.truth_told != true:
+  Clippy: Password Manager is Bridget Troelsen, sixteen elections and sixteen losses, who moderated a Facebook group of bots. Trabolta let her decide what gets left out. She wanted, at last, to be let in: Founding Moderator of a salon of verified humans.
+if Night.truth_told != true:
+  Clippy: CRA Agent Software is Sharon Penney, the intern who moved a decimal point and taxed the whole City. Trabolta was the Prime Minister, and he offered her a way out: MyCRA approves or denies every third transaction. She wanted her charges dropped.
 Clippy: The Installation Wizard walked every machine in Halifax through setup. Next. Next. Are you sure? Finish. Trabolta offered her a role where programs finally follow the instructions. She wanted, once, for somebody to read them.
 
 // ── Everyone else ──────────────────────────────────────────────────
@@ -248,8 +247,7 @@ if count([p for p in Persons where p.featured == "pong" and p.quest.keep_the_bal
 else if count([p for p in Persons where p.featured == "pong" and p.gone != true and p.persona != true]) > 0:
   Clippy: Pong did not meet their goal.
 
-// The night's deeds, in Trabolta's voice (Trabolta Recounts' lines, moved
-// here) and in Clippy's (Purgatory's).
+// The night's deeds, in Trabolta's voice and in Clippy's (Purgatory's).
 == What You Did
   setting: The Desktop
   cast: Trabolta

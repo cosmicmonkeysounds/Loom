@@ -261,7 +261,7 @@ describe("wave 32 — the talk scenes along a scripted night (C1, C2)", () => {
     expect(v(sim, "Night.talk")).toBe("none");
 
     // The rest of the night: no scene opens again, and none is left at the end.
-    accept(sim, "trabolta_overshares", "y2k_clock", "talked_down");
+    accept(sim, "trabolta_overshares", "y2k_clock", "patch_combo_a");
     expect(v(sim, "Night.ended")).toBe(true);
     expect(v(sim, "Night.talk")).toBe("none");
     expect(press(sim, "ad_burst").refused).toBe(true);

@@ -24,7 +24,7 @@ is not finished.
 
 | Name | The four cables | What it does | Call |
 |---|---|---|---|
-| **Combo A** "Shut-Down" | **B2→A7 · B4→A5 · B7→A6 · B8→A4** | disables Trabolta (blackout, dance, he recounts) | **"A"** |
+| **Combo A** "Shut-Down" | **B2→A7 · B4→A5 · B7→A6 · B8→A4** | kills Trabolta (blackout, dance, he does not come back) | **"A"** |
 | **Combo B** "Self-destruct" | **B2→A5 · B4→A7 · B7→A4 · B8→A6** | destroys the computer (blackout, dance, purgatory) | **"B"** |
 | anything else, once all four cables are in | | wrong combination | **"WRONG"** |
 

@@ -34,7 +34,7 @@ plays), the show's data files, the crew's printed packs, and the docs.
 | Path | What it is |
 |---|---|
 | `main.loom` | The header (`watch:`, `countdown:`, `currency:`, `wallet:`, `badge:` lines), every admin cue (the cue sheet, in running order) and every story rule. The secrets live on the hidden `CHARACTER Kernel` here |
-| `beats/` | The scenes: `login` (arrival), `desktop` (Bingo, the introduction), `hunt`, `malware` (the ad, the hour, the Truther Download), `pong`, `overshare`, `server-room` (The Heart), `finale` (the endings), `review` (The Night In Review), `ceremony`, `internet` (the tent), `staff` (the staff who play, wave 21) |
+| `beats/` | The scenes: `login` (arrival), `desktop` (Bingo, the introduction), `hunt`, `malware` (the ad, the hour, the Truther Download), `pong`, `overshare`, `server-room` (The Heart), `truth` (the full truth: the monologue, read by Trabolta or Task Manager; wave 58), `finale` (the endings), `review` (The Night In Review), `ceremony`, `internet` (the tent), `staff` (the staff who play, wave 21) |
 | `cast/` | The characters: `trabolta`, `featured` (the nine invited programs, who are guests), `pool` (the 22 programs any guest may pick), `hosts`, `antivirus`, `staff`, `props`, and `kit` (the shared traits) |
 | `codex/` | The Codex entries (knowledge as currency). `9-facts.loom` is generated (below) |
 | `objectives.loom` | The `OBJECTIVE`s: what each guest, performer and host sees as NOW |

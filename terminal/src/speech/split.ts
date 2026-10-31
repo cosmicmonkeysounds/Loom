@@ -39,11 +39,15 @@ export function splitSentences(text: string, max = MAX_CHUNK): string[] {
   if (clean === "") return [];
   // Sentence ends: . ! ? followed by whitespace, or a hard break. No
   // lookbehind: Safari before 16.4 throws on one (OB-1).
-  const rough = clean
-    .replace(/([.!?])\s+/g, "$1\n")
-    .split(/\n+/)
-    .map((s) => s.trim())
-    .filter((s) => s !== "");
+  const rough: string[] = [];
+  for (const s of clean.replace(/([.!?])\s+/g, "$1\n").split(/\n+/)) {
+    const t = s.trim();
+    if (t === "") continue;
+    // "Mayor Randy Barkmore Jr. could proceed": a title's stop ends no sentence.
+    const prev = rough[rough.length - 1];
+    if (prev !== undefined && /\b(?:Jr|Sr)\.$/u.test(prev)) rough[rough.length - 1] = `${prev} ${t}`;
+    else rough.push(t);
+  }
   const out: string[] = [];
   for (const s of rough) {
     if (s.length <= max) {

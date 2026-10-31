@@ -187,7 +187,7 @@ Heart** (the room's screen goes red, the bulb wakes, and he asks for the door
 to be shut); **nothing goes on until it is shut**, and he nags every 20 s
 while it stands open. So: **close the door behind the program** (and behind
 yourself), never prop it, and don't stand in the beam. Only with the door
-shut does a pass scanned at his screen start the program's talk (four layers
+shut does a pass scanned at his screen start the program's talk (three layers
 they click through with the mouse, or type to him at the keyboard). If the
 story has it wrong, press on your booth (any program's card) **🚪 The
 server-room door opened** or **🚪 The server-room door is shut**; from then on

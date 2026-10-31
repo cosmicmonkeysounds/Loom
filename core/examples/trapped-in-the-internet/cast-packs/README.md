@@ -125,9 +125,9 @@ The old wave-by-wave list is in [`history.md`](./history.md).
 - **The Heart.** The door sensor is a light across the frame, read by the
   M4. The first opening once Trabolta is awake plays The Heart, and he wants
   the door shut before anything goes on (press **🔧** before the crew go
-  through). A pass at his screen starts a four-layer talk (mouse) or a heart
-  to heart (keyboard). A talk-down works at any hour, and the night ends
-  only on the director's 🕊. A program he throws out is marked.
+  through). A pass at his screen starts a three-layer talk (mouse) or a heart
+  to heart (keyboard). The talk ends nothing: he hears them out and the
+  night goes on. A program he throws out is marked.
 - **The patch bay judges itself** (wave 22): the same M4 reads its 16 jacks (8 live),
   and in the Y2K hour the story judges every complete patch about 5 s after
   the fourth cable. The Antivirus watch inside presses 🔌 / 💥 / ❌ only when
@@ -214,6 +214,8 @@ game just like the "guests" are."*
   (gold = the hunt answers, green, blue, red), each hidden where its row says.
 - Adobe's truth.txt: print, then put it in a zip bag (it goes in the Bag of
   Truth, which goes in the bobbing tub).
+- Task Manager's monologue: the appendix of his pack, printed, in his pocket
+  for the night (the fallback if his phone goes down mid-read).
 - If the story changes after 10-24 12:00 (content lock for batch 2), re-check
   the answer key against `facts.json` (`generated/print-stacks.md` is the
   printable table) and truth.txt against `beats/finale.loom`.

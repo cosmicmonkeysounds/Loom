@@ -819,7 +819,7 @@ describe("on the show: recent and the history never carry a secret (C1.6)", () =
     await askAll(); // the bob: the verdict is not read yet
     const beforeRecount = requests().length;
     // His recount, said to the whole house, names the planter (a Kernel value).
-    expect((await call(rt, "POST", "/api/mod/beat", { name: "Trabolta Recounts" }, { moderator: true })).status).toBe(200);
+    expect((await call(rt, "POST", "/api/mod/beat", { name: "What You Did" }, { moderator: true })).status).toBe(200);
     const virusLine = rt.chatHistoryFor(calc.id).find((m) => m.from === "Trabolta" && m.audience === "all" && hasPhrase(m.text, fold(amp.name)) && /planted a virus/u.test(m.text));
     expect(virusLine, "the recount's virus line").toBeDefined();
     // The runtime's own rule (a secret: true character's string values,

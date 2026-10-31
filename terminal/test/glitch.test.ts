@@ -212,7 +212,7 @@ describe("the clean beats", () => {
     for (const b of CLEAN_BEATS) expect(beats).toContain(`== ${b}\n`);
   });
   it("match the way the story folds names, and nothing else", () => {
-    expect(isCleanBeat("heart convinced")).toBe(true);
+    expect(isCleanBeat("heart heard")).toBe(true);
     expect(isCleanBeat("Advice_Helped")).toBe(true);
     expect(isCleanBeat("Advice Thwarted")).toBe(false);
     expect(isCleanBeat(null)).toBe(false);

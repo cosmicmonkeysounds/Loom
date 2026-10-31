@@ -32,7 +32,7 @@ needed. Build `play` and `terminal` first if you want to watch in a browser.
 | `--event <id>` | Skip `/api/resolve-code` |
 | `--guests 12` | Guest bots, featured included (at least 4) |
 | `--featured "Microsoft Excel,MS Paint,Pong"` | Featured programs, registered on their invitation's claim |
-| `--ending heart\|verdict\|destroyed` | Which ending (default `heart`: the talk to his stand-down, then 🕊) |
+| `--ending verdict\|disabled\|destroyed\|song_pickup\|help\|hand_jive\|rave` | Which ending (default `verdict`: the song, or with `--lie` the advice poll; the last four imply `--lie` and take that road). Every road then presses 📜 and takes G1's ask |
 | `--lie` | One confident wrong filing: the verdict goes to Grok Prom, then the advice poll |
 | `--facts <path>\|none` | The answer keys for accurate filings (default the show's `facts.json`; read, never printed) |
 | `--pace <ms>` | Wait after each beat (and a third of it after each action), to watch |
@@ -54,7 +54,7 @@ needed. Build `play` and `terminal` first if you want to watch in a browser.
 | 5 | 🚚 Reinstall | Norton's `send to the internet`, the tent's web game: begin, walk to Gerald, the golden duck | released |
 | 6 | 🤖 Trabolta | The cue; a DM to him (his hold line without a worker) | step 4, `Trabolta.awake`, `Night.talk` intro |
 | 7 | 🤖 Talk (wave 32) | Task Manager's booth `POST /api/mod/talk` as Clippy (the intro's first canned Clippy line). With `--worker`: the probe worker answers the public request. Without: Task Manager fires the intro's first canned Trabolta line. Then ⚡ (`ad_burst`, through the booth's signal) | Clippy's line and Trabolta's answer in `loc:The Desktop` with audience `"all"` (the answer names Clippy's line); with `--worker`, the open request was the worker's; the ⚡ is a flicker: `glitch_kind`, `glitch_text`, `burst_n` unchanged, `burst_last` moved |
-| 8 | 🔎 Hunt 1 | Every guest files H1–H3 (most accurate at 80, a quarter guess at 40; `--lie` one at 100) | step 5, filings judged, `Night.talk` none |
+| 8 | 🔎 Hunt 1 | Every guest files H1–H3 (most accurate at 80, a quarter guess at 40) | step 5, filings judged, `Night.talk` none |
 | 9 | ⚖️ Truth 1 | ⏰ → ⚖️ → ⏱ → 📋 ×3 | step 6, `results_q` 3, `Night.talk` bottle |
 | 10 | 🍾 Bottle | Spin, Truth, Task Manager's `truth_answered` | a pick, the bottle closed |
 | 11 | 📺 The ad attack (wave 32) | 📺; a ⚡ inside the 8 s takeover; another ⚡ once the story's clock says the takeover is over (`Time.elapsed` ≥ `glitch_at` + 8, polled, capped at 12 s) | `Night.talk` ad, `glitch_kind` full after 📺 and still full after the early ⚡; then `glitch_kind` burst, `burst_n` + 1, a new digit-free `glitch_text` |
@@ -67,14 +67,15 @@ needed. Build `play` and `terminal` first if you want to watch in a browser.
 | 18 | 🗳 Sides | Every guest joins a side (founders can't); forced only if no majority | step 15 |
 | 19 | 🫀 Thrown out | Door open → shut; a program flatters, then threatens his cables until he ejects it; 🔄 | marked, then forgiven |
 | 20 | 🫀 The chosen | A featured program: ⟦CHOSEN⟧ → *What weak place* → *I need to go* | Layer 2, not thrown out |
-| 21 | 🫀 The full talk | ⟦PROMISE⟧; every Layer Two question incl. ⟦THE WAY OUT⟧ and ⟦SPEAK FREELY⟧ (a line said); *listen*; Evidence ⟦FORCE⟧ ⟦SMALL TYPE⟧; ⟦PROOF⟧; Reasons ⟦EARN IT⟧, the bluff, ⟦WEAKNESS⟧; *let me finish*; Layer Four's two warm picks and the *tell her* trap; back; *never going to answer* | `heart_stage` done, `stand_down_by` (heart ending); every menu ≤ 9 options |
-| 22 | The ending | 🕊 → the dance → 🏍; or 🌑 → 🍎 → the bag → 📄 → ⚖ (song, or Grok Prom → 💌 → the poll → 🗳); or 💥 | `Night.ending`, `ended` |
-| 23 | 🏆 Ceremony | G1, the eight awards on their winners (from trust, score, quests…), 🖌 on MS Paint, the staff awards, 🎃 | `ceremony_done`, `resurrected`, `Night.talk` none |
+| 21 | 🫀 The full talk | ⟦PROMISE⟧; every Layer Two question incl. ⟦THE WAY OUT⟧ and ⟦SPEAK FREELY⟧ (a line said); *listen*; Evidence ⟦FORCE⟧ ⟦SMALL TYPE⟧; ⟦PROOF⟧; Reasons ⟦EARN IT⟧, the bluff, ⟦WEAKNESS⟧; *That's all I came to say* | `heart_heard`, Layer 3, the heart not done, the night not ended |
+| 22 | The ending | 🌑 → 🍎 → the bag → 📄 → ⚖ (song, or Grok Prom → 💌 → the poll → 🗳, or the road `--ending` names); or 🔌 → the dance; or 💥 → 🪦 | `Night.ending`, `ended` |
+| 22b | 📜 The full truth | `tell_the_truth`, read by Trabolta or Task Manager by the ending | `truth_told`, `truth_reader`, `finale_truth` on his |
+| 23 | 🏆 Ceremony | G1's ask, G1, the eight awards on their winners (from trust, score, quests…), 🖌 on MS Paint, the staff awards, 🎃 | `ceremony_done`, `resurrected`, `Night.talk` none |
 
 The wave 32 beats say only the show's own canned lines (`lib/talk.ts`
 reads `core/src/talk-scenes.ts`): the simulator writes no show text. The
 ad attack's beat waits out the hijack's 8 s takeover, so a run takes
-about 9 s longer (≈ 25 s for the heart ending on a scratch server).
+about 9 s longer.
 
 The heart bot picks by **text**, as the terminal does: hidden options are
 filtered out, so indexes shift. It leaves a sub-menu by its ⟦BACK⟧ when the
@@ -82,8 +83,8 @@ next step is on Layer Three. Its proofs (*What Sandy Says*, *The Question Of
 Force*, *Omnipotence*) are granted before the visit opens: a menu docked
 before a grant does not list the new option until it docks again.
 
-The chains it presses after the Y2K clock (`Y2K_TO_HEART_END`,
-`Y2K_TO_VERDICT`, `Y2K_TO_DESTROYED`, `CEREMONY`, …) live in
+The chains it presses after the Y2K clock (`Y2K_TO_DISABLED`,
+`Y2K_TO_VERDICT`, `Y2K_TO_DESTROYED`, `THE_FULL_TRUTH`, `CEREMONY`, …) live in
 `scripts/accept/chains.ts` beside `TO_Y2K`, pinned by
 `core/test/accept-chains.test.ts`.
 

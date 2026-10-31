@@ -27,7 +27,9 @@ const load = (name: string): HouseMap => {
 };
 
 const VARIANTS = { tent: load("house.json"), shed: load("house.shed.json") };
-const LOCATIONS = [...Sim.fromSources(scenarioSource("trapped-in-the-internet")).model.locations.keys()];
+/** The story's places (The Script is no place: nobody stands there, it only
+ *  carries Task Manager's reading, wave 58). */
+const LOCATIONS = [...Sim.fromSources(scenarioSource("trapped-in-the-internet")).model.locations.keys()].filter((l) => l !== "The Script");
 
 /** How near the duck a player must stand to find it, on the plan — the web
  *  game's `REACH` (`reinstall/web/src/game/hud.ts`) and the headset's

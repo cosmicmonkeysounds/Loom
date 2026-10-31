@@ -516,7 +516,7 @@ describe("Trabolta never knows what he is asking for", () => {
     const phases = [...table.matchAll(/^ {2}([a-z_0-9]+):(?: >-)?$/gmu)].map((m) => m[1]!).filter((p) => !p.startsWith("_"));
     expect(phases).toContain("arrivals");
     expect(phases).not.toContain("_stages");
-    expect(phases.filter((p) => AFTER_THE_VERDICT.test(p))).toEqual(["grok_prom", "advice", "finale_killed", "finale_shutdown", "finale_song", "finale_rave", "finale_help", "finale_banish", "finale_hand_jive"]);
+    expect(phases.filter((p) => AFTER_THE_VERDICT.test(p))).toEqual(["grok_prom", "advice", "finale_killed", "finale_shutdown", "finale_song", "finale_rave", "finale_help", "finale_banish", "finale_hand_jive", "finale_truth"]);
     expect(phases.indexOf("bobbing")).toBe(phases.indexOf("grok_prom") - 1);
   });
 

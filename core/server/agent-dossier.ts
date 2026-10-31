@@ -355,7 +355,7 @@ export function buildDossier(input: DossierInput): AgentDossier | null {
     heart: {
       layer: num("heart_layer") ?? 0,
       suspicion: num("heart_suspicion") ?? 0,
-      convinced: flag("heart_convinced"),
+      heard: flag("heart_heard"),
       barred: flag("heart_out"),
       visits,
     },

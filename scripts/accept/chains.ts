@@ -47,14 +47,16 @@ export const stepWho = (s: ChainStep): string | undefined => (typeof s === "stri
 // Wave 28: the chains after the Y2K clock (each ending, then the ceremony),
 // pressed by the full-evening simulator (scripts/sim/evening.ts).
 
-/** After 🕚, the heart's ending (wave 27): 🕊 signs off the stand-down (with
- *  none on record it still works from the Y2K hour, the director's call),
- *  the blackout and the dance (auto at 10 s), then 🏍 the recount. Ends the
- *  night `disabled` (Night.step 19). */
-export const Y2K_TO_HEART_END: readonly ChainStep[] = ["talked_down", "trabolta_recounts"];
+/** After 🕚, Combo A without the cables (🔌, the hardware fallback): `disabled`.
+ *  The blackout and the dance (auto at 10 s) follow. */
+export const Y2K_TO_DISABLED: readonly ChainStep[] = ["patch_combo_a"];
 
 /** After 🕚, Combo B without the cables (💥, the hardware fallback): `destroyed`. */
 export const Y2K_TO_DESTROYED: readonly ChainStep[] = ["patch_combo_b", "clippy_reads_summary"];
+
+/** After every ending's last beat (wave 58): 📜, the monologue. G1 then waits
+ *  for it: its first press only asks while the reader is at it. */
+export const THE_FULL_TRUTH: readonly ChainStep[] = ["tell_the_truth"];
 
 /** After 🕚, midnight's road: 🌑 → 🍎 → the bag (on the bobber) → 📄 → ⚖.
  *  The verdict then waits ~34 s (finale.loom): every answered fact accurate
@@ -74,9 +76,10 @@ export const GROK_TO_RAVE: readonly ChainStep[] = ["no_pickup_line"];
 export const GROK_TO_ADVICE: readonly ChainStep[] = ["ask_for_advice"];
 export const ADVICE_TALLY: readonly ChainStep[] = ["advice_tally"];
 
-/** The awards ceremony, after any ending: G1, the programs' awards (each on
- *  its winner: the caller names who), the staff awards (no subject; The
- *  Mole last), then G11. 🖌 The Painting is the caller's to add, on MS Paint,
+/** The awards ceremony, after any ending and 📜 (with the reading over; a
+ *  caller who won't wait presses G1 once first, the ask): G1, the programs'
+ *  awards (each on its winner: the caller names who), the staff awards (no
+ *  subject; The Mole last), then G11. 🖌 The Painting is the caller's to add, on MS Paint,
  *  only when MS Paint is at the party (`Night.painting`). */
 export const CEREMONY: readonly ChainStep[] = [
   "start_the_ceremony",
