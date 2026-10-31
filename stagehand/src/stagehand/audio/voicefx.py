@@ -67,6 +67,8 @@ FLAVOUR_FROM = {
 }
 #: The flavours that take over the voice: one at a time.
 SOURCES = frozenset(("skip", "stall", "overclock", "driver", "kernel"))
+#: The flavours that only treat it: one at a time too.
+COLOURS = frozenset(("packet", "dump", "safe"))
 #: The input's role in audio.json.
 ROLE = "trabolta"
 
@@ -88,6 +90,9 @@ LEVEL_SMOOTH_S = 1.0
 #: (net of the blocks under it) trip it off.
 BUDGET = 0.5
 TRIP_BLOCKS = 150
+#: The feedback echo: never a runaway, and no louder than he was.
+FEEDBACK_MAX = 0.75
+ECHO_DRY, ECHO_WET = 0.75, 0.5
 #: The continuous fray starts here.
 FRAY_AT = 0.25
 #: The wow on the delay line starts here.
@@ -340,7 +345,7 @@ class Echo:
 
     def open(self, dur_s: float, delay_s: float, feedback: float) -> None:
         self.delay = min(self.SIZE - 1, int(delay_s * self.rate))
-        self.feedback = min(0.8, feedback)
+        self.feedback = min(FEEDBACK_MAX, feedback)
         self.send_left = int(dur_s * self.rate)
 
     @property
@@ -358,7 +363,7 @@ class Echo:
         self.flight = self.delay + n if self.send_left > 0 else max(0, self.flight - n)
         self.send_left = max(0, self.send_left - n)
         self.level = float(np.abs(tap).max())
-        return x + tap * 0.8
+        return x * ECHO_DRY + tap * ECHO_WET
 
 
 class VoiceFx:
@@ -457,6 +462,9 @@ class VoiceFx:
         while another holds it waits its turn: cutting in would click."""
         if flavour in SOURCES and self.source is not None:
             return
+        # Colours multiply: a pile of them is a quieter voice, not a worse one.
+        if flavour in COLOURS and self.colours:
+            return
         r = self.rng
         self.fired[flavour] += 1
         if flavour == "skip":
@@ -480,7 +488,7 @@ class VoiceFx:
         elif flavour == "safe":
             self.colours.append(Ring(self, 0.6 + 1.2 * s, r.uniform(60, 90), 0.85))
         elif flavour == "loop":
-            self.echo.open(0.3 + 0.8 * s, r.uniform(0.09, 0.24), 0.55 + 0.25 * s)
+            self.echo.open(0.3 + 0.8 * s, r.uniform(0.09, 0.24), 0.5 + 0.25 * s)
         elif flavour == "kernel":
             dur = 0.6 + s
             self.source = Pitch(self, dur, [r.uniform(0.5, 0.68)])
@@ -491,7 +499,7 @@ class VoiceFx:
         return self.rng.choices(open_, [FLAVOUR_FROM[f][1] for f in open_])[0]
 
     def _schedule(self, n: int) -> None:
-        if self.source is not None and len(self.colours) >= 2:
+        if self.source is not None and self.colours:
             return
         spiking = self.spike_left > 0
         if spiking and self._spike_new:

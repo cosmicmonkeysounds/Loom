@@ -86,6 +86,26 @@ def test_each_flavour_changes_him_and_stays_bounded(flavour):
 
 
 @pytest.mark.parametrize("flavour", FLAVOURS)
+def test_each_flavour_stays_about_as_loud_as_he_was(flavour):
+    """Broken, not turned down or up: a pile of ring modulators once sat 10 dB
+    under his voice for as long as a spike stood."""
+    x = speech(6.0)
+    db = 20 * np.log10(rms(render(x, RATE, flavour=flavour)) / rms(x))
+    assert -8.5 < db < 2.5, f"{flavour}: {db:.1f} dB"
+
+
+def test_colours_never_pile_up():
+    fx = VoiceFx(RATE, seed=2)
+    fx.spike(1.0, 20_000, ("safe", "dump", "packet"))
+    most = 0
+    x = speech(20.0)
+    for at in range(0, len(x), BLOCK):
+        fx.process(x[at : at + BLOCK].copy())
+        most = max(most, len(fx.colours))
+    assert most <= 2  # `dump` is two at once; nothing stacks on it
+
+
+@pytest.mark.parametrize("flavour", FLAVOURS)
 @pytest.mark.parametrize("size", [64, 512, 2048])
 def test_each_flavour_takes_any_block_size(flavour, size):
     fx = VoiceFx(RATE, seed=3)
@@ -163,7 +183,7 @@ def test_the_echo_rings_on_and_dies():
 def test_the_echo_never_runs_away():
     echo = Echo(RATE)
     echo.open(10.0, 0.05, 5.0)
-    assert echo.feedback <= 0.8
+    assert echo.feedback <= 0.75
     fx = VoiceFx(RATE, seed=2)
     fx.echo.open(10.0, 0.05, 0.8)
     y = blocks(fx, tone(8.0, amp=0.9))
@@ -229,9 +249,9 @@ def test_a_level_moves_smoothly_and_clears():
 
 def test_a_spike_fires_at_once_stands_for_its_length_and_lets_go():
     fx = VoiceFx(RATE, seed=8)
-    fx.spike(1.0, 1000, ("packet",))
+    fx.spike(1.0, 1000, ("skip",))
     blocks(fx, speech(0.01))  # the very first block
-    assert fx.fired["packet"] == 1
+    assert fx.fired["skip"] == 1
     before = sum(fx.fired.values())
     blocks(fx, speech(1.2))
     assert sum(fx.fired.values()) > before
