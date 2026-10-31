@@ -168,13 +168,14 @@ export function voiceModeLine(mode: VoiceFxMode): string {
 /** The story's switch for Clippy's dream (the show's `dream_toggle`). */
 export const DREAM_CUE = "dream_toggle";
 
-/** The dream's row in 🖥 House, or null when the story has no switch. */
-export function dreamRow(rows: readonly { id: string; live: boolean }[], on: boolean | undefined): { live: boolean; on: boolean; state: string; button: string; ask: string } | null {
+/** The dream's row in 🖥 House, or null when the story has no switch. Behind closed
+ *  doors no story is running to hear it, whatever the row says. */
+export function dreamRow(rows: readonly { id: string; live: boolean }[], on: boolean | undefined, doorsClosed: boolean): { live: boolean; on: boolean; state: string; button: string; ask: string } | null {
   const row = rows.find((r) => r.id === DREAM_CUE);
   if (row === undefined) return null;
   const dreaming = on === true;
   return {
-    live: row.live,
+    live: row.live && !doorsClosed,
     on: dreaming,
     state: dreaming ? "on the terminals" : "off",
     button: dreaming ? "🌀 Put the terminals back" : "🌀 Bring the dream back",
@@ -185,9 +186,11 @@ export function dreamRow(rows: readonly { id: string; live: boolean }[], on: boo
 /** Why the dream's switch is off. */
 export const DREAM_NOT_NOW = "It runs from 🕚 until an ending.";
 
-/** What the note says after the switch. */
+/** What the note says after the switch: the story's own line to the hosts. */
 export function dreamDone(on: boolean, answer: unknown): string {
   const a = answer !== null && typeof answer === "object" ? (answer as Record<string, unknown>) : {};
+  const said = Array.isArray(a["staff"]) ? a["staff"].find((l): l is string => typeof l === "string" && l !== "") : undefined;
+  if (said !== undefined) return said;
   if (a["refused"] === true) return "🌀 Not now — # hosts says why";
   if (a["moved"] === true) return "🌀 Cues moved — tap again";
   return on ? "🌀 The terminals are going back" : "🌀 The dream is coming back";

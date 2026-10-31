@@ -61,13 +61,16 @@ export interface DeskHouseBodyProps {
 export function DeskHouseBody({ view, rows, calls, act, refresh, tryIt }: DeskHouseBodyProps) {
   const send: Act = (done, call, refusal) => act(done, call, refusal).finally(refresh);
   const t = view?.terminals ?? null;
-  const dream = dreamRow(rows, t?.dream);
+  const dream = dreamRow(rows, t?.dream, view === null || view.doorsClosed === true || view.runtime === "idle");
   const glitch = view?.talk?.glitch ?? null;
   return (
     <div className="host-desk-house" data-testid="host-desk-house">
       {view === null && <HostEmpty>Reading the house…</HostEmpty>}
       {t !== null && t.voiceFx !== undefined && <VoiceBox fx={t.voiceFx} calls={calls} send={send} />}
-      {t !== null && <TvVoice muted={t.voiceMuted} calls={calls} send={send} />}
+      <div className="host-desk-pair">
+        {t !== null && <TvVoice muted={t.voiceMuted} calls={calls} send={send} />}
+        <ActButton label="■ Stop + the announcement" title="■ STOP ALL lets an announcement finish. This cuts it and empties its queue." onClick={() => send("■ Stopped every desk cue, the house sounds and the announcement", () => calls.deskStopAll(true))} />
+      </div>
       {dream !== null && (
         <HostSection id="desk-dream" title="🌀 Clippy's dream" aside={dream.state}>
           <ConfirmButton className="host-desk-wide" testId="host-desk-dream" label={dream.button} ask={dream.ask} yes="Do it" disabled={!dream.live} onConfirm={() => send((a) => dreamDone(dream.on, a), () => calls.cue("dream_toggle", null, null))} />
@@ -79,10 +82,6 @@ export function DeskHouseBody({ view, rows, calls, act, refresh, tryIt }: DeskHo
           <ActButton className="host-desk-wide" label="⚡ Glitch" onClick={() => send((a) => glitchText(a as Record<string, unknown>), () => calls.cue(glitch, null, null))} />
         </HostSection>
       )}
-      <HostSection id="desk-stop" title="■ Stop, with the announcement">
-        <ActButton className="host-desk-wide" label="■ Stop all + the announcement" onClick={() => send("■ Stopped every desk cue, the house sounds and the announcement", () => calls.deskStopAll(true))} />
-        <p className="host-note">■ STOP ALL lets an announcement finish. This cuts it and empties its queue.</p>
-      </HostSection>
       <LandingSlot />
       {tryIt}
       {t !== null && <TerminalsBox terminals={t} calls={calls} send={send} />}
@@ -135,17 +134,15 @@ function VoiceBox({ fx, calls, send }: { fx: VoiceFxMode; calls: HostCalls; send
 function TvVoice({ muted, calls, send }: { muted: boolean; calls: HostCalls; send: Act }) {
   const [shown, turn] = useTurned<boolean>(muted);
   return (
-    <HostSection id="desk-tv" title="📺 The TV's voice">
-      <ActButton
-        className="host-desk-wide host-toggle"
-        pressed={shown}
-        label={tvVoiceLabel(shown)}
-        onClick={async () => {
-          const want = !shown;
-          if (await send(want ? "🔇 TV voice muted" : "🔊 TV voice on", () => calls.tvMute(want))) turn(want);
-        }}
-      />
-    </HostSection>
+    <ActButton
+      className="host-toggle"
+      pressed={shown}
+      label={tvVoiceLabel(shown)}
+      onClick={async () => {
+        const want = !shown;
+        if (await send(want ? "🔇 TV voice muted" : "🔊 TV voice on", () => calls.tvMute(want))) turn(want);
+      }}
+    />
   );
 }
 

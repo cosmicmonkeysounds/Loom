@@ -424,9 +424,25 @@
 /* ── wave 25: the Desk window (the house desk) ───────────────────────── */
 /* Wave 59: the top never moves and only the tab under it scrolls, so ■ STOP ALL
    and the sub-tabs are in reach wherever a host is in a long list. */
-.host-desk-top { flex: 0 0 auto; padding: 6px 8px; background: var(--dialog-face); box-shadow: var(--raised); }
-.host-desk-topline { display: flex; align-items: stretch; gap: 6px; }
-.host-desk-topline .host-desk-stopall { flex: 1 1 50%; width: auto; min-width: 0; }
+.host-desk-top { position: relative; flex: 0 0 auto; padding: 4px 8px 6px; background: var(--dialog-face); box-shadow: var(--raised); }
+.host-desk-top .host-desk-status { gap: 3px; margin: 0 0 4px; }
+.host-desk-top .host-desk-chip { padding: 2px 6px; font-size: 12px; }
+.host-desk-topline { display: flex; align-items: stretch; gap: 6px; margin: 0 0 4px; }
+.host-desk-topline .host-desk-stopall { flex: 1 1 50%; width: auto; min-width: 0; min-height: 46px; }
+/* The note floats over the tab's first lines: a line appearing must not move the
+   tabs under a thumb. It takes no tap, and only while it has something to say. */
+.host-desk-top > .host-desk-note {
+  position: absolute; left: 8px; right: 8px; top: 100%; z-index: 2; min-height: 0; margin: 2px 0 0; padding: 4px 8px;
+  border-radius: var(--radius); background: var(--white); box-shadow: var(--raised); pointer-events: none;
+}
+.host-desk-top > .host-desk-note:empty { display: none; }
+/* Music's and Mix's own notes float the same way: nothing moves under a fader. */
+.host-mix { position: relative; }
+.host-mix-body > .host-desk-note {
+  position: absolute; left: 0; right: 0; top: 0; z-index: 2; min-height: 0; margin: 0; padding: 4px 8px;
+  border-radius: var(--radius); background: var(--white); box-shadow: var(--raised); pointer-events: none;
+}
+.host-mix-body > .host-desk-note:empty { display: none; }
 .host-desk-playing {
   flex: 0 1 50%; min-width: 0; min-height: var(--tap); padding: 4px 8px;
   overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
@@ -435,13 +451,15 @@
 .host-desk-tabs { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 3px; }
 .host-desk-tab {
   position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 1px; min-width: 0; min-height: 50px; padding: 3px 1px; font: 700 12px/1.15 var(--ui-font);
+  gap: 1px; min-width: 0; min-height: 48px; padding: 2px 1px; font: 700 12px/1.15 var(--ui-font);
 }
 .host-desk-tab[aria-selected="true"] { box-shadow: var(--pressed); background: var(--face-hi); font-weight: 800; }
 .host-desk-tab-icon { font-size: 18px; line-height: 1.1; }
 .host-desk-tab-label { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
 .host-desk-tab-badge { position: absolute; top: 2px; right: 4px; font: 900 12px var(--ui-font); color: var(--maroon); }
 .host-desk-wide { width: 100%; min-height: var(--tap); }
+.host-desk-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; margin: 0 0 12px; }
+.host-desk-pair > .w95-btn { min-width: 0; min-height: var(--tap); overflow-wrap: anywhere; }
 .host-desk-modes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; }
 .host-desk-mode { min-height: var(--tap); min-width: 0; font-weight: 700; }
 .host-desk-flavours { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; margin: 4px 0 0; }

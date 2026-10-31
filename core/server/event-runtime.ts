@@ -5921,6 +5921,9 @@ export class EventRuntime {
     // still knows it.
     this.persistMeta();
     this.pushSnapshots();
+    // Wave 59: the desk's `live` moved with no desk change. Tell the held polls now,
+    // or a Desk on screen plays tests to guests unasked for up to 25 s.
+    this.desk.changed();
     // Wave 59: her ✓ Done behind paused doors was his cue, and the scene is gone.
     const owed = this.handoverOwed;
     this.handoverOwed = false;

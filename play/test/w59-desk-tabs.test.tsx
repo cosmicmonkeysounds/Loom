@@ -212,7 +212,7 @@ describe("🖥 House: the switches", () => {
 
   it("his voice, the TV, the dream, Try it, the terminals, and what stays on Run", () => {
     const html = body(view());
-    for (const word of ["🌀 His voice", ">Auto<", ">Clean<", ">Broken<", "Break his next words (8 s)", "🔊 Mute the TV voice", "🌀 Clippy&#x27;s dream", "🌀 Bring the dream back", "■ Stop all + the announcement", 'data-testid="try"', "📟 Terminals", "3/4 live", "Identify"]) expect(html, word).toContain(word);
+    for (const word of ["🌀 His voice", ">Auto<", ">Clean<", ">Broken<", "Break his next words (8 s)", "🔊 Mute the TV voice", "🌀 Clippy&#x27;s dream", "🌀 Bring the dream back", "■ Stop + the announcement", 'data-testid="try"', "📟 Terminals", "3/4 live", "Identify"]) expect(html, word).toContain(word);
     expect(html).toContain(RUN_ONLY.replace(/'/gu, "&#x27;"));
     expect(html.indexOf('data-testid="try"')).toBeLessThan(html.indexOf("📟 Terminals"));
   });
@@ -222,13 +222,17 @@ describe("🖥 House: the switches", () => {
     const off = body(view(), [{ id: DREAM_CUE, live: false }]);
     expect(off).toMatch(/data-testid="host-desk-dream"[^>]*>|disabled=""[^>]*data-testid="host-desk-dream"/u);
     expect(off).toContain(DREAM_NOT_NOW);
-    expect(dreamRow([], true)).toBeNull();
-    expect(dreamRow([{ id: DREAM_CUE, live: true }], true)).toMatchObject({ on: true, state: "on the terminals" });
+    expect(dreamRow([], true, false)).toBeNull();
+    expect(dreamRow([{ id: DREAM_CUE, live: true }], true, false)).toMatchObject({ live: true, on: true, state: "on the terminals" });
+    // Behind closed doors no story hears it: the server would only say "no scenario loaded".
+    expect(dreamRow([{ id: DREAM_CUE, live: true }], false, true)).toMatchObject({ live: false });
+    expect(body(view({ doorsClosed: true }))).toContain(DREAM_NOT_NOW);
     expect(body(view(), [])).not.toContain("Clippy&#x27;s dream");
   });
 
   it("says when the story refused the switch or the cues moved", () => {
     expect(dreamDone(true, { refused: true })).toContain("# hosts");
+    expect(dreamDone(true, { ok: true, refused: true, staff: ["🌀 Not now: the story's own line."] })).toBe("🌀 Not now: the story's own line.");
     expect(dreamDone(true, { moved: true })).toContain("tap again");
     expect(dreamDone(true, { ok: true })).toContain("going back");
     expect(dreamDone(false, { ok: true })).toContain("coming back");
@@ -285,7 +289,7 @@ describe("what the Desk may never do", () => {
 
   it("the tabs are thumb-sized and fit a phone with no sideways scroll", () => {
     const css = readFileSync(new URL("../src/css/host.css", import.meta.url), "utf8");
-    expect(css).toMatch(/\.host-desk-tab \{[^}]*min-height: 50px/u);
+    expect(css).toMatch(/\.host-desk-tab \{[^}]*min-height: 48px/u);
     expect(css).toMatch(/\.host-desk-tabs \{[^}]*grid-auto-columns: minmax\(0, 1fr\)/u);
     expect(css).toMatch(/\.host-desk-top \{[^}]*flex: 0 0 auto/u);
   });

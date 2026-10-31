@@ -425,6 +425,17 @@ describe("live: when a test asks first", () => {
     preview = false;
     expect((await deskView(rt)).live).toBe(true);
   });
+
+  it("wave 59: the doors opening answers a held poll at once, so a Desk on screen asks before it tests", async () => {
+    const rt = runtime({ isPreview: () => false });
+    const held = await deskView(rt);
+    expect(held.live).toBe(false);
+    const polled = call(rt, "GET", `/api/mod/desk?after=${held.rev}&wait=25`);
+    rt.openDoors();
+    const fresh = await Promise.race([polled, new Promise<null>((r) => setTimeout(() => r(null), 2000))]);
+    expect(fresh, "the held poll answered").not.toBeNull();
+    expect((fresh!.json as unknown as DeskView).live).toBe(true);
+  });
 });
 
 describe("the story and the desk", () => {
