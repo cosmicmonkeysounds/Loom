@@ -94,7 +94,8 @@ import { LOCKED_PASS_NOTICE, VISIT_OPEN_FALLBACK_MS, VisitLatch, beginPilot, cha
 import { parseScan } from "./scan.ts";
 import { pickByName, Gear, TypedFallback } from "./controls.tsx";
 import { Scanner, type CameraState, cameraProblem } from "./scanner.tsx";
-import { SpeechQueue, audioUnlocked, gapsFor, unlock, voiceEngines, voiceFloor, voiceNote, type EngineKind } from "./speech/engine.ts";
+import { SpeechQueue, alternateCount, audioUnlocked, gapsFor, unlock, voiceEngines, voiceFloor, voiceNote, type EngineKind } from "./speech/engine.ts";
+import { isCleanBeat, voiceShaper } from "./speech/glitch.ts";
 import { useAnnouncements } from "./announce.ts";
 import { revealOffsets, splitSentences } from "./speech/split.ts";
 import { mayReload, retryable } from "./retry.ts";
@@ -103,11 +104,12 @@ import { fullScreenSim, hasWebGL2 } from "./webgl.ts";
 import { linkedNow, linkedPane, usePresenceLatch } from "./world/presence.ts";
 import { screenWake } from "./kiosk.ts";
 import { kioskFullscreen } from "./fullscreen.ts";
-import { setSoundMuted, setSoundView, setSoundVolume, sfx } from "./sound/bus.ts";
+import { setSoundMuted, setSoundView, setSoundVolume, sfx, voiceNoise } from "./sound/bus.ts";
 import { drawsSlides, loadCutscenes, screenTargetOf, silentView } from "./cutscene/load.ts";
 import { attractOf, useScreenState, watchWhileAsleep, type ScreenState } from "./screen.ts";
 import { Attract } from "./Attract.tsx";
 import { IdleShow } from "./idle-show/IdleShow.tsx";
+import { hash32 } from "./idle-show/rng.ts";
 import { ScanBox } from "./idle-show/ScanBox.tsx";
 import { IdentifyOverlay, LiveScreenLayer } from "./ScreenLayer.tsx";
 import { useDreamArm, useDreamPhase, useDreamReady } from "./dream/DreamView.tsx";
@@ -950,9 +952,12 @@ function Terminal({
   const showWorld = pane !== "none";
 
   // --- the voice ---
+  // Wave 56: how broken he is now, read as each sentence starts.
+  const fxState = useRef(state);
+  fxState.current = state;
   const queue = useMemo(() => {
     const engines = voiceEngines(
-      { choice: config.engine, browserVoice: config.browserVoice, serverVoice: config.serverVoice, speed: config.speed, base: baseOf(config), token: config.token },
+      { choice: config.engine, browserVoice: config.browserVoice, serverVoice: config.serverVoice, speed: config.speed, base: baseOf(config), token: config.token, noise: voiceNoise },
       () => setLatched(true),
     );
     return new SpeechQueue(engines, {
@@ -986,7 +991,7 @@ function Terminal({
         setMood("neutral");
       },
       engine: (kind) => setEngineUsed(kind),
-    }, voiceFloor, gapsFor(config));
+    }, voiceFloor, gapsFor(config), voiceShaper({ fx: () => fxState.current?.voiceFx, now: () => serverNow(fxState.current), salt: hash32(config.name), voices: alternateCount }));
   }, [config]);
   useEffect(() => {
     setLatched(false); // a new voice (setup changed) asks the server afresh
@@ -1009,7 +1014,7 @@ function Terminal({
         offsets.current.set(line.seq, revealOffsets(line.text, chunks));
         chunkText.current.set(line.seq, chunks);
         setRevealed((prev) => new Map(prev).set(line.seq, 0));
-        queue.say({ id: line.seq, chunks });
+        queue.say({ id: line.seq, chunks, clean: isCleanBeat(line.beat) });
       }),
     [onNewLine, beforeVisit, queue],
   );
@@ -1034,7 +1039,7 @@ function Terminal({
             chunkText.current.set(line.seq, chunks);
             starts.current.set(line.seq, started);
             waiters.current.set(line.seq, resolve);
-            queue.say({ id: line.seq, chunks });
+            queue.say({ id: line.seq, chunks, clean: isCleanBeat(line.beat) });
           }),
         cancel: () => {
           queue.stop();

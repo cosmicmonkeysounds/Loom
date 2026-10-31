@@ -6,6 +6,8 @@
 //! the house speakers', D4) — these are UI clicks, popup dings and
 //! cutscene stingers, all original.
 
+import type { VoiceNoise } from "../speech/glitch.ts";
+
 /** One oscillator note, optionally gliding to `f2`. Times in seconds from the sound's start. */
 export interface TonePart {
   kind: "tone";
@@ -124,6 +126,14 @@ export const CHIME_PARTS: readonly Part[] = [
   tone("sine", 990, 0.16, 0.38, 0.3),
   tone("sine", 1980, 0.16, 0.38, 0.075),
 ];
+
+/** (wave 56) The digital noise inside a broken sentence: played as part of
+ *  his voice (`voiceNoise`), never as an effect. */
+export const VOICE_NOISE_PARTS: Readonly<Record<VoiceNoise, readonly Part[]>> = {
+  tick: [noise(0, 0.012, 0.16, { type: "bandpass", f: 3200, q: 2 }), noise(0.028, 0.01, 0.11, { type: "bandpass", f: 5200, q: 2 }), noise(0.058, 0.014, 0.14, { type: "bandpass", f: 2100, q: 2 })],
+  buzz: [tone("square", 112, 0, 0.2, 0.1, { lowpass: 1500, f2: 74 }), noise(0, 0.2, 0.05, { type: "bandpass", f: 1900, q: 3 })],
+  sweep: [tone("sawtooth", 880, 0, 0.42, 0.07, { lowpass: 2400, f2: 55 }), noise(0.02, 0.36, 0.03, { type: "bandpass", f: 2600, f2: 240, q: 1.5 })],
+};
 
 const RECIPES: Record<SfxName, () => Part[]> = {
   // Win98-ish dialog sounds (original takes, not samples).

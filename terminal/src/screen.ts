@@ -67,6 +67,7 @@
 //! attract, and an unreachable server keeps the last answer it gave — a
 //! dropped poll never flips a hidden character onto the wall.
 
+import { VOICE_FLAVOURS, type VoiceFlavour, type VoiceFxState } from "./speech/glitch.ts";
 import { linkedNow } from "./world/presence.ts";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { announceOf, announceReport, type Announcement } from "./announce.ts";
@@ -710,6 +711,9 @@ export interface ScreenState {
    *  in the last 6 s, or an older server). Optional for hand-built states;
    *  `parseScreenState` always sets it. */
   tvSpeech?: TvSpeech | null;
+  /** (wave 56) How broken his voice is (`core/src/voice-fx.ts`); null from an
+   *  older server: he speaks plainly. */
+  voiceFx?: VoiceFxState | null;
   /** (wave 50) Clippy's dream, while the story has it on: `at` is when the
    *  takeover starts (server ms; 0: long since). Null: off, or an older
    *  server. Optional for hand-built states. */
@@ -871,7 +875,27 @@ export function parseScreenState(raw: unknown, receivedAt: number = Date.now()):
     spot: spotOf(r["spot"]),
     tvSpeech: tvSpeechOf(r["tvSpeech"]),
     dream: dreamOf(r["dream"]),
+    voiceFx: voiceFxOf(r["voiceFx"]),
   };
+}
+
+/** A `voiceFx` block off the wire; anything malformed (or an older server's
+ *  none) is null. A flavour this build doesn't know is left out. */
+export function voiceFxOf(raw: unknown): VoiceFxState | null {
+  if (typeof raw !== "object" || raw === null) return null;
+  const r = raw as Record<string, unknown>;
+  const level = r["level"];
+  if (typeof level !== "number" || !Number.isFinite(level)) return null;
+  const s = r["spike"];
+  let spike: VoiceFxState["spike"] = null;
+  if (typeof s === "object" && s !== null) {
+    const o = s as Record<string, unknown>;
+    const flavours = (Array.isArray(o["flavours"]) ? o["flavours"] : []).filter((f): f is VoiceFlavour => (VOICE_FLAVOURS as readonly unknown[]).includes(f));
+    if (typeof o["key"] === "string" && typeof o["at"] === "number" && typeof o["ms"] === "number" && typeof o["strength"] === "number" && flavours.length > 0) {
+      spike = { key: o["key"], at: o["at"], ms: o["ms"], strength: o["strength"], flavours };
+    }
+  }
+  return { level: Math.min(1, Math.max(0, level)), spike };
 }
 
 /** A `dream` block off the wire; anything malformed (or an older server's none) is null. */

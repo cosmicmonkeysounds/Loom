@@ -37,6 +37,7 @@
 //! is called from the first tap (the setup screen, the wake overlay).
 
 import type { TerminalConfig } from "../config.ts";
+import { HIS_PITCH, flatText, paceRate, type ChunkShaper, type VoiceFrag, type VoiceNoise, type VoicePlan } from "./glitch.ts";
 import { pronounce } from "./lexicon.ts";
 import { CHARACTER_VOICE, pickVoice, type VoicePrefer } from "./pick-voice.ts";
 
@@ -65,7 +66,7 @@ export interface SpeechEngine {
   stop(): void;
 }
 
-export type Prepared = { kind: "server"; buffer: AudioBuffer } | { kind: "browser" | "fully" | "silent"; text: string };
+export type Prepared = { kind: "server"; buffer: AudioBuffer } | { kind: "browser" | "fully" | "silent"; text: string; plan?: VoicePlan };
 
 // --- audio context (shared, unlocked by a gesture) --------------------------
 
@@ -279,6 +280,34 @@ export class ServerEngine implements SpeechEngine {
 
 /** A `speak()` that hasn't started by now never will (a WebView stub). */
 export const START_TIMEOUT_MS = 4000;
+/** (wave 56) A broken sentence's later fragment gets this long to start: a
+ *  dropped one is skipped. The engine already proved itself on the first. */
+export const FRAG_START_MS = 1200;
+/** (wave 56) After a cut-off: `speak()` right on the heels of `cancel()` is
+ *  lost on some engines. */
+export const CANCEL_SETTLE_MS = 40;
+/** (wave 56) The most of the device's other voices a broken sentence hops through. */
+const MAX_ALTERNATES = 6;
+
+/** (wave 56) The device's other voices, for 🎭 the wrong driver: its own
+ *  (never a stream's: a word can't wait on the network), English, in a stable
+ *  order, without `own`. Every voice on a device with none of its own. */
+export function alternateVoices<T extends Pick<SpeechSynthesisVoice, "name" | "lang" | "localService">>(all: readonly T[], own: T | null): T[] {
+  return all
+    .filter((v) => v.localService && v.lang.toLowerCase().startsWith("en") && v.name !== own?.name)
+    .sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0))
+    .slice(0, MAX_ALTERNATES);
+}
+
+/** How many other voices this device can break into. */
+export function alternateCount(): number {
+  if (!BrowserEngine.available()) return 0;
+  try {
+    return Math.max(0, alternateVoices(speechSynthesis.getVoices(), null).length - 1);
+  } catch {
+    return 0;
+  }
+}
 
 export class BrowserEngine implements SpeechEngine {
   readonly kind = "browser" as const;
@@ -286,8 +315,9 @@ export class BrowserEngine implements SpeechEngine {
   /** The `unlock()` generation in which a `speak()` never started here. */
   private deadAt: number | null = null;
   /** `prefer`: the lean when no voice is chosen (`CHARACTER_VOICE` /
-   *  `ANNOUNCE_VOICE`, so the character never sounds like an announcement). */
-  constructor(private readonly opts: { voice: string; speed: number; pitch?: number; prefer?: VoicePrefer }) {}
+   *  `ANNOUNCE_VOICE`, so the character never sounds like an announcement).
+   *  `noise`: plays a broken sentence's bursts (`sound/bus.ts` `voiceNoise`). */
+  constructor(private readonly opts: { voice: string; speed: number; pitch?: number; prefer?: VoicePrefer; noise?: (kind: VoiceNoise) => void }) {}
 
   /** `speak()` never started here since the last tap: a stub, or a page
    *  that hasn't been touched yet. The next `unlock()` clears it. */
@@ -315,6 +345,7 @@ export class BrowserEngine implements SpeechEngine {
 
   play(p: Prepared, onLevel: (level: number) => void, onStart?: () => void): Promise<void> {
     if (p.kind !== "browser" || !BrowserEngine.available()) return Promise.resolve();
+    if (p.plan !== undefined) return this.playPlan(p.plan, onLevel, onStart);
     return new Promise<void>((resolve) => {
       const u = new SpeechSynthesisUtterance(p.text);
       const voice = pickVoice(speechSynthesis.getVoices(), this.opts.voice || null, this.opts.prefer ?? {});
@@ -379,6 +410,129 @@ export class BrowserEngine implements SpeechEngine {
       nudge = window.setInterval(() => {
         if (speechSynthesis.paused) speechSynthesis.resume();
       }, 5000);
+    });
+  }
+
+  /** (wave 56) A broken sentence: one utterance per fragment, each with its
+   *  own pace, pitch, voice and volume, the silences between them, and a
+   *  `cancel()` where a word is cut off. Only `playPlan` knows any of it: a
+   *  plain sentence never comes through here. */
+  private async playPlan(plan: VoicePlan, onLevel: (level: number) => void, onStart?: () => void): Promise<void> {
+    let speaking = false;
+    let stopped = false;
+    let wake: (() => void) | null = null;
+    const stopFlutter = flutter(onLevel, () => speaking);
+    const rest = (ms: number): Promise<void> =>
+      new Promise<void>((resolve) => {
+        const t = window.setTimeout(() => done(), ms);
+        const done = () => {
+          window.clearTimeout(t);
+          wake = null;
+          resolve();
+        };
+        wake = done;
+      });
+    this.stopCurrent = () => {
+      stopped = true;
+      speechSynthesis.cancel();
+      wake?.();
+    };
+    const all = speechSynthesis.getVoices();
+    const own = pickVoice(all, this.opts.voice || null, this.opts.prefer ?? {});
+    const others = alternateVoices(all, own);
+    const base = this.opts.pitch ?? HIS_PITCH;
+    const nudge = window.setInterval(() => {
+      if (speechSynthesis.paused) speechSynthesis.resume();
+    }, 5000);
+    let opened = false;
+    try {
+      let first = true;
+      for (const f of plan.frags) {
+        if (stopped) break;
+        if (f.text !== "") {
+          const voice = f.voice !== undefined && others.length > 0 ? others[f.voice % others.length]! : own;
+          // His own pitch moves with the engine's, should a queue set another.
+          const pitch = f.pitch + (base - HIS_PITCH);
+          const heard = await this.sayFrag(f, voice, Math.min(2, Math.max(0, pitch)), first ? START_TIMEOUT_MS : FRAG_START_MS, () => {
+            speaking = true;
+            if (!opened) onStart?.();
+            opened = true;
+          });
+          speaking = false;
+          if (first && !heard && !stopped) {
+            // As `play`: nothing started, so this engine is written off and
+            // the ladder says the sentence another way.
+            this.deadAt = gesture;
+            speechSynthesis.cancel();
+            return;
+          }
+          first = false;
+          if (f.cutMs !== undefined && !stopped) await rest(CANCEL_SETTLE_MS);
+        }
+        if (stopped) break;
+        if (f.noise !== undefined) this.opts.noise?.(f.noise);
+        if (f.gapMs > 0) await rest(f.gapMs);
+      }
+    } finally {
+      window.clearInterval(nudge);
+      stopFlutter();
+      this.stopCurrent = null;
+    }
+  }
+
+  /** One fragment, to its end or its cut-off. → whether it was ever heard. */
+  private sayFrag(f: VoiceFrag, voice: SpeechSynthesisVoice | null, pitch: number, startMs: number, heard: () => void): Promise<boolean> {
+    return new Promise<boolean>((resolve) => {
+      const u = new SpeechSynthesisUtterance(f.text);
+      if (voice !== null) {
+        try {
+          u.voice = voice;
+        } catch {
+          /* a voice object this utterance refuses: the default voice says it */
+        }
+      }
+      const rate = paceRate(f.pace, this.opts.speed);
+      u.rate = rate;
+      u.pitch = pitch;
+      u.volume = f.volume;
+      let started = false;
+      let settled = false;
+      const timers: number[] = [];
+      const finish = () => {
+        if (settled) return;
+        settled = true;
+        for (const t of timers) window.clearTimeout(t);
+        resolve(started);
+      };
+      const begin = () => {
+        if (started || settled) return;
+        started = true;
+        heard();
+        if (f.cutMs !== undefined) {
+          timers.push(
+            window.setTimeout(() => {
+              speechSynthesis.cancel();
+              finish();
+            }, f.cutMs),
+          );
+        }
+      };
+      u.onstart = begin;
+      u.onboundary = begin;
+      u.onend = finish;
+      u.onerror = finish;
+      timers.push(
+        window.setTimeout(() => {
+          if (started || settled) return;
+          speechSynthesis.cancel();
+          finish();
+        }, startMs),
+        window.setTimeout(() => {
+          speechSynthesis.cancel();
+          finish();
+        }, startMs + 3 * readingMs(f.text, rate)),
+      );
+      speechSynthesis.speak(u);
     });
   }
 
@@ -575,7 +729,7 @@ export class DeviceEngine implements SpeechEngine {
   private fully: FullyEngine | null = null;
   private readonly silent: SilentEngine;
   private ready: Promise<void> | null = null;
-  constructor(private readonly opts: { voice: string; speed: number; choice?: Exclude<VoiceChoice, "server">; prefer?: VoicePrefer }) {
+  constructor(private readonly opts: { voice: string; speed: number; choice?: Exclude<VoiceChoice, "server">; prefer?: VoicePrefer; noise?: (kind: VoiceNoise) => void }) {
     this.browser = new BrowserEngine(opts);
     this.silent = new SilentEngine(opts);
   }
@@ -615,11 +769,11 @@ export class DeviceEngine implements SpeechEngine {
 /** A terminal's engines for its voice choice: the device's ladder, or the
  *  server voice with the device's as its fallback. */
 export function voiceEngines(
-  o: { choice: VoiceChoice; browserVoice: string; serverVoice: string; speed: number; base: string; token: string },
+  o: { choice: VoiceChoice; browserVoice: string; serverVoice: string; speed: number; base: string; token: string; noise?: (kind: VoiceNoise) => void },
   onLatch?: () => void,
 ): { primary: SpeechEngine; fallback: SpeechEngine | null } {
   // The character's voice: male first unless one is picked in ⚙ (never the announcements' voice).
-  const device = new DeviceEngine({ voice: o.browserVoice, speed: o.speed, choice: o.choice === "server" ? "browser" : o.choice, prefer: CHARACTER_VOICE });
+  const device = new DeviceEngine({ voice: o.browserVoice, speed: o.speed, choice: o.choice === "server" ? "browser" : o.choice, prefer: CHARACTER_VOICE, ...(o.noise !== undefined ? { noise: o.noise } : {}) });
   if (o.choice !== "server") return { primary: device, fallback: null };
   return { primary: new ServerEngine({ base: o.base, token: o.token, voice: o.serverVoice, speed: o.speed }, onLatch), fallback: device };
 }
@@ -705,6 +859,17 @@ export interface Utterance {
   chunks: string[];
   /** Runs once the floor is held, before the first chunk (an announcement's chime). */
   before?: () => Promise<void>;
+  /** (wave 56) Never broken, whatever the night says (`isCleanBeat`). */
+  clean?: boolean;
+}
+
+/** (wave 56) `p` said by `plan`: a browser voice takes the plan, Fully Kiosk
+ *  only its words (it has no pace, pitch or voice per call), and anything
+ *  else says the sentence as it stands. */
+export function withPlan(p: Prepared, plan: VoicePlan): Prepared {
+  if (p.kind === "browser") return { ...p, plan };
+  if (p.kind === "fully") return { ...p, text: flatText(plan) };
+  return p;
 }
 
 /**
@@ -745,6 +910,10 @@ export class SpeechQueue {
     private readonly floor: VoiceFloor = voiceFloor,
     /** The pauses (wave 26, V2): `gapsFor(config)`; announcements `ANNOUNCE_GAPS`. */
     private gaps: SpeechGaps = DEFAULT_GAPS,
+    /** (wave 56) How to break a sentence: only a queue that speaks him has
+     *  one. Asked at the last moment, so a spike reaches the next sentence
+     *  and not the one after the sentence already fetched. */
+    private readonly shape: ChunkShaper | null = null,
   ) {}
 
   setGaps(g: SpeechGaps): void {
@@ -806,6 +975,18 @@ export class SpeechQueue {
       return p === null ? null : { engine: fb, p };
     } catch {
       return null;
+    }
+  }
+
+  /** (wave 56) `p` as the shaper would have it said. A shaper that throws
+   *  leaves it plain: a glitch must never cost a line. */
+  private shaped(p: Prepared, u: Utterance, index: number): Prepared {
+    if (this.shape === null || u.clean === true || p.kind === "server") return p;
+    try {
+      const plan = this.shape(p.text, u.id, index);
+      return plan === null ? p : withPlan(p, plan);
+    } catch {
+      return p;
     }
   }
 
@@ -881,7 +1062,7 @@ export class SpeechQueue {
               this.on.chunk(u.id, i);
             };
             try {
-              await ready.engine.play(ready.p, this.on.level, start);
+              await ready.engine.play(this.shaped(ready.p, u, i), this.on.level, start);
             } catch {
               // An engine that throws (a WebView's half-built speechSynthesis
               // refusing a voice, a decode gone wrong) must never wedge the
