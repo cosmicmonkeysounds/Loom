@@ -308,7 +308,7 @@ host's 📣 (the `announce` stream frame, `play/src/phone-voice.ts`). Not proven
 a real phone: run `SIGNOFF-w53.md` §3 first. Help:
 `docs/help/play/07-performers.md`, `16-notifications.md`.
 
-**One QR per person** (wave 54, not shipped; show
+**One QR per person** (wave 54, shipped in `w56`; show
 text `DRAFT w54` on `SIGNOFF-w54.md`): a badge is handed out, scanned with the
 phone's camera, and the phone lands with everything filled in: a staff badge per
 part signs straight in to the upload, an invited badge per featured program lands
@@ -316,22 +316,21 @@ on *You are …* with one button, and a numbered blank opens the picker with no
 code to type. After the upload a host's or an Antivirus's scan of the badge
 confirms them (staff keep the staff door; Clippy only greets). A 🚻 sign presses
 Bathroom Mode. Run → 🖨 Print sheet prints 3 × 2 in badges and location cards,
-ten to a sheet, and fact cards four to a row. It needs a release, then
-`sync-show`. Terminals still read the phone's pass, not a printed badge. Help:
+ten to a sheet, and fact cards four to a row. Terminals still read the phone's
+pass, not a printed badge. Help:
 `docs/help/authoring/43-run-mode.md`, `docs/help/play/18-getting-back-in.md`.
 
-**The teleprompter** (wave 55, not shipped; `docs/loom-w55-contract.md`, show
+**The teleprompter** (wave 55, shipped in `w56`; `docs/loom-w55-contract.md`, show
 text `DRAFT w55` on `SIGNOFF-w55.md`): a beat's `aloud:` line names who reads it
 out loud (25 beats: Clippy's speeches and read-outs, the hosts' opening lines,
 `aloud: {Night.bobber}` for truth.txt). Their whole phone turns into 📜 READ THIS
 OUT LOUD, which stays until they press ✓ Done on the teleprompter: variable
 speed, a rail that previews and jumps, section jumps. Trabolta's lines stay on
 the TV; they show as cues. The bobber's printout stays. Quick reactions are left
-unmarked so a mid-game phone is never blocked. It needs a release, `sync-show`
-with its reload, and every phone reloaded. Help:
+unmarked so a mid-game phone is never blocked. Every phone needs a reload. Help:
 `docs/help/play/07-performers.md`, `docs/help/authoring/56-read-aloud.md`.
 
-**His voice comes apart** (wave 56, not shipped; `docs/loom-w56-contract.md`,
+**His voice comes apart** (wave 56, shipped in `w56`; `docs/loom-w56-contract.md`,
 decisions on `SIGNOFF-w56.md`, no new show text): towards the end of the night
 and in the major glitches Trabolta's speech breaks, in nine flavours. The server
 says how much (`voiceFx`, `core/src/voice-fx.ts`: a curve over the phases and the
@@ -341,42 +340,52 @@ plans each sentence (`terminal/src/speech/glitch.ts`: pace, pitch, voice, real
 cut-offs, only ever his own words), and the Desktop's router tears the sound
 itself up on its way to the speakers (`stagehand/audio/voicefx.py`). Run →
 Terminals, 🌀 His voice: Auto, Clean (the kill switch), Broken, and a flavour on a
-button; `/terminal/?preview=voice` auditions them. It needs a release, every
-terminal and the TV reloaded, and on the Desktop `git pull` and
-`start-stagehand.ps1 -Restart audio`; no `sync-show`. Not proven on Windows' voices
+button; `/terminal/?preview=voice` auditions them. It needs every terminal and
+the TV reloaded, and on the Desktop `git pull` and
+`start-stagehand.ps1 -Restart audio`. Not proven on Windows' voices
 or the house speakers: run `SIGNOFF-w56.md` §3 first.
 
 ### Release status
 
-The VPS runs **`w53b`** (master `136e656c`, shipped 2026-10-30; rollback `w53`):
+The VPS runs **`w56`** (master `d8223795`, shipped 2026-10-30; rollback `w53b`):
+waves 54 (one QR per person), 55 (the teleprompter) and 56 (his voice comes
+apart), with `oct31-w53/whisper-origin` and `oct31-w53/server-room-kiosk`. The
+preview was synced (`--keep-maps --keep-audio --keep-lights --keep-desk`) and
+reloaded. On the live server `/api/mod/codes` lists 8 staff badges on the guest
+code, 9 invited badges, 11 location cards and the 🚻 sign, all on the public
+address, and `/api/mod/badges` the blanks; the live editor and phone bundles carry
+the new print sheet and upload, and the terminal page's CSP allows whisper. The
+print sheet has not met paper or a real phone camera: run `SIGNOFF-w54.md` §3
+before the full run. Still owed: reload every phone, terminal, the TV and any open
+Run tab (an open one keeps the old print sheet); every staff member uploads again
+(the reload cleared it); sign off `SIGNOFF-w54.md`, `-w55` and `-w56`, with their
+real-device checks. The Desktop does `git pull`, sets up `tidal.ps1`
+(`scripts/house-desktop/README.md` §3.7) and runs `start-stagehand.ps1 -Restart
+audio`. On Steph's laptop, run `scripts/server-room/start-terminal.ps1 -Setup` with
+`LOOM_MOD_CODE` set and a mouse, make every grant in the terminal's own profile
+(`%LOCALAPPDATA%\loom-terminal`, which doesn't exist yet: the kiosk has no way to
+answer a prompt) and check ⚙ reads *whisper is listening*; then run it with no
+switches (`docs/trapped/kiosk.md`, First launch). The old CSP stopped that prompt
+ever coming up there. Steph's laptop has reflashed the M4 and recalibrated the door
+(2026-10-30); a new profile leaves the board's flash alone. It still relearns the
+patch bay once that's wired, and the CRT becomes the only display at 640 × 480.
+
+Before it, `w53b` (master `136e656c`, shipped 2026-10-30; rollback `w53`):
 the merged `oct31/trabolta-room` (the server room's CRT, GameCube pad and local
 Whisper, the pulsed door sensor; the CRT and voice words are `DRAFT w52` /
 `DRAFT w52b`) and `oct31-w52/tidal` (the soundtrack from the TIDAL app). No story
 or server code changed, so the preview was synced with `--no-reload` and carried
-on through the release. **Open: the spoken answers can't work on `w53b`.**
-`TERMINAL_CSP` (`core/server/routing.ts`) has `connect-src 'self'` there, which
-blocks `http://127.0.0.1:8178`; a guest sees *YOUR VOICE ISN'T REACHING HIM*, and B
-and the menus still work. The user approved adding that one origin (2026-10-30),
-and `oct31-w53/whisper-origin` does it, on master with
-`oct31-w53/server-room-kiosk`: **it needs a release from the MacBook, and a release
-restarts the server.** No `sync-show`: no story changed. That branch replaces the
-parked local `oct31-w53/whisper-csp`. Vite sends no CSP, so a local test hides this.
-Rehearsed on 2026-10-30 in Chrome 156 on the real https page, with this header
-swapped in and the laptop's real whisper: both gates are needed and nothing else
-stands behind them. The CSP refuses the fetch; with the header and no device grant
-Chrome refuses the loopback address; with both, `/inference` answers (a 29 s clip
-in 4.3 s, `small.en`, 8 threads). `showctl preflight serverroom` now fails on its
-*Page → whisper* row until the release lands. After it, on Steph's laptop, run
-`scripts/server-room/start-terminal.ps1 -Setup` with `LOOM_MOD_CODE` set and a
-mouse, make every grant in the terminal's own profile (`%LOCALAPPDATA%\loom-terminal`,
-which doesn't exist yet: the kiosk has no way to answer a prompt) and check ⚙ reads
-*whisper is listening*; then run it with no switches
-(`docs/trapped/kiosk.md`, First launch). The CSP stopped that prompt ever coming up
-there. Steph's laptop has reflashed the M4 and recalibrated the door (2026-10-30);
-a new profile leaves the board's flash alone. Still owed: it relearns the patch bay
-once that's wired, and the CRT becomes the only display at 640 × 480. The Desktop does
-`git pull`, sets up `tidal.ps1` (`scripts/house-desktop/README.md` §3.7) and runs
-`start-stagehand.ps1 -Restart audio`.
+on through the release. The spoken answers couldn't work on it: `TERMINAL_CSP`
+(`core/server/routing.ts`) had `connect-src 'self'`, which blocks
+`http://127.0.0.1:8178`; a guest saw *YOUR VOICE ISN'T REACHING HIM*, and B and the
+menus still worked. The user approved adding that one origin (2026-10-30), and
+`w56` carries it. Vite sends no CSP, so a local test hides this. Rehearsed on
+2026-10-30 in Chrome 156 on the real https page, with this header swapped in and
+the laptop's real whisper: both gates are needed and nothing else stands behind
+them. The CSP refuses the fetch; with the header and no device grant Chrome refuses
+the loopback address; with both, `/inference` answers (a 29 s clip in 4.3 s,
+`small.en`, 8 threads). `showctl preflight serverroom` fails on its *Page → whisper*
+row on an older server.
 
 Before it, `w53` (master `a27da927`, shipped 2026-10-30; rollback `w51`):
 wave 53 (everyone uploads, the phones speak) on top of wave 52, which changes
