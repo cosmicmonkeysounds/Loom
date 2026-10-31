@@ -514,6 +514,14 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   worker's `recent`, `PERSISTENT_SLIDES` holds `recount` and `purgatory`, and
   `ALOUD_WINDOW_MS` outlasts the 14-minute read. Both versions and Task Manager's
   printed copy are held to the delivered file by `test/trapped-monologue.test.ts`.
+- **The special prize** (wave 58, G9a `award_most_correct`). `questions_right`
+  is written per program only when G9a is pressed (a role watcher on
+  `Night.prize_gen`; a watcher pass runs the programs' before the story's, so
+  the story watcher reads the new numbers) and sits on the role's `secret:`
+  list: a live count beside `truths_accepted` would tell the worker who lied.
+  `recap.ts` `questionsRight` reads the same rule live, and
+  `test/trapped-w58-prize.test.ts` holds the two together. `titi:facts` writes
+  `Night.owed_<id>` (`owedVar`) from `Question.placeholder`.
 - **Hub files have one owner at a time.** `event-runtime.ts`,
   `views.ts`, `chat.ts` and `sim.ts` are touched by almost every
   feature; when several agents work in parallel, give each of these to

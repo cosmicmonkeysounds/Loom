@@ -186,7 +186,7 @@ game just like the "guests" are."*
   claimed mark, tip a marked program off, let a guess slide, slip a program
   50 Truthcoin): private, never told to Trabolta; every third one he
   notices (−20 trust, a private warning, never removal).
-- **Staff awards** after G10 / G9: 🛡 Trabolta's Favourite Staff, ⭐ Staff
+- **Staff awards** after G10 / G9a: 🛡 Trabolta's Favourite Staff, ⭐ Staff
   Player Of The Night, 🤫 The Mole (the last award; G11 waits for it).
 - ✅ / 😤 judge one question at a time (🔢 picks it), so a card's three
   buttons cover every question.

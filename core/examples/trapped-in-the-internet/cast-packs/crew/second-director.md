@@ -193,7 +193,12 @@ queued.
    aloud; the TV shows the award slide.
 4. Fire **G0 📜** after the ending's last beat, then **G1** when NEXT moves to it
    (a press sooner asks first), then G2–G9 with the winner as the subject. Firing an award
-   again corrects it. Then **G10 🖌** on MS Paint (only if she came; without
+   again corrects it. Then **G9a 🏅 Most Questions Correct**, the special prize
+   Trabolta promised (wave 58: no winner to pick, the story counts each
+   program's questions right; a tie names everyone in it and they share it; a
+   press again reads the newest numbers; the recap's *Questions correct* is the
+   same count, live, if you have to hand it out by hand).
+   Then **G10 🖌** on MS Paint (only if she came; without
    her the sheet's NEXT skips it), then **G10a–c**, the three staff awards
    (wave 21: no winner to name, the story picks the player; The Mole is the
    last award), then

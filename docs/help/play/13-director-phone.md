@@ -135,7 +135,7 @@ default). With nobody calling, nothing asks.
   asks **who** first; pick them, then tap the cue again to fire it for
   them (the armed row reads *Tap again to fire → Winamp*). A cue armed for
   a person waits **10 s** for that tap, not 4 s, while the list scrolls
-  back to its row. Only an **award** (G2–G10) also has a **Value** box above the
+  back to its row. Only an **award** with a winner to pick (G2–G10, never G9a) also has a **Value** box above the
   list (optional: lies accepted, the duck time, quests done).
 - A message at the bottom says whether it fired. *✓ Fired* means the
   story took it. *Not taken — X doesn't apply right now (# hosts says
