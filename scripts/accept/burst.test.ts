@@ -55,7 +55,7 @@ test("pct: nearest rank; empty is NaN", () => {
 });
 
 const FALLBACK = "…packet loss. That matter is closed, program. The hunt is waiting.";
-const GATE = "Jean Trabolta will make an appearance later tonight. Please do not move the mouse.";
+const GATE = "Jean Trabolta is unavailable at this time. Please do not move the mouse.";
 const CANNED = { fallback: FALLBACK, unavailable: GATE };
 
 test("the worker's fallback line is not an answer: a fallback-only burst FAILs and stops waiting", () => {
