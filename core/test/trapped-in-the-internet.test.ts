@@ -1658,7 +1658,7 @@ describe("Trapped in the Internet — combo B", () => {
     const fate = saidBy(b, "The Uploader");
     expect(fate.some((e) => e.audience[0] === "g2" && e.text.includes("you went with it"))).toBe(true); // Unlimited Power
     expect(fate.some((e) => e.audience[0] === "g3" && e.text.includes("into purgatory"))).toBe(true); // The Way Out
-    expect(fate.some((e) => e.audience[0] === "g5" && e.text.startsWith("Your body is in the Maps and Ducks building"))).toBe(true); // nobody's
+    expect(fate.some((e) => e.audience[0] === "g5" && e.text.startsWith("Your body is in the Optical Drive"))).toBe(true); // nobody's
     expect(has(cues(b), "windows_shutdown")).toBe(true);
     const dance = advance(sim, 10);
     expect(has(cues(dance), "lights_dance")).toBe(true);

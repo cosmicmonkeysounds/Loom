@@ -482,6 +482,24 @@ describe("the full truth: the frames and the fallbacks", () => {
     expect(hostsOf(fire(n.sim, "tell_the_truth"))).toEqual(['"📜 The ceremony has started: too late for the full truth. Nothing happens."']);
   });
 
+  it("an old ask never carries over 📜, and 📜 inside the blackout keeps the dance off the message", { timeout: SLOW }, async () => {
+    const n = await road("song");
+    expect(pressRefused(n.sim, fire(n.sim, "start_the_ceremony"))).toBe(true);
+    fire(n.sim, "tell_the_truth");
+    expect(pressRefused(n.sim, fire(n.sim, "start_the_ceremony"))).toBe(true);
+    expect(v(n.sim, "Night.ceremony")).toBe(false);
+    const sim = Sim.fromSources(SRC);
+    sim.fireBeat("Power On");
+    expect(await pressChain(TO_Y2K, async (x) => (pressRefused(sim, fire(sim, x)) ? { ok: true, refused: true } : { ok: true }), () => {})).toEqual({ ok: true, refused: [] });
+    fire(sim, "patch_combo_a");
+    expect(cueRows(modView(sim, "open", "x").interactions ?? [], cueState(sim)).find((r) => r.next)?.id).not.toBe("tell_the_truth"); // not during the dark
+    fire(sim, "tell_the_truth");
+    expect(v(sim, "Night.lights")).toBe("restore");
+    for (let i = 0; i < 15; i++) sim.tick(1000);
+    expect(v(sim, "Night.lights")).toBe("restore");
+    expect(v(sim, "Night.screen")).toBe("recount");
+  });
+
   it("Combo A: no return, no recount, and the worker holds", { timeout: SLOW }, async () => {
     const n = await road("disabled");
     expect(v(n.sim, "Trabolta.awake")).toBe(false);
