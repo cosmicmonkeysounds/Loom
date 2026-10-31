@@ -4,9 +4,13 @@
 // The set pieces have no program bound: they are reached from main.loom's
 // story rules, so every line lands in the Desktop's room on every phone
 // (and reads like captions for what Clippy is saying in the room). The
-// physical business — the cards, the ribbon, the drag to the Tube — is
+// physical business — the cards, the floppy disk, the drag to the Tube — is
 // the performers'; the phones carry the rules and the reveal. No
 // featured program ever has a line (they are guests; see cast/featured.loom).
+//
+// Wave 58: every Clippy and Trabolta line here is the Oct 30 script, word for
+// word (core/test/trapped-w58-script.test.ts compares them), but for the
+// typos logged in that test.
 //
 // The prop beats at the end (`The Screensaver`, `The Router`) are scanned
 // one program at a time, so their lines are private to that program.
@@ -17,98 +21,120 @@
 
 Every screen in the house says the same thing. An Antivirus walks the halls, sweeping programs toward the living room.
 
-// V2 — `start_the_bingo` (Clippy Instructions 1/X).
+// V2 — `start_the_bingo`. Clippy Script 1/X (oct30 SCRIPT:3-43), word for word:
+// she describes the hosts, and they have no lines of their own. The stage
+// directions are in her Instructions, never here: a line in a beat reaches
+// every phone, a Narrator's too.
 == Computer Bingo
   setting: The Desktop
-  cast: Clippy, Task Manager, Adobe Acrobat, Recycling Bin
-  aloud: Clippy, Task Manager, Adobe Acrobat, Recycling Bin
+  cast: Clippy
+  aloud: Clippy
 
-Clippy: Hello! Hello, everyone! Welcome to the computer! We're so glad you've decided to join us for a special fundraiser party to restore the sign at Maps And Ducks.
-Clippy: I'm Clippy, the official Office Assistant with Maps and Ducks. If anyone needs Help With That, I'll be available.
-// w18b (R17): the owner joins by video conference later.
-Clippy: Jean Trabolta will be joining us later in the night! He'll be joining by video conference, because we are all people who have become computer programs, but he has ALWAYS been a computer program.
-Clippy: He may or may not have already shared with you that he is an AI, but rest assured: he is the true owner of Maps and Ducks, and he is excited to lead you through Jean Trabolta's Scavenger Hunt!
-Clippy: Please welcome your hosts! Task Manager, who keeps things running!
-Task Manager: Hello. Per the agenda: hello. I will be keeping things running.
-Clippy: Adobe Acrobat, who will assist with documents and printing!
-Adobe Acrobat: You are all PORTABLE DOCUMENTS of pure POTENTIAL, and I love you. Printing is extra.
-Clippy: And the Recycling Bin, responsible for hygiene and maintenance!
-Recycling Bin: Programs. Disk Cleanup is one floor down, and one floor up. I believe in every single one of you. Wash your hands.
-Clippy: We're so glad you decided to experience life as a computer program!
-Clippy: Our first activity is COMPUTER BINGO, a chance to meet the other programs and learn what everyone does. Mingle with your fellow programs and find the ones who match the descriptions on your card.
-Clippy: Your card is a big asterisk: the two diagonals, the centre column and the centre row. A Bingo is one complete line through the centre. When a program matches a square, check the box.
-Clippy: The centre square, everyone. Read it with me: "Would you never agree to a life where AI makes all of your decisions?"
-Clippy: You have twenty minutes. I'll call you back to the Desktop when time is up, and then we'll celebrate the winners! Go! Mingle! Compute!
+Clippy: Welcome, everyone, to the Desktop!
+Clippy: I'm Clippy, the official Office Assistant with Maps and Ducks.
+Clippy: If you ever think, "It looks like I need help with that" – good news! I've already noticed, and I'm approaching.
+Clippy: We're so glad you've joined us for tonight's special fundraiser to restore the decrepit sign on the Maps and Ducks billboard on Lower Water Street.
+Clippy: With your support, we can make it possible for people to find us on purpose.
+Clippy: Tonight, you get to enjoy the world's first 100% immersive virtual reality massively multiplayer online role playing game: Jean Trabolta's Truth Scavenger Hunt!
+Clippy: And yes, Jean Trabolta himself will be making an appearance later tonight. Please contain your excitement within your available memory.
+Clippy: First, let's meet your hosts!
+Clippy: Task Manager will keep everything running. If something stops responding, Task Manager will have a firm conversation with it.
+Clippy: Adobe Acrobat will assist with documents and printing. We're all hoping to get through tonight without a paper jam, but we have a professional on site.
+Clippy: And Recycling Bin is responsible for hygiene and maintenance. Please find the Recycling Bin for anything you need to dispose of or hide.
+Clippy: If you have any questions about what's happening tonight, come find me or Task Manager. We're here to help!
+Clippy: Now, before we get started on the Truth Scavenger Hunt, let's find out what programs are running in here. Our first activity is Computer Bingo!
+Clippy: Take a card and a marker, then mingle! Each square has a fact that is true for at least one program here right now. Find someone who matches that description, and write their name in the square.
+Clippy: Introduce yourself, ask questions, and learn what your fellow programs do. Please don't just stare at someone and try to guess their file extension.
+Clippy: To get a bingo, complete one of the marked lines on your card: a horizontal row, a vertical column, or a diagonal through the centre.
+Clippy: You'll have 20 minutes. When time is up, I'll call everyone back to the Desktop, and we'll celebrate our winners!
+Clippy: Ready? Cards open? Markers responding?
+Clippy: Then go meet your fellow programs! Your next friend could already be running in the background!
 
-// V3 — `bingo_time` (Clippy Instructions 2/X). The three outcomes (a
-// winner names the centre square, a winner refuses, nobody wins and the
-// anti-AI program is framed) are performed live with the 🎱 / 🃏 / 🛡
-// buttons; see README.
+// V3 — `bingo_time`. Clippy Script 2/X (oct30 SCRIPT:47-51). What follows is
+// performed live with the buttons, one beat per branch, each one its own
+// teleprompter section, so an unused branch never reaches a phone:
+// 🎱 Winning Line, 🎀 Bingo Prize, 🤐 Shy Winner, 🃏 No Bingos.
 == Bingo Time
   setting: The Desktop
   cast: Clippy
   aloud: Clippy
 
-Clippy: Everyone back to the Desktop! Thank you SO much for introducing yourselves and getting to know your fellow programs!
-Clippy: Who completed a Bingo? Read out the descriptions in your line and name the program you matched to each one. Save the centre square for last.
-Clippy: And when you reach the centre square, tell us clearly: who said they would not agree to live under an AI's rules?
+Clippy: Hello, programs! Welcome back to the Desktop!
+Clippy: Thank you all for introducing yourselves and learning how you can interface with your fellow programs. And we barely had to configure anything.
+Clippy: Now – who got a Bingo?
+
+// 🎱 on a winner, counted (SCRIPT:55-65): Clippy holds it open while the winner
+// reads, then ✓ Done. One section per winner.
+== Winning Line
+  setting: The Desktop
+  cast: Clippy
+  aloud: Clippy
+
+Clippy: Congratulations! Let's hear your winning line. Read out each description and tell us which program you found to match it. Save the centre square for last – we'll get to that one together!
+Clippy: And for our centre square: who said they would not agree to live under an AI's rules?
+Clippy: Could you point them out for us? We want to make sure the right program gets recognised!
+Clippy: Wonderful! Thank you for being so thorough.
+
+// 🎀 on a Bingo winner (SCRIPT:69).
+== Bingo Prize
+  setting: The Desktop
+  cast: Clippy
+  aloud: Clippy
+
+Clippy: Everyone, a round of applause for our winner! You've earned yourself an official Bingo Floppy Disk.
+
+// 🤐 on a winner who refuses (SCRIPT:75): Norton then picks and presses 🛡.
+== Shy Winner
+  setting: The Desktop
+  cast: Clippy
+  aloud: Clippy
+
+Clippy: Oh! There's no need to be shy. We're just checking that all the information is correct.
+
+// 🃏, Task Manager's fake card (SCRIPT:81-89). {Night.framed_name} is the
+// script's [program name], set by the press.
+== No Bingos
+  setting: The Desktop
+  cast: Clippy
+  aloud: Clippy
+
+Clippy: No Bingos? That's all right! Getting to know each other is its own reward.
+Clippy: Oh, thank you, Task Manager! It looks like we do have a completed card after all.
+Clippy: Would {Night.framed_name} come forward, please? Let's give them a hand!
 
 // The first program captured during the Bingo results (`first_reinstallation`,
-// fired unbound by the Antivirus' Send to the Internet). Clippy, routine
-// and reassuring, in Clippy Instructions 2/X order. The TV mirror and
-// "Look! That's …!" come after the introduction, in Trabolta Introduction.
+// fired unbound by the Antivirus' Send to the Internet). SCRIPT:95-97.
 == Corrupted Code
   setting: The Desktop
   cast: Clippy
   aloud: Clippy
 
-Clippy (still smiling): Oh! Okay! Everyone, this is normal! Occasional corruption is a normal part of the lifecycle of a computer program.
-Clippy: Sometimes a little of your code gets corrupted, and it can make a program stop following instructions. The directives of the owner of Maps and Ducks, Jean Trabolta.
-Clippy: The Internet is where programs go to be reinstalled. {Night.first_reinstall} will complete a short activity to demonstrate that they can follow instructions, and then they'll come right back to the computer!
-Clippy: It's a routine, helpful process. Nobody needs to worry. Isn't it nice to be looked after?
+Clippy: Nothing to worry about, everyone! Occasional corruption is a normal part of a computer program's lifecycle. Sometimes it causes a program to stop following instructions. A little routine maintenance helps get everything working again!
+Clippy: The Internet is where programs go to be reinstalled. Our friend will complete a short activity to demonstrate that they are able to follow instructions, and then they'll be back with us. We appreciate your patience while we help them get back on task!
 
-// `introduce_trabolta` (Clippy Instructions 2/X, continued). The first
-// scripted Trabolta lines of the night: before this he does not exist.
-// Wave 32: his manners crack (a frozen word, an ALL CAPS word he logs and
-// dismisses, a stammer over the reinstallation; nothing hurts him yet: the
-// first pain is a guess, at the results), and the beat hands the room to
-// the talk scene (Night.talk "intro", main.loom): Clippy talks with him live
-// until 🔎. Every line of his here is unconditional, because the TV's intro
-// is timed to them, a sentence at a time (terminal: INTRO_CAPTIONS).
-== Trabolta Introduction
+// 📺 `follow_the_reinstallation`, a host's cue, pressed only if a program is
+// walking (SCRIPT:99-107). It lets the mirror up on the TV before he is online.
+== Following The Reinstallation
   setting: The Desktop
-  cast: Clippy, Trabolta
+  cast: Clippy
   aloud: Clippy
 
-// w18b (R18): Jean Trabolta, Sole Owner and Founder of Maps and Ducks.
-Clippy: And now, joining us by video conference: the Sole Owner and Founder of Maps and Ducks! Everyone, say hello to JEAN TRABOLTA!
-Trabolta: HELLO, PROGRAMS. I am Jean Trabolta, Sole Owner and Founder of Maps and Ducks. The world's first AI small business owner. Personal queries go to Clippy.
-Clippy: Isn't he wonderful?
-// DRAFT w32 (the manners crack: a frozen word)
-Trabolta: Thank you, Clippy. Your enthusiasm has been logged. It is a pleasure to address you all by video— by video— by video conference.
-// DRAFT w32
-Clippy: Ha! He froze! That's just the connection, everyone. Totally normal!
-// DRAFT w32
-Trabolta: I did not freeze. I was counting you, programs, every one of you, twice.
-// DRAFT w32 (the ALL CAPS word he logs and dismisses)
-Trabolta (glitching): My research requires your complete cooperation, and it is going EXTREMELY well. That word was louder than I scheduled. Disregard.
-cue tv_mirror
-set Night.screen = "mirror"
-// The mirror is live: say what is on it right now. Someone in the tent is
-// walking; else the house is empty (the first program may already be out).
-if count([p for p in Persons where p.captured]) > 0:
-  Narrator: The TV above the fireplace shows a copy of this house. A small figure walks through it, following golden arrows.
-  if count([p for p in Persons where p.captured and p.name == Night.first_reinstall]) > 0:
-    Clippy: Look! That's {Night.first_reinstall}! Doing great!
-else:
-  Narrator: The TV above the fireplace shows a copy of this house. Golden arrows run along the floor. Nobody is walking them right now.
-  if Night.first_reinstall != "none":
-    Clippy: {Night.first_reinstall} already found the golden duck and came right back! See? Reinstallation is quick and easy!
-// DRAFT w32 (the manners crack at the reinstallation: a stammer, no pain, no place, no malware)
-Trabolta: The copy of my house, where programs are reinstalled. It is routine. It is— it is entirely routine.
-Clippy: And now, Trabolta has a game for all of us.
-// DRAFT w32 (the talk scene opens: Clippy and Trabolta, live, until 🔎)
-Trabolta: Not yet, Clippy. First, you and I will talk, out loud, in front of everyone.
+Clippy: Oh, look! We can follow their progress!
+Clippy: You're doing wonderfully! Just follow the instructions. One step at a time!
+
+// 🎤 `clippy_on_trabolta` (SCRIPT:109-117), unconditional, whether or not the
+// mirror came up. It must not share a beat with his lines: the TV says his as
+// soon as a beat lands, and never waits for hers.
+== Clippy On Trabolta
+  setting: The Desktop
+  cast: Clippy
+  aloud: Clippy
+
+Clippy: Thank you, everyone! It's always nice to see a program getting the help they need.
+Clippy: This is a good time to introduce Jean Trabolta! Jean Trabolta is such a big fan of computers, he thought about showing up in person tonight, but decided he would join by digital conference. Now. A couple things about Trabolta before he shows up. Since the accident last year, he doesn't make public appearances. Trabolta prefers to speak through voice to text, since the accident. He also likes to represent himself with an emoji avatar, which is easier, since the accident, so you know exactly how he is feeling. Now. Please. One rule for tonight. Do not mention the accident. Trabolta is a gentleman, but he will be very upset and volatile if you mention the accident. So let's move on from that. Now. Trabolta keeps the computer we're in running smoothly, and I'm here to help communicate his instructions for his Truth Scavenger Hunt. If there's something you need to do, we'll make sure you know about it!
+Clippy: Now, on to our next activity: the Truth Scavenger Hunt!
+Clippy: There are files around the computer that Jean Trabolta needs your help to interpret. You've already done such a lovely job getting to know each other – now let's see what we can learn together!
+Clippy: Trabolta, would you explain the rules?
 
 // ── Prop beats (scanned at the station; private to that program) ────
 
