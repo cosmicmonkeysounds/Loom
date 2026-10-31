@@ -102,6 +102,20 @@ def test_the_show_persona_lets_his_voice_move_a_players_trust():
     assert "them.trust" in adjust_names(p, request(ranges={"trust": [-100, 100]}))
 
 
+def test_a_guests_warmth_rides_a_real_reply_and_their_other_slots_never_do():
+    """Wave 58: the line reaches the prompt, and only the offered key survives."""
+    p = parse_persona(PERSONA.replace("them_adjust: trust\n", "them_adjust: trust, chummy\n"))
+    guest = request(player=False, ranges={"chummy": [-5, 10]})
+    guest["speaker"]["kind"] = "guest"
+    assert any('"them.chummy"' in m["content"] for m in build_messages(p, guest))
+
+    async def fake(messages, cfg):
+        return json.dumps({"say": "Good company.", "adjust": {"truth": 2, "them.chummy": 1, "them.trust": 9}})
+
+    reply = run(answer(p, LlmConfig(), guest, fake, gate=False))
+    assert reply.adjust == {"truth": 2, "them.chummy": 1}
+
+
 def test_a_guests_warmth_slot_passes_and_nothing_else_of_theirs():
     """Wave 58 (contract C5): a guest offers only the story's `warmth:` slot."""
     p = parse_persona(PERSONA.replace("them_adjust: trust\n", "them_adjust: trust, chummy\n"))
