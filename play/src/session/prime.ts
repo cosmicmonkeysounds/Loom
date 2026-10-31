@@ -19,6 +19,7 @@ import type { CensorResult, Channel, FilterLevelResult, ChatMessage, GuestCardVi
 import { useTyping } from "../typing.ts";
 import { queueSummary } from "../wallet.tsx";
 import type { WidgetResult } from "../widgets.tsx";
+import type { RedeemAnswer } from "../scan-done.tsx";
 import { hasPendingCard } from "./channels.ts";
 import { SAY_TIMEOUT_MS, sayRefusalText } from "./guest.ts";
 import { NO_ANSWERS, tokenDead, useLandingBrand, usePerSession, useRoomLinks, useTheme, type ResolvedCode } from "./shared.ts";
@@ -179,7 +180,8 @@ export function buildPrimeChannels(messages: Map<number, ChatMessage>, view: Pri
   });
   // The character's own pinned rooms: its Quest Log (`start quest X for
   // <Character>`) and Codex (what it knows), addressed `@<me>` — read-only
-  // (a booth types no codes; sharing stays on the guest card).
+  // (wave 58: codes go in through 📷 Scan, not here; sharing stays on the guest
+  // card).
   const pinned: Channel[] = [];
   if ((view?.questTotal ?? 0) > 0) {
     const msgs = all.filter((m) => m.channel === QUEST_LOG && mine(m)).sort(bySeq);
@@ -301,6 +303,10 @@ export interface PrimeSession {
   cue: (name: string, subject: string | null, args: Record<string, unknown> | null, presses: number | undefined, signal?: AbortSignal) => Promise<{ refused?: boolean; moved?: boolean; said?: string[]; staff?: string[] }>;
   /** Codex: hand one of the character's entries to a guest. */
   shareCodex: (entry: string, to: string) => Promise<unknown>;
+  /** Wave 58: a codex QR the booth read, or a code it typed, into the
+   *  character's own Codex (`/api/prime/codex/redeem`; a miss is `missed`,
+   *  and a refusal throws). */
+  redeem: (code: string) => Promise<RedeemAnswer>;
   /** The approver's booth: settle a held transfer / deny one in its window. */
   walletApprove: (id: string) => Promise<unknown>;
   walletDeny: (id: string) => Promise<unknown>;
@@ -563,6 +569,7 @@ export function usePrimeSession(): PrimeSession {
     },
     [post, auth],
   );
+  const redeem = useCallback((code: string) => post<RedeemAnswer>("/api/prime/codex/redeem", { code }, auth!.token), [post, auth]);
   const moderate = useCallback(
     (id: string, action: string, name?: string) => post("/api/mod/act", { id, action, name }, auth!.token),
     [post, auth],
@@ -664,5 +671,5 @@ export function usePrimeSession(): PrimeSession {
   useTheme(auth === null ? landing.theme : view?.theme);
   const arrive = useCallback(() => post("/api/prime/arrive", {}, auth!.token), [post, auth]);
   const choose = useCallback((index: number, menu: { id: number; text: string }) => post("/api/prime/choose", { index, choice: menu.id, text: menu.text }, auth!.token), [post, auth]);
-  return { auth, view, alert: alerts.alert, dismissAlert: alerts.dismiss, alerts, messages, connected, ready, notice, threads, login, scan, card, say, inviteToChannel, leaveChannel, becomeAdmin, act, lastPressedOn, cue, shareCodex, walletApprove, walletDeny, moderate, setHidden, answerWidget, widgetAnswers, letter, censor, filterLevel, arrive, choose, leave, roomLinkPending };
+  return { auth, view, alert: alerts.alert, dismissAlert: alerts.dismiss, alerts, messages, connected, ready, notice, threads, login, scan, card, say, inviteToChannel, leaveChannel, becomeAdmin, act, lastPressedOn, cue, shareCodex, redeem, walletApprove, walletDeny, moderate, setHidden, answerWidget, widgetAnswers, letter, censor, filterLevel, arrive, choose, leave, roomLinkPending };
 }

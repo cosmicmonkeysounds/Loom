@@ -54,6 +54,7 @@ import { PrimeLogin } from "./login.tsx";
 import { usePhoneVoice } from "../phone-voice.ts";
 import { voiceStartItem } from "../chrome/start-menu.tsx";
 import { BoothUploadStage, useBoothRails } from "./upload.tsx";
+import { useUnlockLink } from "./unlock-link.ts";
 import { backFor, boothFoldable, boothHost, boothSidebar, closeTo, closedGate, guestsWaiting, keepsCardGuest, soonest, viewPaused, type Layer } from "./model.ts";
 import { boothMine, boothMomentFeed } from "./moments-feed.ts";
 import { PeopleSheet } from "./people.tsx";
@@ -399,6 +400,18 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
   useEffect(() => {
     setMissionNews((n) => (n !== null && n.id !== headNow ? null : n));
   }, [headNow]);
+  // Wave 58: a codex QR the phone's own camera opened (`?unlock=`).
+  useUnlockLink({
+    ownsPage: host.ownsPage,
+    ready: signedIn && s.view !== null,
+    redeem: (code) => s.redeem(code),
+    say: (text) => s.alerts.raise(text, { quiet: true }),
+    openCodex: () => {
+      setLayer(null);
+      t.open(CODEX_ROOM);
+    },
+    view: () => s.view,
+  });
   // A notification's `?room=scanner` link (the old Scanner room's readouts)
   // opens Readouts, where those readouts live now.
   useEffect(() => {
@@ -583,6 +596,10 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
   const openThread = (guestId: string) => {
     setLayer(null);
     t.open(`guest:${guestId}`);
+  };
+  const openCodex = () => {
+    setLayer(null);
+    t.open(CODEX_ROOM);
   };
 
   let stage: ReactElement | null = null;
@@ -894,7 +911,7 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
                   start={start}
                   startHeader={<StartHeader s={s} />}
                   buttons={player ? playerTaskbarButtons({ pressed: t.activeId === null || wide ? pwin : null, chatsDot: pChats !== null && chatsDot(pChats), scanOpen: layer?.kind === "scan", mission: () => playerTap("mission"), chats: () => playerTap("chats"), scan: () => setLayer({ kind: "scan" }) }) : hostWins ? hostTaskbarButtons({ pressed: hostShown, chatsBadge: waiting, scanOpen: layer?.kind === "scan", open: hostTap, scan: () => setLayer({ kind: "scan" }) }) : [
-                    { id: "scan", label: "Scan", icon: <Icon name="scan" />, primary: true, title: "Scan a guest's pass", tour: "scan", onClick: () => setLayer({ kind: "scan" }), active: layer?.kind === "scan" },
+                    { id: "scan", label: "Scan", icon: <Icon name="scan" />, primary: true, title: "Scan a pass or a codex QR", tour: "scan", onClick: () => setLayer({ kind: "scan" }), active: layer?.kind === "scan" },
                     { id: "guests", label: "Guests", icon: <Icon name="people" />, title: `Every guest (${guests.length}), searchable`, tour: "guests", badge: waiting, onClick: () => setLayer({ kind: "guests" }), active: layer?.kind === "guests" },
                   ]}
                   tray={<BoothTray view={s.view} onWallet={() => t.open(WALLET_ROOM)} loose={wanted !== null && (!player || claimer) ? loose : null} waiting={popOutWaiting(rung)} onBoard={openBoard} onWaiting={() => setLayer({ kind: "waiting" })} filter={filter.view !== null ? filter.waiting.length : null} onFilter={() => setLayer({ kind: "filter" })} windowed={player || hostWins} />}
@@ -918,7 +935,7 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
               filterOpen={layer?.kind === "filter"}
             />
             {layer?.kind === "scan" && (
-              <ScannerScreen session={s} admin={admin} gate={passGate} caption={layer.caption} onBoard={openBoard} onClose={closeLayer} onOpenThread={openThread} onPress={noteOwnFire}
+              <ScannerScreen session={s} admin={admin} gate={passGate} caption={layer.caption} onBoard={openBoard} onClose={closeLayer} onOpenThread={openThread} onPress={noteOwnFire} onOpenCodex={openCodex}
                 // C3: 📷 Next guest is door work: an Antivirus at the door, or a scan opened from the Door queue.
                 queue={mayPress(s.view?.interactions, "claim_door", character) || layer.back?.kind === "door"}
                 onCardGuest={(id) => {

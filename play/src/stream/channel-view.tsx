@@ -377,7 +377,7 @@ export function ChannelView({
   const isRoom = channel.kind !== "dm" && channel.kind !== "guest" && channel.kind !== "codex" && channel.kind !== "quests" && channel.kind !== "wallet";
   const emptyCopy =
     channel.kind === "codex"
-      ? "You know nothing yet. Codes are on the walls, in the puzzles, and in people — type one below."
+      ? `You know nothing yet. Codes are on the walls, in the puzzles, and in people — ${onSend === undefined ? "📷 Scan one" : "type one below"}.`
       : channel.kind === "quests"
         ? "No quests yet. When the story hands you one, it lands here — each in its own thread."
         : channel.kind === "wallet"

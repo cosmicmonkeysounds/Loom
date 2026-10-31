@@ -79,8 +79,8 @@ describe("the camera's life", () => {
     const session = { auth: { token: "t", character: "Norton", admin: false, eventId: "default" }, view: null } as unknown as PrimeSession;
     const html = renderToStaticMarkup(<ScannerScreen session={session} admin={false} onClose={() => {}} onOpenThread={() => {}} />);
     expect(html).toContain("<video");
-    expect(html).toContain("Or type the id on their pass");
-    expect(html).toContain("Scan a pass");
+    expect(html).toContain("Or type a pass id or a codex code");
+    expect(html).toContain("Scan a pass or a codex QR");
     expect(html).toContain("ico-scan");
     expect(html).not.toContain("behind");
   });
