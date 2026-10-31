@@ -81,9 +81,9 @@ questions are DRAFT until the team replaces them). Re-print this table from
 
 | | Question | Accurate answer |
 |---|---|---|
-| H1 | Years the Maps and Ducks billboard on Barrington went unpaid | **Eleven years** |
-| H2 | First animal buried in the Halifax Explosion Memorial Pet Cemetery | **Mister Pickles** (a harbour tabby, 1918) |
-| H3 | Time the ribbon-cutting at Halifax's first AI Data Centre was scheduled | **9:00 a.m.** (4 a.m. is the trap) |
+| H1 | Funk and Wagnalls: an example of fraud | **⚠ owed before the print** |
+| H2 | Forensics For Dummies: the sentence that ends "previously hypnotized witnesses" | **⚠ owed before the print** |
+| H3 | Macs for Dummies: the sentence with "pharming" in it | **⚠ owed before the print** |
 | H4 | The extension the Customer Care card tells you to dial | **1978** |
 | H5 | Song Trabolta played 412 times the night before he registered the domain | **"Hopelessly Devoted to You"** |
 | H6 | Title of the last chapter of his Unified Field Theory | **"Appendix Z: Loose Ends (Do Not Print)"** |

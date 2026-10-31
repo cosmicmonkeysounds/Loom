@@ -25,10 +25,11 @@ import type { ChatMessage } from "../server/chat.ts";
 import { EventRuntime } from "../server/event-runtime.ts";
 import { Store } from "../server/store.ts";
 import type { FactsView } from "../server/views.ts";
+import { withTestKeys } from "./fixtures/hunt-keys.ts";
 
 const SHOW = "trapped-in-the-internet";
 const SRC = scenarioSource(SHOW);
-const FACTS = readFileSync(join(import.meta.dirname, "..", "examples", SHOW, "facts.json"), "utf8");
+const FACTS = withTestKeys(readFileSync(join(import.meta.dirname, "..", "examples", SHOW, "facts.json"), "utf8"));
 const CODES = { event: "EVT558", prime: "PRM558", mod: "MOD558" };
 const SLOW = 120_000;
 

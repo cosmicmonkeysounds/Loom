@@ -144,6 +144,7 @@ import {
   factsProblems,
   judgeAnswer,
   isExact,
+  isPlaceholderKey,
   judgeFiling,
   judgeMode,
   parseFactsBook,
@@ -2588,6 +2589,9 @@ export class EventRuntime {
       const a = args["answer"];
       const c = args["confidence"];
       if (typeof q !== "string" || typeof a !== "string" || a.trim() === "" || typeof c !== "number" || !Number.isInteger(c) || c < 1 || c > 100) return "refused";
+      // A key still owed judges nobody (wave 58): no verdict, so the story
+      // says it could not be judged and records nothing.
+      if (isPlaceholderKey(book, q)) return null;
       // A near miss (`Mr Pickels`) is proposed accurate, never a lie or a
       // guess by itself: a director decides it (wave 11, C6).
       const judged = judgeFiling(book, q, a, c);

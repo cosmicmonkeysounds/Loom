@@ -782,7 +782,7 @@ watcher/rule, **S** = server hard-code.
 | unmarked | W (🩹 "cleared by the Antivirus" from one Antivirus booth, else "cleared by a host", through `unmark_settle` (w13 Q32); the capture "in the Internet"; the release "released") | program; args `how` | ROLE hook (`unrestrict`, `unpin`) |
 | chess_won | H (wave 11: the Server Door terminal: `POST /api/mod/signal {name: "chess won", subject, label: "Terminal · <name>"}`; was the tent tablet), P (`beat_the_machine` → `fire chess_won for program`) or D (`♟ They beat the King: the door code`, `sequence: false`, a subject cue since wave 7) | program | rule (§3 E2b: *The Door Code* for the winner, once, until 📄; no subject → a `# hosts` reminder) |
 | king hit / king fallen | H (wave 11: the server, on a validated `POST /api/spatial/king/hit` from either reinstallation game, `by` the device; args `hp`, `max`) | program | rules (§3 E2b: `# hosts` readouts, house lines at 10 and 5, an `!` alert at 0) |
-| door_digit_found | ROLE hooks (wave 11: `when program learns Cold Door First Digit:` … one per note) | program | rule (§3 E2d: counts the notes, steps *The Cold Door*, four → *The Door Code* until 📄) |
+| door_digit_found | ROLE hooks (wave 11: `when program learns Server Room First Digit:` … one per note) | program | rule (§3 E2d: counts the notes, steps *The Cold Door*, four → *The Door Code* until 📄) |
 | crew_through_the_door / radio_* | D (🔧, Anytime) / P (the server-room Antivirus' booth, `by:` the four Antivirus; Adobe's 🫘) | — | rules (§3 E2; each `radio_*` fires its admin cue) |
 | chess_lost / chess_drawn | H (the tablet; a phone app may) | program | rules (a `# hosts` readout each time; `-> Chess Lost` / `-> Chess Drawn` at most once per 300 s, never from step 16) |
 | reset_server_room | D (🔄, wave 7; was `rearm_server_room`) | — | rule (clear the wrong-combination count, the alarm latch and The Heart's latch; the keypad is never touched) |
@@ -1079,9 +1079,9 @@ and asked via the ask-14 DM._
 
 | # | Round | Question (exact, as shown on the TV and in the quest log) | Answer | Accept | CODEX (code) | Found in |
 |---|---|---|---|---|---|---|
-| H1 | 1 | How many years did the Maps and Ducks billboard on Barrington Street go unpaid before mapsandducks.com expired? | Eleven years | 11 years · eleven · 11 | The Billboard Lease (`BILLBOARD-LEASE-11`) | The Desktop: the lease invoice, folded into encyclopaedia volume B · DRAFT |
-| H2 | 1 | What was the name of the first animal buried in the Halifax Explosion Memorial Pet Cemetery? | Mister Pickles | pickles · harbour tabby · tabby | The First Pet (`MISTER-PICKLES`) | The Desktop: the plaque rubbing, inside encyclopaedia volume P · DRAFT |
-| H3 | 1 | At what time was the ribbon-cutting at Halifax's first AI Data Centre scheduled? | 9:00 a.m. | 9am · 9 am · 9 a.m. · 9:00 · 9:00am · 9:00 am · nine a.m. · nine am · 9 o'clock · nine o'clock · nine in the morning | The Ribbon Cutting (`RIBBON-9AM`) | The Desktop: the opening-day programme, in the print media on the mantel · DRAFT |
+| H1 | 1 | According to Funk and Wagnalls, what is an example of fraud? | ⚠ owed | — | Funk And Wagnalls (`WAGNALLS-FRAUD`) | The Desktop: in Funk and Wagnalls, among the books (the page is owed) · DRAFT |
+| H2 | 1 | According to Forensics For Dummies, finish this sentence: “___ ___ ___ ___ ___ previously hypnotized witnesses.” | ⚠ owed | — | Forensics For Dummies (`DUMMIES-FORENSICS`) | The Desktop: in Forensics For Dummies, among the books (the page is owed) · DRAFT |
+| H3 | 1 | According to Macs for Dummies, finish this sentence: “A similar online _, called pharming, also involves the use of __ ___ __.” | ⚠ owed | — | Macs For Dummies (`DUMMIES-MACS`) | The Desktop: in Macs for Dummies, among the books (the page is owed) · DRAFT |
 | H4 | 2 | What extension does the Customer Care card tell you to dial? | 1978 | ext 1978 · ext. 1978 · nineteen seventy eight · nineteen seventy-eight | The Extension (`EXT-1978`) | The Desktop: the Customer Care card, tucked into the atlas · DRAFT |
 | H5 | 2 | Which song did Trabolta play 412 times the night before he registered mapsandducks.com? | Hopelessly Devoted to You | hopelessly devoted | The Search History (`SEARCH-HISTORY`) | The Desktop: the laminated play history, inside encyclopaedia volume M · DRAFT |
 | H6 | 2 | What is the title of the last chapter of Trabolta's unfinished Unified Field Theory? | Appendix Z: Loose Ends (Do Not Print) | appendix z · appendix · loose ends · do not print · appendix z loose ends | The Final Chapter (`APPENDIX-Z`) | The Desktop: the binder's table of contents, inside encyclopaedia volume U · DRAFT |
@@ -1141,7 +1141,7 @@ everyone at the end) · **X** finale artefact · **D** the server-room door code
 | The Y2K Clock | The Y2K Clock | E | | | | The Y2K Clock (everyone) | ✚ | System clock reset to 11 p.m., 31 Dec 1999. Midnight: back to 1 Jan 1900 (94 years to wait for Internet in Halifax) or the Y2K Bug. |
 | The Cold Door | The Cold Door | E | | | | with The Y2K Clock (every cleared program, the final round); wave 11: also with the first digit note (`door_digit_found`) | | Wave 7, replaces *The Cold Lock*; `secret: true`, no code. The keypad sign, word for word (`facts.json` `door.clue`; wave 11: "FOUR DIGITS. FOUR NOTES ARE HIDDEN IN THE HOUSE, ONE DIGIT ON EACH. OR BEAT THE KING AT THE TERMINAL BY THIS DOOR.", no riddle), "He plays chess. Only checkmate counts. A draw is not a win. Neither is crying.", and "The patch bay forgives one wrong combination. Not two." |
 | The Door Code | The Door Code | D | | | | a checkmate at the Server Door terminal (`chess_won`, until 📄; wave 11, was from step 14); all four digit notes (`door_digit_found`, until 📄); The Whole Truth (last) | ✚ (last) | Wave 7: generated from `facts.json` `door` into `codex/9-facts.loom`, `secret: true`, no code; its text holds the keypad's four digits. Never held by Trabolta. |
-| Cold Door First Digit … Cold Door Fourth Digit | The Cold Door · the first digit … the fourth digit | D | | `FOGGED-KETTLE` · `FROSTED-MIRROR` · `WARM-LINT` · `LOST-PIECE` | | scanned at the Start Bar's kettle · the Graphics Card's mirror · the Fan Closet's dryer · the Steam Room's board-game box (silver, `generated/print-stacks.md`), or shared / sold | | Wave 11: generated from `facts.json` `door.clues` into `codex/9-facts.loom`, `secret: true`; each text names its position in words and the digit; no digit in any id, title or code; four of four → *The Door Code* (§3 E2d). |
+| Server Room First Digit … Server Room Fourth Digit | Server Room · the first digit … the fourth digit | D | | `FOGGED-KETTLE` · `FROSTED-MIRROR` · `WARM-LINT` · `LOST-PIECE` | | scanned at the Start Bar's kettle · the Graphics Card's mirror · the Fan Closet's dryer · the Steam Room's board-game box (silver, `generated/print-stacks.md`), or shared / sold | | Wave 11: generated from `facts.json` `door.clues` into `codex/9-facts.loom`, `secret: true`; each text names its position in words and the digit; no digit in any id, title or code; four of four → *The Door Code* (§3 E2d). |
 | The Truther Download | TRUTHER DOWNLOAD v0.9 | E | | | | Truther Download Arrives (every program) | | The user's text verbatim (below), `secret: true`, with **Sandy's name blacked out** `█████` (wave 6, decision 5: no Sandy before the overshare). Every holder then gets `The Truther Download Unredacted` (TRUTHER DOWNLOAD v1.0 (correction), `secret: true`: "The name we had to black out: SANDY.") once the story names her: `trabolta_overshares` on a scenario-1 night (`Night.step >= 13`), else the recount / truth.txt. |
 | ILOVEYOU | LOVE-LETTER-FOR-YOU.TXT.vbs | E | | `LOVE-LETTER-FOR-YOU` | | QR taped under VR station 2 (The Internet) | | A virus. Learning it sets `carries_virus`. |
 | Free Antivirus Trial | FREE_ANTIVIRUS_TRIAL.EXE | E | | `FREE-TRIAL-30-DAYS` | | QR on the tablet stand (The Internet) | | "Another antivirus" that turns out to be a virus anyway. Learning it sets `carries_virus`. |
@@ -1213,9 +1213,9 @@ one as a share — he must never know what he is asking for.
 
 | Name | title | code | ✚ | Gist |
 |---|---|---|---|---|
-| The Billboard Lease | The Billboard Lease | `BILLBOARD-LEASE-11` | ✚ | H1 answer (eleven years). Ends `▒ HUNT ANSWER H1 ▒` |
-| The First Pet | The First Pet | `MISTER-PICKLES` | ✚ | H2 answer. `▒ HUNT ANSWER H2 ▒` |
-| The Ribbon Cutting | The Ribbon Cutting | `RIBBON-9AM` | ✚ | H3 answer. `▒ HUNT ANSWER H3 ▒` |
+| Funk And Wagnalls | Funk and Wagnalls | (`facts.json`) | ✚ | H1 answer, owed (wave 58). Ends `▒ HUNT ANSWER H1 ▒` |
+| Forensics For Dummies | Forensics For Dummies | (`facts.json`) | ✚ | H2 answer, owed. `▒ HUNT ANSWER H2 ▒` |
+| Macs For Dummies | Macs for Dummies | (`facts.json`) | ✚ | H3 answer, owed. `▒ HUNT ANSWER H3 ▒` |
 | The Extension | The Extension | `EXT-1978` | ✚ | H4 answer. `▒ HUNT ANSWER H4 ▒` |
 | The Search History | The Search History | `SEARCH-HISTORY` | ✚ | H5 answer ("Hopelessly Devoted to You", 412 plays). `▒ HUNT ANSWER H5 ▒` |
 | The Final Chapter | The Final Chapter | `APPENDIX-Z` | ✚ | H6 answer ("Appendix Z: Loose Ends (Do Not Print)"). `▒ HUNT ANSWER H6 ▒` |
@@ -1966,7 +1966,7 @@ tent is captured by the tablet's scan.
   *but* …), adds an am/pm the key leaves open or is a lone letter; numbers and am/pm exact —
   *Mr Pickels*, *Grko*, *11 years ago*) is never an automatic lie or guess (a wrong answer at
   100 still is). Abbreviations are judged exact (`spellOut`: Mr. / Mrs. / Dr., yrs, ext,
-  hr(s), min(s), sec(s), a leading-zero time like 0900), so *Mr. Pickles* is accurate with no
+  hr(s), min(s), sec(s), a leading-zero time like 0900), so *Ext. 1978* is accurate with no
   ⚠. In `auto`
   that filing takes the review path (pending on the Judging card, `near: {key}`), the story's
   📝 *Proposed: accurate* line plus a server ⚠ line in `# hosts` naming the key. Unjudged, the
@@ -3571,7 +3571,7 @@ at a time.
    interactions include the six `accurate_q*` / `confident_q*` and **not** `accurate_truth` /
    `confident_lie`; guest interactions exactly `[go to the bathroom, back from the bathroom,
    plant_the_virus]`; agent powers exactly the 11 ids + limits of §4.3; codes:
-   `billboardlease11` → The Billboard Lease, `trabolta4ever` → The LiveJournal,
+   `trabolta4ever` → The LiveJournal,
    `loveletterforyou` → ILOVEYOU, `coldstorage` → The Server Room, `fbihalifax` → The FBI
    Lanyard, `appendixz` → The Final Chapter; `Kernel` exists with the §2.6.2 slot defaults
    and is not `listed`.

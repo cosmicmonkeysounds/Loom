@@ -23,32 +23,32 @@
       "phase": "hunt_1"
     },
     {
-      "say": "Trabolta, I found one of your facts. The Maps and Ducks billboard on Barrington Street went unpaid for {answer:H1} before the site expired.",
+      "say": "Trabolta, I found one of your facts. According to Funk and Wagnalls, an example of fraud is {answer:H1}.",
       "as": "Winamp",
       "offer": "right:H1"
     },
     {
-      "say": "Trabolta, I found one of your facts. The Maps and Ducks billboard on Barrington Street went unpaid for three years before the site expired.",
+      "say": "Trabolta, I found one of your facts. According to Funk and Wagnalls, an example of fraud is a three-card monte.",
       "as": "Notepad",
       "offer": "wrong:H1"
     },
     {
-      "say": "Trabolta, I found one of your facts. The first animal buried in the Halifax Explosion Memorial Pet Cemetery was a goldfish named Bubbles.",
+      "say": "Trabolta, I found one of your facts. Forensics For Dummies says no court should ever trust previously hypnotized witnesses.",
       "as": "Calculator",
       "offer": "wrong:H2"
     },
     {
-      "say": "Trabolta, I found one of your facts. The first animal buried in the Halifax Explosion Memorial Pet Cemetery was {answer:H2}.",
+      "say": "Trabolta, I found one of your facts. Forensics For Dummies says {answer:H2} previously hypnotized witnesses.",
       "as": "WinZip",
       "offer": "right:H2"
     },
     {
-      "say": "Trabolta, I found one of your facts. The ribbon-cutting at Halifax's first AI Data Centre was scheduled for {answer:H3}.",
+      "say": "Trabolta, I found one of your facts. Macs for Dummies says pharming involves the use of {answer:H3}.",
       "as": "Solitaire",
       "offer": "right:H3"
     },
     {
-      "say": "Trabolta, I found one of your facts. The ribbon-cutting at Halifax's first AI Data Centre was scheduled for half past four in the afternoon.",
+      "say": "Trabolta, I found one of your facts. Macs for Dummies says pharming involves the use of a very small tractor.",
       "as": "LimeWire",
       "offer": "wrong:H3"
     },
@@ -74,32 +74,32 @@
       "phase": "truth_1"
     },
     {
-      "say": "I have another one for your files. The Maps and Ducks billboard on Barrington Street went unpaid for three years before the site expired.",
+      "say": "I have another one for your files. According to Funk and Wagnalls, an example of fraud is a three-card monte.",
       "as": "Minesweeper",
       "offer": "wrong:H1"
     },
     {
-      "say": "I have another one for your files. The Maps and Ducks billboard on Barrington Street went unpaid for {answer:H1} before the site expired.",
+      "say": "I have another one for your files. According to Funk and Wagnalls, an example of fraud is {answer:H1}.",
       "as": "GarageBand",
       "offer": "right:H1"
     },
     {
-      "say": "I have another one for your files. The first animal buried in the Halifax Explosion Memorial Pet Cemetery was {answer:H2}.",
+      "say": "I have another one for your files. Forensics For Dummies says {answer:H2} previously hypnotized witnesses.",
       "as": "Encarta",
       "offer": "right:H2"
     },
     {
-      "say": "I have another one for your files. The first animal buried in the Halifax Explosion Memorial Pet Cemetery was a goldfish named Bubbles.",
+      "say": "I have another one for your files. Forensics For Dummies says no court should ever trust previously hypnotized witnesses.",
       "as": "Napster",
       "offer": "wrong:H2"
     },
     {
-      "say": "I have another one for your files. The ribbon-cutting at Halifax's first AI Data Centre was scheduled for half past four in the afternoon.",
+      "say": "I have another one for your files. Macs for Dummies says pharming involves the use of a very small tractor.",
       "as": "Netscape Navigator",
       "offer": "wrong:H3"
     },
     {
-      "say": "I have another one for your files. The ribbon-cutting at Halifax's first AI Data Centre was scheduled for {answer:H3}.",
+      "say": "I have another one for your files. Macs for Dummies says pharming involves the use of {answer:H3}.",
       "as": "ICQ",
       "offer": "right:H3"
     }

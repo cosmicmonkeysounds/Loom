@@ -26,6 +26,7 @@ import { Workspace } from "../src/lsp/index.ts";
 import { indexOutsideQuotes, splitArgsCommas } from "../src/parser/rust.ts";
 import { DESK_FILE, deskEvents, validateDesk, type DeskConfig } from "../src/house-desk.ts";
 import { CREDITS_FILE, parseCredits } from "../src/credits.ts";
+import { FACTS_FILE, parseFactsText, placeholderQuestions } from "../src/facts.ts";
 import { DESCENT_FILE, parseDescentText } from "../server/descent.ts";
 
 const args = process.argv.slice(2);
@@ -328,6 +329,18 @@ for (const h of allHooks) {
     const { file, problems } = parseCredits(text);
     for (const p of problems) report(file === null ? "ERROR" : "WARN", `${CREDITS_FILE}: ${p}`);
   }
+}
+// Wave 58: a hunt question whose key is still a placeholder (`titi:facts` says
+// so too): it loads and plays, and nothing is judged on it.
+{
+  let text: string | null = null;
+  try {
+    text = readFileSync(join(root, FACTS_FILE), "utf8");
+  } catch {
+    text = null;
+  }
+  const facts = text === null ? null : parseFactsText(text).facts;
+  if (facts !== null) for (const q of placeholderQuestions(facts)) report("WARN", `${FACTS_FILE}: question ${q.id}: the answer key is still a placeholder`);
 }
 // Wave 49: the project's descent.json (`@loom/house` `validateDescent`): a
 // problem refuses the whole file (the games then play no words), so an error.

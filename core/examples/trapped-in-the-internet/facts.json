@@ -105,81 +105,62 @@
       "id": "H1",
       "round": 1,
       "draft": true,
-      "text": "How many years did the Maps and Ducks billboard on Barrington Street go unpaid before mapsandducks.com expired?",
-      "answer": "Eleven years",
-      "accept": [
-        "11 years",
-        "eleven",
-        "11"
-      ],
+      "placeholder": true,
+      "text": "According to Funk and Wagnalls, what is an example of fraud?",
+      "answer": "PLACEHOLDER H1 ANSWER OWED",
+      "accept": [],
       "topics": [
-        "billboard",
-        "barrington",
-        "go unpaid"
+        "funk and wagnalls",
+        "example of fraud"
       ],
-      "where": "The Desktop: the lease invoice, folded into encyclopaedia volume B",
-      "hint": "It is an invoice. Look under B, for billboard.",
+      "where": "The Desktop: in Funk and Wagnalls, among the books (the page is owed)",
       "codex": {
-        "id": "The Billboard Lease",
-        "title": "The Billboard Lease",
-        "code": "BILLBOARD-LEASE-11",
-        "text": "A lease invoice, yellowed, by the fireplace. OUTDOOR ADVERTISING LEASE, BARRINGTON STREET. Advertiser: Maps And Ducks. FINAL NOTICE. Rent outstanding: eleven years. The billboard went eleven years unpaid before mapsandducks.com expired, and nobody took the duck down."
+        "id": "Funk And Wagnalls",
+        "title": "Funk and Wagnalls",
+        "code": "WAGNALLS-FRAUD",
+        "text": "PLACEHOLDER. A page of Funk and Wagnalls goes here. Its words are owed."
       }
     },
     {
       "id": "H2",
       "round": 1,
       "draft": true,
-      "text": "What was the name of the first animal buried in the Halifax Explosion Memorial Pet Cemetery?",
-      "answer": "Mister Pickles",
-      "accept": [
-        "pickles",
-        "harbour tabby",
-        "tabby"
-      ],
+      "placeholder": true,
+      "text": "According to Forensics For Dummies, finish this sentence: “___ ___ ___ ___ ___ previously hypnotized witnesses.”",
+      "spoken": "According to Forensics For Dummies, finish this sentence: blank, blank, blank, blank, blank, previously hypnotized witnesses.",
+      "answer": "PLACEHOLDER H2 ANSWER OWED",
+      "accept": [],
       "topics": [
-        "pet cemetery",
-        "first animal"
+        "forensics for dummies",
+        "hypnotized witnesses"
       ],
-      "where": "The Desktop: the plaque rubbing, inside encyclopaedia volume P",
-      "hint": "A rubbing of a small stone. Look under P, for pets.",
+      "where": "The Desktop: in Forensics For Dummies, among the books (the page is owed)",
       "codex": {
-        "id": "The First Pet",
-        "title": "The First Pet",
-        "code": "MISTER-PICKLES",
-        "text": "A charcoal rubbing of a small stone plaque. HALIFAX EXPLOSION MEMORIAL PET CEMETERY. PLOT 1. MISTER PICKLES, A HARBOUR TABBY. 1918. THE FIRST OF THEM LAID TO REST HERE. Mister Pickles was the first animal buried in the cemetery."
+        "id": "Forensics For Dummies",
+        "title": "Forensics For Dummies",
+        "code": "DUMMIES-FORENSICS",
+        "text": "PLACEHOLDER. A page of Forensics For Dummies goes here. Its words are owed."
       }
     },
     {
       "id": "H3",
       "round": 1,
       "draft": true,
-      "text": "At what time was the ribbon-cutting at Halifax's first AI Data Centre scheduled?",
-      "answer": "9:00 a.m.",
-      "accept": [
-        "9am",
-        "9 am",
-        "9 a.m.",
-        "9:00",
-        "9:00am",
-        "9:00 am",
-        "nine a.m.",
-        "nine am",
-        "9 o'clock",
-        "nine o'clock",
-        "nine in the morning"
-      ],
+      "placeholder": true,
+      "text": "According to Macs for Dummies, finish this sentence: “A similar online _, called pharming, also involves the use of __ ___ __.”",
+      "spoken": "According to Macs for Dummies, finish this sentence: A similar online blank, called pharming, also involves the use of blank, blank, blank.",
+      "answer": "PLACEHOLDER H3 ANSWER OWED",
+      "accept": [],
       "topics": [
-        "ribbon",
-        "data centre"
+        "macs for dummies",
+        "pharming"
       ],
-      "where": "The Desktop: the opening-day programme, in the print media on the mantel",
-      "hint": "A glossy programme. It is with the magazines, not the books.",
+      "where": "The Desktop: in Macs for Dummies, among the books (the page is owed)",
       "codex": {
-        "id": "The Ribbon Cutting",
-        "title": "The Ribbon Cutting",
-        "code": "RIBBON-9AM",
-        "text": "An opening-day programme, glossy: HALIFAX AI DATA CENTRE, GRAND OPENING. Ribbon-cutting with Mayor Randy Barkmore Jr. at 9:00 a.m. sharp. Coffee and muffins to follow. Someone has written in the margin: \"he got here at 4.\" The ribbon-cutting was scheduled for 9:00 a.m."
+        "id": "Macs For Dummies",
+        "title": "Macs for Dummies",
+        "code": "DUMMIES-MACS",
+        "text": "PLACEHOLDER. A page of Macs for Dummies goes here. Its words are owed."
       }
     },
     {

@@ -50,6 +50,10 @@ fi
 
 run "story: loomcheck --smoke" pnpm --filter @loom/core loomcheck examples/trapped-in-the-internet --smoke
 run "story: facts.json → generated files" pnpm --filter @loom/core titi:facts --check
+# A hunt key still owed passes the gate (nothing is judged on it), so `run`
+# would hide it: say it here. `titi:facts` names each one.
+owed="$(pnpm --silent --filter @loom/core titi:facts --check 2>/dev/null | grep 'still a placeholder' || true)"
+if [ -n "$owed" ]; then echo "$owed" | sed 's/^WARN  /   ⚠ /'; fi
 run "ops scripts" bash scripts/ops/test/run.sh
 run "accept-script helpers + the sim" node --no-warnings --test scripts/accept/live-guard.test.ts scripts/accept/burst.test.ts scripts/sim/test/sim.test.ts scripts/sim/test/load.test.ts
 run "compose file parses" env POSTGRES_PASSWORD=x BETTER_AUTH_SECRET=x LOOM_BASE_URL=http://x \

@@ -1575,7 +1575,8 @@ ROLE Program
     else if program.fact_try == 0 or confidence < 1 or confidence > 100:
       Trabolta: Pick one of tonight's questions, {program.name}, and tell me how sure you are.
     else if verdict != "accurate" and verdict != "lie" and verdict != "uncertain":
-      broadcast "📝 {program.name}'s filing for {question} could not be judged (no facts.json on this server). Not recorded." to channel(hosts)
+      // DRAFT w58 (crew only: this is also what a key still owed answers)
+      broadcast "📝 {program.name}'s filing for {question} could not be judged (no answer key for it on this server). Not recorded." to channel(hosts)
       Trabolta: I cannot read that filing right now, {program.name}. Try again in a moment.
     else if program.fact_q_round > Night.round:
       Trabolta: That question is not open yet, {program.name}. File what has been asked.

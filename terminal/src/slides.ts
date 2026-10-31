@@ -584,9 +584,9 @@ export const SLIDE_COPY: Readonly<Record<string, SlideCopy>> = {
   trivia_1: {
     title: "TRABOLTA TRIVIA · ROUND 1",
     lines: [
-      "Q1. How many years did the Maps and Ducks billboard on Barrington Street go unpaid before mapsandducks.com expired?",
-      "Q2. What was the name of the first animal buried in the Halifax Explosion Memorial Pet Cemetery?",
-      "Q3. At what time was the ribbon-cutting at Halifax's first AI Data Centre scheduled?",
+      "Q1. According to Funk and Wagnalls, what is an example of fraud?",
+      "Q2. According to Forensics For Dummies, finish this sentence: “___ ___ ___ ___ ___ previously hypnotized witnesses.”",
+      "Q3. According to Macs for Dummies, finish this sentence: “A similar online _, called pharming, also involves the use of __ ___ __.”",
     ],
   },
   trivia_2: {

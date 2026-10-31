@@ -19,6 +19,7 @@ import type { AgentDossier, AgentRequest } from "../server/agents.ts";
 import type { ChatMessage } from "../server/chat.ts";
 import { scenarioDir, scenarioSource } from "../examples/load.ts";
 import { parseFactsText, FACTS_FILE } from "../src/facts.ts";
+import { withTestKeys } from "./fixtures/hunt-keys.ts";
 import { mentionsKey, nearTokens } from "../src/answer-match.ts";
 import { vBool, vString } from "../src/runtime/expr.ts";
 import { TO_Y2K } from "../../scripts/accept/chains.ts";
@@ -611,7 +612,7 @@ describe("the request's dossier (wave 20)", () => {
 const SHOW = "trapped-in-the-internet";
 const SHOW_DIR = scenarioDir(SHOW);
 const SHOW_SRC = scenarioSource(SHOW);
-const FACTS_TEXT = readFileSync(join(SHOW_DIR, FACTS_FILE), "utf8");
+const FACTS_TEXT = withTestKeys(readFileSync(join(SHOW_DIR, FACTS_FILE), "utf8"));
 const FACTS = parseFactsText(FACTS_TEXT).facts!;
 const SHOW_CODES = { event: "EVT921", prime: "PRM921", mod: "MOD921" };
 const SLOW = 300_000;

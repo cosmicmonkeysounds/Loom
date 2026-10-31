@@ -776,7 +776,7 @@ are **267**, and **161** of them carry a code (the 115 generated from
 wave 35 the tiered facts, and wave 58 replaced the file with the Oct 30
 delivery). An entry reaches a holder in one of five ways:
 
-1. **A code.** `code: MISTER-PICKLES` is printed as a QR in the house.
+1. **A code.** An entry's `code:` is printed as a QR in the house.
    Scanning it opens the app with `?code=<event>&unlock=<code>` and redeems
    it, or the guest types the code into the Codex room. Codes match
    loosely: case, dashes, underscores and spaces are ignored (but **not**
@@ -1137,13 +1137,21 @@ in `facts.json` (rounds 1 / 2 / 3 = H1–H3, H4–H6, F1–F2; every row is a
 `DRAFT` placeholder until the team replaces it). The generated table is
 `DESIGN.md` §2.11; the print layout is `generated/print-stacks.md` (gold
 stack). Every answer is a document in **The Desktop's** old newspapers,
-encyclopaedias and atlas, carrying the question's codex QR:
+encyclopaedias and atlas, carrying the question's codex QR.
+
+**H1–H3 are the script's three questions, and their keys are owed** (wave 58).
+`facts.json` marks each `placeholder: true`: `titi:facts` and `loomcheck` WARN
+on it. Until the real answer goes in, a filing on one is not recorded: Trabolta
+says he cannot read it, `# hosts` says so, nobody is credited or marked, and
+Question Results reads *Nobody filed an answer*. To finish one, give it its
+`answer`, `accept`, `where` and `codex.text`, delete `placeholder`, and run
+`titi:facts`.
 
 | # | Question | Answer | Codex (code) |
 |---|---|---|---|
-| H1 | How many years did the Maps and Ducks billboard on Barrington Street go unpaid before mapsandducks.com expired? | Eleven years | The Billboard Lease (`BILLBOARD-LEASE-11`) |
-| H2 | What was the name of the first animal buried in the Halifax Explosion Memorial Pet Cemetery? | Mister Pickles | The First Pet (`MISTER-PICKLES`) |
-| H3 | At what time was the ribbon-cutting at Halifax's first AI Data Centre scheduled? | 9:00 a.m. | The Ribbon Cutting (`RIBBON-9AM`) |
+| H1 | According to Funk and Wagnalls, what is an example of fraud? | ⚠ owed | Funk And Wagnalls |
+| H2 | According to Forensics For Dummies, finish this sentence: “___ ___ ___ ___ ___ previously hypnotized witnesses.” | ⚠ owed | Forensics For Dummies |
+| H3 | According to Macs for Dummies, finish this sentence: “A similar online _, called pharming, also involves the use of __ ___ __.” | ⚠ owed | Macs For Dummies |
 | H4 | What extension does the Customer Care card tell you to dial? | 1978 | The Extension (`EXT-1978`) |
 | H5 | Which song did Trabolta play 412 times the night before he registered mapsandducks.com? | Hopelessly Devoted to You | The Search History (`SEARCH-HISTORY`) |
 | H6 | What is the title of the last chapter of Trabolta's unfinished Unified Field Theory? | Appendix Z: Loose Ends (Do Not Print) | The Final Chapter (`APPENDIX-Z`) |
@@ -1176,8 +1184,8 @@ Server Room's sign — the check-in rule doesn't handle it).
 
 **The print stacks** (`generated/print-stacks.md`, from `facts.json`):
 the 8 hunt answers (gold, each on its own document in the Desktop: the
-lease invoice in volume B, the plaque rubbing in P, the programme on the
-mantel, the Customer Care card in the atlas, …), then the facts by
+pages of H1–H3 in their three books, the Customer Care card in the atlas,
+…), then the facts by
 rarity tier (wave 35), scattered through the whole house with no list of
 where each one went: **common** (green, out in the open), **rare** (blue,
 odd but findable), **very rare** (purple, tucked away, counted with the

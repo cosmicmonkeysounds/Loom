@@ -18,6 +18,8 @@ import {
   parseFactsText,
   showFactsProblems,
   validateFacts,
+  PLACEHOLDER_MARK,
+  placeholderQuestions,
 } from "../src/facts.ts";
 import type { FactsFile } from "../src/facts.ts";
 import { Sim } from "../src/runtime/sim/index.ts";
@@ -536,6 +538,46 @@ describe("Trapped in the Internet — facts.json (the seed)", () => {
 });
 
 const SECRET_W35 = ["V01", "V04", "V05", "V08", "L01", "L04", "L06"];
+
+describe("a question's spoken form and a key still owed (wave 58)", () => {
+  const owed = (q: Partial<FactsFile["questions"][number]>): FactsFile => {
+    const f = showFixture();
+    Object.assign(f.questions[0]!, { placeholder: true, answer: `${PLACEHOLDER_MARK} H1 ANSWER OWED`, accept: [] }, q);
+    return f;
+  };
+  it("validateFacts checks both fields' shape", () => {
+    expect(problemsOf({ ...minimal(), questions: [{ id: "Q1", round: 1, text: "t", answer: "a", spoken: "" }] })).toEqual(["questions Q1: spoken must be a non-empty string"]);
+    expect(problemsOf({ ...minimal(), questions: [{ id: "Q1", round: 1, text: "t", answer: "a", spoken: 1 }] })).toEqual(["questions Q1: spoken must be a non-empty string"]);
+    expect(problemsOf({ ...minimal(), questions: [{ id: "Q1", round: 1, text: "t", answer: "a", placeholder: false }] })).toEqual(["questions Q1: placeholder must be true when present"]);
+  });
+  it("a blank needs a spoken form that holds none and breaks no line", () => {
+    const f = showFixture();
+    f.questions[0]!.text = `${f.questions[0]!.text} ___`;
+    expect(showFactsProblems(f)).toEqual(["question H1: a blank needs a spoken form (the voice strips _)"]);
+    f.questions[0]!.spoken = "blank, blank";
+    expect(showFactsProblems(f)).toEqual([]);
+    f.questions[0]!.spoken = "___";
+    expect(showFactsProblems(f)).toEqual(["question H1: spoken must not contain a blank (the voice strips _)"]);
+    f.questions[0]!.spoken = 'a "quote"';
+    expect(showFactsProblems(f)).toEqual(['question H1: spoken must not contain " { } or |']);
+  });
+  it("a stand-in passes the rules, and is flagged both ways: neither the flag nor the mark can outlive the other", () => {
+    expect(showFactsProblems(owed({}))).toEqual([]);
+    expect(placeholderQuestions(owed({})).map((q) => q.id)).toEqual(["H1"]);
+    expect(placeholderQuestions(showFixture())).toEqual([]);
+    expect(showFactsProblems(owed({ placeholder: undefined }))).toEqual(["question H1: the answer is a placeholder, so the question must say placeholder: true"]);
+    expect(showFactsProblems(owed({ answer: "A real answer" }))).toEqual(["question H1: placeholder: true on a real answer (delete the flag)"]);
+  });
+  it("the show's three owed keys can't be taken for answers: H1–H3 only, marked, and each a phrase nobody says", () => {
+    const f = parseFactsText(readFileSync(join(scenarioDir(SHOW), FACTS_FILE), "utf8")).facts!;
+    for (const q of placeholderQuestions(f)) {
+      expect(["H1", "H2", "H3"], q.id).toContain(q.id);
+      expect(q.answer, q.id).toContain(PLACEHOLDER_MARK);
+      expect(q.accept, q.id).toEqual([]);
+      expect(q.codex!.text, q.id).toContain(PLACEHOLDER_MARK);
+    }
+  });
+});
 
 describe("showFactsProblems — the server-room door (wave 7)", () => {
   const door = (over: Record<string, unknown> = {}) => ({ code: "1997", clue: "FOUR DIGITS. THE YEAR.", codex: { id: "The Door Code", title: "The Door Code", text: "The code is 1997." }, ...over });

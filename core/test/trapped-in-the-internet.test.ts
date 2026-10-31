@@ -30,6 +30,7 @@ import { Store } from "../server/store.ts";
 import type { AgentFacts, AgentRequest } from "../server/agents.ts";
 import { TO_HUNT2 } from "../../scripts/accept/chains.ts";
 import { PANEL_JACKS } from "../scripts/titi-facts.ts";
+import { withTestKeys } from "./fixtures/hunt-keys.ts";
 
 // ───────────────────────── helpers ─────────────────────────
 
@@ -38,11 +39,11 @@ const FILES = scenarioFiles(SHOW);
 const SRC = scenarioSource(SHOW);
 /** facts.json — the hunt questions, the scannable facts and the truths the
  *  generated story (generated/questions.loom, codex/9-facts.loom) is made of. */
-const FACTS = parseFactsText(readFileSync(join(scenarioDir(SHOW), FACTS_FILE), "utf8")).facts!;
+const FACTS = parseFactsText(withTestKeys(readFileSync(join(scenarioDir(SHOW), FACTS_FILE), "utf8"))).facts!;
 const Q = (id: string) => FACTS.questions.find((q) => q.id === id)!;
 /** The server's answer key (core/server/facts.ts): the show tests attach the
  *  verdict the event server would, since the Sim never reads facts.json. */
-const BOOK = parseFactsBook(readFileSync(join(scenarioDir(SHOW), FACTS_FILE), "utf8")).book!;
+const BOOK = parseFactsBook(withTestKeys(readFileSync(join(scenarioDir(SHOW), FACTS_FILE), "utf8"))).book!;
 /** The server's build: every file concatenated. */
 const fresh = (): Sim => Sim.fromSources(SRC);
 const SLOW = 120_000;
@@ -854,13 +855,13 @@ describe("Trapped in the Internet — the whole night", () => {
     expect(sim.questStatus("g13", "Hunt One")).toBe("active");
     expect(v(sim, "Night.facts_requested")).toBe(3);
     expect(v(sim, "Night.phase")).toBe("hunt_1");
-    expect(lines(hu, "Trabolta").some((t) => t.includes("Barrington"))).toBe(true);
-    expect(lines(hu, "Trabolta").some((t) => t.includes("ribbon-cutting"))).toBe(true);
+    expect(lines(hu, "Trabolta").some((t) => t.includes("Funk and Wagnalls"))).toBe(true);
+    expect(lines(hu, "Trabolta").some((t) => t.includes("pharming"))).toBe(true);
     // The intro hands to the generated reading beat, which hands back to the tail.
     expect(beats(hu)).toEqual(expect.arrayContaining(["Truth Scavenger Hunt One", "Hunt One Questions", "Hunt One Go"]));
     const tl = lines(hu, "Trabolta");
-    for (const [i, q] of FACTS.questions.filter((q) => q.round === 1).entries()) expect(tl).toContain(`Question ${["one", "two", "three"][i]}. ${q.text}`);
-    expect(tl.indexOf(`Question three. ${Q("H3").text}`)).toBeLessThan(tl.indexOf("Fifteen minutes. The facts are obscure. They are in the books in this room, and in the print media on the walls."));
+    for (const [i, q] of FACTS.questions.filter((q) => q.round === 1).entries()) expect(tl).toContain(`Question ${["one", "two", "three"][i]}. ${q.spoken ?? q.text}`);
+    expect(tl.indexOf(`Question three. ${Q("H3").spoken ?? Q("H3").text}`)).toBeLessThan(tl.indexOf("Fifteen minutes. The facts are obscure. They are in the books in this room, and in the print media on the walls."));
     expect(lines(hu, "Clippy").at(-1)).toMatch(/^Go! Find! Interpret!/u);
     expect(casts(advance(sim, 600)).some((b) => b.cue.includes("5 minutes left"))).toBe(true);
     const up = advance(sim, 300);
@@ -3405,7 +3406,7 @@ describe("Trapped in the Internet — 📝 File a fact (K-24 + N-05; wave 4 judg
     const sim = boot();
     toTruth1(sim);
     const nojudge = fire(sim, "fact answered", "g1", { question: "H2", answer: "Mister Pickles", confidence: 100, card: 1 });
-    expect(hosts(sim, nojudge)).toEqual(["📝 Calculator's filing for H2 could not be judged (no facts.json on this server). Not recorded."]);
+    expect(hosts(sim, nojudge)).toEqual(["📝 Calculator's filing for H2 could not be judged (no answer key for it on this server). Not recorded."]);
     expect(trabolta(nojudge, "g1")).toEqual(["I cannot read that filing right now, Calculator. Try again in a moment."]);
     expect(v(sim, "g1.fact_h2")).not.toBe(true);
     expect(facts(nojudge).length).toBe(1); // re-dealt so they can try again

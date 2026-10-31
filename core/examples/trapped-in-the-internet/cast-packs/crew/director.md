@@ -135,7 +135,7 @@ his ruling. With his laptop off a plain miss is judged at once (a lie at
 100%, a guess below) and a near miss waits; whatever is still waiting when
 the round settles takes its proposal (a near miss accurate). **Judge only
 what he couldn't** (a filing still pending on Run → Mind → Judging) before
-📋. An abbreviation (*Mr. Pickles*, *11 yrs*, *0900*) is
+📋. An abbreviation (*Ext. 1978*) is
 simply accurate, no ⚠ and nothing asked. A program may file every
 open question, once each; a question not filed when its round closes never
 comes back. Clippy and the hosts still judge what is **said out loud** at

@@ -56,13 +56,12 @@ drives:
 # generated from facts.json by core/scripts/titi-facts.ts — DO NOT EDIT this block (pnpm --filter @loom/core titi:facts).
 secrets:
   topics:
-    - billboard            # H1
-    - barrington
-    - go unpaid
-    - pet cemetery         # H2
-    - first animal
-    - ribbon               # H3
-    - data centre
+    - funk and wagnalls    # H1
+    - example of fraud
+    - forensics for dummies # H2
+    - hypnotized witnesses
+    - macs for dummies     # H3
+    - pharming
     - extension            # H4
     - customer care
     - tell you to dial
@@ -76,26 +75,6 @@ secrets:
     - computer prom        # F2
     - taking sandy
   match:
-    - eleven years
-    - "11 years"
-    - eleven
-    - "11"
-    - mister pickles
-    - pickles
-    - harbour tabby
-    - tabby
-    - "9:00 a.m."
-    - "9am"
-    - "9 am"
-    - "9 a.m."
-    - "9:00"
-    - "9:00am"
-    - "9:00 am"
-    - nine a.m.
-    - nine am
-    - "9 o'clock"
-    - nine o'clock
-    - nine in the morning
     - "1978"
     - ext 1978
     - ext. 1978

@@ -45,7 +45,7 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
-import { FACTS_FILE, POSITION_WORDS, clueText, parseFactsText, showFactsProblems } from "../src/facts.ts";
+import { FACTS_FILE, POSITION_WORDS, clueText, parseFactsText, placeholderQuestions, showFactsProblems } from "../src/facts.ts";
 import type { Fact, FactsFile, Question } from "../src/facts.ts";
 import { parse } from "../src/parser/index.ts";
 import { foldName } from "../src/parser/names.ts";
@@ -302,7 +302,7 @@ function questionsLoom(f: FactsFile): string {
   for (const { r, questions } of rs) {
     const shape = shapeOf(r);
     out.push(`== ${shape.beat}`, `  setting: ${S.setting}`, `  cast: ${S.reader}`, "");
-    questions.forEach((q, i) => out.push(`${S.reader}: ${shape.read(i + 1)} ${q.text}`));
+    questions.forEach((q, i) => out.push(`${S.reader}: ${shape.read(i + 1)} ${q.spoken ?? q.text}`));
     out.push(`-> ${shape.next}`, "");
   }
 
@@ -432,6 +432,9 @@ function factsLoom(f: FactsFile): string {
  *  replace or a rewrite to approve, never "not decided yet, skip it". */
 export const DRAFT_NOTE = "DRAFT — awaiting sign-off in facts.json";
 
+/** A placeholder question's answer, wherever a table would show it. */
+export const OWED = "⚠ owed";
+
 const HUNT_HEADER = "| # | Colour | Code | Title | Where in the Desktop | What it says |\n|---|---|---|---|---|---|";
 const HEADER = "| # | Topic | Code | Title | How it hides | What it says |\n|---|---|---|---|---|---|";
 const CLUE_HEADER = "| Digit | Colour | Code | Title | Where in the house | What it is |\n|---|---|---|---|---|---|";
@@ -459,7 +462,7 @@ function printStacks(f: FactsFile): string {
     for (const q of questions) {
       const c = q.codex!;
       const where = q.where! + (q.hint ? ` — hint: ${q.hint}` : "");
-      out.push(`| ${q.id}${q.draft ? " · DRAFT" : ""} | ${S.huntColour} | \`${c.code}\` | ${cell(c.title)} | ${cell(where)} | ${cell(`Q: ${q.text} → A: ${q.answer}`)} |`);
+      out.push(`| ${q.id}${q.draft ? " · DRAFT" : ""} | ${S.huntColour} | \`${c.code}\` | ${cell(c.title)} | ${cell(where)} | ${cell(`Q: ${q.text} → A: ${answerCell(q)}`)} |`);
     }
   }
   const clues = f.door?.clues ?? [];
@@ -511,6 +514,9 @@ function printStacks(f: FactsFile): string {
   out.push("");
   return out.join("\n");
 }
+
+/** The answer as a generated table shows it: a stand-in never reaches a doc. */
+const answerCell = (q: Question): string => (q.placeholder === true ? OWED : q.answer);
 
 function stackRow(x: Fact, stack: string): string {
   const id = `${x.id}${x.draft ? " · DRAFT" : ""}`;
@@ -670,7 +676,7 @@ export function mindBlock(f: FactsFile, combos: string[] = []): string {
   }
   out.push("  match:");
   const words = new Set<string>();
-  for (const q of f.questions) for (const a of [q.answer, ...q.accept]) words.add(norm(a));
+  for (const q of f.questions) if (q.placeholder !== true) for (const a of [q.answer, ...q.accept]) words.add(norm(a));
   for (const w of words) out.push(`    - ${yamlScalar(w)}`);
   out.push("  lore:", `    - ${JSON.stringify(HUNT_MARKER)}`);
   const door = neverWords(f, combos);
@@ -712,7 +718,7 @@ export function designBlock(f: FactsFile): string {
   for (const q of f.questions) {
     const c = q.codex!;
     const accept = q.accept.length > 0 ? q.accept.map(cell).join(" · ") : "—";
-    out.push(`| ${q.id} | ${q.round} | ${cell(q.text)} | ${cell(q.answer)} | ${accept} | ${cell(c.id)} (\`${c.code}\`) | ${cell(q.where ?? "")}${q.draft ? " · DRAFT" : ""} |`);
+    out.push(`| ${q.id} | ${q.round} | ${cell(q.text)} | ${cell(answerCell(q))} | ${accept} | ${cell(c.id)} (\`${c.code}\`) | ${cell(q.where ?? "")}${q.draft ? " · DRAFT" : ""} |`);
   }
   return out.join("\n");
 }
@@ -850,6 +856,7 @@ export function run(dir: string, opts: RunOptions = {}): number {
     }
   }
   for (const w of modelProblems(facts, root)) log(`WARN  ${w}`);
+  for (const q of placeholderQuestions(facts)) log(`WARN  question ${q.id}: the answer key is still a placeholder. Filings on it are not recorded; do not print its gold card`);
 
   const outputs: Array<[string, string]> = [...Object.entries(gen.files), [OUTPUTS.mind, gen.mind], [OUTPUTS.design, gen.design]];
   const stale: string[] = [];

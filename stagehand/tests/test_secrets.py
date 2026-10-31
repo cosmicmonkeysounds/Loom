@@ -226,6 +226,8 @@ def test_the_shipped_mind_file_catches_every_hunt_question_and_answer():
     topics_only = Secrets(topics=s.topics)
     for qid, question, answer in _hunt_rows():
         assert topics_only.names_topic(question), f"{qid}: no topic in the question {question!r}"
+        if "owed" in answer:  # a key still owed (facts.json `placeholder`): no answer to catch yet
+            continue
         assert s.names_topic(answer.strip()), f"{qid}: the answer {answer!r} slips past secrets"
         assert s.names_topic(f"I'm certain: {answer.strip()}"), qid
 

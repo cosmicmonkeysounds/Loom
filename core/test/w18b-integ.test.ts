@@ -29,11 +29,12 @@ import { Store } from "../server/store.ts";
 import type { AgentJudgeRequest, AgentRequest } from "../server/agents.ts";
 import type { ScreenState } from "../server/routes/screen.ts";
 import { parseFactsText, FACTS_FILE } from "../src/facts.ts";
+import { withTestKeys } from "./fixtures/hunt-keys.ts";
 import { TO_HUNT2 } from "../../scripts/accept/chains.ts";
 
 const SHOW = "trapped-in-the-internet";
 const SRC = scenarioSource(SHOW);
-const FACTS_TEXT = readFileSync(join(scenarioDir(SHOW), FACTS_FILE), "utf8");
+const FACTS_TEXT = withTestKeys(readFileSync(join(scenarioDir(SHOW), FACTS_FILE), "utf8"));
 const FACTS = parseFactsText(FACTS_TEXT).facts!;
 const CODES = { event: "EVT18B", prime: "PRM18B", mod: "MOD18B" };
 const SLOW = 300_000;
