@@ -22,7 +22,7 @@ import { ESCAPE_COOLDOWN_MS, VOICE_MAX_BYTES, kingSignal, lightStateDoes, lightS
 import { asNumber, truthy } from "../src/runtime/expr.ts";
 import { Sim, type SimEvent } from "../src/runtime/sim/index.ts";
 import { foldCode, namedEvents, type SimModel } from "../src/runtime/sim/model.ts";
-import { allSnapshotFlags, arrivalDue, awardOnly, boothChannels, callsCue, playerHiddenRooms, cueState, guestCardView, interactionActors, interactionSubjectOnly, isCaller, guestFlags, guestView, isLocked, modView, staffRoomChannels, notePress, pressMovedArm, pressRefusal, pressRefused, primeView, scanRefused, rosterRow, staffRoomIds, themeOf, titleOf, type AgentMindSummary, type GuestView, type ModPresence, type ModView, type PrimeView, type RuntimePhase } from "./views.ts";
+import { allSnapshotFlags, arrivalDue, awardOnly, boothChannels, callsCue, captureFor, playerHiddenRooms, cueState, guestCardView, interactionActors, interactionSubjectOnly, isCaller, guestFlags, guestView, isLocked, modView, staffRoomChannels, notePress, pressMovedArm, pressRefusal, pressRefused, primeView, scanRefused, rosterRow, staffRoomIds, themeOf, titleOf, type AgentMindSummary, type GuestView, type ModPresence, type ModView, type PrimeView, type RuntimePhase } from "./views.ts";
 import { passOk, type Passcodes } from "./auth.ts";
 import { SessionStore } from "./session.ts";
 import { Store, type AgentWait, type AgentWaits, type Mutation } from "./store.ts";
@@ -1566,13 +1566,16 @@ export class EventRuntime {
       // Wave 41 (C3): this part's inbox for Trabolta's letter.
       letter: { email: this.letters.get(`p:${character}`)?.email ?? null, from: this.lettersMailer?.from ?? null, ...(this.boothInboxAsked(character) ? { asked: true as const } : {}) },
       // Wave 48 (C2): the censor's flagged lines, on its own booth only.
-      ...(this.sim !== null && this.sim.model.censor === character ? { filter: this.filterView() } : {}),
+      ...(this.sim !== null && this.sim.model.censor === character ? { filter: this.filterView(character) } : {}),
     };
   }
 
-  /** Wave 48 (C2, C11): the censor booth's `filter` block. */
-  private filterView(): FilterView {
+  /** Wave 48 (C2, C11): the censor booth's `filter` block. Wave 57 (C15):
+   *  each line offers her capture while it is live on that program; never
+   *  after the ending, when ✂ only counts for the report. */
+  private filterView(character: string): FilterView {
     const sim = this.sim;
+    const sendOf = sim === null || this.nightEnded() ? null : captureFor(sim, character);
     return this.filter.view({
       now: Date.now(),
       hidden: (seq) => this.chat.get(seq)?.hidden === true,
@@ -1581,6 +1584,7 @@ export class EventRuntime {
         const name = sim?.persons.get(g)?.name;
         return name === undefined ? null : this.avatars.keyFor(name);
       },
+      ...(sendOf !== null ? { sendOf } : {}),
     });
   }
 

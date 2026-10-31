@@ -43,6 +43,15 @@ export interface FilterLine {
   words: string[];
   points: number;
   ts: number;
+  /** Wave 57 (C15): the censor's own capture, while it is live on this
+   *  program; absent otherwise. */
+  send?: FilterSend;
+}
+
+/** Wave 57 (C15): the button a line offers beside ✂ (the story's own). */
+export interface FilterSend {
+  id: string;
+  label: string;
 }
 
 /** The filter's heat, as of a view (C11). */
@@ -72,6 +81,8 @@ export interface FilterViewCtx {
   hidden: (seq: number) => boolean;
   nameOf: (guest: string) => string;
   avatarOf: (guest: string) => string | null;
+  /** Wave 57 (C15): the capture live on this program, else null. */
+  sendOf?: (guest: string) => FilterSend | null;
   /** Server epoch ms. */
   now: number;
 }
@@ -225,6 +236,7 @@ export class FilterBook {
       combo: { heat: Math.round(heatAfter(this.heat, ctx.now - this.heatAt) * 1000) / 1000, coolMs: FILTER_COOL_MS, mults: [...FILTER_MULTS] },
       lines: waiting.map(({ e, hits }) => {
         const avatar = ctx.avatarOf(e.guest);
+        const send = ctx.sendOf?.(e.guest) ?? null;
         return {
           seq: e.seq,
           guest: e.guest,
@@ -236,6 +248,7 @@ export class FilterBook {
           words: hits.map((h) => h.word),
           points: linePoints(hits),
           ts: e.ts,
+          ...(send !== null ? { send } : {}),
         };
       }),
     };
