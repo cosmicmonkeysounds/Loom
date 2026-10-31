@@ -30,6 +30,7 @@ import { lobbyHidden } from "../guest/wire.ts";
 import type { Nav } from "../moments/exits.ts";
 import { guestStreamHandlers } from "./stream-handlers.ts";
 import { PrompterStore, type PrompterPost } from "../aloud/shared.ts";
+import { AdSpots } from "../ad-spots.ts";
 import { badgeLinkOf, forgetBadge, letGo, storedBadge, type BadgeLink } from "../rejoin.ts";
 import type { AdoptedGuest } from "../resume.ts";
 
@@ -259,6 +260,9 @@ export interface GuestSession {
   /** Wave 59: the shared teleprompter's store, and a phone's press on it. */
   prompter?: PrompterStore;
   prompterPost?: PrompterPost;
+  /** Wave 59a: this phone's audio ads, and its word that it can't take one. */
+  adSpots?: AdSpots;
+  adBusy?: (seq: number) => void;
   me: GuestId | null;
   status: GuestView | null;
   /** Wave 26 (R1, C2): the phone is locked — the view says so, or a write
@@ -424,6 +428,7 @@ function useGuestLinks(signedIn: boolean, listed: readonly string[], lobbyHidden
 export function useGuestSession(): GuestSession {
   const host = usePlayHost();
   const [prompter] = useState(() => new PrompterStore());
+  const [adSpots] = useState(() => new AdSpots());
   const { load, save, drop } = host.storage;
   const crawl = host.crawl;
   const [me, setMe] = useState<GuestId | null>(() => {
@@ -472,6 +477,7 @@ export function useGuestSession(): GuestSession {
     onWaitsReset,
     onAnnounce: (n) => phoneAnnounce(host, n),
     onPrompter: (f) => prompter.set(f),
+    onAd: (f) => adSpots.take(f),
     // The crawl decides at arrival (wave 13: a no-op until the stream lane)
     // and the backlog sets its baseline (stream-handlers.ts).
     ...guestStreamHandlers(crawl, me, (list) => {
@@ -883,9 +889,12 @@ export function useGuestSession(): GuestSession {
   useTheme(me === null ? landing.theme : status?.theme);
 
   const prompterPost = useCallback((body: Record<string, unknown>) => post("/api/aloud", body), [post]);
+  const adBusy = useCallback((seq: number) => void post("/api/ad/busy", { seq }).catch(() => {}), [post]);
   return {
     prompter,
     prompterPost,
+    adSpots,
+    adBusy,
     me,
     status,
     locked: status?.locked === true || locked403,

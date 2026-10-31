@@ -1,8 +1,8 @@
-//! Win95 windows (wave 13; the chrome lane refines them, never renames):
-//! `WinWindow` — a window with its caption bar — and `WinDialog`, a modal
-//! dialog box built as divs (no `<dialog>`: Safari 15.4) with the focus
-//! trapped by hand. Under `plain` the same markup renders flat (`w95.css`
-//! takes every colour and bevel from the tokens).
+// Win95 windows (wave 13; the chrome lane refines them, never renames):
+// `WinWindow` — a window with its caption bar — and `WinDialog`, a modal
+// dialog box built as divs (no `<dialog>`: Safari 15.4) with the focus
+// trapped by hand. Under `plain` the same markup renders flat (`w95.css`
+// takes every colour and bevel from the tokens).
 
 import { useEffect, useRef, type KeyboardEvent, type ReactNode } from "react";
 import { focusedIn } from "./focus.ts";

@@ -26,6 +26,7 @@ import { SAY_TIMEOUT_MS, sayRefusalText } from "./guest.ts";
 import { NO_ANSWERS, tokenDead, useLandingBrand, usePerSession, useRoomLinks, useTheme, type ResolvedCode } from "./shared.ts";
 import { primeStreamHandlers } from "./stream-handlers.ts";
 import { PrompterStore, type PrompterPost } from "../aloud/shared.ts";
+import { AdSpots } from "../ad-spots.ts";
 
 export interface PrimeAuth {
   token: string;
@@ -362,6 +363,9 @@ export interface PrimeSession {
   /** Wave 59: the shared teleprompter's store, and a phone's press on it. */
   prompter?: PrompterStore;
   prompterPost?: PrompterPost;
+  /** Wave 59a: this phone's audio ads, and its word that it can't take one. */
+  adSpots?: AdSpots;
+  adBusy?: (seq: number) => void;
   /** Wave 48 (C2): the censor's ✂ on a flagged line (`POST
    *  /api/prime/censor {seq}`): 200 is the masked text; 403 / 404 / 409
    *  throw an `ApiError` with the server's reason. Optional so a test's
@@ -396,6 +400,7 @@ export function notePress(map: Map<string, string>, name: string, guest: string 
 export function usePrimeSession(): PrimeSession {
   const host = usePlayHost();
   const [prompter] = useState(() => new PrompterStore());
+  const [adSpots] = useState(() => new AdSpots());
   const { load, save, drop } = host.storage;
   const crawl = host.crawl;
   const [auth, setAuth] = useState<PrimeAuth | null>(() => {
@@ -435,6 +440,7 @@ export function usePrimeSession(): PrimeSession {
     onTyping,
     onAnnounce: (n) => phoneAnnounce(host, n),
     onPrompter: (f) => prompter.set(f),
+    onAd: (f) => adSpots.take(f),
     // The crawl decides at arrival (wave 13: a no-op until the stream lane)
     // and the backlog sets its baseline (stream-handlers.ts).
     ...primeStreamHandlers(crawl, auth, (list) => {
@@ -718,5 +724,6 @@ export function usePrimeSession(): PrimeSession {
   useTheme(auth === null ? landing.theme : view?.theme);
   const arrive = useCallback(() => post("/api/prime/arrive", {}, auth!.token), [post, auth]);
   const choose = useCallback((index: number, menu: { id: number; text: string }) => post("/api/prime/choose", { index, choice: menu.id, text: menu.text }, auth!.token), [post, auth]);
-  return { prompter, prompterPost, auth, view, alert: alerts.alert, dismissAlert: alerts.dismiss, alerts, messages, connected, ready, notice, threads, login, adopt, scan, card, say, inviteToChannel, leaveChannel, becomeAdmin, act, lastPressedOn, cue, shareCodex, redeem, printed, walletApprove, walletDeny, moderate, setHidden, answerWidget, widgetAnswers, letter, censor, filterLevel, arrive, choose, leave, roomLinkPending };
+  const adBusy = useCallback((seq: number) => void api(`${base}/api/ad/busy`, { seq }, auth!.token).catch(() => {}), [base, auth]);
+  return { prompter, prompterPost, adSpots, adBusy, auth, view, alert: alerts.alert, dismissAlert: alerts.dismiss, alerts, messages, connected, ready, notice, threads, login, adopt, scan, card, say, inviteToChannel, leaveChannel, becomeAdmin, act, lastPressedOn, cue, shareCodex, redeem, printed, walletApprove, walletDeny, moderate, setHidden, answerWidget, widgetAnswers, letter, censor, filterLevel, arrive, choose, leave, roomLinkPending };
 }

@@ -1,7 +1,7 @@
-//! Presence — who is where. Pure helpers that turn the server snapshots
-//! (a guest's `people` directory, a performer's `guests`) into the
-//! "who's here" the sidebar and room headers show, and that put the room
-//! you're standing in at the top of the list.
+// Presence — who is where. Pure helpers that turn the server snapshots
+// (a guest's `people` directory, a performer's `guests`) into the
+// "who's here" the sidebar and room headers show, and that put the room
+// you're standing in at the top of the list.
 
 import type { Channel, PersonCard, PrimeGuest } from "./types.ts";
 

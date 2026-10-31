@@ -1,13 +1,14 @@
-//! Thin transport layer: a JSON `fetch` POST helper (errors carry the HTTP
-//! status as `ApiError`) and the SSE reducer that turns the server's
-//! `history` / `message` / `messageModerated` stream into a live, ordered,
-//! de-duplicated message map — plus pass-through hooks for the role
-//! snapshot, performer scan readouts, and the run's `lifecycle` notices.
-//! The stream reopens itself after a refusal (`openChatFeed`) — a proxy's
-//! 502 while the server restarts closes an `EventSource` for good.
+// Thin transport layer: a JSON `fetch` POST helper (errors carry the HTTP
+// status as `ApiError`) and the SSE reducer that turns the server's
+// `history` / `message` / `messageModerated` stream into a live, ordered,
+// de-duplicated message map — plus pass-through hooks for the role
+// snapshot, performer scan readouts, and the run's `lifecycle` notices.
+// The stream reopens itself after a refusal (`openChatFeed`) — a proxy's
+// 502 while the server restarts closes an `EventSource` for good.
 
 import type { AnnounceNotice } from "./phone-voice.ts";
 import type { PrompterFrame } from "./aloud/shared.ts";
+import type { AdFrame } from "../../core/src/audio-ads.ts";
 import { useEffect, useRef, useState } from "react";
 import type { ChatMessage } from "./types.ts";
 import type { AgentWaitNotice } from "./agent-wait.ts";
@@ -102,7 +103,7 @@ export interface FeedSource {
 const CLOSED = 2;
 
 /** The frames the chat stream carries. */
-export const CHAT_FRAMES = ["snapshot", "response", "lifecycle", "typing", "agentWait", "announce", "prompter", "history", "message", "messageExpired", "messageModerated"] as const;
+export const CHAT_FRAMES = ["snapshot", "response", "lifecycle", "typing", "agentWait", "announce", "ad", "prompter", "history", "message", "messageExpired", "messageModerated"] as const;
 export type ChatFrame = (typeof CHAT_FRAMES)[number];
 
 export const REOPEN_MS = 1000;
@@ -291,6 +292,8 @@ export interface ChatStreamHandlers {
   onAnnounce?: (n: AnnounceNotice) => void;
   /** Wave 59: the shared teleprompter (`aloud/shared.ts`); null: no scene on. */
   onPrompter?: (f: PrompterFrame | null) => void;
+  /** Wave 59a: an audio ad for this phone, or stop (`ad-spots.ts`). */
+  onAd?: (f: AdFrame) => void;
   /** The full thread history just (re)loaded — the baseline for "new". */
   onHistory?: (messages: ChatMessage[]) => void;
   /** A live `message` frame (never the history), before it is applied —
@@ -336,6 +339,9 @@ export function chatFrameHandler(handlers: () => ChatStreamHandlers, ops: ChatMa
         return;
       case "announce":
         handlers().onAnnounce?.(d as AnnounceNotice);
+        return;
+      case "ad":
+        handlers().onAd?.(d as AdFrame);
         return;
       case "prompter":
         handlers().onPrompter?.(d as PrompterFrame | null);

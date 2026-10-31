@@ -70,6 +70,7 @@ import { SidesContext } from "../sides/context.ts";
 import { LazySidesLayer } from "../sides/lazy.tsx";
 import type { SidesWhich } from "../sides/index.tsx";
 import { registerSidesWidgets } from "../sides/widgets.tsx";
+import { AdSlot } from "../ad-slot.tsx";
 import { AloudSlot, aloudStartItem, useAloud } from "../aloud/lazy.tsx";
 import { CreditsSlot, creditsStartItem, useCredits } from "../credits/lazy.tsx";
 
@@ -550,6 +551,7 @@ export function GuestApp({ onLeave, badgeLink = null }: { onLeave: () => void; b
         <MomentsProvider {...moments}>
           <GuestBack enabled={host.ownsPage} open={backOpen} onStep={backStep} />
           {body}
+          <AdSlot spots={s.adSpots} tell={s.adBusy} busy={aloud.covering || cut.showing || s.locked || bang !== null} />
         </MomentsProvider>
       </SidesContext.Provider>
     </KnownNamesProvider>

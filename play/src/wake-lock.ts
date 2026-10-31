@@ -1,8 +1,8 @@
-//! "Keep screen on" (K-06): an opt-in Screen Wake Lock so a phone left on a
-//! table — an Antivirus booth, a guest waiting for the next alert — never
-//! sleeps through a `!` alert. The browser drops the lock whenever the page
-//! is hidden, so it is re-requested each time the page becomes visible.
-//! The choice is remembered per device (`loom.wakeLock`).
+// "Keep screen on" (K-06): an opt-in Screen Wake Lock so a phone left on a
+// table — an Antivirus booth, a guest waiting for the next alert — never
+// sleeps through a `!` alert. The browser drops the lock whenever the page
+// is hidden, so it is re-requested each time the page becomes visible.
+// The choice is remembered per device (`loom.wakeLock`).
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { SessionStorage } from "./host.ts";
