@@ -219,3 +219,23 @@ test("▶ Scroll running out of script starts him too", async ({ browser }) => {
   await expect.poll(() => r.said.has(HIS_FIRST), { timeout: 6_000 }).toBe(true);
   await r.close();
 });
+
+test("the read in a room no list shows still reaches its reader's phone", async ({ browser }) => {
+  test.setTimeout(60_000);
+  const r = await rig(browser);
+  await r.post("/api/mod/prime/release", { character: "Task Manager" });
+  const auth = (await (await fetch(`${API}/api/prime/login`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ character: "Task Manager", passcode: PRIME }) })).json()) as { token: string };
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 780 }, hasTouch: true, isMobile: true });
+  await ctx.addInitScript(([key, value]) => localStorage.setItem(key as string, value as string), ["loom.prime", JSON.stringify({ token: auth.token, character: "Task Manager", admin: true, host: true, eventId: "default" })]);
+  const page = await ctx.newPage();
+  await page.goto(`${BASE}/?role=performer`);
+  await page.waitForTimeout(2_500);
+  await r.post("/api/mod/beat", { name: "The Full Truth Read" });
+  const alert = page.locator(".aloud-alert");
+  await expect(alert).toBeVisible({ timeout: 8_000 });
+  await alert.click();
+  await expect(page.locator(".aloud-text")).toBeVisible();
+  expect(await page.locator("[data-line]").count()).toBeGreaterThan(20);
+  await ctx.close();
+  await r.close();
+});
