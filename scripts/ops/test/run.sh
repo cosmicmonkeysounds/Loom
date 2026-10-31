@@ -407,7 +407,7 @@ fi
 teardown
 
 echo "── checklist"
-check "prints the 20 pre-show boxes" bash -c "[ \$(bash '$ROOT/scripts/ops/checklist.sh' | grep -c '^\[ \]') -eq 20 ]"
+check "prints the 21 pre-show boxes" bash -c "[ \$(bash '$ROOT/scripts/ops/checklist.sh' | grep -c '^\[ \]') -eq 21 ]"
 printed="$(bash "$ROOT/scripts/ops/checklist.sh")"
 # SHOWNIGHT.md §4: the morning reset (paused first), every machine's
 # preflight, facts + judge + wallet, the knobs, the orchestrator context /
@@ -416,7 +416,7 @@ printed="$(bash "$ROOT/scripts/ops/checklist.sh")"
 for want in 'paused first' 'showctl preflight macbook' 'titi:facts --check' 'Judging card reads auto' \
             'Wallet room' '# quarantine is empty' 'LOOM_SNAPSHOT_MS' 'LOOM_HOMESCREEN' 'ctx 20480' \
             'names Trabolta' 'The Optical Drive' 'facts.json door.code' 'opens from inside with no code' \
-            'server-room terminal' 'Trust the patch bay again'; do
+            'server-room terminal' 'Trust the patch bay again' 'Guided Access' 'qr-lock.json'; do
   check "checklist prints: $want" grep -qF -- "$want" <<<"$printed"
 done
 check "checklist strips markdown" bash -c "! grep -q '[*\`]' <<<\"\$1\"" _ "$printed"
@@ -431,7 +431,7 @@ probe_sheet() { # probe_sheet MODE → the sheet's health line against fake-loom
 }
 check "--probe heads the sheet with a healthy /api/health" bash -c "grep -q '✔ {\"ok\":true}' <<<\"\$1\"" _ "$(probe_sheet up)"
 check "--probe flags a 503 (control plane / events not back)" bash -c "grep -q '⚠ .*/api/health answered 503' <<<\"\$1\"" _ "$(probe_sheet starting)"
-check "--probe still prints every box" bash -c "[ \$(bash '$ROOT/scripts/ops/checklist.sh' --probe http://127.0.0.1:1 | grep -c '^\[ \]') -eq 20 ]"
+check "--probe still prints every box" bash -c "[ \$(bash '$ROOT/scripts/ops/checklist.sh' --probe http://127.0.0.1:1 | grep -c '^\[ \]') -eq 21 ]"
 
 echo "── Caddy holds requests through a loom restart (T4-01)"
 # A 502 closes an EventSource for good: the proxy must retry the dial while
