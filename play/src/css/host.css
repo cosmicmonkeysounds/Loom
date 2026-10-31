@@ -422,6 +422,40 @@
 .host-show-cd.urgent { color: var(--bad); }
 
 /* ── wave 25: the Desk window (the house desk) ───────────────────────── */
+/* Wave 59: the top never moves and only the tab under it scrolls, so ■ STOP ALL
+   and the sub-tabs are in reach wherever a host is in a long list. */
+.host-desk-top { flex: 0 0 auto; padding: 6px 8px; background: var(--dialog-face); box-shadow: var(--raised); }
+.host-desk-topline { display: flex; align-items: stretch; gap: 6px; }
+.host-desk-topline .host-desk-stopall { flex: 1 1 50%; width: auto; min-width: 0; }
+.host-desk-playing {
+  flex: 0 1 50%; min-width: 0; min-height: var(--tap); padding: 4px 8px;
+  overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+  font: 800 13px var(--ui-font); color: var(--good);
+}
+.host-desk-tabs { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 3px; }
+.host-desk-tab {
+  position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 1px; min-width: 0; min-height: 50px; padding: 3px 1px; font: 700 12px/1.15 var(--ui-font);
+}
+.host-desk-tab[aria-selected="true"] { box-shadow: var(--pressed); background: var(--face-hi); font-weight: 800; }
+.host-desk-tab-icon { font-size: 18px; line-height: 1.1; }
+.host-desk-tab-label { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.host-desk-tab-badge { position: absolute; top: 2px; right: 4px; font: 900 12px var(--ui-font); color: var(--maroon); }
+.host-desk-wide { width: 100%; min-height: var(--tap); }
+.host-desk-modes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; }
+.host-desk-mode { min-height: var(--tap); min-width: 0; font-weight: 700; }
+.host-desk-flavours { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; margin: 4px 0 0; }
+.host-desk-flavour { min-height: var(--tap); min-width: 0; font-weight: 700; overflow-wrap: anywhere; }
+.host-desk-badges { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 3px; }
+.host-desk-badge { padding: 1px 4px; border-radius: var(--radius); background: var(--face-hi); font: 600 11px var(--ui-font); color: var(--muted-ink); overflow-wrap: anywhere; }
+.host-desk-badge.warn { background: var(--white); color: var(--maroon); font-weight: 800; }
+/* A short window (a keyboard up, a phone on its side): the top gives up height, never its parts. */
+@media (max-height: 560px) {
+  .host-desk-status { flex-wrap: nowrap; overflow-x: auto; }
+  .host-desk-chip { flex: 0 0 auto; }
+  .host-desk-top .host-desk-stopall { min-height: var(--tap); }
+  .host-desk-tab { min-height: var(--tap); flex-direction: row; gap: 3px; }
+}
 .host-desk-scroll {
   flex: 1 1 auto; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain; padding: 8px 8px calc(16px + var(--safe-bottom));
@@ -532,7 +566,6 @@
 .host-desk-say-count { flex: 1 1 auto; font: 12px var(--ui-font); color: var(--muted-ink); font-variant-numeric: tabular-nums; }
 .host-desk-say-go { flex: 0 0 auto; min-height: var(--tap); padding: 0 14px; font-weight: 800; }
 .host-desk-say-row .host-confirm { flex: 1 1 100%; }
-.host-desk-try-note { margin: 0 2px 6px; font: 700 13px/1.35 var(--ui-font); color: var(--ink); overflow-wrap: anywhere; }
 .host-desk-try { display: flex; width: 100%; min-height: var(--tap); padding: 6px 10px; justify-content: flex-start; align-items: flex-start; text-align: left; font: 14px var(--ui-font); }
 .host-desk-try-hint { font-size: 12px; font-weight: 700; color: var(--maroon); overflow-wrap: anywhere; }
 @media (prefers-reduced-motion: reduce) {

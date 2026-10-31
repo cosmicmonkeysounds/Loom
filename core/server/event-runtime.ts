@@ -61,7 +61,7 @@ import {
 import { foldName } from "../src/parser/names.ts";
 import { cueSheetView } from "../src/cue-sheet.ts";
 import { showClock, clockChange, CLOCK_SET_TO, CLOCK_SET_AT, type ShowClock } from "../src/show-clock.ts";
-import { ONLINE_GRACE_MS, hostView, type HostView } from "../src/host-board.ts";
+import { ONLINE_GRACE_MS, hostTerminalDevice, hostView, type HostView } from "../src/host-board.ts";
 import { StoryMarks, huntsFor } from "./wanted.ts";
 import { canonicalPlaceArgs } from "./place-args.ts";
 import { CHECKIN_ROUTE, GuestCheckin } from "./routes/k13.ts";
@@ -2044,7 +2044,7 @@ export class EventRuntime {
       mod,
       waiting,
       king: king === null ? null : { hp: king.hp, max: king.max, fallen: king.fallen },
-      terminals: { now: terms.now, silentMs: terms.silentMs, voiceMuted: terms.voiceMuted, voiceFx: terms.voiceFx, terminals: terms.terminals.map((t) => ({ name: t.name, ago: t.ago, ...(t.room !== undefined ? { room: t.room } : {}), view: t.view })) },
+      terminals: { now: terms.now, silentMs: terms.silentMs, voiceMuted: terms.voiceMuted, voiceFx: terms.voiceFx, dream: this.screens.dreamOf(sim) !== null, terminals: terms.terminals.map((t) => ({ name: t.name, ago: t.ago, ...(t.room !== undefined ? { room: t.room } : {}), view: t.view, ...hostTerminalDevice(t) })) },
       flags,
       staffRooms: model === null ? [] : staffRoomChannels(model),
       ...(sim !== null ? { awardOnly: awardOnly(sim) } : {}),

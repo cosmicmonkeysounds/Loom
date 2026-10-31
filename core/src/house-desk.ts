@@ -172,7 +172,7 @@ export interface DeskValidation {
 /** What the server knows to check a desk against (each list optional:
  *  absent = not checked). */
 export interface DeskRefs {
-  /** The story's `sound X` names (a sound outside them is a warning: the house Mac may have the file). */
+  /** The story's `sound X` names (a sound outside them is a warning: the router's machine may have the file). */
   sounds?: readonly string[];
   /** `lights.json`'s look names. */
   looks?: readonly string[];
@@ -678,7 +678,7 @@ export interface DeskAudioHealth {
   /** Server ms it arrived. */
   at: number;
   ok: boolean;
-  /** The CoreAudio device it opened, or null (none). */
+  /** The audio device it opened, or null (none). */
   device: string | null;
   /** `moved`: the device reports other channel totals than `audio.json` expects. */
   layout: "ok" | "moved" | null;
@@ -686,7 +686,7 @@ export interface DeskAudioHealth {
   xruns: number;
   peakDb: number | null;
   announce: "on" | "off" | "blocked" | null;
-  /** Story sounds with no file on the house Mac. */
+  /** Story sounds with no file on the router's machine. */
   missing: string[];
   /** Sounds still playing the generated placeholder. */
   placeholders: string[];
@@ -731,7 +731,7 @@ export interface DeskSound {
   name: string;
   /** `audio.json` `cues[name].to`, or null (the story's rooms, else everywhere). */
   to: string[] | null;
-  /** On the house Mac: a real file, the placeholder, none, or not known (no report). */
+  /** On the router's machine: a real file, the placeholder, none, or not known (no report). */
   file: "ok" | "placeholder" | "missing" | null;
   /** Its length (ms), when the router reported it. */
   ms: number | null;
@@ -765,7 +765,7 @@ export interface DeskHouse {
   speakers: DeskSpeaker[];
   outputs: Array<{ ch: number; label: string }>;
   zones: Array<{ id: string; name: string; speakers: string[] }>;
-  /** The story's sounds (sorted), with what the house Mac said about each. */
+  /** The story's sounds (sorted), with what the router said about each. */
   sounds: DeskSound[];
   /** Names a sound's `to` may use. */
   audioTargets: string[];
@@ -841,7 +841,7 @@ export interface DeskCheckRow {
   /** More buttons beside Test (a fixture's colours). */
   extra: Array<{ label: string; test: DeskTestCall }>;
   mark: DeskMark | null;
-  /** Why it may not work, before anyone listens ("no file on the house Mac"). */
+  /** Why it may not work, before anyone listens ("no file on the router's machine"). */
   hints: string[];
 }
 
@@ -1045,7 +1045,7 @@ export function deskSetup(view: Pick<DeskView, "house" | "now">): DeskSetupRow[]
         parts.push(hl.device !== null ? hl.device : "no interface");
         parts.push(plural(hl.files, "sound file"));
         if (hl.device === null) bad("The router found no audio interface: power the interface on, plug it in, and check its driver (ASIO on Windows), then restart the audio job.");
-        if (hl.layout === "moved") bad("The interface shows other channel counts than audio.json expects: turn on and clock the ADAT expander, then restart the audio job.");
+        if (hl.layout === "moved") bad("The interface shows other channel counts than audio.json expects: keep both optical ports set to ADAT, Main and Phones not mirrored, then restart the audio job.");
         if (hl.announce === "blocked") bad("Announcements are blocked: the router can't reach the house broker (check Mosquitto and the props password).");
         if (hl.xruns > 0) warn(`${plural(hl.xruns, "audio dropout")} so far: close other audio apps on that machine, or raise the router's buffer.`);
       }
@@ -1100,8 +1100,8 @@ export function deskSetup(view: Pick<DeskView, "house" | "now">): DeskSetupRow[]
             tone: "bad",
             status: `No mind connected: ${mind.name} answers with the story's holding line`,
             fix: [
-              "On the mind's machine, check Ollama is running (ollama ps) with the model pulled.",
-              "Then start stagehand's agents job with this event's id in its config (Mac: uv run stagehand launchd restart --job agents).",
+              "On the mind's machine, start stagehand's agents job with this event's id in its config (Mac: uv run stagehand launchd restart --job agents), then Run → Mind → Reset.",
+              "Still nothing: check its model. Claude needs its key in ~/.config/loom, and Ollama, the standby, must be running (ollama ps) with the model pulled.",
             ],
           },
     );

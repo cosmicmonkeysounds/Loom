@@ -22,6 +22,7 @@ const { HostConsole, HostDock } = await import("../src/host/dock.tsx");
 const { HostShowWindow } = await import("../src/host/show.tsx");
 const { hostTaskbarButtons } = await import("../src/host/windows.tsx");
 const { DeskBody } = await import("../src/host/desk.tsx");
+type DeskTabId = import("../src/host/desk-tabs.ts").DeskTabId;
 
 const src = (p: string) => readFileSync(new URL(`../src/${p}`, import.meta.url), "utf8");
 
@@ -133,7 +134,7 @@ describe("the Show window", () => {
 
 describe("the Desk window", () => {
   const calls = hostCalls(async () => ({}), () => "");
-  const desk = (v = deskFixture()) => renderToStaticMarkup(createElement(DeskBody, { view: v, calls, client: { receivedAt: 1_000, connected: true, error: null, refresh: () => {} }, me: "Task Manager" }));
+  const desk = (v = deskFixture(), startTab: DeskTabId = "cues") => renderToStaticMarkup(createElement(DeskBody, { view: v, calls, client: { receivedAt: 1_000, connected: true, error: null, refresh: () => {} }, me: "Task Manager", startTab }));
   it("status chips, STOP ALL, the standby cue with GO and its story events", () => {
     const html = desk();
     expect(html).toContain("🔊 router online (house-mac) · MOTU 828x");
@@ -152,7 +153,7 @@ describe("the Desk window", () => {
     expect(html).toMatch(/class="host-desk-row standby" aria-pressed="true"/u);
   });
   it("the checks: one row at a time, Test, Heard it / Nothing, next, the progress", () => {
-    const html = desk();
+    const html = desk(deskFixture(), "setup");
     expect(html).toContain("1 of 6 checked");
     expect(html).toContain("Speakers · 2 of 6");
     expect(html).toContain("🔊 Test tone");
@@ -178,15 +179,14 @@ describe("wave 30: the Desk's Setup, Try it and How", () => {
     sent.push({ route, body });
     return { ok: true };
   }, () => "");
-  const desk = (v = deskFixture()) => renderToStaticMarkup(createElement(DeskBody, { view: v, calls, client: { receivedAt: 1_000, connected: true, error: null, refresh: () => {} }, me: "Task Manager" }));
+  const desk = (v = deskFixture(), startTab: DeskTabId = "setup") => renderToStaticMarkup(createElement(DeskBody, { view: v, calls, client: { receivedAt: 1_000, connected: true, error: null, refresh: () => {} }, me: "Task Manager", startTab }));
   const well = () => {
     const v = deskFixture();
     return { ...v, house: { ...v.house, sounds: [{ name: "server_hum", to: ["server_spk"], file: "ok" as const, ms: 4000 }], minds: [{ character: "Trabolta", name: "Trabolta", online: true, workers: ["macbook"] }] } };
   };
-  it("Setup sits above STANDBY: a card per system, a down one with its steps open", () => {
+  it("🔌 Setup: a card per system, a down one with its steps open", () => {
     const html = desk();
     expect(html.indexOf('data-testid="host-desk-setup"')).toBeGreaterThan(-1);
-    expect(html.indexOf('data-testid="host-desk-setup"')).toBeLessThan(html.indexOf('data-testid="host-desk-standby"'));
     expect(html).toMatch(/class="host-desk-setup-card bad" data-testid="host-desk-setup-sound"/u);
     expect(html).toMatch(/class="host-desk-setup-card ok" data-testid="host-desk-setup-lights"/u);
     expect(html).toContain("▾ What to do (1)");
@@ -197,13 +197,13 @@ describe("wave 30: the Desk's Setup, Try it and How", () => {
     expect(html).toContain("▸ All connected ✓ · 🔊 Sound · 💡 Lights · 🧠 Trabolta");
     expect(html).not.toContain("host-desk-setup-card");
   });
-  it("How the Desk works is folded at the top", () => {
+  it("How the Desk works is folded at the top of 🔌 Setup", () => {
     const html = desk();
     expect(html).toMatch(/aria-expanded="false"[^>]*>▸ How the Desk works/u);
-    expect(html.indexOf("How the Desk works")).toBeLessThan(html.indexOf('data-testid="host-desk-standby"'));
+    expect(html.indexOf("How the Desk works")).toBeLessThan(html.indexOf('data-testid="host-desk-setup"'));
   });
-  it("Try it: Say on the speakers, then the looks and the story sounds, each a tap", () => {
-    const html = desk();
+  it("Try it, on 🖥 House: Say on the speakers, then the looks and the story sounds, each a tap", () => {
+    const html = desk(deskFixture(), "house");
     expect(html).toContain('data-testid="host-desk-tryit"');
     expect(html).toContain("📢 Say on the speakers");
     expect(html).toMatch(/maxLength="280"/u);

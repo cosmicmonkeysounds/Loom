@@ -222,7 +222,9 @@ describe("wave 30: Setup", () => {
     expect(setupOpen({ tone: "bad", fix: [] })).toBe(false);
     const mind = setupView(house({ minds: [{ character: "Trabolta", name: "Trabolta", online: false, workers: [] }] })).rows.find((r) => r.id === "mind:Trabolta")!;
     expect(setupOpen(mind)).toBe(true);
-    expect(mind.fix.join(" ")).toMatch(/Ollama/u);
+    expect(mind.fix.join(" ")).toMatch(/agents job/u);
+    expect(mind.fix.join(" ")).toMatch(/Claude/u);
+    expect(mind.fix.join(" ")).toMatch(/Ollama, the standby/u);
   });
   it("the card's tone is its class and its mark", () => {
     expect(setupClass({ tone: "bad" })).toBe("host-desk-setup-card bad");
@@ -278,11 +280,11 @@ describe("wave 30: Try it", () => {
 });
 
 describe("wave 30: How the Desk works", () => {
-  it("five lines: Setup (naming the outside minds), Try it, GO, the checks, where cues are built and STOP ALL", () => {
+  it("five lines, a tab each: the top, Cues, Music and Mix, House, Setup (naming the outside minds)", () => {
     const how = deskHow(allWell());
     expect(how).toHaveLength(5);
-    expect(how[0]).toContain("the sound, the lights and Trabolta");
-    expect(deskHow(deskFixture())[0]).toContain("the sound and the lights are connected");
+    expect(how[4]).toContain("the sound, the lights and Trabolta");
+    expect(deskHow(deskFixture())[4]).toContain("the sound and the lights are connected");
     expect(how.join(" ")).toMatch(/GO plays the cue on STANDBY/u);
     expect(how.join(" ")).toMatch(/walk the house with your phone/u);
     expect(how.join(" ")).toMatch(/Run → House → Cue designer/u);

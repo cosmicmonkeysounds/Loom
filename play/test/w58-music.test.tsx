@@ -1,5 +1,5 @@
-// Wave 58 (`docs/loom-w58-music-contract.md`): the Desk's 🎵 Music. Open for Task
-// Manager and folded for everyone else, what it draws over a view, and which
+// Wave 58 (`docs/loom-w58-music-contract.md`): the Desk's 🎵 Music. The first tab for Task
+// Manager (wave 59), what it draws over a view, and which
 // post each control makes.
 
 import { createElement } from "react";

@@ -2,39 +2,42 @@
 //! the house desk, a lazy chunk (`windows.tsx` loads it). It fires and
 //! tests; it never edits a cue (that is the editor's Run → House).
 //!
-//! - The status chips (`deskStatus`) and ■ STOP ALL (every desk run and the
-//!   house sounds).
-//! - *How the Desk works* (wave 30), folded: five lines on what each part is for.
-//! - Setup (wave 30, `deskSetup`): a card per system — the sound, the lights,
-//!   each outside mind — tone-coloured, with what to do (open when it is
-//!   down); one *All connected ✓* line when every one is fine.
-//! - STANDBY: the cue GO fires, its steps and the story events it tells,
-//!   and a big GO that sends the standby it showed (another console moved
-//!   it: "Standby moved — press GO again").
-//! - What is playing, with progress and ■ Stop each.
-//! - The cue list by section: a tap stands a cue by.
-//! - The checks, built for walking the house with a phone: one row at a
-//!   time with a big Test (a colour per button for a bulb), ✓ Heard it /
-//!   ✗ Nothing (a mark moves on to the next open row), *next*, and the
-//!   whole list a tap away. Once the doors are open a test asks first.
-//! - Try it (wave 30): tap a look or a story sound to play it, or say a line
-//!   on the speakers. No marks; once the doors are open each one asks first.
-//! - 🎵 Music (wave 58, `music.tsx`) under Setup: what is playing, the TIDAL
-//!   app's transport and library, and Trabolta's hands on it. Open for Task
-//!   Manager, folded for every other host; it polls only while open.
-//! - 🎚 Mixer (wave 40, `mixer.tsx`), folded: the house's live balance,
-//!   polled only while open.
+//! The top never moves, whichever tab is open (wave 59): the status chips
+//! (`deskStatus`), ■ STOP ALL (every desk run and the house sounds), a chip for
+//! a cue still playing (it jumps to Cues), the note line and the sub-tabs.
+//! Under them one tab at a time (`desk-tabs.ts`):
+//!
+//! - **🎛 Cues.** STANDBY: the cue GO fires, its steps and the story events it
+//!   tells, and a big GO that sends the standby it showed (another console moved
+//!   it: "Standby moved — press GO again"). What is playing, with progress and
+//!   ■ Stop each. The cue list by section: a tap stands a cue by. Lately.
+//! - **🎵 Music** (wave 58, `music.tsx`) and **🎚 Mix** (wave 40, `mixer.tsx`):
+//!   mounted only while on screen, so they poll nothing until then. Music is
+//!   Task Manager's first tab.
+//! - **🖥 House** (`desk-house.tsx`): his voice, the dream, the terminals, and
+//!   Try it (wave 30): tap a look or a story sound to play it, or say a line on
+//!   the speakers. No marks; once the doors are open each one asks first.
+//! - **🔌 Setup.** *How the Desk works*, folded. Setup (wave 30, `deskSetup`): a
+//!   card per system, tone-coloured, with what to do (open when it is down); one
+//!   *All connected ✓* line when every one is fine. The checks, built for walking
+//!   the house with a phone: one row at a time with a big Test, ✓ Heard it /
+//!   ✗ Nothing (a mark moves on to the next open row), *next*, and the whole list
+//!   a tap away. Once the doors are open a test asks first.
 //!
 //! The view is a long poll (`GET /api/mod/desk?after=<rev>&wait=25`) with
 //! the booth's token, parked while the page is hidden (`startPoll`).
 //! Every write is on the host allowlist (`host/api.ts`).
 
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type Ref } from "react";
 import { ApiError } from "../client.ts";
 import { startPoll } from "../director.tsx";
+import { usePlayHost } from "../host.ts";
 import type { PrimeSession } from "../session/prime.ts";
 import { hostCalls, type HostCalls } from "./api.ts";
 import { browserPollDeps, eventBase, fetchHostPost, type HostAuth } from "./client.ts";
+import { DeskHouse, type Act } from "./desk-house.tsx";
+import { deskTabs, firstDeskTab, playingChip, readDeskTab, saveDeskTab, setupBadge, silentTerminals, type DeskTabId } from "./desk-tabs.ts";
+import { useHostConsole } from "./dock.tsx";
 import { ActButton, ConfirmButton, HostEmpty, failText } from "./kit.tsx";
 import { MixerSection } from "./mixer.tsx";
 import { MusicSection } from "./music.tsx";
@@ -164,10 +167,18 @@ export function DeskWindow({ session }: DeskWindowProps) {
   return <DeskBody view={d.view} calls={calls} client={d} me={auth?.character ?? "you"} mixer={token !== null && eventId !== null ? { token, eventId } : undefined} />;
 }
 
-/** The window over one view (the tests render it with a fixture). */
-export function DeskBody({ view, calls, client, me, mixer }: { view: DeskView; calls: HostCalls; client: Pick<DeskClient, "receivedAt" | "connected" | "error" | "refresh">; me: string; mixer?: HostAuth }) {
+/** The window over one view (the tests render it with a fixture; `startTab` picks its tab). */
+export function DeskBody({ view, calls, client, me, mixer, startTab }: { view: DeskView; calls: HostCalls; client: Pick<DeskClient, "receivedAt" | "connected" | "error" | "refresh">; me: string; mixer?: HostAuth; startTab?: DeskTabId }) {
+  const host = usePlayHost();
+  const tabs = deskTabs(mixer !== undefined);
+  const [tab, setTab] = useState<DeskTabId>(() => startTab ?? firstDeskTab(me, readDeskTab(host.storage), tabs));
   const [note, setNote] = useState<string | null>(null);
   const [wall, setWall] = useState(() => Date.now());
+  // Held here: a hop to another tab keeps the words and the place in the walk.
+  const [say, setSay] = useState("");
+  const [walk, setWalk] = useState<string | null>(null);
+  const playingAt = useRef<HTMLElement | null>(null);
+  const [jump, setJump] = useState(0);
   const running = view.runs.some((r) => r.state === "running");
   useEffect(() => {
     if (!running) return;
@@ -179,6 +190,13 @@ export function DeskBody({ view, calls, client, me, mixer }: { view: DeskView; c
     const t = setTimeout(() => setNote(null), 4000);
     return () => clearTimeout(t);
   }, [note]);
+  useEffect(() => {
+    if (jump > 0) playingAt.current?.scrollIntoView?.({ block: "start" });
+  }, [jump]);
+  const open = (t: DeskTabId) => {
+    setTab(t);
+    saveDeskTab(host.storage, t);
+  };
   const now = serverNow(view, client.receivedAt, Math.max(wall, client.receivedAt));
   // One write: a line on success (or made from the answer) or the server's
   // refusal, then a fresh read.
@@ -195,14 +213,13 @@ export function DeskBody({ view, calls, client, me, mixer }: { view: DeskView; c
       client.refresh();
     }
   };
-  const card = standbyCard(view);
-  const events = eventsLine(card.events);
-  const runs = runRows(view, now);
-  const list = deskCueList(view);
-  const recent = recentLines(view.recent);
+  const playing = playingChip(view.runs);
+  const setupMarkOnTab = setupBadge(setupView(view).rows.map((r) => r.tone));
+  const silent = silentTerminals(useHostConsole()?.view?.terminals);
+  const badge = (t: DeskTabId): string | null => (t === "setup" ? setupMarkOnTab : t === "house" && silent > 0 ? String(silent) : null);
   return (
     <div className="screen side host-desk" data-testid="host-desk">
-      <div className="host-desk-scroll">
+      <div className="host-desk-top" data-testid="host-desk-top">
         <div className="host-desk-status" role="group" aria-label="The house">
           {deskStatus(view).map((c, k) => (
             <span key={k} className={chipClass(c)}>
@@ -211,122 +228,167 @@ export function DeskBody({ view, calls, client, me, mixer }: { view: DeskView; c
           ))}
           {!client.connected && <span className="host-desk-chip bad">⚠ {client.error ?? "Reconnecting…"}</span>}
         </div>
-        <ActButton className="host-desk-stopall" label="■ STOP ALL" title="Stop every desk cue and the house sounds" onClick={() => act("■ Stopped every desk cue and the house sounds", () => calls.deskStopAll())} />
+        <div className="host-desk-topline">
+          <ActButton className="host-desk-stopall" label="■ STOP ALL" title="Stop every desk cue and the house sounds" onClick={() => act("■ Stopped every desk cue and the house sounds", () => calls.deskStopAll())} />
+          {playing !== null && (
+            <button
+              type="button"
+              className="w95-btn host-desk-playing"
+              data-testid="host-desk-playing"
+              title={`${playing}: open Cues`}
+              onClick={() => {
+                open("cues");
+                setJump((n) => n + 1);
+              }}
+            >
+              {playing}
+            </button>
+          )}
+        </div>
         <p className="host-desk-note" role="status" aria-live="polite" data-testid="host-desk-note">
           {note ?? ""}
         </p>
-        <How view={view} />
-        <Setup view={view} />
-        {mixer !== undefined && <MusicSection auth={mixer} calls={calls} me={me} />}
-        {mixer !== undefined && <MixerSection auth={mixer} calls={calls} />}
-
-        <fieldset className={`host-box host-desk-standby${card.running ? " running" : ""}`} data-testid="host-desk-standby">
-          <legend>STANDBY</legend>
-          <div className="host-desk-standby-row">
-            <span className="host-desk-standby-name">{card.label}</span>
-            <ActButton
-              className="host-desk-go"
-              label="GO"
-              disabled={card.cue === null}
-              title={card.cue !== null ? `GO ${card.label}` : undefined}
-              onClick={() => act(card.cue !== null ? `▶ GO ${card.label}` : "", () => calls.deskGo(view.standby), (e) => goRefusal(e.status, e.message))}
-            />
-          </div>
-          {events !== null && <p className="host-desk-events">{events}</p>}
-          {card.notes !== null && <p className="host-desk-notes">📝 {card.notes}</p>}
-          {card.running && <p className="host-note">Still playing — GO starts it again from the top.</p>}
-          {card.steps.length > 0 && (
-            <ol className="host-desk-steps">
-              {card.steps.map((t, k) => (
-                <li key={k}>{t}</li>
-              ))}
-            </ol>
-          )}
-          {card.length !== null && <p className="host-note">About {card.length}.</p>}
-        </fieldset>
-
-        {runs.length > 0 && (
-          <section className="host-desk-part" aria-label="Playing">
-            <h3 className="host-section-head">Playing</h3>
-            <ul className="host-desk-runs">
-              {runs.map((r) => (
-                <li key={r.run} className={`host-desk-run${r.running ? " running" : ""}`}>
-                  <div className="host-desk-run-head">
-                    <span className="host-desk-run-name">{r.name}</span>
-                    <span className="host-desk-run-by">{r.by}</span>
-                    {r.running && <ActButton className="host-desk-run-stop" label="■ Stop" onClick={() => act(`■ Stopped ${r.name}`, () => calls.deskStop(r.run))} />}
-                  </div>
-                  <div className="host-desk-progress" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(r.progress * 100)} aria-label={`${r.name}: ${Math.round(r.progress * 100)}%`}>
-                    <span className="host-desk-progress-fill" style={{ width: `${Math.round(r.progress * 100)}%` }} />
-                  </div>
-                  <p className="host-desk-run-line">{r.line}</p>
-                  {r.trouble.map((t, k) => (
-                    <p key={k} className="host-note alarm">
-                      ⚠ {t}
-                    </p>
-                  ))}
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
-
-        <section className="host-desk-part" aria-label="Cues">
-          <h3 className="host-section-head">
-            <span>Cues</span>
-            <span className="host-section-aside">tap to stand by</span>
-          </h3>
-          {list.length === 0 ? (
-            <HostEmpty>The desk has no cues yet. They are built in the editor's Run → House.</HostEmpty>
-          ) : (
-            list.map((sec, k) => (
-              <div key={k} className="host-desk-cues">
-                {sec.title !== null && <h4 className="host-desk-sec">{sec.title}</h4>}
-                <ul className="host-desk-list">
-                  {sec.rows.map((r) => (
-                    <li key={r.id}>
-                      <button type="button" className={`host-desk-row${r.standby ? " standby" : ""}${r.running ? " running" : ""}`} aria-pressed={r.standby} onClick={() => (r.standby ? undefined : void act(`Standing by: ${r.label}`, () => calls.deskStandby(r.id)))}>
-                        <span className="host-desk-row-mark" aria-hidden="true">
-                          {r.standby ? "▶" : r.running ? "♪" : ""}
-                        </span>
-                        <span className="host-desk-row-body">
-                          <span className="host-desk-row-name">{r.label}</span>
-                          <span className="host-desk-row-sum">
-                            {r.summary}
-                            {r.length !== null ? ` · ${r.length}` : ""}
-                          </span>
-                          {r.events.length > 0 && <span className="host-desk-row-ev">⚡ {r.events.join(", ")}</span>}
-                        </span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))
-          )}
-        </section>
-
-        <TryIt view={view} calls={calls} act={act} note={note} />
-
-        <Checks view={view} calls={calls} act={act} me={me} now={now} />
-
-        {recent.length > 0 && (
-          <section className="host-desk-part" aria-label="Lately">
-            <h3 className="host-section-head">Lately</h3>
-            <ul className="host-desk-recent">
-              {recent.map((t, k) => (
-                <li key={k}>{t}</li>
-              ))}
-            </ul>
-          </section>
+        <div className="host-desk-tabs" role="tablist" aria-label="The Desk" data-testid="host-desk-tabs">
+          {tabs.map((t) => {
+            const mark = badge(t.id);
+            return (
+              <button key={t.id} type="button" role="tab" aria-selected={t.id === tab} aria-controls="host-desk-panel" className="w95-btn host-desk-tab" data-testid={`host-desk-tab-${t.id}`} onClick={() => open(t.id)}>
+                <span className="host-desk-tab-icon" aria-hidden="true">
+                  {t.icon}
+                </span>
+                <span className="host-desk-tab-label">{t.label}</span>
+                {mark !== null && <span className="host-desk-tab-badge">{mark}</span>}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+      {/* Keyed: a tab opens at its top, and nothing of the last one stays mounted. */}
+      <div key={tab} className="host-desk-scroll" id="host-desk-panel" role="tabpanel" aria-label={tabs.find((t) => t.id === tab)?.label}>
+        {tab === "cues" && <CuesTab view={view} calls={calls} act={act} now={now} playingAt={playingAt} />}
+        {tab === "music" && mixer !== undefined && <MusicSection auth={mixer} calls={calls} />}
+        {tab === "mix" && mixer !== undefined && <MixerSection auth={mixer} calls={calls} />}
+        {tab === "house" && <DeskHouse calls={calls} act={act} tryIt={<TryIt view={view} calls={calls} act={act} say={say} setSay={setSay} />} />}
+        {tab === "setup" && (
+          <>
+            <How view={view} />
+            <Setup view={view} />
+            <Checks view={view} calls={calls} act={act} me={me} now={now} walk={walk} setWalk={setWalk} />
+          </>
         )}
       </div>
     </div>
   );
 }
 
-/** One write (`DeskBody`'s `act`): `done` is the line on success, or makes it from the answer. */
-type Act = (done: string | ((answer: unknown) => string), call: () => Promise<unknown>, refusal?: (e: ApiError) => string) => Promise<boolean>;
+/** 🎛 Cues: STANDBY and GO, what is playing, the list, what the house did lately. */
+function CuesTab({ view, calls, act, now, playingAt }: { view: DeskView; calls: HostCalls; act: Act; now: number; playingAt: Ref<HTMLElement> }) {
+  const card = standbyCard(view);
+  const events = eventsLine(card.events);
+  const runs = runRows(view, now);
+  const list = deskCueList(view);
+  const recent = recentLines(view.recent);
+  return (
+    <>
+      <fieldset className={`host-box host-desk-standby${card.running ? " running" : ""}`} data-testid="host-desk-standby">
+        <legend>STANDBY</legend>
+        <div className="host-desk-standby-row">
+          <span className="host-desk-standby-name">{card.label}</span>
+          <ActButton
+            className="host-desk-go"
+            label="GO"
+            disabled={card.cue === null}
+            title={card.cue !== null ? `GO ${card.label}` : undefined}
+            onClick={() => act(card.cue !== null ? `▶ GO ${card.label}` : "", () => calls.deskGo(view.standby), (e) => goRefusal(e.status, e.message))}
+          />
+        </div>
+        {events !== null && <p className="host-desk-events">{events}</p>}
+        {card.notes !== null && <p className="host-desk-notes">📝 {card.notes}</p>}
+        {card.running && <p className="host-note">Still playing — GO starts it again from the top.</p>}
+        {card.steps.length > 0 && (
+          <ol className="host-desk-steps">
+            {card.steps.map((t, k) => (
+              <li key={k}>{t}</li>
+            ))}
+          </ol>
+        )}
+        {card.length !== null && <p className="host-note">About {card.length}.</p>}
+      </fieldset>
+
+      {runs.length > 0 && (
+        <section className="host-desk-part" aria-label="Playing" ref={playingAt}>
+          <h3 className="host-section-head">Playing</h3>
+          <ul className="host-desk-runs">
+            {runs.map((r) => (
+              <li key={r.run} className={`host-desk-run${r.running ? " running" : ""}`}>
+                <div className="host-desk-run-head">
+                  <span className="host-desk-run-name">{r.name}</span>
+                  <span className="host-desk-run-by">{r.by}</span>
+                  {r.running && <ActButton className="host-desk-run-stop" label="■ Stop" onClick={() => act(`■ Stopped ${r.name}`, () => calls.deskStop(r.run))} />}
+                </div>
+                <div className="host-desk-progress" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(r.progress * 100)} aria-label={`${r.name}: ${Math.round(r.progress * 100)}%`}>
+                  <span className="host-desk-progress-fill" style={{ width: `${Math.round(r.progress * 100)}%` }} />
+                </div>
+                <p className="host-desk-run-line">{r.line}</p>
+                {r.trouble.map((t, k) => (
+                  <p key={k} className="host-note alarm">
+                    ⚠ {t}
+                  </p>
+                ))}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      <section className="host-desk-part" aria-label="Cues">
+        <h3 className="host-section-head">
+          <span>Cues</span>
+          <span className="host-section-aside">tap to stand by</span>
+        </h3>
+        {list.length === 0 ? (
+          <HostEmpty>The desk has no cues yet. They are built in the editor's Run → House.</HostEmpty>
+        ) : (
+          list.map((sec, k) => (
+            <div key={k} className="host-desk-cues">
+              {sec.title !== null && <h4 className="host-desk-sec">{sec.title}</h4>}
+              <ul className="host-desk-list">
+                {sec.rows.map((r) => (
+                  <li key={r.id}>
+                    <button type="button" className={`host-desk-row${r.standby ? " standby" : ""}${r.running ? " running" : ""}`} aria-pressed={r.standby} onClick={() => (r.standby ? undefined : void act(`Standing by: ${r.label}`, () => calls.deskStandby(r.id)))}>
+                      <span className="host-desk-row-mark" aria-hidden="true">
+                        {r.standby ? "▶" : r.running ? "♪" : ""}
+                      </span>
+                      <span className="host-desk-row-body">
+                        <span className="host-desk-row-name">{r.label}</span>
+                        <span className="host-desk-row-sum">
+                          {r.summary}
+                          {r.length !== null ? ` · ${r.length}` : ""}
+                        </span>
+                        {r.events.length > 0 && <span className="host-desk-row-ev">⚡ {r.events.join(", ")}</span>}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))
+        )}
+      </section>
+
+      {recent.length > 0 && (
+        <section className="host-desk-part" aria-label="Lately">
+          <h3 className="host-section-head">Lately</h3>
+          <ul className="host-desk-recent">
+            {recent.map((t, k) => (
+              <li key={k}>{t}</li>
+            ))}
+          </ul>
+        </section>
+      )}
+    </>
+  );
+}
 
 /** *How the Desk works*, folded under one button. */
 function How({ view }: { view: DeskView }) {
@@ -403,11 +465,10 @@ function SetupCard({ row }: { row: DeskSetupRow }) {
 }
 
 /** Try it: a look, a story sound or a line on the speakers, now. No marks. */
-function TryIt({ view, calls, act, note }: { view: DeskView; calls: HostCalls; act: Act; note: string | null }) {
+function TryIt({ view, calls, act, say, setSay }: { view: DeskView; calls: HostCalls; act: Act; say: string; setSay: (text: string) => void }) {
   const groups = tryGroups(view);
   const live = testNeedsConfirm(view);
   const [unfolded, setUnfolded] = useState<Record<string, boolean>>({});
-  const [say, setSay] = useState("");
   const sayId = useId();
   const said = sayCall(say);
   const play = (r: TryRow) => act((a) => tryDone(r.kind, r.name, a), () => calls.deskTest(r.test));
@@ -445,7 +506,6 @@ function TryIt({ view, calls, act, note }: { view: DeskView; calls: HostCalls; a
           {live ? <ConfirmButton label="📢 Say it" ask={liveAsk("sound")} yes="Say it anyway" disabled={said === null} className="host-desk-say-go" onConfirm={sayIt} /> : <ActButton label="📢 Say it" disabled={said === null} className="host-desk-say-go" onClick={sayIt} />}
         </div>
       </div>
-      {note !== null && <p className="host-desk-try-note">{note}</p>}
       {groups.map((g) => {
         const open = unfolded[g.id] ?? g.open;
         return (
@@ -469,9 +529,8 @@ function TryIt({ view, calls, act, note }: { view: DeskView; calls: HostCalls; a
 }
 
 /** The checks, walked one row at a time (and the whole list a tap away). */
-function Checks({ view, calls, act, me, now }: { view: DeskView; calls: HostCalls; act: Act; me: string; now: number }) {
+function Checks({ view, calls, act, me, now, walk: key, setWalk: setKey }: { view: DeskView; calls: HostCalls; act: Act; me: string; now: number; walk: string | null; setWalk: (key: string | null) => void }) {
   const sections = deskChecks(view);
-  const [key, setKey] = useState<string | null>(null);
   const [all, setAll] = useState(false);
   const walk = walkAt(sections, key);
   const row = walk.row;

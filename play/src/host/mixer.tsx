@@ -3,9 +3,9 @@
 //! 🎵 Music section in wave 58, `music.tsx`, which shares this poll and posts). Part of the Desk's lazy chunk (`desk.tsx` imports it), so a guest
 //! never downloads it.
 //!
-//! - Folded by default; open, it polls `GET /api/mod/audio/mixer` every
-//!   second while the page is visible (`startPoll` parks it while hidden),
-//!   and nothing at all while folded.
+//! - The Desk's 🎚 Mix tab (wave 59). On screen it polls `GET
+//!   /api/mod/audio/mixer` every second while the page is visible (`startPoll`
+//!   parks it while hidden); on any other tab it isn't mounted and polls nothing.
 //! - The router banner when no router listens (the mix is kept).
 //! - The scope chips (Everywhere + each room) and that scope's strips: a
 //!   horizontal fader −60 … +10 dB, its dB, a mute, a thin meter, "plays at
@@ -108,15 +108,11 @@ export function useMixerView(auth: HostAuth | null): MixerClient {
   return { view, error, connected, setMix, refresh };
 }
 
-/** The folded section in the Desk window. */
+/** The Desk's 🎚 Mix tab. */
 export function MixerSection({ auth, calls }: { auth: HostAuth; calls: HostCalls }) {
-  const [open, setOpen] = useState(false);
   return (
-    <section className="host-desk-part host-mix" aria-label="Mixer" data-testid="host-mixer">
-      <button type="button" className="w95-btn host-desk-fold host-mix-fold" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
-        {open ? "▾" : "▸"} 🎚 Mixer
-      </button>
-      {open && <MixerPanel auth={auth} calls={calls} />}
+    <section className="host-mix" aria-label="Mixer" data-testid="host-mixer">
+      <MixerPanel auth={auth} calls={calls} />
     </section>
   );
 }

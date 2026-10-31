@@ -17,8 +17,8 @@ export const STOP_SOUNDS_LABEL = "🔇 Stop all house sounds";
 export const STOP_WITH_ANNOUNCE_LABEL = "🔇 + the announcement";
 
 /** What a host reads after a stop: the router fades out, or nobody is
- *  listening (the house Mac's audio job is down: nothing to stop). */
+ *  listening (the audio job is down: nothing to stop). */
 export function stopSoundsLine(answer: StopAnswer | null | undefined, announce: boolean): string {
-  if (answer?.router?.online !== true) return "⚠ No sound router is listening: nothing to stop (is the house Mac's audio job running?)";
+  if (answer?.router?.online !== true) return "⚠ No sound router is listening: nothing to stop (is the Desktop's audio job running?)";
   return announce ? "🔇 House sounds and the announcement are fading out" : "🔇 House sounds are fading out";
 }

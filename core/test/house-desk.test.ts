@@ -369,7 +369,7 @@ describe("setup (wave 30)", () => {
     const quiet = row(deskSetup({ house: { ...house, router: { online: false, lastSeen: at - 120_000, name: "desktop" }, sounds: [] }, now: at }), "sound");
     expect(quiet.status).toBe("The sound router went quiet 2 min ago");
     const moved = row(deskSetup({ house: { ...house, health: { ...house.health!, layout: "moved" }, sounds: [] }, now: at }), "sound");
-    expect(moved.fix).toEqual(["The interface shows other channel counts than audio.json expects: turn on and clock the ADAT expander, then restart the audio job."]);
+    expect(moved.fix).toEqual(["The interface shows other channel counts than audio.json expects: keep both optical ports set to ADAT, Main and Phones not mirrored, then restart the audio job."]);
     const fine = row(deskSetup({ house: { ...house, sounds: [] }, now: at }), "sound");
     expect(fine).toEqual({ id: "sound", title: "🔊 Sound", tone: "ok", status: "Online on macbook · 828x · 3 sound files · 2 speakers", fix: [] });
   });
@@ -395,6 +395,7 @@ describe("setup (wave 30)", () => {
     const rows = deskSetup({ house: { ...house, minds }, now: at });
     expect(row(rows, "mind:Trabolta")).toEqual({ id: "mind:Trabolta", title: "🧠 Trabolta", tone: "ok", status: "Online on macbook", fix: [] });
     expect(row(rows, "mind:Echo").tone).toBe("bad");
-    expect(row(rows, "mind:Echo").fix[0]).toContain("ollama ps");
+    expect(row(rows, "mind:Echo").fix[0]).toContain("agents job");
+    expect(row(rows, "mind:Echo").fix[1]).toContain("ollama ps");
   });
 });

@@ -2,8 +2,8 @@
 //! music in one place, for a phone. Part of the Desk's lazy chunk, so a guest
 //! never downloads it.
 //!
-//! - Open for Task Manager and folded for every other host. Open, it polls the
-//!   mixer's GET every second while the page is visible; folded, nothing.
+//! - The Desk's 🎵 Music tab (wave 59), Task Manager's first. On screen it polls the
+//!   mixer's GET every second while the page is visible; on any other tab, nothing.
 //! - Where the music comes from, and the scene (picking one holds it by hand).
 //! - ⏮ ⏸ ⏭ while a bed is on the TIDAL app, each bed with its own ⏭, Skip all,
 //!   Stop music (asks once).
@@ -19,17 +19,13 @@ import type { HostCalls } from "./api.ts";
 import type { HostAuth } from "./client.ts";
 import { ActButton, ConfirmButton, HostEmpty, failText } from "./kit.tsx";
 import { StripLine, useMixPosts, useMixerView } from "./mixer.tsx";
-import { BAD_LINK, HAND_NOTE, LOAN_NOTE, NO_SOUNDTRACK, musicCalls, musicOpen, nowPlaying, routerBanner, stripRow } from "./mixer-model.ts";
+import { BAD_LINK, HAND_NOTE, LOAN_NOTE, NO_SOUNDTRACK, musicCalls, nowPlaying, routerBanner, stripRow } from "./mixer-model.ts";
 
 /** The section in the Desk window. */
-export function MusicSection({ auth, calls, me }: { auth: HostAuth; calls: HostCalls; me: string }) {
-  const [open, setOpen] = useState(() => musicOpen(me));
+export function MusicSection({ auth, calls }: { auth: HostAuth; calls: HostCalls }) {
   return (
-    <section className="host-desk-part host-mix" aria-label="Music" data-testid="host-music">
-      <button type="button" className="w95-btn host-desk-fold host-mix-fold" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
-        {open ? "▾" : "▸"} 🎵 Music
-      </button>
-      {open && <MusicPanel auth={auth} calls={calls} />}
+    <section className="host-mix" aria-label="Music" data-testid="host-music">
+      <MusicPanel auth={auth} calls={calls} />
     </section>
   );
 }

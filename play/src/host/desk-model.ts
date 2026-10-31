@@ -438,16 +438,16 @@ export function sayCount(text: string): string {
 
 // --- how the Desk works ----------------------------------------------------------------
 
-/** The folded intro at the top of the window: what each part is for. The
- *  outside minds are named from the view (none on an older server). */
+/** The folded intro on 🔌 Setup: what each tab is for (`DRAFT w59d`). The outside
+ *  minds are named from the view (none on an older server). */
 export function deskHow(view: Pick<DeskView, "house">): string[] {
   const minds = (view.house.minds ?? []).map((m) => m.name);
   const what = minds.length > 0 ? `the sound, the lights and ${minds.join(", ")}` : "the sound and the lights";
   return [
-    `Setup says whether ${what} are connected, and what to do when one isn't.`,
-    "Try it plays one look, one story sound or a line on the speakers: a quick test, nothing is marked.",
-    "GO plays the cue on STANDBY, then stands by the next one. Tap any cue in the list to stand it by.",
-    "Checks: walk the house with your phone, test each speaker, sound and light, and mark ✓ or ✗.",
-    "Cues are built in the editor's Run → House → Cue designer. ■ STOP ALL is the panic: it stops every cue and the house sounds.",
+    "The top never moves: the chips say how the house is, and ■ STOP ALL is the panic: it stops every cue and the house sounds. A cue still playing shows beside it; tap it to go to Cues.",
+    "🎛 Cues: GO plays the cue on STANDBY, then stands by the next one. Tap any cue in the list to stand it by. Cues are built in the editor's Run → House → Cue designer.",
+    "🎵 Music: what is playing and where it comes from. 🎚 Mix: the house's levels. Each is live only while its tab is open.",
+    "🖥 House: his voice, the dream and every terminal. Try it plays one look, one story sound or a line on the speakers: a quick test, nothing is marked.",
+    `🔌 Setup says whether ${what} are connected, and what to do when one isn't. Checks: walk the house with your phone, test each speaker, sound and light, and mark ✓ or ✗.`,
   ];
 }

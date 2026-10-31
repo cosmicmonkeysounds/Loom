@@ -315,14 +315,16 @@ describe("what the panel draws", () => {
     expect(body(fixture({ router: { online: false, lastSeen: null, name: null }, music: null }))).toContain(ROUTER_OFFLINE);
   });
 
-  it("the Desk shows the Mixer folded (it polls nothing until opened)", () => {
+  it("the Desk has a 🎚 Mix tab, and off that tab it isn't mounted, so it polls nothing", () => {
     const calls = hostCalls(async () => ({ ok: true }), () => "Night.alerts");
-    const html = renderToStaticMarkup(createElement(DeskBody, { view: deskFixture(), calls, client: { receivedAt: 1_000, connected: true, error: null, refresh: () => {} }, me: "Task Manager", mixer: { token: "t", eventId: "e" } }));
-    expect(html).toContain("▸ 🎚 Mixer");
-    expect(html).toMatch(/aria-expanded="false"[^>]*>▸ 🎚 Mixer/u);
-    expect(html).not.toContain("host-mix-body");
-    // Without the booth's token there is no Mixer.
-    expect(renderToStaticMarkup(createElement(DeskBody, { view: deskFixture(), calls, client: { receivedAt: 1_000, connected: true, error: null, refresh: () => {} }, me: "Task Manager" }))).not.toContain("🎚 Mixer");
+    const client = { receivedAt: 1_000, connected: true, error: null, refresh: () => {} };
+    const off = renderToStaticMarkup(createElement(DeskBody, { view: deskFixture(), calls, client, me: "Installation Wizard", mixer: { token: "t", eventId: "e" } }));
+    expect(off).toContain('data-testid="host-desk-tab-mix"');
+    expect(off).not.toContain('data-testid="host-mixer"');
+    const on = renderToStaticMarkup(createElement(DeskBody, { view: deskFixture(), calls, client, me: "Installation Wizard", mixer: { token: "t", eventId: "e" }, startTab: "mix" }));
+    expect(on).toContain('data-testid="host-mixer"');
+    // Without the booth's token there is no Mix tab.
+    expect(renderToStaticMarkup(createElement(DeskBody, { view: deskFixture(), calls, client, me: "Task Manager" }))).not.toContain('data-testid="host-desk-tab-mix"');
   });
 });
 
