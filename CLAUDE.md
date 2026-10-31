@@ -308,6 +308,12 @@ host's 📣 (the `announce` stream frame, `play/src/phone-voice.ts`). Not proven
 a real phone: run `SIGNOFF-w53.md` §3 first. Help:
 `docs/help/play/07-performers.md`, `16-notifications.md`.
 
+**Through their eyes** (wave 54, not shipped; `docs/loom-w54-contract.md`,
+show text `DRAFT w54` on `SIGNOFF-w54.md`): a linked terminal shows its room
+through the eyes of the program in it, for both games, and goes back to its
+mirror when a program is close or in its view. Terminal bundle only: ship, then
+reload every terminal and the TV.
+
 ### Release status
 
 The VPS runs **`w53b`** (master `136e656c`, shipped 2026-10-30; rollback `w53`):

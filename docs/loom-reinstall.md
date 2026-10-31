@@ -1716,9 +1716,11 @@ The world view (`terminal/src/world/`) renders through `@loom/house/three`
 with one camera, cut by a pure director (`world/director.ts`): **mount**
 (the camera at the terminal's spot, looking along its yaw/pitch, with the
 spot's *vertical* `fov` or `DEFAULT_SPOT_FOV` — a window into the virtual
-copy of this very room) for every placed terminal, always: since wave 26
-a linked wall shows the world only while its room is occupied (above),
-so it always mounts; **follow** (over the shoulder of the most recently
+copy of this very room) for a placed terminal: since wave 26 a linked wall
+shows the world only while its room is occupied (above); **eyes** (wave 54,
+`docs/loom-w54-contract.md`: out of the eyes of the program in the room,
+until a program is close to the terminal or in its view, when it goes back
+to its mirror, the mount or the shadow); **follow** (over the shoulder of the most recently
 active player, with their room named; a find wins) is only for an
 unplaced terminal, such as a house-wide `mirror` with no `spot`; **orbit**
 (a slow circle of the spawn room) for an unplaced one with nobody

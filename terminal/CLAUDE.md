@@ -63,7 +63,7 @@ play app's own `useChatStream` (imported as source) and narrows it to
 | `src/crt/` | wave 52b: the server room's CRT: `CrtStage.tsx` (the 640 × 480 stage, the pipes), `Wave.tsx` (his voice, on the face's handle), `legend.ts` + `Legend.tsx` (the button guide), `cards.ts` (the heart's scenes as text, pinned to `scenes/heart.tsx`), `prompt.ts` (when it asks for a pass, the keyboard's keys), `Keyboard.tsx`, `crt.css` |
 | `src/whisper/` | wave 52: spoken answers: `speech.ts` (pure: `wavOf`, `EndOfSpeech`, `cleanText`, `parrotLine`, `VOICE_COPY`, DRAFT w52), `listen.ts` (the mic → whisper.cpp), `VoiceComposer.tsx` (lazy; the composer when `config.whisper`) |
 | `src/serial/` | the M4 bridge: `door-protocol.ts` (JSON lines, pure), `door-bridge.ts` + `patch-bridge.ts` (decisions, pure), `door-serial.ts` (Web Serial + `door=sim`, lazy), `door-status.ts` (store + heartbeat keys), `use-door.ts` (hook) |
-| `src/world/` | spatial SSE + house map → `WorldStore`; `presence.ts` (linked by room: `linkedNow`, `linkedPane`, `usePresenceLatch`); `director.ts` (mount / follow / orbit, three-free), `minimap.ts`, `WorldView.tsx` (three.js, lazy) |
+| `src/world/` | spatial SSE + house map → `WorldStore`; `presence.ts` (linked by room: `linkedNow`, `linkedPane`, `usePresenceLatch`); `director.ts` (mount / eyes / follow / orbit, three-free), `eyes.ts` (wave 54: whose eyes a terminal looks through), `minimap.ts`, `WorldView.tsx` (three.js, lazy) |
 | `src/raycast/` | the no-WebGL2 Canvas 2D raycaster (lazy, never imports three); `swarm.ts`: its ghosts, a small Canvas 2D swarm |
 | `src/shadow/` | `view=shadow`: the camera with ghosts, the world view's swarm with shards dropping out on the flicker (lazy) |
 | `src/camfeed.ts` | the camera feed to the games (`POST /api/mod/spatial/cam`); one frame / 2 s while the reply says `watched: false`; never from the tent |
@@ -115,6 +115,18 @@ for the walls, the TV and the tests:
 (`PRESENCE_LINGER_MS`), so a doorway crossing never flickers. The server
 counts `here` with `@loom/house` `presenceRoom` and routes the voice and the
 cameras per room itself (`docs/loom-reinstall.md` §2).
+
+### Through their eyes (wave 54, `docs/loom-w54-contract.md`)
+
+A linked placed terminal shows its room through the eyes of the program in it,
+and goes back to its mirror when a program is close (`CLOSE_M`) or in its view
+(`IN_VIEW_M`) with no wall between (`world/eyes.ts` `seenBy`, `EyesJudge`). The
+mirror is what the terminal drew before: the shadow on an awake camera wall,
+else the window. `useEyes` sits in `WorldSlot` and `ShadowSlot`, so every view
+that draws the game follows one rule, and a `ShadowSlot` swaps to the world
+view while it is on. The render loops read `eyes` through a ref: a change is a
+cut, never a new scene. Both games send the same poses, so neither has code for
+this. The ranges are tuned on the show's map; `test/eyes.test.ts` reads it.
 
 ### The tent (wave 26, T3)
 

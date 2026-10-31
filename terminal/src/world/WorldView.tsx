@@ -9,8 +9,9 @@
 //! audience's — it is not drawn here.
 //!
 //! One camera, cut by `director.ts`: a placed terminal is a fixed window
-//! from where it hangs (the mount shot, always — players cross it as
-//! ghosts), an unplaced one follows / orbits. Overlays in the DOM: the
+//! from where it hangs (the mount shot — players cross it as ghosts), or
+//! looks through a program's eyes when `eyes` names one (wave 54,
+//! `eyes.ts`), an unplaced one follows / orbits. Overlays in the DOM: the
 //! banner, the camera's mode tag, the counts line ("2 REINSTALLING · 1
 //! HERE", so a window on an empty room says where everyone is), the corner
 //! mini-map of the terminal's floor, and the celebration (a banner only: a
@@ -28,6 +29,7 @@ import { roomById, type HouseMap } from "@loom/house";
 import { buildHouseScene, createAvatar, createDuck, houseAtmosphere, type Avatar, type Duck } from "@loom/house/three";
 import { direct, insideHead, shotFloor, shotKey, type Director, type DirectorPlayer, type Shot } from "./director.ts";
 import { MiniMap } from "./MiniMap.tsx";
+import { eyesTag } from "./eyes.ts";
 import { countsLine, windowCounts } from "./overlay.ts";
 import { avatarUrl, byActivity, celebrationLine, laysEgg, type WorldPlayer } from "./state.ts";
 import { useWorld, type WorldStore } from "./stream.ts";
@@ -40,13 +42,14 @@ const MAX_PIXEL_RATIO = 1.5;
 export function shotTag(shot: Shot | null, players: ReadonlyMap<string, WorldPlayer>): string {
   if (shot === null) return "";
   if (shot.kind === "mount") return "LIVE · THIS ROOM";
+  if (shot.kind === "eyes") return eyesTag(players.get(shot.subject)?.name ?? "A PROGRAM");
   if (shot.kind === "follow") return `FOLLOWING ${(players.get(shot.subject)?.name ?? "A PROGRAM").toUpperCase()}`;
   return "NO PROGRAMS IN THE SIMULATION";
 }
 
 /** The player the overlays are about: the shot's subject, else the freshest. */
 function subjectOf(shot: Shot | null, players: readonly WorldPlayer[]): WorldPlayer | null {
-  const id = shot?.kind === "mount" ? shot.subject : shot?.kind === "follow" ? shot.subject : null;
+  const id = shot?.kind === "mount" || shot?.kind === "eyes" || shot?.kind === "follow" ? shot.subject : null;
   return players.find((p) => p.session === id) ?? players[0] ?? null;
 }
 
@@ -54,12 +57,15 @@ function roomLabel(house: HouseMap, room: string | null): string {
   return (room !== null ? roomById(house, room)?.label : undefined) ?? "somewhere in the house";
 }
 
-export function WorldView({ store, spotId, size }: { store: WorldStore; spotId: string; size: "pane" | "full" }) {
+export function WorldView({ store, spotId, size, eyes = null }: { store: WorldStore; spotId: string; size: "pane" | "full"; eyes?: string | null }) {
   const info = useWorld(store, (s) => s.house);
   const world = useWorld(store, (s) => s.world);
   const host = useRef<HTMLDivElement>(null);
   const [shot, setShot] = useState<Shot | null>(null);
   const [failed, setFailed] = useState(false);
+  // Read by the render loop: a change of eyes is a cut, never a new scene.
+  const eyesNow = useRef(eyes);
+  eyesNow.current = eyes;
   // This view celebrates a find itself: the duck's cutscene plays over it, see-through.
   useEffect(() => noteWorldShowing(), []);
 
@@ -164,13 +170,14 @@ export function WorldView({ store, spotId, size }: { store: WorldStore; spotId: 
         ghosts.get(p.session)?.setPose(pose.p, pose.yaw, pose.pitch);
         players.push({ session: p.session, name: p.name, p: pose.p, yaw: pose.yaw, pitch: pose.pitch, room: p.room, floor: p.floor, lastActive: p.lastActive, foundAt: p.foundAt, duck: p.duck.pos });
       }
-      director = direct({ house, walls, spot, players, now: t, dt }, director);
+      director = direct({ house, walls, spot, players, eyes: eyesNow.current, now: t, dt }, director);
       const { cam } = director;
       // A camera in the followed player's head (no room behind them): hide their ghost.
       const followed = director.shot.kind === "follow" ? director.shot.subject : null;
+      const worn = director.shot.kind === "eyes" ? director.shot.subject : null;
       for (const [id, g] of ghosts) {
         const p = id === followed ? players.find((x) => x.session === id) : undefined;
-        g.object.visible = p === undefined || !insideHead(cam, p.p);
+        g.object.visible = id !== worn && (p === undefined || !insideHead(cam, p.p));
       }
       camera.position.set(cam.pos[0], cam.pos[1], cam.pos[2]);
       camera.lookAt(cam.look[0], cam.look[1], cam.look[2]);
@@ -233,7 +240,7 @@ export function WorldView({ store, spotId, size }: { store: WorldStore; spotId: 
         )}
         {shot !== null && (
           <div className={`world-tag ${shot.kind}`}>
-            {shot.kind === "mount" && <span className="rec" />}
+            {(shot.kind === "mount" || shot.kind === "eyes") && <span className="rec" />}
             {shotTag(shot, world.players)}
           </div>
         )}

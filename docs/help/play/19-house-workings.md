@@ -183,6 +183,10 @@ that is the point. Never explain it.
   into the game, its microphone and speaker. The TV follows the same
   rule for the Desktop. The tent laptop is never linked. Dedicated
   mirror and shadow screens are always on.
+- **Through their eyes.** A linked terminal shows the room as the program
+  in it sees it. When a program comes within a step or two of the terminal,
+  or stands in front of it, the terminal goes back to its usual picture,
+  with the ghost in the room. It works the same for the web game and VR.
 - The **🎤** on a terminal means a player can hear that room right now:
   keep secrets (the door code) away from a 🎤 terminal.
 - An older tablet that can't draw the 3D house shows a blocky old-school

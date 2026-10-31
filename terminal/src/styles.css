@@ -534,6 +534,7 @@ button.gear { border-color: transparent; opacity: 0.55; font-size: 1.3em; paddin
   color: var(--phosphor);
 }
 .world-tag.orbit { color: var(--phosphor-dim); }
+.world-tag.eyes { color: var(--amber, #ffb000); }
 /* A window's counts line: small, so an empty room isn't silent about where everyone is. */
 .world-counts {
   font-size: 0.5em;
