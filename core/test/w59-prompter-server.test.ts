@@ -101,6 +101,7 @@ describe("the show's beats", () => {
       expect(draft, beat).not.toBeNull();
       expect(his(draft!), beat).toBeGreaterThan(0);
       expect(draft!.readers, beat).toEqual(["@Clippy"]);
+      expect(draft!.owners, `${beat}: a stage direction is nobody's line`).toEqual([]);
     }
     for (const beat of ["Computer Bingo", "Clippy On Trabolta", "Bingo Time"]) expect(his(played(beat).draft!), beat).toBe(0);
   });
@@ -121,6 +122,14 @@ describe("the show's beats", () => {
 
   it("leaves the monologue on the TV alone: no reader, no scene", () => {
     expect(played("The Full Truth").draft).toBeNull();
+  });
+
+  it("leaves the song beats alone: the TV captions them, and no reader marks them", () => {
+    const sim = Sim.fromSources(SRC);
+    for (const beat of ["Song Ending", "Sad Confession", "The Hand Jive"]) {
+      expect(sim.model.beats.has(beat), beat).toBe(true);
+      expect(sim.model.beats.get(beat)!.contract.has("aloud"), beat).toBe(false);
+    }
   });
 
   it("makes the Task Manager's long read one scene of hers, with nothing to hold", () => {

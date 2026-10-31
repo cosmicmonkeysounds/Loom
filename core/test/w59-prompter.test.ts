@@ -237,6 +237,16 @@ describe("one shared position", () => {
     expect(r.last().rate).toBeCloseTo(130 / 60);
   });
 
+  it("stops autoscrolling at the end of the script", () => {
+    const r = rig([clippy(1)]);
+    r.p.op(r.id, "@Clippy", false, { op: "play", on: true, speed: 1 });
+    r.to(3_000);
+    expect(r.last()).toMatchObject({ pos: 4, rate: 0, playing: false });
+    const sent = r.frames.length;
+    r.to(5_000);
+    expect(r.frames.length).toBe(sent);
+  });
+
   it("keeps anyone outside the scene out, and lets a host in", () => {
     const r = rig([clippy(1)]);
     expect(r.p.op(r.id, "g-1", false, { op: "press" })).toBe("not in the scene");

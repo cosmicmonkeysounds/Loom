@@ -485,7 +485,13 @@ export class Prompters {
       if (!here) this.free(s);
     }
     if (this.step(s, now)) return;
-    if (s.rate > 0 && now - s.sentAt >= RESYNC_MS) this.emit(s);
+    // The autoscroll ran out of script.
+    if (s.rate > 0 && s.speaking === null && this.posAt(s, now) >= s.total) {
+      this.sync(s, now);
+      s.rate = 0;
+      s.playing = false;
+      this.emit(s);
+    } else if (s.rate > 0 && now - s.sentAt >= RESYNC_MS) this.emit(s);
   }
 
   private isHeld(s: Live): boolean {

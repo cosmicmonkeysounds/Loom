@@ -151,7 +151,7 @@ export function Prompter({ a, storage, sound }: PrompterProps) {
   const pos = useRef(0);
   const held = useRef(false);
   const release = useRef<number | undefined>(undefined);
-  const [at, setAt] = useState(() => startLine(lines, a.mark));
+  const [at, setAt] = useState(() => (sh !== null ? Math.min(lines.length - 1, lineAt(offs, sh.store.pos(performance.now()))) : startLine(lines, a.mark)));
   const atRef = useRef(at);
   atRef.current = at;
   const [playing, setPlaying] = useState(false);
@@ -250,6 +250,7 @@ export function Prompter({ a, storage, sound }: PrompterProps) {
   // drives it instead, and says so, even when it rests.
   useEffect(() => {
     if (sh === null) return;
+    shown.current = box.current?.scrollTop ?? 0;
     let frame = 0;
     const step = () => {
       const el = box.current;
