@@ -55,6 +55,15 @@ async function openDesk(p: Page, mod: string, part: string): Promise<void> {
   await expect(p.getByTestId("host-desk-tabs"), part).toBeVisible({ timeout: 15_000 });
 }
 
+/** A terminal's row in 🖥 House. */
+const terminalRow = (p: Page, name: string) => p.getByTestId("host-desk-terminals").locator("li", { hasText: name });
+/** The rows' names, top to bottom. */
+const terminalOrder = (p: Page) =>
+  p
+    .getByTestId("host-desk-terminals")
+    .locator(".host-subrow-name")
+    .evaluateAll((els) => els.map((e) => (e.textContent ?? "").split(e.querySelector(".host-subrow-sub")?.textContent ?? "\u0000")[0]!.replace(/^\S+\s/u, "").trim()));
+
 const selected = (p: Page) => p.locator('.host-desk-tab[aria-selected="true"]').getAttribute("data-testid");
 const tab = (p: Page, id: string) => p.getByTestId(`host-desk-tab-${id}`).click();
 
@@ -115,6 +124,8 @@ let house: { stop(): void };
 test.beforeAll(async () => {
   expect(BASE !== "" && MOD !== "" && PRIME !== "", "SIM_BASE, SIM_MOD_CODE, SIM_PRIME_CODE").toBe(true);
   mod = await modToken();
+  // Polls once and goes silent, so 🖥 House has a row someone would have to walk to.
+  await fetch(`${API}/api/screen/state?name=Attic&spot=attic&view=room&ver=b2`, { headers: { "x-loom-token": mod } });
   house = standIns(mod);
   await fetch(`${API}/api/mod/desk/stop`, json({ all: true }, mod));
 });
@@ -239,6 +250,11 @@ test("🖥 House: his voice, a flavour, the TV, Identify, the terminals, and wha
   await expect(page.getByTestId("host-desk-terminals")).toContainText("🚪 shut");
   await expect(page.getByTestId("host-desk-terminals")).toContainText("b1");
   await expect(page.locator("#host-desk-terminals, #host-desk-panel").first()).toContainText("on another build");
+  // A terminal's heartbeat re-lists it on the server: the rows hold still through two.
+  const order = await terminalOrder(page);
+  expect(order).toEqual(["Attic", "Casino", "CPU", "Hall", "Server Room", "TV"]);
+  await page.waitForTimeout(6_500);
+  expect(await terminalOrder(page)).toEqual(order);
   await page.locator("#host-desk-panel").evaluate((e) => void (e.scrollTop = e.scrollHeight));
   await shot(page, "house-terminals");
   await page.locator("#host-desk-panel").evaluate((e) => void (e.scrollTop = 0));
@@ -258,8 +274,9 @@ test("🖥 House: his voice, a flavour, the TV, Identify, the terminals, and wha
   await expect.poll(async () => (await voice()).muted).toBe(true);
   await page.getByRole("button", { name: /TV voice muted/u }).click();
   await expect.poll(async () => (await voice()).muted).toBe(false);
-  await page.getByRole("button", { name: "Identify" }).first().click();
-  await expect(page.getByTestId("host-desk-note")).toContainText("shows its name");
+  // Doors closed: one tap, as ever.
+  await terminalRow(page, "Casino").getByRole("button", { name: "Identify" }).click();
+  await expect(page.getByTestId("host-desk-note")).toContainText("Casino shows its name");
   await page.getByRole("button", { name: /Stop \+ the announcement/u }).click();
   await expect(page.getByTestId("host-desk-note")).toContainText("and the announcement");
 
@@ -321,6 +338,13 @@ test("🎵 Music and 🎚 Mix drive the real routes", async ({ browser }) => {
   await page.getByRole("button", { name: "⏭" }).first().click();
   await page.locator(".host-mix-scene-pick").selectOption("act_1");
   await expect(page.locator("#host-desk-panel .host-desk-note")).not.toHaveText("");
+  // A hop off Music keeps a half-pasted link.
+  const paste = page.getByRole("textbox", { name: "TIDAL playlist link" });
+  await paste.fill("https://tidal.com/playlist/half-pasted");
+  await tab(page, "cues");
+  await tab(page, "music");
+  await expect(paste).toHaveValue("https://tidal.com/playlist/half-pasted");
+  await paste.fill("");
   await page.getByRole("button", { name: /Your TIDAL playlists/u }).click();
   await page.getByRole("button", { name: /▶ Stand-in list/u }).click();
   await expect(page.locator("#host-desk-panel .host-desk-note")).not.toHaveText("");
@@ -342,6 +366,11 @@ test("🎵 Music and 🎚 Mix drive the real routes", async ({ browser }) => {
   await expect(page.locator("#host-desk-panel")).toContainText("Living L");
   await shot(page, "mix-room");
   await fitsThePhone(page, "the Mix tab in a room");
+  // A hop off Mix keeps the room: the next fader must not move the whole house.
+  await tab(page, "cues");
+  await tab(page, "mix");
+  await expect(page.getByRole("button", { name: "Desktop (living room)", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("#host-desk-panel")).toContainText("Living L");
   await ctx.close();
 });
 
@@ -379,6 +408,35 @@ test("once the doors are open: the dream's switch through the page, both ways; a
   await expect(page.getByRole("group", { name: /The show is live/u })).toBeVisible();
   await page.getByRole("button", { name: "Say it anyway" }).click();
   await expect(page.getByTestId("host-desk-note")).toContainText("Said on the speakers");
+
+  // Identify covers a terminal's screen: it asks too, on a row that fits the phone.
+  const identifying = async () => ((await (await fetch(`${API}/api/screen/state?name=Casino&spot=graphics-card&view=casino&ver=b1`, { headers: { "x-loom-token": mod } })).json()) as { identify: boolean }).identify;
+  const identified: string[] = [];
+  page.on("request", (r) => {
+    if (r.url().endsWith("/api/mod/screen/identify")) identified.push(r.postData() ?? "");
+  });
+  // An earlier test's Identify may still be up on the Casino (it lasts 10 s).
+  await expect.poll(identifying, { timeout: 12_000 }).toBe(false);
+  const casino = terminalRow(page, "Casino");
+  await casino.getByRole("button", { name: "Identify" }).click();
+  await expect(casino.getByRole("group", { name: /The show is live/u })).toBeVisible();
+  await fitsThePhone(page, "Identify's ask on a row");
+  await shot(page, "identify-ask");
+  await casino.getByRole("button", { name: "No", exact: true }).click();
+  expect(identified, "No sends nothing").toEqual([]);
+  await casino.getByRole("button", { name: "Identify" }).click();
+  await casino.getByRole("button", { name: "Test anyway" }).click();
+  await expect(page.getByTestId("host-desk-note")).toContainText("Casino shows its name");
+  expect(identified).toHaveLength(1);
+  expect(identified[0]).toContain("Casino");
+  await expect.poll(identifying, { message: "Test anyway reaches the terminal" }).toBe(true);
+  // A silent terminal's note claims nothing.
+  const attic = terminalRow(page, "Attic");
+  await expect(attic).toHaveClass(/alarm/u, { timeout: 25_000 });
+  await attic.getByRole("button", { name: "Identify" }).click();
+  await attic.getByRole("button", { name: "Test anyway" }).click();
+  await expect(page.getByTestId("host-desk-note")).toContainText("Attic isn't answering");
+
   await tab(page, "setup");
   await page.getByRole("button", { name: /Test tone|Play it|Flash it|Play the look/u }).first().click();
   await expect(page.getByRole("group", { name: /The show is live/u })).toBeVisible();
