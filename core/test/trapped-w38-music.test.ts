@@ -50,7 +50,7 @@ describe("the story's music cues (static)", () => {
 
   it("every rule or beat that ends the night turns the music off", () => {
     const ending = FILES.flatMap((f) => blocks(f.source).filter((b) => b.lines.some((l) => /set Night\.ended = true/u.test(l))).map((b) => ({ ...b, file: f.path })));
-    expect(ending.map((b) => b.head.trim()).sort()).toEqual(["== Sad Confession", "== Song Ending", "when advice_helped:", "when computer_destroyed:", "when no_pickup_line:", "when the_hand_jive:", "when trabolta_disabled:"].sort());
+    expect(ending.map((b) => b.head.trim()).sort()).toEqual(["== Off To See My Lady", "== Sad Confession", "when advice_helped:", "when computer_destroyed:", "when the_hand_jive:", "when trabolta_disabled:"].sort());
     for (const b of ending) {
       const end = b.lines.findIndex((l) => /set Night\.ended = true/u.test(l));
       const off = b.lines.findIndex((l) => /cue music_off/u.test(l));
@@ -123,7 +123,7 @@ describe("the music through a night (the sim)", () => {
     await n.chain(TO_Y2K);
     await n.chain(Y2K_TO_VERDICT);
     expect(n.music()).toBe("final");
-    n.tick(110); // 8-B, then the verdict's pages
+    for (const s of [831, 106, 121, 35]) n.tick(s); // the full truth, then 8-B to his last line
     expect(n.music()).toBe("off");
     expect(n.cued.slice(-2)).toEqual(["final", "off"]);
   });

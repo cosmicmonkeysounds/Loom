@@ -3931,17 +3931,17 @@ describe("Trapped in the Internet — the awards ceremony (K-25)", () => {
     expect(v(sim, "Night.award_winner")).toBe("none");
   });
 
-  it("an ending → Clippy hosts in The Desktop; awards carry the winner's name and number", () => {
-    const sim = ended("song");
+  it("Trabolta hosts in The Desktop, on the endings he stays for; awards carry the winner's name and number", () => {
+    const sim = ended("help");
     const s = g1(sim);
-    expect(v(sim, "Night.ceremony_host")).toBe("Clippy");
+    expect(v(sim, "Night.ceremony_host")).toBe("Trabolta");
     expect(beats(s)).toContain("The Ceremony");
     expect(cues(s)).toContain("cue screens_ceremony");
     expect(casts(s).map((c) => c.cue.replace(/^"|"$/gu, ""))).toEqual(["!🏆 THE AWARDS CEREMONY. Every program to the Desktop."]);
     expect(composeGuestMessages(sim, s).some((m) => m.alert === true)).toBe(true);
     // Wave 18b: The Night In Review, then The Ceremony's two opening lines.
     expect(beats(s).indexOf("The Night In Review")).toBeLessThan(beats(s).indexOf("The Ceremony"));
-    expect(desktop(sim, s).every((l) => l.startsWith("Clippy: "))).toBe(true);
+    expect(desktop(sim, s).every((l) => l.startsWith("Trabolta: "))).toBe(true);
 
     sim.setVar("g1.trust", "42");
     const a = fire(sim, "award_most_trusted", "g1");

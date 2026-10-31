@@ -52,7 +52,8 @@ export class Night {
     notePress(this.sim, ev);
     expect(pressRefused(this.sim, ev), name).toBe(false);
     // Wave 18b: ⚖'s ending follows The Verdict's TV pages (34 s of story time).
-    if (name === "the_verdict") for (const seconds of [831, 77]) ev.push(...this.sim.tick(seconds * 1000));
+    // The full truth, then either road to the rave: 8-A's 76 s, or 8-B's pause, lines and flicker.
+    if (name === "the_verdict") for (const seconds of [831, 106, 121, 35, 77, 171]) ev.push(...this.sim.tick(seconds * 1000));
     return this.take(ev);
   }
   scan(scanner: string, id: string): ChatMessage[] {
@@ -103,16 +104,15 @@ export function boot(): Night {
 }
 
 /** From the Y2K hour to an ending and the ceremony: the reveal, the bob,
- *  truth.txt, the verdict, then the rave if the verdict is Grok Prom. */
+ *  truth.txt, ⚖ and the road to the rave. */
 export function toCeremony(n: Night): void {
   n.press("final_reveal");
   n.press("bobbing_for_truth");
   n.signal("brought_up_the_bag", "g1", undefined, "Clippy");
   n.press("read_truth_txt");
   n.press("the_verdict");
-  if (v(n.sim, "Night.phase") === "grok_prom") n.press("no_pickup_line");
   expect(v(n.sim, "Night.ended")).toBe(true);
-  (n.sim.signal("start_the_ceremony"), n.press("start_the_ceremony"));
+  n.press("start_the_ceremony");
 }
 
 describe("Trapped in the Internet — wave 13: one home per broadcast", () => {
@@ -198,9 +198,8 @@ describe("Trapped in the Internet — wave 13: the interrupt ladder", () => {
     n.signal("brought_up_the_bag", "g1", undefined, "Clippy");
     n.press("read_truth_txt");
     n.press("the_verdict");
-    if (v(n.sim, "Night.phase") === "grok_prom") n.press("no_pickup_line");
-    expect(level()).toBe("bsod");
-    (n.sim.signal("start_the_ceremony"), n.press("start_the_ceremony"));
+    expect(level()).toBe("sticky"); // ⚖ comes back down for the full truth
+    n.press("start_the_ceremony");
     expect(level()).toBe("sticky");
   }, SLOW);
 });
@@ -251,7 +250,7 @@ describe("Trapped in the Internet — wave 13: per-person notices (~)", () => {
   it("every ~ notice has the person's own result in the same block (a reply, the mark's pin, a line to them)", () => {
     const blocks = noticeBlocks();
     // Wave 18: the Bingo winner's ribbon is a big house cheer (B7), not a ~ notice.
-    expect(blocks.length).toBe(25);
+    expect(blocks.length).toBe(24);
     for (const { where, line, block } of blocks) {
       expect(line, where).not.toMatch(/^broadcast "~?!|^broadcast "!~/);
       // A transfer / trade notice in # truthcoin-exchange: each party's own
@@ -299,7 +298,7 @@ describe("Trapped in the Internet — wave 13: the cards that ask", () => {
     n.signal("brought_up_the_bag", "g1", undefined, "Clippy");
     n.press("read_truth_txt");
     const verdict = n.press("the_verdict");
-    const lines = verdict.filter((m) => m.kind === "widget" && m.text.startsWith("Give me a pickup line"));
+    const lines = verdict.filter((m) => m.kind === "widget" && m.text.startsWith("What should I say to her?"));
     expect(lines.length).toBeGreaterThan(0);
     for (const m of lines) expect(m.moment, m.text).toBe("big");
   }, SLOW);
@@ -336,9 +335,8 @@ describe("Trapped in the Internet — wave 13: every buried beat has a delivery 
     }],
     ["🗝 the door code by the majority (The Whole Truth)", /^🗝 THE WHOLE TRUTH:/u, () => { const n = Y2K(); n.take(n.sim.join("g1", "Unlimited Power")); return { n, out: n.press("force_majority_stay").concat(n.tick(1)) }; /* wave 18b: no plant gate, so one member short of a real majority */ }],
     ["⏰ you are late", /^⏰ You are late\./u, () => { const n = boot(); for (const c of [...TO_HOUR, "five_minute_warning"]) n.press(c); return { n, out: n.press("summons_closed") }; }],
-    ["🎵 the song ending (the verdict, every fact accurate)", /^🎵 TRABOLTA SOLVED IT\./u, () => { const n = Y2K(); for (const c of ["final_reveal", "bobbing_for_truth"]) n.press(c); n.signal("brought_up_the_bag", "g1", undefined, "Clippy"); n.press("read_truth_txt"); const out = n.press("the_verdict"); expect(v(n.sim, "Night.ending")).toBe("song"); return { n, out }; }],
+    ["🎵 the song ending (the verdict, every fact accurate)", /^🎵 Those of you who want to leave may leave\./u, () => { const n = Y2K(); for (const c of ["final_reveal", "bobbing_for_truth"]) n.press(c); n.signal("brought_up_the_bag", "g1", undefined, "Clippy"); n.press("read_truth_txt"); const out = n.press("the_verdict"); expect(v(n.sim, "Night.ending")).toBe("song_pickup"); return { n, out }; }],
     ["💔 the verdict: Grok Prom", /^💔 THE VERDICT:/u, () => { const n = Y2K(); for (const c of ["final_reveal", "bobbing_for_truth"]) n.press(c); n.signal("brought_up_the_bag", "g1", undefined, "Clippy"); n.press("read_truth_txt"); return { n, out: n.take(n.sim.fireBeat("Grok Prom")) }; }],
-    ["🏍 the rave", /^🏍 Nobody had the line\./u, () => { const n = Y2K(); for (const c of ["final_reveal", "bobbing_for_truth"]) n.press(c); n.signal("brought_up_the_bag", "g1", undefined, "Clippy"); n.press("read_truth_txt"); n.take(n.sim.fireBeat("Grok Prom")); return { n, out: n.press("no_pickup_line") }; }],
     ["💞 the advice helped", /^💞 You helped him\./u, () => { const n = Y2K(); for (const c of ["final_reveal", "bobbing_for_truth"]) n.press(c); n.signal("brought_up_the_bag", "g1", undefined, "Clippy"); n.press("read_truth_txt"); n.take(n.sim.fireBeat("Grok Prom")); n.press("ask_for_advice"); return { n, out: n.press("advice_tally") }; }],
     ["🕺 the hand jive", /^🕺 THE HAND JIVE\./u, () => { const n = Y2K(); for (const c of ["final_reveal", "bobbing_for_truth"]) n.press(c); n.signal("brought_up_the_bag", "g1", undefined, "Clippy"); n.press("read_truth_txt"); n.take(n.sim.fireBeat("Grok Prom")); n.press("ask_for_advice"); n.signal("poll answered", "g1", { choice: "Thwart him", index: 1 }); n.press("advice_tally"); expect(v(n.sim, "Night.ending")).toBe("banished"); return { n, out: n.press("the_hand_jive") }; }],
     ["🏆 you won an award", /^🏆 You won Most Trusted!/u, () => { const n = Y2K(); toCeremony(n); return { n, out: n.press("award_most_trusted", "g1") }; }],
@@ -493,7 +491,7 @@ function checkpoint(n: Night, label: string): Record<string, string> {
 
 type Step = [string, (n: Night) => void];
 // Wave 58: G1's first press only asks while the monologue is untold.
-const press = (c: string): Step => [c, (n) => { if (c === "start_the_ceremony") n.sim.signal(c); n.press(c); }];
+const press = (c: string): Step => [c, (n) => { if (c === "start_the_ceremony" && v(n.sim, "Night.raved") !== true) n.sim.signal(c); n.press(c); }];
 const by = (c: string, g: string, who: string): Step => [`${who}: ${c} ${g}`, (n) => { n.signal(c, g, undefined, who); }];
 
 /** The night, cue by cue, with the performer presses and a few guests' own
@@ -811,15 +809,6 @@ describe("Trapped in the Internet — wave 13: the objectives, walked through th
     expect(majorFor(n.press("call_to_the_desktop"), "g1").map((m) => m.text).some((t) => t.startsWith("📣 ALL PROGRAMS"))).toBe(true);
     for (const c of TO_HOUR.slice(1)) n.press(c);
     expect(majorFor(n.press("five_minute_warning"), "g1").map((m) => m.text).some((t) => t.startsWith("⏳ FIVE MINUTES"))).toBe(true);
-  }, SLOW);
-
-  it("the Grok Prom night: the pickup line, the advice poll and the hand jive", () => {
-    const table = new Map(walk("hand_jive"));
-    const at = (label: string) => table.get(label)!;
-    expect(at("the verdict: Grok Prom")).toMatchObject({ g1: "The Pickup Line", Clippy: "Grok Prom", "Task Manager": "Grok Prom", "Recycling Bin": "Grok Prom" });
-    expect(at("ask_for_advice").g1).toBe("Help Or Thwart");
-    expect(at("advice_tally")).toMatchObject({ g1: "The Hand Jive", g5: "The Hand Jive", "Norton Anti-Virus": "Banished Too" });
-    expect(at("the_hand_jive").g1).toBe("The Night Is Over");
   }, SLOW);
 
   it("audiences never cross: a guest sees only Program objectives, Clippy never a host part's", () => {

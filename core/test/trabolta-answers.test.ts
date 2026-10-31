@@ -402,32 +402,30 @@ describe("Trabolta never knows what he is asking for", () => {
     expect(v("Night.bag_up")).toBe(true);
     await mod("read_truth_txt");
     await mod("the_verdict");
-    rt.tickOnce(71_000); // wave 59a: nobody found the last answer, so 8-B plays first
-    rt.tickOnce(38_000); // wave 18b: the ending follows the verdict's TV pages
-    expect(v("Night.phase")).toBe("grok_prom");
+    rt.tickOnce(831_000); // the full truth, then 8-B: nobody found the last answer
+    rt.tickOnce(106_000); // his pause, and the card
+    expect(v("Night.lines_open")).toBe(true);
     expect(rt.liveSim!.model.interactions.has("the_line_works")).toBe(false); // no power to accept it himself
     const AFTER = AFTER_THE_VERDICT_SCAN;
-    const asked = await look("Grok Prom (he asks for the line)", calc, AFTER);
+    const asked = await look("8-B (he asks for a line)", calc, AFTER);
     expect(asked.powers.map((p) => p.id)).not.toContain("the_line_works");
     // The 💌 card went to every program's thread (a widget: not a line of his history).
     for (const g of guests) expect(rt.chatHistoryFor(g.id).some((m) => m.channel === "dm:Trabolta" && m.widget?.kind === "answer" && m.widget.params["question"] === "P1"), g.name).toBe(true);
     // A program types the line to him: theirs to say, never his to keep or pass on.
-    const typed = await look("Grok Prom (a program typed the line)", pad, AFTER, FACTS.answers[0]!.answer);
+    const typed = await look("8-B (a program typed the line)", pad, AFTER, FACTS.answers[0]!.answer);
     expect(typed.text).toBe(FACTS.answers[0]!.answer);
-    await look("Grok Prom (another program asks after)", calc, AFTER);
-    // A wrong line on the 💌 card: the house says no, in that program's thread.
+    await look("8-B (another program asks after)", calc, AFTER);
+    // Lines on the card: nothing judges them, and the old line wins nothing.
     const cardOf = (g: Guest) => rt.chatHistoryFor(g.id).filter((m) => m.kind === "widget" && m.widget?.kind === "answer").at(-1)!;
     expect((await call(rt, "POST", "/api/guest/widget", { seq: cardOf(amp).seq, result: { text: "Hey girl, are you a router?" } }, { token: amp.token })).status).toBe(200);
-    const no = await look("Grok Prom (a wrong line on the card)", amp, AFTER);
-    expect(no.history.some((l) => l.text === "The house says no. That is not the line.")).toBe(true);
-    expect(v("Night.line_by")).toBe("none");
-    // The right line on the card: the house tells him who, never what.
     expect((await call(rt, "POST", "/api/guest/widget", { seq: cardOf(calc).seq, result: { text: FACTS.answers[0]!.accept[0] } }, { token: calc.token })).status).toBe(200);
-    expect(v("Night.line_by")).toBe("Calculator");
+    expect(v("Night.line_by")).toBe("none");
+    expect(v("Night.ending")).toBe("none");
+    expect(v("Kernel.lines_n")).toBe(2);
+    await mod("no_pickup_line"); // he reads them all out
+    await look("8-B (the lines read)", calc, AFTER);
+    rt.tickOnce(50_000);
     expect(v("Night.ending")).toBe("song_pickup");
-    const yes = await look("the line accepted (the Song Ending)", calc, AFTER);
-    expect(yes.world["Night.line_by"]).toBe("Calculator");
-    expect(yes.history.some((l) => l.text === "The house says YES. That is the line, Calculator.")).toBe(true);
 
     expect(leaks).toEqual([]);
     rt.dispose();

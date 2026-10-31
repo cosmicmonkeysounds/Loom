@@ -71,7 +71,7 @@ class Night {
     this.sim.setVar("Night.judging", "false");
   }
   /** A Trabolta-hosted ceremony (the song ending), G1 pressed. */
-  ceremony(ending = "song"): void {
+  ceremony(ending = "help"): void {
     this.sim.setVar("Night.ending", ending);
     this.sim.setVar("Night.ended", "true");
     this.press("start_the_ceremony"); // the first press only asks

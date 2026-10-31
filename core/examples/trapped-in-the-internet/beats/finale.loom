@@ -222,6 +222,8 @@ set Night.ending = "song_pickup"
 set Night.ended = true
 set Night.phase = "finale_song"
 set Night.step = 19
+cue music_off
+set Night.music = "off"
 Trabolta: Well, she said her usual line about an agent not being available.
 Trabolta: But she said it to me and not Grok.
 Trabolta: She didn't even care about the fact I'm throwing a cool party.
@@ -239,8 +241,6 @@ set Night.song_at = Time.elapsed + 76
   setting: The Desktop
 cue lights_song
 set Night.lights = "song"
-cue music_off
-set Night.music = "off"
 cue screens_song
 set Night.screen = "song"
 set Night.terminals = "song"

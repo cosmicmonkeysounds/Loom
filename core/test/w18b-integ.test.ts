@@ -136,19 +136,15 @@ describe("wave 18b integration — the whole night on the merged show (C1)", () 
     n.raw("bobbing_for_truth");
     n.raw("brought_up_the_bag", "g5", undefined, "Clippy");
     n.raw("read_truth_txt");
-    // Wave 59a: nobody found the last answer, so 8-B plays and the verdict waits for it.
-    expect(beats(n.raw("the_verdict"))).toContain("Nobody Found It");
-    expect(beats(n.raw("the_verdict"))).toEqual([]);
-    const verdict = n.tick(71);
-    expect(beats(verdict)).toContain("The Verdict");
-    expect(lines(verdict, "Trabolta").some((l) => /true\. .* with a lie on record\./u.test(l))).toBe(true);
-    expect(beats(verdict)).not.toContain("Song Ending");
-    expect(v(n.sim, "Night.ended")).not.toBe(true);
+    // Wave 59a: ⚖ is the full truth; nobody found the last answer, so 8-B follows.
+    expect(beats(n.raw("the_verdict"))).toContain("The Full Truth");
     // A second ⚖ meanwhile only tells # hosts.
     expect(beats(n.raw("the_verdict"))).toEqual([]);
-    expect(beats(n.tick(30))).not.toContain("Song Ending");
-    expect(beats(n.tick(8))).toContain("Song Ending"); // nobody filed a lie: the song
-    expect(v(n.sim, "Night.ending")).toBe("song");
+    expect(beats(n.tick(831))).toContain("Nobody Found It");
+    expect(v(n.sim, "Night.ended")).not.toBe(true);
+    for (const s of [106, 121, 35]) n.tick(s);
+    expect(beats(n.tick(77))).toContain("Song Ending");
+    expect(v(n.sim, "Night.ending")).toBe("song_pickup");
 
     // The ceremony: The Night In Review first, then the awards; a file each.
     n.sim.setVar("g6.gone", "true");
@@ -360,7 +356,6 @@ describe("wave 18b integration — results, rulings and the verdict on the merge
     await mod("brought_up_the_bag", { subject: pad.id, actor: "Clippy" });
     await mod("read_truth_txt");
     await mod("the_verdict");
-    rt.tickOnce(71_000); // 8-B: nobody found the last answer
     const tv = await poll("tv");
     const vd = tv.state.results!;
     expect(vd.kind).toBe("verdict");
@@ -375,10 +370,9 @@ describe("wave 18b integration — results, rulings and the verdict on the merge
       expect(q.answer, q.id).toBeNull();
       expect(q, q.id).not.toHaveProperty("liars");
     }
-    // The ending waits for the TV's pages.
+    // Nothing ends here: he reads the full truth first.
     expect(rt.liveSim!.world.peek("Night.ended")).not.toMatchObject({ value: true });
-    rt.tickOnce(38_000);
-    expect(rt.liveSim!.world.peek("Night.phase")).toMatchObject({ value: "grok_prom" });
+    expect(rt.liveSim!.world.peek("Night.phase")).toMatchObject({ value: "finale_truth" });
 
     // An agent request after ⚖ carries no key answer and no liar.
     expect((await call(rt, "POST", "/api/guest/say", { channel: "dm:Trabolta", text: "What now?" }, { token: pad.token })).status).toBe(200);

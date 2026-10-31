@@ -6842,7 +6842,7 @@ when the_truth_spoken:
   if Night.ending == "rave":
     cue lights_restore
     set Night.lights = "restore"
-  // DRAFT w58
+  // DRAFT w59a
   broadcast "📜 Trabolta reads the full truth on the TV, about 14 minutes, clean: leave 🌀 His voice on Auto or Clean, and no shots. If the TV has no voice: 📜 Task Manager reads it instead. The ending follows by itself when it is over." to channel(hosts)
   // DRAFT w58
   // DRAFT w59 (in-world room name)
