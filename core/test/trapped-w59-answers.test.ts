@@ -569,6 +569,19 @@ describe("wave 59a: the last answer decides, and every road ends in the rave", (
     expect(v(n.sim, "Night.dream")).toBe(false);
     expect((v(n.sim, "Night.truth_until") as number) - n.sim.elapsed() / 1000).toBe(592 + 2 * 34);
   });
+  it("G1 forced ahead of the song still lands the ending's phase, and he is gone", { timeout: SLOW }, () => {
+    const n = party();
+    n.file("g1", "F3", "accurate");
+    reveal(n);
+    verdict(n);
+    n.tick(593);
+    expect(v(n.sim, "Night.phase")).toBe("finale_truth");
+    n.press("start_the_ceremony");
+    n.press("start_the_ceremony");
+    expect([v(n.sim, "Night.phase"), v(n.sim, "Night.ceremony_host")]).toEqual(["finale_song", "Clippy"]);
+    n.tick(90);
+    expect(v(n.sim, "Night.screen")).not.toBe("song");
+  });
   it("nobody on the card: straight to \"You know what.\", and the two minutes close by themselves", { timeout: SLOW }, () => {
     const n = party();
     reveal(n);
@@ -625,7 +638,7 @@ describe("wave 59a: 🌑", () => {
     const n = party();
     n.file("g1", "F3", "lie");
     n.press("final_reveal");
-    n.take(n.sim.signal("judging_q3", null, null, "Clippy"));
+    n.take(n.sim.signal("judging_q3", undefined, null, "Clippy"));
     n.take(n.sim.signal("judge_accurate", "g4", null, "Clippy"));
     expect(v(n.sim, "g4.judged_q9")).toBe(true);
     const said = his(n.press("final_reveal"));
@@ -641,7 +654,7 @@ describe("wave 59a: 🌑", () => {
     const n = party();
     n.file("g1", "F3", "lie");
     reveal(n);
-    n.take(n.sim.signal("judging_q3", null, null, "Clippy"));
+    n.take(n.sim.signal("judging_q3", undefined, null, "Clippy"));
     n.take(n.sim.signal("judge_accurate", "g4", null, "Clippy"));
     expect(v(n.sim, "g4.judged_q9")).toBe(true);
     n.sim.signal("fact_accurate", "g1", { question: "F3" }, "Clippy");
