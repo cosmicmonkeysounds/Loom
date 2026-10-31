@@ -303,7 +303,7 @@ export interface CostumeFacts {
   step: number | null;
   /** The TV is saying a beat's lines, or by their length it still would be. */
   speaking: boolean;
-  /** A scene is on the shared teleprompter (`Prompters.status`), until its ✓ Done. */
+  /** Someone is on the shared teleprompter (`Prompters.inUse`): a phone showing the scene, a finger on it, his lines waiting or going. */
   prompter: boolean;
   /** `Night.lights`. */
   lights: string | null;

@@ -422,6 +422,17 @@ export class Prompters {
     return this.live !== null;
   }
 
+  /** Is anyone on the scene? His lines waiting or going, a finger on it, or a
+   *  phone showing it. A live scene needn't be: a beat nobody opened, or one
+   *  whose reader's phone died, stays live for the hosts until ✓ Done, a newer
+   *  scene or a restart, and nobody is reading it. */
+  get inUse(): boolean {
+    const s = this.live;
+    if (s === null) return false;
+    const now = this.deps.now();
+    return this.isHeld(s) || s.speaking !== null || s.holder !== null || [...s.here.values()].some((h) => now - h.at <= HERE_TTL_MS);
+  }
+
   /**
    * A phone's press. `host` is anyone who may join without a line: a host or a
    * director. Returns the refusal, or null when it was taken.

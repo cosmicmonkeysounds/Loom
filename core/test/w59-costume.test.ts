@@ -372,22 +372,53 @@ describe("w59 costume: refused while it would wreck something", () => {
     r.rt.dispose();
   });
 
-  it("while a teleprompter is open", async () => {
+  /** A real Clippy booth with her pop-up or prompter on a visible page. */
+  async function reader(r: Awaited<ReturnType<typeof live>>) {
+    const token = (await call(r.rt, "POST", "/api/prime/login", { character: "Clippy", passcode: CODES.prime })).json["token"] as string;
+    await call(r.rt, "POST", "/api/mod/beat", { name: "A Reading" }, { moderator: true });
+    const scene = (r.rt as unknown as { prompters: { status(): { id: number } | null } }).prompters.status()!.id;
+    return () => call(r.rt, "POST", "/api/aloud", { token, scene, op: "here", open: true });
+  }
+
+  it("while a reader's phone is on the teleprompter, however slowly it is read, and not after ✓ Done", async () => {
     const r = await live();
     await r.setVar("Trabolta.awake", "true");
-    await call(r.rt, "POST", "/api/mod/beat", { name: "A Reading" }, { moderator: true });
-    expect(r.hub.chat.all().some((m) => m.aloud !== undefined)).toBe(true);
+    const here = await reader(r);
+    await here();
     expect((await r.fire("poke")).json).toMatchObject({ why: "prompter" });
+    for (let i = 0; i < 60; i++) {
+      r.advance(10); // far past what the words take to say
+      await here();
+    }
+    expect((await r.fire("poke")).json).toMatchObject({ why: "prompter" });
+    await call(r.rt, "POST", "/api/mod/aloud", { action: "done" }, { moderator: true });
+    expect((await r.fire("poke")).status).toBe(200);
     r.rt.dispose();
   });
 
-  it("for as long as the scene is on the prompter, however slowly it is read, and not after ✓ Done", async () => {
+  it("not for a scene nobody opened, once its lines are said: no ✓ Done is coming", async () => {
     const r = await live();
     await r.setVar("Trabolta.awake", "true");
     await call(r.rt, "POST", "/api/mod/beat", { name: "A Reading" }, { moderator: true });
-    r.advance(600); // far past what the words take to say
+    expect((await r.fire("poke")).json).toMatchObject({ why: "speaking" });
+    r.advance(600);
+    expect((r.rt as unknown as { prompters: { status(): unknown } }).prompters.status()).not.toBeNull();
+    expect((await r.fire("poke")).status).toBe(200);
+    r.rt.dispose();
+  });
+
+  it("not once the reader's phone has gone, without anyone pressing ✓ Done", async () => {
+    const r = await live();
+    await r.setVar("Trabolta.awake", "true");
+    const here = await reader(r);
+    for (let i = 0; i < 60; i++) {
+      await here();
+      r.advance(10);
+    }
+    await here();
     expect((await r.fire("poke")).json).toMatchObject({ why: "prompter" });
-    await call(r.rt, "POST", "/api/mod/aloud", { action: "done" }, { moderator: true });
+    r.advance(13); // `HERE_TTL_MS`: her phone died with the script open
+    expect((r.rt as unknown as { prompters: { status(): unknown } }).prompters.status()).not.toBeNull();
     expect((await r.fire("poke")).status).toBe(200);
     r.rt.dispose();
   });
@@ -395,7 +426,8 @@ describe("w59 costume: refused while it would wreck something", () => {
   it("not once a ✓ Done closes a read before its words would have run out", async () => {
     const r = await live({ story: STORY.replace("setting: The Desktop\n  aloud: Clippy", "setting: The Hall\n  aloud: Clippy") });
     await r.setVar("Trabolta.awake", "true");
-    await call(r.rt, "POST", "/api/mod/beat", { name: "A Reading" }, { moderator: true });
+    const here = await reader(r);
+    await here();
     expect((await r.fire("poke")).json).toMatchObject({ why: "prompter" });
     await call(r.rt, "POST", "/api/mod/aloud", { action: "done" }, { moderator: true });
     expect((await r.fire("poke")).status).toBe(200);

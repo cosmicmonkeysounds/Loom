@@ -19,7 +19,7 @@ refusal and every network failure.
 
 A press is refused:
 
-- before the doors, during a beat's lines on the TV, and while a scene is on the teleprompter, until its ✓ Done;
+- before the doors, during a beat's lines on the TV, and while anyone is on the teleprompter: a phone showing the scene, until its ✓ Done or until that phone goes (about 12 s), or his lines waiting for it. A scene nobody opened refuses nothing once its lines are said;
 - from the final reveal on: the bobbing, Grok Prom and the advice poll, the endings, the songs, the monologue and the awards;
 - for 8 s after any press that landed, and for longer after a heavy one (AD STORM 60 s);
 - LIGHTS, during the alarm, a blackout, or while Trabolta has a room's lights out;

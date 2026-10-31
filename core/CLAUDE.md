@@ -631,8 +631,10 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   committed, so the story's own `ad_burst` refusals never reach `# hosts`. The
   night's end is `Night.step` 16 on (the reveal, the bobbing, Grok Prom and the
   advice poll all play with `Night.ended` false; `step` is what a story edit must
-  keep). A scene on the shared prompter refuses a press until its ✓ Done
-  (`Prompters.status`): nothing else ends one but a newer scene or a restart.
+  keep). A press is refused while anyone is on the shared prompter
+  (`Prompters.inUse`: a phone showing the scene, a finger on it, his lines waiting
+  or going), never by the scene alone: a beat nobody opened, or one whose reader's
+  phone died, stays live until a ✓ Done, a newer scene or a restart.
   MUSIC is refused while anyone else's hand is on the soundtrack
   (`AudioHub.musicHand`: the last scene or stop's `by`, memory only, corrected by
   the router's `hand`), and AFTER PARTY's timed return stands down then too. Every
