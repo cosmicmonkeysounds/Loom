@@ -474,18 +474,31 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   a typed code takes the scan's path. `POST /api/guest/printed` and
   `/api/prime/printed` `{code}` → `{hit: {kind, url} | null}` come first in both
   Scan sheets; a codex code answers null, like a miss, so this is no oracle and
-  the redeem routes keep the miss rules. `/api/resolve-code` takes a badge's
+  the redeem routes keep the miss rules. `/api/guest/codex/redeem` asks
+  `printedHit` too, for whatever skips that question (a terminal's TYPE A CODE):
+  a printed code answers `printed: <kind>`, no miss. `{spaced: true}` is the Scan
+  sheet's typed text: spaced text no entry holds answers `words: true` with no
+  story event, and counts against `redeemMisses`; a real code typed with spaces
+  unlocks. Without the flag spaced text is still a miss (the Codex's box).
+  `/api/resolve-code` takes a badge's
   code only (`printed`: the path): a room's short code or name must not hand out
   the guest code. Misses are limited per guest or part (`printedAsks`,
-  `LOOM_RL_PRINTED`). `inWorldLabel` (`src/runtime/sim/model.ts`) is a `label:`
+  `LOOM_RL_PRINTED`). `inWorldLabel` (`src/in-world.ts`, no imports, so a phone can
+  use it) is a `label:`
   as a player reads it: brackets and a ` — ` tail are the crew's. Every
   guest-facing title goes through it (`Sim.channelHead`, `locationSnapshots`
-  unless `operator`, check-in, capture, the reveal shot, `/cards`, the signs);
-  `operatorChannels`, `ModView.locations` and the agent's facts keep the whole
-  label. `pnpm --filter @loom/core titi:qr-lock` writes `qr-lock.json` (hashes
+  unless `operator`, check-in, capture, the reveal shot, `/cards`, the signs, a
+  Go button, the booth's upload stage), and so do Trabolta's facts and dossier,
+  which reach his prompt. `operatorChannels` and `ModView.locations` keep the
+  whole label. `pnpm --filter @loom/core titi:qr-lock` writes `qr-lock.json` (hashes
   only; `printedIdentities` is the list of what a story can move), `--check`
   fails naming what moved, `predeploy.sh` and `sync-show.sh` run it once the file
-  exists, `LOOM_QR_MOVED=1` / `--qr-moved` goes past it. Tests:
+  exists, `LOOM_QR_MOVED=1` / `--qr-moved` goes past it. A hidden room's identity
+  includes whether a `reveal` line opens it (`storyReveals`), so losing the last
+  one fails `--check` though the link and code are unchanged; writing the lock
+  refuses while a printed room has none (`deadRooms`; the override locks it, and
+  it stays a warning). It can't see behind a reveal: one in a beat the night never
+  reaches, or a sign's button edited to do nothing. Tests:
   `test/w59-printed.test.ts`, `test/w59-qr-lock.test.ts`.
 - **A booth scans codex QRs** (wave 58). `POST /api/prime/codex/redeem {code}`
   (a booth's token, a host's too: it is off the host allowlist's surface)

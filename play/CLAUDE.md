@@ -90,7 +90,10 @@ added `fullscreen.ts`, with a `//` header: 147.53 kB.
   `GuestSession.printed` about a bare code before the Codex: a badge's, a room's
   or a sign's comes back as its QR's link and goes through `guestScan`, so only a
   true miss fires the story's `wrong code`; a failed ask is said, never redeemed.
-  The Codex's composer asks too (`guest/app.tsx`). The booth's `doTyped` does the
+  Typed text with spaces in it goes as `spaced` (`GuestSession.redeem`): a real
+  code unlocks, and words read `TYPED_UNKNOWN`, free, as they did before spaced
+  codes worked. The Codex's composer asks too (`guest/app.tsx`), but sends no
+  `spaced`: a sentence there is still a miss. The booth's `doTyped` does the
   same through `parseScan`. On a join screen a
   badge's code resolves with `printed`, and `useIdentities` opens that link
   (`IdentityLookup` kind `printed`), so the page runs the QR's whole path; so does

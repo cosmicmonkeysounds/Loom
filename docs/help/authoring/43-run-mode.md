@@ -151,10 +151,16 @@ Front of house: getting people in.
   edit to the story's text, beats, their order, objectives or a fact's words:
   a sync or a Push draft leaves them alone. What retires a card is renaming
   what it names: a room, a part, a reserved program (or their order), a sign's
-  button or a codex code. Once you print, run `pnpm --filter @loom/core
-  titi:qr-lock`: from then on the pre-deploy gate and `sync-show` stop on a
-  story that would break a printed card and name what moved
-  (`sync-show --qr-moved` goes on anyway, for cards you are reprinting).
+  button or a codex code. One edit breaks a card with nothing renamed: a hidden
+  room's sign needs a `reveal` somewhere in the story, and without one it reads
+  *That room isn't open yet* all night. Once you print, run `pnpm --filter
+  @loom/core titi:qr-lock`: from then on the pre-deploy gate and `sync-show`
+  stop on a story that would break a printed card and name what moved
+  (`sync-show --qr-moved` goes on anyway, for cards you are reprinting). It
+  won't write the lock while a printed room has no `reveal`: give the room
+  `checkin: false` so its card doesn't print, or reveal it, before you print.
+  It checks that a reveal exists, not that the night reaches it, so moving one
+  behind a beat you might skip is still on you.
 - **Directing now** — every co-writer with a console open, who started
   the run, and when.
 - **Terminals** — every wall terminal and the TV that has checked in,
