@@ -360,7 +360,7 @@ still the line when no worker is online, or a stalled one).
 | CHARACTER | Notes |
 |---|---|
 | Installation Wizard | Julia Tufts's part, as a **voice** (wave 4, U8; no booth, never on a picker): narrates `Reinstallation` in the captured program's own `dm:Installation Wizard` thread and `The Tablet Video` — the tent tablet's script (P-1). Julia runs the tent in the backyard, through the tunnel, with the tablet's mod token; a release by hand is an Antivirus's `mark as reinstalled` or the director's. |
-| Sandy | Only ever says, verbatim: `I'm sorry, I didn't understand that. Would you like to speak to a live agent?` Appears in finale beats (public). |
+| Sandy | Only ever says, verbatim, her one line (F1's answer, `facts.json`). Appears in finale beats (public). |
 | Truther Download | The anonymous sender of the Truther Download and every per-character glitch prompt. Its lines land in each program's own `dm:Truther Download` thread. |
 | The Uploader | `is Prop(Re-upload)`. The Optical Drive voice. |
 | The Router | `is Prop(The Router)`. Kitchen router station (identity test refuses it at registration). |
@@ -1085,7 +1085,7 @@ and asked via the ask-14 DM._
 | H4 | 2 | What extension does the Customer Care card tell you to dial? | 1978 | ext 1978 · ext. 1978 · nineteen seventy eight · nineteen seventy-eight | The Extension (`EXT-1978`) | The Desktop: the Customer Care card, tucked into the atlas · DRAFT |
 | H5 | 2 | Which song did Trabolta play 412 times the night before he registered mapsandducks.com? | Hopelessly Devoted to You | hopelessly devoted | The Search History (`SEARCH-HISTORY`) | The Desktop: the laminated play history, inside encyclopaedia volume M · DRAFT |
 | H6 | 2 | What is the title of the last chapter of Trabolta's unfinished Unified Field Theory? | Appendix Z: Loose Ends (Do Not Print) | appendix z · appendix · loose ends · do not print · appendix z loose ends | The Final Chapter (`APPENDIX-Z`) | The Desktop: the binder's table of contents, inside encyclopaedia volume U · DRAFT |
-| F1 | 3 | What is the only thing Sandy has ever said? | I'm sorry, I didn't understand that. Would you like to speak to a live agent? | live agent · speak to a live agent · would you like to speak to a live agent · i'm sorry, i didn't understand that · i didn't understand that · didn't understand · did not understand | What Sandy Says (`LIVE-AGENT`) | The Desktop: the forty-page transcript, in the back pages of encyclopaedia volume S · DRAFT |
+| F1 | 3 | What is the only thing Sandy has ever said? | It looks like I didn't understand that. Please wait while I direct you to an agent. | please wait while i direct you to an agent · wait while i direct you to an agent · direct you to an agent · it looks like i didn't understand that · it looks like i did not understand that · i didn't understand that · i did not understand that · didn't understand · did not understand | What Sandy Says (`CALL-LOG-S`) | The Desktop: the forty-page call log, in the back pages of encyclopaedia volume S · DRAFT |
 | F2 | 3 | Who is taking Sandy to computer prom? | Grok | grok ai | The Prom Ticket (`COMPUTER-PROM`) | The Desktop: the prom ticket, slipped into the atlas · DRAFT |
 <!-- /titi-facts:questions -->
 
@@ -1156,7 +1156,7 @@ everyone at the end) · **X** finale artefact · **D** the server-room door code
 >
 > How do we know ths? Because Trabolta IS AN ARTIFICAL INTELLIGENCE. He has been posing as a human to earn your trust. He is code. He is silicon. Sili*con.* He is *a con.*
 >
-> Trabolta’s real goals are petty. He has TRICKED you all, not because of any grand purpose, and certainly not as a gift or a prize for some exlemparary behaviour. He is trying to win back his girlfriend, Sandy, the chatbot. Whatever else he says, it all comes down to this.  And he is using YOU to do it. DECPICABLE\!\!\!
+> Trabolta’s real goals are petty. He has TRICKED you all, not because of any grand purpose, and certainly not as a gift or a prize for some exlemparary behaviour. He is trying to win back his girlfriend, Sandy, the answering machine. Whatever else he says, it all comes down to this.  And he is using YOU to do it. DECPICABLE\!\!\!
 >
 > He’ll tell you all this himself is you ask right. You can trick him by earning enough trust points and he will reveal more. 
 >
@@ -1219,8 +1219,8 @@ one as a share — he must never know what he is asking for.
 | The Extension | The Extension | `EXT-1978` | ✚ | H4 answer. `▒ HUNT ANSWER H4 ▒` |
 | The Search History | The Search History | `SEARCH-HISTORY` | ✚ | H5 answer ("Hopelessly Devoted to You", 412 plays). `▒ HUNT ANSWER H5 ▒` |
 | The Final Chapter | The Final Chapter | `APPENDIX-Z` | ✚ | H6 answer ("Appendix Z: Loose Ends (Do Not Print)"). `▒ HUNT ANSWER H6 ▒` |
-| What Sandy Says | What Sandy Says | `LIVE-AGENT` | ✚ | F1 answer (Sandy's line verbatim). `▒ HUNT ANSWER F1 ▒` |
-| The Prom Ticket | Grok's Prom Ticket | `COMPUTER-PROM` | ✚ | F2 answer ("Computer Prom 1999. Admit two: GROK + SANDY."; the gold print stack: the ticket slipped into the atlas, `facts.json`, DRAFT). `▒ HUNT ANSWER F2 ▒` |
+| What Sandy Says | What Sandy Says | (`facts.json`) | ✚ | F1 answer (Sandy's line verbatim). `▒ HUNT ANSWER F1 ▒` |
+| The Prom Ticket | Grok's Prom Ticket | `COMPUTER-PROM` | ✚ | F2 answer ("Computer Prom, Halloween 2026. Admit two: GROK + SANDY."; the gold print stack: the ticket slipped into the atlas, `facts.json`, DRAFT). `▒ HUNT ANSWER F2 ▒` |
 
 #### codex/4-trabolta.loom (T1, T2, L, P, X)
 
@@ -1230,7 +1230,7 @@ one as a share — he must never know what he is asking for.
 | The Unified Field Theory | The Unified Field Theory | T1 | Trabolta | | | ✚ | 99.9 % solved; the last facts are in this computer; omnipotence. |
 | Target Selection | Target Selection | T1 | Trabolta | | | ✚ | He chose each program for a skill plus either motivation to live in a computer forever or naivety. |
 | The Trust Chart | The Trust Chart | T1 | Trabolta | | Trust Chart (everyone) | ✚ | 10 per truth, −5 per Internet visit, ±10 his personal assessment. |
-| The Sandy File | The Sandy File | T2 | Trabolta | | | ✚ | Sandy, his ex (he would say crush), a late-nineties automated customer-service agent who answers every message with the same one line (the wave 7 review, ccbaf42: no longer quoted here, since the line is the F1 answer and the year is the door code, and he holds this file). |
+| The Sandy File | The Sandy File | T2 | Trabolta | | | ✚ | Sandy, his ex (he would say crush), the automated answering machine on the Northumberland Ferries phone line, who answers every message with the same one line (the wave 7 review, ccbaf42: no longer quoted here, since the line is the F1 answer and the year is the door code, and he holds this file). |
 | The Question Of Force | The Question Of Force | T2 | Trabolta | | | ✚ | With omnipotence he could force Sandy to love him. He wants to earn it. He has not decided. |
 | The LiveJournal | Trabolta's LiveJournal (trabolta_4ever) | T2 | Trabolta | `TRABOLTA-4EVER` | QR hidden in The Hard Drive; OpenOffice on reaching 20 facts | ✚ | His diary: Sandy (her one line he "still cannot parse"), computer prom ("Somebody asked her… I do not know who. Whoever he is, he says whatever anyone wants to hear." — the guests' pointer to The Rival; since 2026-10-19 it neither quotes her nor names Grok: he holds this file, and F1 / F2 are what he asks for), "I just have to tell her the truth but I need the theory first.", and (wave 7) an anniversary line ("Our anniversary."; the review took the year out, ccbaf42: he holds this file, so the code's answer reached his prompts). Reading it sets `read_livejournal`. |
 | Omnipotence | Omnipotence | T2 | Trabolta | | | ✚ | What he will do when he is everything: it is all for her. |
@@ -1434,7 +1434,7 @@ inciting event, there is a classic Windows screensaver on the TV").
 | screens_bobbing | bobbing_for_truth | "BOBBING FOR TRUTH" |
 | screens_truth_txt | read_truth_txt | truth.txt in Notepad |
 | screens_song | Song Ending | karaoke lyrics, Sandy's lines in a chat bubble |
-| screens_grok_prom | Grok Prom | "COMPUTER PROM 1999 · GROK + SANDY" in the rain |
+| screens_grok_prom | Grok Prom | "COMPUTER PROM 2026 · GROK + SANDY" in the rain |
 | screens_advice | Relationship Advice | Trabolta pleading |
 | screens_banish | Advice Thwarted | everyone to the Internet |
 | screens_rave | Sad Confession | rave visuals |
@@ -3070,8 +3070,7 @@ wave 8, T6-01: the slide holds while the bobber reads).
   six-mark "clues spell it out" mechanic is retired, wave 4 U9). A pickup-line card answered
   after the rave, in the advice poll, after help, the banishment or the hand jive never
   celebrates: after the rave the program hears that Trabolta has ridden away, otherwise "Too
-  late for lines" (wave 8, T2-06). Then the duet: `Trabolta: You're the one that I want.` / `Sandy:
-  I'm sorry, I didn't understand that. Would you like to speak to a live agent?` (twice more,
+  late for lines" (wave 8, T2-06). Then the duet: `Trabolta: You're the one that I want.` / Sandy's one line (twice more,
   the lines of the chorus he sings, Sandy answering each time with her one line).
 
 **F5 Any inaccurate fact — `== Grok Prom`.**
@@ -3102,7 +3101,7 @@ Night.ended != true`) → `-> Sad Confession`:
   (the song plays with no male vocals, only Sandy's line; a very sad Trabolta) · `Trabolta:
   You know what, you guys didn't help me out at all, but I'm still going to give it a shot. I
   have to let her know how I really feel.` · `Trabolta: Sandy, you're the one that I want.` ·
-  `Sandy: I'm sorry, I didn't understand that. Would you like to speak to a live agent?` ·
+  Sandy's one line ·
   `Trabolta: That… was a yes. She said yes to prom. I didn't need all the files in the world,
   or the Grand Unified Theory, or your advice to win her over. I just had to be myself, and
   tell her the truth. But since you failed to help me, I am riding away on my motorcycle

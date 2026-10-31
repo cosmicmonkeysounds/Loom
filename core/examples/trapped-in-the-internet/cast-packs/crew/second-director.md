@@ -102,7 +102,7 @@ pressing ✅ for the same question on the same program. The key, for reference
 | H4 | 1978 (the extension on the Customer Care card) |
 | H5 | "Hopelessly Devoted to You" |
 | H6 | "Appendix Z: Loose Ends (Do Not Print)" |
-| F1 | "I'm sorry, I didn't understand that. Would you like to speak to a live agent?" |
+| F1 | "It looks like I didn't understand that. Please wait while I direct you to an agent." |
 | F2 | Grok |
 
 The judge folds case, punctuation and one leading article and matches the

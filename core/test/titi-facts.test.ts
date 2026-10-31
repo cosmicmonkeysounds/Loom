@@ -199,7 +199,7 @@ describe("titi-facts — helpers", () => {
     expect(yamlScalar("412")).toBe('"412"');
     expect(yamlScalar("9:00")).toBe('"9:00"');
     expect(yamlScalar("no")).toBe('"no"');
-    expect(yamlScalar("i'm sorry, i didn't understand that")).toBe("\"i'm sorry, i didn't understand that\"");
+    expect(yamlScalar("i'm sure, you didn't say that")).toBe("\"i'm sure, you didn't say that\"");
   });
   it("replaceBlock keeps the markers and refuses a missing or doubled one", () => {
     expect(replaceBlock("a\nBEGIN\nold\nEND\nz", "BEGIN", "END", "new", "f")).toBe("a\nBEGIN\nnew\nEND\nz");

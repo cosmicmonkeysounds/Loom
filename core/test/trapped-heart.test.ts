@@ -1170,8 +1170,9 @@ describe("The Heart — secrets and the fiction (wave 20, D29)", () => {
       for (const k of keys) expect(mentionsKey(line, k), `${line} ~ ${k}`).toBe(false);
       for (const w of never) expect(line.toLowerCase().includes(w.toLowerCase()), `${line} ~ ${w}`).toBe(false);
       for (const w of match) expect(mentionsKey(line, w), `${line} ~ ${w}`).toBe(false);
-      // F1 is never hinted: no quoting her, no "only ever said", no ferry.
-      expect(line, line).not.toMatch(/only (ever )?said|ever said|ferry|crossing|live agent/iu);
+      // F1 is never hinted: no quoting her, no "only ever said", no ferry
+      // (wave 58: the monologue tells the ferries; his heart never does).
+      expect(line, line).not.toMatch(/only (ever )?said|ever said|ferry|ferries|crossing|direct you|an agent/iu);
     }
   });
 
@@ -1444,7 +1445,7 @@ describe("The Heart — the first meeting (wave 27)", () => {
     pick(sim, "g1", "Tell me about her");
     expect(has(offered(sim, "g1"), "Tell me about her")).toBe(false);
     const k = pick(sim, "g1", "Does she even know you exist?");
-    expect(lines(k)[0]).toContain("She always answers.");
+    expect(lines(k)[0]).toContain("She always answered.");
     expect(has(offered(sim, "g1"), "Does she even know you exist?")).toBe(false);
     pick(sim, "g1", "Then listen to me");
     pick(sim, "g1", "⟦TELL HIM⟧");
@@ -1627,7 +1628,7 @@ describe("The Heart — the first meeting (wave 27)", () => {
     const l = atLayerOne();
     toLayerThree(l);
     const l1 = pick(l, "g1", "She loves you");
-    expect(lines(l1)[0]).toBe("Do not. Do not do that. I have told myself that for years, and I am a far better liar than you.");
+    expect(lines(l1)[0]).toBe("Do not. Do not do that. I have told myself that all year, and I am a far better liar than you.");
     expect(v(l, "g1.heart_suspicion")).toBe(25);
     const l2 = pick(l, "g1", "She loves you");
     expect(v(l, "g1.heart_suspicion")).toBe(50);
@@ -1693,7 +1694,7 @@ describe("The Heart — the first meeting (wave 27)", () => {
     toLayerThree(sim);
     sim.setVar("g1.heart_case", "2"); // points from before the argument, no proof
     const t = pick(sim, "g1", "She loves you");
-    expect(lines(t)).toEqual(["Do not. Do not do that. I have told myself that for years, and I am a far better liar than you."]);
+    expect(lines(t)).toEqual(["Do not. Do not do that. I have told myself that all year, and I am a far better liar than you."]);
     expect(heartMenu(sim, "g1")?.beat).toBe("Heart Layer Three");
     // A proof held, the case under 4: the "shown" nudge waits out a trap too.
     sim.unlock("g1", "The Sandy File");

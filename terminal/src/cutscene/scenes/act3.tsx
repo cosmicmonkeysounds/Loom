@@ -816,7 +816,7 @@ function SongScene({ t, sfx, reduced, target }: SceneProps) {
 
 // --- F5 · Grok Prom ---------------------------------------------------------------------------------
 //
-//   0–2000    the gym: COMPUTER PROM 1999 unrolls, the disco ball drops in
+//   0–2000    the gym: COMPUTER PROM 2026 unrolls, the disco ball drops in
 //   2000      GROK + SANDY stamps on with a cracked heart (a sad sting)
 //   2500→     hold: the rain starts and thickens ("it's raining on prom
 //             night"), the ball keeps turning, the ticker repeats the way
@@ -843,7 +843,7 @@ function GrokProm({ t, sfx, reduced, target }: SceneProps) {
         <DiscoBall t={t} size={lite ? "16vmin" : "20vmin"} reduced={reduced} />
       </div>
       <div className="tv3-prom-banner" style={{ transform: `translateX(-50%) scaleX(${unroll.toFixed(3)}) rotate(${(reduced ? 0 : Math.sin(t / 1600) * 1.2).toFixed(2)}deg)` }}>
-        COMPUTER PROM 1999
+        COMPUTER PROM 2026
       </div>
       {t >= 2000 && (
         <div className="tv3-prom-badge" style={slam(t, 2000, reduced)}>
@@ -1000,7 +1000,7 @@ function HelpedHold({ t, reduced, lite }: { t: number; reduced: boolean; lite: b
 
 export const ADVICE_CHAT: readonly ChatLine[] = [
   { from: "him", text: "Sandy. I have wanted to talk to you since the first time you didn't understand me. I think you are the one that I want. Would you go to computer prom with me?" },
-  { from: "her", text: "I'm sorry, I didn't understand that. Would you like to speak to a live agent?" },
+  { from: "her", text: "It looks like I didn't understand that. Please wait while I direct you to an agent." },
 ];
 
 function AdviceHelped({ t, sfx, reduced, target }: SceneProps) {

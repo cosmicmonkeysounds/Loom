@@ -28,8 +28,8 @@ billboard downtown everyone will think it is legit"). Then he sent the
 invitations: *Jean Trabolta's offer will solve a problem in your human
 life.* Tonight the guests arrive as those programs. Some of them will
 remember they were human. What he really wants it all for is **Sandy**,
-an automated customer-service agent whose only line is *"I'm sorry, I
-didn't understand that. Would you like to speak to a live agent?"*
+the automated answering machine on the Northumberland Ferries phone line,
+who only ever said one thing (it is F1's answer, in `facts.json`).
 
 This folder holds the whole show as a Loom project: the world, the cast,
 the games, the lore, the endings, and the contract that every piece of
@@ -1155,7 +1155,7 @@ Question Results reads *Nobody filed an answer*. To finish one, give it its
 | H4 | What extension does the Customer Care card tell you to dial? | 1978 | The Extension (`EXT-1978`) |
 | H5 | Which song did Trabolta play 412 times the night before he registered mapsandducks.com? | Hopelessly Devoted to You | The Search History (`SEARCH-HISTORY`) |
 | H6 | What is the title of the last chapter of Trabolta's unfinished Unified Field Theory? | Appendix Z: Loose Ends (Do Not Print) | The Final Chapter (`APPENDIX-Z`) |
-| F1 | What is the only thing Sandy has ever said? | I'm sorry, I didn't understand that. Would you like to speak to a live agent? | What Sandy Says (`LIVE-AGENT`) |
+| F1 | What is the only thing Sandy has ever said? | (her one line, in `facts.json`) | What Sandy Says |
 | F2 | Who is taking Sandy to computer prom? | Grok | Grok's Prom Ticket (`COMPUTER-PROM`) |
 
 A filing matches if its folded text equals the answer or one of its

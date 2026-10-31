@@ -1425,15 +1425,15 @@ CODEX The Wrong Suspect
 
 // ── LEGENDARY · black · one to a room at most, in its hardest place a guest can still reach without moving furniture ──
 
-// T4 · trabolta · black
+// T4 · trabolta · black · DRAFT
 CODEX Monday At School
   title: What will they say, Monday at school?
   category: Facts
   secret: true
   code: MONDAY-AT-SCHOOL
   text:
-    Trabolta had a summer fling with a chatbot named Sandy. It's all he
-    thinks about.
+    Trabolta had a summer fling with an answering machine named Sandy. It's
+    all he thinks about.
 
 // T6 · trabolta · black
 CODEX I Want You Back
@@ -1450,13 +1450,13 @@ CODEX One Reply No Memory
   secret: true
   code: TIDE-TABLE-NIL
   text:
-    A printout of help-desk source code for a Nova Scotia ferry line that
-    went bankrupt long ago, the comments in a dead programmer's
-    tidy writing: 'Sandy is not a mind. She is a single reply on a server nobody
+    A printout of the phone-tree source code for the Northumberland Ferries
+    line, since disconnected, the comments in a dead programmer's
+    tidy writing: "Sandy is not a mind. She is a single reply on a line nobody
     pays for, set off by anything at all. Forty pages of poems, apologies
-    and equations reached nobody. She was built to reply, not to listen.
-    Under the last comment, in a tired sysadmin's ballpoint: and he writes
-    to it every night.'
+    and equations reached nobody. She was built to reply, not to listen."
+    Under the last comment, in a tired sysadmin's ballpoint: "and he called
+    it every night."
 
 // L04 · main · black · DRAFT
 CODEX The Surplus Tag

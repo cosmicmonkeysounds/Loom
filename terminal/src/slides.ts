@@ -616,7 +616,7 @@ export const SLIDE_COPY: Readonly<Record<string, SlideCopy>> = {
   bobbing: { title: "BOBBING FOR TRUTH" },
   truth_txt: { title: "truth.txt — Notepad" },
   song: { title: "♪ You're the one that I want ♪" },
-  grok_prom: { title: "COMPUTER PROM 1999", lines: ["GROK + SANDY"] },
+  grok_prom: { title: "COMPUTER PROM 2026", lines: ["GROK + SANDY"] },
   advice: { title: "TRABOLTA.EXE", lines: ["Please. I need your advice."] },
   banish: { title: "EVERYONE TO THE INTERNET" },
   rave: { title: "♪ ♪ ♪" },

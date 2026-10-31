@@ -2641,7 +2641,7 @@ describe("Trapped in the Internet — the verdict", () => {
     expect(v(sim, "Night.ending")).toBe("song");
     expect(v(sim, "Night.ended")).toBe(true);
     expect(beats(rt)).toContain("Song Ending");
-    expect(lines(rt, "Sandy")).toContain("I'm sorry, I didn't understand that. Would you like to speak to a live agent?");
+    expect(lines(rt, "Sandy")).toContain(Q("F1").answer);
     expect(sim.isCaptured("g5")).toBe(false);
     expect(sim.questStatus("g1", "The Final Facts")).toBe("done");
     expect(texts(rt).filter((t) => /\bnull\b/u.test(t))).toEqual([]);

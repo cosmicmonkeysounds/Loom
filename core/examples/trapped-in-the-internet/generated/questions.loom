@@ -208,14 +208,15 @@ CODEX The Final Chapter
 CODEX What Sandy Says
   title: What Sandy Says
   category: Facts
-  code: LIVE-AGENT
+  code: CALL-LOG-S
   secret: true
   text:
-    A chat transcript, forty pages, printed double-sided. The user
-    writes paragraphs: poems, apologies, equations, a question about prom. Each
-    answer is the same, word for word, and it is the only thing Sandy has
-    ever said: "I'm sorry, I didn't understand that. Would you like to speak
-    to a live agent?" ▒ HUNT ANSWER F1 ▒
+    A call log from the Northumberland Ferries phone line, forty pages,
+    printed double-sided. The caller says paragraphs: poems, apologies,
+    equations, a question about prom. Each answer is the same, word for
+    word, and it is the only thing Sandy has ever said: "It looks like I
+    didn't understand that. Please wait while I direct you to an agent."
+    ▒ HUNT ANSWER F1 ▒
 
 // F2 · the hunt answer · gold
 // DRAFT — awaiting sign-off in facts.json
@@ -225,6 +226,7 @@ CODEX The Prom Ticket
   code: COMPUTER-PROM
   secret: true
   text:
-    A ticket, a little crumpled, pink and silver: COMPUTER PROM 1999.
-    ADMIT TWO: GROK + SANDY. On the back, in a confident hand: "she said yes. of
-    course she said yes. everyone says yes to me." ▒ HUNT ANSWER F2 ▒
+    A ticket, a little crumpled, pink and silver: COMPUTER PROM, HALLOWEEN
+    2026. ADMIT TWO: GROK + SANDY. On the back, in a confident hand: "she
+    said yes. of course she said yes. everyone says yes to me."
+    ▒ HUNT ANSWER F2 ▒

@@ -306,7 +306,7 @@ def test_shipped_topics_spare_the_finale_song_and_prom_talk():
         "Clippy will dial up the music",
     ):
         assert not s.names_topic(claim), claim
-    for claim in ("Grok is taking Sandy to computer prom", "the song was Hopelessly Devoted to You", "the last chapter is Appendix Z", "Sandy only ever says to ask for a live agent"):
+    for claim in ("Grok is taking Sandy to computer prom", "the song was Hopelessly Devoted to You", "the last chapter is Appendix Z", "Sandy only ever says she will direct you to an agent"):
         assert s.names_topic(claim), claim
     assert "grok" not in (s.rule("Trabolta") or "").lower()
 

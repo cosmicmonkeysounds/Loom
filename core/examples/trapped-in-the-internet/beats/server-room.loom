@@ -859,7 +859,8 @@ else:
   else if program.heart_pick == "ask_know":
     set program.heart_asked_know = true
     set program.heart_go = "two"
-    Trabolta: She always answers. Instantly, day or night, every time I write. Nobody else has ever been so reliable with me.
+    // DRAFT w58 (past tense: the line was disconnected, and she is on the phone)
+    Trabolta: She always answered. Instantly, day or night, every time I called. Nobody else has ever been so reliable with me.
     Trabolta: I have decided that counts. Do not tell me whether it does. Not yet.
   else if program.heart_pick == "ask_sim":
     set program.heart_asked_sim = true
@@ -962,10 +963,12 @@ else:
     set program.heart_tried_loves += 1
     set program.heart_go = "three"
     if program.heart_tried_loves <= 1:
-      Trabolta: Do not. Do not do that. I have told myself that for years, and I am a far better liar than you.
+      // DRAFT w58 (it began last summer)
+      Trabolta: Do not. Do not do that. I have told myself that all year, and I am a far better liar than you.
     else:
       // w27 (a second try is harsher)
-      Trabolta: Again. You think if you say it twice it becomes true. I tried that for years. It does not.
+      // DRAFT w58 (it began last summer)
+      Trabolta: Again. You think if you say it twice it becomes true. I tried that all year. It does not.
   else if program.heart_pick == "bluff_theory":
     set program.heart_rebuked = true
     set program.heart_suspicion += 15
@@ -1444,7 +1447,8 @@ Clippy: The report also lists who everyone really was.
 // w18b (R18): his title, not "our AI helper".
 Clippy: Here is the backstory. Jean Trabolta, the Sole Owner and Founder of Maps and Ducks, registered the lapsed mapsandducks.com because there was a billboard on Barrington Street, and if there is a billboard downtown everyone thinks it is legit.
 Clippy: He invited each of us here for a skill and a weakness. He moved our consciousness into these programs to find the last facts for his Unified Field Theory.
-Clippy: He wanted omnipotence. He wanted it for Sandy. A customer-service agent who has only ever said one thing.
+// DRAFT w58 (she is an answering machine)
+Clippy: He wanted omnipotence. He wanted it for Sandy. An answering machine that has only ever said one thing.
 Clippy: Because of our actions, the computer was turned off without Shut Down properly being followed, and all of our progress has been erased.
 Clippy: Our corporeal forms are in the Maps and Ducks building, and they have all passed away.
 Clippy: We are now in purgatory forever together, which is pretty similar to being stuck in a computer.

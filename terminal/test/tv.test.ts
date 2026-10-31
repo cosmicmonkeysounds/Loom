@@ -87,12 +87,12 @@ describe("LinePlayer", () => {
 
   it("plays strictly in order: speech waits, a text line waits its reading time", async () => {
     const { log, speaking, sleeping, player, tick } = rig();
-    player.push([tv(1, "speak"), tv(2, "text", "I'm sorry, I didn't understand that."), tv(3, "speak")]);
+    player.push([tv(1, "speak"), tv(2, "text", "Nobody is home, sorry."), tv(3, "speak")]);
     await tick();
     expect(log).toEqual(["caption 1", "speak 1"]);
     speaking.shift()!();
     await tick();
-    expect(log.slice(2)).toEqual(["caption 2", `sleep ${readingMs("I'm sorry, I didn't understand that.")}`]);
+    expect(log.slice(2)).toEqual(["caption 2", `sleep ${readingMs("Nobody is home, sorry.")}`]);
     sleeping.shift()!();
     await tick();
     expect(log.slice(4)).toEqual(["caption 3", "speak 3"]);

@@ -256,11 +256,11 @@ export interface ChatLine {
 /** His three tries and her one answer, in the beat's order. */
 export const SONG_CHAT: readonly ChatLine[] = [
   { from: "him", text: "You're the one that I want." },
-  { from: "her", text: "I'm sorry, I didn't understand that. Would you like to speak to a live agent?" },
+  { from: "her", text: "It looks like I didn't understand that. Please wait while I direct you to an agent." },
   { from: "him", text: "You. Are. The one. That I want." },
-  { from: "her", text: "I'm sorry, I didn't understand that. Would you like to speak to a live agent?" },
+  { from: "her", text: "It looks like I didn't understand that. Please wait while I direct you to an agent." },
   { from: "him", text: "Sandy. You're the one that I want." },
-  { from: "her", text: "I'm sorry, I didn't understand that. Would you like to speak to a live agent?" },
+  { from: "her", text: "It looks like I didn't understand that. Please wait while I direct you to an agent." },
 ];
 
 export interface ChatBubbleAt {

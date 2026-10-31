@@ -58,7 +58,7 @@ describe("nearMatch", () => {
   const notLonger: Array<[string, string, string]> = [
     ["Grok", "not Grok", "a word that turns it around"],
     ["Grok", "Grok or Gemini", "a hedge"],
-    ["live agent", "never a live agent", "a word that turns it around"],
+    ["front desk", "never a front desk", "a word that turns it around"],
     ["9:00", "9:00 pm", "the half of the day the key leaves open"],
     ["appendix", "Appendix A", "a lone letter is a name"],
     ["Room 101", "Room 101 b", "a lone letter is a name"],
@@ -165,7 +165,7 @@ describe("mentionsKey — a key form named anywhere in a text (the answer-secrec
     expect(mentionsKey("Somebody said Mr. Pickels was first.", "Mister Pickles")).toBe(true);
     expect(mentionsKey("the film came out in nineteen seventy-eight", "1978")).toBe(true);
     expect(mentionsKey("Dial ext. 1978 now", "ext 1978")).toBe(true);
-    expect(mentionsKey("I'm sorry, I didn't understand that.", "i didn't understand that")).toBe(true);
+    expect(mentionsKey("Sorry, you didn't answer that.", "you didn't answer that")).toBe(true);
     expect(mentionsKey("GROK'S prom ticket", "Grok")).toBe(true);
     expect(mentionsKey("hopelesly devoted, on repeat", "hopelessly devoted")).toBe(true);
   });

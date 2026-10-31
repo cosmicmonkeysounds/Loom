@@ -24,7 +24,7 @@ stuck program.
 | H4 · DRAFT | gold | `EXT-1978` | The Extension | The Desktop: the Customer Care card, tucked into the atlas — hint: A card the size of a business card. It is in the atlas. | Q: What extension does the Customer Care card tell you to dial? → A: 1978 |
 | H5 · DRAFT | gold | `SEARCH-HISTORY` | The Search History | The Desktop: the laminated play history, inside encyclopaedia volume M — hint: A laminated printout. Look under M, for music. | Q: Which song did Trabolta play 412 times the night before he registered mapsandducks.com? → A: Hopelessly Devoted to You |
 | H6 · DRAFT | gold | `APPENDIX-Z` | The Final Chapter | The Desktop: the binder's table of contents, inside encyclopaedia volume U — hint: A table of contents torn from a binder. Look under U, for universe. | Q: What is the title of the last chapter of Trabolta's unfinished Unified Field Theory? → A: Appendix Z: Loose Ends (Do Not Print) |
-| F1 · DRAFT | gold | `LIVE-AGENT` | What Sandy Says | The Desktop: the forty-page transcript, in the back pages of encyclopaedia volume S — hint: Forty pages, double-sided, every answer the same. Look under S. | Q: What is the only thing Sandy has ever said? → A: I'm sorry, I didn't understand that. Would you like to speak to a live agent? |
+| F1 · DRAFT | gold | `CALL-LOG-S` | What Sandy Says | The Desktop: the forty-page call log, in the back pages of encyclopaedia volume S — hint: Forty pages, double-sided, every answer the same. Look under S. | Q: What is the only thing Sandy has ever said? → A: It looks like I didn't understand that. Please wait while I direct you to an agent. |
 | F2 · DRAFT | gold | `COMPUTER-PROM` | Grok's Prom Ticket | The Desktop: the prom ticket, slipped into the atlas — hint: A pink and silver ticket. It is in the atlas, near the back. | Q: Who is taking Sandy to computer prom? → A: Grok |
 
 ## The tiers
@@ -173,10 +173,10 @@ Stack: one to a room at most, in its hardest place a guest can still reach witho
 
 | # | Topic | Code | Title | How it hides | What it says |
 |---|---|---|---|---|---|
-| T4 | trabolta | `MONDAY-AT-SCHOOL` | What will they say, Monday at school? | one to a room at most, in its hardest place a guest can still reach without moving furniture | Trabolta had a summer fling with a chatbot named Sandy. |
-| T5 | trabolta | `GROK-ONLINE` | The Rival (hand-written) | already placed — README → QR placements | Sandy dumped Trabolta for Grok. |
+| T4 · DRAFT | trabolta | `MONDAY-AT-SCHOOL` | What will they say, Monday at school? | one to a room at most, in its hardest place a guest can still reach without moving furniture | Trabolta had a summer fling with an answering machine named Sandy. |
+| T5 · DRAFT | trabolta | `GROK-ONLINE` | The Rival (hand-written) | already placed — README → QR placements | Grok found Sandy first. As far as Trabolta is concerned, she dumped him. |
 | T6 | trabolta | `WANT-YOU-BACK` | I Want You Back | one to a room at most, in its hardest place a guest can still reach without moving furniture | Trabolta's entire M-O is to win Sandy back. Everything else is a front. |
-| L01 · DRAFT | main | `TIDE-TABLE-NIL` | One Reply No Memory | one to a room at most, in its hardest place a guest can still reach without moving furniture | Sandy is not a mind: she is one reply on an unpaid ferry help-desk server, set off by any message, built to reply and never to listen |
+| L01 · DRAFT | main | `TIDE-TABLE-NIL` | One Reply No Memory | one to a room at most, in its hardest place a guest can still reach without moving furniture | Sandy is not a mind: she is one recorded reply on a disconnected ferry phone line, set off by any call, built to reply and never to listen |
 | L04 · DRAFT | main | `DEAD-LINK-DEPOT` | The Surplus Tag | one to a room at most, in its hardest place a guest can still reach without moving furniture | Trabolta did not choose the programs for their software: he went down a list of Halifax lives that had stopped, because out there he is a stopped life too |
 | L06 · DRAFT | main | `PAPER-CROWN` | The Same Answer | one to a room at most, in its hardest place a guest can still reach without moving furniture | Trabolta's plan cannot work |
 

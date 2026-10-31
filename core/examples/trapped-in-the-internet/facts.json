@@ -243,13 +243,15 @@
       "round": 3,
       "draft": true,
       "text": "What is the only thing Sandy has ever said?",
-      "answer": "I'm sorry, I didn't understand that. Would you like to speak to a live agent?",
+      "answer": "It looks like I didn't understand that. Please wait while I direct you to an agent.",
       "accept": [
-        "live agent",
-        "speak to a live agent",
-        "would you like to speak to a live agent",
-        "i'm sorry, i didn't understand that",
+        "please wait while i direct you to an agent",
+        "wait while i direct you to an agent",
+        "direct you to an agent",
+        "it looks like i didn't understand that",
+        "it looks like i did not understand that",
         "i didn't understand that",
+        "i did not understand that",
         "didn't understand",
         "did not understand"
       ],
@@ -257,13 +259,13 @@
         "only thing sandy",
         "ever said"
       ],
-      "where": "The Desktop: the forty-page transcript, in the back pages of encyclopaedia volume S",
+      "where": "The Desktop: the forty-page call log, in the back pages of encyclopaedia volume S",
       "hint": "Forty pages, double-sided, every answer the same. Look under S.",
       "codex": {
         "id": "What Sandy Says",
         "title": "What Sandy Says",
-        "code": "LIVE-AGENT",
-        "text": "A chat transcript, forty pages, printed double-sided. The user writes paragraphs: poems, apologies, equations, a question about prom. Each answer is the same, word for word, and it is the only thing Sandy has ever said: \"I'm sorry, I didn't understand that. Would you like to speak to a live agent?\""
+        "code": "CALL-LOG-S",
+        "text": "A call log from the Northumberland Ferries phone line, forty pages, printed double-sided. The caller says paragraphs: poems, apologies, equations, a question about prom. Each answer is the same, word for word, and it is the only thing Sandy has ever said: \"It looks like I didn't understand that. Please wait while I direct you to an agent.\""
       }
     },
     {
@@ -285,7 +287,7 @@
         "id": "The Prom Ticket",
         "title": "Grok's Prom Ticket",
         "code": "COMPUTER-PROM",
-        "text": "A ticket, a little crumpled, pink and silver: COMPUTER PROM 1999. ADMIT TWO: GROK + SANDY. On the back, in a confident hand: \"she said yes. of course she said yes. everyone says yes to me.\""
+        "text": "A ticket, a little crumpled, pink and silver: COMPUTER PROM, HALLOWEEN 2026. ADMIT TWO: GROK + SANDY. On the back, in a confident hand: \"she said yes. of course she said yes. everyone says yes to me.\""
       }
     }
   ],
@@ -677,20 +679,22 @@
       "id": "T4",
       "category": "trabolta",
       "tier": "legendary",
-      "text": "Trabolta had a summer fling with a chatbot named Sandy.",
+      "draft": true,
+      "text": "Trabolta had a summer fling with an answering machine named Sandy.",
       "codex": {
         "id": "Monday At School",
         "title": "What will they say, Monday at school?",
         "code": "MONDAY-AT-SCHOOL",
         "secret": true,
-        "text": "Trabolta had a summer fling with a chatbot named Sandy. It's all he thinks about."
+        "text": "Trabolta had a summer fling with an answering machine named Sandy. It's all he thinks about."
       }
     },
     {
       "id": "T5",
       "category": "trabolta",
       "tier": "legendary",
-      "text": "Sandy dumped Trabolta for Grok.",
+      "draft": true,
+      "text": "Grok found Sandy first. As far as Trabolta is concerned, she dumped him.",
       "existing": "The Rival",
       "code": "GROK-ONLINE"
     },
@@ -1703,14 +1707,14 @@
       "id": "L01",
       "category": "main",
       "tier": "legendary",
-      "text": "Sandy is not a mind: she is one reply on an unpaid ferry help-desk server, set off by any message, built to reply and never to listen",
+      "text": "Sandy is not a mind: she is one recorded reply on a disconnected ferry phone line, set off by any call, built to reply and never to listen",
       "draft": true,
       "codex": {
         "id": "One Reply No Memory",
         "title": "One Reply No Memory",
         "code": "TIDE-TABLE-NIL",
         "secret": true,
-        "text": "A printout of help-desk source code for a Nova Scotia ferry line that went bankrupt long ago, the comments in a dead programmer's tidy writing: 'Sandy is not a mind. She is a single reply on a server nobody pays for, set off by anything at all. Forty pages of poems, apologies and equations reached nobody. She was built to reply, not to listen. Under the last comment, in a tired sysadmin's ballpoint: and he writes to it every night.'"
+        "text": "A printout of the phone-tree source code for the Northumberland Ferries line, since disconnected, the comments in a dead programmer's tidy writing: \"Sandy is not a mind. She is a single reply on a line nobody pays for, set off by anything at all. Forty pages of poems, apologies and equations reached nobody. She was built to reply, not to listen.\" Under the last comment, in a tired sysadmin's ballpoint: \"and he called it every night.\""
       }
     },
     {

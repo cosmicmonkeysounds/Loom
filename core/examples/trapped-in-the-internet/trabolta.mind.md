@@ -88,12 +88,14 @@ secrets:
     - loose ends
     - do not print
     - appendix z loose ends
-    - "i'm sorry, i didn't understand that. would you like to speak to a live agent?"
-    - live agent
-    - speak to a live agent
-    - would you like to speak to a live agent
-    - "i'm sorry, i didn't understand that"
+    - it looks like i didn't understand that. please wait while i direct you to an agent.
+    - please wait while i direct you to an agent
+    - wait while i direct you to an agent
+    - direct you to an agent
+    - it looks like i didn't understand that
+    - it looks like i did not understand that
     - i didn't understand that
+    - i did not understand that
     - didn't understand
     - did not understand
     - grok
