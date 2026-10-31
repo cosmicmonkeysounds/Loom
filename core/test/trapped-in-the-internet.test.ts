@@ -361,7 +361,8 @@ describe("Trapped in the Internet — compile", () => {
     // queue), and neither forced majority is the running order (both are fallbacks).
     // Wave 26 (B2): ⏰ may fire again after ↩ Not a Bingo.
     // Wave 32 (C2): ⚡ ad_burst, appended last, repeats in a talk scene.
-    expect(admin.filter((a) => m.interactions.get(a)!.repeat)).toEqual(["bingo_time", "read_the_results", "spin_the_bottle", "ad_burst"]);
+    // Wave 59: 🎭 the costume's flicker, appended last, repeats.
+    expect(admin.filter((a) => m.interactions.get(a)!.repeat)).toEqual(["bingo_time", "read_the_results", "spin_the_bottle", "ad_burst", "costume_flicker"]);
     expect(m.interactions.get("zip_everyone_out")!.sequence).toBe(false);
     for (const a of ["force_majority_stay", "force_majority_leave"]) expect(m.interactions.get(a)!.sequence, a).toBe(false);
     expect(m.interactions.get("close_the_filing")!.label).toBe("⏱ Close round-one filings now (auto at 2 min)");
