@@ -666,7 +666,11 @@ Trabolta: Then talk. No questions on the screen. Just you, and me, and the hum.
 if Night.ended == true or Night.r3_closed == true or Night.heart_stage == "done":
   set program.heart_pick = "none"
   set program.heart_chat = false
-  Trabolta: It is over. Go upstairs.
+  // Wave 58: the talk and the patch bay share a room, so a menu is often docked
+  // when the cables come out. After Combo A or B a pick only ends it: nobody
+  // answers (`awake` is false: he does not return).
+  if Trabolta.awake == true:
+    Trabolta: It is over. Go upstairs.
 else if program.at_the_heart != true:
   set program.heart_pick = "none"
   -> Heart Away
