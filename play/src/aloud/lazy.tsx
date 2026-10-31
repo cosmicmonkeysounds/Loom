@@ -111,9 +111,9 @@ export function useAloud(o: { messages: ReadonlyMap<number, ChatMessage>; me: st
     const e = store.ended;
     if (sceneId !== 0 || e === null || lastEnded.current === e.id) return;
     lastEnded.current = e.id;
-    if (e.superseded) return;
-    if (script.length > 0) keep(last);
-    setOpen(false);
+    if (!e.superseded && script.length > 0) keep(last);
+    // Forgotten by a restart, a reader carries on with their own script.
+    if (!e.superseded || script.length === 0) setOpen(false);
   }, [sceneId]);
   return {
     script,

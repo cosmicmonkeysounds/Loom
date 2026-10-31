@@ -197,6 +197,21 @@ describe("over the real runtime", () => {
     rt.dispose();
   });
 
+  it("holds nothing with no reader's phone, but waits for one that slept a moment ago", async () => {
+    const rt = runtime();
+    const clippy = await booth(rt, "Clippy");
+    await post(rt, "/api/mod/beat", { name: "Second Hunt" }, { moderator: true });
+    expect((await poll(rt, -1)).voice.held, "no stream, ever: the beat plays as it always did").toBeUndefined();
+    const closers: Array<() => void> = [];
+    const r = fakeRes();
+    const url = new URL(`http://x/events?role=prime&token=${encodeURIComponent(clippy)}`);
+    await rt.handle({ ...fakeReq({}), on: (ev: string, f: () => void) => void (ev === "close" && closers.push(f)) } as unknown as IncomingMessage, r, "GET", "/events", url, {});
+    for (const f of closers) f();
+    await post(rt, "/api/mod/beat", { name: "Hunt Two Go" }, { moderator: true });
+    expect((await poll(rt, -1)).voice.held, "an iPhone's page sleeps and drops its stream").toBe(true);
+    rt.dispose();
+  });
+
   it("forgets the scene on a restart, and the rest of the lines play", async () => {
     const rt = runtime();
     const clippy = await booth(rt, "Clippy");

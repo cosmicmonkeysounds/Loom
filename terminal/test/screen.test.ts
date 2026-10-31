@@ -186,6 +186,9 @@ describe("the TV's voice block (K-18)", () => {
     });
     expect(parseScreenState(body)?.voice).toBeNull();
     expect(voiceOf({ lines: [] })).toBeNull();
+    // Wave 59: a line of his waiting on the teleprompter; left out otherwise.
+    expect(voiceOf({ head: 3, lines: [], held: true })?.held).toBe(true);
+    expect(voiceOf({ head: 3, lines: [] })).not.toHaveProperty("held");
   });
 });
 

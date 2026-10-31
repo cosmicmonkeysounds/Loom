@@ -186,7 +186,8 @@ test("she scrolls, he waits; she reaches his line, he speaks, it scrolls, a host
   if ((await armed.count()) > 0) await armed.first().click();
   await expect(clippy.page.locator(".aloud-prompter")).toHaveCount(0, { timeout: 5_000 });
   await expect(host.page.locator(".aloud-prompter")).toHaveCount(0, { timeout: 5_000 });
-  process.stdout.write(`\nscroll → TV has the line: ${heard} ms; TV polls during the hold: ${polls.length}\n`);
+  const gaps = polls.slice(1).map((t, i) => t - polls[i]!);
+  process.stdout.write(`\nscroll → TV has the line: ${heard} ms; fastest gap between TV polls: ${Math.min(...gaps)} ms\n`);
   await tv.close();
   await clippy.ctx.close();
   await host.ctx.close();
@@ -243,6 +244,32 @@ test("autoscroll and jumps stay shared; a host's ▶ and a reader leaving both l
   await expect.poll(async () => (await heldNow(mod)).held, { timeout: 20_000, intervals: [500] }).toBe(false);
   process.stdout.write(`\nreader gone → the hold lets go: ${Date.now() - gone} ms\n`);
   await host.ctx.close();
+});
+
+test("a director's phone shows the hold, and ▶ lets him speak", async ({ browser }) => {
+  test.skip(BASE === "" || MOD === "" || PRIME === "", "set SIM_BASE, SIM_MOD_CODE and SIM_PRIME_CODE");
+  test.setTimeout(60_000);
+  const mod = await modLogin();
+  await mod.post("/api/mod/prime/release", { character: "Clippy" });
+  const clippy = await phone(browser, "Clippy");
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 780 } });
+  const dir = await ctx.newPage();
+  await dir.goto(`${BASE}/?role=director&code=${encodeURIComponent(MOD)}`);
+  const who = dir.getByPlaceholder("Your name (the log says who fired)");
+  await who.fill("Spec");
+  await dir.getByRole("button", { name: /sign in/iu }).click();
+  await who.waitFor({ state: "hidden", timeout: 20_000 });
+  await clippy.page.waitForTimeout(2_000);
+  await mod.post("/api/mod/beat", { name: "Second Hunt" });
+  await expect(clippy.page.locator(".aloud-alert")).toBeVisible({ timeout: 8_000 });
+  await expect.poll(async () => (await heldNow(mod)).held, { timeout: 5_000 }).toBe(true);
+  const strip = dir.getByTestId("dir-prompter");
+  await expect(strip).toContainText("he waits for the script", { timeout: 10_000 });
+  await strip.getByRole("button", { name: /Let him speak/u }).click();
+  await expect.poll(async () => (await heldNow(mod)).held, { timeout: 5_000 }).toBe(false);
+  await expect(strip).toHaveCount(0, { timeout: 8_000 });
+  await ctx.close();
+  await clippy.ctx.close();
 });
 
 const LINES_STORY = `

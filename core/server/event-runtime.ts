@@ -187,6 +187,10 @@ import { TALK_SCENES } from "../src/talk-scenes.ts";
 import { agentRecentOn, answerMentions, buildRecent, HUNT_ANSWER_MARK, secretMentions, storyTag, storyTexts, worldString, type StoryTagContext } from "./agent-recent.ts";
 
 
+/** Wave 59: a reader's stream closed this recently still counts as a phone in
+ *  their hand: an iPhone's page sleeps and drops it within seconds. */
+const PROMPTER_STREAM_GRACE_MS = 45_000;
+
 /** A guest view is never rendered against a null sim — this stands in. */
 const EMPTY_SIM = Sim.fromSources("");
 
@@ -965,6 +969,8 @@ export class EventRuntime {
    *  forgets it, and the rest of a held beat's lines just play. */
   private readonly prompters: Prompters;
   private prompterTimer: ReturnType<typeof setInterval> | null = null;
+  /** When each reader's stream last closed (`@<Character>` or a guest id). */
+  private readonly streamLeft = new Map<string, number>();
   // Spatial stream subscribers (terminals, the map page) — never `clients`.
   private readonly spatialStreams = new Set<ServerResponse>();
   /** (wave 49) The footsteps' streams (the router's). */
@@ -1274,7 +1280,8 @@ export class EventRuntime {
       now: () => (init.now !== undefined ? init.now() : Date.now()),
       send: (frame, members) => this.prompterSend(frame, members),
       voice: (channel) => roomVoiceOf(this.screens, this.sim?.model ?? null, channel),
-      online: (who) => [...this.clients].some((c) => EventRuntime.isPrompterId(c, who)),
+      // A phone that slept a moment ago is still the reader: it wakes to the pop-up.
+      online: (who) => [...this.clients].some((c) => EventRuntime.isPrompterId(c, who)) || Date.now() - (this.streamLeft.get(who) ?? -Infinity) < PROMPTER_STREAM_GRACE_MS,
       name: (who) => this.prompterName(who),
       changed: () => {
         this.modViewLast = null;
@@ -5878,6 +5885,7 @@ export class EventRuntime {
         clearInterval(ping);
         this.clients.delete(client);
         if (ownGuest) this.seen(id, true);
+        if (role !== "mod") this.streamLeft.set(role === "prime" ? `@${id}` : id, Date.now());
         this.pushPresence();
       });
       return true;

@@ -800,7 +800,7 @@ export function voiceOf(raw: unknown): ScreenVoice | null {
     if (typeof x["seq"] !== "number" || typeof x["from"] !== "string" || typeof x["text"] !== "string") continue;
     lines.push({ seq: x["seq"], from: x["from"], text: x["text"], beat: typeof x["beat"] === "string" ? x["beat"] : null });
   }
-  return { room: typeof r["room"] === "string" ? r["room"] : "", muted: r["muted"] === true, head: r["head"], lines };
+  return { room: typeof r["room"] === "string" ? r["room"] : "", muted: r["muted"] === true, head: r["head"], lines, ...(r["held"] === true ? { held: true } : {}) };
 }
 
 function shotOf(v: unknown): ScreenShot | null {

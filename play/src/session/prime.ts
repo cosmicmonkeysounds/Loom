@@ -642,7 +642,9 @@ export function usePrimeSession(): PrimeSession {
   // Wave 48 (C2): a hung POST must not leave ✂ on "…" for good.
   const censor = useCallback((seq: number) => withTimeout(post<CensorResult>("/api/prime/censor", { seq }, auth!.token), SAY_TIMEOUT_MS), [post, auth]);
   const filterLevel = useCallback((level: number) => withTimeout(post<FilterLevelResult>("/api/prime/filter", { level }, auth!.token), SAY_TIMEOUT_MS), [post, auth]);
-  const prompterPost = useCallback((body: Record<string, unknown>) => post("/api/aloud", body, auth!.token), [post, auth]);
+  // Not `post`: a phone saying it is on the script is no action of the booth's,
+  // and must not read as one to the readouts' banner (`lastActionAt`).
+  const prompterPost = useCallback((body: Record<string, unknown>) => api(`${base}/api/aloud`, body, auth!.token), [base, auth]);
   const leave = useCallback(() => {
     // Sign out frees the part on the server too, so the same performer can
     // sign in from another phone (the iPhone Home Screen icon) without a

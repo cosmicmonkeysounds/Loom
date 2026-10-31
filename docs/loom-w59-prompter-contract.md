@@ -94,9 +94,11 @@ an autoscroll and it carries on after.
 
 ## C8. The night never hangs
 
-- No reader's stream open as the beat lands: no hold at all.
-- A reader online but no phone says `here` within `HOLD_WAIT_MS` (5 s): the beat plays
-  as it always did. This is what carries an old build, and `pnpm sim`'s bots.
+- No reader's stream open as the beat lands, or closed in the last 45 s (an iPhone's
+  page sleeps and drops it within seconds): no hold at all.
+- A reader online but no phone says `here` within `HOLD_WAIT_MS` (8 s): the beat plays
+  as it always did. This is what carries an old build, and a phone left asleep.
+  `pnpm sim`'s bots hold no booth stream, so they never wait at all.
 - A phone says `here` every 4 s while the pop-up or the prompter is on a visible page.
   No reader, and no one with the prompter open, for `HERE_TTL_MS` (12 s): the hold
   lets go.

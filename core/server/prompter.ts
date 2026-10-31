@@ -27,7 +27,7 @@ import type { ChatMessage } from "./chat.ts";
 export type { PrompterStatus };
 
 /** A beat this old has no reader on the way: the voice goes on as it always did. */
-export const HOLD_WAIT_MS = 5_000;
+export const HOLD_WAIT_MS = 8_000;
 /** A phone showing the script reports this often (`here`). */
 export const HERE_EVERY_MS = 4_000;
 /** A phone silent this long has left the prompter. */
