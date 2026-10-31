@@ -42,8 +42,6 @@ const REVEAL_STEP = 16;
 /** A stage line is said at about this many characters a second (a slow voice,
  *  so a dead TV errs towards waiting). */
 export const STAGE_CHARS_PER_S = 13;
-/** A prompter is read at about this many. */
-export const PROMPTER_CHARS_PER_S = 11;
 
 export type CostumeAction =
   /** A `lights.json` look that reaches no safety fixture. */
@@ -305,7 +303,7 @@ export interface CostumeFacts {
   step: number | null;
   /** The TV is saying a beat's lines, or by their length it still would be. */
   speaking: boolean;
-  /** A teleprompter is open. */
+  /** A scene is on the shared teleprompter (`Prompters.status`), until its ✓ Done. */
   prompter: boolean;
   /** `Night.lights`. */
   lights: string | null;

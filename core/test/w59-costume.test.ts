@@ -381,6 +381,27 @@ describe("w59 costume: refused while it would wreck something", () => {
     r.rt.dispose();
   });
 
+  it("for as long as the scene is on the prompter, however slowly it is read, and not after ✓ Done", async () => {
+    const r = await live();
+    await r.setVar("Trabolta.awake", "true");
+    await call(r.rt, "POST", "/api/mod/beat", { name: "A Reading" }, { moderator: true });
+    r.advance(600); // far past what the words take to say
+    expect((await r.fire("poke")).json).toMatchObject({ why: "prompter" });
+    await call(r.rt, "POST", "/api/mod/aloud", { action: "done" }, { moderator: true });
+    expect((await r.fire("poke")).status).toBe(200);
+    r.rt.dispose();
+  });
+
+  it("not once a ✓ Done closes a read before its words would have run out", async () => {
+    const r = await live({ story: STORY.replace("setting: The Desktop\n  aloud: Clippy", "setting: The Hall\n  aloud: Clippy") });
+    await r.setVar("Trabolta.awake", "true");
+    await call(r.rt, "POST", "/api/mod/beat", { name: "A Reading" }, { moderator: true });
+    expect((await r.fire("poke")).json).toMatchObject({ why: "prompter" });
+    await call(r.rt, "POST", "/api/mod/aloud", { action: "done" }, { moderator: true });
+    expect((await r.fire("poke")).status).toBe(200);
+    r.rt.dispose();
+  });
+
   it("from the final reveal on, the awards and after", async () => {
     for (const [path, value] of [
       ["Night.step", "16"], // the final reveal

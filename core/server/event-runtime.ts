@@ -87,7 +87,7 @@ import { CREDITS_ROUTE, creditsAnswer, sendCredits } from "./routes/credits.ts";
 import { VIDEO_ROUTE, sendVideoConsent, videoConsentView } from "./routes/video.ts"; // w44
 import { CREDITS_FILE } from "../src/credits.ts"; // w44
 import { COSTUME_FIRE_ROUTE, COSTUME_MENU_ROUTE, COSTUME_MOD_ROUTE, CostumeDesk, CostumeSource, costumeFixtures, costumeLookSafe, costumeMoved, costumeRoomOutRestore, sendCostumeFire, sendCostumeMenu, type CostumeTimers } from "./costume.ts"; // w59
-import { COSTUME_BY, COSTUME_FILE, COSTUME_SIGNAL, COSTUME_TOKEN_LABEL, PROMPTER_CHARS_PER_S, STAGE_CHARS_PER_S, hijackPlaying, saidBy, type CostumeAction, type CostumeFacts, type CostumeFile, type CostumeItem } from "../src/costume.ts"; // w59
+import { COSTUME_BY, COSTUME_FILE, COSTUME_SIGNAL, COSTUME_TOKEN_LABEL, STAGE_CHARS_PER_S, hijackPlaying, saidBy, type CostumeAction, type CostumeFacts, type CostumeFile, type CostumeItem } from "../src/costume.ts"; // w59
 import { DESCENT_FILE, DescentSource } from "./descent.ts"; // w49
 import { SWEAR_CENSORED, SWEAR_FILTER, SWEAR_FLAGGED, decodeHits, encodeHits, filterHits, hitList, isFilterLevel, maskText, maskUnsaid, type FilterHit } from "../src/language-filter.ts"; // w48, w48b
 import { FilterBook, type FilterView } from "./language-filter.ts"; // w48
@@ -3229,8 +3229,7 @@ export class EventRuntime {
       ceremony: word("Night.ceremony") === "true",
       step: num("Night.step"),
       speaking: tvTalking || saidBy(recent.filter((m) => m.channel === `loc:${TALK_ROOM}` && m.kind === "line" && typeof m.beat === "string"), STAGE_CHARS_PER_S) > storyMs,
-      // With wave 59's shared prompter on the server, its status says this.
-      prompter: saidBy(recent.filter((m) => m.aloud !== undefined), PROMPTER_CHARS_PER_S) > storyMs,
+      prompter: this.prompters.status() !== null,
       lights: word("Night.lights"),
       alarm: word("Night.alarm_on") === "true",
       roomOut: (num("Night.lights_back_at") ?? 0) > 0,
