@@ -186,12 +186,12 @@ function rig(o: { menu?: string | null; dir?: string; open?: boolean } = {}) {
     project: project as never,
     lights: JSON.stringify(LIGHTS),
     costumeTimers: {
-      set: (fn, ms) => {
+      set: (fn: () => void, ms: number) => {
         const id = next++;
         timers.push({ at: now + ms, fn, id });
         return id;
       },
-      clear: (h) => {
+      clear: (h: unknown) => {
         timers = timers.filter((t) => t.id !== h);
       },
     },
@@ -546,8 +546,7 @@ describe("w59 costume: what a press does", () => {
     expect(hostsLines(r).length).toBe(before);
     const page = await call(r.rt, "GET", "/api/mod/log?limit=5000", {}, { moderator: true });
     expect(JSON.stringify(page.json)).toContain(COSTUME_SIGNAL);
-    const journal = readFileSync(join(r.dir, "journal.jsonl"), "utf8");
-    expect(journal).toContain("🎭 Costume");
+    expect(new Store(r.dir).readJournal().filter((l) => l.a[0] === COSTUME_SIGNAL).map((l) => l.by)).toEqual(["🎭 Costume", "🎭 Costume"]);
     r.rt.dispose();
   });
 

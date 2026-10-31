@@ -515,6 +515,14 @@ export const screensApi = {
   async state(eventId: string): Promise<unknown> {
     return await req<unknown>('GET', `/e/${eventId}/api/screen/state`)
   },
+  /** (wave 59) The Task Manager costume's switch and its link. */
+  async costume(eventId: string): Promise<{ on: boolean; url: string }> {
+    return await req<{ on: boolean; url: string }>('GET', `/e/${eventId}/api/mod/costume`)
+  },
+  /** (wave 59) The crew's kill switch. */
+  async setCostume(eventId: string, on: boolean): Promise<{ on: boolean }> {
+    return await req<{ on: boolean }>('POST', `/e/${eventId}/api/mod/costume`, { on })
+  },
   /** Make one terminal show its name + spot full screen for 10 s (SW-SCR-21, install day). */
   async identify(eventId: string, name: string): Promise<{ name: string; until: number }> {
     return await req<{ name: string; until: number }>('POST', `/e/${eventId}/api/mod/screen/identify`, { name })
