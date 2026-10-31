@@ -47,7 +47,7 @@ added `fullscreen.ts`, with a `//` header: 147.53 kB. Wave 59 added
 `aloud/shared.ts` and turned the headers of `chrome/taskbar.tsx`,
 `chrome/icons.tsx`, `stream/card-tray.tsx`, `moments/pins-rail.tsx`,
 `moments/surfaces.tsx`, `show-clock.ts`, `claim.ts` and `back-gesture.ts` into `//`:
-147.48 kB.
+147.80 kB.
 
 ## How a session works
 
@@ -573,12 +573,17 @@ scene's one position, in words; his lines wait for it.
   frame (`CHAT_FRAMES`, `onPrompter`). Read by subscription: `sceneId` is all the app
   depends on, so five moves a second never re-render it. `pos(now)` adds `rate` from
   the frame's arrival, up to `stop`. `nudge` follows this phone's own jump until the
-  server answers, `revert` gives it back. `ended` is the last scene to go; only a
-  `done` frame counts as read (`superseded: false`); a `null` frame is a restart.
+  server answers, `revert` gives it back. `ended` is the last scene to go, with its
+  `first` line and the line it had `reached`; only a `done` frame counts as read
+  (`superseded: false`); a `null` frame is a restart.
 - **`useAloud`** gains `shared` (`SharedScene`: the scene as this phone's script,
   `role` reader / owner / host), `card` / `dropCard`. While `covering` on a visible
   page it posts `here` every 4 s, or nothing waits for it. Posts go through the
   session's `prompterPost` (`POST /api/aloud`). `done` posts `done` when a scene is on.
+  `behind` / `readBehind` are this reader's unread lines a newer scene took off the
+  phone (`linesBehind`, `model.ts`). The mark goes through `markPast`: ✓ Done only past
+  what the phone showed, and a scene taken over only as far as a prompter open here had
+  got, never past a line still behind it (contract C10).
 - **`Prompter`**: `script` is `a.shared?.script ?? a.script`, keyed on the scene.
   With a scene it does not autoscroll itself: one rAF loop follows
   `store.pos` (`FOLLOW` of the gap a frame, a snap past a screenful), or, with a finger
@@ -588,7 +593,9 @@ scene's one position, in words; his lines wait for it.
   frame, as a string, so only a change re-renders. Locked (someone else's finger, or
   him): `.aloud-text.locked`, the controls and the rail stop, `.aloud-lock` says who.
   `yOfPos` / `posOfY` turn words into pixels along this phone's lines. A host has no
-  last line to reach, so their ✓ Done always asks twice.
+  last line to reach, so their ✓ Done always asks twice. *↑ n earlier lines* opens
+  `behind` on a sheet with its own scroll, outside `[data-line]`, so the position never
+  sees it.
 - **`AloudCard`** (the same lazy chunk): one line of yours in someone else's script,
   never the whole phone. `AloudSlot` shows it when `a.card && !a.covering`.
 - **Host:** `host/prompter-strip.tsx` on Show (`HostView.prompter`, `prompterLine` in

@@ -504,7 +504,10 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   `/api/guest/`, refusals 409 `prompter: …`) and by `tick` (a 200 ms timer while a
   scene is on, and every screen poll). Reaching a run of his lines moves the hold,
   locks and scrolls; `roomVoiceOf` (`said`, `sp=`, the mute) ends it, or the time from
-  `spokenMs`. No reader on the prompter means no hold (`HOLD_WAIT_MS`, `HERE_TTL_MS`).
+  `spokenMs`. No reader on the prompter means no hold (`HOLD_WAIT_MS`, `HERE_TTL_MS`);
+  anyone else's open prompter counts only while they drive it (`DRIVE_TTL_MS`). `fanout`
+  calls `outrun` on a batch with no scene: a scripted line of his in the room (`beat`
+  present; a live `say` has none) lets the hold go, in order.
   `POST /api/mod/aloud {action: release | done}` is on the host allowlist. Every
   stream's first frames include a `prompter` (null with none). `pushLifecycle` clears
   it. Tests: `test/w59-prompter.test.ts`, `test/w59-prompter-server.test.ts`.

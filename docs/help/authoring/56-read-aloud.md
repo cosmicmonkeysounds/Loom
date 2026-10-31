@@ -63,7 +63,8 @@ after the time the words take if the TV is dead or muted.
 Nothing here can hang the night. With no reader on their phone the beat plays as it
 would without the mark, and a host (**▶ Let him speak** on Show), a director (the same
 button on the director phone and at the top of Run's Director page) can let his lines
-go at any time.
+go at any time. His next scripted line in that room lets them go too: the held ones
+play first, then it, so a later beat is never lost behind a reader who stopped.
 
 ## Other people's lines
 

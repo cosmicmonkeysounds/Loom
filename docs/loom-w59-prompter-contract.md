@@ -27,7 +27,7 @@ One commit's marked lines, sections as the phone builds them (`scriptOf`): `beat
 has no scene and just plays. `id` is the first seq + 1 (never 0, which a phone reads
 as none). Each line has `who` (a reader, or an owner: anyone else with a line) and
 `his` (`mind: external`). A newer scene ends the older (`superseded`), and whatever
-of his was still held plays first.
+of his was still held plays first. What a reader hadn't got to is C10.
 
 His unmarked lines in the same room after the scene's first line (`Second Hunt` →
 the generated `Hunt Two Questions` → `Hunt Two Go`) go with the run before them.
@@ -41,6 +41,14 @@ boots during a hold starts behind it. `voice.held` makes a TV poll every 300 ms
 (`HELD_POLL_MS`). A run is his lines from one up to the next line someone says: a
 stage direction between two of his lines is in the run, since nobody reads it out
 and nothing would ever move past it.
+
+Because it cuts the room's whole timeline, a hold would also swallow anything after
+it. So **the story going on lets it go**: a commit with no scene of its own that adds
+a scripted line of his to the scene's room (`Prompters.outrun`: a `dialogue`, so
+`beat` is present, a string or null) frees the hold, everything plays in order, and
+the prompter carries on. 🕚's *The Y2K Clock* and the overshare beats go this way. A
+live line (`say`: a Talk reply, a director speaking as him, with no `beat` at all)
+stays queued behind the hold, so a reply can't dump a reader's script.
 
 ## C3. One position
 
@@ -100,8 +108,12 @@ an autoscroll and it carries on after.
   as it always did. This is what carries an old build, and a phone left asleep.
   `pnpm sim`'s bots hold no booth stream, so they never wait at all.
 - A phone says `here` every 4 s while the pop-up or the prompter is on a visible page.
-  No reader, and no one with the prompter open, for `HERE_TTL_MS` (12 s): the hold
-  lets go.
+  No reader saying so for `HERE_TTL_MS` (12 s): the hold lets go.
+- Anyone else with it open (a host or an owner who joined) keeps a hold only while
+  they drive it: a finger on it, a press or a move of theirs in the last `DRIVE_TTL_MS`
+  (20 s), or an autoscroll on its way to him. A host reading for a dead phone keeps
+  it; one who joined to watch and left the phone awake doesn't.
+- A scripted line of his that isn't in the scene (C2).
 - ▶ from a host's Show, the director phone or Run. ✓ Done from a joined prompter.
 - A restart forgets the scene, and the rest of the lines play (the TV's cursor is
   behind them). The phones go back to wave 55's own script.
@@ -114,6 +126,24 @@ line in the beat (`owners`) gets a small card and a push (`aloudLinePush`): the 
 📜 Join. ✓ Done from a reader with another reader still on, or from an owner, only
 leaves; from the last reader or a host, it ends the scene and marks it read on every
 phone in it.
+
+## C10. A newer scene over unread lines
+
+A scene's prompter shows only that scene. When one takes over from another, what the
+reader hadn't reached stays theirs (wave 55's guarantee):
+
+- `store.ended` has the ended scene's first line and the line it had `reached`, read
+  from its last frame's `pos`. `markPast` moves the mark to it only if a prompter was
+  open on this phone, and only if no line of theirs behind that scene is still unread:
+  the mark is one number, so it stays below the oldest unread line.
+- `linesBehind` is those lines, from the mark up to the scene's first line, in
+  sections holding a line of theirs; a cue alone owes nothing. The prompter raises *↑ n
+  earlier lines*, and a sheet shows them, with a scroll of its own that leaves the shared
+  position alone. *✓ Read them* moves the mark past them.
+- ✓ Done moves the mark only past what this phone showed. Left unread, the pop-up
+  comes back, and the phone's own script (the whole night, as in wave 55) opens at the
+  first unread line. The scene they read is in that script too, and goes on that ✓ Done.
+- A scene read to its end owes nothing, ✓ Done or not.
 
 ## Tests
 
