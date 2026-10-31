@@ -249,11 +249,14 @@ describe("the teleprompter's numbers", () => {
     expect(railLine(starts, 1.2)).toBe(3);
     expect(railLine(starts, -1)).toBe(0);
   });
-  it("opens at the first new line, cues included, else the last section", () => {
+  it("opens on the cue before this reader's first new line, else the last section", () => {
     expect(startLine(lines, 0)).toBe(0);
     expect(startLine(lines, 1)).toBe(1);
+    expect(startLine(lines, 2)).toBe(2);
     expect(startLine(lines, 4)).toBe(2);
     expect(startLine([], 0)).toBe(0);
+    const host = flatten(scriptOf([line(1, "Bingo", "Clippy", "a", { mine: false }), line(2, "Bingo", "Clippy", "b", { mine: false }), line(3, "Bingo", "Clippy", "cue", { mine: false }), line(4, "Bingo", "Task Manager", "Hello.", { mine: true })], CLIPPY));
+    expect(startLine(host, 0)).toBe(2);
   });
   it("finds a section's start, and knows when the reader has said their last line", () => {
     expect(sectionLine(lines, 1)).toBe(2);

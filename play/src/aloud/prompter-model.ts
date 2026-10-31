@@ -68,10 +68,15 @@ export function railLine(starts: readonly number[], f: number): number {
   return lineAt(starts.slice(0, -1), at);
 }
 
-/** The first line past the mark, cues included; else the last section's start. */
+/** The cue before this reader's first new line (never before the first new
+ *  line at all), so a host with one line lands on their cue, not the top of
+ *  someone else's speech; with nothing new, the last section's start. */
 export function startLine(lines: readonly FlatLine[], mark: number): number {
   const next = lines.find((l) => l.seq > mark);
-  if (next !== undefined) return next.index;
+  if (next !== undefined) {
+    const own = lines.find((l) => l.mine && l.seq > mark);
+    return own === undefined ? next.index : Math.max(next.index, own.index - 1);
+  }
   const end = lines[lines.length - 1];
   return end === undefined ? 0 : (lines.find((l) => l.section === end.section)?.index ?? 0);
 }

@@ -19,7 +19,7 @@ The show, *Trapped in the Internet* (Oct 31 2026), is the Loom project in
 | `src/runtime/sim/model.ts` | compiles a project into a `SimModel` (`compileModel`): characters, rules, watchers, interactions, objectives, header keys (`currency:`, `wallet:`, `watch:`, `countdown:`, `badge:`, `stat:`, `founding:`, `judge:`, `reinstall:`, `lock:` …) |
 | `src/runtime/sim/sim.ts` | the `Sim`: world, ledger, hook drain, the executor, every journaled mutation |
 | `src/runtime/sim/` (rest) | `crews.ts` (crews, faction mode), `board.ts` (watch / countdown), `badges.ts`, `stats.ts`, `channel-types.ts`, `effects.ts`, `DESIGN.md` |
-| `src/lsp/` | `Workspace` (completion, hover, definition, references, symbols, diagnostics), `graph.ts` (the story graph), `rename.ts`, `w18-lints.ts` … `w26-lints.ts` (workspace lints L12xx) |
+| `src/lsp/` | `Workspace` (completion, hover, definition, references, symbols, diagnostics), `graph.ts` (the story graph), `rename.ts`, `w18-lints.ts` … `w55-lints.ts` (workspace lints L12xx) |
 | `src/*.ts` | browser-safe shared modules: `house-desk.ts` (wave 25, `@loom/core/house-desk`), `talk-back.ts` (wave 32, `@loom/core/talk-back`: `TalkView`, `readTalkPost`, `talkView`) + `talk-scenes.ts` (the show's canned talk lines, `DRAFT w32`), `cue-sheet.ts`, `pick-echo.ts` (wave 28), `host-board.ts`, `delivery.ts`, `facts.ts` + `answer-match.ts`, `casino.ts`, `go.ts`, `show-clock.ts`, `identity-kind.ts` |
 | `server/server.ts` | process boot, static apps (`/`, `/terminal/`, `/reinstall/`, `/cards`, `/webmaster/`), `/api/health`, `/api/resolve-code`, control-plane routing |
 | `server/event-runtime.ts` | one live event (`EventRuntime`, ~7,000 lines): every `/e/:id/api/*` handler, the journal commit + `fanout`, restarts, the ticker |
@@ -429,6 +429,19 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   and each `/api/mod/broadcast` to everyone (`spokenAnnounce`: no alert mark, no
   emoji), `{stop: true}` on `/api/mod/audio/stop {announce: true}`. Memory only:
   a phone that missed one never hears it. Whether a phone speaks is the phone's.
+- **The teleprompter** (wave 55, [`docs/loom-w55-contract.md`](../docs/loom-w55-contract.md)).
+  A beat's contract line `aloud:` names who reads it: parts
+  (`aloud: Clippy, Task Manager`, `@<Character>`) or a program (`aloud:
+  {Night.bobber}`, always a guest id: a featured program is a CHARACTER too, so
+  a `{…}` never reads as a part). `aloudReaders` / `aloudOf` (`chat.ts`) stamp
+  `ChatMessage.aloud {readers, reader?}` on a stage line and on narration:
+  `reader` says it (a part's own lines; a program reads the narration), no
+  `reader` is a cue. Addressed lines (DMs) are never marked. No route, no
+  journal, no view: the marks ride the replayed chat. `capHistory` keeps a
+  reader's rows (`guestOwnRow`, `boothOwnRow`), `forGuest` strips the mark from
+  every guest but a reader, and `fanout` pushes `aloudPush` to a hidden phone.
+  How far a reader has read is their phone's. `L1227` catches an `aloud:` naming
+  no signable part (`src/lsp/w55-lints.ts`). Tests: `test/w55-aloud.test.ts`.
 - **Hub files have one owner at a time.** `event-runtime.ts`,
   `views.ts`, `chat.ts` and `sim.ts` are touched by almost every
   feature; when several agents work in parallel, give each of these to

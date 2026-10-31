@@ -132,6 +132,11 @@ keep the radio away from them. The TV and the tent laptop never send sound.
   ⊞ Start. Don't film anyone who asks you not to; the director downloads
   the list from Run at the end.
 
+**📜 READ THIS OUT LOUD (wave 55).** If your part has a scripted line, your
+whole phone says so and stays that way until you have read it: tap it, read
+from the teleprompter, press **✓ Done**. Hosts have one line each in the
+opening, and Adobe has one more at Truth Pong.
+
 ## The blackout rule (Combo A or Combo B)
 
 When a combo lands, **every light goes out for ten seconds**, every phone says

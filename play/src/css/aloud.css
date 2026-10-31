@@ -65,12 +65,12 @@
   border: 2px solid var(--highlight); border-radius: 5px; background: rgba(240, 215, 122, 0.25); pointer-events: none;
 }
 .aloud-preview {
-  position: absolute; right: 54px; left: 12px; max-height: 126px; overflow: hidden; padding: 10px 12px;
+  position: absolute; right: 54px; left: 12px; padding: 10px 12px;
   display: flex; flex-direction: column; gap: 4px; font: 16px/1.3 var(--ui-font);
   color: var(--black); background: var(--highlight); border-radius: var(--radius); pointer-events: none;
 }
 .aloud-preview strong { font-size: 13px; }
-.aloud-preview-next { font-size: 13px; opacity: 0.7; }
+.aloud-preview-next { font-size: 13px; opacity: 0.7; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .aloud-chips { position: absolute; left: 12px; right: 56px; bottom: 8px; display: flex; flex-wrap: wrap; gap: 8px; pointer-events: none; }
 .aloud-chip {
   pointer-events: auto; min-height: var(--tap); padding: 0 14px; font: 700 15px/1 var(--ui-font);
@@ -78,7 +78,7 @@
 }
 .aloud-chip.fresh { color: var(--black); background: var(--highlight); border-color: var(--highlight); }
 .aloud-controls {
-  flex: none; display: flex; flex-direction: column; gap: 6px;
+  flex: none; display: flex; flex-direction: column; gap: 6px; width: 100%; max-width: none; margin: 0;
   padding: 8px 8px calc(8px + var(--safe-bottom)); background: #26251f; border-top: 1px solid rgba(255, 255, 255, 0.2);
 }
 .aloud-row { display: flex; align-items: stretch; gap: 6px; }
