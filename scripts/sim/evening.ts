@@ -903,7 +903,7 @@ async function y2kHour(): Promise<void> {
       await press(c, chain("trabolta_overshares", "y2k_clock"));
       let n = 0;
       // A round the keys are in (H1–H3's may be owed), and every filer of it counts.
-      for (const b of bots.slice(0, 6)) n += await fileFacts(c, b, ["F1", "F2"], lie && b === role.liar() ? { lieOn: "F2" } : {});
+      for (const b of bots.slice(0, 6)) n += await fileFacts(c, b, ["F1", "F2", "F3"], lie && b === role.liar() ? { lieOn: "F2" } : {});
       c.note(`${n} final filings`);
     },
     () => ({ "Night.step": "14", "Night.phase": "y2k", "Night.talk": "none" }),
@@ -1053,9 +1053,11 @@ async function theEnding(): Promise<void> {
       "🎆 Midnight: the reveal, bobbing for truth, truth.txt, the verdict",
       async (c) => {
         await press(c, Y2K_TO_VERDICT, () => bots[0]!.id);
-        for (let i = 0; i < 30; i++) {
+        // The verdict's pages, after 8-B if nobody found the last answer (wave 59a).
+        for (let i = 0; i < 70; i++) {
           await sleep(2000);
-          if (read(await world(), "Kernel.verdict_wait") !== "true") break;
+          const w = await world();
+          if (read(w, "Kernel.verdict_wait") !== "true" && read(w, "Kernel.unfound_wait") !== "true") break;
         }
         const w = await world();
         c.note(`the verdict: ${read(w, "Night.phase")}`);

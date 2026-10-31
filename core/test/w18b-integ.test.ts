@@ -136,7 +136,10 @@ describe("wave 18b integration — the whole night on the merged show (C1)", () 
     n.raw("bobbing_for_truth");
     n.raw("brought_up_the_bag", "g5", undefined, "Clippy");
     n.raw("read_truth_txt");
-    const verdict = n.raw("the_verdict");
+    // Wave 59a: nobody found the last answer, so 8-B plays and the verdict waits for it.
+    expect(beats(n.raw("the_verdict"))).toContain("Nobody Found It");
+    expect(beats(n.raw("the_verdict"))).toEqual([]);
+    const verdict = n.tick(71);
     expect(beats(verdict)).toContain("The Verdict");
     expect(lines(verdict, "Trabolta").some((l) => /true\. .* with a lie on record\./u.test(l))).toBe(true);
     expect(beats(verdict)).not.toContain("Song Ending");
@@ -337,16 +340,13 @@ describe("wave 18b integration — results, rulings and the verdict on the merge
     expect(wall.questions.find((q) => q.id === "H1")).not.toHaveProperty("rows");
     for (const c of ["read_the_results", "read_the_results"]) await mod(c);
 
-    // Hunt 2 → 🧮 reads H4–H6.
+    // Hunt 2 → 🧮, which reads nothing now (wave 59a).
     for (const c of ["second_hunt_preview", "start_the_second_hunt"]) await mod(c);
     rt.tickOnce(120_000); // 📥
     for (const g of guests) for (const q of ["H4", "H5", "H6"]) await call(rt, "POST", "/api/guest/codex/redeem", { code: codeOf(q) }, { token: g.token });
     expect((await file(rt, calc, "H4", FACTS.questions.find((q) => q.id === "H4")!.answer, 100)).status).toBe(200);
     for (const c of ["five_minute_warning", "summons_closed", "truth_pong", "round_two_tally"]) await mod(c);
-    const tally = (await poll("tv")).state.results!;
-    expect(tally.kind).toBe("read");
-    expect(tally.questions.map((q) => q.id)).toEqual(["H4", "H5", "H6"]);
-    expect(tally.questions[0]!.rows!.map((r) => r[0])).toContain("Calculator");
+    expect((await poll("tv")).state.results).toBeUndefined();
 
     // On to ⚖: every key answer and the liars, on the TV only.
     for (const c of ["trust_chart", "show_the_rankings", "trabolta_overshares", "y2k_clock"]) await mod(c);

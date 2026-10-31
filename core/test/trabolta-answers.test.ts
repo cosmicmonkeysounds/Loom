@@ -402,7 +402,8 @@ describe("Trabolta never knows what he is asking for", () => {
     expect(v("Night.bag_up")).toBe(true);
     await mod("read_truth_txt");
     await mod("the_verdict");
-    rt.tickOnce(34_000); // wave 18b: the ending follows the verdict's TV pages
+    rt.tickOnce(71_000); // wave 59a: nobody found the last answer, so 8-B plays first
+    rt.tickOnce(38_000); // wave 18b: the ending follows the verdict's TV pages
     expect(v("Night.phase")).toBe("grok_prom");
     expect(rt.liveSim!.model.interactions.has("the_line_works")).toBe(false); // no power to accept it himself
     const AFTER = AFTER_THE_VERDICT_SCAN;

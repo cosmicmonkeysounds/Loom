@@ -175,7 +175,7 @@ describe("over the real runtime", () => {
     const to = lines.slice(0, lines.findIndex((l) => l.his)).reduce((n, l) => n + l.text.split(/\s+/u).length, 0);
     expect((await post(rt, "/api/aloud", { scene: scene.id, op: "jump", pos: to }, { token: clippy })).status).toBe(200);
     const said = await poll(rt, before);
-    expect(said.voice.lines[0]!.text).toContain("Thank you, Clippy");
+    expect(said.voice.lines[0]!.text).toContain("Hello? Can you hear me?");
     expect(frames(res).at(-1)!.speaking?.name).toBe("Trabolta");
 
     expect((await post(rt, "/api/mod/aloud", { action: "release" }, { moderator: true })).json).toMatchObject({ ok: true });
@@ -237,7 +237,7 @@ describe("over the real runtime", () => {
     const after = await poll(rt, before);
     expect(after.voice.held).toBeUndefined();
     const said = after.voice.lines.map((l) => l.text);
-    const held = said.findIndex((t) => t.startsWith("Antivirus."));
+    const held = said.findIndex((t) => t.startsWith("This is a problem."));
     const y2k = said.findIndex((t) => t.includes("the Y2K BUG."));
     expect(held, "the beat's own line goes first").toBeGreaterThanOrEqual(0);
     expect(y2k).toBeGreaterThan(held);

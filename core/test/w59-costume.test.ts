@@ -997,7 +997,7 @@ describe("w59 costume: the show's own ending", () => {
     await refused("truth.txt");
     await signal("the_verdict");
     await refused("the verdict's lines");
-    for (let i = 0; i < 12 && peek("Night.phase") !== "grok_prom"; i++) r.advance(5);
+    for (let i = 0; i < 24 && peek("Night.phase") !== "grok_prom"; i++) r.advance(5);
     expect(peek("Night.phase")).toBe("grok_prom");
     await refused("Grok Prom");
     await signal("ask_for_advice");

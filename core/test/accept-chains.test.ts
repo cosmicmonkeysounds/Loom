@@ -102,7 +102,7 @@ describe("the chains after the Y2K clock", () => {
     const { sim, v, aimed } = await atY2K();
     expect(await pressChain(Y2K_TO_VERDICT, aimed, () => {})).toEqual({ ok: true, refused: [] });
     expect(v("Night.phase")).toBe("bobbing");
-    tick(sim, 40);
+    tick(sim, 110); // 8-B (nobody found the last answer), then the verdict's pages
     expect([v("Night.ending"), v("Night.ended")]).toEqual(["song", true]);
   });
 
