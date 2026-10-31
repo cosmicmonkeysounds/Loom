@@ -142,7 +142,7 @@ const KING_PAUSED := "The show is paused."
 const TRAIL_NOTICE := "A golden trail flickers on."
 const DUCK_MOVED := "Gerald moved."
 const DUCK_MOVED_TRAIL := "Gerald moved — follow the arrows."
-## (DRAFT w59) The run reset's notice.
+## (DRAFT w59) The run reset's notice, and Gerald's line adds to it ([method moved_over_reset]).
 const RESET_DONE := "Back at the start."
 ## `--autopilot` gives up (exit 1) after this many seconds.
 const AUTOPILOT_LIMIT := 180.0
@@ -592,7 +592,14 @@ func _on_duck_changed(d: Dictionary) -> void:
 	if autopilot != null:
 		autopilot.plan(route_house, builder.to_house(player.feet()), _autopilot_goal())
 		print("autopilot: the duck moved to %s in %s — re-planned" % [d.get("id", ""), d.get("room", "")])
-	_notice(DUCK_MOVED_TRAIL if trail_revealed else DUCK_MOVED)
+	var up := hud.notice_text() if _notice_left > 0.0 else ""
+	_notice(moved_over_reset(up, DUCK_MOVED_TRAIL if trail_revealed else DUCK_MOVED))
+
+
+## The line for Gerald moving, over the line up now: the reset's own re-deal
+## adds to its notice, so neither is lost (`movedOverReset` in the web game).
+static func moved_over_reset(up: String, moved: String) -> String:
+	return "%s %s" % [RESET_DONE, moved] if up == RESET_DONE else moved
 
 
 ## The map may be the wrong one (`text`), or is right again (`""`).

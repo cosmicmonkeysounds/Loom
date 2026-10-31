@@ -1633,9 +1633,12 @@ The guests' play help never describes any of this.
 For a player stuck on geometry. **R** held for `RESET_HOLD_MS` (5 s,
 `game/reset.ts`) fills a bar; letting go, a blur, ⌘ or a held walk empties it,
 and it fires once per press. The keys held say it, and a key typed in a field
-never reaches them (`typingIn`, read through the tent laptop's shadow root).
+never reaches them (`typingIn`, read through the tent laptop's shadow root); a
+radio or a checkbox isn't a field, since ⚙ Graphics leaves one holding the focus.
 It teleports to the current map's spawn at once, whatever the server says,
-then posts `POST /api/spatial/reset` and adopts the new duck. The Hallway ends
+then posts `POST /api/spatial/reset` and adopts the new duck, and Gerald's line
+adds to the reset's notice instead of replacing it (`movedOverReset`; VR's
+`Game.moved_over_reset`). The Hallway ends
 first and any vision or talk stops; a void's scare finishes first. The
 training, the clock, the path reveal, the level and the visit's hit stay as
 they were, so a reset in the training stays in the training.

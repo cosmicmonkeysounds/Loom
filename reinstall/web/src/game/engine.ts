@@ -89,7 +89,7 @@ import {
 } from "./hud.ts";
 import { combineInput, isActive, keyDown, keyUp, lockedMouseDrag, type StickVector } from "./input.ts";
 import { advance, skipTutorial, startTutorial, tutorialHud, type Tutorial, type TutorialHud } from "./tutorial.ts";
-import { HoldMeter, keyTarget, RESET_DONE, RESET_KEY, typingIn } from "./reset.ts";
+import { HoldMeter, keyTarget, movedOverReset, RESET_DONE, RESET_KEY, typingIn } from "./reset.ts";
 import { IdleLeash } from "./leash.ts";
 import { deviceSpeaker, LinePlayer } from "./lines.ts";
 import type { DeviceSpeaker } from "./lines.ts";
@@ -1846,7 +1846,7 @@ export class Game {
     this.perchedSaid = false;
     this.foundRefusals = 0;
     this.foundCooldownUntil = 0;
-    this.say(duckMovedNotice(this.pathRevealed), 3500);
+    this.say(movedOverReset(this.notice?.text ?? null, duckMovedNotice(this.pathRevealed)), 3500);
   }
 
   private say(text: string, ms: number): void {
