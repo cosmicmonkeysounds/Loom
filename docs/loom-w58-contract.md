@@ -82,7 +82,9 @@ director's `tell_the_truth` (G0 📜). Nothing about any ending was restructured
 - **The seven featured parts** are read only if that program came tonight.
 - **G1** waits. `Night.truth_until` gates its `while:`; a press before that asks first,
   and a second inside 30 s goes on. A beat is instantaneous and nothing waits for
-  speech, so this is the only gate, and its 830 s on either version is an estimate.
+  speech, so this is the only gate, and its 830 s on either version is an estimate. G1
+  puts the phase back at once, so a press while he reads breaks the rest of it: the hosts' note
+  says to wait for his last word.
 - **`task_manager_reads`** hands any ending to Task Manager, for a TV with no voice.
   Nothing warns if nobody holds the part; his pack carries a printed copy, held to the
   story by the test.
@@ -104,6 +106,13 @@ music stops only the music bus.
 **The talk-down is removed.** `talked_down`, the 🕊 cue, the autoend, `stand_down_by`,
 Heart Convinced, Return, Shutdown and Layer Four, and voice-fx's reading of it. The
 heart talk stays; its last rung offers an end, *Heart Heard*, which ends nothing.
+
+**He does not return.** After Combo A or B nothing makes the dead man speak: Heart Pick
+and a stale 📝 card say nothing, a walk into the void is silent and free (before his reveal
+and while he lives it keeps wave 26's rule), and `printer_opened` does nothing after any
+ending. `agentReplyCommit` drops a reply whose body read `awake` true when the world no
+longer does, and asks the thread again. It can't refuse on `awake` alone: the worker's gate
+answers through that route, with the `unavailable` and distress lines.
 
 **truth.txt** keeps its cue and its deadlines (`read_truth_txt` still sets `r3_closed`).
 Its text is a short teaser, in the beat, `TRUTH_TXT`, the printout and the codex entry.

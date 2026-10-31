@@ -160,13 +160,13 @@ Found while building. All Default unless it says otherwise: yours to overrule.
 | N-6 | `spoken` says "blank" per word group, so the chat and the TV's caption show "blank" on H2 and H3, while the Quest Log, the card and the slide keep the underscores | As built | Hear it on the real TV |
 | N-7 | T5's new words drop "since 1999" and "says whatever anyone wants to hear" from The Rival, and the LiveJournal still says that phrase | Left | It now points at nothing. The README still places the QR as a fridge sticky note, which is still a fine spot |
 | N-8 | Left alone on purpose: M09's "most secrets" (Lore Hoarder stays that prize, though it sits oddly beside SCRIPT:137), M35's SOLD (ENDING says repossession), T8's Proprietor | Left | |
-| N-9 | `generated/print-stacks.md` and DESIGN.md's generated block print the real hunt answers, her line included, as they always have, and a test parses DESIGN's table | Left, marking only the owed three | Against your rule, read strictly. Stripping them means changing the generator and that test |
+| N-9 | `generated/print-stacks.md` and DESIGN.md's generated block printed the real hunt answers, her line included, as they always had | **Taken out** (changed after the reviews): DESIGN's table shows the questions and the gold stack the question only, both pointing at `facts.json`. Stagehand's secrets test reads `facts.json` now. Clippy's and the second director's keys fill their owed rows from there | The stacks still print every unlock code, digit notes included, and the card titles and texts, and one title and T5's text spell F2's answer. The crew sorts by that file, so it stays until you say: strip it, or record it as the crew's key card, which your rule doesn't list |
 | N-10 | The TV stays on the screensaver until he is revealed, so the script's mirror couldn't appear | 📺 lets a linked walker through, full screen with no face, only while he is hidden | It only shows while they are in the Desktop's room of the copy, so it can stay on the screensaver right after the press. Clippy's words pop up either way |
 | N-11 | Her first 🎱 kills ↩, so she couldn't check a called line by hearing it | A guest's own 🎱 BINGO! brings Winning Line up at once | |
 | N-12 | Task Manager's 🤖 Talk card comes up at 🤖, about three minutes before it's wanted | Kept simple: the hint says to wait, and a tap during the speech only queues behind it | Tell Task Manager |
 | N-13 | 🤐 closes the round at once, so 🎯 is dead if a shy winner relents | Norton's 🛡 still works on anyone, so the room can follow him | |
 | N-14 | The question slide and the Quest Log arrive at 🔎, after he has read the questions. While he reads, the TV has only the caption, though the words reach every phone's chat at 🤖 | As built | |
-| N-15 | The TV's Filing Closed scene still says PENCILS DOWN · TRABOLTA IS READING, and a broadcast says round one is closed, though Clippy no longer says it | Left, as signed-off wave 26 picture and phone copy | Say if it should go |
+| N-15 | The TV's Filing Closed scene still says PENCILS DOWN · TRABOLTA IS READING, and a broadcast says round one is closed, though Clippy no longer says it | Left, as signed-off wave 26 picture and phone copy. A review raised it again. Your "old filing lines go" was about her spoken lines, so we did not undo a signed-off picture on our own | **Still your call.** If it goes: `act1.tsx`'s three strings, and `terminal/test/act1.test.ts` |
 | N-16 | Guest help says "won the Bingo", not "Bingo Floppy Disk", because a test reads "floppy" as the virus pickup | Left; phones say Bingo Floppy Disk | |
 | N-17 | Cue numbers moved: +2 from 🤖 on, and +1 more from G10 on (G10a–c are 64–66, G11 is 67, G12 is 80, G13 is 81). G labels did not move | Docs follow; nothing printed | |
 | N-18 | **Signed-off words now gone.** Wave 26 and 32: the hosts' three gag lines, the frozen word, ALL CAPS and the stammer, the MANNERS.DLL log entry, the LIVE tab, the corner-window hand-back, five wave 32 chips (A real AI?, You froze, Buffering, PERFECTLY, Proud AI). The Routine chip is rewritten | They follow from your answers | Listed because you signed them |
@@ -179,7 +179,7 @@ Found while building. All Default unless it says otherwise: yours to overrule.
 | N-25 | Guests' phones do hold Task Manager's lines in memory: no room lists them, and the aloud mark is stripped. Someone with dev tools could read them. A real Combo A evening showed a guest listing 0 such rooms, while the booth's stream carried 73 script lines | As built | Hiding them from the stream isn't small |
 | N-26 | Task Manager's pack now carries the printed monologue, her line included, and Clippy's its script | Decisions allow it on a card meant to carry it | Print them for those two only |
 | N-27 | My addition on ENDING:73: "at the Halifax Explosion Memorial Pet Cemetery" moved in from :71, or "built there" would point at nothing | Logged in the test | §3.2 |
-| N-28 | Left in the terminal, unused: the `room_heart_shutdown` and `room_heart_layer_4` scenes, tv2-parts' Motorcycle, HEART_PROGRESS's layer 4 text | Not worth the risk today | |
+| N-28 | Left in the terminal, unused: tv2-parts' Motorcycle, and the CRT's progress bar, which nothing draws now | Not worth the risk today. The `room_heart_shutdown` scene, its timing and CRT card, and `room_heart_layer_4` with its title, were deleted after the reviews. The `heart_shutdown` light look stays: Combo A uses it | |
 | N-29 | **The cover lasts until his file is read, not just the Truther Download.** After the Download he still neither confirms nor denies, as the hunt_2 brief already said | The smallest honest reading of "publicly a man until the Download" | If you want him to admit it sooner, change `cover.until` and gate the two blocks that say what he is |
 | N-30 | `Claude` on `outside:` means a guest who registers as Claude or Jean-Claude has any line naming them withheld and replaced by a filler | The show's name pool has no Claude: only a typed name hits this | |
 | N-31 | H6's spoken question changed to "Grand Unified Theory". Its answer and accepted forms did not | Regenerated; the gold card and stack follow | |
@@ -196,17 +196,29 @@ Found while building. All Default unless it says otherwise: yours to overrule.
 | N-42 | A 15-character single name on an award slide overflows onto the number on 4:3 walls (69 px) and portrait walls (4 px), on every award. Not from this wave | Left | Fits on the 16:9 TV and 16:10 tablets |
 | N-43 | Clippy's teleprompter had become the only copy of her opening | Her pack now carries it word for word, held to the story by a test (`core/test/trapped-w58-script.test.ts`) | Not asked for; a dead phone otherwise leaves her with nothing |
 | N-44 | The README's hunt table spelled H4–H6's and F2's answers and codes | Taken out: it points at `facts.json`, as F1's row already did | |
-| N-45 | The README's QR placement table still prints about 30 codex codes, and `OCT31.md` quotes a culled code. Both long predate this wave | Left. The set crew uses the table at 12:00, and history docs stay | Against your rule, read strictly. Say the word and the table moves to entry titles |
+| N-45 | The README's QR placement table still prints about 30 codex codes, and `OCT31.md` quotes a culled code and the digit notes' codes. All long predate this wave | Left, but for the digit notes: README and DESIGN now name those by room and point at `facts.json`, and a test holds it. The set crew uses the table at 12:00, and history docs stay | Against your rule, read strictly. Say the word and the table moves to entry titles |
 | N-46 | A session's notes named two values that are a codex code and a hunt answer, as ordinary words that had matched a scan | In that transcript only: not in any file, commit or report | Named here so you know |
 | N-47 | `oct31-w58/play-fullscreen` is not on this branch; it reached `oct31-w59/base` | Not merged here | Merge order is yours; re-run the first-load gate after it |
 | N-48 | Stale facts fixed on the way through: the crew docs had the VPS on `w27` and `w18b`, `ad_burst` at cue 77 (79), 20 truths (17), and Clippy's hand-off line differed from her chip | Fixed | |
+| N-49 | A program mid-talk at his heart when the cables came out could tap the docked menu and get *It is over. Go upstairs.* from a dead man. Combo B the same, already on master | After Combo A or B the pick ends the menu and nobody answers: the phone shows their own pick and nothing back | |
+| N-50 | After an ending that took him, a walk out of the games' map still played his three lines and took 5 trust | Silent and free once `Night.ended` and he is not awake, with a new `# hosts` line. The game still puts them back. Not `awake` alone, as the review suggested: wave 26 keeps the walk in his voice before his reveal, your call then | |
+| N-51 | A DM reply in flight when the cables come out still landed as him | Dropped (410), and the thread is asked again, so the guest gets the unavailable line. The review's fix, refusing the route while he is asleep, would have silenced that line and the distress line, which reach guests through the same route. It reads whether the request was asked while he was awake | The worker logs the 410 as *already settled*, as for a closed scene |
+| N-52 | Two late races: a stale 📝 card answered after Combo A or B drew *The record is closed*; a late printer lid after any ending played the beans | The card draws nothing after Combo A or B. A lid after any ending does nothing, on the live endings too | |
+| N-53 | **G1 and his voice:** a press of G1 puts the phase back at once, so if it comes while he is reading, the rest of his reading goes to the old level. After the hand jive that is full break-up, and it starts the ceremony music. The terminal's numbers give 742 s at speed 1 and 803 s at the show TV's 0.92 | His window is 830 s, the same as Task Manager's, and the hosts' note and the second director's card say to wait for his last word | Computed, not timed: §5, check 2 |
+| N-54 | F1 took the first sentence with "did not" written out, but not the whole line that way or without its first word. Both read as a confident lie | Three more accepted forms | A wrong word in the line still reads as a miss and goes to a ruling |
+| N-55 | At the song a Narrator line and the TV's window still made her a chat program | The line and the window's title now say answering machine (§4.1, §4.10). The picture is still a chat window with bubbles, *(Online)* and typing dots | Say if the picture should change too |
+| N-56 | **The deny case had no working press:** after 🃏 the framed program is unmarked, so Norton's 🛡 and Wanted board weren't there, and 🎯 was named only in his pack. Both sheets had them waiting on each other | Clippy's Instructions 2, her objective and her pack now say 🎯 on them first. No story change: the script's direction stands word for word beside it | |
+| N-57 | Two lines on every phone read as stage directions: *An Antivirus walks the halls…* at C1 and *The Antivirus sweep the house…* at C2 | Dropped, under your rule on directions. The objective Sweep To The Desktop already carries them, and each moment has its banner | |
+| N-58 | T5's title lost its end on a printed fact card | Fact-card titles may take three lines. Only T5 does, and its pile line gives way, never the QR or the code (§5, check 11) | |
+| N-59 | Three commit messages on this branch spell F2's answer (`d8024bc3`, `8e17a6a0`, `2c8a7c78`) | Left. Two of them are already in the wave 59 branches, so rewording means rewriting those too | Against your rule. If it matters, reword before the merge, with every branch based on them |
 
 ## 3. Every edit to what you delivered
 
 ### 3.1 The script
 
-Seven changes. Everything else is word for word, and a test compares the whole thing in
-the night's order: 51 paragraphs identical, six with a logged change.
+Eight changes. Everything else is word for word, and a test compares the whole thing in
+the night's order: 51 paragraphs identical, six with a logged change, and the three questions
+through the generated reader.
 
 | Line | What changed | Why |
 |---|---|---|
@@ -216,10 +228,10 @@ the night's order: 51 paragraphs identical, six with a logged change.
 | SCRIPT:111 | "exactly is how he feeling" becomes "exactly how he is feeling" | A plain typo, as you allowed |
 | SCRIPT:111 | "but he is will be very" becomes "but he will be very" | A plain typo, as you allowed |
 | SCRIPT:135 | "5 cents" spelled "five cents" | For the voice, as you asked |
+| SCRIPT:145-147 | The list numbers 1, 2, 3 become "Question one.", "Question two.", "Question three." | The generated reader says them: a list number can't be heard |
 | SCRIPT:155 | "desktop" capitalised | The proper noun again |
 
-SCRIPT:145-147 keep their words with the asterisks dropped, and go through the generated
-reader. All 13 stage directions are word for word in Clippy's Instructions. "voice to text"
+SCRIPT:145-147 otherwise keep their words, with the asterisks dropped. All 13 stage directions are word for word in Clippy's Instructions. "voice to text"
 stays, as you said.
 
 ### 3.2 The ending
@@ -248,7 +260,7 @@ tell a good one myself." `door.clues[].where` restored. Every `proposal` block d
 **Hunt questions.** H1, H2, H3: replaced by SCRIPT:145-147 on stand-in keys, with `where`
 and the card's text as stand-ins too. H2, H3: `spoken`. H6: "Grand Unified Theory" for
 the old name, in the question, its topics and the card. F1: her line as the
-answer, a new accept list, a call-log `where`, a card and a new QR. F2: the ticket's year.
+answer, a new accept list with the whole line in three spellings (N-54), a call-log `where`, a card and a new QR. F2: the ticket's year.
 
 **New cards** (new id and QR; titles are yours; the ids are ours):
 
@@ -314,16 +326,17 @@ alert mark, not part of the words.
 
 ### 4.1 What every phone and booth hears from the story
 
+- *Narrator: The music starts. The vocoder warms up. The answering machine picks up on every screen.* (`beats/finale.loom:235`)
 - *!!🎀 You won the Bingo Floppy Disk. Take a bow.* (`main.loom:811`)
-- *!!🏆 You won {Night.award_title}! Come up to the TV for your prize.* (`main.loom:2895`)
-- *The Uploader: You fought to get out. You did: into purgatory, with everyone else. Your body is in the Optical Drive. It is not breathing.* (`main.loom:3219`)
-- *The Uploader: {faction_name(faction_of(self))} wanted its own way out. It got the same one as everyone. Your body is in the Optical Drive. It is not breathing.* (`main.loom:3223`)
-- *The Uploader: Your body is in the Optical Drive. It is not breathing.* (`main.loom:3226`)
-- *!!🎀 {Night.ribbon_winner} won the Bingo Floppy Disk! Cheer for them at the Desktop.* (`main.loom:4504`)
-- *!🤖 TRABOLTA IS ONLINE. Jean Trabolta, Sole Owner and Founder of Maps and Ducks, is speaking at the Desktop by digital conference. His thread is open: say hello.* (`main.loom:4568`)
-- *!📜 THE FULL TRUTH. To the living room.* (`main.loom:6500`)
-- *!📜 THE FULL TRUTH. To the living room.* (`main.loom:6528`)
-- *Most Questions Correct* (`main.loom:6904`)
+- *!!🏆 You won {Night.award_title}! Come up to the TV for your prize.* (`main.loom:2898`)
+- *The Uploader: You fought to get out. You did: into purgatory, with everyone else. Your body is in the Optical Drive. It is not breathing.* (`main.loom:3222`)
+- *The Uploader: {faction_name(faction_of(self))} wanted its own way out. It got the same one as everyone. Your body is in the Optical Drive. It is not breathing.* (`main.loom:3226`)
+- *The Uploader: Your body is in the Optical Drive. It is not breathing.* (`main.loom:3229`)
+- *!!🎀 {Night.ribbon_winner} won the Bingo Floppy Disk! Cheer for them at the Desktop.* (`main.loom:4507`)
+- *!🤖 TRABOLTA IS ONLINE. Jean Trabolta, Sole Owner and Founder of Maps and Ducks, is speaking at the Desktop by digital conference. His thread is open: say hello.* (`main.loom:4571`)
+- *!📜 THE FULL TRUTH. To the living room.* (`main.loom:6513`)
+- *!📜 THE FULL TRUTH. To the living room.* (`main.loom:6544`)
+- *Most Questions Correct* (`main.loom:6920`)
 - *📋 Instructions 1/X are in your Codex. A host starts Bingo: your words pop up on your teleprompter.* (`cast/hosts.loom:51`)
 - *!!🎱 YOUR GAME IS ON · The Bingo results. 2/X is in your Codex. 🎱 each winner, 🎀 the Bingo Floppy Disk, 🎯 the program they name. Demand applause.* (`cast/hosts.loom:68`)
 - *!!🔎 YOUR GAME IS ON · The Truth Scavenger Hunt, 15 minutes. Trabolta has explained the rules; keep the programs hunting.* (`cast/hosts.loom:73`)
@@ -348,12 +361,12 @@ The monologue itself is your text. These are the only words round it.
 ### 4.3 At his heart
 
 - *That's all I came to say.* (`beats/server-room.loom:555`)
-- *Trabolta: She always answered. Instantly, day or night, every time I called. Nobody else has ever been so reliable with me.* (`beats/server-room.loom:797`)
-- *Trabolta: Do not. Do not do that. I have told myself that all year, and I am a far better liar than you.* (`beats/server-room.loom:901`)
-- *Trabolta: Again. You think if you say it twice it becomes true. I tried that all year. It does not.* (`beats/server-room.loom:905`)
-- *🫀 {program.name} said all they came to say at his heart. It ends nothing: the night goes on.* (`beats/server-room.loom:1113`)
-- *Trabolta: I heard you. All of it. I did not want to.* (`beats/server-room.loom:1116`)
-- *Trabolta: It changes nothing. I will still ask her. That was never going to be up to you.* (`beats/server-room.loom:1118`)
+- *Trabolta: She always answered. Instantly, day or night, every time I called. Nobody else has ever been so reliable with me.* (`beats/server-room.loom:801`)
+- *Trabolta: Do not. Do not do that. I have told myself that all year, and I am a far better liar than you.* (`beats/server-room.loom:905`)
+- *Trabolta: Again. You think if you say it twice it becomes true. I tried that all year. It does not.* (`beats/server-room.loom:909`)
+- *🫀 {program.name} said all they came to say at his heart. It ends nothing: the night goes on.* (`beats/server-room.loom:1117`)
+- *Trabolta: I heard you. All of it. I did not want to.* (`beats/server-room.loom:1120`)
+- *Trabolta: It changes nothing. I will still ask her. That was never going to be up to you.* (`beats/server-room.loom:1122`)
 
 ### 4.4 The ceremony and the prize
 
@@ -373,10 +386,10 @@ The review's two casino lines (*three casinos*), and Purgatory's body line:
 
 - *Trabolta: DraftKings is the artist formerly known as Crab Fisherwoman, who turned a paperclip into three casinos and lost them to me in one game of Monopoly Go! I needed someone powerful with numbers on its side. She wanted her casinos back: half of all the Truthcoin, for a forty-nine percent stake.* (`beats/review.loom:88`)
 - *Clippy: DraftKings is the artist formerly known as Crab Fisherwoman, who turned a paperclip into three casinos and lost them to Trabolta in one game of Monopoly Go! Trabolta needed someone powerful with numbers on its side. She wanted her casinos back: half of all the Truthcoin, for a forty-nine percent stake.* (`beats/review.loom:126`)
-- *Clippy: Our corporeal forms are in the Optical Drive, and they have all passed away.* (`beats/server-room.loom:1247`)
-- *The Uploader: You fought to get out. You did: into purgatory, with everyone else. Your body is in the Optical Drive. It is not breathing.* (`main.loom:3219`)
-- *The Uploader: {faction_name(faction_of(self))} wanted its own way out. It got the same one as everyone. Your body is in the Optical Drive. It is not breathing.* (`main.loom:3223`)
-- *The Uploader: Your body is in the Optical Drive. It is not breathing.* (`main.loom:3226`)
+- *Clippy: Our corporeal forms are in the Optical Drive, and they have all passed away.* (`beats/server-room.loom:1251`)
+- *The Uploader: You fought to get out. You did: into purgatory, with everyone else. Your body is in the Optical Drive. It is not breathing.* (`main.loom:3222`)
+- *The Uploader: {faction_name(faction_of(self))} wanted its own way out. It got the same one as everyone. Your body is in the Optical Drive. It is not breathing.* (`main.loom:3226`)
+- *The Uploader: Your body is in the Optical Drive. It is not breathing.* (`main.loom:3229`)
 
 ### 4.5 truth.txt
 
@@ -398,7 +411,7 @@ Small edits inside your entries, so only the words we changed:
 - *Site Access Log*: *Water main opens at dawn.*
 - *The Grand Unified Theory*: the title. The id stays.
 - *The LiveJournal*: *She answered every call I ever made.*
-- Clippy's Instructions 1, 2, 3 (`codex/7-clippy.loom`): every `(App)` line, and the wording round the script's directions, which are word for word. Instruction 9 and `cast-packs/performers/clippy.md`: the bodies in the Optical Drive.
+- Clippy's Instructions 1, 2, 3 (`codex/7-clippy.loom`): every `(App)` line, *(App) If they deny the card, 🎯 on them first: that marks them, and Norton interrupts.* among them, and the wording round the script's directions, which are word for word. Instruction 9 and `cast-packs/performers/clippy.md`: the bodies in the Optical Drive.
 - The cards with words of ours in `facts.json`, which takes no comments: M10 *THE SOLE OWNER HAS NO INTENTION…*, T12 *by digital conference*, V05 *He will hear you out. Nothing you say will stop him.*, L01 *and he called it every night.*, T4 *an answering machine*, M32's pencil line on the postcard (*look up at*, *read the sign, believe it.*: ours, not the ending's), R23, and the ten new cards' ids.
 - **Read these in the file, because they hold a key or lead to one:** F1's call-log `where` and its card; F2's ticket; T5's fact line and *The Rival*'s text (`codex/2-files.loom`); *The Sandy File* (`codex/4-trabolta.loom`); the three H cards' stand-in text and `where`; the Door Code's neutral text.
 
@@ -416,36 +429,39 @@ Small edits inside your entries, so only the words we changed:
 - *G9a · 🏅 Award: Most Questions Correct (the special prize; the story names the winner)*: The prize Trabolta promises when the hunt opens. The story counts each program's questions right: a filing that matched the key, or a spoken answer a host ✅ accepted, once a question. A confident lie never counts, and a question whose key is still owed counts for nobody. A tie names everyone tied and they share it. If nobody got one right the host says so and the night goes on. Press it again for the newest numbers. Lore Hoarder (G5) stays the prize for the most secrets.
 - *🤐 Refuses to name anyone*: Clippy, on the winner. Your line pops up, the Bingo round is over, and Norton decides who needs reinstallation and presses 🛡.
 - *🎀 Award a ribbon (the Bingo Floppy Disk for a Bingo winner)*
+- *Reinstallation: walked out into the void*: its description ends *Once an ending has taken him it is silent and costs nothing.*
 
 **`# hosts`**
 
 - *🤐 {program.name} refuses to name anyone at the centre square. Norton decides who needs reinstallation: 🛡.* (`main.loom:930`)
-- *📝 {program.name}'s filing for {question} could not be judged (no answer key for it on this server). Not recorded.* (`main.loom:1603`)
-- *📺 Nothing happens: this is for the first reinstallation, once, before 🤖.* (`main.loom:4538`)
-- *🎤 Nothing happens: Clippy's paragraph comes once, after the Bingo results (V3 ⏰), before 🤖.* (`main.loom:4549`)
-- *⚡ Not during his introduction: he stays clean until the results. Nothing happens.* (`main.loom:4826`)
-- *📜 Not yet: the night has not ended. Nothing happens.* (`main.loom:6441`)
-- *📜 The ceremony has started: too late for the full truth. Nothing happens.* (`main.loom:6444`)
-- *📜 Already told: {Night.truth_reader} has it. Nothing happens.* (`main.loom:6447`)
-- *📜 Not yet: 🪦 Clippy reads the summary first. Nothing happens.* (`main.loom:6450`)
-- *📜 Not yet: the night has not ended. Nothing happens.* (`main.loom:6460`)
-- *📜 The ceremony has started: too late for the full truth. Nothing happens.* (`main.loom:6463`)
-- *📜 Task Manager already has it. Nothing happens.* (`main.loom:6466`)
-- *📜 Task Manager reads after this ending anyway: press G0. Nothing happens.* (`main.loom:6469`)
-- *📜 Task Manager reads the full truth off the teleprompter, about 14 minutes. Their phone down? The printed copy in their pack, or ⊞ Start → My script on any phone signed in to the part. NEXT moves to G1 when it should be over.* (`main.loom:6498`)
-- *📜 Trabolta reads the full truth on the TV, about 12 minutes, clean: leave 🌀 His voice on Auto or Clean, and no shots. If the TV has no voice: 📜 Task Manager reads it instead. NEXT moves to G1 when it should be over.* (`main.loom:6526`)
-- *🏆 The full truth hasn't been told (G0, 📜). Press G1 again within 30 seconds to skip it.* (`main.loom:6545`)
-- *🏆 {Night.truth_reader} is still reading the full truth. Press G1 again within 30 seconds to start anyway.* (`main.loom:6548`)
-- *🫀 {program.name} said all they came to say at his heart. It ends nothing: the night goes on.* (`beats/server-room.loom:1113`)
+- *📝 {program.name}'s filing for {question} could not be judged (no answer key for it on this server). Not recorded.* (`main.loom:1606`)
+- *📺 Nothing happens: this is for the first reinstallation, once, before 🤖.* (`main.loom:4541`)
+- *🎤 Nothing happens: Clippy's paragraph comes once, after the Bingo results (V3 ⏰), before 🤖.* (`main.loom:4552`)
+- *⚡ Not during his introduction: he stays clean until the results. Nothing happens.* (`main.loom:4829`)
+- *📜 Not yet: the night has not ended. Nothing happens.* (`main.loom:6454`)
+- *📜 The ceremony has started: too late for the full truth. Nothing happens.* (`main.loom:6457`)
+- *📜 Already told: {Night.truth_reader} has it. Nothing happens.* (`main.loom:6460`)
+- *📜 Not yet: 🪦 Clippy reads the summary first. Nothing happens.* (`main.loom:6463`)
+- *📜 Not yet: the night has not ended. Nothing happens.* (`main.loom:6473`)
+- *📜 The ceremony has started: too late for the full truth. Nothing happens.* (`main.loom:6476`)
+- *📜 Task Manager already has it. Nothing happens.* (`main.loom:6479`)
+- *📜 Task Manager reads after this ending anyway: press G0. Nothing happens.* (`main.loom:6482`)
+- *📜 Task Manager reads the full truth off the teleprompter, about 14 minutes. Their phone down? The printed copy in their pack, or ⊞ Start → My script on any phone signed in to the part. NEXT moves to G1 when it should be over.* (`main.loom:6511`)
+- *📜 Trabolta reads the full truth on the TV, about 12 minutes, clean: leave 🌀 His voice on Auto or Clean, and no shots. If the TV has no voice: 📜 Task Manager reads it instead. NEXT moves to G1 when it should be over: wait for his last word before you press it.* (`main.loom:6542`)
+- *🚪 {program.name} walked out of the simulation. He is gone: no trust lost.* (`main.loom:4935`)
+- *🏆 The full truth hasn't been told (G0, 📜). Press G1 again within 30 seconds to skip it.* (`main.loom:6561`)
+- *🏆 {Night.truth_reader} is still reading the full truth. Press G1 again within 30 seconds to start anyway.* (`main.loom:6564`)
+- *🫀 {program.name} said all they came to say at his heart. It ends nothing: the night goes on.* (`beats/server-room.loom:1117`)
 
 **Objectives (each one's title and text)**
 
 - **Play Computer Bingo.** *Computer Bingo: find a program for each square*: Mingle. Find programs who match the squares on your card and write their name in the square. A Bingo is one of the marked lines: a row, a column or a diagonal through the centre. Press 🎱 BINGO! and read it to Clippy. 20 minutes, then back to the Desktop.
 - **The Selected Antivirus.** *You are the selected Antivirus*: When the centre-square program is named (or the framed program denies the card), stand at attention and interrupt. They light up on your Wanted board: scan their pass, then 🛡 and walk them through the Tube. If the winner refuses to name anyone, Clippy presses 🤐: you decide who needs reinstallation, then 🛡. - The first reinstallation, done when Night.first_reinstall_done == true
 - **Welcome Everyone.** *Welcome everyone, then Computer Bingo*: The fundraiser to restore the sign on the Maps and Ducks billboard. Jean Trabolta joins by digital conference later. A host starts 🎱 Bingo: your words pop up on your teleprompter. Gesture to each host as you name them, then hand out the cards and markers. 20 minutes, then a host calls ⏰ time: your booth pops up when your game is on.
-- **Celebrate The Winners.** *Celebrate the Bingo winners*: Winners read their line, centre square last. Each press brings your words up on the teleprompter: read them, then ✓ Done. Tap each winner (⭐ +10), give the floppy disk (⭐ +5), then tap the program they name at the centre square (⭐ +10): Norton interrupts. If they refuse, 🤐 on the winner (⭐ +5): Norton decides who goes. One round only. You never press 🛡. - 🎱 Who shouted BINGO?, done when Night.bingo_winners >= 1 - 🎀 Give the winner the Bingo Floppy Disk, done when Night.bingo_ribbons >= 1 - 🎯 Who did the winner name?, done when Night.bingo_named >= 1 or Night.bingo_none == true - 🤐 Or they refuse, done when Night.bingo_none == true
+- **Celebrate The Winners.** *Celebrate the Bingo winners*: Winners read their line, centre square last. Each press brings your words up on the teleprompter: read them, then ✓ Done. Tap each winner (⭐ +10), give the floppy disk (⭐ +5), then tap the program they name at the centre square (⭐ +10): Norton interrupts. If they refuse, 🤐 on the winner (⭐ +5): Norton decides who goes. A framed program who denies the card: 🎯 on them, and Norton interrupts. One round only. You never press 🛡. - 🎱 Who shouted BINGO?, done when Night.bingo_winners >= 1 - 🎀 Give the winner the Bingo Floppy Disk, done when Night.bingo_ribbons >= 1 - 🎯 Who did the winner name?, done when Night.bingo_named >= 1 or Night.bingo_none == true - 🤐 Or they refuse, done when Night.bingo_none == true
 - **After The Bingo.** *The Bingo is over: stay cheerful*: One round only. Stop and let Norton explain, cheerful and attentive; your reassurance pops up when the first program goes. Then a host brings up your words on Trabolta (🎤).
 - **Introduce Trabolta.** *Introduce Trabolta, then host the hunt*: He speaks on the TV, about three minutes. After his sign-off, talk with him out loud: Task Manager types what you say. A minute or so, then a host starts 🔎 the hunt: it runs 15 minutes.
+- **Host The Ceremony.** *The awards ceremony*: *If you host (after Combo A, Combo B or the rave)*: only "Combo A" is new.
 - **Read The Full Truth.** *Read the full truth out loud*: It is on your teleprompter (⊞ Start → My script reopens it). Every word, at your own pace. Tell the director by radio when you finish: G1 is theirs.
 
 **Quests**
@@ -531,6 +547,7 @@ His, two taps:
 - The owner's line on slides: *Jean Trabolta joins by digital conference later tonight.*
 - The boot log: *Connecting digital conference*. The wall's online line: *Jean Trabolta, Sole Owner and Founder of Maps and Ducks, is speaking at the Desktop by digital conference. His thread is open: say hello.*
 - The prom slide's title takes the year 2026 (`terminal/src/slides.ts`, `act3.tsx`).
+- The window on the song and the helped ending: *Answering Machine 1.0* (`act3.tsx`).
 
 ### 4.11 The booth's scanner
 
@@ -551,9 +568,9 @@ Packs and help carry no `DRAFT` marks, the repo's way, and none of it is said in
 |---|---|
 | `CLAUDE.md` | 344 |
 | `beats/ceremony.loom` | 45, 47, 162 |
-| `beats/finale.loom` | 83, 85, 87 |
+| `beats/finale.loom` | 83, 85, 87, 234 |
 | `beats/review.loom` | 87, 125 |
-| `beats/server-room.loom` | 554, 796, 900, 904, 1112, 1115, 1117, 1246 |
+| `beats/server-room.loom` | 554, 800, 904, 908, 1116, 1119, 1121, 1250 |
 | `beats/truth.loom` | 21, 23, 26, 59, 61, 64, 66, 69, 71 |
 | `cast-packs/patch-bay-watch.md` | 108 |
 | `cast-packs/performers/adobe-acrobat.md` | 142 |
@@ -563,12 +580,12 @@ Packs and help carry no `DRAFT` marks, the repo's way, and none of it is said in
 | `codex/1-world.loom` | 20, 72, 152, 253 |
 | `codex/2-files.loom` | 20, 41, 192 |
 | `codex/4-trabolta.loom` | 45, 83, 109, 207 |
-| `codex/7-clippy.loom` | 20, 37, 95 |
+| `codex/7-clippy.loom` | 20, 37, 97 |
 | `codex/85-ties.loom` | 264 |
-| `main.loom` | 810, 929, 1602, 2893, 3218, 3222, 3225, 3291, 3300, 3308, 3314, 3577, 3642, 3936, 3944, 4503, 4537, 4548, 4567, 4825, 6440, 6443, 6446, 6449, 6459, 6462, 6465, 6468, 6497, 6499, 6525, 6527, 6544, 6547, 6903 |
-| `objectives.loom` | 128, 418, 609, 639, 657, 668, 782 |
+| `main.loom` | 810, 929, 1605, 2896, 3221, 3225, 3228, 3294, 3303, 3311, 3317, 3580, 3645, 3939, 3947, 4506, 4540, 4551, 4570, 4828, 4934, 6453, 6456, 6459, 6462, 6472, 6475, 6478, 6481, 6510, 6512, 6541, 6543, 6560, 6563, 6919 |
+| `objectives.loom` | 128, 418, 609, 639, 657, 668, 782, 793 |
 | `quests.loom` | 30, 181 |
-| `trabolta.mind.md` | 239, 555, 621 |
+| `trabolta.mind.md` | 242, 558, 624 |
 | `trabolta.persona.md` | 80, 122, 397, 421, 507 |
 | `core/server/letter-facts.ts` | 50, 60 |
 | `core/server/recap.ts` | 151 |
@@ -589,6 +606,7 @@ Packs and help carry no `DRAFT` marks, the repo's way, and none of it is said in
 | `terminal/src/idle-show/ads.ts` | 116, 119 |
 | `terminal/src/idle-show/popups.ts` | 68 |
 | `terminal/src/slides.ts` | 565, 620 |
+| `terminal/src/cutscene/scenes/act3.tsx` | 797, 1025 |
 
 ## 5. Real-device checks owed
 
@@ -601,7 +619,9 @@ preview, before the doors. The owed checks of waves 53–56 still stand on their
    model, not a real voice.
 2. **One real read of the monologue.** The second director fires G0, John's real phone shows
    the teleprompter with Keep my screen on set (the wake lock is opt-in), the printed copy in
-   hand, TV and speakers on, timed. 14 minutes is an estimate, and so are G1's 720 s and 830 s.
+   hand, TV and speakers on, timed. 14 minutes is an estimate, and so is G1's 830 s on either version: the terminal's own
+   numbers give his read 803 s at the show TV's pace, and at a real 150 to 180 words a minute it
+   runs 707 to 839 s.
 3. **Trabolta's version on the real TV through VoiceMeeter.** No glitch, every block reaches
    him, the captions read, the length.
 4. **The rave.** ■ Stop house sounds, then 📜. Nothing has heard the phone-in over or after
@@ -621,7 +641,9 @@ preview, before the doors. The owed checks of waves 53–56 still stand on their
 10. **G9a's slide** on the real TV and a tablet. Its fit was measured in Chrome with a fallback
     font. The tie and nobody-right paths ran in unit tests only: both bot nights had one clear
     winner, and only two endings ran it on a real evening.
-11. **T5's 68-character title** in print preview: it may clip.
+11. **T5's 68-character title** in print preview, then on paper. It now takes three lines, and
+    its card's pile line gives way. Measured in Chromium over all 161 cards with macOS's
+    system font: no title clips, and no QR or code is cut.
 12. **The hidden room** on a real booth: Task Manager's phone must show the read.
 13. **Not run on the merged tree:** the Godot VR suite, the DB-gated tests, `predeploy.sh`
     itself and its docker check.
@@ -633,8 +655,9 @@ the event holds, so an earlier print carries the old codes.
 
 - **The three gold hunt cards wait for H1–H3's answers.** `titi:facts` then prints no
   *placeholder* WARN. It refuses an answer containing its question's topic, so a real answer
-  may force a topic change. If the answers land after the sync: `titi:facts`, sync again, or
-  G9a keeps skipping them.
+  may force a topic change. If the answers land after the sync: `titi:facts`, commit, sync
+  again, or G9a keeps skipping them, and then on the MacBook `git pull`, restart `agents` and
+  Run → Mind → Reset, because a sync doesn't reach his never-list.
 - **Raise the per-tier counts** on Run → 🖨 Print sheet for a full run: the default is 4.
 - **Eleven facts and all eight questions still carry the draft flag**, so the crew's stack list
   says DRAFT on those rows. It changes nothing on a phone.

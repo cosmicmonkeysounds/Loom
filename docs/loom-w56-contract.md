@@ -99,8 +99,8 @@ key; from 0.7 a long one can break in two places.
   (`VOICE_STRETCH_MAX_MS` still caps it).
 - **Digits and names survive.** `packet` never drops either.
 - **Bounded.** A flavour works `WINDOW_WORDS` (12) words of a sentence.
-- **Never broken:** `CLEAN_BEATS` (Heart Convinced, Heart Return, Heart Shutdown,
-  Advice Helped), because the level only falls once those lines have moved the
+- **Never broken:** `CLEAN_BEATS` (Heart Heard, Advice Helped, The Full Truth since
+  wave 58), because the level only falls once those lines have moved the
   story's vars. Announcements and TEST VOICE have no shaper at all.
 - **A plan never costs a line.** A shaper that throws says the sentence plainly.
   A plain sentence takes the old code path, untouched.
