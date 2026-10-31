@@ -86,7 +86,7 @@ stagehand/
 ```bash
 cd stagehand
 uv sync                                            # once; makes .venv
-uv run --extra anthropic pytest                    # 3148 passed + 4 skipped, ~110 s, no hardware, no network
+uv run --extra anthropic pytest                    # 3144 passed + 4 skipped, ~90 s, no hardware, no network
                                                    # (without the extra the SDK's few tests skip)
 uv run pytest tests/test_trapped_house.py -q       # after any story or rig change
 uv run stagehand modules
