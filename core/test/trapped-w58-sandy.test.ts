@@ -54,6 +54,14 @@ describe("F1 under the fold", () => {
     expect(judged(LINE.replace(/'/gu, ""))).toBe("accurate");
     expect(judged(LINE.replace(/[.,]/gu, ""))).toBe("accurate");
   });
+  it("the whole line is right the two ways a person writes it out: no contraction, or no leading word", () => {
+    const written = LINE.replace("didn't", "did not");
+    expect(judged(written)).toBe("accurate");
+    expect(judged(written.replace(/\./gu, ""))).toBe("accurate");
+    const clipped = LINE.slice(LINE.indexOf(" ") + 1);
+    expect(judged(clipped)).toBe("accurate");
+    expect(judged(clipped.replace("didn't", "did not"))).toBe("accurate");
+  });
   it("each half is right, and every form folds to something of its own", () => {
     const [first, second] = LINE.split(". ") as [string, string];
     expect(judged(first)).toBe("accurate");

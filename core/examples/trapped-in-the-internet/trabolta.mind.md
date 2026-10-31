@@ -92,6 +92,9 @@ secrets:
     - please wait while i direct you to an agent
     - wait while i direct you to an agent
     - direct you to an agent
+    - it looks like i did not understand that please wait while i direct you to an agent
+    - looks like i didn't understand that please wait while i direct you to an agent
+    - looks like i did not understand that please wait while i direct you to an agent
     - it looks like i didn't understand that
     - it looks like i did not understand that
     - i didn't understand that
