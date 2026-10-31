@@ -164,7 +164,7 @@ if ($Setup) {
     Write-Host ('setup window opened: ' + $shown)
     Write-Note 'In that window:'
     Write-Note '1. Allow the camera, the microphone and access to apps on this device.'
-    Write-Note '2. Hold the gear 2 s -> advanced -> door sensor -> Connect door sensor -> the Grand Central.'
+    Write-Note '2. Hold the gear 2 s -> advanced -> door sensor -> Connect door sensor -> click the Grand Central row, then the list''s own Connect (grey until a row is picked).'
     Write-Note '3. Check its no-mouse section reads: controller adapter found, whisper is listening.'
     Write-Note '4. Save, close the window, and run this script again with no switches.'
 } else {

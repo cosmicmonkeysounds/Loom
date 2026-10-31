@@ -294,7 +294,8 @@ before the terminal page connects: only one program can hold the port.
 - Web Serial needs **desktop Chrome** (or Edge) on **https** (or
   `localhost`). Safari and Firefox have none.
 - The first time, the terminal's ⚙ (hold 2 s) → *Connect door sensor* opens
-  Chrome's port picker: choose the Grand Central. Chrome remembers the
+  Chrome's port picker: click the Grand Central's row, then the picker's
+  **Connect**, which stays grey until a row is picked. Chrome remembers the
   grant per profile, and the page reconnects with `navigator.serial.getPorts()`
   on every later boot, with no prompt.
 - Grant it **in the kiosk's own profile** (`--user-data-dir="$HOME/.loom-terminal"`),
