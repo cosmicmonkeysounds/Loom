@@ -628,6 +628,38 @@ nothing, and a new one needs the id from the end of its share link.
 **In the MacBook fallback** (§11) the router has no `tidal:` section, so
 every act plays its folder: copy them over.
 
+### 3.8 Mic 1 in the reinstallation games (the TV's sound)
+
+Since wave 59 the router sends the 828x's **Mic/Gtr 1** (input 1, Clippy's
+wireless) to the two reinstallation games, where it plays from the living-room
+TV to any program standing in The Desktop (`audio.game_feed` in
+`trapped.desktop.yaml`, `docs/loom-w59-mic-contract.md`). It goes up to the server
+only while a program is in that room and the mic is over the gate.
+
+**Anything said into that mic is heard in the games**, between scenes too. The
+pack's own mute is the way to keep something off them. CueMix, the house mix and
+the TV's mute don't touch it: they are the room's sound, and this is read straight
+off the input.
+
+1. **Is it running?** The audio log's health line reads `| game feed input 1 →
+   desktop-tv peak -18 dBFS, nobody hearing, sent 0, dropped 0, overflows 0`.
+2. **The level.** Speak into the mic and read that peak, or the input's meter on
+   Run -> House -> 🎚 Mixer. Aim for about -12 dBFS. Too quiet or too hot: the
+   pack and the 828x's trim first, because they change Clippy in the room too; to
+   change only the games, add `gain_db: 6` to the `game_feed` line, then `-Restart
+   audio`.
+3. **Prove it.** Stand a program in The Desktop in a headset or at the tent, and
+   speak: the line says `1 hearing` and `sent` climbs, and the game plays it from
+   the TV. Walk out of the room: it stops, and `sent` stands still.
+4. **`dropped` climbing** is the internet, not the audio: late chunks are thrown
+   away on purpose. The house never hears any of this, and a fault here never
+   reaches the speakers.
+
+**To turn it off:** delete the `game_feed` line in `trapped.desktop.yaml` and
+`-Restart audio`. With the doors open, turn the TV's voice link off on the map
+instead (Run -> House -> 🗺 Map): no restart, but players stop being heard on the
+TV as well.
+
 ## 4. Zigbee2MQTT on the CC2652P
 
 The coordinator is the **Zigbee 3.0 USB dongle, TI CC2652P + CP2102N, 20

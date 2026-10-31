@@ -25,6 +25,10 @@ Shape (`audio.example.yaml` carries a commented copy):
                                    # {device: "VoiceMeeter Aux Output", host_api: mme,
                                    #  output: "VoiceMeeter Aux Input", port: 9333, gain_db: 0}
                                    # — audio/tidal.py; absent: they play their files
+      game_feed: null              # wave 59: an input heard in the reinstallation games at
+                                   # a terminal's screen, on the voice relay (needs
+                                   # passthrough): {ch: 1, spot: desktop-tv, gain_db: 0,
+                                   #  gate_db: -42} — audio/gamefeed.py
       blocksize: 512
       latency: high                # low | high | seconds
       master_db: 0
@@ -82,6 +86,7 @@ from ..alexa.config import DEFAULT_CACHE as ALEXA_CACHE
 from ..module import ConfigError
 from ..paths import user_cache
 from ..show.config import MqttConfig
+from .gamefeed import VOICE_GATE_DBFS, GameFeedConfig
 from .mixer import DUCKED, RESERVED_SOURCES, TAKEOVER, Sidechain
 from .soundtrack import Soundtrack, load_soundtrack
 from .tap import TapConfig
@@ -113,6 +118,8 @@ class AudioConfig:
     tidal: TidalConfig | None = None
     #: Break his voice in real time on the `trabolta` input (wave 56, `voicefx.py`).
     voicefx: bool = False
+    #: An input heard in the reinstallation games (wave 59, `gamefeed.py`).
+    game_feed: GameFeedConfig | None = None
     blocksize: int = 512
     latency: str | float = "high"
     master_db: float = 0.0
@@ -319,6 +326,27 @@ def _tidal(doc: dict) -> TidalConfig | None:
     )
 
 
+def _game_feed(doc: dict) -> GameFeedConfig | None:
+    raw = doc.get("game_feed")
+    if raw is None:
+        return None
+    known = ("ch", "spot", "gain_db", "gate_db")
+    if not isinstance(raw, dict):
+        raise ConfigError(f"audio.game_feed: a mapping {{{', '.join(known)}}}")
+    extra = sorted(set(raw) - set(known))
+    if extra:
+        raise ConfigError(f"audio.game_feed.{extra[0]}: unknown ({', '.join(known)})")
+    spot = raw.get("spot", GameFeedConfig.spot)
+    if not isinstance(spot, str) or not spot.strip() or len(spot.strip()) > 80:
+        raise ConfigError("audio.game_feed.spot: a terminal's id on the show's maps")
+    return GameFeedConfig(
+        ch=int(_num(raw, "ch", GameFeedConfig.ch, 1, 64, "audio.game_feed.")),
+        spot=spot.strip(),
+        gain_db=_num(raw, "gain_db", 0.0, -60, 24, "audio.game_feed."),
+        gate_db=_num(raw, "gate_db", VOICE_GATE_DBFS, -120, 0, "audio.game_feed."),
+    )
+
+
 def _soundtrack(doc: dict, base_dir: str) -> Soundtrack | None:
     path = _path(doc, "soundtrack", base_dir, must_exist=True)
     return load_soundtrack(path) if path is not None else None
@@ -387,6 +415,7 @@ def parse_audio_section(doc: Any, base_dir: str = ".") -> AudioConfig:
         tap=_tap(doc),
         tidal=_tidal(doc),
         voicefx=_bool(doc, "voicefx", False),
+        game_feed=_game_feed(doc),
         blocksize=blocksize,
         latency=latency,
         master_db=_num(doc, "master_db", 0.0, -60, 12),

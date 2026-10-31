@@ -159,7 +159,8 @@ the terminal. Other players in the simulation can't hear you.
 - In a **headset**, your mic is on, and it stays on: nothing mutes it. In
   the lobby, **TEST MIC** shows whether it hears you, and **ASK AGAIN**
   asks for the microphone again if it wasn't allowed.
-- The **tent laptop** has no voice link: the tent is its own room. A
+- The **tent laptop** has no voice link: the tent is its own room. It
+  still plays the sound of the TV in The Desktop. A
   tablet or laptop set up elsewhere may have it. Then **Play here** asks
   to use the microphone, the **🎤** button at the top right (or **M**)
   mutes it, and the bottom line says *🎤 a terminal can hear you* while

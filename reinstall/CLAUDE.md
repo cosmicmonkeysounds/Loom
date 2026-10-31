@@ -84,6 +84,12 @@ presence rooms and `moment`), `spatial-cams.ts`, `spatial-voice.ts` and the
   link is off by default; the terminals hold their mic while playing
   sound, the games raise their gate (D5b) and hold it shut while they play
   a sound or line of their own (`holdFor` / `hold_for`).
+- **The TV's sound** (wave 59, `docs/loom-w59-mic-contract.md`). Stagehand's router
+  sends the 828x's Mic 1 as one more source at the spot `desktop-tv`, so VR hears
+  it with no code of its own (`_test_voice_tv_feed` pins that an APK needs none).
+  The web game with its link off opens a hear-only link (`tvOnly`, `mic=0&only=tv`):
+  no mic, no HUD, the TV alone, on the game's bus. Keep that filter the server's:
+  a terminal a stream merely ignored would still open its mic for nobody.
 - **The moments** (wave 26, C6). The void, Trabolta's heart and the virus
   disk each post `POST /api/spatial/moment`, after flushing a pose; answers
   are read by their `error` string, and any 404 but `no such prop` is an

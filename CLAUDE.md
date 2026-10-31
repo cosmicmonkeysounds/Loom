@@ -485,6 +485,15 @@ the landing: the Desktop's `git pull` and `start-stagehand.ps1 -Restart audio`, 
 the commands are logged as unknown. ⏮ ⏸ and a hand playlist are unproven on the
 real app. Help: `docs/help/authoring/57-music-manager.md`.
 
+**Mic 1 is the TV's sound in the games** (wave 59, not shipped;
+`docs/loom-w59-mic-contract.md`): the Desktop's router sends the 828x's Mic 1
+(Clippy's wireless) to both reinstallation games, where it plays from the TV to a
+program standing in The Desktop. To the server the router is one more terminal at
+`desktop-tv` on the voice relay, so it sends only while someone is in that room,
+and the Quest needs no new APK. The Desktop's `git pull` and `-Restart audio` is
+enough for VR; the tent's web game needs a release (`?only=tv`) and a reload.
+Runbook: `scripts/house-desktop/README.md` §3.8.
+
 ### Release status
 
 The VPS runs **`w56`** (master `d8223795`, shipped 2026-10-30; rollback `w53b`):

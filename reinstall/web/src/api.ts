@@ -675,6 +675,6 @@ export async function postVoice(
 }
 
 /** The voice stream's URL for a player (the session token). */
-export function voiceStreamUrl(base: string, token: string): string {
-  return `${base}/api/spatial/voice/stream?token=${encodeURIComponent(token)}`;
+export function voiceStreamUrl(base: string, token: string, tvOnly = false): string {
+  return `${base}/api/spatial/voice/stream?token=${encodeURIComponent(token)}${tvOnly ? "&mic=0&only=tv" : ""}`;
 }

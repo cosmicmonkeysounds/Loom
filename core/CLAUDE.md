@@ -698,6 +698,12 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   `them.<slot>`, by `Math.sign` whatever was asked; `them.ranges` offers it to a
   guest's request. Every other guest `them.` key is still ignored. Tests:
   `test/w58-music.test.ts`, `test/trapped-w58-music.test.ts`.
+- **The TV's sound in the games** (wave 59, [`docs/loom-w59-mic-contract.md`](../docs/loom-w59-mic-contract.md)).
+  The router is one more source at `desktop-tv` on the voice relay (`?mic=1&hear=0`),
+  which needs nothing here. A game's `?only=tv` stream (`VoiceListener.only`) hears only
+  `view: "tv"` terminals, for the web game with its voice link off. The filter is the
+  relay's so no other terminal is told `listen {on}`. Memory only, like all voice.
+  Tests: `test/spatial-voice.test.ts`, `test/spatial-voice-routes.test.ts`.
 - **Hub files have one owner at a time.** `event-runtime.ts`,
   `views.ts`, `chat.ts` and `sim.ts` are touched by almost every
   feature; when several agents work in parallel, give each of these to

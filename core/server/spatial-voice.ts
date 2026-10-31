@@ -45,6 +45,11 @@ export interface VoiceListener {
    *  under the director's mute). Absent = yes. One that doesn't is routed
    *  nothing, though its own `listen` is still told. */
   hear?: boolean;
+  /** (wave 59) `?only=tv`: a game that hears only the map's `view: "tv"`
+   *  terminals, the TV's sound and nothing else (the web game with its voice
+   *  link off). Judged here, not on the device: a terminal a stream merely
+   *  ignored would still be told `listen {on}` and open its mic to nobody. */
+  only?: "tv";
   send(event: string, data: unknown): void;
   /** End the stream (the session is over, the story reset). */
   close(): void;
@@ -205,7 +210,8 @@ export class VoiceRelay {
    * a player, so nothing hears itself). Only a terminal with an open stream
    * whose mic can be heard is a candidate for a player's ears, and a player
    * whose every stream says `mic=0` for a terminal's; a stream that plays
-   * nothing (`hear=0`) is routed nothing. The rule is same room only (wave
+   * nothing (`hear=0`) is routed nothing, and a game's `only=tv` stream only
+   * the `view: "tv"` terminals (wave 59). The rule is same room only (wave
    * 26): the world's players carry the room they count as being in, and the
    * doorway hysteresis is that presence room's (`presenceRoom`). A player stream
    * whose session ended is closed. Then the diffs go out: `hello` to a new
@@ -233,12 +239,13 @@ export class VoiceRelay {
       if (x.l.kind === "player" && x.l.session !== undefined) playerMic.set(x.l.session, (playerMic.get(x.l.session) ?? false) || x.l.mic !== false);
     }
     const speakers = new Set(w.players.filter((p) => playerMic.get(p.session) !== false).map((p) => p.session));
+    const liveTvs = new Set((house?.terminals ?? []).filter((t) => t.view === "tv" && liveMics.has(t.id)).map((t) => t.id));
     for (const x of this.listeners.values()) {
       const hear = new Map<string, number>();
       if (house !== null && x.l.hear !== false) {
         if (x.l.kind === "player") {
           const me = w.players.find((p) => p.session === x.l.session);
-          if (me !== undefined) for (const t of hearsTerminals(house, me, { only: liveMics })) hear.set(`t:${t.spot}`, t.gain);
+          if (me !== undefined) for (const t of hearsTerminals(house, me, { only: x.l.only === "tv" ? liveTvs : liveMics })) hear.set(`t:${t.spot}`, t.gain);
         } else if (x.l.spot !== undefined && voiceOn(house, x.l.spot)) {
           for (const p of hearsPlayers(house, x.l.spot, w.players, { only: speakers })) hear.set(`s:${p.session}`, p.gain);
         }

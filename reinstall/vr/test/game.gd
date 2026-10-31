@@ -57,6 +57,7 @@ func _run() -> void:
 	_test_voice_codec()
 	_test_voice_uplink()
 	_test_voice_link()
+	_test_voice_tv_feed()
 	_test_voice_silent_mic()
 	_test_voice_mic_states()
 	await _test_voice_generator()
@@ -3707,6 +3708,51 @@ func _test_voice_uplink() -> void:
 	_check(clients.size() == 4 and answers.back()[0] == 200, "voice uplink: a keep-alive the server closed is reopened with no backoff and no lost answer")
 	up.close()
 	_check(not up.connected() and up.queue.is_empty(), "voice uplink: close drops the connection and the queue")
+
+
+## Wave 59: the router's input, as the server sends it, on the show map. No
+## code here knows about it: this pins that an APK needs none. The TV's spot is
+## an ordinary terminal, and its seqs count from the wall clock, in JSON's floats.
+func _test_voice_tv_feed() -> void:
+	var house: Dictionary = _read_json("res://house/house.json")
+	var b := HouseBuilder.new()
+	root.add_child(b)
+	b.build(house)
+	var v := VoiceLink.new()
+	v.builder = b
+	v.use_stream = false
+	v.mic_enabled = false
+	var now := [1000.0]
+	v.clock = func() -> float: return now[0]
+	var pbs := {}
+	v.playback_of = func(e: Node) -> Object:
+		if not pbs.has(e.get_instance_id()):
+			pbs[e.get_instance_id()] = FakePlayback.new()
+		return pbs[e.get_instance_id()]
+	root.add_child(v)
+	var upload := "http://127.0.0.1:7600/e/e1/api/spatial/voice"
+	v.want(upload + "/stream?token=tok", upload, "tok")
+	v.on_frame("hello", {"codec": "mulaw", "rate": 16000, "listen": false})
+	_check(VoiceCodec.voice_on(house, "desktop-tv"), "tv feed: the TV's spot has its voice on")
+	var seq := 8900000000
+	var first := _voice_frame("desktop-tv", seq, 1.0)
+	first["seq"] = float(seq)
+	v.on_frame("voice", first)
+	var e := b.part("Terminal_desktop-tv/Voice") as AudioStreamPlayer3D
+	_check(e != null and v.sources() == ["t:desktop-tv"], "tv feed: a frame for the TV hangs an emitter under its terminal (%s)" % [v.sources()])
+	if e != null:
+		var pb: FakePlayback = pbs[e.get_instance_id()]
+		_check(pb.pushes == [6400], "tv feed: … the jitter target, then the chunk (%s)" % [pb.pushes])
+		now[0] += 200.0
+		var next := _voice_frame("desktop-tv", seq + 1, 1.0)
+		next["seq"] = float(seq + 1)
+		v.on_frame("voice", next)
+		_check(pb.pushes == [6400, 3200], "tv feed: … the next chunk follows it, its seq not taken for stale (%s)" % [pb.pushes])
+	v.on_frame("bye", {"from": "t:desktop-tv"})
+	_check(v.sources().is_empty(), "tv feed: out of the room, gone")
+	v.stop()
+	v.queue_free()
+	b.queue_free()
 
 
 ## The whole link with fakes: listen on / off, the gate, half-duplex, the

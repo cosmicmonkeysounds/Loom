@@ -25,6 +25,11 @@
 //! low-passed at 7 kHz before the 16 kHz resample (no aliased sibilants),
 //! and a track the OS ends (an unplugged headset) reads NO MIC.
 //!
+//! With the voice link off (the tent laptop) a device still hears the TV
+//! (wave 59, `tvOnly`, `docs/loom-w59-mic-contract.md`): the same loop with no mic,
+//! on a stream that says `mic=0&only=tv`, so the server routes it the map's
+//! `view: "tv"` terminals alone and no wall terminal opens its mic for it.
+//!
 //! The codec, the gate, the chunker, the resampler, the jitter rule and the
 //! routing are `@loom/house`'s; this file is the imperative loop, with every
 //! effect injected (the fetcher, the `EventSource`, the audio sink, the mic,
@@ -196,6 +201,9 @@ export interface VoiceLinkOptions {
   sink: VoiceSink;
   /** The mic being opened (null: none asked for, or none to be had). */
   mic: Promise<MicSource | null> | null;
+  /** (wave 59) Hear only the map's `view: "tv"` terminals: this device's voice
+   *  link is off, but the TV's sound is still the TV's sound. */
+  tvOnly?: boolean;
   /** Anything the HUD shows changed. */
   onChange?: () => void;
   fetcher?: typeof fetch;
@@ -428,7 +436,7 @@ export class VoiceLink {
   private open(): void {
     if (this.es !== null || this.dead) return;
     const make = this.o.source ?? ((u: string) => new EventSource(u) as SpatialSource);
-    const url = voiceStreamUrl(this.o.base, this.o.token);
+    const url = voiceStreamUrl(this.o.base, this.o.token, this.o.tvOnly === true);
     const es = make(url);
     this.es = es;
     const on = (name: string, fn: (data: Record<string, unknown>) => void): void =>
@@ -526,6 +534,7 @@ export class VoiceLink {
     const house = this.o.house();
     const spot = house.terminals.find((t) => t.id === spotId);
     if (spot === undefined || !voiceOn(house, spot)) return;
+    if (this.o.tvOnly === true && spot.view !== "tv") return;
     let bytes: Uint8Array;
     try {
       bytes = fromBase64(data);
