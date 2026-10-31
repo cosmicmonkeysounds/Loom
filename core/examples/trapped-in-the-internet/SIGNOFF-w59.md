@@ -376,6 +376,10 @@ preview, before the doors. The owed checks of waves 53–58 still stand on their
 18. **The two gates that aren't device checks:** `ship.sh` refuses any commit `predeploy.sh` didn't
     stamp, and `predeploy.sh` doesn't run the Postgres-gated core tests. Run those on the same
     commit with `DATABASE_URL` set. Any change to the story after that needs both again.
+19. **The terminals' photos** (`docs/loom-w59-photos-contract.md`): 📷 armed on the preview, one real
+    tablet and the Server Room, a still that shows the room in its real light, then disarmed. The VPS's
+    free space too (`df -h` on it), since under 2 GB free the panel stops at once. Only Chromium's fake
+    camera has run it. Run's card, with its ⬇ and 🗑, has never been opened, like the rest of Run.
 
 ## 6. What's owed in print
 

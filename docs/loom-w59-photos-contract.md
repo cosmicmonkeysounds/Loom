@@ -35,7 +35,9 @@ doesn't count: that terminal said no.
   note), `toDataURL`, Chrome 87 to 95. `StillTuner` walks down: the `<video>`, then
   `ImageCapture` off the track, then what the feed has (`newestFeedFrame`, 320 × 240 at
   most, no older than 5 s). Two captures over 400 ms drop a size, and two more settle on
-  the feed's frame, which costs nothing. Every 8 shots on that it tries the top again.
+  the feed's frame, which costs nothing. Every 8 shots on that it tries the top again. Measured
+  in Chromium on the fake camera: 2–4 ms to draw and encode, 12–13 ms at 6× CPU throttle. A real
+  room costs more, and no tablet has been measured.
 - A blank frame on a route that has never shown a picture is a failure, and on one that has
   it's a dark room, sent as it is.
 - `runPhotos` is sequential: never two uploads in flight, 20 s and it gives up on one. A
@@ -77,8 +79,9 @@ on receipt. Files 0600, folders 0700.
   8 terminals × 240 an hour × 7 hours × 60 KB is about 400 MB.
 - **Backups leave the folder out, on every label** (`deploy/backup.sh`). 48 show copies a night
   of 400 MB would fill the disk the cap guards, and would copy pictures of people to the
-  MacBook. So `deploy/restore.sh` brings none back: ⬇ Download all is how they leave.
-- A hub file note: `routes/host.ts` gains the panel, the thumbnail and the arm, and never the
+  MacBook. ⬇ Download all is how they leave. `deploy/restore.sh` leaves the folder alone, since
+  no backup could bring it back; a standby or a dead host has none.
+- **The allowlist** (`routes/host.ts`) gains the panel, the thumbnail and the arm, and never the
   still, the download or Delete all.
 
 ## C4. The panels

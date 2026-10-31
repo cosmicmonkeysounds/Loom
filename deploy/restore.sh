@@ -121,7 +121,7 @@ main() {
 
   # Replace the state volume's contents through the (stopped) loom service.
   compose -p "$project" run --rm --no-deps -T --entrypoint sh loom \
-    -c 'find /data -mindepth 1 -delete && tar xzf - -C /data' < "$st" || die "state restore failed"
+    -c 'find /data -mindepth 1 -maxdepth 1 ! -name photos -exec rm -rf {} + && tar xzf - -C /data' < "$st" || die "state restore failed"
   say "state restored"
 
   compose -p "$project" up -d --no-build db loom

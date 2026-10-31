@@ -70,6 +70,15 @@ export function spotDir(spot: string): string | null {
   return dir === "" || /^\.+$/u.test(dir) || dir.length > SPOT_DIR_MAX ? null : dir;
 }
 
+/** The spot a folder holds. */
+function spotOfDir(dir: string): string {
+  try {
+    return decodeURIComponent(dir);
+  } catch {
+    return dir;
+  }
+}
+
 /** A still's file name. */
 export function photoFileName(at: number): string {
   return `${new Date(at).toISOString().replace(/:/gu, "-")}.jpg`;
@@ -162,7 +171,7 @@ export class PhotoBook {
           row.lastFile = file;
         }
       }
-      tally.set(decodeURIComponent(dir), row);
+      tally.set(spotOfDir(dir), row);
     }
     this.tally = tally;
     return tally;
