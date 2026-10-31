@@ -357,6 +357,22 @@ def test_the_water_is_spelled_for_the_voice():
     assert "ZIP files" in body
 
 
+@pytest.mark.parametrize(
+    "line",
+    [
+        "A fully immersive virtual reality game, program: three rounds of trivia, and a special prize for the most questions correct.",
+        "The books around the house are ZIP files: open one and you extract its text files. What is in them, I do not know.",
+        "All of the clues can be answered through the ZIP files; I do not know which.",
+        "Maps and Ducks is on Lower Water Street, the finest purveyor of maps and decoy ducks east of Montreal.",
+        "I join you by digital conference, program.",
+    ],
+)
+def test_the_scripts_own_words_pass_his_guards(line):
+    model = Model(say(line))
+    assert run(answer_lean(TRABOLTA, MODEL, request(text="What is all this?"), context(), model)).say == line
+    assert len(model.calls) == 1
+
+
 def test_the_unavailable_line_fits_both_ends_of_the_night():
     line = TRABOLTA.unavailable
     assert "later tonight" not in line and "unavailable" in line

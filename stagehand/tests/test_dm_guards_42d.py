@@ -222,9 +222,9 @@ def test_the_guests_own_words_are_never_invented():
     show = TRABOLTA
     assert invented_guard(show, line, (), (heard,))[0] == line
     # A codex title he may tell, quoted, is his own file, never an answer.
-    titled = Reply(say="I can offer you a file—\"The Unified Field Theory\"—for what you know.")
+    titled = Reply(say="I can offer you a file—\"The Grand Unified Theory\"—for what you know.")
     assert invented_guard(show, titled)[2] is True
-    assert invented_guard(show, titled, (), ("The Unified Field Theory",))[0] == titled
+    assert invented_guard(show, titled, (), ("The Grand Unified Theory",))[0] == titled
     # A short run of theirs is still his confirmation of a hiding place.
     asked = "Is the fact in the Start Bar?"
     out, notes, _ = invented_guard(show, Reply(say="The fact is in the Start Bar. Go."), (), (asked,))
@@ -372,7 +372,7 @@ def test_a_price_he_named_is_paid_when_the_fact_arrives():
     non-sequitur, then "Pay me." got "No time."."""
     fact = "Fine. The hand-drawn map in the hallway shows a duck pond where the Maps and Ducks building stands."
     named = ("One fact, fifty Truthcoin.",)
-    line = Reply(say="The Unified Field Theory is ninety-nine point nine percent solved.")
+    line = Reply(say="The Grand Unified Theory is ninety-nine point nine percent solved.")
     assert unpaid(line, check(fact, replies=named)) and "unpaid" in dm_problems(line, check(fact, replies=named))
     assert not unpaid(Reply(say="Fifty Truthcoin. On the 📝 card, now.", acts=(MINT,)), check(fact, replies=named))
     assert unpaid(Reply(say="No time. A fact."), check("Pay me.", replies=(*named, "The theory is nearly solved.")))
