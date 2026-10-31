@@ -14,6 +14,7 @@ import { TWO_ROOMS } from "./houses.ts";
 import { createSfx } from "../src/game/audio.ts";
 import { Game } from "../src/game/engine.ts";
 import { IdleLeash } from "../src/game/leash.ts";
+import { HoldMeter } from "../src/game/reset.ts";
 import { NOT_MARKED, type Program } from "../src/program.ts";
 
 // A frame on a bare Game: the walk itself is not under test here.
@@ -282,6 +283,8 @@ describe("a held frame — no find and no quack under an overlay", () => {
       found,
       // The moments (wave 26): no heart, no disks; in a room, not in the void.
       escaping: false,
+      resetHold: new HoldMeter(),
+      resetBar: 0,
       heartProp: null,
       pickups: [],
       taken: new Set<string>(),

@@ -4649,9 +4649,9 @@ export class EventRuntime {
         // (wave 59) The run reset: back to the spawn, Gerald somewhere new.
         // Commits nothing, so it is open while the doors are closed.
         const out = this.spatial.runReset(token);
-        if (out.kind === "unknown" || out.kind === "over") refuse(out.kind);
+        if (out.kind === "ok") sendJson(res, 200, { ok: true, spawn: out.spawn, duck: out.duck });
         else if (out.kind === "found") sendJson(res, 409, { error: "already found" });
-        else sendJson(res, 200, { ok: true, spawn: out.spawn, duck: out.duck });
+        else refuse(out.kind);
         return true;
       }
       case "/api/spatial/suspend": {
