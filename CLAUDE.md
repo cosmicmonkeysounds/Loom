@@ -556,7 +556,15 @@ voices or the CRT itself. Help: `docs/help/authoring/38-server-room.md`.
 
 ### Release status
 
-The VPS runs **`w56`** (master `d8223795`, shipped 2026-10-30; rollback `w53b`):
+The VPS runs **`show-1031c`** (master `65eb48cd`, shipped 2026-10-31; rollback `show-1031b`, then
+`show-1031`, then `w56`): waves 58 and 59, the Music manager, Mic 1, the nine questions and Trabolta's
+whole script (F3 decides 8-A or 8-B, the monologue before them, the rave after every ending), random audio
+ads, armed terminal photos, the Desk's sub-tabs, and the door and the bay cutting him off at his heart. The
+preview was synced on `show-1031b` (no sync since) and reloaded, paused before the doors. `qr-lock.json`
+is committed: 195 printed identities. Owed: Run → Mind → Reset, Push draft, Go live in place, the Desktop's
+`git pull` and `-Restart audio`, every device reloaded, and the real-device checks on `SIGNOFF-w59.md` §5.
+
+Before it, **`w56`** (master `d8223795`, shipped 2026-10-30; rollback `w53b`):
 waves 54 (one QR per person), 55 (the teleprompter) and 56 (his voice comes
 apart), with `oct31-w53/whisper-origin` and `oct31-w53/server-room-kiosk`. The
 preview was synced (`--keep-maps --keep-audio --keep-lights --keep-desk`) and
