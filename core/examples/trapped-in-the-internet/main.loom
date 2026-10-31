@@ -3756,7 +3756,7 @@ INTERACTION simulation escape attempt
   who: admin
   act: Anytime
   sequence: false
-  description: Fired by the reinstallation games for one program who walked out through the simulation's mud room, 5 m into the void. The game scares them and puts them back in the tent; Trabolta chastises them in the game only; −5 trust each time. # hosts is told.
+  description: Fired by the reinstallation games for one program who walked out through the simulation's mud room, 5 m into the void. The game scares them and puts them back in the tent; Trabolta chastises them in the game only; −5 trust each time. # hosts is told. Once an ending has taken him it is silent and costs nothing.
 
 // w26 (the button's label and description)
 INTERACTION simulation heart reached
@@ -4922,12 +4922,20 @@ when the golden duck for program:
 // R4: a walk out of the mud room into the void. Always Trabolta and −5
 // trust, before his reveal too (the user's decision); the game teleports
 // them back to the tent and owns the scare. The sixth trust site.
+// Wave 58: once an ending has taken him (Combo A, Combo B, G11's credits) the
+// games are a party favour: nobody is watching, so nobody speaks and trust
+// stands. The game still puts them back. (`awake` alone would silence the walk
+// before his reveal too, which R4 keeps.)
 when simulation escape attempt for program:
-  set program.escapes += 1
-  set program.trust = program.truths_accepted * 10 - program.internet_visits * 5 - program.escapes * 5 + program.assessment - program.no_bath * 5
-  // w26 (R4: the hosts hear of it)
-  broadcast "🚪 {program.name} tried to walk out of the simulation (trust −5)." to channel(hosts)
-  -> Escape Attempt
+  if Night.ended == true and Trabolta.awake != true:
+    // DRAFT w58 (crew only)
+    broadcast "🚪 {program.name} walked out of the simulation. He is gone: no trust lost." to channel(hosts)
+  else:
+    set program.escapes += 1
+    set program.trust = program.truths_accepted * 10 - program.internet_visits * 5 - program.escapes * 5 + program.assessment - program.no_bath * 5
+    // w26 (R4: the hosts hear of it)
+    broadcast "🚪 {program.name} tried to walk out of the simulation (trust −5)." to channel(hosts)
+    -> Escape Attempt
 
 // R6: once the King has fallen the game's server room shows his heart.
 // Flavour only, once a night, and only while he is awake: a visit before
