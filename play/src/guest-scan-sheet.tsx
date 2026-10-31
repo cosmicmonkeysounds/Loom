@@ -150,6 +150,17 @@ export function typedScan(raw: string, rooms: readonly ScanRoom[] = [], meId: st
   return TYPED_CODE.test(text) ? { kind: "unlock", code: text } : { kind: "note", text: TYPED_UNKNOWN };
 }
 
+/** `typedScan`, with the server's word on a bare code: one printed on a badge,
+ *  a room or a sign reads as its QR's link, and only what is none of those is
+ *  left to go to the Codex. Rejects when the server couldn't be asked: a code
+ *  nobody could read must not cost a miss. */
+export async function typedRoute(raw: string, rooms: readonly ScanRoom[] = [], meId: string | null = null, printed?: (code: string) => Promise<string | null>): Promise<GuestScan> {
+  const hit = typedScan(raw, rooms, meId);
+  if (hit.kind !== "unlock" || printed === undefined || /^https?:\/\//iu.test(raw.trim())) return hit;
+  const link = await printed(hit.code);
+  return link === null ? hit : guestScan(link, meId);
+}
+
 /** What the sheet says when it couldn't ask what a typed code is. */
 function printedFailure(e: unknown): string {
   return (e as { status?: unknown } | null)?.status === 429 ? REDEEM_THROTTLED : "⚠️ That didn't go through — check your connection and try again.";
@@ -221,16 +232,13 @@ export function ScanSheet({
   };
   const onCode = (raw: string) => run(guestScan(raw, meId));
   const submit = () => {
-    const hit = typedScan(typed, rooms, meId);
-    const clear = () => setTyped("");
-    if (hit.kind !== "unlock" || printed === undefined) return run(hit, clear);
     if (busy.current) return;
     busy.current = true;
     setNote("One moment…");
-    void printed(hit.code).then(
-      (link) => {
+    void typedRoute(typed, rooms, meId, printed).then(
+      (hit) => {
         busy.current = false;
-        run(link === null ? hit : guestScan(link, meId), clear);
+        run(hit, () => setTyped(""));
       },
       (e: unknown) => {
         busy.current = false;

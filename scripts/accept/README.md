@@ -36,7 +36,7 @@ anytime.
 | K-08 | `K-08.sh [nightly\|show]` | The MacBook over ssh to the VPS: a show-night copy, a restore drill into a scratch `loom-drill` project, rollback timing (asks first, restarts the live site twice), the 10-minute backup job |
 | K-10 | `k10.sh before` → End + relaunch → `k10.sh after` | The codes survive End → relaunch. Then scan an old QR on cellular |
 | K-11 | `K-11.md` + `K-11.ts redeem\|rush [n]` | Wrong-codex throttle (8 × 200, then 429). A door rush from one IP passes with the night's `LOOM_RL_*` |
-| K-12 | `K-12.md` | Run → 🖨 Print sheet: join poster, codex posters, room signs (no typed code on a sign). Print one and scan it |
+| K-12 | `K-12.md` | Run → 🖨 Print sheet: join poster, codex posters, room signs, each with its text code. Print one, scan it, and type its code |
 | K-13 | `k13.sh` | iPhone camera scans room-sign QRs: refused while on rails, then checked in after a booth clears the guest |
 | K-14 | `K-14.sh [--no-build]` | Builds terminal + reinstall for `chrome87`/`safari14` and scans the bundles. Then the oldest tablet loads both |
 | K-15 | `K-15.md` | Fully Kiosk tablet stays awake 2 h on the charger. A short tap on ⚙ does nothing (hold 2 s) |

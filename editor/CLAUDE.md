@@ -170,7 +170,8 @@ World, Director, Mind and House close under a lens.
   count per stack; the join poster and door sign off until ticked. Sheets are
   cut in `sheetsOf`, so a page holds exactly its cards, and a skipped card moves
   to a screen-only tray; `printBaseProblem` goes red on a local address; QRs
-  drawn in the browser, keyed by link),
+  drawn in the browser, keyed by link; wave 59: every card has its text code, the
+  printed words are in-world, a room's real name is the screen-only `note`),
   **✉ Letters** (`LettersCard`, wave 41), **🎥 Video consent**
   (`VideoConsentCard` + pure `video-consent.ts`, wave 44: `GET
   /api/mod/video` every 10 s, the opted-out first with their pictures,

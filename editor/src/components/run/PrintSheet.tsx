@@ -417,7 +417,7 @@ export function PrintSheet({ eventId, onClose }: { eventId: string; onClose: () 
           </div>
         )}
         <div className="row" data-testid="print-lock-note">
-          🔒 Every code stays good through Restart, Go live, End → relaunch, new performer + moderator codes and a story edit (`titi:qr-lock`). Renaming a room, a part, a reserved program, a sign's button or a codex code retires what's printed for it.
+          🔒 Every code stays good through Restart, Go live, End → relaunch, new performer + moderator codes and a story edit (titi:qr-lock holds it to that). Renaming a room, a part, a reserved program, a sign's button or a codex code retires what's printed for it.
         </div>
       </div>
       {error && <p style={{ padding: 16, color: '#b91c1c' }}>Could not load the codes: {error}</p>}

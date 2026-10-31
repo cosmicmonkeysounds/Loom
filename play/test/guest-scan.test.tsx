@@ -3,7 +3,7 @@
 //! codex / check-in link that opens with no session shows the code to type
 //! in the app the guest joined with, never the program picker.
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import { ChannelView, Composer } from "../src/chat.tsx";
@@ -14,11 +14,13 @@ import {
   SCAN_DIRECTOR,
   SCAN_INVITE,
   SCAN_JOIN,
+  SCAN_STAFF,
   SCAN_OWN_PASS,
   SCAN_PAIR,
   SCAN_UNKNOWN,
   ScanSheet,
   TYPED_UNKNOWN,
+  typedRoute,
   guestCameraProblem,
   guestScan,
   typedScan,
@@ -157,5 +159,40 @@ describe("the scan sheet's typed code (wave 13)", () => {
     expect(html).toContain("Or type the code");
     expect(html).toContain('class="scan-typed-input"');
     expect(html).toContain('aria-label="Close the scanner"');
+  });
+});
+
+describe("a typed code (wave 59)", () => {
+  const link = (rest: string) => `https://x/?code=EVT&${rest}`;
+
+  it("takes spaces where a keyboard put them, so the server can fold it", () => {
+    expect(typedScan("blue duck 9")).toEqual({ kind: "unlock", code: "blue duck 9" });
+    expect(typedScan("blue-duck")).toEqual({ kind: "unlock", code: "blue-duck" });
+    expect(typedScan("?!")).toEqual({ kind: "note", text: TYPED_UNKNOWN });
+  });
+
+  it("a printed code reads as its QR: a room checks in, a sign acts, a badge is a badge, and none reaches the Codex", async () => {
+    const as = (rest: string) => () => Promise.resolve(link(rest));
+    expect(await typedRoute("r-k7qm", [], null, as("checkin=the-cpu"))).toEqual({ kind: "checkin", at: "the-cpu" });
+    expect(await typedRoute("s k7qm", [], null, as("act=bathroom"))).toEqual({ kind: "act", name: "bathroom" });
+    expect(await typedRoute("abcd efgh", [], null, as("badge=abcdefgh"))).toEqual({ kind: "badge", badge: "abcdefgh" });
+    expect(await typedRoute("abcd efgh", [], null, as("claim=tok&badge=abcdefgh"))).toEqual({ kind: "badge", badge: "abcdefgh" });
+    expect(await typedRoute("abcd efgh ij", [], null, as("part=abcdefghij"))).toEqual({ kind: "note", text: SCAN_STAFF });
+    expect(await typedRoute("evt", [], null, () => Promise.resolve("https://x/?code=EVT"))).toEqual({ kind: "note", text: SCAN_JOIN });
+  });
+
+  it("only what is none of those is left to the Codex", async () => {
+    expect(await typedRoute("blue-duck", [], null, () => Promise.resolve(null))).toEqual({ kind: "unlock", code: "blue-duck" });
+  });
+
+  it("never asks about a room the phone knows, a pass or a link", async () => {
+    const printed = vi.fn(() => Promise.resolve(null));
+    expect(await typedRoute("the desktop", [{ id: "loc:The Desktop", title: "The Desktop" }], null, printed)).toEqual({ kind: "checkin", at: "The Desktop" });
+    expect(await typedRoute("https://x/?code=EVT&unlock=blue", [], null, printed)).toEqual({ kind: "unlock", code: "blue" });
+    expect(printed).not.toHaveBeenCalled();
+  });
+
+  it("a server that can't be asked costs no miss", async () => {
+    await expect(typedRoute("blue-duck", [], null, () => Promise.reject(new Error("offline")))).rejects.toThrow("offline");
   });
 });
