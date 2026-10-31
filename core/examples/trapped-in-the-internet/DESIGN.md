@@ -2817,19 +2817,19 @@ when chess_won for program:
 
 **E2d The cold door's digits — `door_digit_found`** (wave 11, the user's "one clue = one
 digit"). `facts.json` `door.clues` holds four secret notes, one per digit of `door.code`;
-`titi:facts` generates them into `codex/9-facts.loom` (`secret: true`, coded, titles *The Cold Door
+`titi:facts` generates them into `codex/9-facts.loom` (`secret: true`, coded, titles *Server Room
 · the first digit* … *the fourth digit*; no digit in any id, title or code) and into the
 **silver** print stack of `generated/print-stacks.md`, and adds their codes to the mind file's
 `secrets.never`. They hang all night in four rooms, never the server room or a bathroom:
 
 | Note | Code | Where |
 |---|---|---|
-| Cold Door First Digit | `FOGGED-KETTLE` | The Start Bar (kitchen): wedged behind the kettle |
-| Cold Door Second Digit | `FROSTED-MIRROR` | The Graphics Card (bedroom two): taped to the back of the mirror |
-| Cold Door Third Digit | `WARM-LINT` | The Fan Closet (laundry): in the dryer's lint-filter slot |
-| Cold Door Fourth Digit | `LOST-PIECE` | The Steam Room (game room): inside the lid of a board-game box |
+| Server Room First Digit | `FOGGED-KETTLE` | The Start Bar (kitchen): wedged behind the kettle |
+| Server Room Second Digit | `FROSTED-MIRROR` | The Graphics Card (bedroom two): taped to the back of the mirror |
+| Server Room Third Digit | `WARM-LINT` | The Fan Closet (laundry): in the dryer's lint-filter slot |
+| Server Room Fourth Digit | `LOST-PIECE` | The Steam Room (game room): inside the lid of a board-game box |
 
-However a note arrives (a scan, a share, a sale), a ROLE hook (`when program learns Cold Door
+However a note arrives (a scan, a share, a sale), a ROLE hook (`when program learns Server Room
 First Digit:` …) fires `door_digit_found for program`, which sets `program.door_digits` (0 to 4,
 the notes they hold) and, unless they already hold *The Door Code*: at the first note `start
 quest The Cold Door` (*"N of 4. A note with one digit of the cold door's code. The others are

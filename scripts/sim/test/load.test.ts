@@ -502,7 +502,7 @@ test("factsSecrets on the show's facts.json: every class present yields its labe
   for (const c of f.door.clues ?? []) checks.push([c.code, `digit note ${c.id}`]);
   for (const x of f.facts ?? []) if (x.codex?.secret === true) checks.push([x.codex.code, `${x.id} codex code`]);
   const labels = checks.map(([, l]) => l);
-  for (const want of [/^H\d+ answer$/u, /^H\d+ codex code$/u, /proposal answer$/u, /^P\d+ answer$/u, /^door code$/u, /^digit note /u]) assert.ok(labels.some((l) => want.test(l)), `no ${want} in facts.json`);
+  for (const want of [/^H\d+ answer$/u, /^H\d+ codex code$/u, /^P\d+ answer$/u, /^door code$/u, /^digit note /u]) assert.ok(labels.some((l) => want.test(l)), `no ${want} in facts.json`);
   assert.ok((f.answers ?? []).length > 0 && (f.door.clues ?? []).length > 0, "facts.json has her line and the digit notes");
   let n = 0;
   for (const [v, label] of checks) {

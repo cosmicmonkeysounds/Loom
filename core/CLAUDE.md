@@ -101,6 +101,16 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   codes, or a live event's passcodes. `show-page.test.ts` fails if the
   generated `SHOW.html` names any secret it reads from `facts.json` or
   the story.
+- **A hunt key still owed** (wave 58, `facts.ts` `Question.placeholder`). A
+  question may ship before its answer: a stand-in `answer` carrying
+  `PLACEHOLDER_MARK`, flagged `placeholder: true` (`showFactsProblems` refuses
+  one without the other). `judgeWidget` passes a filing on it with no verdict,
+  so the story's own "could not be judged" path answers and nothing is
+  recorded, credited or marked; `screenResultsOf` and the generated tables
+  never show it; `titi:facts`, `loomcheck` and predeploy WARN by id. Tests that
+  need H1–H3 judged run on `test/fixtures/hunt-keys.ts`. A question's optional
+  `spoken` is what the reader says instead of `text` (a blank, which the voice
+  strips); the card, the Quest Log and the slide keep `text`.
 - **Directors stay unseen.** No phone but a director's own (Run, the
   director phone) reads a director's name: guests see the hosts, booths
   (hosts included) read parts by name and every director as "Director".
