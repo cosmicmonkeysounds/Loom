@@ -2,6 +2,7 @@
 //! falls back on, and the loop (`runPhotos`): one upload at a time, nothing while
 //! hidden, a failure quiet and slow.
 
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 import { parseScreenState } from "../src/screen.ts";
@@ -19,6 +20,10 @@ describe("who shoots", () => {
     expect(photoTerminal({ spot: "tent", view: "reinstall" })).toBe(false);
     expect(photoTerminal({ spot: "desktop-tv", view: "tv" })).toBe(false);
     expect(photoTerminal({ spot: " ", view: "auto" })).toBe(false);
+  });
+  it("opens nothing: no acquire, no getUserMedia, nothing in the page, no sound", () => {
+    const src = readFileSync(new URL("../src/photos.ts", import.meta.url), "utf8").replace(/^\/\/!.*$/gmu, "");
+    expect(src).not.toMatch(/\.acquire\(|getUserMedia|useCamera\b|appendChild|sfx\(|\.speak\(/u);
   });
   it("needs the games' camera setting, the one thing that holds the camera open", () => {
     expect(feedWanted({ spot: "hall", camFeed: false, view: "auto" })).toBe(false);
