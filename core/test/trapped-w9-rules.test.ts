@@ -140,7 +140,7 @@ function toBobbing(sim: Sim, opts: { lie?: boolean; retract?: boolean } = {}) {
 // ───────────────────────── 💡 holds the dance (D2) ─────────────────────────
 
 describe("wave 9 — 💡 Restore the house lights holds a pending dance (ALL STOP, D2)", () => {
-  for (const ending of ["patch_combo_a", "patch_combo_b", "talked_down"]) {
+  for (const ending of ["patch_combo_a", "patch_combo_b"]) {
     it(`${ending}: 💡 inside the ten-second blackout cancels the automatic dance; 🪩 plays it later`, { timeout: SLOW }, () => {
       const sim = boot();
       toY2k(sim);
@@ -235,7 +235,7 @@ describe("wave 9 — a server-room ending closes every live 📝 card (T7-02)", 
   const facts = (evs: SimEvent[], g: string) => widgets(evs).filter((w) => w.widget === "fact" && w.audience[0] === g);
   const qs = (w: { params: Record<string, string> }) => (w.params["questions"] ?? "").split("|").map((q) => q.trim()).filter(Boolean);
 
-  for (const ending of ["patch_combo_a", "patch_combo_b", "talked_down"]) {
+  for (const ending of ["patch_combo_a", "patch_combo_b"]) {
     it(`${ending}: the round-3 card becomes the closing card, once, and nothing after deals another`, { timeout: SLOW }, () => {
       const sim = boot();
       // Everyone checks in at the summons, so nobody is late and marked: a

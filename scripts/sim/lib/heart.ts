@@ -58,7 +58,6 @@ export function layerOf(beat: string): string {
   if (b.includes("layer one") || b.endsWith("layer 1")) return "L1";
   if (b.includes("layer two")) return "L2";
   if (b.includes("layer three")) return "L3";
-  if (b.includes("layer four")) return "L4";
   if (b.includes("evidence")) return "Evidence";
   if (b.includes("reasons")) return "Reasons";
   if (b.includes("speak")) return "Speak";

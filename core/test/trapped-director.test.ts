@@ -92,27 +92,27 @@ const countdowns = (sim: Sim) => boardFor(sim).countdowns.map((c) => c.label);
 describe("Trapped in the Internet — wave 10 (the Director page's acts and board)", () => {
   it("every admin cue has an act", () => {
     const rows = rowsOf(Sim.fromSources(SRC));
-    expect(rows).toHaveLength(82); // wave 53: ⏭ appended last, rejoining Anytime; wave 50: 🌀 appended last, rejoining Anytime; wave 48: 🔑 G14 appended last, rejoining G; wave 45: 🚻 G13 appended last, rejoining G; wave 44: 🎬 G12 appended last, rejoining G; wave 32: ⚡ ad_burst appended to Anytime; wave 26: the games' three moments appended to Anytime; wave 11: 👑 and 🔧 appended to Anytime; wave 18b: −☎️ −🪅; wave 20: 🚪 closed / trust + 🕊 autoend appended to E; wave 21: the three staff awards in G, before G11; wave 22: 🔌 Trust the patch bay appended to E
+    expect(rows).toHaveLength(80); // wave 53: ⏭ appended last, rejoining Anytime; wave 50: 🌀 appended last, rejoining Anytime; wave 48: 🔑 G14 appended last, rejoining G; wave 45: 🚻 G13 appended last, rejoining G; wave 44: 🎬 G12 appended last, rejoining G; wave 32: ⚡ ad_burst appended to Anytime; wave 26: the games' three moments appended to Anytime; wave 11: 👑 and 🔧 appended to Anytime; wave 18b: −☎️ −🪅; wave 20: 🚪 closed / trust + 🕊 autoend appended to E; wave 21: the three staff awards in G, before G11; wave 22: 🔌 Trust the patch bay appended to E
     for (const r of rows) expect(r.act, r.id).not.toBe(null);
     // `act:` rides admin cues only — never a performer's or a guest's button.
     const others = (modView(Sim.fromSources(SRC), "open", "x").interactions ?? []).filter((i) => i.who !== "admin");
     for (const i of others) expect(i.act, i.id).toBeUndefined();
   });
 
-  it("the act split is B10 C5 D8 E17 Anytime12 F12 G18 with 44 spine and 38 asides", () => {
+  it("the act split is B10 C5 D8 E15 Anytime12 F12 G18 with 43 spine and 37 asides", () => {
     const acts = cueActs(rowsOf(Sim.fromSources(SRC)));
     const shape = (a: CueAct) => [a.code ?? a.title, a.rows.length, a.spine.length, a.asides.length];
     expect(acts.map(shape)).toEqual([
       ["B", 10, 9, 1], // wave 18b: 🍾 is a spine row after 📋 ×3; ☎️ / 🪅 are gone
       ["C", 5, 2, 3],
       ["D", 8, 5, 3],
-      ["E", 17, 2, 15], // wave 20: three door / heart asides appended (no cue number moved); w20b: 🕊 talked_down joins the spine (NEXT while a stand-down waits); wave 22: 🔌 Trust the patch bay
+      ["E", 15, 1, 14], // wave 20: three door / heart asides appended (no cue number moved); wave 22: 🔌 Trust the patch bay; wave 58: 🕊 and its autoend are gone
       ["Anytime", 12, 0, 12], // wave 26: the games' three moments (escape, heart, pickup); wave 32: ⚡ ad_burst; wave 50: 🌀 dream_toggle; wave 53: ⏭ wave_staff_through
       ["F", 12, 12, 0],
       ["G", 18, 14, 4], // wave 21: G10a–c before G11; wave 44: 🎬 G12, an aside; wave 45: 🚻 G13, an aside; wave 48: 🔑 G14, an aside
     ]);
-    expect(acts.reduce((s, a) => s + a.spine.length, 0)).toBe(44);
-    expect(acts.reduce((s, a) => s + a.asides.length, 0)).toBe(38);
+    expect(acts.reduce((s, a) => s + a.spine.length, 0)).toBe(43);
+    expect(acts.reduce((s, a) => s + a.asides.length, 0)).toBe(37);
     // The two `act: Anytime` lines are one act (💡, the reinstallation cues,
     // and wave 11's 👑 / 🔧, appended last so no cue number moved).
     const anytime = acts.find((a) => a.state === "anytime")!;
@@ -139,26 +139,26 @@ describe("Trapped in the Internet — wave 10 (the Director page's acts and boar
     expect(n.get("second_hunt_preview")).toBe(11);
     expect(n.get("truth_pong")).toBe(16);
     expect(n.get("y2k_clock")).toBe(24);
-    expect(n.get("restore_the_lights")).toBe(37);
-    expect(n.get("final_reveal")).toBe(38);
-    expect(n.get("own_award_lines")).toBe(50);
-    expect(n.get("start_the_ceremony")).toBe(51);
+    expect(n.get("restore_the_lights")).toBe(36);
+    expect(n.get("final_reveal")).toBe(37);
+    expect(n.get("own_award_lines")).toBe(49);
+    expect(n.get("start_the_ceremony")).toBe(50);
     // Wave 21: the staff awards G10a–c sit before G11, which moves down three.
-    expect(["award_staff_trusted", "award_staff_points", "award_staff_mole"].map((id) => n.get(id))).toEqual([61, 62, 63]);
-    expect(n.get("resurrection")).toBe(64);
-    expect(n.get("reinstallation begun")).toBe(67);
+    expect(["award_staff_trusted", "award_staff_points", "award_staff_mole"].map((id) => n.get(id))).toEqual([60, 61, 62]);
+    expect(n.get("resurrection")).toBe(63);
+    expect(n.get("reinstallation begun")).toBe(66);
     // Wave 20: appended after 👑 / 🔧, in act E.
-    expect(["server_door_closed", "server_door_trust", "heart_autoend"].map((id) => n.get(id))).toEqual([70, 71, 72]);
-    // Wave 22: appended after 🕊 autoend, in act E.
-    expect(n.get("trust_patch_bay")).toBe(73);
+    expect(["server_door_closed", "server_door_trust"].map((id) => n.get(id))).toEqual([69, 70]);
+    // Wave 22: appended after 🚪 Trust, in act E.
+    expect(n.get("trust_patch_bay")).toBe(71);
     // Wave 26: appended after 🔌, rejoining Anytime.
-    expect(["simulation escape attempt", "simulation heart reached", "simulation pickup taken"].map((id) => n.get(id))).toEqual([74, 75, 76]);
+    expect(["simulation escape attempt", "simulation heart reached", "simulation pickup taken"].map((id) => n.get(id))).toEqual([72, 73, 74]);
     // Wave 32: ⚡ appended last, rejoining Anytime.
-    expect(n.get("ad_burst")).toBe(77);
+    expect(n.get("ad_burst")).toBe(75);
     // Wave 44: 🎬 appended last, rejoining G.
-    expect(n.get("roll_the_credits")).toBe(78);
+    expect(n.get("roll_the_credits")).toBe(76);
     // Wave 45: 🚻 appended last, rejoining G.
-    expect(n.get("bathroom_report")).toBe(79);
+    expect(n.get("bathroom_report")).toBe(77);
   });
 
   it("focus act along the night", { timeout: SLOW }, () => {
@@ -192,7 +192,7 @@ describe("Trapped in the Internet — wave 10 (the Director page's acts and boar
     advance(sim, 3600);
     // Midnight fires 🌑 itself.
     expect(cueState(sim).lastBy).toBe("story");
-    expect(sheet(sim)).toMatchObject({ last: 38, next: 39, focus: "F" });
+    expect(sheet(sim)).toMatchObject({ last: 37, next: 38, focus: "F" });
   });
 
   it("focus act along the night: Combo A inside the hour, then the ceremony", { timeout: SLOW }, () => {
@@ -201,10 +201,10 @@ describe("Trapped in the Internet — wave 10 (the Director page's acts and boar
     press(sim, "patch_combo_a");
     advance(sim, 11);
     expect(v(sim, "Night.ending")).toBe("disabled");
-    expect(sheet(sim)).toMatchObject({ last: 24, next: 48, focus: "F" });
+    expect(sheet(sim)).toMatchObject({ last: 24, next: 47, focus: "F" });
     press(sim, "trabolta_recounts");
     // After any ending: G1.
-    expect(sheet(sim)).toMatchObject({ last: 48, next: 51, focus: "G" });
+    expect(sheet(sim)).toMatchObject({ last: 47, next: 50, focus: "G" });
   });
 
   it("an out-of-turn 🔌 / 💥 / ❌ is refused with a # hosts reason", { timeout: SLOW }, () => {
@@ -234,7 +234,7 @@ describe("Trapped in the Internet — wave 10 (the Director page's acts and boar
     expect(acts[prev]!.asides.map((r) => r.id)).toEqual([
       "y2k_midnight", "server_door_opened", "reset_server_room", "chess_won",
       "force_majority_stay", "force_majority_leave", "force_their_majority", "patch_combo_a", "patch_combo_b", "patch_rejected",
-      "lights_dance", "server_door_closed", "server_door_trust", "heart_autoend", "trust_patch_bay",
+      "lights_dance", "server_door_closed", "server_door_trust", "trust_patch_bay",
     ]);
     expect(acts.map((a) => a.state)).toEqual(["past", "past", "past", "past", "anytime", "focus", "future"]);
   });

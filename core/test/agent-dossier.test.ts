@@ -158,7 +158,7 @@ describe("buildDossier: the shape", () => {
           "g1.bottle_round": "1",
           "g1.heart_layer": "2",
           "g1.heart_suspicion": "35",
-          "g1.heart_convinced": "false",
+          "g1.heart_heard": "false",
           "g1.heart_out": "false",
         },
       ),
@@ -189,7 +189,7 @@ describe("buildDossier: the shape", () => {
       bottle: { picked: true, choice: "truth" },
       wallet: { balance: 120 },
       gifts: ["The Ribbon"],
-      heart: { layer: 2, suspicion: 35, convinced: false, barred: false, visits: 2 },
+      heart: { layer: 2, suspicion: 35, heard: false, barred: false, visits: 2 },
       said: ["Hello?", `${"x".repeat(DOSSIER_SAID_CHARS - 1)}…`],
       moments: [
         "reinstalled",

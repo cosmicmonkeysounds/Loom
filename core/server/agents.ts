@@ -334,7 +334,7 @@ export interface AgentDossier {
   wallet?: { balance: number };
   /** Titles of the files they gave him. */
   gifts?: string[];
-  heart?: { layer: number; suspicion: number; convinced: boolean; barred: boolean; visits: number };
+  heart?: { layer: number; suspicion: number; heard: boolean; barred: boolean; visits: number };
   /** Their own last lines to him (any thread), clipped. */
   said?: string[];
   /** Short lines of their night, in story order ("joined", "marked", "reinstalled", "filed H3", …). */

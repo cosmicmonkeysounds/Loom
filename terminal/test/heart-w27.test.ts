@@ -186,7 +186,7 @@ describe("the panel as drawn", () => {
   });
 
   it("never names a layer or counts the questions in its header (wave 29)", () => {
-    for (const beat of ["Heart Layer One", "Heart Layer Two", "Heart Layer Three", "Heart Layer Four", "Heart Evidence"]) {
+    for (const beat of ["Heart Layer One", "Heart Layer Two", "Heart Layer Three", "Heart Evidence"]) {
       const html = renderToStaticMarkup(createElement(ChoicePanel, { menu: { ...big, beat }, doorOpen: false, onPick: async () => {}, numberKeys: true, onActivity: () => {} }));
       const head = /<div class="heart-head">(.*?)<\/div>/su.exec(html)?.[1] ?? "";
       expect(head).toContain("YOUR ANSWER");

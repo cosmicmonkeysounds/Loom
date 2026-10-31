@@ -381,8 +381,8 @@ def dossier_block(dossier: Any) -> str | None:
         # Wave 29: never "layer n" or a count. He said it aloud once; how far
         # they got is said in his own words, and suspicion in words too.
         bits = [x for x in (heart_progress(heart.get("layer")), heart_wariness(heart.get("suspicion"))) if x]
-        if heart.get("convinced") is True:
-            bits.append("they convinced you once")
+        if heart.get("heard") is True:
+            bits.append("they said all they came to say, and you heard it")
         if heart.get("barred") is True:
             bits.append("barred from your heart")
         if isinstance(heart.get("visits"), int):

@@ -333,15 +333,12 @@ describe("wave 18b ending — The Night In Review (R8)", () => {
     expect(beats(evs).at(-1)).toBe("The Ceremony");
   });
 
-  it("speaks in the ending's voice: weak after `disabled` and `hand_jive`, quiet when talked down, rebooting before The Ceremony's \"Reboot complete.\"", { timeout: SLOW }, () => {
+  it("speaks in the ending's voice: weak after `disabled` and `hand_jive`, rebooting before The Ceremony's \"Reboot complete.\"", { timeout: SLOW }, () => {
     const opener = (sim: Sim) => said(review(sim)).filter((e) => e.speaker === "Trabolta");
     const dis = opener(ceremony("disabled"));
     expect(dis[0]!.text).toMatch(/^I am going\. First, a review of the night\./u);
     expect(dis[0]!.manner).toBe("weakly");
     expect(dis.find((e) => e.text.startsWith("That is the review."))!.manner).toBe("weakly");
-    const td = ceremony("disabled");
-    td.setVar("Night.talked_down", "true");
-    expect(opener(td)[0]!.manner).toBe("quietly");
     const hj = opener(ceremony("hand_jive"));
     expect(hj[0]!.text).toMatch(/^Rebooting\. While I reboot, a review of the night\./u);
     expect(hj[0]!.manner).toBe("weakly");

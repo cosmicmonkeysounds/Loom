@@ -127,9 +127,9 @@ def test_the_shipped_persona_has_its_situations_and_whitelists():
         "the beans",
         "heart to heart",
     ]
-    assert {"at_the_heart", "heart_menu", "heart_convinced", "heart_chat", "heart_out"} <= set(p.them or ())
+    assert {"at_the_heart", "heart_menu", "heart_heard", "heart_chat", "heart_out"} <= set(p.them or ())
     assert "heart_layer" not in (p.them or ())  # wave 29: how far they got reaches him only in words
-    assert {"Night.heart_opened", "Night.talked_down", "Night.heart_stage", "Night.server_door"} <= set(p.facts)
+    assert {"Night.heart_opened", "Night.heart_stage", "Night.server_door"} <= set(p.facts)
     assert "stand_down" not in [x["id"] for x in allowed_powers(p, heart_request())]
 
 

@@ -29,10 +29,6 @@ INTERACTION server_door_trust
   label: 🚪 Trust the door sensor
   who: admin
 
-INTERACTION heart_autoend
-  label: 🕊 Autoend
-  who: admin
-
 INTERACTION radio_door_opened
   label: 📻 Door opened
   who: performer
@@ -96,7 +92,7 @@ function rig() {
 
 describe("the quiet door (wave 20)", () => {
   it("lists the quiet signals and beats, folded", () => {
-    for (const n of ["server_door_opened", "server_door_closed", "server_door_trust", "heart_autoend", "trust_patch_bay"]) expect(QUIET_MOMENT_SIGNALS).toContain(foldName(n));
+    for (const n of ["server_door_opened", "server_door_closed", "server_door_trust", "trust_patch_bay"]) expect(QUIET_MOMENT_SIGNALS).toContain(foldName(n));
     for (const n of ["Heart Nag", "Heart Door Again", "Heart Door Shut", "Heart Sealed"]) expect(QUIET_MOMENT_BEATS).toContain(foldName(n));
     expect(QUIET_MOMENT_BEATS).not.toContain(foldName("The Heart"));
   });
@@ -106,7 +102,6 @@ describe("the quiet door (wave 20)", () => {
     s.sim.signal("server_door_opened");
     s.sim.signal("server_door_closed");
     s.sim.signal("server_door_trust");
-    s.sim.signal("heart_autoend");
     s.at(11_000);
     expect(s.look()).toEqual([]);
   });

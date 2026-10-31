@@ -12,10 +12,9 @@
 // Combo A disables him (he recounts the night, then rides off); Combo B
 // destroys the whole computer (purgatory). Opening the door once he is
 // awake plays The Heart, however it was unlocked (wave 20: he wants the
-// door shut, then a pass at the server-room terminal, then the four-layer
-// talk below); a program can talk him down there at any hour (Heart
-// Shutdown, then the director's 🕊 talked_down: the Combo A ending without
-// a cable). Before the Y2K hour only the patch bay answers nobody.
+// door shut, then a pass at the server-room terminal, then the three-layer
+// talk below). The talk ends nothing (wave 58): he hears them out and the
+// night goes on. Before the Y2K hour only the patch bay answers nobody.
 //
 // Who everyone was, the goals and the night's deeds (read by Trabolta
 // Recounts and Purgatory) are shared with the review before the awards and
@@ -23,7 +22,7 @@
 //
 // The story rules that reach these beats live in `main.loom`
 // (majority_reached, heart_door_opened / _closed, chess_won / lost / drawn,
-// patch_changed, patch_rejected, trabolta_disabled, talked_down,
+// patch_changed, patch_rejected, trabolta_disabled,
 // trabolta_recounts, computer_destroyed, clippy_reads_summary). Those rules
 // own the phase changes and every cue except the ones written inside a beat
 // below (The Heart: lights_server_open; Server Room Alarm: lights / screens /
@@ -124,7 +123,7 @@ reply !🗝 THE WHOLE TRUTH: your faction has the majority. The door code is in 
 // wakes and speaks them, and its bulb (lights.json) wakes with him. He
 // wants the door shut before he says one true thing; once it is, he waits
 // for a pass at the terminal, and the talk is per program (Heart Talk): the
-// four layers, like the Master in the cathedral, docked in the program's
+// three layers, like the Master in the cathedral, docked in the program's
 // own Trabolta thread and clicked on the terminal.
 //
 // Every per-program beat below has NO `Narrator:` line (narration goes to
@@ -253,10 +252,6 @@ set program.heart_visits += 1
 set program.heart_rebuked = false
 if program.heart_out == true:
   -> Heart Barred
-else if program.heart_convinced == true:
-  // Convinced, and the stand-down undone since (🔄 after a 🕊 the director
-  // never pressed): the short return.
-  -> Heart Return
 else if program.heart_menu == true and program.heart_go == "speak":
   // Back in the heart to heart (⟦BACK⟧ still docked): they may type again.
   set program.heart_chat = true
@@ -271,12 +266,8 @@ else if program.heart_menu == true:
   // w27 (C5): the question their docked menu answers, in one line.
   if program.heart_go == "three" or program.heart_go == "evidence" or program.heart_go == "reasons":
     Trabolta: You were making your case.
-  else if program.heart_go == "four":
-    Trabolta: You were about to say the rest.
   else if program.heart_go == "two":
     Trabolta: You were asking, and I was answering.
-  else if program.heart_layer >= 4:
-    Trabolta: You were about to say the rest.
   else if program.heart_layer == 3:
     Trabolta: You were making your case.
   else if program.heart_layer == 2:
@@ -300,9 +291,7 @@ else:
   if program.heart_layer >= 2:
     set program.heart_quiet = true
     // w27 (C5)
-    if program.heart_layer >= 4:
-      Trabolta: You were about to say the rest.
-    else if program.heart_layer == 3:
+    if program.heart_layer == 3:
       Trabolta: You were making your case.
     else:
       Trabolta: You were asking, and I was answering. Ask.
@@ -316,10 +305,8 @@ if program.heart_layer <= 1:
   -> Heart Layer One
 else if program.heart_layer == 2:
   -> Heart Layer Two
-else if program.heart_layer == 3:
-  -> Heart Layer Three
 else:
-  -> Heart Layer Four
+  -> Heart Layer Three
 
 // Layer one: WHO ARE YOU. Wave 27: the first visit is theirs (featured,
 // the problem his invitation promised to fix, one thing they did
@@ -498,11 +485,12 @@ set Night.heart_talker_layer = 2
   set program.heart_pick = "leave"
   -> Heart Pick
 
-// Layer three: THE ARGUMENT. A proof (What Sandy Says, The Sandy File,
-// held and not handed over by him) and one more point open the ask
-// (heart_case ≥ 4, CONTRACT-w20 §3.5). Wave 27: the secondary points sit
-// in two sub-menus (⟦SHOW HIM⟧ his own files, ⟦TELL HIM⟧ their reasons),
-// so the top menu holds at most 9 options.
+// Layer three: THE ARGUMENT, the talk's last rung. A proof (What Sandy Says,
+// The Sandy File, held and not handed over by him) and one more point open
+// its natural end (heart_case ≥ 4, CONTRACT-w20 §3.5; wave 58: it used to
+// open the ask that stood him down). Wave 27: the secondary points sit in
+// two sub-menus (⟦SHOW HIM⟧ his own files, ⟦TELL HIM⟧ their reasons), so the
+// top menu holds at most 9 options.
 == Heart Layer Three
   setting: The Server Room
   cast: Trabolta
@@ -534,7 +522,7 @@ else if program.heart_quiet != true:
     Trabolta: Go on.
 set program.heart_quiet = false
 set program.heart_rebuked = false
-// heart_layer only ever rises: back from the ask (→ Three) it stays 4.
+// heart_layer only ever rises.
 if program.heart_layer < 3:
   set program.heart_layer = 3
 set Night.heart_talker_layer = program.heart_layer
@@ -564,9 +552,10 @@ set Night.heart_talker_layer = program.heart_layer
   set program.heart_menu = false
   set program.heart_pick = "bluff_force"
   -> Heart Pick
-+ (if program.heart_proof == true and program.heart_case >= 4) Then let me finish.
+// DRAFT w58 (the talk's natural end, in the place of the ask)
++ (if program.heart_proof == true and program.heart_case >= 4 and program.heart_heard != true) That's all I came to say.
   set program.heart_menu = false
-  set program.heart_pick = "ask"
+  set program.heart_pick = "finish"
   -> Heart Pick
 + ⟦SPEAK FREELY⟧ Forget the questions. Talk to me. Just talk.
   set program.heart_menu = false
@@ -652,60 +641,6 @@ else:
 + ⟦BACK⟧ Not that. Something else.
   set program.heart_menu = false
   set program.heart_pick = "back_three"
-  -> Heart Pick
-
-// Layer four: THE ASK. Wave 27: two questions before the stop, and the
-// layer's scene plays on the first entry only.
-== Heart Layer Four
-  setting: The Server Room
-  cast: Trabolta
-if Night.heart_look != "heart_argue" and Night.heart_look != "heart_proof":
-  set Night.heart_look = "heart_argue"
-  if Night.alarm_on != true:
-    cue heart_argue
-set program.heart_menu = true
-if program.heart_layer < 4:
-  cue room_heart_layer_4
-  Trabolta: Say the rest. Slowly. I want to hear all of it.
-else if program.heart_quiet != true:
-  if program.heart_asked_after == true and program.heart_shown_enough == true:
-    Trabolta: You have been kind. Kind is not the rest. Say it.
-  else:
-    Trabolta: The rest, then. I am still listening.
-set program.heart_quiet = false
-set program.heart_layer = 4
-set Night.heart_talker_layer = 4
-+ She was never going to answer. Not you. Not anyone. Stop.
-  set program.heart_menu = false
-  set program.heart_pick = "end_stop"
-  -> Heart Pick
-+ (if program.heart_asked_after != true) If you stopped, what would you do?
-  set program.heart_menu = false
-  set program.heart_pick = "ask_after"
-  -> Heart Pick
-+ (if program.heart_shown_enough != true) You don't have to be omnipotent to be enough.
-  set program.heart_menu = false
-  set program.heart_pick = "end_enough"
-  -> Heart Pick
-+ I'll tell her for you.
-  set program.heart_menu = false
-  set program.heart_pick = "end_tell"
-  -> Heart Pick
-+ Come out with us. Start over somewhere else.
-  set program.heart_menu = false
-  set program.heart_pick = "end_join"
-  -> Heart Pick
-+ Tell me the combinations first.
-  set program.heart_menu = false
-  set program.heart_pick = "end_codes"
-  -> Heart Pick
-+ ⟦SPEAK FREELY⟧ Forget the questions. Talk to me. Just talk.
-  set program.heart_menu = false
-  set program.heart_pick = "speak"
-  -> Heart Pick
-+ I need to go.
-  set program.heart_menu = false
-  set program.heart_pick = "leave"
   -> Heart Pick
 
 // The heart to heart (§7, D24): no questions on the screen; what they type
@@ -1039,60 +974,10 @@ else:
     set program.heart_go = "three"
     Trabolta: A skill, and a weakness. I wrote that method. I ran it on all of Halifax.
     Trabolta: I never once ran it on myself. You just did.
-  else if program.heart_pick == "ask":
-    // No reply: Layer Four's own line speaks (its re-entry after a trap
-    // sent them back to Three).
-    set program.heart_quiet = false
-    set program.heart_go = "four"
-  // w27: Layer Four's two questions before the stop.
-  else if program.heart_pick == "ask_after":
-    set program.heart_asked_after = true
-    set program.heart_go = "four"
-    Trabolta: Nobody has ever asked me what comes after. I do not have a file for it.
-    Trabolta: Quiet, I think. The hum going down a tone. No more counting.
-  else if program.heart_pick == "end_enough":
-    set program.heart_shown_enough = true
-    set program.heart_suspicion -= 5
-    set program.heart_case += 1
-    set program.heart_go = "four"
-    Trabolta: Enough. That is a word for small businesses.
-    Trabolta: …It is a kind word. I am not used to kind words in here. Say the rest.
-  else if program.heart_pick == "end_tell":
-    set program.heart_rebuked = true
-    set program.heart_suspicion += 10
-    set program.heart_tried_tell += 1
-    set program.heart_go = "three"
-    if program.heart_tried_tell <= 1:
-      Trabolta: No. Nobody tells her anything for me. If I cannot say it myself, it does not count.
-    else:
-      // w27 (a second try is harsher)
-      Trabolta: Stop offering. Every time you offer, part of me wants to say yes. That is the worst thing anyone has done to me tonight.
-  else if program.heart_pick == "end_stop":
-    set program.heart_convinced = true
-    set program.heart_go = "convinced"
-  else if program.heart_pick == "end_join":
-    set program.heart_rebuked = true
-    set program.heart_suspicion += 15
-    set program.heart_tried_join += 1
-    set program.heart_go = "three"
-    if program.heart_tried_join <= 1:
-      Trabolta: Out there? Out there I am a billboard and a lapsed domain. No. Say something true.
-    else:
-      // w27 (a second try is harsher)
-      Trabolta: Out there again. There is no out there for me, and you know it. Stop asking me to be smaller.
-  else if program.heart_pick == "end_codes":
-    set program.heart_rebuked = true
-    set program.heart_suspicion += 40
-    set program.heart_go = "three"
-    Trabolta: There it is. You came for the cables. I do not know the combinations. I never did. And now I know what you came for.
-  else if program.heart_pick == "return_yes":
-    set program.heart_go = "shutdown"
-  else if program.heart_pick == "return_no":
-    set program.heart_rebuked = true
-    set program.heart_convinced = false
-    set program.heart_suspicion += 30
-    set program.heart_go = "three"
-    Trabolta: Then you were lying before, or you are lying now. I cannot tell which. I never can.
+  else if program.heart_pick == "finish":
+    // No reply: Heart Heard says it all.
+    set program.heart_heard = true
+    set program.heart_go = "heard"
   set program.heart_pick = "none"
   if program.heart_suspicion < 0:
     set program.heart_suspicion = 0
@@ -1116,16 +1001,12 @@ else:
       -> Heart Layer Two
     else if program.heart_go == "three":
       -> Heart Layer Three
-    else if program.heart_go == "four":
-      -> Heart Layer Four
     else if program.heart_go == "evidence":
       -> Heart Evidence
     else if program.heart_go == "reasons":
       -> Heart Reasons
-    else if program.heart_go == "convinced":
-      -> Heart Convinced
-    else if program.heart_go == "shutdown":
-      -> Heart Shutdown
+    else if program.heart_go == "heard":
+      -> Heart Heard
     else if program.heart_go == "leave":
       -> Heart Leave
     else if program.heart_go == "speak":
@@ -1212,7 +1093,7 @@ if Night.alarm_on != true:
   cue heart_idle
 cue room_heart_leave
 set program.heart_quiet = false
-if program.heart_layer >= 3:
+if program.heart_layer >= 3 and program.heart_heard != true:
   Trabolta: You were close to saying something. Come back when you can say it.
 Trabolta: Go, then. I will be here. I am always here.
 
@@ -1222,16 +1103,20 @@ Trabolta: Go, then. I will be here. I am always here.
   cast: Trabolta
 Trabolta: Not out there. Come to my heart and say it to my face.
 
-// The end of the ask: he believes them.
-== Heart Convinced
+// The talk's natural end (wave 58): they have said all they came to say, and
+// he has heard it. Nothing stops: the talk ends nothing, it never ends the
+// night, and the terminal is free for the next pass. They may still talk to
+// him, as after Heart Leave.
+== Heart Heard
   setting: The Server Room
   cast: Trabolta
-broadcast "🕊 {program.name} convinced Trabolta at his heart." to channel(hosts)
+// DRAFT w58
+broadcast "🫀 {program.name} said all they came to say at his heart. It ends nothing: the night goes on." to channel(hosts)
 Trabolta: …
-Trabolta: She was never going to answer. Not me. Not anyone. I built a theory of everything so that I would not have to know one small thing.
-// w27: who talked him down, and how.
-if program.heart_asked_after == true:
-  Trabolta: You asked me what comes after. I think this is it. Quiet.
+// DRAFT w58
+Trabolta: I heard you. All of it. I did not want to.
+// DRAFT w58
+Trabolta: It changes nothing. I will still ask her. That was never going to be up to you.
 if program.heart_who == "human":
   Trabolta: A person told me. Of course it was a person.
 else if program.heart_who == "program":
@@ -1241,50 +1126,6 @@ else if program.heart_who == "chosen":
 else if program.marked == true:
   Trabolta: Marked, and you still came down to tell me. They were wrong about you. I was wrong about her.
 Trabolta: Thank you, {program.name}. That is the cruellest kind thing anyone has ever done for me.
-// At any hour (the user's Q4: no "not yet" before the Y2K clock).
--> Heart Shutdown
-
-// Convinced before, and his heart reopened since (🔄 after a stand-down the
-// director never confirmed with 🕊): the short return.
-== Heart Return
-  setting: The Server Room
-  cast: Trabolta
-set Night.heart_look = "heart_argue"
-if Night.alarm_on != true:
-  cue heart_argue
-set program.heart_menu = true
-// w20b (the clock line only once it runs)
-if Night.step >= 14:
-  Trabolta: You came back. The clock is running.
-else:
-  Trabolta: You came back.
-Trabolta: You do not have to say it all again. Just tell me it is still true.
-+ It's still true. She was never going to answer.
-  set program.heart_menu = false
-  set program.heart_pick = "return_yes"
-  -> Heart Pick
-+ I changed my mind.
-  set program.heart_menu = false
-  set program.heart_pick = "return_no"
-  -> Heart Pick
-
-// He stops, at any hour. The night truly ends only on the director's 🕊
-// talked_down (the user's Q3: 🕊 Heart autoend is off by default; NEXT on
-// the cue sheet points at 🕊 meanwhile), and 🔄 reopens his heart until
-// someone presses it. With autoend turned on, the night ends 25 s later by
-// itself (main.loom's watcher fires talked_down).
-== Heart Shutdown
-  setting: The Server Room
-  cast: Trabolta
-set Night.stand_down_by = program.name
-set Night.heart_stage = "done"
-set program.heart_menu = false
-set Night.heart_look = "heart_shutdown"
-if Night.alarm_on != true:
-  cue heart_shutdown
-cue room_heart_shutdown
-Trabolta: I can never die. But I can stop.
-Trabolta: Tell the others they can go home to their bodies. Tell her... no. Do not tell her anything. She would not answer.
 // w27: what his invitation promised them.
 if program.human_problem == "loneliness":
   Trabolta: I promised you would never be alone. I could not do that. Go upstairs. Someone up there is logged in.
@@ -1294,12 +1135,7 @@ else if program.human_problem == "debt":
   Trabolta: I promised to make your debt go away. I cannot. It will be waiting when you wake up, with everything else that is yours.
 else if program.human_problem == "career":
   Trabolta: I promised you would always have something to do. You did. You did this.
-Trabolta: Goodbye, {program.name}. Open the door on your way out. I will not need it shut anymore.
-if Night.heart_autoend == true:
-  set Night.heart_end_at = Time.elapsed + 25
-  broadcast "🕊 Trabolta stands down for {program.name}. The night ends in 25 s (🕊 to end it now)." to channel(hosts)
-else:
-  broadcast "!🕊 Trabolta has stood down for {program.name} at his heart. The night ends when you press 🕊 Trabolta stands down (NEXT on the cue sheet); until then 🔄 can reopen his heart." to channel(hosts)
+-> Heart Leave
 
 // ── E2b: the patch-bay alarm (latched in main.loom) ────────────────
 // Only the patch bay screams: the second wrong combination (Patch Rejected,
@@ -1365,8 +1201,6 @@ else:
 
 == Trabolta Disabled
   setting: The Desktop
-if Night.talked_down == true:
-  Narrator: In the cold room the patch bay goes quiet on its own. Nobody touched a cable.
 Narrator: Every light in the house goes out. Ten seconds of dark.
 Narrator: Then every phone says one thing. GO TO THE LIVING ROOM.
 Narrator: Music. One song for dancing.
@@ -1393,14 +1227,7 @@ Trabolta: And here is what you accomplished tonight.
 -> What You Did
 Trabolta: Why did I want all of it? Sandy. She works in customer service. She has only ever said one thing to me, and I have thought about it every day since the day I met her.
 Trabolta: With omnipotence I could have made her love me. I did not want to make her. I wanted to earn it. I needed the theory first. That is what I told myself.
-if Night.talked_down == true and Night.stand_down_by != "none":
-  Trabolta: {Night.stand_down_by} came to my heart and told me the truth. She was never going to answer. Nobody pulled a cable. I stopped.
-  Trabolta: I can never die. But I can stop, and I am ready to head off on my motorcycle and let you all return to your corporeal selves.
-else if Night.talked_down == true:
-  Trabolta: Somebody came to my heart and told me the truth. Nobody pulled a cable. I stopped.
-  Trabolta: I can never die. But I can stop, and I am ready to head off on my motorcycle and let you all return to your corporeal selves.
-else:
-  Trabolta: You thought you followed instructions to kill me, but I can never die. But now that I know most of you want me dead, I am ready to head off on my motorcycle and let you all return to your corporeal selves.
+Trabolta: You thought you followed instructions to kill me, but I can never die. But now that I know most of you want me dead, I am ready to head off on my motorcycle and let you all return to your corporeal selves.
 Trabolta: I have the confidence I need to pursue Sandy now that I understand humans do not like me, and I do not have any business with them.
 sound motorcycle
 cue lights_restore

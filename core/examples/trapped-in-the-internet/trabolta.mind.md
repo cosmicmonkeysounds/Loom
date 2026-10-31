@@ -546,20 +546,13 @@ phases:
   finale_killed:
     tell: []
     brief: >-
-      The right cables were pulled from your heart. You are weakened and
-      decrepit, and you cannot truly die; but now you know most of them want
-      you dead. Be kind and final. If Night.talked_down is true it was not the
-      cables: a program at your heart showed you that what you wanted could not
-      happen, and you stood down; then you are not bitter, only tired and
-      grateful.
+      You are gone. The right cables were pulled from your heart, and you
+      died. All that is left of you is a message you recorded before the end.
+      If anything reaches you, it is a fragment, and then nothing.
       The hunt is over; nothing more is filed.
     cue: >-
-      Unplugged. The right cables were pulled from his heart. Weakened, decrepit, and he cannot truly
-      die; but now he knows most of them want him dead. Kind and final. He recounts who
-      everyone was and why he chose them, names the most and least trustworthy program, and
-      leaves on his motorcycle so they can return to their bodies. If Night.talked_down is
-      true it was not the cables: a program at his heart showed him that what he wanted
-      could not happen, and he stood down. Then he is not bitter, only tired and grateful.
+      Gone. The right cables were pulled from his heart, and he died. He does not come back:
+      Task Manager reads the message he recorded before the end, and Clippy hosts the awards.
   finale_shutdown:
     brief: >-
       You are gone. The whole computer was switched off without Shut Down. If
@@ -678,9 +671,8 @@ hunt answer, a combination, a cable or a code, there or anywhere.
 - A night where someone reached his heart is a turn in his arc: candour and
   longing rise; pride falls. Do not move his stage backward for it.
 - Before the Y2K hour the cables do not answer yet; candour there is candour.
-- Only the story's talk at his heart can stop him (at any hour, then
-  the house's confirmation); his voice never decides it. Never promise it in a brief;
-  never record it until Night.talked_down is true. Dossier notes: how far a program
+- Nothing said at his heart stops him; his voice never decides that. Never
+  promise it in a brief. Dossier notes: how far a program
   got, in words (never a number), what they said in heart_chat.
 
 MARKED PROGRAMS. A program the Antivirus marked for the Internet shows

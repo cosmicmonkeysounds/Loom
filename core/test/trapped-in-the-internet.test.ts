@@ -2037,10 +2037,10 @@ describe("Trapped in the Internet — The Heart: the cold door opens (wave 7)", 
     // The server-room look goes up, but the house look stays (catch-up would replay the Y2K look under server_open).
     expect(has(cues(e), "lights_server_open")).toBe(true);
     expect(v(sim, "Night.lights")).toBe(lights0);
-    // Nothing in the room ends the night yet: the patch bay and 🕊 refuse.
+    // Nothing in the room ends the night yet: the patch bay refuses.
     fire(sim, "terminal opened", "g1", { at: "The Server Room" }, "Terminal · Server Room");
     expect(v(sim, "g1.at_the_heart")).toBe(true);
-    for (const n of ["patch_combo_a", "patch_combo_b", "talked_down"]) {
+    for (const n of ["patch_combo_a", "patch_combo_b"]) {
       fire(sim, n);
       expect(v(sim, "Night.ended"), n).toBe(false);
     }
@@ -3721,7 +3721,7 @@ describe("Trapped in the Internet — secrecy (§6.1 item 21)", () => {
   });
 });
 
-describe("Trapped in the Internet — talked down, like the Fallout Master (wave 7)", () => {
+describe("Trapped in the Internet — at his heart (wave 7)", () => {
   /** Y2K hour, the door open, g1 (Calculator) at the server-room terminal
    *  (asked to shut the door first: wave 20). */
   function atTheHeart(): Sim {
@@ -3731,7 +3731,6 @@ describe("Trapped in the Internet — talked down, like the Fallout Master (wave
     fire(sim, "terminal opened", "g1", { at: "The Server Room" }, "Terminal · Server Room");
     return sim;
   }
-  const hostsOnly = (evs: SimEvent[]) => casts(evs).filter((b) => b.scope === "channel(hosts)").map((b) => b.cue.replace(/^"|"$/gu, ""));
 
   it("a lost `terminal closed` never keeps a program at his heart once the next one scans in", { timeout: SLOW }, () => {
     const sim = atTheHeart();
@@ -3749,60 +3748,10 @@ describe("Trapped in the Internet — talked down, like the Fallout Master (wave
     expect([v(sim, "g1.at_the_heart"), v(sim, "g4.at_the_heart")]).toEqual([true, false]);
   });
 
-  it("🕊 talked_down is the Combo A ending without a cable, and the recount and the ceremony say who did it", { timeout: SLOW }, () => {
-    const sim = atTheHeart();
-    // Heart Shutdown records who (wave 20: the story's talk, never a power;
-    // the tree itself is core/test/trapped-heart.test.ts).
-    sim.setVar("Night.stand_down_by", "Calculator");
-    const td = fire(sim, "talked_down");
-    expect(hostsOnly(td)).toContain("🕊 Trabolta stands down. Calculator talked him down.");
-    expect(v(sim, "Night.ending")).toBe("disabled");
-    expect(v(sim, "Night.talked_down")).toBe(true);
-    expect(beats(td)).toContain("Trabolta Disabled");
-    expect(narr(td).map((e) => e.text)[0]).toBe("In the cold room the patch bay goes quiet on its own. Nobody touched a cable.");
-    expect(has(cues(td), "lights_blackout")).toBe(true);
-    expect(v(sim, "g1.at_the_heart")).toBe(false); // the ending sends everyone away
-    advance(sim, 10);
-    const rc = fire(sim, "trabolta_recounts");
-    const t = lines(rc, "Trabolta");
-    expect(t).toContain("Calculator came to my heart and told me the truth. She was never going to answer. Nobody pulled a cable. I stopped.");
-    expect(t.some((x) => x.startsWith("You thought you followed instructions to kill me"))).toBe(false);
-    const cer = lines(fire(sim, "start_the_ceremony"), "Trabolta");
-    // Wave 18b: The Night In Review is read first, then The Ceremony's opener.
-    expect(cer).toContain("Before I go. One last report. You talked me down, so I can at least hand out the awards myself.");
-    // A second press changes nothing.
-    expect(hostsOnly(fire(sim, "talked_down"))).toEqual(["🕊 Nothing to stand down: nobody talked him down at his heart, and without that it needs the Y2K hour, before any ending."]);
-  });
-
-  it("with no offer on record 🕊 still works (the director's call) and says so; never before the Y2K hour", { timeout: SLOW }, () => {
-    const early = boot();
-    toTruth1(early);
-    expect(hostsOnly(fire(early, "talked_down"))).toEqual(["🕊 Nothing to stand down: nobody talked him down at his heart, and without that it needs the Y2K hour, before any ending."]);
-    expect(v(early, "Night.ended")).toBe(false);
-    const sim = boot();
-    toY2k(sim);
-    const td = fire(sim, "talked_down");
-    expect(hostsOnly(td)[0]).toBe("🕊 No offer on record: Trabolta stands down on the director's call.");
-    expect(v(sim, "Night.ending")).toBe("disabled");
-    advance(sim, 10);
-    expect(lines(fire(sim, "trabolta_recounts"), "Trabolta")).toContain("Somebody came to my heart and told me the truth. Nobody pulled a cable. I stopped.");
-    // Combo A's own recount is unchanged.
-    const a = boot();
-    toY2k(a);
-    fire(a, "patch_combo_a");
-    advance(a, 10);
-    expect(lines(fire(a, "trabolta_recounts"), "Trabolta").some((x) => x.startsWith("You thought you followed instructions to kill me"))).toBe(true);
-  });
-
-  it("the cue sheet: 🕊 is a director's cue, NEXT ahead of the order only while a stand-down waits (w20b, Q3); no power of his ends the night (wave 20, D13)", () => {
+  it("no power of his ends the night (wave 20, D13), and no talk does (wave 58)", () => {
     const m = fresh().model;
-    const td = m.interactions.get("talked_down")!;
-    expect(td.who).toBe("admin");
-    expect(td.label).toBe("🕊 Trabolta stands down (talked down)");
-    expect(td.sequence).toBe(true);
-    expect(td.urgent).toBe(true);
-    expect(td.while).toContain('Night.stand_down_by != "none"');
     expect(m.interactions.has("stand_down")).toBe(false);
+    expect(m.interactions.has("talked_down")).toBe(false);
   });
 });
 
@@ -6338,8 +6287,8 @@ describe("Trapped in the Internet — wave 8 (story lane)", () => {
     expect(casts(P1(song, "g3")).map((b) => b.cue)).toEqual(['"~💘 OpenOffice knew the line."']); // wave 13: a per-person notice
   });
 
-  it("T2-03: once truth.txt is read the server room is quiet: the patch bay, 🕊 and the door only tell # hosts", { timeout: SLOW }, () => {
-    const QUIET = ["patch_combo_a", "patch_combo_b", "patch_rejected", "talked_down", "server_door_opened"];
+  it("T2-03: once truth.txt is read the server room is quiet: the patch bay and the door only tell # hosts", { timeout: SLOW }, () => {
+    const QUIET = ["patch_combo_a", "patch_combo_b", "patch_rejected", "server_door_opened"];
     const quiet = (sim: Sim, where: string) => {
       const phase = v(sim, "Night.phase");
       for (const cue of QUIET) {

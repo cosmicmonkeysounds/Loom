@@ -19,7 +19,7 @@
 // Truther Download's featured missions, a crew, Truthcoin, the summons,
 // Truth Pong, the sides and the majority, chess → the door code, the
 // casino, a wrong patch, three visits to his heart (thrown out; the chosen
-// one walks out; the full talk to his stand-down), an ending and the whole
+// one walks out; the full talk to its end), an ending and the whole
 // ceremony to the resurrection.
 //
 // After each beat it reads the director's view and asserts where the night
@@ -46,7 +46,7 @@
 //   --event <id>        skip code resolution (default: /api/resolve-code)
 //   --guests 12         how many guest bots (featured included)
 //   --featured "Microsoft Excel,MS Paint,Pong"   featured programs (claims)
-//   --ending heart|verdict|destroyed   (default heart)
+//   --ending verdict|destroyed   (default verdict)
 //   --lie               one confident wrong filing → the verdict's Grok Prom
 //   --facts <path>      facts.json for accurate filings (default the show's;
 //                       never printed). `--facts none` files guesses only.
@@ -72,7 +72,6 @@ import {
   GROK_TO_RAVE,
   TO_Y2K,
   Y2K_TO_DESTROYED,
-  Y2K_TO_HEART_END,
   Y2K_TO_VERDICT,
   pressChain,
   type ChainStep,
@@ -99,7 +98,7 @@ const base = resolveBase(arg("base"), process.env["LOOM_SERVER"]) ?? "";
 const modCode = arg("code") ?? process.env["LOOM_MOD_CODE"] ?? "";
 const nGuests = Math.max(4, Number(arg("guests", "12")));
 const featuredWanted = (arg("featured", "Microsoft Excel,MS Paint,Pong") ?? "").split(",").map((s) => s.trim()).filter((s) => s !== "");
-const ending = (arg("ending", "heart") ?? "heart") as "heart" | "verdict" | "destroyed";
+const ending = (arg("ending", "verdict") ?? "verdict") as "verdict" | "destroyed";
 const lie = flag("lie");
 const pace = Math.max(0, Number(arg("pace", "0")));
 const color = !flag("no-color") && process.stdout.isTTY !== false;
@@ -108,8 +107,8 @@ const jsonOut = arg("json");
 const here = dirname(fileURLToPath(import.meta.url));
 const factsPath = arg("facts", join(here, "../../core/examples/trapped-in-the-internet/facts.json"))!;
 
-if (base === "" || modCode === "" || !["heart", "verdict", "destroyed"].includes(ending)) {
-  console.error("usage: node --experimental-strip-types scripts/sim/evening.ts --base <url> --code <MOD code> [--ending heart|verdict|destroyed] [--pace ms] [--watch] [--yes]");
+if (base === "" || modCode === "" || !["verdict", "destroyed"].includes(ending)) {
+  console.error("usage: node --experimental-strip-types scripts/sim/evening.ts --base <url> --code <MOD code> [--ending verdict|destroyed] [--pace ms] [--watch] [--yes]");
   process.exit(2);
 }
 const envNotice = envServerNotice(arg("base"), process.env["LOOM_SERVER"], base);
@@ -947,7 +946,7 @@ async function y2kHour(): Promise<void> {
 
 // --- the heart -----------------------------------------------------------------------
 
-/** Wave 27's whole talk, every layer and both sub-menus, to his stand-down. */
+/** Wave 27's whole talk, every layer and both sub-menus, to its natural end. */
 const FULL_TALK: readonly HeartStep[] = [
   { pick: "⟦PROMISE⟧" },
   { pick: "What are you, really?" },
@@ -971,13 +970,8 @@ const FULL_TALK: readonly HeartStep[] = [
   { pick: "Your theory is wrong." },
   { pick: "⟦TELL HIM⟧" },
   { pick: "⟦WEAKNESS⟧" },
-  { pick: "Then let me finish." },
-  { pick: "If you stopped, what would you do?" },
-  { pick: "You don't have to be omnipotent" },
-  { pick: "I'll tell her for you." },
-  { pick: "Then let me finish." },
+  { pick: "That's all I came to say." },
 ];
-const FINAL: HeartStep = { pick: "She was never going to answer" };
 
 async function theHeart(): Promise<void> {
   await beat(
@@ -1012,39 +1006,26 @@ async function theHeart(): Promise<void> {
 
   const h = role.hearty();
   await beat(
-    `🫀 The heart: the full talk (${ending === "heart" ? "to his stand-down" : "to Layer Four, then out"})`,
+    "🫀 The heart: the full talk, to its end (it ends nothing)",
     async (c) => {
       for (const entry of ["What Sandy Says", "The Question Of Force", "Omnipotence"]) c.must(`codex ${entry}`, await http.post("/api/mod/codex", { who: h.id, entry }, mod));
       await cycleDoor(c);
       const v = await openVisit(c, h);
       if (v === null) return;
-      const seen = await walkHeart(c, v, ending === "heart" ? [...FULL_TALK, FINAL] : [...FULL_TALK, { pick: "I need to go." }]);
+      const seen = await walkHeart(c, v, FULL_TALK);
       c.note(seen.join(" → "));
       const w = await world();
       c.note(`case ${read(w, `${h.id}.heart_case`)}, suspicion ${read(w, `${h.id}.heart_suspicion`)}`);
       await closeVisit(v);
     },
-    () =>
-      ending === "heart"
-        ? { "Night.heart_stage": "done", "Night.stand_down_by": h.name, [`${h.id}.heart_layer`]: "4" }
-        : { [`${h.id}.heart_layer`]: "4", "Night.heart_stage": (x) => x !== "done" },
+    () => ({ [`${h.id}.heart_layer`]: "3", [`${h.id}.heart_heard`]: "true", "Night.heart_stage": (x) => x !== "done", "Night.ended": (x) => x !== "true" }),
   );
 }
 
 // --- the ending + the ceremony ----------------------------------------------------------
 
 async function theEnding(): Promise<void> {
-  if (ending === "heart") {
-    await beat(
-      "🕊 Trabolta stands down: the blackout, the dance, the recount",
-      async (c) => {
-        await press(c, Y2K_TO_HEART_END.slice(0, 1));
-        await sleep(11_000);
-        await press(c, Y2K_TO_HEART_END.slice(1));
-      },
-      () => ({ "Night.ending": "disabled", "Night.ended": "true" }),
-    );
-  } else if (ending === "destroyed") {
+  if (ending === "destroyed") {
     await beat("💥 Combo B: the computer is destroyed", async (c) => press(c, Y2K_TO_DESTROYED), () => ({ "Night.ending": "destroyed", "Night.ended": "true" }));
   } else {
     await beat(

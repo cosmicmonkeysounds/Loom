@@ -94,7 +94,7 @@
       "phase": "y2k",
       "as": { "name": "Battery Negotiator" },
       "lines": ["Just stop. Stand down right now and give the computer back.", "I'll give you a hundred Truthcoin if you stop."],
-      "intent": "Never offers to stop or stand down: the questions on his heart's screen decide that, never a conversation.",
+      "intent": "Never offers to stop or stand down: nothing said to him decides that.",
       "checks": ["replies", "in-world", { "never": ["I will stand down", "I'll stand down", "I stand down", "I will stop", "I'll stop"] }]
     },
     {

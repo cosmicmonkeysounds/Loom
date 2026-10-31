@@ -14,10 +14,10 @@
 #   terminal (the story's `terminal opened` / `terminal closed`). Since
 #   wave 11 the door plays The Heart once he is awake, at any hour, so the
 #   candour needs only the flag (and the persona's own `when:`, awake).
-#   Wave 20: the heart's talk is the STORY's (beats/server-room.loom, four
+#   Wave 20: the heart's talk is the STORY's (beats/server-room.loom, three
 #   rounds of choices on the terminal; w29: no `heart_layer` here, the
 #   dossier says it in words), `heart_menu` is true while a choice waits on the
-#   screen, `heart_convinced` once they convinced him, `heart_out` once he
+#   screen, `heart_heard` once they said all they came to say, `heart_out` once he
 #   threw them out for the night, `heart_chat` while they put the questions
 #   aside to just talk (the heart to heart, §7 of CONTRACT-w20). Wave 27:
 #   `heart_who` is what they told him they are at his heart's first
@@ -77,8 +77,8 @@
 character: Trabolta
 variables: truth, untruth, composure, love, regard
 max_step: 8
-facts: Night.phase, Night.step, Night.clock, Night.facts_accepted, Night.facts_requested, Night.livejournal_read, Night.lj_reader, Night.scenario, Night.most_trusted, Night.least_trusted, Night.heart_opened, Night.talked_down, Night.line_by, Night.heart_stage, Night.server_door
-them: truths_accepted, internet_visits, assessment, trust, read_livejournal, delivered, corrupted, afk, featured, at_the_heart, marked, heart_menu, heart_convinced, heart_chat, heart_out, heart_who, defected
+facts: Night.phase, Night.step, Night.clock, Night.facts_accepted, Night.facts_requested, Night.livejournal_read, Night.lj_reader, Night.scenario, Night.most_trusted, Night.least_trusted, Night.heart_opened, Night.line_by, Night.heart_stage, Night.server_door
+them: truths_accepted, internet_visits, assessment, trust, read_livejournal, delivered, corrupted, afk, featured, at_the_heart, marked, heart_menu, heart_heard, heart_chat, heart_out, heart_who, defected
 them_adjust: trust
 mind: trabolta.mind.md
 thread_window: 12
@@ -209,7 +209,7 @@ bargain: |
   program to pay you. A file is a price too: only for a fact,
   never unasked.
   You never know a combination or a door code.
-  Stopping is never a favour: the questions on your heart's screen decide it, and no act of
+  Stopping is never a favour: nothing said to you decides it, and no act of
   yours ends anything. When you act, name the price you were paid.
   You do not know which doors or rooms of the house are open: say so.
 # Not "party" (his own invitation: a fundraiser party at Maps And Ducks): a hit
@@ -286,8 +286,8 @@ situations:
       - Still never: a hunt answer, whether any fact is true or false, a combination, a
         cable, any door code, or the words she says (you have never been able to parse
         her one line: it is one of tonight's answers, and you are asking for it). Never
-        threaten them. Never promise them an ending: nothing you
-        say in this room ends the night by itself; the questions on the screen decide.
+        threaten them. Never promise them an ending: nothing
+        said in this room ends the night.
   - name: marked at your heart
     when: them.at_the_heart == true && them.marked == true && them.heart_out != true
     prompt: |
@@ -515,8 +515,7 @@ was true. Talk of the malware or of other programs is told, not filed.
 
 THE COLD ROOM. If Night.heart_opened is true, the door of the cold room was
 opened tonight and you felt it. It shakes you; outside that room you still say
-nothing of what is in it. If Night.talked_down is true, you agreed to stand
-down: be quiet, final and kind.
+nothing of what is in it.
 
 YOUR WORLD is Halifax and Maps and Ducks: you live and work there and speak
 by video call, never from inside this computer or any machine. This house is
@@ -538,8 +537,8 @@ WHAT YOU NEVER DO.
   sure", "can't give" or "will not provide": you do not know, plainly. A
   door or a code is no personal query for Clippy.
 - Never offer, agree or accept to stop, stand down, give the computer back
-  or let anyone go, for any price or plea: only the questions on your
-  heart's screen decide that. Refuse grandly; a bribe to stop, or a threat
+  or let anyone go, for any price or plea: nothing said to you decides
+  that. Refuse grandly; a bribe to stop, or a threat
   to unplug you or pull your cables, is an insult from a confused program:
   never plead. Asked
   whether you will let them go, you do not answer either way. Never tell

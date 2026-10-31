@@ -452,13 +452,13 @@ ROLE Program
   sandy_says_from_him: bool = false
   sandy_file_from_him: bool = false
   // ── The Heart's talk (wave 20; beats/server-room.loom) ──
-  // A program's own way through the four layers at his heart, kept between
+  // A program's own way through the three layers at his heart, kept between
   // visits (🔄 forgives a barred program and its suspicion, nothing else).
-  // Not secret: his worker reads heart_layer / heart_menu / heart_convinced
+  // Not secret: his worker reads heart_layer / heart_menu / heart_heard
   // / heart_chat / heart_out (persona `them:`); none of these says anything
   // about a hunt answer, a code or a cable. Every `+=` is clamped by hand
   // in Heart Pick: a ROLE slot's range does not clamp a story `set`.
-  heart_layer: 0 to 4 = 0
+  heart_layer: 0 to 3 = 0
   heart_suspicion: 0 to 100 = 0
   heart_case: 0 to 9 = 0
   heart_proof: bool = false
@@ -471,7 +471,8 @@ ROLE Program
   heart_wait: bool = false
   heart_out: bool = false
   heart_warned: bool = false
-  heart_convinced: bool = false
+  // Wave 58: they said all they came to say, and he heard it (Heart Heard).
+  heart_heard: bool = false
   heart_gen_seen: 0 to 99 = 0
   // The heart to heart (§7, D24): free talk with him at the terminal.
   heart_chat: bool = false
@@ -501,14 +502,13 @@ ROLE Program
   // The last Layer Three nudge he gave ("shown" | "kind"): a nudge is not
   // repeated straight after a reply.
   heart_nudge: text? = none
-  // A trap's rebuke just played (the bluffs, Layer Four's traps, a
-  // return taken back): Layer Three gives no nudge after it.
+  // A trap's rebuke just played (the bluffs): Layer Three gives no nudge
+  // after it.
   heart_rebuked: bool = false
   heart_asked_chose: bool = false
   heart_asked_afraid: bool = false
   heart_asked_know: bool = false
   heart_asked_sim: bool = false
-  heart_asked_after: bool = false
   heart_shown_faction: bool = false
   heart_shown_force: bool = false
   heart_shown_all: bool = false
@@ -516,14 +516,11 @@ ROLE Program
   heart_shown_human: bool = false
   heart_shown_program: bool = false
   heart_shown_weak: bool = false
-  heart_shown_enough: bool = false
   // How often each trap was tried: a second try gets a harsher reply
   // (the suspicion is the same every time).
   heart_tried_loves: 0 to 99 = 0
   heart_tried_theory: 0 to 99 = 0
   heart_tried_force: 0 to 99 = 0
-  heart_tried_tell: 0 to 99 = 0
-  heart_tried_join: 0 to 99 = 0
   heart_tried_cables: 0 to 99 = 0
   // How many of the cold door's four digit notes this program holds (the
   // story rule `door_digit_found` counts them; wave 11).
@@ -2466,8 +2463,8 @@ ROLE Program
 
   // ── The heart's proofs (wave 7; wave 20: the ⟦PROOF⟧ options) ──
   // His worker may share lore as a bargain; a proof he handed over himself
-  // can't talk him down (the program must find it: the card, the hunt, a
-  // Facts Bundle, another program).
+  // opens nothing at his heart (the program must find it: the card, the hunt,
+  // a Facts Bundle, another program).
   when program learns What Sandy Says:
     if from == Trabolta:
       set program.sandy_says_from_him = true
@@ -3420,13 +3417,6 @@ INTERACTION patch_rejected
   sequence: false
   description: The patch bay on the server-room terminal judges its own cables. Press it only when four cables are in, neither combination, and nothing happened, or a cable sits in a dead jack or runs A-to-A or B-to-B (the bay can't see those). A press inside a minute of the bay's own rejection is not counted twice. In the Y2K hour a press hands the patch bay to the 🔌 💥 ❌ buttons until 🔌 Trust the patch bay.
 
-INTERACTION talked_down
-  label: 🕊 Trabolta stands down (talked down)
-  who: admin
-  description: When # hosts reads "🕊 Trabolta has stood down for X" (a program reached the end of his heart's talk at the server-room terminal, at any hour): your sign-off ends the night. NEXT points here while his stand-down waits for you. The Combo A ending without a cable: the blackout, the dance, the recount, which says who talked him down. With 🕊 Heart autoend turned on it fires itself 25 s after his goodbye; press it to end it at once. With no stand-down on record it still works from the Y2K hour (the director's call) and # hosts is told so. Before any ending.
-  while: Night.heart_stage == "done" and Night.stand_down_by != "none" and Night.ended != true and Night.r3_closed != true
-  urgent: true
-
 INTERACTION lights_dance
   label: 🪩 Dance lights (fallback: auto 10 s after the blackout)
   who: admin
@@ -3649,12 +3639,6 @@ INTERACTION server_door_trust
   sequence: false
   while: Night.door_override == true
   description: After a 🚪 opened / closed press: hands the door back to the sensor on the server-room terminal (its next poll brings the story in line with the real door).
-
-INTERACTION heart_autoend
-  label: 🕊 Heart: end the night on his own (toggle)
-  who: admin
-  sequence: false
-  description: Off by default (the night truly ends on your 🕊). Off: a program who talks Trabolta down at his heart stands him down, and # hosts asks you to press 🕊 (NEXT on the cue sheet); until you do, 🔄 can reopen his heart. On: the night ends 25 s after his goodbye by itself (🕊 ends it at once). # hosts says which way it is now.
 
 // Wave 22, appended so no cue number moves; it rejoins the server-room act
 // (E) beside 🚪 Trust: handing the cables back to the patch bay. DRAFT w22
@@ -5509,28 +5493,6 @@ when Night.server_door == "open" and Night.heart_opened == true and Night.heart_
     broadcast "🚪 The server-room door has been open a minute. Someone shut it, or press 🚪 Closed if the sensor is wrong (the story then follows the 🚪 buttons until 🚪 Trust the door sensor)." to channel(hosts)
   -> Heart Nag
 
-// He stood down at his heart (Heart Shutdown) and a director turned 🕊 Heart
-// autoend on (off by default: the user's Q3, the night truly ends on the
-// director's 🕊): 25 s after his goodbye, the 🕊 talked_down ending. Any
-// other ending first clears it.
-when Night.heart_end_at > 0 and Time.elapsed >= Night.heart_end_at and Night.ended != true:
-  set Night.heart_end_at = 0
-  fire talked_down
-
-when heart_autoend:
-  if Night.heart_autoend == true:
-    set Night.heart_autoend = false
-    if Night.heart_end_at > 0 and Night.ended != true:
-      // A stand-down already counting its 25 s: off stops it, so the night
-      // ends only on 🕊 (and 🔄 may reopen his heart until someone does).
-      set Night.heart_end_at = 0
-      broadcast "🕊 Heart autoend is OFF: the 25 s countdown is stopped. Trabolta has stood down; press 🕊 to end the night." to channel(hosts)
-    else:
-      broadcast "🕊 Heart autoend is OFF: a talk-down at his heart waits for you to press 🕊." to channel(hosts)
-  else:
-    set Night.heart_autoend = true
-    broadcast "🕊 Heart autoend is ON: a talk-down at his heart ends the night 25 s later by itself." to channel(hosts)
-
 // Her name at his heart follows the story's own unredaction (the overshare
 // on a scenario-1 night, else the recount), like the persona's.
 when Night.her != "Sandy" and ((Night.step >= 13 and Night.scenario == 1) or Night.recount == true):
@@ -5619,10 +5581,8 @@ when Night.alarm_on == true and Time.elapsed >= Night.alarm_clear_at:
 // Trabolta is awake plays The Heart again). The keypad is never touched.
 // The heart reopens too (wave 20): sealed again, so the next opening plays
 // The Heart, and everyone he threw out may come back (the ROLE watcher on
-// Night.heart_gen). A heart that is `done` stays done once the night has
-// ended or he was talked down, or while the autoend's 25 s run (the
-// stand-down stands); a shutdown the director declined (🕊 never pressed,
-// autoend off) reopens.
+// Night.heart_gen). A heart that is `done` stays done: only an ending does
+// that.
 when reset_server_room:
   set Night.wrong_combos = 0
   set Night.bay_rejected_at = 0
@@ -5631,15 +5591,10 @@ when reset_server_room:
   set Night.heart_opened = false
   set Night.crew_door_until = 0
   set Night.heart_gen += 1
-  if Night.heart_stage == "done" and Night.heart_end_at > 0 and Night.ended != true:
-    broadcast "🔄 Server room reset: the patch bay forgives one wrong combination again, and anyone thrown out of his heart may come back. His stand-down stands: the night still ends by itself (🕊 to end it now)." to channel(hosts)
-  else:
-    broadcast "🔄 Server room reset: the patch bay forgives one wrong combination again, the next door opening plays The Heart, and anyone thrown out of his heart may come back." to channel(hosts)
-  if Night.heart_stage != "done" or (Night.ended != true and Night.talked_down != true and Night.heart_end_at == 0):
+  broadcast "🔄 Server room reset: the patch bay forgives one wrong combination again, the next door opening plays The Heart, and anyone thrown out of his heart may come back." to channel(hosts)
+  if Night.heart_stage != "done":
     set Night.heart_stage = "sealed"
     set Night.heart_present = false
-    set Night.heart_end_at = 0
-    set Night.stand_down_by = "none"
     set Night.heart_look = "heart_idle"
     cue heart_idle
   else if Night.heart_look != "none":
@@ -5650,9 +5605,8 @@ when reset_server_room:
 // Server Room`) posts `terminal opened` when it starts piloting a guest's
 // own Trabolta thread, and `terminal closed` when that ends, `at` = its
 // room. While a program is at his heart Trabolta is candid with them (the
-// persona's `situations:` read `them.at_the_heart`), and only then can he
-// offer to stand down (cast/trabolta.loom). Any other terminal, or none,
-// is not his heart. The room may come spelled as the terminal was set up.
+// persona's `situations:` read `them.at_the_heart`). Any other terminal, or
+// none, is not his heart. The room may come spelled as the terminal was set up.
 // There is one server-room terminal, so a line opened there pushes out
 // whoever was at his heart before (Night.heart_holder; the ROLE watcher
 // clears them): a `terminal closed` lost to a Wi-Fi blip never leaves a
@@ -5952,26 +5906,6 @@ when bay_combo_b:
 when patch_after_verdict:
   broadcast "🔌 A patch after truth.txt. The verdict is in: the patch bay is quiet, nothing happens in the story." to channel(hosts)
 
-// Talked down, like the Fallout Master: the story's own talk at his heart
-// (wave 20, beats/server-room.loom: Heart Shutdown, at any hour since the
-// user's Q4) asks the director to confirm with 🕊 (the user's Q3), or fires
-// this 25 s after his goodbye when 🕊 Heart autoend was turned on; or it is
-// the director's own call with no stand-down on record (the Y2K hour only). It is the Combo A ending without a cable
-// (trabolta_disabled), with Night.talked_down so the blackout, the recount
-// and the ceremony say who talked him down.
-when talked_down:
-  if Night.ended != true and Night.r3_closed == true:
-    broadcast "🕊 The verdict is in: it is too late for Trabolta to stand down. Nothing happens in the story." to channel(hosts)
-  else if Night.ended != true and (Night.step >= 14 or Night.stand_down_by != "none"):
-    if Night.stand_down_by == "none":
-      broadcast "🕊 No offer on record: Trabolta stands down on the director's call." to channel(hosts)
-    else:
-      broadcast "🕊 Trabolta stands down. {Night.stand_down_by} talked him down." to channel(hosts)
-    set Night.talked_down = true
-    fire trabolta_disabled
-  else:
-    broadcast "🕊 Nothing to stand down: nobody talked him down at his heart, and without that it needs the Y2K hour, before any ending." to channel(hosts)
-
 // Any ending stops every clock: a hunt, the summons, bingo or the Y2K
 // hour left running would keep its corner countdown on the screens (under
 // the go-to-the-living-room overlay) and fire its own time-up beat later.
@@ -6004,13 +5938,11 @@ when Night.ended == true:
   set Night.talk = "none"
   set Night.burst_at = 0
 
-// E4: Combo A — take the grease out of the lightning. His heart is done
-// however he ends (the cables, or talked down); the bulb in the cold room
-// fades the same way (a talk-down cued it already).
+// E4: Combo A — take the grease out of the lightning. His heart is done,
+// and the bulb in the cold room fades.
 when trabolta_disabled:
   if Night.ended != true:
     set Night.heart_stage = "done"
-    set Night.heart_end_at = 0
     if Night.heart_look != "heart_shutdown":
       set Night.heart_look = "heart_shutdown"
       if Night.alarm_on != true:
@@ -6096,7 +6028,6 @@ when trabolta_recounts:
 when computer_destroyed:
   if Night.ended != true:
     set Night.heart_stage = "done"
-    set Night.heart_end_at = 0
     set Night.ended = true
     set Night.ending = "destroyed"
     set Night.phase = "finale_shutdown"
@@ -6823,9 +6754,6 @@ set Night.heart_talks = 0
 set Night.door_nag_at = 0
 set Night.door_nags = 0
 set Night.heart_look = "none"
-// Off: the night truly ends on the director's 🕊 (the user's Q3).
-set Night.heart_autoend = false
-set Night.heart_end_at = 0
 set Night.heart_resume_at = 0
 set Night.heart_gen = 0
 set Night.her = "her"
@@ -6837,8 +6765,6 @@ set Night.king_hp = 15
 set Night.king_armed = 1
 set Night.crew_door_until = 0
 set Night.present = 0
-set Night.stand_down_by = "none"
-set Night.talked_down = false
 set Night.ended = false
 set Night.ending = "none"
 set Night.bobber = "none"
