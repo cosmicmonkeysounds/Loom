@@ -1419,22 +1419,30 @@ func _test_refresh_rate() -> void:
 	_check(r.step(72.0, 0.6) == 72.0, "refresh: still not there, another rate first (a repeat of the last ask is dropped)")
 	_check(r.step(72.0, 0.1) == 0.0, "refresh: … held for a moment")
 	_check(r.step(72.0, 0.2) == 90.0 and r.tries == 2, "refresh: … then the wanted rate, a new request again")
-	_check(r.step(90.0, 2.0) == 0.0 and r.want == 0.0, "refresh: once the display reads back it stops asking")
-	_check(r.step(72.0, 2.0) == 0.0, "refresh: … until the next focus")
+	_check(r.step(90.0, 2.0) == 0.0 and r.want == 90.0, "refresh: there: it stops asking, and keeps watching")
+	var fell := r.step(72.0, 2.0)
+	_check(fell == 72.0 and r.step(72.0, 0.3) == 90.0, "refresh: a display that falls back is asked up again (%.0f)" % fell)
+	var early := RefreshRate.new()
+	early.start(offered)
+	_check(early.step(90.0, 0.011) == 90.0 and early.tries == 1, "refresh: a display already at the rate (the shell's, about to fall to 72) is asked anyway")
+	_check(early.step(90.0, 2.0) == 0.0, "refresh: … once")
+	var again := early.step(72.0, 2.0)
+	_check(again == 72.0 and early.step(72.0, 0.3) == 90.0, "refresh: … and when it falls, it is caught (%.0f)" % again)
 	r.start(offered)
-	_check(r.step(72.0, 0.011) == 72.0, "refresh: a new focus with the last ask still standing kicks first")
-	_check(r.step(90.0, 0.3) == 0.0 and r.want == 0.0, "refresh: a display that gets there on its own needs nothing more")
+	_check(r.step(90.0, 0.011) == 0.0 and r.want == 90.0, "refresh: a new focus at the rate asked for needs no repeat")
 	r.start(offered)
-	r.step(90.0, 0.011)
-	_check(r.want == 0.0, "refresh: a focus already at the wanted rate asks for nothing")
+	_check(r.step(72.0, 0.011) == 72.0, "refresh: a new focus below it kicks first")
+	_check(r.step(90.0, 0.3) == 90.0, "refresh: a kick is always followed by the wanted rate, or the kick would stand")
 	r.start(offered)
 	var asks := 0
 	for i in 200:
 		if r.step(72.0, 0.25) == 90.0:
 			asks += 1
-	_check(asks == RefreshRate.TRIES and r.want == 0.0, "refresh: a runtime that never moves gets %d asks, then the game runs at what it has" % asks)
-	r.start([72.0])
-	_check(r.want == 72.0 and r.step(72.0, 0.011) == 0.0, "refresh: one rate on offer, nothing to ask")
+	_check(asks == RefreshRate.TRIES and r.want == 0.0, "refresh: a display held down gets %d asks, then the game runs at what it has" % asks)
+	_check(r.step(72.0, 5.0) == 0.0, "refresh: … and is left alone until the next focus")
+	var one := RefreshRate.new()
+	one.start([72.0])
+	_check(one.want == 72.0 and one.step(72.0, 0.011) == 72.0 and one.step(72.0, 2.0) == 0.0, "refresh: one rate on offer, asked for once")
 
 
 ## The show map's flights have no wall beside their lower half, and rails only

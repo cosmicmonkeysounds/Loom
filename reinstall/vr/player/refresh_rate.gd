@@ -1,15 +1,18 @@
-## Getting the headset to its display rate, and knowing that it got there.
+## Getting the headset to its display rate, and keeping it there.
 ##
-## What a Quest 3 does (runtime 209.166, logged on 2026-10-31): the rates are
-## offered before the session runs, and a request made then is accepted and
-## lost. Worse, the runtime drops a repeat of the rate it was last asked for
-## (no `SetDisplayRefreshRate` line in the log at all), so an app that asked
-## too early can ask again on every focus and stay at 72 Hz for ever.
+## An app that has not asked runs at 72 Hz, whatever the display reads as its
+## session starts: the shell's own 90 can still be showing at focus and fall to
+## 72 a moment later (runtime 209.166, logged on 2026-10-31). So [method step]
+## always asks once after focus, then keeps reading the display back. The runtime
+## drops a repeat of the rate it was last asked for, so to ask again it asks for
+## another rate first. Thermal throttling and Battery Saver can hold the display
+## down, which no request beats, so it gives up after [constant TRIES].
 ##
-## So: ask only once the session has focus, read the display back, and when it
-## has not moved, ask for another rate first, so that the wanted one is a new
-## request again. Pure, so the tests pin it: `main.gd` writes what
-## [method step] returns to [member OpenXRInterface.display_refresh_rate].
+## Battery Saver (Settings > General > Power) caps everything at 72 Hz, at 40%
+## brightness: `LP=1` on the compositor's log line. It must be off on the night.
+##
+## Pure, so the tests pin it: `main.gd` writes what [method step] returns to
+## [member OpenXRInterface.display_refresh_rate].
 class_name RefreshRate
 extends RefCounted
 
@@ -25,9 +28,9 @@ const TRIES := 6
 ## exactly 90.0.
 const SAME := 0.5
 
-## The offered rate being worked towards, 0 when none is.
+## The offered rate being held, 0 when none is.
 var want := 0.0
-## Requests for [member want] so far.
+## Requests for [member want] since the last focus.
 var tries := 0
 
 var _offered: Array = []
@@ -68,16 +71,17 @@ func start(offered: Array, rate := WANT) -> void:
 func step(display: float, delta: float) -> float:
 	if want == 0.0:
 		return 0.0
-	if absf(display - want) < SAME:
-		want = 0.0
-		return 0.0
 	_wait -= delta
 	if _wait > 0.0:
+		return 0.0
+	var there := absf(display - want) < SAME
+	var asked_it := absf(_asked - want) < SAME
+	if there and (asked_it or tries > 0):
 		return 0.0
 	if tries >= TRIES:
 		want = 0.0
 		return 0.0
-	if absf(_asked - want) < SAME:
+	if asked_it:
 		var kick := other(_offered, want, display)
 		if kick > 0.0:
 			_asked = kick
