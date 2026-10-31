@@ -873,7 +873,7 @@ Everything is optional; the defaults run a LAN event with no setup.
 | `LOOM_APP_DIST`, `LOOM_TERMINAL_DIST`, `LOOM_REINSTALL_DIST` | the sibling packages' `dist/` | the built apps served at `/`, `/terminal/`, `/reinstall/` |
 | `LOOM_MEDIA_DIR` | unset | the house media (Clippy's dream, `scripts/ops/dream-media.sh`): the games' frames, and `/media/` with no proxy in front |
 | `LOOM_BASE_URL` | the first LAN address | the base of every join / check-in / re-pair link; set it on a public deployment |
-| `LOOM_HOUSE`, `LOOM_FACTS`, `LOOM_AUDIO`, `LOOM_LIGHTS`, `LOOM_DESK`, `LOOM_CREDITS`, `LOOM_DESCENT` | the example's `house.json` and `facts.json`; no default for audio / lights / desk; credits / descent: the scenario's own, with no project | fallbacks for an event whose project has no copy |
+| `LOOM_HOUSE`, `LOOM_FACTS`, `LOOM_AUDIO`, `LOOM_LIGHTS`, `LOOM_DESK`, `LOOM_CREDITS`, `LOOM_DESCENT`, `LOOM_COSTUME` | the example's `house.json` and `facts.json`; no default for audio / lights / desk; credits / descent / costume: the scenario's own, with no project | fallbacks for an event whose project has no copy |
 | `LOOM_WIKI` | on | `off` keeps the program directory offline |
 | `LOOM_TTS_URL` (+ `_API_KEY`, `_MODEL`, `_VOICE`, `_FORMAT`) | off | the opt-in server voice; the terminals use the devices' own voices by default |
 | `LOOM_VAPID_PUBLIC_KEY`, `LOOM_VAPID_PRIVATE_KEY`, `LOOM_VAPID_SUBJECT` | unset (push off) | Web Push; generate once, never rotate before a show |

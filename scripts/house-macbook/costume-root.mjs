@@ -36,7 +36,7 @@ const PAGE = `<!doctype html><meta charset="utf-8"><meta name="viewport" content
 
 createServer((req, res) => {
   if (req.url === "/isrg-root-x1.cer") {
-    res.writeHead(200, { "content-type": "application/x-x509-ca-cert", "content-length": der.length, "content-disposition": 'attachment; filename="isrg-root-x1.cer"' });
+    res.writeHead(200, { "content-type": "application/x-x509-ca-cert", "content-length": der.length });
     res.end(der);
     return;
   }

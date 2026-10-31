@@ -100,6 +100,7 @@ export class CostumeDesk {
   private readonly gate: CostumeGate;
   private readonly pending = new Set<unknown>();
   private lightsTimer: unknown = null;
+  private stormTimer: unknown = null;
 
   constructor(private readonly deps: CostumeDeskDeps) {
     this.gate = new CostumeGate(deps.now);
@@ -125,7 +126,15 @@ export class CostumeDesk {
     for (const h of this.pending) this.deps.timers.clear(h);
     this.pending.clear();
     this.lightsTimer = null;
+    this.stormTimer = null;
     this.gate.clear();
+  }
+
+  /** The kill switch: a storm stops here. A restore that is due still comes,
+   *  or the house would stay on the costume's colour. */
+  halt(): void {
+    if (this.stormTimer !== null) this.cancel(this.stormTimer);
+    this.stormTimer = null;
   }
 
   private after(action: CostumeAction, file: CostumeFile): void {
@@ -144,7 +153,8 @@ export class CostumeDesk {
 
   /** The rest of a storm, each judged afresh: a beat that starts ends it. */
   private again(action: Extract<CostumeAction, { kind: "cue" }>, file: CostumeFile, left: number): void {
-    this.later(() => {
+    this.stormTimer = this.later(() => {
+      this.stormTimer = null;
       const facts = this.deps.facts();
       if (momentRefusal(facts) !== null || actionRefusal(action, facts) !== null) return;
       if (!this.deps.perform(action, file)) return;

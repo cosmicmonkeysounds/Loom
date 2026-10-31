@@ -225,6 +225,10 @@ Front of house: getting people in.
   you pick the server room's spot. That laptop runs desktop Chrome on
   the https address; press ⚙ *Connect door sensor* on it once and it
   reconnects by itself after that.
+  **🎭 Costume** is the Task Manager costume's iPad: **On / Off** is the
+  crew's kill switch, and **Copy link** is the iPad's link. Keep the link to
+  yourself; it can only fire that menu, but anyone holding it can
+  (`docs/trapped/costume.md`).
 - **House sound** — *Open House →* goes to the [house desk](47-house-desk.md). Whether the speaker router is listening,
   **■ Stop house sounds** with a **+ announcements** box (also cuts the
   announcement playing and drops the queue), and **Tablets that also say

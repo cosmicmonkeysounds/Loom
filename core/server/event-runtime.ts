@@ -8562,7 +8562,7 @@ export class EventRuntime {
           return true;
         }
         this.store.saveCostumeOff(!body["on"]);
-        if (!body["on"]) this.costume.clear();
+        if (!body["on"]) this.costume.halt();
         sendJson(res, 200, { ok: true, on: body["on"] });
         return true;
       }

@@ -295,6 +295,37 @@ describe("w59 costume: the kill switch", () => {
     expect(new Store(dir).loadCostumeOff()).toBe(true);
   });
 
+  it("stops a storm where it stands, and still gives the lights back", async () => {
+    const r = await live();
+    await r.setVar("Night.lights", "game");
+    await r.setVar("Night.talk", "ad");
+    await r.fire("red");
+    r.advance(COSTUME_COOLDOWN_S - 3);
+    r.advance(3);
+    expect(r.hub.lights.tests().at(-1)).toMatchObject({ look: "lights_game" });
+    await r.fire("red");
+    r.advance(COSTUME_COOLDOWN_S);
+    await r.fire("storm");
+    await r.fire("red"); // cooling: nothing new
+    await call(r.rt, "POST", "/api/mod/costume", { on: false }, { moderator: true });
+    r.advance(4);
+    expect(r.hub.sim.log.all().filter((e) => e["name"] === "ad_burst").length).toBe(1);
+    expect(r.pending()).toBe(0);
+    await call(r.rt, "POST", "/api/mod/costume", { on: true }, { moderator: true });
+    expect((await r.fire("spot")).json).toMatchObject({ why: "cooldown" });
+    r.rt.dispose();
+  });
+
+  it("flipped off in a hold, the story's look still comes back", async () => {
+    const r = await live();
+    await r.setVar("Night.lights", "game");
+    await r.fire("red");
+    await call(r.rt, "POST", "/api/mod/costume", { on: false }, { moderator: true });
+    r.advance(6);
+    expect(r.hub.lights.tests().at(-1)).toMatchObject({ look: "lights_game" });
+    r.rt.dispose();
+  });
+
   it("can come back on", async () => {
     const { rt, fire, setVar } = await live();
     await setVar("Trabolta.awake", "true");
