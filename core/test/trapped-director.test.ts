@@ -120,7 +120,7 @@ describe("Trapped in the Internet — wave 10 (the Director page's acts and boar
     // Titles keep the README's wording.
     expect(acts.map((a) => a.title)).toEqual([
       "Act I: the Desktop, Bingo and the first truth",
-      "The malware, the hour, the Truther Download",
+      "Act II: the ad hijack, Hunt 2, the Truther Download, the summons",
       "Act II: Truth Pong, the Trust Chart, the beans",
       "Act III: the Y2K hour and the server room",
       "Anytime",

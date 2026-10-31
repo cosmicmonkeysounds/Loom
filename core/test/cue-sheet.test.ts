@@ -639,7 +639,7 @@ describe("acts on the cue sheet (wave 10: display only)", () => {
     // turn, must give the same cue state and the same row marks.
     const openers: Record<string, string> = {
       call_to_the_desktop: "B · Act I: the Desktop, Bingo and the first truth",
-      second_hunt_preview: "C · The malware, the hour, the Truther Download",
+      second_hunt_preview: "C · Act II: the ad hijack, Hunt 2, the Truther Download, the summons",
       truth_pong: "D · Act II: Truth Pong, the Trust Chart, the beans",
       y2k_clock: "E · Act III: the Y2K hour and the server room",
       restore_the_lights: "Anytime",

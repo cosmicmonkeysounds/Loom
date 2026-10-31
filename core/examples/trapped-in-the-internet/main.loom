@@ -3358,7 +3358,7 @@ INTERACTION spin_the_bottle
 INTERACTION second_hunt_preview
   label: 📺 Preview hunt 2 → the ad hijack
   who: admin
-  act: C · The malware, the hour, the Truther Download
+  act: C · Act II: the ad hijack, Hunt 2, the Truther Download, the summons
   while: Night.step == 6 and Night.bottle_open != true
 
 INTERACTION start_the_second_hunt
@@ -4964,7 +4964,7 @@ when simulation pickup taken for program:
     else:
       unlock ILOVEYOU for program
 
-// ── C. The malware, the hour, the Truther Download ──
+// ── C. Act II: the malware, the hour, the Truther Download ──
 
 // C1: the ad hijack. The ad takes every screen at once, the phones too
 // (an alert: banner, chime, buzz); Clippy is told privately everyone may
@@ -5086,7 +5086,7 @@ when truther_download:
     // w28: a press before 📓 Hunt 2 (step 8) does nothing.
     broadcast "📥 Not yet: 📓 Hunt 2 first (it sends itself two minutes in). Nothing happens." to channel(hosts)
 
-// ── D. Act II ──
+// ── D. Act II: Truth Pong, the Trust Chart, the beans ──
 
 // D2: the five-minute summons. Be in the Desktop, or be swept.
 when five_minute_warning:

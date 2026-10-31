@@ -2098,7 +2098,7 @@ tent is captured by the tablet's scan.
   Truthcoin (a host presses 🪙 pay); whoever hesitates is "a little corrupted" (flavour only).
 - Awards: `award_the_ribbon` gives any program a ribbon at any time (B3).
 
-### C. The malware, the hour, the Truther Download
+### C. Act II: the ad hijack, Hunt 2, the Truther Download, the summons
 
 **C1 Ad hijack — `second_hunt_preview`** (D).
 - Rule (guard `Night.step < 7 and Night.phase == "truth_1" and Night.results_q >= 3`; since wave 9 a press before ⚖️ / ⏱ / the three 📋 refuses in `# hosts` naming the missing step): `set Night.judging = false` · phase `malware`, step 7 ·
@@ -2233,7 +2233,7 @@ accessed his context.`
 Anyone redeeming `TRABOLTA-4EVER` (the LiveJournal QR in The Hard Drive) triggers the
 LiveJournal hook too.
 
-### D. Act II
+### D. Act II: Truth Pong, the Trust Chart, the beans
 
 **D1 Check-in (the mechanism).** `when checked_in for program:` — an if-chain over the real
 rooms, never `move program to at` (§0 rule 14) **[verified, feas f6]**:

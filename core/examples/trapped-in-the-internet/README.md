@@ -70,7 +70,7 @@ beats/desktop.loom     Act I: Call To The Desktop · Computer Bingo · Bingo Tim
 beats/internet.loom    Reinstallation · The Tablet Video · Zipped
 beats/hunt.loom        Truth Scavenger Hunt One · Hunt One Go · Hunt Time Up · First Moment
                        Of Truth · Filing Closed · Question Results · Bottle Landed
-beats/malware.loom     Ad Hijack · Second Hunt · Truther Download Arrives · the nine
+beats/malware.loom     Act II: Ad Hijack · Second Hunt · Truther Download Arrives · the nine
                        featured glitch beats · Program Glitch
 beats/pong.loom        Act II: Five Minute Warning · Summons Closed · Truth Pong · Round Two
                        Tally · Trust Chart · Praise The Top · Shame The Bottom · Print The
@@ -626,7 +626,7 @@ by someone else's wrong codes. Passes draw their QR on the phone
 | **📋 Results: the next question** (`read_the_results`; press for Q1, then Q2, then Q3) | Clippy hosts from *The Desktop*; **Trabolta reads** (wave 18b, Q6) | *Question Results* (cast Trabolta, Clippy): Trabolta says nobody filed / **CONSENSUS** (every filing matches the key and every confidence is 100: he reads the key's answer as `facts.json` spells it, never a filer's alias) / *"I will read what you told me."* and every filing (`Kernel.res_said`), then *"N accepted. M guesses."* (`res_accepted` / `res_guesses`). The story publishes the question to the screens (`do fact_read H1` … `H3`, `cue screens_hunt_results`): the TV shows every filer's row (name, what they said, SURE / NOT SURE, ACCEPTED / GUESS) with **his ruling's stamp** (🤖 SAME / 🤖 NOT THE SAME; a filing at 100 he ruled reads only 🤖 RULED until ⚖), the walls only the counts. Then that question's filings settle: +50 to the accepted ones, a guess is marked. After Q3 Clippy says *TRUTH OR DARE*. Refused (`# hosts`) while the window is open, while the bottle is open, and after Q3 ("Next: 🍾"). Every house line of the reading beats stays out of Trabolta's `recent` (the server drops them by beat). **Wave 32:** with guesses on record he says it stings, louder at each question (only the count). After the third the **`bottle` talk scene** opens (open between the spins too) until 📺. |
 | **🍾 Spin the bottle** (`spin_the_bottle`; wave 18b, R21: **after all three results**, before 📺 hunt 2; NEXT offers five spins, more are allowed) | Clippy: **🗣 Truth answered** (+50) · **🙅 Truth refused** (marked) · **🎩 Chose Dare** (the dead-phone fallback, marked) on the picked program | The server picks a cleared program **not picked tonight** (`bottle_q` ends at 3), wherever their last room check-in put them (not in the Internet, corrupted, marked or away; `do pick`, journaled; nobody left → *"🍾 Nobody left to pick …"* in `# hosts`). The TV names them, so they come forward. Trabolta asks on the TV (*Bottle Landed*: "{name}. Truth or dare?") and their phone gets a **Truth / Dare** poll in his thread. Dare → marked for reinstallation, and (wave 26) Trabolta makes a scene on the TV (*Dare Chosen*: he orders the Antivirus to take them to the Internet; every Antivirus booth gets *🚨 TRABOLTA'S ORDER*, the dared phone *🎩 Trabolta is not amused*, with only the pass). Truth → Trabolta asks the next personal question from `facts.json` (*Truth Question*, on the TV and in The Desktop); Clippy settles it with 🗣 / 🙅. 📺 is refused while a truth is pending. |
 
-### C. The malware, the hour, the Truther Download
+### C. Act II: the ad hijack, Hunt 2, the Truther Download, the summons
 
 | Director fires | Performers do | What happens |
 |---|---|---|
@@ -637,7 +637,7 @@ by someone else's wrong codes. Passes draw their QR on the phone
 | **⏳ Five-minute warning** (`five_minute_warning`, *auto* at 55 min; off-sequence; refused outside hunt 2's hour) | Antivirus/hosts **scan every arrival at the living-room door** (that is the check-in), or press **📍 Checked in at the Desktop** | `!` alert + a house announcement. *Clippy Instructions 5* unlock. Bathroom Mode excuses you, and so does being in the Internet when the doors close: coming back from either afterwards is not late. The auto warning never fires once Truth Pong has started, so ending the hour early is safe. |
 | **🚨 Summons closed: late list** (`summons_closed`, *auto* at +5 min; off-sequence) | every Antivirus booth gets each late program as a Wanted poster (one *🚨 n programs marked* pop-out): claim, find, scan (the confrontation), 🛡 | Late programs are told an Antivirus is coming and are **marked for reinstallation** (`"late for the Second Moment of Truth"`). Setting `Night.auto_sweep = true` in Run → World captures them automatically instead. |
 
-### D. Act II
+### D. Act II: Truth Pong, the Trust Chart, the beans
 
 | Director fires | Performers do | What happens |
 |---|---|---|
