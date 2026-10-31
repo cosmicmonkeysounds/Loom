@@ -138,15 +138,14 @@ describe("every part scans every coded entry", () => {
     const tokens = new Map<string, string>();
     for (const part of PARTS) tokens.set(part, await booth(rt, part));
     const adaStream = await get(rt, `/events?role=guest&token=${encodeURIComponent(ada.token)}`);
-    const quiet = await get(rt, `/events?role=prime&token=${encodeURIComponent(tokens.get("Recycling Bin")!)}`);
-    const adaFrames = () => adaStream.frames.filter((f) => f.event === "message").length;
-    const quietCodex = () => quiet.frames.filter((f) => f.event === "message" && (f.data as { channel: string }).channel === "codex").length;
-    const adaBefore = adaFrames();
-    const quietBefore = quietCodex();
+    const streams = new Map<string, Awaited<ReturnType<typeof get>>>();
+    for (const part of PARTS) streams.set(part, await get(rt, `/events?role=prime&token=${encodeURIComponent(tokens.get(part)!)}`));
+    const messages = (s: { frames: Frame[] }) => s.frames.filter((f) => f.event === "message").map((f) => f.data as { kind: string; audience: unknown; channel: string });
+    const adaBefore = messages(adaStream).length;
     const worldBefore = worldBut(sim, PARTS);
     const logFrom = sim.log.len();
 
-    for (const part of PARTS.filter((p) => p !== "Recycling Bin")) {
+    for (const part of PARTS) {
       const token = tokens.get(part)!;
       for (const e of entries) {
         // A part starts out holding what is `about` it, so that one is `already`.
@@ -168,15 +167,18 @@ describe("every part scans every coded entry", () => {
     }
 
     // The story heard nothing it answers: no line, no reply, no objective.
-    const kinds = new Set(sim.log.since(logFrom).map((ev) => ev.type));
-    expect([...kinds]).toEqual(["codexUnlocked"]);
+    expect([...new Set(sim.log.since(logFrom).map((ev) => ev.type))]).toEqual(["codexUnlocked"]);
     expect(worldBut(sim, PARTS)).toEqual(worldBefore);
-    // A part that scanned nothing, and a guest, saw none of it.
-    expect(adaFrames()).toBe(adaBefore);
-    expect(quietCodex()).toBe(quietBefore);
+    // Each booth got its own cards and nothing else; a guest saw none of it.
+    for (const part of PARTS) {
+      const rows = messages(streams.get(part)!);
+      expect(rows.length, part).toBeGreaterThan(0);
+      for (const m of rows) expect(m.audience, part).toEqual([`@${part}`]);
+    }
+    expect(messages(adaStream).length).toBe(adaBefore);
   }, 120_000);
 
-  it("the last part too, and the card lands in that booth's own Codex, addressed to it", async () => {
+  it("the card lands in that booth's own Codex, and nobody else's", async () => {
     const rt = runtime();
     const sim = simOf(rt);
     const token = await booth(rt, "Recycling Bin");
