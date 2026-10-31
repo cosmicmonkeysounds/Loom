@@ -109,6 +109,11 @@ on your tray, which opens the whole list.
   every phone, the TV and the walls (*p\*\*\*word*). The program's
   **suspicion** goes up (+5, the same doubt as 👁) and they get an
   automated notice. Nobody is marked for reinstallation by it.
+- **🛡 Send to the Internet** (tap, tap again; wave 57): when a line has
+  earned more than the scissors. It is your ordinary 🛡, with its ⭐: their
+  phone locks and they go. It shows where a scanned card would show it: on a
+  marked program, or on anyone once the Bingo round is over. It doesn't touch
+  the line, so you can still ✂ it (and get paid) or let it go.
 - **Let it go**: off your list, on your phone only. Nobody is told.
 
 **The ⭐ game.** Each ✂ pays the line's points (a worse word is worth more:

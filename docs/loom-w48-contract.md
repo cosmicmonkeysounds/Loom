@@ -377,3 +377,41 @@ tablets) get a lighter version that holds its frame rate; reduced motion
 gets a calm one; nothing flashes more than 3 times a second.
 `?preview=language&lang=…` covers 0, 1, a dozen, hundreds and 400 + more,
 with and without unsaid.
+
+---
+
+# Wave 57: 🛡 from the filter
+
+2026-10-31. The ask: *"password manager should be able to send guests to the
+internet during their censorship game, which I had initially decided
+against. the other options should remain however"*. This takes back the part
+of 48b's answer that kept a capture out of the filter; ✂ itself stays as C12
+says (it marks nobody). New copy is `DRAFT w57` (the wave 57 section of
+`SIGNOFF-w48.md`). Branch `oct31-w57/filter-send`.
+
+## C15 🛡 on a flagged line
+
+- **Third option.** A waiting line offers the censor's own capture beside ✂
+  Censor and Let it go, on the pop-out and in the filter window. All three
+  stay independent: 🛡 censors nothing, ✂ sends nobody.
+- **When** (`views.ts` `captureFor`, `FilterLine.send?: {id, label}`): the
+  interaction whose label reads as a capture (the same rule as the booth's
+  `CAPTURE`), whose actors name the censor, with its `while:` read with the
+  line's program bound. So it is on exactly the programs the guest card
+  offers 🛡 on: the show's are a marked program, everyone while the alarm is
+  on, and everyone once the Bingo round is over; never a program already in
+  the Internet. Never after the ending (`nightEnded`), when ✂ only counts for
+  the report. A story with no such button gets nothing.
+- **The press** is the booth's ordinary `POST /api/prime/act {name, guest}`,
+  so the story's hook runs as for any Antivirus: their phone locks, her line,
+  ⭐ +20 and +5 trust, `escort_by`, the Wanted board's CAUGHT BY. No story
+  change, and no new route.
+- **After.** The line stays on her list, so ✂ (it still pays) and Let it go
+  still stand. The next view drops 🛡 from every line of that program. The
+  pop-out stays up (`closes: false`) and its status line says what came of
+  it (the story's reply); the window says it under the line (`.filter-sent`).
+  A refusal is said in the same places.
+- **Two taps**, as everywhere: armed it reads *🛡 Send to the Internet? Their
+  phone locks.*
+- `FilterLine.send` is optional, so an old booth ignores it and a new booth on
+  an old server has no 🛡.

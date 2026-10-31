@@ -63,6 +63,12 @@ each swear highlighted in its band's colour. More lines wait behind a
 - **✂ Censor** (two taps) stars what the strength catches in that line on
   every phone, the TV and Run (`p***word`), pays the censor ⭐ and fires
   `swear_censored` for the program.
+- **🛡 The part's own capture** (two taps), when the story gives it one: a
+  performer button of theirs that sends a guest to the Internet. It shows
+  only where the button's `while:` holds for that program, and never after
+  the ending. It is the ordinary press, so the button's hook does the work,
+  and the line stays, so ✂ Censor and Let it go still work on it. Nothing to
+  write: a part with such a button gets it.
 - **Let it go** hides it on that phone only.
 
 **The ⭐ game.** A ✂ pays *points × multiplier*, rounded down. A word's

@@ -465,6 +465,15 @@ Everything is booth chunk only, in `booth/filter/`:
   real store, the pop-out, the tray, the window, the first-load fence),
   `test/w48b-filter.test.tsx` (the dial, the bands, the game's numbers
   and components, the Start item, the strength window, the palette).
+- **🛡 on a line** (wave 57, contract C15, copy `FILTER_SEND_COPY` `DRAFT w57`).
+  `FilterLine.send {id, label}` (the server's `captureFor`, optional) puts the
+  story's own capture between ✂ and Let it go: `filterDraft`'s `send` action
+  (`arm`, `armedLabel`, `closes: false`, `BoothDo` `send`) and `FilterRow`'s
+  full-width `.filter-btn.send`. `useFilter.send(seq)` is `PrimeSession.act(id,
+  guest)`; `sendDone` / `sendRefusal` read it. It leaves the line waiting, so
+  ✂ and Let it go stand: the view drops `send`, and `sent(seq)` says what came
+  of it (the pop-out's status line, `.filter-sent` in the window). Tests:
+  `test/w57-filter-send.test.tsx`.
 - **The 🔑 Filter tile** (`booth/mission-model.ts` `FILTER_ROOM`): the
   censor's Mission home always has it beside Wanted (*n to judge*), since on
   a phone the tray fits two items and 🔔 + 🚨 push its 🔑 out.

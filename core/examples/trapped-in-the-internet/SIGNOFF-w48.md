@@ -188,3 +188,30 @@ reload (the story changed: the ⭐, the suspicion, the notice, G14's lines,
 lockfile). Reload the Password Manager's booth, the TV and every wall.
 Reprint the Password Manager's pack and the director and second-director
 cards. Nothing on the house machines.
+
+## 6. Wave 57: 🛡 from the filter (DRAFT w57)
+
+*"password manager should be able to send guests to the internet during
+their censorship game, which I had initially decided against. the other
+options should remain however"*. The button's own label is the story's. The
+guest hears what any capture says. Only these words are new:
+
+| Where | Text |
+|---|---|
+| 🛡 armed | 🛡 Send to the Internet? Their phone locks. |
+| if the story says nothing back | {name} is on the way to the Internet. |
+| a refused press | Not sent: not right now. / the doors are closed. / this part can't send them. · No connection. Try again. |
+| her pack | **🛡 Send to the Internet** (tap, tap again): when a line has earned more than the scissors. |
+
+Decided without asking, to check:
+
+1. It shows only where a scanned card would: a marked program, or anyone once
+   the Bingo round is over. Earlier, a send would land before Clippy explains
+   the Internet and ahead of the first reinstallation.
+2. It doesn't censor the line. She can ✂ it as well, and be paid for both.
+3. It pays what any 🛡 pays (⭐ +20, +5 trust). One ✂ on one word pays 36 ⭐
+   at the very most (a slur at ×3).
+4. It is gone after the ending, though ✂ still counts for the report.
+
+No story change: server and booth only (`ship.sh`, no `sync-show`). Reload the
+Password Manager's booth. Reprint her pack.

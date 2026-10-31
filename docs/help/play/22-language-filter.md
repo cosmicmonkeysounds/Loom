@@ -36,6 +36,12 @@ pops up at any strength.
   out for everyone who can see it (`p***word`), the program is told its
   message was censored, and its **suspicion** goes up on the Antivirus'
   👁 watchlist.
+- **🛡 Send to the Internet** takes two taps as well. The first arms it:
+  it reads *🛡 Send to the Internet? Their phone locks.* It is the same 🛡 as
+  on a scanned card, with the same ⭐, and it only shows when that card would
+  show it: on a marked program, or on anyone once the Bingo round is over.
+  It leaves the line for you to judge: ✂ Censor still stars it out and still
+  pays, and Let it go still clears it. It is gone after the ending.
 - **Let it go** clears it from your phone. Nobody else is told, and the
   line stays as it was.
 - **🔑 All flagged (n)** shows when more lines wait: it opens the filter
@@ -65,7 +71,8 @@ nothing at all. Patience, and the worse words, pay best. After the ending
 The tray's **🔑 n** counts the lines still waiting for you. Tap it for the
 window: *Censored 3 of 12 flagged words* (tonight, everyone's) and your
 **⭐ tonight**, the heat meter, then every waiting line, oldest first,
-each with its worth, **✂ Censor** (two taps) and **Let it go**. When the
+each with its worth, **✂ Censor** (two taps), **Let it go** and, where it
+can be used, **🛡 Send to the Internet** (two taps). When the
 filter has been turned down, a note says how many waiting lines it is
 hiding. Empty, it says *Nothing to judge.* While it is open no 🔑 pop-out
 comes up: new lines just join the list. Close it with ×, or the phone's
