@@ -50,6 +50,11 @@ audio:
   # Break the voice on the input whose role is `trabolta`, in real time (wave 56,
   # audio/voicefx.py). Needs passthrough. The server says how much.
   # voicefx: true
+  # An input heard in the reinstallation games at a terminal's screen (wave 59,
+  # audio/gamefeed.py): the router is one more voice at that spot on the
+  # server's relay, and sends only while a program stands in its room. Needs
+  # passthrough. A failure never reaches the house.
+  # game_feed: { ch: 1, spot: desktop-tv }   # + gain_db: 0, gate_db: -42
 
   # device: "MOTU"     # override audio.json's device.name (a substring of the device name)
   # host_api: asio     # Windows: open the interface through ASIO (one N-channel device)

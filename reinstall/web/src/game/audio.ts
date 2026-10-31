@@ -12,7 +12,8 @@
 //! On the tent laptop (wave 18b) the game plays inside the terminal page:
 //! `createSfx(soundOutput)` borrows the terminal's context and master bus
 //! (`terminal/src/sound/bus.ts`) instead of opening a context of its own,
-//! and never closes what it borrowed (the tent has no voice link).
+//! and never closes what it borrowed. The tent has no voice link, only the
+//! TV's sound (wave 59), which plays into this same output.
 
 export interface Sfx {
   /** Call from a user gesture. */

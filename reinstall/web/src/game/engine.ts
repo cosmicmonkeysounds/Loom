@@ -754,22 +754,24 @@ export class Game {
     return { choice: this.qualityChoice, tier: tierOf(this.auto.level), cap: this.qualityCap };
   }
 
-  /** The voice link on the effects' context, when this device has it on. */
+  /** The voice link on the effects' context when this device has it on;
+   *  else (the tent laptop) only the TV, with no mic, on the game's own bus,
+   *  so a terminal's level and mute apply to it (wave 59). */
   private startVoice(): VoiceLink | null {
+    const full = this.o.voice === true;
     const mic = this.o.mic ?? null;
-    const audio = this.o.voice === true ? this.o.sfx.context() : null;
-    if (audio === null) {
-      void mic?.then(stopStream);
-      return null;
-    }
-    const { ctx } = audio;
+    const audio = this.o.sfx.context();
+    if (audio === null || !full) void mic?.then(stopStream);
+    if (audio === null) return null;
+    const { ctx, out } = audio;
     return new VoiceLink({
       base: this.o.base,
       token: this.o.assignment.token,
       house: () => this.map,
-      sink: createVoiceSink(ctx, ctx.destination),
+      sink: createVoiceSink(ctx, full ? ctx.destination : out),
+      tvOnly: !full,
       mic:
-        mic === null
+        !full || mic === null
           ? null
           : mic.then((stream) => {
               if (stream === null) return null;
@@ -1257,7 +1259,7 @@ export class Game {
   }
 
   private voiceHud(): VoiceHudState | null {
-    if (this.voice === null) return null;
+    if (this.voice === null || this.o.voice !== true) return null; // only the TV: nothing to show
     const hud = this.voice.hud;
     if (!hud.listening) return { ...hud, ears: 0 };
     // The server counts the terminals that hear us; an older one doesn't

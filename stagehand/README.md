@@ -422,6 +422,7 @@ audio:
   announce: true             # the router plays `do announce` (no alexa: section allowed beside it)
   passthrough: true          # duplex: the TV's input is routed and every input is metered
   tap: { device: "VoiceMeeter Output", host_api: mme, ch: 3 }  # wave 46: a capture device summed into an input
+  game_feed: { ch: 1, spot: desktop-tv }  # wave 59: an input heard in the reinstallation games at the TV
   priority:                  # dB at full activity, per bus (sfx = story sounds, music = the beds)
     trabolta: { music: -18, sfx: -8 }
     announce: { music: -15, sfx: -12 }
@@ -458,6 +459,14 @@ audio:
   tap … → in 3 peak N dBFS, underruns N, slips N` (or `NOT OPEN (why)`).
   A tap that fails to open never stops the router (`audio tap failed to
   open (...) — playing on without it`). VoiceMeeter must be running.
+- **The game feed** (`audio.game_feed`, wave 59, `audio/gamefeed.py`): an
+  input (Mic 1, Clippy's wireless) sent to both reinstallation games, where it
+  plays from the TV to a program standing in The Desktop. To the server the
+  router is one more terminal at that spot on the voice relay, so it sends only
+  while a program is in that room (16 kB/s). The health line ends `| game feed
+  input 1 → desktop-tv peak N dBFS, 1 hearing, sent N, dropped N, overflows N`.
+  A fault here never reaches the speakers. Runbook:
+  `../scripts/house-desktop/README.md` §3.8.
 - **Priority ducking**: an `audio.json` input with a `role` (`trabolta`,
   `clippy`) is a sidechain: its level over `sidechain.threshold_db` (or
   the role's own) ducks the buses its `priority` row names on the

@@ -122,6 +122,23 @@ class ModClient:
             return {}
         return doc if isinstance(doc, dict) else {}
 
+    async def post_bytes(self, p: str, body: bytes, params: dict[str, Any] | None = None, timeout: float | None = None) -> dict[str, Any]:
+        """One raw body (`POST /api/spatial/voice`, wave 59). No re-login here:
+        on this route a 403 may be the map's answer, not the token's, and a
+        caller posting five times a second must not turn that into logins."""
+        await self.ensure_token()
+        extra: dict[str, Any] = {} if timeout is None else {"timeout": timeout}
+        r = await self._client.post(
+            self.path(p), content=body, params=params, headers={"x-loom-token": self.token or "", "content-type": "application/octet-stream"}, **extra
+        )
+        if r.status_code != 200:
+            raise ModApiError(f"POST {p} → {r.status_code} {r.text[:200]}", r.status_code)
+        try:
+            doc = r.json()
+        except json.JSONDecodeError:
+            return {}
+        return doc if isinstance(doc, dict) else {}
+
     async def get(self, p: str, params: dict[str, Any] | None = None, timeout: float | None = None) -> dict[str, Any]:
         """One authenticated GET (`/api/agent/facts`); re-logs in once on 403.
         `timeout` overrides the client's 10 s (a long-poll waits longer)."""

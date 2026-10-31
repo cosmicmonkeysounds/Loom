@@ -31,7 +31,7 @@ const AT = {
 };
 
 type Sent = Array<{ event: string; data: Record<string, unknown> }>;
-function listener(id: string, kind: "terminal" | "player", key: string, flags: { mic?: boolean; hear?: boolean } = {}): VoiceListener & { sent: Sent; closed: boolean } {
+function listener(id: string, kind: "terminal" | "player", key: string, flags: { mic?: boolean; hear?: boolean; only?: "tv" } = {}): VoiceListener & { sent: Sent; closed: boolean } {
   const l = {
     id,
     kind,
@@ -226,6 +226,73 @@ describe("VoiceRelay — who hears whom", () => {
     relay.connect(listener("p1b", "player", "s-a", { mic: false })); // the newest stream wins
     expect(player.closed).toBe(true);
     expect([...relay.hearing("t1").keys()]).toEqual([]);
+  });
+
+  it("wave 59: a mic that plays nothing at the TV's spot is the TV's sound, beside the TV's own stream, mic off", () => {
+    const { world, relay } = harness();
+    const tv = listener("tv", "terminal", "desktop-tv", { mic: false });
+    const router = listener("router", "terminal", "desktop-tv", { mic: true, hear: false });
+    relay.connect(tv);
+    relay.connect(router);
+    expect(tv.closed || router.closed).toBe(false); // the spot's two streams
+    const p = listener("p", "player", "s1");
+    world.players = [{ session: "s1", name: "Pinball", p: [3, 0, 7], room: "desktop" }];
+    relay.connect(p);
+    expect(events(router, "listen").at(-1)?.data).toEqual({ on: true, ears: 1 });
+
+    expect(relay.upload({ kind: "terminal", spot: "desktop-tv" }, 1, new Uint8Array(3200))).toEqual({ listening: true, dropped: false, ears: 1 });
+    expect(events(p, "voice").map((v) => [v.data.from, v.data.kind, v.data.spot, v.data.gain])).toEqual([["t:desktop-tv", "terminal", "desktop-tv", 1]]);
+    // The player is heard on the TV as ever; the router, with hear=0, gets nothing.
+    expect(relay.hearing("tv").get("s:s1")).toBe(1);
+    expect(relay.hearing("router").size).toBe(0);
+    // Out of the room: nothing more goes up, and the game fades it out.
+    world.players = [{ session: "s1", name: "Pinball", p: AT.hall, room: "hall" }];
+    relay.route();
+    expect(events(router, "listen").at(-1)?.data).toEqual({ on: false, ears: 0 });
+    expect(events(p, "bye").map((b) => b.data.from)).toEqual(["t:desktop-tv"]);
+  });
+
+  it("wave 59: the router's reconnect leaves the TV's own stream alone", () => {
+    const { relay } = harness();
+    const tv = listener("tv", "terminal", "desktop-tv", { mic: false });
+    relay.connect(tv);
+    const first = listener("r1", "terminal", "desktop-tv", { mic: true, hear: false });
+    relay.connect(first);
+    relay.disconnect("r1");
+    relay.connect(listener("r2", "terminal", "desktop-tv", { mic: true, hear: false }));
+    expect(tv.closed).toBe(false);
+  });
+
+  it("wave 59: an only=tv stream hears the TV alone, and never wakes another terminal's mic", () => {
+    const { world, relay } = harness();
+    const hall = listener("hall", "terminal", "hall");
+    const tv = listener("tv", "terminal", "desktop-tv", { hear: false });
+    const p = listener("p", "player", "s1", { mic: false, only: "tv" });
+    relay.connect(hall);
+    relay.connect(tv);
+    world.players = [{ session: "s1", p: AT.hall, room: "hall" }];
+    relay.connect(p);
+    // In the hall: its terminal stays dark, and is told so (not `on`, or it would stream).
+    expect(relay.hearing("p").size).toBe(0);
+    expect(events(hall, "hello")[0]?.data.listen).toBe(false);
+    expect(relay.upload({ kind: "terminal", spot: "hall" }, 1, new Uint8Array(3200)).dropped).toBe(true);
+    expect(events(p, "voice")).toEqual([]);
+    // In the Desktop: the TV.
+    world.players = [{ session: "s1", p: [3, 0, 7], room: "desktop" }];
+    relay.route();
+    expect([...relay.hearing("p").keys()]).toEqual(["t:desktop-tv"]);
+    expect(events(tv, "listen").at(-1)?.data).toEqual({ on: true, ears: 1 });
+    // mic=0: the terminal in the room has no player's voice to wait for.
+    expect(relay.hearing("tv").size).toBe(0);
+  });
+
+  it("wave 59: a stream with no `only` hears every terminal in its room, as ever", () => {
+    const { world, relay } = harness();
+    const hall = listener("hall", "terminal", "hall");
+    relay.connect(hall);
+    world.players = [{ session: "s1", p: AT.hall, room: "hall" }];
+    relay.connect(listener("p", "player", "s1"));
+    expect([...relay.hearing("p").keys()]).toEqual(["t:hall"]);
   });
 
   it("the doorway (wave 26): no reach inside a room, the presence room decides, never flapping on jitter", () => {

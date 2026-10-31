@@ -345,7 +345,7 @@ the TV reloaded, and on the Desktop `git pull` and
 `start-stagehand.ps1 -Restart audio`. Not proven on Windows' voices
 or the house speakers: run `SIGNOFF-w56.md` §3 first.
 
-**The music manager, and Trabolta at the stereo** (wave 58, not merged;
+**The music manager, and Trabolta at the stereo** (wave 58, not shipped;
 `docs/loom-w58-contract.md`, show text `DRAFT w58` on `SIGNOFF-w58.md`): Run →
 House → 🎵 Music and the Desk's 🎵 Music (open for Task Manager) hold Now Playing,
 TIDAL's ⏮ ⏸ ⏭, the show's playlists, the app's sidebar, a pasted playlist link
@@ -355,6 +355,15 @@ slot his reply may move, ±1). His moves are allow-listed and a loan: a live mus
 cue ends it, a director's hand refuses it, 🔒 keeps him off. ⏮ ⏸ and a hand
 playlist are unproven on the real app. Help:
 `docs/help/authoring/57-music-manager.md`.
+
+**Mic 1 is the TV's sound in the games** (wave 59, not shipped;
+`docs/loom-w59-contract.md`): the Desktop's router sends the 828x's Mic 1
+(Clippy's wireless) to both reinstallation games, where it plays from the TV to a
+program standing in The Desktop. To the server the router is one more terminal at
+`desktop-tv` on the voice relay, so it sends only while someone is in that room,
+and the Quest needs no new APK. The Desktop's `git pull` and `-Restart audio` is
+enough for VR; the tent's web game needs a release (`?only=tv`) and a reload.
+Runbook: `scripts/house-desktop/README.md` §3.8.
 
 ### Release status
 
