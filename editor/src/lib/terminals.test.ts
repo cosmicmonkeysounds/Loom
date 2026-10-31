@@ -488,6 +488,12 @@ describe('the link to the games (wave 59)', () => {
     expect(linkBadges({ ...quiet, linkError: 'nonsense' } as TerminalDevice, false)).toEqual([])
     expect(linkBadges(quiet as TerminalDevice, false)).toEqual([])
   })
+  it('rides the server\'s list onto the row and into its badges', () => {
+    const { rows } = mergeTerminals({}, { now: 1000, voiceMuted: false, silentMs: 20_000, terminals: [{ name: 'Hall', spot: 'hall', view: 'auto', character: '', ago: 10, camSent: 0.5, simReceived: 10, simDrawn: 18, linkError: 'offline', cam: { got: 0.5, read: 0 } }] }, 2000)
+    const keys = terminalBadges(rows[0]!, null).map((b) => b.key)
+    expect(keys).toEqual(expect.arrayContaining(['link-cam', 'link-sim', 'link-error']))
+    expect(rows[0]!.device?.cam).toEqual({ got: 0.5, read: 0 })
+  })
   it('a silent row shows no stale numbers', () => {
     expect(linkBadges({ ...quiet, camSent: 3 } as TerminalDevice, true)).toEqual([])
   })
