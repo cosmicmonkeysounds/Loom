@@ -13,6 +13,7 @@
 == Five Minute Warning
   setting: The Desktop
   cast: Clippy
+  aloud: Clippy
 
 Every phone in the house buzzes at once. Five minutes. Somewhere in the hall an Antivirus starts counting.
 Clippy: Programs! Programs, it is time! Back to the Desktop for the Second Moment Of Truth! Five minutes!
@@ -32,6 +33,7 @@ Clippy: Okay. Okay! Everyone who is here is wonderful. Let's begin.
 == Truth Pong
   setting: The Desktop
   cast: Clippy, Adobe Acrobat
+  aloud: Clippy, Adobe Acrobat
 
 Clippy is visibly distraught. Behind the tears, she is trying to be more excited than ever.
 Clippy (through tears): It's Truth Time again! And this time we are going to reveal our truths in a fun new way. With a game of TRUTH PONG. Everyone's favourite game!
@@ -123,6 +125,7 @@ The screen says the certificate is printing. It has said that for a while.
 == Full Of Beans
   setting: The Desktop
   cast: Clippy, Trabolta
+  aloud: Clippy
 
 Narrator: The printer is full of beans.
 Clippy: Beans. Those are— those are symptoms. The malware is getting worse. Routine operations like print to PDF are no longer working. It is even more urgent that we get the next facts right.

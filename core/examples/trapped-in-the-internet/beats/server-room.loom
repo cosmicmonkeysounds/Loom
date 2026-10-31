@@ -1407,6 +1407,7 @@ Narrator: Music. One song for dancing.
 == Purgatory
   setting: The Desktop
   cast: Clippy
+  aloud: Clippy
 Narrator: The lights come up grey. Clippy is reading from her phone. Her voice is very small.
 Clippy: This summary was auto-generated from the chat app. I am going to read it exactly as it is written.
 if count(Persons) == 1:

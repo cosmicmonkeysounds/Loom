@@ -18,6 +18,7 @@
 == Truth Scavenger Hunt One
   setting: The Desktop
   cast: Clippy, Trabolta
+  aloud: Clippy
 
 Clippy: Everyone! We're ready for our second game: the TRUTH SCAVENGER HUNT! Trabolta will explain the rules.
 Trabolta: As our computer completely relies on me, it is important that you participate in regular training, so I have all the information I need to keep improving. There are files scattered around the computer that I need your help to interpret.
@@ -46,6 +47,7 @@ The Antivirus sweep the house, room by room, herding programs back to the Deskto
 == First Moment Of Truth
   setting: The Desktop
   cast: Clippy
+  aloud: Clippy
 
 Clippy: Welcome back, programs! It's time for the First Moment of Truth! Is anyone able to answer the questions?
 // w26 (G1: Clippy explains nothing; the rules are never said out loud)

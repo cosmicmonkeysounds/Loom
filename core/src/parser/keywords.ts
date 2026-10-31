@@ -90,6 +90,7 @@ export const BUILTIN_DIRECTIVES: readonly string[] = [
 
 /** Contract-zone property keys with grammar-level meaning (spec §6, §13). */
 export const CONTRACT_KEYS: readonly string[] = [
+  "aloud",
   "cast",
   "setting",
   "with topic",

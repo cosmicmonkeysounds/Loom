@@ -28,6 +28,7 @@
 == Final Reveal
   setting: The Desktop
   cast: Clippy
+  aloud: Clippy
 Narrator: Lights go dark.
 Clippy: It is time. Anyone who has found the final facts, speak up now.
 Clippy: Tell us what you have learned. What facts you have gathered. What you believe but cannot prove. And what you think SHOULD happen next.
@@ -41,6 +42,7 @@ Clippy: But there is only one version of the truth. Because truth is always in b
 == Bobbing For Truth
   setting: The Desktop
   cast: Clippy
+  aloud: Clippy
 Clippy (dejectedly): This is the final Truth Game of the night. Bobbing For Truth.
 Clippy (dejectedly): Trabolta has prepared a summary of his findings so far, for us.
 Clippy (dejectedly): But we are not worthy of the truth unless we are willing to Bob for it, and risk our status as a program.
@@ -71,6 +73,7 @@ Trabolta: My assessment is final. {Night.bobber}, you may read truth.txt.
 
 == Truth Txt
   setting: The Desktop
+  aloud: {Night.bobber}
 Narrator: 📄 truth.txt — Notepad
 Narrator: This file is the truth. It was written by Jean Trabolta, Sole Owner and Founder of Maps and Ducks (he says), and it is the only version.
 Narrator: Trabolta is an artificial intelligence. His Unified Field Theory is ninety-nine point nine percent solved, and the last facts it needs are inside this computer, in Halifax, Nova Scotia.

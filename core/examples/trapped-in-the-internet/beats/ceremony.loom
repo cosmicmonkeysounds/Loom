@@ -31,6 +31,7 @@
 
 == The Ceremony
   setting: The Desktop
+  aloud: Clippy
 // Wave 18b: the ceremony's slide once The Night In Review is read (it
 // was cued by 🏆 itself, so it held through the review).
 cue screens_ceremony
@@ -58,6 +59,7 @@ else:
 
 == Present Award
   setting: The Desktop
+  aloud: Clippy
 sound award_fanfare
 if Night.award == "most_trusted":
   cue screens_award_most_trusted
@@ -206,6 +208,7 @@ set Night.terminals = Night.screen
 // Every line here is DRAFT w45 (SIGNOFF-w45).
 == Bathroom Report
   setting: The Desktop
+  aloud: Clippy
 sound award_fanfare
 cue screens_award_bathroom
 set Night.screen = "award_bathroom"
@@ -252,6 +255,7 @@ else if Night.award_lines != "director":
 // Every line here is DRAFT w48 / w48b (SIGNOFF-w48).
 == Language Report
   setting: The Desktop
+  aloud: Clippy
 sound award_fanfare
 cue screens_award_language
 set Night.screen = "award_language"
