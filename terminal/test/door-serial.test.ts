@@ -110,22 +110,26 @@ describe("the sim patch bay (door=sim, Shift + digits)", () => {
     k.digit(3, false); // a bare digit is the heart's: no cable
     plug(1, 2);
     plug(3, 1);
-    plug(5, 4);
+    plug(2, 4);
     expect(doorHeartbeat()).toMatchObject({ pb: "3", pbc: "0", pbx: "0" });
     expect(patchStatusText(doorStatus())).toBe("simulated patch bay: 3 cables");
-    plug(8, 6);
+    plug(4, 3);
     await tick();
     const patches = bodies.filter((b) => b.name === "patch_changed");
-    expect(patches).toEqual([{ name: "patch_changed", args: { combo: "V1-D2,V3-D1,V5-D4,V8-D6" }, label: "Terminal · Heart" }]);
+    expect(patches).toEqual([{ name: "patch_changed", args: { combo: "V1-D2,V2-D4,V3-D1,V4-D3" }, label: "Terminal · Heart" }]);
     expect(doorHeartbeat()).toMatchObject({ pb: "4", pbc: "1" });
     expect(patchStatusText(doorStatus())).toBe("simulated patch bay: 4 cables · COMPLETE · 1 posted");
-    // V5 moved from D4 to D3: a new set.
-    plug(5, 3);
+    // V2 and V4 traded inputs, through a bay of three: one new set.
+    plug(2, 0);
+    plug(4, 4);
+    plug(2, 3);
     await tick();
-    expect(bodies.filter((b) => b.name === "patch_changed").map((b) => b.args["combo"])).toEqual(["V1-D2,V3-D1,V5-D4,V8-D6", "V1-D2,V3-D1,V5-D3,V8-D6"]);
+    expect(bodies.filter((b) => b.name === "patch_changed").map((b) => b.args["combo"])).toEqual(["V1-D2,V2-D4,V3-D1,V4-D3", "V1-D2,V2-D3,V3-D1,V4-D4"]);
     // The buttons have the bay: nothing posts.
     link.screen({ server_door: "closed", door_override: false, patch_override: true, step: 14 });
-    plug(5, 4);
+    plug(2, 0);
+    plug(4, 3);
+    plug(2, 4);
     await tick();
     expect(bodies.filter((b) => b.name === "patch_changed")).toHaveLength(2);
     k.digit(0); // every cable out
@@ -138,10 +142,10 @@ describe("the sim patch bay (door=sim, Shift + digits)", () => {
     const link = startDoorLink(config, { fetchFn: (async () => new Response("{}")) as unknown as typeof fetch, keys: k.target, store: memory() });
     expect(await doorActions()!.bay({ c: "pb", op: "learn", source: 2 })).toEqual({ t: "err", error: "pb: need exactly one cable", cmd: "pb learn V2" });
     k.digit(2);
-    k.digit(5);
-    expect(await doorActions()!.bay({ c: "pb", op: "learn", source: 2 })).toMatchObject({ t: "pbcal", src: 2, raw: 921 });
+    k.digit(3);
+    expect(await doorActions()!.bay({ c: "pb", op: "learn", source: 2 })).toMatchObject({ t: "pbcal", src: 2, raw: 1789 });
     expect(await doorActions()!.bay({ c: "pb", op: "save" })).toMatchObject({ t: "pbcal", src: 0 });
-    expect(doorStatus().pbcal).toMatchObject({ t: "pbcal", levels: [445, 921, 1338, 1848, 2247, 2757, 3174, 3650] });
+    expect(doorStatus().pbcal).toMatchObject({ t: "pbcal", levels: [1197, 1789, 2523, 3746] });
     link.stop();
   });
 
@@ -199,16 +203,16 @@ describe("Web Serial (door=serial)", () => {
     const patch = (seq: number, pairs: string, src: number[], complete: boolean) =>
       `{"t":"patch","seq":${seq},"pairs":"${pairs}","count":${src.filter((k) => k > 0).length},"complete":${complete},"raw":[${src.map((k) => (k > 0 ? 400 * k : 0)).join(",")}],"src":[${src.join(",")}],"stable":true}\n`;
     // Lines before the hello: no bay known yet, nothing read.
-    b.say(patch(1, "", [0, 0, 0, 0, 0, 0, 0], false));
+    b.say(patch(1, "", [0, 0, 0, 0], false));
     for (let i = 0; i < 5; i++) await tick();
     expect(doorStatus().patch).toBeNull();
-    b.say('{"t":"hello","fw":"door-m4 1.2.0","mode":"steady","auto":false,"close":1800,"open":1200,"settle":150,"cal":false,"sense":false,"pbv":8,"pbd":7}\n');
+    b.say('{"t":"hello","fw":"door-m4 1.3.0","mode":"steady","auto":false,"close":1800,"open":1200,"settle":150,"cal":false,"sense":false,"pbv":4,"pbd":4}\n');
     link.screen({ server_door: "closed", door_override: false, patch_override: false, step: 14 });
-    b.say(patch(2, "", [0, 0, 0, 0, 0, 0, 0], false));
-    b.say(patch(3, "V1-D2,V3-D1,V5-D4,V8-D6", [3, 1, 0, 5, 0, 8, 0], true));
-    b.say(patch(4, "V1-D2,V3-D1,V5-D4,V8-D6", [3, 1, 0, 5, 0, 8, 0], true));
+    b.say(patch(2, "", [0, 0, 0, 0], false));
+    b.say(patch(3, "V1-D2,V2-D4,V3-D1,V4-D3", [3, 1, 4, 2], true));
+    b.say(patch(4, "V1-D2,V2-D4,V3-D1,V4-D3", [3, 1, 4, 2], true));
     for (let i = 0; i < 5; i++) await tick();
-    expect(bodies.filter((x) => x.name === "patch_changed").map((x) => x.args)).toEqual([{ combo: "V1-D2,V3-D1,V5-D4,V8-D6" }]);
+    expect(bodies.filter((x) => x.name === "patch_changed").map((x) => x.args)).toEqual([{ combo: "V1-D2,V2-D4,V3-D1,V4-D3" }]);
     expect(doorHeartbeat()).toMatchObject({ pb: "4", pbc: "1", pbx: "0" });
     // Unplugged: the bay is still known, so the heartbeat says so.
     link.stop();

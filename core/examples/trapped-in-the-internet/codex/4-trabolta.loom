@@ -24,12 +24,12 @@
 // codex as ground truth, and these must never reach either model.
 //
 // The combo pairs must equal `Kernel.combo_a` / `Kernel.combo_b`
-// (cast/props.loom, seeded in Power On) and stagehand's
-// trapped.house.yaml: A = V2-D5,V4-D1,V6-D7,V7-D3 and
-// B = V1-D6,V3-D2,V5-D7,V8-D4. Change all three together. Wave 22: the
-// M4 bay has 8 sources (V1–V8) and 7 inputs (D1–D7), so A's V6 → D8 became
-// V6 → D7 (`pnpm --filter @loom/core titi:facts` then regenerates his
-// never-words).
+// (cast/props.loom, seeded in Power On), stagehand's trapped.house.yaml and
+// the patch-bay watch's card. The sheets name the panel's own jacks, and the
+// story and the wire name V<k>-D<i>: titi-facts.ts `PANEL_JACKS` and the
+// firmware's config.h hold the table. Change them all together (`pnpm --filter
+// @loom/core titi:facts` then regenerates his never-words). Wave 57: the panel
+// as built, 8 live jacks of 16, and both combinations new.
 
 CODEX Jean Trabolta
   title: Jean Trabolta
@@ -151,19 +151,20 @@ CODEX Oil And Lightning
     getting your oil and your fuel all mixed up: catastrophic for the car,
     "and for my silicon guts," he says. His motorcycle runs on the same mix.
 
+// DRAFT w57: this entry and the four sheets name the panel's own rows and jacks.
 CODEX The Legendary Fact
   title: THE LEGENDARY FACT
   category: Trabolta
   about: The Server Room
   secret: true
   text:
-    Trabolta's heart is in the server room. It is a video patch bay. The
-    top row (V) is the lightning; the bottom row (D) is the grease. Two
-    combinations exist. Combo A takes the grease out of the lightning: it
-    disables Trabolta, and the programs can escape the computer. Combo B
-    self-destructs the whole computer, with everything inside it. Each
-    combination is four cables. The door has a keypad; the patch bay
-    forgives one wrong combination, and the second sets off the alarm.
+    Trabolta's heart is in the server room. It is a video patch bay. Row B
+    is the lightning; row A is the grease. Two combinations exist. Combo A
+    takes the grease out of the lightning: it disables Trabolta, and the
+    programs can escape the computer. Combo B self-destructs the whole
+    computer, with everything inside it. Each combination is four cables,
+    from row B to row A. The door has a keypad; the patch bay forgives one
+    wrong combination, and the second sets off the alarm.
 
 CODEX Combo A First Half
   title: Patch Sheet A · 1 of 2
@@ -171,7 +172,7 @@ CODEX Combo A First Half
   about: The Server Room
   secret: true
   text:
-    Combo A disables Trabolta. Part 1 of 2: patch V2 → D5 and V4 → D1.
+    Combo A disables Trabolta. Part 1 of 2: patch B2 → A7 and B4 → A5.
     Part 2 holds the other two cables.
 
 CODEX Combo A Second Half
@@ -180,7 +181,7 @@ CODEX Combo A Second Half
   about: The Server Room
   secret: true
   text:
-    Combo A disables Trabolta. Part 2 of 2: patch V6 → D7 and V7 → D3.
+    Combo A disables Trabolta. Part 2 of 2: patch B7 → A6 and B8 → A4.
     Part 1 holds the other two cables.
 
 CODEX Combo B First Half
@@ -189,8 +190,8 @@ CODEX Combo B First Half
   about: The Server Room
   secret: true
   text:
-    Combo B self-destructs the whole computer. Part 1 of 2: patch V1 → D6
-    and V3 → D2. Part 2 holds the other two cables.
+    Combo B self-destructs the whole computer. Part 1 of 2: patch B2 → A5
+    and B4 → A7. Part 2 holds the other two cables.
 
 CODEX Combo B Second Half
   title: Patch Sheet B · 2 of 2
@@ -198,8 +199,8 @@ CODEX Combo B Second Half
   about: The Server Room
   secret: true
   text:
-    Combo B self-destructs the whole computer. Part 2 of 2: patch V5 → D7
-    and V8 → D4. Part 1 holds the other two cables.
+    Combo B self-destructs the whole computer. Part 2 of 2: patch B7 → A4
+    and B8 → A6. Part 1 holds the other two cables.
 
 CODEX The Truth File
   title: truth.txt

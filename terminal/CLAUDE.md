@@ -453,6 +453,9 @@ them out.
   `night.ended`, not `night.patch_override`. A set completed while the gate
   is shut is let go, never posted later; the first line after a connect is
   only looked at; a new run (step < 14) forgets the last posted set.
+- ⚙ reads in the panel's own names (`SOURCE_JACKS`, `INPUT_JACKS`): the panel
+  has 8 live jacks of 16, and `V<k>` / `D<i>` stay the wire's. Keep the table in
+  step with the firmware's `config.h` (`core/test/trapped-w22-patchbay.test.ts`).
 - The bridge never knows the combinations. **Never put combination
   strings, the door code or other live codes in code, tests or docs.**
 - The parser is tested line for line against the firmware's

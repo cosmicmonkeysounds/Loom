@@ -349,13 +349,13 @@ show:
     # entries (codex/4-trabolta.loom).
     # Each combo fires once per time it is made (edge), however often the
     # scanner republishes it.
-    - on: { topic: "sensors/patchbay/state", when: "complete == true && combo == 'V2-D5,V4-D1,V6-D7,V7-D3'" }
+    - on: { topic: "sensors/patchbay/state", when: "complete == true && combo == 'V1-D4,V2-D3,V3-D1,V4-D2'" }
       edge: true
       signal: { name: patch_combo_a, debounce_s: 60 }
-    - on: { topic: "sensors/patchbay/state", when: "complete == true && combo == 'V1-D6,V3-D2,V5-D7,V8-D4'" }
+    - on: { topic: "sensors/patchbay/state", when: "complete == true && combo == 'V1-D3,V2-D4,V3-D2,V4-D1'" }
       edge: true
       signal: { name: patch_combo_b, debounce_s: 60 }
-    - on: { topic: "sensors/patchbay/state", when: "complete == true && combo != 'V2-D5,V4-D1,V6-D7,V7-D3' && combo != 'V1-D6,V3-D2,V5-D7,V8-D4'" }
+    - on: { topic: "sensors/patchbay/state", when: "complete == true && combo != 'V1-D4,V2-D3,V3-D1,V4-D2' && combo != 'V1-D3,V2-D4,V3-D2,V4-D1'" }
       signal: { name: patch_rejected, debounce_s: 10 }
 
 # --- the house speaker router (wave 18b: every story sound AND the house announcements) ---

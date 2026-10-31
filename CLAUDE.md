@@ -579,7 +579,7 @@ the glitch on real phones, and the real speakers.
    ~5500 mA, `wled/living`). `lights.json` already places every light; no
    groups, scenes or presets. Then Run → House → 🔌 Setup green, Checks
    walked, and each look ▶ Tested on the house in the 🎨 Cue designer.
-9. Steph's laptop: flash the M4 (`door-m4 1.2.0`), bench with
+9. Steph's laptop: flash the M4 (`door-m4 1.3.0`), bench with
    `scripts/accept/N-20.sh` and `N-21.sh`, then calibrate the door and
    learn the patch bay in the terminal's ⚙ (always after a reflash).
 10. Reload every terminal and the TV (mandatory since wave 26: check each

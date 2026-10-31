@@ -29,6 +29,7 @@ import { EventRuntime } from "../server/event-runtime.ts";
 import { Store } from "../server/store.ts";
 import type { AgentFacts, AgentRequest } from "../server/agents.ts";
 import { TO_HUNT2 } from "../../scripts/accept/chains.ts";
+import { PANEL_JACKS } from "../scripts/titi-facts.ts";
 
 // ───────────────────────── helpers ─────────────────────────
 
@@ -466,17 +467,18 @@ describe("Trapped in the Internet — compile", () => {
   });
 
   it("the combo halves in the codex spell out Kernel.combo_a / combo_b (§6.1 item 19)", () => {
+    const wireOf = (jack: string) => Object.entries(PANEL_JACKS).find(([, j]) => j === jack)![0];
     const s = fresh();
     s.fireBeat("Power On");
     const pairs = (...names: string[]) =>
       names
-        .flatMap((n) => [...s.model.codex.get(n)!.text.matchAll(/V(\d) → D(\d)/gu)].map((x) => `V${x[1]}-D${x[2]}`))
+        .flatMap((n) => [...s.model.codex.get(n)!.text.matchAll(/(B\d) → (A\d)/gu)].map((x) => `${wireOf(x[1]!)}-${wireOf(x[2]!)}`))
         .sort()
         .join(",");
     expect(pairs("Combo A First Half", "Combo A Second Half")).toBe(v(s, "Kernel.combo_a"));
     expect(pairs("Combo B First Half", "Combo B Second Half")).toBe(v(s, "Kernel.combo_b"));
-    expect(v(s, "Kernel.combo_a")).toBe("V2-D5,V4-D1,V6-D7,V7-D3");
-    expect(v(s, "Kernel.combo_b")).toBe("V1-D6,V3-D2,V5-D7,V8-D4");
+    expect(v(s, "Kernel.combo_a")).toBe("V1-D4,V2-D3,V3-D1,V4-D2");
+    expect(v(s, "Kernel.combo_b")).toBe("V1-D3,V2-D4,V3-D2,V4-D1");
   });
 
   it("no featured program speaks in any beat, hook or rule (§6.1 item 20)", () => {
@@ -1680,7 +1682,7 @@ const hostsSaid = (evs: SimEvent[]) => casts(evs).map((b) => b.cue);
 
 /** What the Enforcer booths read (the TRAIT Enforcer readouts). */
 const booths = (evs: SimEvent[]) => replies(evs).filter((r) => ANTIVIRUS.includes(r.to)).map((r) => r.text);
-const COMBO = /V\d\s*(?:→|->|-)\s*D\d/u;
+const COMBO = /(?:V\d\s*(?:→|->|-)\s*D\d|B\d\s*(?:→|->|-)\s*A\d)/u;
 
 describe("Trapped in the Internet — the patch-bay alarm (wave 7: the door never alarms)", () => {
   it("only the patch bay alarms: everyone is forgiven one wrong combination, the second trips it, latched for 120 s", { timeout: SLOW }, () => {
@@ -3615,8 +3617,10 @@ describe("Trapped in the Internet — secrecy (§6.1 item 21)", () => {
     expect(Object.keys(req.world).filter((k) => k.startsWith("Kernel"))).toEqual([]);
     expect(Object.keys(req.world).some((k) => k.startsWith("Night."))).toBe(true);
     const blob = JSON.stringify(req);
-    expect(blob).not.toContain("V2-D5"); // combo A
-    expect(blob).not.toContain("V1-D6"); // combo B
+    expect(blob).not.toContain("V1-D4"); // combo A
+    expect(blob).not.toContain("V1-D3"); // combo B
+    expect(blob).not.toContain("B2-A7"); // the same, as the panel writes them
+    expect(blob).not.toContain("B2-A5");
     expect(Object.keys(req.them.vars).filter((k) => /lie|confident|accurate|verdict|^fact_[acvj]\d|fact_sure|last_fact_q|fact_label/u.test(k))).toEqual([]);
     expect(Object.keys(req.world).filter((k) => /verdict|said_|ans_|res_|^event#/u.test(k))).toEqual([]);
     for (const leak of ["Eleven years", "said_1", "fact_a1", "fact_v1", "fact_j1", '"verdict"', "opal ring", "left_behind_text"]) expect(blob, leak).not.toContain(leak);
@@ -3628,7 +3632,7 @@ describe("Trapped in the Internet — secrecy (§6.1 item 21)", () => {
     // The orchestrator's lore block is the facts document's non-secret codex:
     // never the Legendary Fact, a patch sheet or the door code (wave 7).
     expect(fblob).toContain("The Sandy File"); // the lore is there…
-    for (const leak of ["THE LEGENDARY FACT", "Patch Sheet", "V2 → D5", "V1 → D6", "The Door Code", "COLD DOOR"]) expect(fblob, leak).not.toContain(leak);
+    for (const leak of ["THE LEGENDARY FACT", "Patch Sheet", "B2 → A7", "B2 → A5", "The Door Code", "COLD DOOR"]) expect(fblob, leak).not.toContain(leak);
     rt.dispose();
   });
 
@@ -3676,7 +3680,7 @@ describe("Trapped in the Internet — secrecy (§6.1 item 21)", () => {
     const CLUES = new Set(["Bridget Troelsen"]);
     for (const [id, e] of m.codex) {
       if (e.secret) continue;
-      expect(e.text, id).not.toMatch(/V\d\s*(?:→|->|-)\s*D\d/u);
+      expect(e.text, id).not.toMatch(COMBO);
       if (!CLUES.has(id)) expect(e.text, id).not.toMatch(year);
     }
     const night = fresh();
@@ -3701,7 +3705,7 @@ describe("Trapped in the Internet — secrecy (§6.1 item 21)", () => {
         const who = [n.value.speaker, ...(n.value.speakers ?? [])].filter((x: unknown) => typeof x === "string").map(fold);
         // The words only: a source span's byte offset (199751) can hold the code.
         const text = JSON.stringify(n.value, (k, x: unknown) => (k === "span" ? undefined : x));
-        if (who.includes("trabolta") && (text.includes(code) || /V\d\s*(?:→|->|-)\s*D\d/u.test(text))) bad.push(where);
+        if (who.includes("trabolta") && (text.includes(code) || COMBO.test(text))) bad.push(where);
       }
       for (const x of Object.values(n)) if (x && typeof x === "object") walk(x, where);
     };
@@ -4582,7 +4586,7 @@ describe("Trapped in the Internet — a secret on a program never reaches Trabol
     expect(me.groups).toEqual([]);
     // The Kernel (`secret: true`) is not in the facts at all: no combos, verdicts or planter.
     expect(facts.characters.map((c) => c.id)).not.toContain("Kernel");
-    for (const leak of ["V2-D5", "anti_ai", "virus_planter", "Kernel."]) expect(JSON.stringify(facts), leak).not.toContain(leak);
+    for (const leak of ["V1-D4", "anti_ai", "virus_planter", "Kernel."]) expect(JSON.stringify(facts), leak).not.toContain(leak);
 
     // At the Y2K clock the groups are revealed, but in faction mode (wave
     // 18b, D13 j) the race sides stay out of the facts document (he never

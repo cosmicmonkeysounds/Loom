@@ -1,8 +1,8 @@
 //! Trapped in the Internet — the patch bay judges itself (wave 22). The
-//! bay is 15 jacks on the Grand Central M4 (8 sources V1–V8, 7 inputs
-//! D1–D7) read by the server-room terminal, which posts `patch_changed
-//! {combo}` for each new complete patch. Combo A moved to
-//! V2-D5,V4-D1,V6-D7,V7-D3 (no D8 any more). Two inputs, one bay, like the
+//! bay is 16 jacks on the Grand Central M4, 8 of them live (wave 57: 4
+//! sources V1–V4, 4 inputs D1–D4), read by the server-room terminal, which
+//! posts `patch_changed {combo}` for each new complete patch. Two inputs,
+//! one bay, like the
 //! door's D19: a 🔌 💥 ❌ press (a director's, or the room Antivirus'
 //! `radio_*`) in the Y2K hour hands the bay to the buttons
 //! (`Night.patch_override`) until 🔌 Trust the patch bay, and a ❌ pressed
@@ -23,14 +23,15 @@ import { scenarioSource } from "../examples/load.ts";
 import { EventRuntime } from "../server/event-runtime.ts";
 import { Store } from "../server/store.ts";
 import { cueState, notePress, pressRefused } from "../server/views.ts";
+import { PANEL_JACKS, panelPair } from "../scripts/titi-facts.ts";
 
 const SHOW = "trapped-in-the-internet";
 const SRC = scenarioSource(SHOW);
 const SLOW = 120_000;
-const A = "V2-D5,V4-D1,V6-D7,V7-D3";
-const B = "V1-D6,V3-D2,V5-D7,V8-D4";
+const A = "V1-D4,V2-D3,V3-D1,V4-D2";
+const B = "V1-D3,V2-D4,V3-D2,V4-D1";
 const WRONG = "V1-D1,V2-D2,V3-D3,V4-D4";
-const WRONG_2 = "V1-D2,V2-D3,V3-D4,V4-D5";
+const WRONG_2 = "V1-D2,V2-D3,V3-D4,V4-D1";
 
 type Ev<T extends SimEvent["type"]> = Extract<SimEvent, { type: T }>;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -91,18 +92,19 @@ function toY2K(sim: Sim): void {
 }
 
 describe("the patch bay judges itself (wave 22)", () => {
-  it("combo A is the M4 bay's: V6 → D7, the codex halves still spell the Kernel", () => {
+  it("both combinations are on the panel's live jacks, and the Patch Sheets spell the Kernel", () => {
     const sim = Sim.fromSources(SRC);
     sim.fireBeat("Power On");
     expect(v(sim, "Kernel.combo_a")).toBe(A);
     expect(v(sim, "Kernel.combo_b")).toBe(B);
     expect(v(sim, "Night.patch_override")).toBe(false);
-    // Every pair is on the 8 + 7 bay: no D8 anywhere.
-    for (const c of [A, B]) for (const pair of c.split(",")) expect(pair, c).toMatch(/^V[1-8]-D[1-7]$/u);
+    // Every pair is on the panel's live jacks.
+    for (const c of [A, B]) for (const pair of c.split(",")) expect(panelPair(pair), c).toMatch(/^B[2478]-A[4-7]$/u);
     const text = (title: string) => sim.model.codex.get(title)?.text ?? "";
-    const pairs = (t: string) => [...t.matchAll(/V(\d) → D(\d)/gu)].map((m) => `V${m[1]}-D${m[2]}`);
-    expect([...pairs(text("Combo A First Half")), ...pairs(text("Combo A Second Half"))].join(",")).toBe(A);
-    expect([...pairs(text("Combo B First Half")), ...pairs(text("Combo B Second Half"))].join(",")).toBe(B);
+    const wireOf = (jack: string) => Object.keys(PANEL_JACKS).find((end) => PANEL_JACKS[end] === jack);
+    const pairs = (t: string) => [...t.matchAll(/(B\d) → (A\d)/gu)].map((m) => `${wireOf(m[1]!)}-${wireOf(m[2]!)}`);
+    expect([...pairs(text("Combo A First Half")), ...pairs(text("Combo A Second Half"))].sort().join(",")).toBe(A);
+    expect([...pairs(text("Combo B First Half")), ...pairs(text("Combo B Second Half"))].sort().join(",")).toBe(B);
   });
 
   it("in the Y2K hour combo A off the bay disables Trabolta, and the bay keeps the cables (no override)", { timeout: SLOW }, () => {
@@ -345,5 +347,45 @@ describe("the patch bay over /api/mod/signal (the server-room terminal's post)",
     expect(post.json["refused"]).not.toBe(true);
     expect(night("Night.ending")).toBe("disabled");
     expect(night("Night.patch_override")).toBe(false);
+  });
+});
+
+describe("Trapped in the Internet — the panel as built (wave 57)", () => {
+  const read = (path: string) => readFileSync(new URL(path, import.meta.url), "utf8");
+  const quoted = (jacks: readonly string[]) => `[${jacks.map((j) => `"${j}"`).join(", ")}]`;
+  const rows = [...read("../../hardware/server-room-m4/server_room_m4/config.h").matchAll(/^\/\/ +(V\d) +(B\d) +[\d.]+ V +(D\d) +(A\d) +A\d$/gmu)];
+  const sources = rows.map((r) => r[2]!);
+  const inputs = rows.map((r) => r[4]!);
+
+  it("names one panel in the firmware, the terminal, the bench script and the story", () => {
+    expect(rows).toHaveLength(4);
+    expect(Object.fromEntries(rows.flatMap((r) => [[r[1]!, r[2]!], [r[3]!, r[4]!]]))).toEqual(PANEL_JACKS);
+    const bridge = read("../../terminal/src/serial/patch-bridge.ts");
+    expect(bridge).toContain(`SOURCE_JACKS: readonly string[] = ${quoted(sources)}`);
+    expect(bridge).toContain(`INPUT_JACKS: readonly string[] = ${quoted(inputs)}`);
+    const bench = read("../../scripts/accept/N-21.sh");
+    expect(bench).toContain(`SOURCES = ${quoted(sources)}`);
+    expect(bench).toContain(`INPUTS = ${quoted(inputs)}`);
+  });
+
+  it("keeps the two combinations far apart, and off anything a hand would try first", () => {
+    const a = A.split(",");
+    const b = B.split(",");
+    expect(a.filter((pair) => b.includes(pair))).toEqual([]);
+    for (const combo of [a, b]) {
+      expect(new Set(combo.map((pair) => pair.split("-")[0])).size).toBe(4);
+      expect(new Set(combo.map((pair) => pair.split("-")[1])).size).toBe(4);
+    }
+    const panel = (combo: string[]) => combo.map(panelPair);
+    // Straight down a column: the jacks that share a number.
+    for (const pair of [...panel(a), ...panel(b)]) expect(pair.split("-")[0]!.slice(1), pair).not.toBe(pair.split("-")[1]!.slice(1));
+    // Left to right, and crossed: live jacks in panel order.
+    const across = sources.toSorted().map((s, i) => `${s}-${inputs.toSorted()[i]}`);
+    const crossed = sources.toSorted().map((s, i) => `${s}-${inputs.toSorted()[3 - i]}`);
+    for (const guess of [across, crossed]) {
+      expect(panel(a).toSorted(), "Shut-Down is no plain guess").not.toEqual(guess);
+      // Self-destruct ends the night: not one cable of it is in a plain guess.
+      expect(panel(b).filter((pair) => guess.includes(pair))).toEqual([]);
+    }
   });
 });
