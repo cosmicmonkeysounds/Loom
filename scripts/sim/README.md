@@ -41,6 +41,11 @@ SIM_BASE=http://127.0.0.1:7391 SIM_MOD_CODE=<mod> SIM_PRIME_CODE=<prime> SIM_SHO
 `SIM_LINES=1` adds the card for someone else's line. It loads a tiny story over the
 event, so run it last, on a scratch server you can throw away.
 
+`handover.spec.ts` (wave 59, the contract's C11) takes the same environment and plays
+Clippy's paragraph on her phone with the real TV page: real touches past her last
+line at the default text and at the largest, her ✓ Done, 🤖 first, and ▶ Scroll
+running out. It resets the event for each, so run it on a scratch server.
+
 ## Flags
 
 | Flag | What |
