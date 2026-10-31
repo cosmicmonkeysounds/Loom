@@ -315,19 +315,20 @@ the merged `oct31/trabolta-room` (the server room's CRT, GameCube pad and local
 Whisper, the pulsed door sensor; the CRT and voice words are `DRAFT w52` /
 `DRAFT w52b`) and `oct31-w52/tidal` (the soundtrack from the TIDAL app). No story
 or server code changed, so the preview was synced with `--no-reload` and carried
-on through the release. **Open: the spoken answers can't work on the live server
-yet.** `TERMINAL_CSP` (`core/server/routing.ts`) has `connect-src 'self'`, which
-blocks `http://127.0.0.1:8178`, and an agent's edit to allow that one origin was
-refused as a security change, so it waits on the user's word. Vite sends no CSP,
-so a local test hides this. In Chromium the live policy blocks both whisper calls,
-and with that origin added both pass and other ports stay blocked. A guest sees
-*YOUR VOICE ISN'T REACHING HIM*; B and the menus still work. The test and doc line
-are parked on the local branch `oct31-w53/whisper-csp`, red until `routing.ts`
-changes. Still owed: Steph's laptop reflashes the M4 (`run.sh compile` was not run:
-no `arduino-cli` on the MacBook), recalibrates the door, relearns the patch bay and
-reloads the terminal on the `&webcam=C310&pad=1&whisper=1&crt=1` URL. The Desktop
-does `git pull`, sets up `tidal.ps1` (`scripts/house-desktop/README.md` §3.7) and
-runs `start-stagehand.ps1 -Restart audio`.
+on through the release. **Open: the spoken answers can't work on `w53b`.**
+`TERMINAL_CSP` (`core/server/routing.ts`) has `connect-src 'self'` there, which
+blocks `http://127.0.0.1:8178`; a guest sees *YOUR VOICE ISN'T REACHING HIM*, and B
+and the menus still work. The user approved adding that one origin (2026-10-30),
+and `oct31-w53/whisper-origin` does it: **it needs a release from the MacBook, and
+a release restarts the server.** That branch replaces the parked local
+`oct31-w53/whisper-csp`. Vite sends no CSP, so a local test hides this. After the
+release, answer Chrome's device-access prompt once with a mouse, from ⚙ on the live
+page (`docs/trapped/kiosk.md`, First launch): the CSP stopped that prompt ever
+coming up there. Steph's laptop has reflashed the M4 and recalibrated the door
+(2026-10-30). Still owed: it relearns the patch bay once that's wired, and reloads
+the terminal on the `&webcam=C310&pad=1&whisper=1&crt=1` URL. The Desktop does
+`git pull`, sets up `tidal.ps1` (`scripts/house-desktop/README.md` §3.7) and runs
+`start-stagehand.ps1 -Restart audio`.
 
 Before it, `w53` (master `a27da927`, shipped 2026-10-30; rollback `w51`):
 wave 53 (everyone uploads, the phones speak) on top of wave 52, which changes

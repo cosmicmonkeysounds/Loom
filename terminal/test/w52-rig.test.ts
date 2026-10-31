@@ -4,13 +4,14 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
+import { TERMINAL_CSP, WHISPER_ORIGIN } from "../../core/server/routing.ts";
 import { atEnd } from "../src/chat.tsx";
 import { ChoicePanel } from "../src/heart/ChoicePanel.tsx";
 import { hintsFromSearch, loadConfig, defaultConfig, withoutSecrets } from "../src/config.ts";
 import { deviceFor, openDevice, type DeviceLike } from "../src/devices.ts";
 import { GC, NO_PAD, PadMachine, REPEAT_EVERY_MS, REPEAT_FIRST_MS, START_HOLD_MS, frameOf, isGameCube, movedTo, type PadFrame, type RawPad } from "../src/gamepad/pad.ts";
 import { setupDoor } from "../src/setup-map.ts";
-import { EndOfSpeech, FLOOR_MS, MAX_MS, NOTHING_MS, QUIET_MS, cleanText, parrotLine, rmsOf, wavOf } from "../src/whisper/speech.ts";
+import { EndOfSpeech, FLOOR_MS, MAX_MS, NOTHING_MS, QUIET_MS, WHISPER_URL, cleanText, parrotLine, rmsOf, wavOf } from "../src/whisper/speech.ts";
 
 const MAYFLASH = "MAYFLASH GameCube Controller Adapter (Vendor: 0079 Product: 1844)";
 
@@ -227,6 +228,11 @@ describe("the webcam by name", () => {
 });
 
 describe("hearing an answer", () => {
+  it("whisper is at the one origin the server's CSP lets the page reach", () => {
+    expect(WHISPER_URL).toBe(WHISPER_ORIGIN);
+    expect(TERMINAL_CSP).toContain(`connect-src 'self' ${WHISPER_URL};`);
+  });
+
   const FRAME = 85;
   const run = (e: EndOfSpeech, rms: number, ms: number) => {
     let last = "listening";
