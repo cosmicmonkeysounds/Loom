@@ -395,3 +395,22 @@ answers → `predeploy.sh --vr` → the roster, in its own step → `ship.sh` �
 phone, terminal, the TV, the tablets, the tent and any open Run tab before 17:00 → the Quest's
 APK → the iPad → print → `titi:qr-lock`, committed → the keypad before 15:00. No release, sync or
 restart has happened: nothing on this sheet is live.
+
+## 8. The audio ads (wave 59a)
+
+Your notes: *"after the 2nd round of questions, there should be audio ads that pop up on the
+terminals and peoples' phones"*, then *"the audio ads should be totally random, and pop up every
+3 - 10 minutes on random terminals and phones. Remember the TV and Tent and Server Room are
+sacred."* Built on `oct31-w59/audio-ads`, not shipped. The contract is
+`docs/loom-w59-ads-contract.md`, with the ship order and what no real device has seen.
+
+- **The words we added:** `▶ Play` (`play/src/ad-slot.tsx`, `terminal/src/AdSpot.tsx`), which a
+  phone or a wall shows until it may make a sound, and the crew's lines on Run's 📢 row
+  (`editor/src/lib/terminals.ts`). The ads' names are the files'. Root `CLAUDE.md` names the marker.
+- **Calls to check:** a reader's phone left open on the teleprompter holds the ads until ✓ Done,
+  with no time limit, and Run says so. A slide the walls keep up, such as the Y2K clock, holds them
+  for 5 minutes from its cue and no longer, or the final hour would have none. A wall the draw
+  picks that turns out to be in use sits that pop out, with nothing in its place. The ads run on
+  through Truth Pong and the Y2K hour, so on your rule they can land in those, between the reads.
+- **Real-device checks owed:** a real iPhone, a real Android phone and an old tablet each play one,
+  and the balance in the rooms.

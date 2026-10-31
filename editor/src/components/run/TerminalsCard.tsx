@@ -23,10 +23,11 @@
 //! costume's narrow token: copy it, never post it.
 
 import { VOICE_FLAVOURS, VOICE_FLAVOUR_LABEL, VOICE_FX_MODES, type VoiceFxMode } from '@loom/core/voice-fx'
+import type { AdsStatus } from '@loom/core/audio-ads'
 import clsx from 'clsx'
 import { CockpitTab, useCockpit } from '@/store/cockpit'
 import { useTerminals } from '@/store/terminals'
-import { ROOM_TERMINAL_SPOT, TerminalStatus, formatSilence, isTvView, majorityVersion, strayRoom, terminalBadges } from '@/lib/terminals'
+import { ROOM_TERMINAL_SPOT, TerminalStatus, adsLine, formatSilence, isTvView, majorityVersion, strayRoom, terminalBadges } from '@/lib/terminals'
 import { SpotClaim, doubleClaims, spotClaim, unclaimedSpots, viewOption } from '@/lib/terminal-setup'
 import { TerminalSetup } from './TerminalSetup'
 
@@ -120,6 +121,33 @@ function CostumeRow({ costume }: { costume: { on: boolean; url: string } }) {
   )
 }
 
+/** Wave 59a: the audio ads, from the second hunt to the final reveal. Off stops
+ *  whatever is playing everywhere and no more start; On lets the next one go. */
+function AdsRow({ ads }: { ads: AdsStatus }) {
+  const setAds = useTerminals((s) => s.setAds)
+  return (
+    <div className="mb-2 flex flex-wrap items-center gap-1 rounded border border-zinc-800 px-2 py-1" data-testid="run-terminals-ads">
+      <span className="mr-1 text-[11px] text-zinc-400" title="Fourteen audio ads, from the second hunt to the final reveal: one every 3 to 10 minutes, in random order, on 1 to 3 random walls and a random quarter of the phones. Never on the TV, in the tent or in the server room, the Server Door included.">
+        📢 Audio ads
+      </span>
+      {[true, false].map((on) => (
+        <button
+          key={String(on)}
+          onClick={() => void setAds(on)}
+          aria-pressed={ads.on === on}
+          className={clsx('rounded border px-2 py-0.5 text-[11px]', ads.on !== on ? 'border-zinc-700 text-zinc-300 hover:bg-zinc-900' : on ? 'border-emerald-700 bg-emerald-950/40 text-emerald-200' : 'border-amber-700 bg-amber-950/40 text-amber-200')}
+          data-testid={`run-terminals-ads-${on ? 'on' : 'off'}`}
+        >
+          {on ? 'On' : 'Off'}
+        </button>
+      ))}
+      <span className="ml-1 text-[11px] text-zinc-500" data-testid="run-terminals-ads-line">
+        {adsLine(ads)}
+      </span>
+    </div>
+  )
+}
+
 export function TerminalsCard() {
   const rows = useTerminals((s) => s.rows)
   const reachable = useTerminals((s) => s.reachable)
@@ -131,6 +159,7 @@ export function TerminalsCard() {
   const muteError = useTerminals((s) => s.muteError)
   const voiceFx = useTerminals((s) => s.voiceFx)
   const costume = useTerminals((s) => s.costume)
+  const ads = useTerminals((s) => s.ads)
   const identify = useTerminals((s) => s.identify)
   const identifyError = useTerminals((s) => s.identifyError)
   const map = useTerminals((s) => s.map)
@@ -166,6 +195,7 @@ export function TerminalsCard() {
       </div>
       {voiceFx !== null && (hasTv || voiceFx !== 'auto') && <VoiceFxRow mode={voiceFx} />}
       {costume !== null && <CostumeRow costume={costume} />}
+      {ads !== null && <AdsRow ads={ads} />}
       {muteError !== null && (
         <p className="mb-2 rounded bg-amber-950/60 px-2 py-1 text-xs text-amber-200" data-testid="run-terminals-mute-error">
           {muteError}

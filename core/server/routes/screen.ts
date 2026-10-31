@@ -90,6 +90,7 @@
 //! injected clock for tests.
 
 import { isVoiceFlavour, isVoiceFxMode, voiceFxOf, type VoiceFlavour, type VoiceFx, type VoiceFxMode, type VoiceShot } from "../../src/voice-fx.ts";
+import { AD_STANDING_SLIDE_HOLD_MS, adTerminal, type AdHold, type AdOnAir, type AdsStatus } from "../../src/audio-ads.ts";
 import { isLinkError, type LinkError } from "../../src/link-health.ts";
 import type { CamRate } from "../spatial-cams.ts";
 import type { ShowClock } from "../../src/show-clock.ts";
@@ -231,6 +232,12 @@ export function screenCueClass(value: string): ScreenCueClass {
   if ((SCREEN_BASES as readonly string[]).includes(value)) return "base";
   return "slide";
 }
+
+/** What holds the audio ads, on the terminal's own clocks: `SLIDE_HOLD_MS`,
+ *  `BLACKOUT_MS` and `GLITCH_MS` (`terminal/src/slides.ts`). */
+const AD_SLIDE_MS = 45_000;
+const AD_BLACKOUT_MS = 10_000;
+const AD_GLITCH_MS = 8_000;
 
 export interface ScreenShot {
   /** The cue's value (`trivia_1`). */
@@ -965,6 +972,8 @@ export interface ScreenPollExtras {
   language?: () => { words: ReadonlyArray<{ word: string; n: number }>; unsaid: number; level: number; stars: number };
   /** (wave 59) The first line of `channel` the teleprompter holds back. */
   voiceHeldFrom?: (channel: string) => number | null;
+  /** (wave 59a) The audio ad on the air, if this pop picked the wall of this name. */
+  ad?: (name: string) => AdOnAir | null;
 }
 
 /** A filing's public outcome on a screen: `a` accepted (an accurate filing
@@ -1271,6 +1280,9 @@ export interface ScreenState {
   voice?: ScreenVoice;
   /** (wave 56) How broken his voice is now, for everything that speaks him. */
   voiceFx: VoiceFx;
+  /** (wave 59a) The audio ad on the air, for a wall this pop picked. Absent on a
+   *  terminal that may never play one (`adTerminal`). */
+  ad?: AdOnAir | null;
   /** Only when the poll names a `room` (wave 7). */
   room?: ScreenRoom;
   /** A director's `identify` is live for this terminal (SW-SCR-21). */
@@ -1638,6 +1650,22 @@ export class ScreenWatch {
     return { at: this.dreamAt ?? 0 };
   }
 
+  /** (wave 59a) What is up on the walls that holds the audio ads, or null: a
+   *  blackout, an overlay, the glitch, or a story slide for as long as the walls
+   *  hold it (`SLIDE_HOLD_MS` on the terminal), a standing one for
+   *  `AD_STANDING_SLIDE_HOLD_MS`. History never holds them. */
+  adsHold(sim: Sim | null): Extract<AdHold, "blackout" | "cutscene"> | null {
+    if (sim === null) return null;
+    this.sync(sim);
+    const p = this.programs.get("terminals");
+    if (p === undefined) return null;
+    const now = this.now();
+    const live = (s: ScreenShot | null, ms: number): boolean => s !== null && s.at > 0 && now - s.at < ms;
+    if (p.overlay?.value === "blackout" || live(p.blackout, AD_BLACKOUT_MS)) return "blackout";
+    if (p.overlay !== null || live(p.glitch, AD_GLITCH_MS)) return "cutscene";
+    return p.slide?.kind === "slide" && live(p.slide, p.slide.persist ? AD_STANDING_SLIDE_HOLD_MS : AD_SLIDE_MS) ? "cutscene" : null;
+  }
+
   /** Remember a terminal's poll (unnamed polls aren't recorded). */
   private note(who: ScreenWho): void {
     const name = clip(who.name);
@@ -1978,6 +2006,7 @@ export class ScreenWatch {
         // in the intro talk (the costume's) is the screens' alone.
         { now: this.now(), glitch: program.glitch ?? null, flicker: peek(SCREEN_NIGHT_VARS.talk) === "intro" ? null : program.flicker, dreamAt: this.dreamOf(sim)?.at ?? null, shot: this.voiceShot },
       ),
+      ...(extras.ad !== undefined && adTerminal({ view: who.view, spot: who.spot, room: who.room || who.voice }) ? { ad: extras.ad(clip(who.name)) } : {}),
       ...(room !== undefined ? { room } : {}),
       identify: identifyLeft > 0,
       identifyLeft,
@@ -2175,24 +2204,26 @@ export interface ScreenTerminals {
   voiceFx: VoiceFxMode;
   /** The server's silence threshold (ms). */
   silentMs: number;
+  /** (wave 59a) 📢 The audio ads: the switch and what they are waiting for. */
+  ads?: AdsStatus;
 }
 
 /** The heartbeat list, read-only (pure apart from the watch's clock). */
-export function screenTerminals(watch: ScreenWatch, camRate?: (spot: string) => CamRate): ScreenTerminals {
+export function screenTerminals(watch: ScreenWatch, camRate?: (spot: string) => CamRate, ads?: () => AdsStatus): ScreenTerminals {
   const terminals = watch.seen();
-  return { now: watch.clock(), terminals: camRate === undefined ? terminals : terminals.map((t) => (t.spot === "" ? t : { ...t, cam: camRate(t.spot) })), voiceMuted: watch.voiceMuted, voiceFx: watch.voiceFxMode, silentMs: TERMINAL_SILENT_MS };
+  return { now: watch.clock(), terminals: camRate === undefined ? terminals : terminals.map((t) => (t.spot === "" ? t : { ...t, cam: camRate(t.spot) })), voiceMuted: watch.voiceMuted, voiceFx: watch.voiceFxMode, silentMs: TERMINAL_SILENT_MS, ...(ads !== undefined ? { ads: ads() } : {}) };
 }
 
 /**
  * `GET /api/mod/screen/terminals` — moderator-gated (the author's session or a
  * mod token). Reading it never records a poll, so the editor isn't a terminal.
  */
-export function handleScreenTerminalsGet(watch: ScreenWatch, req: IncomingMessage, res: ServerResponse, url: URL, authorized: (token: string | undefined) => boolean, camRate?: (spot: string) => CamRate): boolean {
+export function handleScreenTerminalsGet(watch: ScreenWatch, req: IncomingMessage, res: ServerResponse, url: URL, authorized: (token: string | undefined) => boolean, camRate?: (spot: string) => CamRate, ads?: () => AdsStatus): boolean {
   if (!authorized(queryTokenOf(req, url))) {
     sendJson(res, 403, { error: "moderators only" });
     return true;
   }
   res.setHeader?.("cache-control", "no-store");
-  sendJson(res, 200, screenTerminals(watch, camRate));
+  sendJson(res, 200, screenTerminals(watch, camRate, ads));
   return true;
 }

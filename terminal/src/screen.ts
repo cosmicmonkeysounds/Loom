@@ -70,6 +70,7 @@
 import { VOICE_FLAVOURS, type VoiceFlavour, type VoiceFxState } from "./speech/glitch.ts";
 import { linkedNow } from "./world/presence.ts";
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { AdOnAir } from "../../core/src/audio-ads.ts";
 import { announceOf, announceReport, type Announcement } from "./announce.ts";
 import { baseOf, type TerminalConfig } from "./config.ts";
 import { deviceHealth, deviceQuery, type DeviceHealth } from "./health.ts";
@@ -722,6 +723,9 @@ export interface ScreenState {
    *  takeover starts (server ms; 0: long since). Null: off, or an older
    *  server. Optional for hand-built states. */
   dream?: { at: number } | null;
+  /** (wave 59a) The audio ad on the air, for a terminal the server may play one
+   *  on (`adTerminal`). Null: none, or an older server. Optional for hand-built states. */
+  ad?: AdOnAir | null;
 }
 
 /** A ranked chart the server keeps live (`SCREEN_CHARTS`, core). */
@@ -879,6 +883,7 @@ export function parseScreenState(raw: unknown, receivedAt: number = Date.now()):
     spot: spotOf(r["spot"]),
     tvSpeech: tvSpeechOf(r["tvSpeech"]),
     dream: dreamOf(r["dream"]),
+    ad: adOf(r["ad"]),
     voiceFx: voiceFxOf(r["voiceFx"]),
   };
 }
@@ -907,6 +912,16 @@ export function dreamOf(raw: unknown): { at: number } | null {
   if (typeof raw !== "object" || raw === null) return null;
   const at = (raw as Record<string, unknown>)["at"];
   return typeof at === "number" && Number.isFinite(at) && at >= 0 ? { at } : null;
+}
+
+/** (wave 59a) An `ad` block off the wire; anything malformed is no ad. */
+export function adOf(raw: unknown): AdOnAir | null {
+  if (typeof raw !== "object" || raw === null) return null;
+  const r = raw as Record<string, unknown>;
+  const n = (k: string): number | null => (typeof r[k] === "number" && Number.isFinite(r[k]) ? r[k] : null);
+  const [seq, ad, at, until] = [n("seq"), n("n"), n("at"), n("until")];
+  if (seq === null || ad === null || at === null || until === null || typeof r["name"] !== "string" || typeof r["url"] !== "string" || !r["url"].startsWith("/")) return null;
+  return { seq, n: ad, name: r["name"], url: r["url"], at, until };
 }
 
 /** The recent announcements, oldest first; an older server sends only

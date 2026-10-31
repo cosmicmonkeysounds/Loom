@@ -172,6 +172,25 @@ Nothing he says changes: the captions and his chat lines stay exactly as written
 so a line that's hard to hear can always be read. If it ever gets in the way of
 the show, a director or a host sets 🌀 His voice to **Clean**.
 
+## The audio ads
+
+- From the second hunt until the final reveal or an ending, the house plays its
+  fourteen audio ads by itself: a random one every 3 to 10 minutes, and none again
+  until all fourteen have played.
+- Each one plays on 1 to 3 random wall terminals and a random quarter of the phones,
+  in a small Windows 95 window. **×** closes it on that device. Nobody needs to do
+  anything.
+- Never on the TV, in the tent, in the server room or on the Server Door, and never
+  in the reinstall games, whatever a terminal's ⚙ says.
+- A phone busy with a card, a scan or the teleprompter is skipped and another takes
+  its turn. A terminal with a line, a board, a hand or a walk up sits that one out.
+- Nothing starts over a talk scene, an announcement, a cutscene, Trabolta speaking on
+  the TV, a teleprompter that someone is reading, or paused doors, and one already
+  playing stops. The next one starts as soon as whatever held it is over.
+- A phone nobody has tapped yet shows **▶ Play** in place of sound. Tap it. A wall
+  does the same until its first touch.
+- Directors: Run → Terminals → **📢 Audio ads**, On / Off.
+
 ## Clippy's dream
 
 - When Trabolta says *"…the Y2K BUG"* every terminal melts into Clippy's

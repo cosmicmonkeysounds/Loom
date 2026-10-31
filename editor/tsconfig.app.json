@@ -35,6 +35,7 @@
       "@loom/core/house-desk": ["../core/src/house-desk.ts"],
       "@loom/core/house-mixer": ["../core/src/house-mixer.ts"],
       "@loom/core/voice-fx": ["../core/src/voice-fx.ts"],
+      "@loom/core/audio-ads": ["../core/src/audio-ads.ts"],
       "@loom/core/link-health": ["../core/src/link-health.ts"],
       "@loom/core/credits": ["../core/src/credits.ts"],
       "@loom/core": ["../core/src/index.ts"],

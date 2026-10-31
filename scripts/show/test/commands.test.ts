@@ -35,6 +35,7 @@ function routes(rosterRows: unknown[], extra: Record<string, Handler | { status:
     ...authRoutes(),
     "GET /api/health": { status: 200, body: { ok: true, controlPlane: true, events: 1 } },
     "GET /media/dream/frames/010800.jpg": { status: 200, body: {} },
+    "GET /media/ads/ad-14-mommy-outro.mp3": { status: 200, body: {} },
     "GET /api/landing": { status: 200, body: { title: "Test Show" } },
     [`GET ${E}/api/state?role=mod`]: { status: 200, body: modView(rosterRows) },
     [`GET ${E}/api/state?role=mod&cues=1`]: { status: 200, body: { interactions: [{ id: "a", label: "B1 · Bingo", who: "admin" }, { id: "b", label: "B2 · Hunt", who: "admin" }], cues: { last: "a", fired: ["a"], lastName: "Task Manager" }, showClock: { minutes: 1260, running: true }, world: [{ path: "Night.phase", value: "bingo" }] } },

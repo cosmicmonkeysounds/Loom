@@ -546,3 +546,14 @@
   .moments-takeover, .moments-takeover-bands, .moments-takeover-roll { animation: none; }
   .moments-takeover-win { animation: none; opacity: 1; }
 }
+
+/* The audio ad's pop-up (wave 59a): a small window under the title bar, under every
+   moment and sheet, and taps reach the app round it. Up here it covers lines already
+   read: at the foot of a room it sat on Send, a docked menu's options or a card's go. */
+.ad-spot {
+  position: fixed; z-index: var(--z-toast);
+  right: 8px; top: calc(var(--safe-top) + var(--title-h) + 14px);
+  width: 220px; max-width: calc(100% - 16px);
+}
+.ad-spot-body { display: flex; align-items: center; justify-content: center; min-height: 52px; padding: 6px; font-size: 28px; }
+.ad-spot-play { min-width: 96px; font-weight: 700; }

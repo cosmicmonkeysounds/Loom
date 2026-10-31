@@ -15,6 +15,7 @@
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { usePlayHost } from "../host.ts";
 import type { ChatMessage } from "../types.ts";
+import { adCardOpen } from "../ad-spots.ts";
 import { WIDGETS, WidgetHost, optionalCard } from "../widgets.tsx";
 import type { WidgetHook } from "./bubble.tsx";
 import { trayCaption } from "./settled.ts";
@@ -147,6 +148,12 @@ export function CardTray({
   useEffect(() => {
     if (open && card !== undefined) seen.add(trayCardKey(card));
   }, [open, card, seen]);
+  // Wave 59a: nothing floats over an open card, an audio ad included.
+  const shownOpen = open && card !== undefined;
+  useEffect(() => {
+    if (!shownOpen) return undefined;
+    return adCardOpen();
+  }, [shownOpen]);
   const body = useRef<HTMLDivElement>(null);
   const more = useMoreBelow(body, open && card !== undefined);
   if (card === undefined) return null;

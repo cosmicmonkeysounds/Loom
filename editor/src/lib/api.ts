@@ -518,6 +518,10 @@ export const screensApi = {
   async setVoiceFx(eventId: string, body: { fx?: VoiceFxMode; shot?: VoiceFlavour }): Promise<{ fx: VoiceFxMode }> {
     return await req<{ fx: VoiceFxMode }>('POST', `/e/${eventId}/api/mod/screen/voice`, body)
   },
+  /** (wave 59a) 📢 The audio ads' kill switch: journaled. */
+  async setAds(eventId: string, on: boolean): Promise<{ on: boolean }> {
+    return await req<{ on: boolean }>('POST', `/e/${eventId}/api/mod/screen/ads`, { on })
+  },
   /** The lean screen state every terminal polls (`GET /api/screen/state`, no
    *  terminal name, so this read never shows up on the heartbeat card). Raw:
    *  the Terminals card reads `night.door_override` off it (wave 20,

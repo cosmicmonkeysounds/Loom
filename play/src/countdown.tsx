@@ -1,13 +1,13 @@
-//! The guest's countdown strip (W11, SW-PLAY-05): the story's
-//! guest-facing clocks (`countdown: Night.summons_end as Summons for
-//! guests`) ticking under the room header — Bingo, both hunts, the
-//! filings, the summons, Midnight — so a guest in the tent or a far
-//! bedroom knows a clock is running before the `!` warning.
-//!
-//! The deadline is the server's (`endsAt`, story seconds) against the
-//! snapshot's story `clock` plus the wall time since it arrived — never the
-//! phone's own date. While the event is paused (`paused`) the clock holds
-//! still and the strip says ⏸. No countdowns → no strip at all.
+// The guest's countdown strip (W11, SW-PLAY-05): the story's
+// guest-facing clocks (`countdown: Night.summons_end as Summons for
+// guests`) ticking under the room header — Bingo, both hunts, the
+// filings, the summons, Midnight — so a guest in the tent or a far
+// bedroom knows a clock is running before the `!` warning.
+//
+// The deadline is the server's (`endsAt`, story seconds) against the
+// snapshot's story `clock` plus the wall time since it arrived — never the
+// phone's own date. While the event is paused (`paused`) the clock holds
+// still and the strip says ⏸. No countdowns → no strip at all.
 
 import { useEffect, useRef, useState } from "react";
 import { countdownLeft } from "../../core/src/cue-sheet.ts";

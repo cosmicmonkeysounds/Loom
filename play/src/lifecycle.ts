@@ -1,7 +1,7 @@
-//! Pure run-lifecycle policy for the participant app: which `lifecycle`
-//! notices from the server (`reset` / `reload` / `golive` / `ended`) end a
-//! guest or performer session, and what the join screen then says. Kept
-//! free of React + storage so it unit-tests directly (`test/lifecycle.test.ts`).
+// Pure run-lifecycle policy for the participant app: which `lifecycle`
+// notices from the server (`reset` / `reload` / `golive` / `ended`) end a
+// guest or performer session, and what the join screen then says. Kept
+// free of React + storage so it unit-tests directly (`test/lifecycle.test.ts`).
 
 /** The transitions the server announces on its `lifecycle` SSE event. */
 export const LifecycleKind = {

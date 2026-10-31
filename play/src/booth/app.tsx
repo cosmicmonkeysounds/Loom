@@ -95,6 +95,7 @@ import { HostShowWindow } from "../host/show.tsx";
 import { hostWindowShown, type HostWindow } from "../host/show-model.ts";
 import { LazyDeskWindow, hostTaskbarButtons } from "../host/windows.tsx";
 import { NowJobs } from "./now-card.tsx";
+import { AdSlot } from "../ad-slot.tsx";
 import { AloudSlot, aloudStartItem, useAloud } from "../aloud/lazy.tsx";
 import { CreditsSlot, creditsStartItem, useCredits } from "../credits/lazy.tsx";
 import { useFilter } from "./filter/use-filter.ts";
@@ -1043,6 +1044,7 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
             )}
             {aloud.covering && <PopOutQuiet />}
             <AloudSlot a={aloud} sound={host.sound} storage={host.storage} />
+            {!isHost && <AdSlot spots={s.adSpots} tell={s.adBusy} busy={aloud.covering} />}
           </div>
           </BoothBadgesProvider>
         </WalletActionsProvider>

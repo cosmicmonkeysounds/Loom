@@ -1,12 +1,12 @@
-//! The lazily loaded parts of the app (wave 13 fix round: the booth, the
-//! director's cue sheet, the Help articles) and what happens when one will
-//! not load. A chunk fetch can fail — a phone on the house Wi-Fi dropping a
-//! request, or a page left open across a deploy, whose old chunk names no
-//! longer exist — and `React.lazy` then throws to the nearest error
-//! boundary. With none, the whole app unmounts to a white page. So every
-//! lazy part is fetched once more after a short wait (`retryImport`) and
-//! sits behind a `ChunkBoundary` that says what failed and offers the way
-//! back (Reload, or Try again).
+// The lazily loaded parts of the app (wave 13 fix round: the booth, the
+// director's cue sheet, the Help articles) and what happens when one will
+// not load. A chunk fetch can fail — a phone on the house Wi-Fi dropping a
+// request, or a page left open across a deploy, whose old chunk names no
+// longer exist — and `React.lazy` then throws to the nearest error
+// boundary. With none, the whole app unmounts to a white page. So every
+// lazy part is fetched once more after a short wait (`retryImport`) and
+// sits behind a `ChunkBoundary` that says what failed and offers the way
+// back (Reload, or Try again).
 
 import { Component, lazy, type ComponentType, type LazyExoticComponent, type ReactNode } from "react";
 

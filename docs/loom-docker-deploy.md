@@ -917,3 +917,7 @@ served at `/media/` with byte ranges) and the server (`/media`, `LOOM_MEDIA_DIR`
 `scripts/ops/dream-media.sh encode <source>`, `check`, `upload [--dry-run]` and
 `remote`. Uploading restarts nothing, and `ship.sh` never touches the folder. See
 [`loom-w50-contract.md`](./loom-w50-contract.md) C2.
+
+The audio ads (wave 59a) are in the same folder, `~/loom-media/ads`, 26 MB:
+`scripts/ops/ads-media.sh prepare`, `check`, `upload [--dry-run]` and `remote`. See
+[`loom-w59-ads-contract.md`](./loom-w59-ads-contract.md) C2.

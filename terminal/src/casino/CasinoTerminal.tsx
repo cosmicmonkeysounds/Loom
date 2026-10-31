@@ -23,6 +23,7 @@ import { DreamView, useDreamPhase } from "../dream/DreamView.tsx";
 import { unlock } from "../speech/engine.ts";
 import { playNotes } from "../sound/bus.ts";
 import { CASINO_GAMES, CASINO_INFO, REEL, multiplier, pickLabel, rollText, type CasinoGame } from "../../../core/src/casino.ts";
+import { adTable } from "../ad-spot.ts";
 import { ChallengerError, fetchPlayer, placeBet } from "./post.ts";
 import { CASINO_IDLE_MS, CASINO_WARN_MS, INITIAL, SPIN_MS, betProblem, cashOutLine, chipsFor, reduce, type BetResult, type CasinoSession } from "./session.ts";
 
@@ -31,6 +32,10 @@ type Seated = Extract<CasinoSession, { kind: "seated" }>;
 export function CasinoTerminal({ config, state, polled, takeover, onSetup }: { config: TerminalConfig; state: ScreenState | null; polled: boolean; takeover: boolean; onSetup: () => void }) {
   const [s, dispatch] = useReducer(reduce, INITIAL);
   const dream = useDreamPhase(state) === "through"; // wave 50: never at a table
+  useEffect(() => {
+    adTable(s.kind !== "attract"); // wave 59a: no audio ad over a hand
+    return () => adTable(false);
+  }, [s.kind]);
   const [camera, setCamera] = useState<CameraState>("starting");
   const [typedOpen, setTypedOpen] = useState(false);
   const seatedRef = useRef<Seated | null>(null);

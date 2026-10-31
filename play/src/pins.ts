@@ -1,7 +1,7 @@
-//! Sticky notices (`pin "…"` / `unpin …`): the server stores them as
-//! ordinary messages carrying `pin` (the key) or `unpin`; the client keeps
-//! the newest pin per (channel, key) above the stream until an unpin with
-//! the same key lands. Pure, so a replayed backlog rebuilds the rail.
+// Sticky notices (`pin "…"` / `unpin …`): the server stores them as
+// ordinary messages carrying `pin` (the key) or `unpin`; the client keeps
+// the newest pin per (channel, key) above the stream until an unpin with
+// the same key lands. Pure, so a replayed backlog rebuilds the rail.
 
 import type { ChatMessage } from "./types.ts";
 

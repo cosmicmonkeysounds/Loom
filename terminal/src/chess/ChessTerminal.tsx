@@ -35,6 +35,7 @@ import { SCAN_COPY } from "../idle-show/scan-copy.ts";
 import { sfx } from "../sound/bus.ts";
 import { Tutorial } from "./Tutorial.tsx";
 import { teachesFirst } from "./tutorial.ts";
+import { adTable } from "../ad-spot.ts";
 import { boardSide } from "./fit.ts";
 import { ChallengerError, fetchChallenger, flushPendingChess, postChess } from "./post.ts";
 import { CHESS_IDLE_MS, CHESS_WARN_MS, INITIAL, healthText, reduce, resultLine, settled, stakesLine, type ChessSession } from "./session.ts";
@@ -45,6 +46,10 @@ const CONFIRM_MS = 3_000;
 export function ChessTerminal({ config, state, polled, takeover, onSetup }: { config: TerminalConfig; state: ScreenState | null; polled: boolean; takeover: boolean; onSetup: () => void }) {
   const [s, dispatch] = useReducer(reduce, INITIAL);
   const dream = useDreamPhase(state) === "through"; // wave 50: never under a game
+  useEffect(() => {
+    adTable(s.kind !== "attract"); // wave 59a: no audio ad over a board
+    return () => adTable(false);
+  }, [s.kind]);
   const king = state?.king ?? null;
   const kingRef = useRef<ScreenKing | null>(king);
   kingRef.current = king;

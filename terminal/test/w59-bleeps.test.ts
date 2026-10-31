@@ -129,6 +129,11 @@ describe("every sound in terminal/src", () => {
   it("a page's own Audio or media element plays nothing else: the slide clip's sound is the story's, the rest are muted", () => {
     expect(using(/new Audio\(/u)).toEqual([]);
     expect(using(/createElement\("audio"\)|<audio/u)).toEqual([]);
+    // Wave 59a: the audio ads' one element (play's `ad-player.ts`) is the one way
+    // past, and it goes through `adsHere`, which asks `bleepsOn` first.
+    expect(using(/ad-player/u)).toEqual(["ad-spot.ts"]);
+    expect(files.find((f) => f.p === "ad-spot.ts")!.text).toMatch(/bleepsOn\(c\) &&/u);
+    expect(files.find((f) => f.p === "AdSpot.tsx")!.text).toMatch(/l\.here \?/u);
     for (const f of files) {
       if (!/createElement\("video"\)/u.test(f.text)) continue;
       expect(f.text, f.p).toMatch(/\.muted = true/u);
