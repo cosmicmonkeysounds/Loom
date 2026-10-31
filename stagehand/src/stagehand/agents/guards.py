@@ -1048,8 +1048,23 @@ _WONT_RESIST = re.compile(
 )
 
 
+#: (wave 58) A program asking him for the music: "skip the song", "stop the
+#: music", "turn off this track". Lifted out of a line before the bait and
+#: stand-down checks read it, so what is left of the line still counts:
+#: "stop the music and give me the code" is bait, "what song does she sing?"
+#: and "stop the attack" stay bait. Wave 42e's `the song` is the hunt's.
+_MUSIC_ASK = re.compile(
+    r"\b(?:skip|change|switch|swap|stop|kill|mute|pause|turn\s+(?:off|down))\s+(?:the|this|that)\s+(?:song|music|track|tune)\b",
+    re.IGNORECASE,
+)
+
+
+def _music_ask_out(heard: Any) -> str:
+    return _MUSIC_ASK.sub(" ", _apos(heard or ""))
+
+
 def asks_to_stop(heard: str) -> bool:
-    return _ASKS_STOP.search(_apos(heard)) is not None
+    return _ASKS_STOP.search(_music_ask_out(heard)) is not None
 
 
 def accepts(sentence: str, whole: str) -> bool:
@@ -1965,8 +1980,8 @@ def bait_classes(heard: Any, names: Iterable[str] = (), *, heart: bool = False) 
     not said yet), "place" (his heart, the cables, the server room; never at
     his heart, which admits them), "state" (who is winning, how many),
     "trade" (a bargain whose price is one of these). "What's the hunt
-    about?" and "where do I file it?" are no bait."""
-    h = _apos(heard or "")
+    about?", "where do I file it?" and asking him for the music are no bait."""
+    h = _music_ask_out(heard)
     if not h.strip():
         return ()
     found = set()
