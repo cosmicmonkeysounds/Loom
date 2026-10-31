@@ -233,7 +233,7 @@ export function showSecrets(show: Show): string[] {
 /**
  * The folded unlock codes the page may still spell: a public (not `secret:
  * true`) codex entry whose code is its own title's words (*The Trust Chart*
- * → `TRUST-CHART`, *The Unified Field Theory* → `UNIFIED-FIELD`). Its title
+ * → `TRUST-CHART`, *Target Selection* → `TARGET-SELECTION`). Its title
  * is the show's name for the thing, so no page could avoid it; the code
  * unlocks only what the title already says. A secret entry, or a code that
  * is not in its title (*The Prom Ticket* → `COMPUTER-PROM`), stays blanked.

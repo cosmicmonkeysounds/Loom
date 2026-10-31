@@ -68,7 +68,7 @@ secrets:
     - which song           # H5
     - "412"
     - the night before
-    - unified field        # H6
+    - grand unified        # H6
     - last chapter
     - only thing sandy     # F1
     - ever said

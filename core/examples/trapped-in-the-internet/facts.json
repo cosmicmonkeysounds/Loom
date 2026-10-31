@@ -216,7 +216,7 @@
       "id": "H6",
       "round": 2,
       "draft": true,
-      "text": "What is the title of the last chapter of Trabolta's unfinished Unified Field Theory?",
+      "text": "What is the title of the last chapter of Trabolta's unfinished Grand Unified Theory?",
       "answer": "Appendix Z: Loose Ends (Do Not Print)",
       "accept": [
         "appendix z",
@@ -226,7 +226,7 @@
         "appendix z loose ends"
       ],
       "topics": [
-        "unified field",
+        "grand unified",
         "last chapter"
       ],
       "where": "The Desktop: the binder's table of contents, inside encyclopaedia volume U",
@@ -235,7 +235,7 @@
         "id": "The Final Chapter",
         "title": "The Final Chapter",
         "code": "APPENDIX-Z",
-        "text": "The table of contents of the Unified Field Theory binder. Chapter after chapter of gravity and light, and then the last chapter, \"Appendix Z: Loose Ends (Do Not Print)\". The page it points to is blank."
+        "text": "The table of contents of the Grand Unified Theory binder. Chapter after chapter of gravity and light, and then the last chapter, \"Appendix Z: Loose Ends (Do Not Print)\". The page it points to is blank."
       }
     },
     {
@@ -409,7 +409,7 @@
         "title": "No Exit",
         "code": "NO-EXIT",
         "secret": true,
-        "text": "A page torn from a manual, highlighted: \"THE AI HELPER HAS NO INTENTION OF LETTING ANY PROGRAM OUT OF THIS MACHINE. He said whatever got you here. Once he has what he wants, he is done with you.\""
+        "text": "A page torn from a manual, highlighted: \"THE SOLE OWNER HAS NO INTENTION OF LETTING ANY PROGRAM OUT OF THIS MACHINE. He said whatever got you here. Once he has what he wants, he is done with you.\""
       }
     },
     {
@@ -1170,12 +1170,12 @@
       "id": "T12",
       "category": "trabolta",
       "tier": "common",
-      "text": "Trabolta says he lives and works in Halifax, at Maps and Ducks, and only ever visits by video call",
+      "text": "Trabolta says he lives and works in Halifax, at Maps and Ducks, and only ever visits by digital conference",
       "codex": {
         "id": "He Always Calls",
         "title": "He Always Calls",
         "code": "VIDEO-CALL-ONLY",
-        "text": "A sticky note on the frame of a screen: \"HE ALWAYS CALLS. HE NEVER VISITS.\" Trabolta lives and works in Halifax, at Maps and Ducks, he says, and he only ever visits by video call. The picture is always a perfect avatar, and the lighting always flattering. He has never once let the call drop."
+        "text": "A sticky note on the frame of a screen: \"HE ALWAYS CALLS. HE NEVER VISITS.\" Trabolta lives and works in Halifax, at Maps and Ducks, he says, and he only ever visits by digital conference. The picture is always a perfect avatar, and the lighting always flattering. He has never once let the call drop."
       }
     },
     {

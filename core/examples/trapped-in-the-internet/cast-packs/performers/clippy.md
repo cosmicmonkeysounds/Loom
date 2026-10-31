@@ -86,7 +86,7 @@ questions are DRAFT until the team replaces them). Re-print this table from
 | H3 | Macs for Dummies: the sentence with "pharming" in it | **⚠ owed before the print** |
 | H4 | The extension the Customer Care card tells you to dial | **1978** |
 | H5 | Song Trabolta played 412 times the night before he registered the domain | **"Hopelessly Devoted to You"** |
-| H6 | Title of the last chapter of his Unified Field Theory | **"Appendix Z: Loose Ends (Do Not Print)"** |
+| H6 | Title of the last chapter of his Grand Unified Theory | **"Appendix Z: Loose Ends (Do Not Print)"** |
 | F1 | The only thing Sandy has ever said | **"It looks like I didn't understand that. Please wait while I direct you to an agent."** |
 | F2 | Who is taking Sandy to computer prom | **Grok** |
 
