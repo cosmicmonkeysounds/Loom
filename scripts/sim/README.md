@@ -43,8 +43,10 @@ event, so run it last, on a scratch server you can throw away.
 
 `handover.spec.ts` (wave 59, the contract's C11) takes the same environment and plays
 Clippy's paragraph on her phone with the real TV page: real touches past her last
-line at the default text and at the largest, her ✓ Done, 🤖 first, and ▶ Scroll
-running out. It resets the event for each, so run it on a scratch server.
+line at the default text and at the largest, her ✓ Done, 🤖 first, ▶ Scroll running
+out, a 🛡 cutting her off (the alert on a host's phone, then 🤖), paused doors under
+her arrow and her ✓ Done, and the rail let go on her last line with ▶ on. It also
+takes `SIM_GUEST_CODE`. It resets the event for each, so run it on a scratch server.
 
 ## Flags
 

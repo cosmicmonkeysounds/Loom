@@ -3310,7 +3310,7 @@ INTERACTION follow_the_reinstallation
 INTERACTION introduce_trabolta
   label: Clippy 2/X · 🤖 Trabolta comes online
   who: admin
-  description: The backup. He starts by himself when Clippy's arrow passes "Trabolta, would you explain the rules?" or she presses ✓ Done; press this if neither can happen (no reader, a lost phone). Before or after that it is harmless. He comes online and gives his whole speech, the three questions and his sign-off on the TV, about three minutes; check the terminals show his face. The 🤖 Talk card stays open behind it for the banter after.
+  description: The backup. He starts by himself when Clippy's arrow passes "Trabolta, would you explain the rules?" or she presses ✓ Done; press this if neither can happen (no reader, a lost phone, after a server restart), or on her last line when # hosts says a new beat cut her off. Before or after that it is harmless. He comes online and gives his whole speech, the three questions and his sign-off on the TV, about three minutes; check the terminals show his face. The 🤖 Talk card stays open behind it for the banter after.
 
 // DRAFT w58 (the description)
 INTERACTION start_the_hunt

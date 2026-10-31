@@ -3,7 +3,7 @@
 // explain the rules?" starts him; so does her ✓ Done; 🤖 first leaves both with
 // nothing to do. Each run resets the event: scratch servers only.
 //
-//   SIM_BASE=http://127.0.0.1:7107 SIM_MOD_CODE=<mod> SIM_PRIME_CODE=<prime> SIM_SHOTS=<dir> \
+//   SIM_BASE=http://127.0.0.1:7107 SIM_MOD_CODE=<mod> SIM_PRIME_CODE=<prime> SIM_GUEST_CODE=<guest> SIM_SHOTS=<dir> \
 //     pnpm --filter loom-app exec playwright test -c ../scripts/sim/playwright.config.ts handover
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
@@ -13,6 +13,7 @@ import type { Browser, BrowserContext, Page } from "../../editor/node_modules/@p
 const BASE = (process.env["SIM_BASE"] ?? "").replace(/\/$/u, "");
 const MOD = process.env["SIM_MOD_CODE"] ?? "";
 const PRIME = process.env["SIM_PRIME_CODE"] ?? "";
+const GUEST = process.env["SIM_GUEST_CODE"] ?? "";
 const SHOTS = process.env["SIM_SHOTS"] ?? "test-results/handover";
 const API = `${BASE}/e/default`;
 const HIS_FIRST = "Thank you, Clippy, for hosting this marvelous evening.";
@@ -20,6 +21,8 @@ const ONLINE = "TRABOLTA IS ONLINE";
 
 interface Rig {
   post(path: string, body?: unknown): Promise<Record<string, unknown>>;
+  /** A program on the guest list, by its id. */
+  guest(name: string): Promise<string>;
   /** Every line the event holds, as a director reads them. */
   lines(): Promise<Array<{ channel: string; text: string }>>;
   /** `# hosts`, as a host's booth reads it. */
@@ -28,6 +31,7 @@ interface Rig {
   tv: Page;
   /** When each of his lines reached the TV, by text. */
   said: Map<string, number>;
+  hostToken: string;
   close(): Promise<void>;
 }
 
@@ -72,9 +76,16 @@ async function rig(browser: Browser, size?: number): Promise<Rig> {
   await phone.waitForTimeout(2_500);
   return {
     post,
+    guest: async (name) => {
+      const res = await fetch(`${API}/api/guest/register`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ passcode: GUEST, name }) });
+      const j = (await res.json()) as { id?: string; error?: string };
+      expect(j.id, `registering ${name}: ${j.error ?? ""}`).toBeTruthy();
+      return j.id!;
+    },
     phone,
     tv,
     said,
+    hostToken: host.token,
     lines: async () => {
       const res = await fetch(`${API}/api/history`, { headers: { "x-loom-token": token } });
       return ((await res.json()) as { messages: Array<{ channel: string; text: string }> }).messages;
@@ -237,5 +248,89 @@ test("the read in a room no list shows still reaches its reader's phone", async 
   await expect(page.locator(".aloud-text")).toBeVisible();
   expect(await page.locator("[data-line]").count()).toBeGreaterThan(20);
   await ctx.close();
+  await r.close();
+});
+
+// Reviewed cases: what must never leave her waiting in silence.
+const CUT_OFF = "🤖 A new beat cut Clippy off: press 🤖 on her last line";
+
+test("a newer beat over her paragraph tells # hosts, and 🤖 starts him", async ({ browser }) => {
+  test.setTimeout(60_000);
+  const r = await rig(browser);
+  const program = await r.guest("Hampster Dance");
+  const hostCtx = await browser.newContext({ viewport: { width: 390, height: 780 }, hasTouch: true, isMobile: true });
+  await hostCtx.addInitScript(([key, value]) => localStorage.setItem(key as string, value as string), ["loom.prime", JSON.stringify({ token: r.hostToken, character: "Task Manager", admin: false, host: true, eventId: "default" })]);
+  const hostPhone = await hostCtx.newPage();
+  await hostPhone.goto(`${BASE}/?role=performer`);
+  await hostPhone.waitForTimeout(2_500);
+  await hersOnThePhone(r);
+  const before = await r.hosts();
+  await r.post("/api/mod/signal", { name: "send to the internet", subject: program, actor: "Norton Anti-Virus" });
+  await expect.poll(async () => (await r.hosts()).slice(before.length), { timeout: 6_000 }).toContain(CUT_OFF);
+  await expect(hostPhone.getByText("A new beat cut Clippy off").first(), "the alert, on a host's phone").toBeVisible({ timeout: 6_000 });
+  await hostPhone.screenshot({ path: join(SHOTS, "cut-off-host.png") });
+  expect(await count(r, ONLINE), "he never starts by himself here").toBe(0);
+  await r.phone.waitForTimeout(1_000);
+  expect((await r.hosts()).filter((l) => l === CUT_OFF), "one line").toHaveLength(1);
+  await r.phone.screenshot({ path: join(SHOTS, "cut-off-phone.png") });
+  await r.post("/api/mod/signal", { name: "introduce_trabolta" });
+  await expect.poll(() => count(r, ONLINE), { timeout: 4_000 }).toBe(1);
+  await expect.poll(() => r.said.has(HIS_FIRST), { timeout: 6_000 }).toBe(true);
+  await hostCtx.close();
+  await r.close();
+});
+
+test("paused doors keep her cue: past the end behind them, ✓ Done after them", async ({ browser }) => {
+  test.setTimeout(90_000);
+  const r = await rig(browser);
+  await hersOnThePhone(r);
+  await r.post("/api/mod/stop");
+  await scrollToTheEnd(r.phone);
+  await r.phone.waitForTimeout(1_500);
+  expect(await count(r, ONLINE), "paused: nothing starts").toBe(0);
+  await r.post("/api/mod/start");
+  await r.phone.waitForTimeout(1_000);
+  await r.phone.locator(".aloud-done.big").first().click();
+  await expect.poll(() => count(r, ONLINE), { timeout: 6_000 }).toBe(1);
+  await expect.poll(() => r.said.has(HIS_FIRST), { timeout: 6_000 }).toBe(true);
+  await r.close();
+});
+
+test("✓ Done behind paused doors is not lost", async ({ browser }) => {
+  test.setTimeout(60_000);
+  const r = await rig(browser);
+  await hersOnThePhone(r);
+  await r.post("/api/mod/stop");
+  const done = r.phone.locator("footer .aloud-done");
+  await done.click();
+  await done.click();
+  await r.phone.waitForTimeout(1_000);
+  expect(await count(r, ONLINE), "paused: nothing starts").toBe(0);
+  await r.post("/api/mod/start");
+  await expect.poll(() => count(r, ONLINE), { timeout: 6_000 }).toBe(1);
+  await r.close();
+});
+
+test("the rail let go on her last line with ▶ on doesn't roll into him", async ({ browser }) => {
+  test.setTimeout(60_000);
+  const r = await rig(browser);
+  await hersOnThePhone(r);
+  await r.phone.locator(".aloud-play").click();
+  await r.phone.waitForTimeout(1_000);
+  const box = (await r.phone.locator(".aloud-rail").boundingBox())!;
+  const x = box.x + box.width / 2;
+  const cdp = await r.phone.context().newCDPSession(r.phone);
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x, y: box.y + 6 }] });
+  for (let i = 1; i <= 10; i++) {
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x, y: box.y + 6 + ((box.height - 8) * i) / 10 }] });
+    await r.phone.waitForTimeout(20);
+  }
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+  await r.phone.waitForTimeout(6_000);
+  expect(await count(r, ONLINE), "a jump is not a read").toBe(0);
+  await expect(r.phone.locator(".aloud-play")).toHaveText(/▶ Scroll/u);
+  // She can still go on from there, by hand.
+  await scrollToTheEnd(r.phone);
+  await expect.poll(() => count(r, ONLINE), { timeout: 6_000 }).toBe(1);
   await r.close();
 });

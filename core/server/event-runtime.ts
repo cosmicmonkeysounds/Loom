@@ -354,6 +354,8 @@ const HANDOVER_BEAT = "Clippy On Trabolta";
 const HANDOVER_CUE = "introduce_trabolta";
 /** Who that press reads as, in the journal and the desk's activity. */
 const PROMPTER_BY = "📜 Teleprompter";
+/** A newer beat took the prompter from her paragraph. DRAFT w59 */
+const HANDOVER_CUT_NOTE = "!🤖 A new beat cut Clippy off: press 🤖 on her last line";
 
 /**
  * The guest POST routes a **locked** phone may still call (wave 26, C2): the
@@ -1003,6 +1005,10 @@ export class EventRuntime {
   /** Wave 59: the shared teleprompter (`prompter.ts`). Memory only: a restart
    *  forgets it, and the rest of a held beat's lines just play. */
   private readonly prompters: Prompters;
+  /** Wave 59: her ✓ Done landed behind paused doors; he starts when they reopen. */
+  private handoverOwed = false;
+  /** Wave 59: a newer beat cut off her paragraph; `fanout` tells the hosts. */
+  private handoverCut = false;
   private prompterTimer: ReturnType<typeof setInterval> | null = null;
   /** When each reader's stream last closed (`@<Character>` or a guest id). */
   private readonly streamLeft = new Map<string, number>();
@@ -1357,7 +1363,10 @@ export class EventRuntime {
         this.modViewLast = null;
         this.pushSnapshots();
       },
-      finished: (scene) => this.sceneFinished(scene),
+      finished: (scene, closed) => this.sceneFinished(scene, closed),
+      superseded: (scene) => {
+        this.handoverCut ||= this.handoverDue(scene);
+      },
     });
     this.screens = new ScreenWatch({
       ...(init.now !== undefined ? { now: init.now } : {}),
@@ -2272,6 +2281,8 @@ export class EventRuntime {
     this.costume.clear(); // wave 59: a new run owes the house no restore
     this.modPrev = null; // the next view after a transition is a keyframe
     this.prompters.clear(); // wave 59: a new run has no scene, and nothing waits
+    this.handoverOwed = false;
+    this.handoverCut = false;
     this.prompterClock();
     for (const c of this.clients) sseSend(c.res, "lifecycle", { kind, at: Date.now(), ...extra });
   }
@@ -2470,13 +2481,24 @@ export class EventRuntime {
     }
   }
 
+  /** Is this the scene that hands over to him, with him still to come? */
+  private handoverDue(scene: SceneDraft): boolean {
+    return this.sim !== null && scene.sections.at(-1)?.title === HANDOVER_BEAT && worldString(this.sim.world.peek("Night.trabolta_introduced")) !== "true";
+  }
+
   /** Her last line is his cue: the arrow past it, or her ✓ Done, is 🤖, on the
    *  path a host's press takes. Once: a press of 🤖 first leaves nothing to do
-   *  and nothing said, and 🤖 after it reads *already online*, which is true. */
-  private sceneFinished(scene: SceneDraft): void {
-    if (this.sim === null || this.phase !== "open" || scene.sections.at(-1)?.title !== HANDOVER_BEAT) return;
-    if (worldString(this.sim.world.peek("Night.trabolta_introduced")) === "true") return;
+   *  and nothing said, and 🤖 after it reads *already online*, which is true.
+   *  Paused doors hold it: false, so her next move asks again, and a ✓ Done
+   *  that took the scene with it goes when they reopen (`openDoors`). */
+  private sceneFinished(scene: SceneDraft, closed: boolean): boolean {
+    if (!this.handoverDue(scene)) return true;
+    if (this.phase !== "open") {
+      this.handoverOwed ||= closed;
+      return false;
+    }
     this.deskFire(HANDOVER_CUE, PROMPTER_BY);
+    return true;
   }
 
   private prompterName(who: string): string {
@@ -2605,6 +2627,12 @@ export class EventRuntime {
     this.deskCues(events);
     this.lightCues(events);
     this.runPicks(events);
+    // Wave 59: only a person knows when she has said the last line from the
+    // sheet, so the hosts hear, once this batch has gone.
+    if (this.handoverCut) {
+      this.handoverCut = false;
+      this.postHostsNote(HANDOVER_CUT_NOTE);
+    }
     return appended;
   }
 
@@ -5864,6 +5892,10 @@ export class EventRuntime {
     // still knows it.
     this.persistMeta();
     this.pushSnapshots();
+    // Wave 59: her ✓ Done behind paused doors was his cue, and the scene is gone.
+    const owed = this.handoverOwed;
+    this.handoverOwed = false;
+    if (owed && this.sim !== null && worldString(this.sim.world.peek("Night.trabolta_introduced")) !== "true") this.deskFire(HANDOVER_CUE, PROMPTER_BY);
   }
 
   /** A new run on `source`: a fresh sim, an empty journal + chat, and the

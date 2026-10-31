@@ -358,6 +358,94 @@ describe("her last line is his cue", () => {
     third.rt.dispose();
   });
 
+  const CUT_OFF = "🤖 A new beat cut Clippy off: press 🤖 on her last line";
+  const hostLines = (rt: EventRuntime) => said(rt).filter((m) => m.channel === "room:hosts");
+
+  it("a newer beat over her paragraph tells # hosts, once, as an alert, and 🤖 still starts him", async () => {
+    const { rt } = await atHerParagraph();
+    expect((await post(rt, "/api/mod/beat", { name: "Following The Reinstallation" }, { moderator: true })).status).toBe(200);
+    expect(online(rt)).toBe(0);
+    const told = hostLines(rt).filter((m) => m.text === CUT_OFF);
+    expect(told).toHaveLength(1);
+    expect(told[0]!.alert).toBe(true);
+    expect((await press(rt, "introduce_trabolta")).json).toMatchObject({ ok: true });
+    expect(online(rt)).toBe(1);
+    rt.dispose();
+  });
+
+  it("a newer beat says nothing once he is in, or over any other scene", async () => {
+    const first = await atHerParagraph();
+    await press(first.rt, "introduce_trabolta");
+    await post(first.rt, "/api/mod/beat", { name: "Following The Reinstallation" }, { moderator: true });
+    expect(hostLines(first.rt).filter((m) => m.text === CUT_OFF)).toEqual([]);
+    first.rt.dispose();
+
+    const rt = runtime();
+    const clippy = await booth(rt, "Clippy");
+    await stream(rt, "prime", clippy);
+    await post(rt, "/api/mod/beat", { name: "Following The Reinstallation" }, { moderator: true });
+    await post(rt, "/api/mod/beat", { name: "Following The Reinstallation" }, { moderator: true });
+    expect(hostLines(rt).filter((m) => m.text === CUT_OFF)).toEqual([]);
+    rt.dispose();
+  });
+
+  it("paused doors hold the arrow: nothing is used up, and her ✓ Done after they reopen starts him", async () => {
+    const { rt, scene, aloud } = await atHerParagraph();
+    await post(rt, "/api/mod/stop", {}, { moderator: true });
+    await aloud({ op: "press", pos: 0 });
+    await aloud({ op: "move", pos: scene.total });
+    await aloud({ op: "letgo", pos: scene.total });
+    expect(online(rt)).toBe(0);
+    await post(rt, "/api/mod/start", {}, { moderator: true });
+    expect(online(rt)).toBe(0);
+    await aloud({ op: "done" });
+    expect(online(rt)).toBe(1);
+    rt.dispose();
+  });
+
+  it("paused doors hold the arrow: her next move after they reopen starts him too", async () => {
+    const { rt, scene, aloud } = await atHerParagraph();
+    await post(rt, "/api/mod/stop", {}, { moderator: true });
+    await aloud({ op: "jump", pos: scene.total });
+    await post(rt, "/api/mod/start", {}, { moderator: true });
+    expect(online(rt)).toBe(0);
+    await aloud({ op: "jump", pos: scene.total });
+    expect(online(rt)).toBe(1);
+    rt.dispose();
+  });
+
+  it("her ✓ Done behind paused doors goes when they reopen, once, unless 🤖 got there first or the run restarted", async () => {
+    const first = await atHerParagraph();
+    await post(first.rt, "/api/mod/stop", {}, { moderator: true });
+    await first.aloud({ op: "done" });
+    expect(online(first.rt)).toBe(0);
+    await post(first.rt, "/api/mod/start", {}, { moderator: true });
+    expect(online(first.rt)).toBe(1);
+    await post(first.rt, "/api/mod/stop", {}, { moderator: true });
+    const before = hosts(first.rt);
+    await post(first.rt, "/api/mod/start", {}, { moderator: true });
+    expect(online(first.rt)).toBe(1);
+    expect(hosts(first.rt)).toBe(before);
+    first.rt.dispose();
+
+    const second = await atHerParagraph();
+    await post(second.rt, "/api/mod/stop", {}, { moderator: true });
+    await second.aloud({ op: "done" });
+    await post(second.rt, "/api/mod/reset", {}, { moderator: true });
+    await post(second.rt, "/api/mod/start", {}, { moderator: true });
+    expect(online(second.rt)).toBe(0);
+    second.rt.dispose();
+
+    const third = await atHerParagraph();
+    await post(third.rt, "/api/mod/stop", {}, { moderator: true });
+    await third.aloud({ op: "done" });
+    await press(third.rt, "introduce_trabolta");
+    const pressed = online(third.rt);
+    await post(third.rt, "/api/mod/start", {}, { moderator: true });
+    expect(online(third.rt)).toBe(Math.max(pressed, 1));
+    third.rt.dispose();
+  });
+
   it("another scene's end fires nothing", async () => {
     const rt = runtime();
     const clippy = await booth(rt, "Clippy");

@@ -3,7 +3,7 @@
 
 import { describe, expect, it } from "vitest";
 import type { ChatMessage } from "../server/chat.ts";
-import { DRIVE_TTL_MS, HERE_TTL_MS, HOLD_WAIT_MS, HOLDER_TTL_MS, Prompters, readPrompterOp, sceneOf, spokenMs, type PrompterFrame, type RoomVoice } from "../server/prompter.ts";
+import { DRIVE_TTL_MS, HERE_TTL_MS, HOLD_WAIT_MS, HOLDER_TTL_MS, Prompters, readPrompterOp, sceneOf, spokenMs, type PrompterFrame, type RoomVoice, type SceneDraft } from "../server/prompter.ts";
 import { voiceLinesOf } from "../server/routes/screen.ts";
 
 const CTX = { voiced: (f: string) => f === "Trabolta", ownerOf: (f: string) => (f === "Recycling Bin" ? "@Recycling Bin" : f === "Clippy" ? "@Clippy" : null) };
@@ -15,12 +15,14 @@ const clippy = (seq: number, text = "one two three four"): ChatMessage => row(se
 const him = (seq: number, text = "five six seven eight"): ChatMessage => row(seq, "Trabolta", text, { aloud: { readers: ["@Clippy"] } });
 const stage = (seq: number, text = "stage direction here now"): ChatMessage => row(seq, "Narrator", text, { kind: "narration", aloud: { readers: ["@Clippy"] } });
 
-function rig(messages: readonly ChatMessage[], o: { online?: boolean } = {}) {
+function rig(messages: readonly ChatMessage[], o: { online?: boolean; takes?: () => boolean } = {}) {
   let now = 1_000;
   const frames: PrompterFrame[] = [];
   const voice: RoomVoice = { live: true, muted: false, said: -1, speaking: null };
   let changed = 0;
   let finished = 0;
+  const closed: boolean[] = [];
+  const cut: SceneDraft[] = [];
   const p = new Prompters({
     now: () => now,
     send: (f) => frames.push(f),
@@ -28,7 +30,13 @@ function rig(messages: readonly ChatMessage[], o: { online?: boolean } = {}) {
     online: () => o.online ?? true,
     name: (w) => w.replace(/^@/u, ""),
     changed: () => (changed += 1),
-    finished: () => (finished += 1),
+    finished: (_scene, wentWithIt) => {
+      closed.push(wentWithIt);
+      if (o.takes?.() === false) return false;
+      finished += 1;
+      return true;
+    },
+    superseded: (scene) => cut.push(scene),
   });
   const draft = sceneOf(messages, CTX)!;
   p.land(draft);
@@ -40,6 +48,8 @@ function rig(messages: readonly ChatMessage[], o: { online?: boolean } = {}) {
     last: () => frames[frames.length - 1]!,
     changed: () => changed,
     finished: () => finished,
+    closed,
+    cut,
     to: (ms: number) => {
       now += ms;
       p.tick();
@@ -454,11 +464,52 @@ describe("a scene's end", () => {
     expect(r.finished()).toBe(1);
   });
 
-  it("a newer scene isn't an end", () => {
+  it("a newer scene isn't an end, and says what it cut off", () => {
     const r = rig([clippy(1)]);
     r.here();
     r.p.land(sceneOf([clippy(5)], CTX));
     expect(r.finished()).toBe(0);
+    expect(r.cut.map((s) => s.id)).toEqual([r.id]);
+  });
+
+  it("a scene that had finished wasn't cut off", () => {
+    const r = rig([clippy(1)]);
+    r.here();
+    r.p.op(r.id, "@Clippy", false, { op: "jump", pos: 99 });
+    expect(r.finished()).toBe(1);
+    r.p.land(sceneOf([clippy(5)], CTX));
+    expect(r.cut).toEqual([]);
+  });
+
+  it("a ✓ Done or a close from outside cuts nothing off", () => {
+    const r = rig([clippy(1)]);
+    r.here();
+    r.p.done();
+    r.p.land(sceneOf([clippy(5)], CTX));
+    expect(r.cut).toEqual([]);
+  });
+
+  it("\"not now\" uses nothing up: the next move asks again", () => {
+    let open = false;
+    const r = rig([clippy(1)], { takes: () => open });
+    r.here();
+    r.p.op(r.id, "@Clippy", false, { op: "press" });
+    r.p.op(r.id, "@Clippy", false, { op: "move", pos: 99 });
+    expect(r.finished()).toBe(0);
+    expect(r.closed).toEqual([false]);
+    open = true;
+    r.p.op(r.id, "@Clippy", false, { op: "letgo", pos: 99 });
+    expect(r.finished()).toBe(1);
+    r.p.op(r.id, "@Clippy", false, { op: "done" });
+    expect(r.finished()).toBe(1);
+  });
+
+  it("✓ Done tells it the scene went with it", () => {
+    const r = rig([clippy(1)], { takes: () => false });
+    r.here();
+    r.p.op(r.id, "@Clippy", false, { op: "done" });
+    expect(r.closed).toEqual([true]);
+    expect(r.p.active).toBe(false);
   });
 });
 

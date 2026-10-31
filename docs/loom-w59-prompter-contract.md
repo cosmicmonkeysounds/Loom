@@ -170,6 +170,14 @@ size the last scroll puts the arrow past the last line and `sharedPos` reads `to
 No reader online, a phone on an old build, or a restart mid-read: nothing fires, and
 🤖 is the way, which is how the bots go.
 
+A newer scene over hers (a capture's Corrupted Code, 📺 Follow the reinstallation):
+`superseded`, and if he is still to come one alert in `# hosts`, *A new beat cut Clippy
+off: press 🤖 on her last line* (`HANDOVER_CUT_NOTE`, DRAFT w59), because she goes on
+from the sheet and only a person knows when she has said it. Paused doors: `finished`
+answers false, so nothing is used up and her next move or ✓ Done after they reopen
+fires him; a ✓ Done behind them took the scene with it, so he starts when they reopen.
+A rail or section jump stops the shared ▶, so a jump never rolls into the end.
+
 ## Tests
 
 `core/test/w59-prompter.test.ts` (the hold, the lock, every way past it),

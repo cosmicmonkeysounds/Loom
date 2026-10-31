@@ -259,7 +259,8 @@ the process as routine, even if the other guests seem uncomfortable.
 A host fires 🎤 and your words about him come up: the accident, the rule, the
 hunt. They end *"Trabolta, would you explain the rules?"*. Scroll past that line,
 or press ✓ Done, and he starts by himself (a host's 🤖 is the backup, if your phone
-is lost). He comes online and speaks on the TV: his speech, the three questions and
+is lost). If a new beat lands over your words, your phone moves on to it: finish
+from *↑ earlier lines*, and a host presses 🤖 on your last line. He comes online and speaks on the TV: his speech, the three questions and
 his sign-off, about three minutes, clean, not a crack in it. Let him finish.
 **The first talk:** after *"it's electrifying."*, talk with him, out loud: welcome him, ask
 what a Sole Owner and Founder does all day, about Gerald. He is formal and
@@ -670,7 +671,7 @@ Oh, look! We can follow their progress!
 
 You're doing wonderfully! Just follow the instructions. One step at a time!
 
-**🎤 Your words on Trabolta.** Scroll past the last line, or press ✓ Done, and he starts by himself (a host's 🤖 is the backup): he speaks for about three minutes and ends *"…it's electrifying."* Then talk with him, a minute or so, until 🔎.
+**🎤 Your words on Trabolta.** Scroll past the last line, or press ✓ Done, and he starts by himself (a host's 🤖 is the backup, and the only way if a new beat lands over your words): he speaks for about three minutes and ends *"…it's electrifying."* Then talk with him, a minute or so, until 🔎.
 
 Thank you, everyone! It's always nice to see a program getting the help they need.
 

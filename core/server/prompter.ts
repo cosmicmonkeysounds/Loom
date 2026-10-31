@@ -24,7 +24,8 @@
 //! outlets: the runtime calls `tick` on a timer and on every poll.
 //!
 //! A scene can end on a cue of its own: `finished` says when the position has
-//! passed its last line or its reader pressed ✓ Done, once a scene.
+//! passed its last line or its reader pressed ✓ Done, once a scene, and a
+//! scene a newer one cut off before that says so (`superseded`).
 
 import type { PrompterStatus } from "../src/host-board.ts";
 import type { ChatMessage } from "./chat.ts";
@@ -239,9 +240,12 @@ export interface PrompterDeps {
   name(who: string): string;
   /** A hold or the scene changed: the host and director views are stale. */
   changed(): void;
-  /** The script ran out, or a reader pressed ✓ Done. Once a scene, never for
-   *  one a newer scene took over or a host or a director closed from outside. */
-  finished?(scene: SceneDraft): void;
+  /** The script ran out, or a reader pressed ✓ Done (`closed`: it went with
+   *  it). Never for one a newer scene took over or a host or a director closed
+   *  from outside. Once a scene: false is "not now", and the next move asks again. */
+  finished?(scene: SceneDraft, closed: boolean): boolean | void;
+  /** A newer scene took over one that hadn't finished. */
+  superseded?(scene: SceneDraft): void;
 }
 
 interface Run {
@@ -319,7 +323,11 @@ export class Prompters {
   land(draft: SceneDraft | null): void {
     if (draft === null) return;
     const now = this.deps.now();
-    if (this.live !== null) this.close(true);
+    const was = this.live;
+    if (was !== null) {
+      this.close(true);
+      if (!was.finished) this.deps.superseded?.(was.draft);
+    }
     const lines = draft.sections.flatMap((s) => s.lines);
     const off: number[] = [];
     let total = 0;
@@ -496,7 +504,7 @@ export class Prompters {
         const others = s.draft.readers.some((r) => r !== who && now - (s.here.get(r)?.at ?? -Infinity) <= HERE_TTL_MS);
         if (!s.draft.owners.includes(who) && !(s.draft.readers.includes(who) && others)) {
           this.close(false);
-          if (s.draft.readers.includes(who)) this.finish(s);
+          if (s.draft.readers.includes(who)) this.finish(s, true);
         }
         return null;
       }
@@ -538,10 +546,9 @@ export class Prompters {
     if (s.speaking === null && !this.isHeld(s) && this.posAt(s, now) >= s.total) this.finish(s);
   }
 
-  private finish(s: Live): void {
+  private finish(s: Live, closed = false): void {
     if (s.finished) return;
-    s.finished = true;
-    this.deps.finished?.(s.draft);
+    s.finished = this.deps.finished?.(s.draft, closed) !== false;
   }
 
   private isHeld(s: Live): boolean {
