@@ -553,6 +553,9 @@ export interface FilterLine {
   points?: number;
   /** Story ms. */
   ts: number;
+  /** Wave 57 (C15): the censor's own capture, while it is live on this
+   *  program; absent otherwise (and from an older server). */
+  send?: { id: string; label: string };
 }
 
 /** `POST /api/prime/censor`'s 200 (wave 48, C2): the masked text; wave

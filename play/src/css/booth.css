@@ -428,8 +428,10 @@
 .filter-actions { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; }
 .filter-btn { min-height: var(--tap); flex-direction: column; gap: 0; font: 700 14px var(--ui-font); }
 .filter-btn.armed { background: var(--black); color: var(--white); }
+.filter-btn.send { grid-column: 1 / -1; }
 .filter-arm { font: 400 11px var(--ui-font); }
 .filter-refused { margin: 0; color: var(--bad); font: 700 13px var(--ui-font); }
+.filter-sent { margin: 0; font: 700 13px var(--ui-font); }
 .filter-none { padding: 16px 0; text-align: center; }
 
 /* Wave 48b (C13): the bands' colours, one palette for the pop-out's marks,

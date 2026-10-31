@@ -255,6 +255,14 @@ top five; the TV lets every censored word out (`award_language`, the
 screen state's `night.language`). Help:
 `docs/help/authoring/55-language-filter.md`.
 
+**🛡 from the filter** (wave 57, not shipped; `docs/loom-w48-contract.md` C15,
+show text `DRAFT w57` on `SIGNOFF-w48.md` §6): a line in the Password Manager's
+filter offers 🛡 Send to the Internet beside ✂ Censor and Let it go, wherever a
+scanned card would (a marked program, or anyone once the Bingo round is over),
+and never after the ending. It is her ordinary capture and leaves the line to
+judge. No story change: `ship.sh` carries it, no `sync-show`. Reload her booth
+and reprint her pack. Help: `docs/help/play/22-language-filter.md`.
+
 **The descent** (wave 49, shipped in `w50`; `docs/loom-w49-contract.md`, show text
 `DRAFT w49` on `SIGNOFF-w49.md`): the more often a program is reinstalled, the
 less the simulation holds together (House of Leaves, Alice). Its first walk is

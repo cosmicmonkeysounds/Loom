@@ -361,9 +361,13 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   `marks`), the masks and the heat from those signals (`replayFilter`).
   The screen state's `night.language` rides the `award_language` slide
   (G14), its words and tallies from `FilterBook` (the poll's
-  `extras.language`). Tests:
+  `extras.language`). Wave 57 (C15): `views.ts` `captureFor` puts the censor's
+  own capture on each waiting line (`FilterLine.send {id, label}`), by label
+  (the booth's `CAPTURE`), actors and its `while:` with the line's program
+  bound, never after the ending; the press is the ordinary `/api/prime/act`,
+  and the line stays. Tests:
   `test/w48-language-filter.test.ts`, `test/w48-filter-server.test.ts`,
-  `test/trapped-w48-language.test.ts`.
+  `test/trapped-w48-language.test.ts`, `test/w57-filter-send.test.ts`.
 - **The descent and the footsteps** (wave 49,
   [`docs/loom-w49-contract.md`](../docs/loom-w49-contract.md) C3;
   [`docs/loom-reinstall.md`](../docs/loom-reinstall.md) §2.5). The rules

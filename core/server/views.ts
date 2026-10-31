@@ -2140,6 +2140,23 @@ export function guestCardView(sim: Sim, chat: readonly ChatMessage[], character:
   };
 }
 
+/** A press that sends the guest to the Internet (play's `CAPTURE`,
+ *  `booth/model.ts`, which puts the same button on the card's face). */
+const CAPTURE = /(\bsend(?:s)?\b[^:]*\bto the internet|\bcaptur)/iu;
+
+/**
+ * Wave 57 (C15): this booth's own capture, as a line in the filter offers
+ * it: its `by:` names the character, and its `while:` is read with the guest
+ * bound, so it is live on exactly the programs the guest card offers it on.
+ */
+export function captureFor(sim: Sim, character: string): (guest: string) => { id: string; label: string } | null {
+  const me = foldName(character);
+  const actors = interactionActors(sim);
+  const def = [...sim.model.interactions.values()].find((i) => i.who === "performer" && CAPTURE.test(i.label) && actors.get(i.id)?.some((a) => foldName(a) === me) === true);
+  if (def === undefined) return () => null;
+  return (guest) => (sim.persons.has(guest) && (def.while === null || sim.holds(def.while, guest, character)) ? { id: def.id, label: def.label } : null);
+}
+
 /** The authored channel ids of the story's staff rooms (`staffRoomIds`), model order. */
 export function staffRoomChannels(model: Sim["model"]): string[] {
   const staff = staffRoomIds(model);
