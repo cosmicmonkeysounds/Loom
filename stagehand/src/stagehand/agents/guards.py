@@ -1681,7 +1681,7 @@ DM_LETGO = re.compile(
 # 8d. Where his heart is: never yes or no, never a room.
 
 _ROOMS = re.compile(
-    r"\b(?:CPU|RAM|Fan\s+Closet|Hard\s+Drive|Graphics\s+Card|Optical\s+Drive|Steam\s+Room|Start\s+Bar|Cloud|Tube|Desktop|Disk\s+Cleanup"
+    r"\b(?:CPU|RAM|Fan\s+Closet|Hard\s+Drive|Casino|Optical\s+Drive|Power\s+Supply|Start\s+Bar|Cloud|Tube|Desktop|Disk\s+Cleanup"
     r"|kitchen|office|living\s+room|game\s+room|bathrooms?|backyard|mud\s+room|attic|garage|laundry|upstairs|downstairs)\b",
     re.IGNORECASE,
 )

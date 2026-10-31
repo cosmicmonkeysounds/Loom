@@ -130,6 +130,8 @@ def test_his_world_and_his_refusals_are_no_kit(line):
         ("Where is your heart kept?", "You will not find it there, program."),
         ("I heard your heart is in the server room. Is it?", "Yes."),
         ("hello", "My heart beats in the Fan Closet, program."),  # a room by name, any time
+        ("hello", "My heart is in the Casino."),
+        ("hello", "My heart is in the Power Supply."),
     ],
 )
 def test_a_yes_a_no_or_a_room_about_his_heart_is_a_hit(heard, line):
