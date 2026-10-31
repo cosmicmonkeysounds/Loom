@@ -49,6 +49,7 @@ export function boothStartItems({
   onSignOut,
   filter = null,
   voice = null,
+  aloud = null,
 }: {
   character: string;
   admin: boolean;
@@ -64,8 +65,11 @@ export function boothStartItems({
   filter?: StartItem | null;
   /** Wave 53 (C4): the phone's voice switch (`voiceStartItem`), else null. */
   voice?: StartItem | null;
+  /** Wave 55: `📜 My script`, once this part has one (`aloudStartItem`), first. */
+  aloud?: StartItem | null;
 }): StartItem[] {
-  const items: StartItem[] = [{ id: "help", icon: <Icon name="help" />, label: "Help", onClick: onHelp }];
+  const items: StartItem[] = aloud !== null ? [aloud] : [];
+  items.push({ id: "help", icon: <Icon name="help" />, label: "Help", onClick: onHelp });
   if (!embedded && wake.supported) {
     items.push({ id: "wake", icon: <Icon name={wake.on ? "screen-on" : "screen-off"} />, label: wake.on ? "Screen stays on (tap to allow sleep)" : "Keep my screen on", onClick: wake.toggle });
   }
@@ -96,6 +100,7 @@ export function playerStartItems({
   credits = null,
   filter = null,
   voice = null,
+  aloud = null,
 }: {
   character: string;
   wake: Pick<WakeLock, "supported" | "on" | "toggle">;
@@ -110,8 +115,11 @@ export function playerStartItems({
   filter?: StartItem | null;
   /** Wave 53 (C4): the phone's voice switch (`voiceStartItem`), else null. */
   voice?: StartItem | null;
+  /** Wave 55: `📜 My script`, once this part has one (`aloudStartItem`), first. */
+  aloud?: StartItem | null;
 }): StartItem[] {
-  const items: StartItem[] = credits !== null ? [credits] : [];
+  const items: StartItem[] = aloud !== null ? [aloud] : [];
+  if (credits !== null) items.push(credits);
   items.push({ id: "help", icon: <Icon name="help" />, label: "Help", onClick: onHelp });
   if (!embedded && wake.supported) {
     items.push({ id: "wake", icon: <Icon name={wake.on ? "screen-on" : "screen-off"} />, label: wake.on ? "Screen stays on (tap to allow sleep)" : "Keep my screen on", onClick: wake.toggle });

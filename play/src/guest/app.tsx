@@ -70,6 +70,7 @@ import { SidesContext } from "../sides/context.ts";
 import { LazySidesLayer } from "../sides/lazy.tsx";
 import type { SidesWhich } from "../sides/index.tsx";
 import { registerSidesWidgets } from "../sides/widgets.tsx";
+import { AloudSlot, aloudStartItem, useAloud } from "../aloud/lazy.tsx";
 import { CreditsSlot, creditsStartItem, useCredits } from "../credits/lazy.tsx";
 
 // The doors (`sides`) and the invitation (`invite`) card kinds (CONTRACTS A8).
@@ -239,6 +240,8 @@ export function GuestApp({ onLeave, badgeLink = null }: { onLeave: () => void; b
   // Wave 44 (C7): the credits roll, by itself once when the story rolls
   // them live, and from ⊞ Start while they are set.
   const credits = useCredits(st?.night?.credits?.roll, st?.clock);
+  // Wave 55: a program's script (the bobber's truth.txt): over every branch below.
+  const aloud = useAloud({ messages: s.messages, me: s.me?.id ?? null, token: s.me?.token ?? null, storage: host.storage, clock: st?.clock });
 
   // --- the window, the room over it, and every exit's `go` ----------------
   const cards = useMemo(() => liveCardsOf(t.list, s.widgetAnswers), [t.list, s.widgetAnswers]);
@@ -360,7 +363,12 @@ export function GuestApp({ onLeave, badgeLink = null }: { onLeave: () => void; b
   // A `!!` pin covers the whole app — from every received message, so a
   // restricted guest whose list hides the lobby still sees it.
   const bang = activeTakeover(s.messages.values());
-  const takeover = <Takeover pin={bang} />;
+  const takeover = (
+    <>
+      <Takeover pin={bang} />
+      <AloudSlot a={aloud} sound={host.sound} storage={host.storage} />
+    </>
+  );
   const restricted = st?.restricted ?? false;
   // A scanned codex code redeems like a typed one, a room's sign checks in,
   // someone else's pass opens the Recruit sheet (wave 18, F3). Wave 18b
@@ -506,6 +514,7 @@ export function GuestApp({ onLeave, badgeLink = null }: { onLeave: () => void; b
     else if (inviting) setInviting(false);
   };
   const backOpen = {
+    aloud: aloud.covering,
     sheet: sheetOpen,
     overlay: nav.overlay !== null,
     credits: credits.open !== null,
@@ -514,7 +523,8 @@ export function GuestApp({ onLeave, badgeLink = null }: { onLeave: () => void; b
     window: nav.window !== "mission",
   };
   const backStep = (step: Exclude<ReturnType<typeof guestBackStep>, "moment" | null>) => {
-    if (step === "sheet") closeSheet();
+    if (step === "aloud") aloud.setOpen(false);
+    else if (step === "sheet") closeSheet();
     else if (step === "overlay") nav.setOverlay(null);
     else if (step === "credits") credits.set(null);
     else if (step === "room") {
@@ -723,6 +733,7 @@ export function GuestApp({ onLeave, badgeLink = null }: { onLeave: () => void; b
     ...startSides,
     people: (st.people?.length ?? 0) > 0,
     credits: creditsStartItem(st.night?.credits, () => credits.set(Date.now())),
+    aloud: aloudStartItem(aloud),
     open: {
       act,
       sides: () => setSidesWhich({ sheet: "sides" }),

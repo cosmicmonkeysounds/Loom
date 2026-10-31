@@ -90,6 +90,10 @@ export interface ChatMessage {
   /** A takeover pin (`pin "!!…"`, an alert too): `takeover.tsx` covers the
    *  whole screen with it until the story unpins it. */
   takeover?: boolean;
+  /** Wave 55: a line of a beat marked `aloud:`. `readers` hold it on their
+   *  teleprompter (`@<Character>` or a guest id); `reader` says it out loud
+   *  (absent: a cue or a stage direction). `beat` is its section. */
+  aloud?: { readers: string[]; reader?: string };
   /** The card a `widget` message renders. */
   widget?: WidgetCard;
   /** The entry a `codex` message shows. */

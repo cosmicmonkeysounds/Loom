@@ -40,7 +40,9 @@ modules' headers with `//`. Wave 44 turned `push.ts`, `crawl.ts` and `rejoin.ts`
 0.35 kB of headroom, so the next eager addition needs a trim first. Wave
 48b (all booth chunk) measures 148.64 kB. Wave 53 added `phone-voice.ts` and
 turned the headers of `alerts.ts`, `cutscene.tsx`, `chrome/keyboard.ts` and
-`rooms/order.ts` into `//`: 147.63 kB.
+`rooms/order.ts` into `//`: 147.63 kB. Wave 55 added the teleprompter's eager
+part and turned the headers of `moments/model.ts`, `moments/provider.tsx`,
+`guest-scan.tsx`, `avatars.ts`, `resume.ts` and `room.ts` into `//`: 146.71 kB.
 
 ## How a session works
 
@@ -488,6 +490,39 @@ Contract `docs/loom-w53-contract.md`.
   on its next tap. No voice picking: `lang` en-US, the device's own voice.
 - Tests: `test/w53-booth-upload.test.tsx`, `test/w53-phone-voice.test.tsx`.
 
+### Wave 55: the read-aloud pop-up and the teleprompter
+
+Contract `docs/loom-w55-contract.md`. Copy is `DRAFT w55`.
+
+- **The script is the chat.** `ChatMessage.aloud {readers, reader?}` marks each
+  line of a beat with an `aloud:` line. `aloud/model.ts` (eager, pure):
+  `scriptOf(messages, me)` builds one running script for this reader (`@<part>`,
+  or a guest's id), a section per run of a beat and per firing (`beat` + `ts`),
+  dropping a section where they say nothing (a ceremony Trabolta hosted).
+- **It cannot go away** (`aloud/lazy.tsx`, eager: `useAloud`, `aloudStartItem`,
+  `AloudSlot`). The mark (the last line read) is in host storage
+  `loom.aloud.<token>`, per sign-in. While a line of theirs lies past it the
+  slot covers the app; only ✓ Done moves it. A new phone counts from
+  `ALOUD_WINDOW_MS` ago (`markFloor`) and keeps that place, so an unread line
+  never ages away. A mark past every message is an earlier run's. ✕, Escape and
+  Back (`guestBackStep`, `boothBackStep`: first, above every layer) only close
+  the teleprompter onto the pop-up. A booth mounts `PopOutQuiet` while covered.
+  The guest mounts it beside `Takeover`, so every branch has it (the stage, the
+  lock screen, the frame); z 60 is over the pass, a takeover and the glitch. A
+  chunk that won't load is `AloudPlain`: the same words and ✓ Done.
+- **The lazy chunk** (`aloud/prompter.tsx`, pure `prompter-model.ts`).
+  `AloudAlert` sounds every `ALOUD_NUDGE_MS`. `Prompter`: speed is a multiple of
+  `BASE_WPM` (`pxPerSecond`, from the text's height at this size on this phone),
+  speed and size stored per device (`loom.aloud.speed`, `.size`), a touch holds
+  the scroll (`held`, `HOLD_AFTER_MS` through a fling), the rail previews on drag
+  and jumps on release (`railLine`, by words), ↩ undoes a jump, ≡ lists sections,
+  it opens on the cue before their first new line (`startLine`), lines landing
+  meanwhile raise a chip, ✓ Done takes two taps before their last line
+  (`pastLastLine`), and it holds a screen wake lock of its own. Never `Array.at`
+  or `findLast` here (the browser floor). Tests: `test/w55-aloud.test.tsx`; the
+  scrolling was driven in Chromium, since play has no DOM in tests.
+- Help: `docs/help/play/07-performers.md` *Reading out loud*.
+
 ### Host windows (wave 25; the contract is `docs/loom-house-desk.md` §6.2)
 
 A host booth (`isHostBooth` in `host/dock.tsx`, never a player) has three
@@ -607,6 +642,7 @@ src/
   session/               guest.ts / prime.ts sessions, channels, stream handlers
   sides/                 sides, crews, factions (lazy)
   credits/               the credits roll (wave 44): lazy.tsx eager, roll.tsx + its models lazy
+  aloud/                 the teleprompter (wave 55): model.ts + lazy.tsx eager, prompter.tsx + its model lazy
   ui/                    primitives, Win95 windows, objective card, progress
   css/                   base, themes, w95 + one file per lane; styles.css imports them
   widgets.tsx · widgets-fact.tsx   show-card registry (captcha, image, poll, tutorial, pass, fact, answer, email: wave 41's optional inbox, `emailResult`)

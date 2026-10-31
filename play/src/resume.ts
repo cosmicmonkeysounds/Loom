@@ -1,18 +1,18 @@
-//! Re-pair a lost guest (N-02). The director's Run Inspector mints a
-//! single-use, ten-minute **pair code** for an existing guest and shows it as
-//! a QR: `…/?code=<event>&pair=<code>`. The phone that opens it trades the
-//! code at `POST /e/:id/api/guest/resume {pair}` for a fresh token and adopts
-//! it as its guest session (`loom.guest`) — the SAME Person, with their
-//! codex, quests and score. The code is stripped from the URL at once, and a
-//! phone already signed in as someone asks before it switches.
-//!
-//! The same route opens an iPhone's **Home Screen app** for the first time
-//! (K-31b): its `start_url` is `/?code=&pair=&home=1`, the nonce the guest's
-//! Safari minted. iOS reopens an icon at its `start_url`, so a `home` link on
-//! a phone already holding a session is the spent nonce coming round again —
-//! dropped silently, never a "switch this phone?" question.
-//! Pure helpers here; the trade itself (`adoptResume`) is in the lazy
-//! `rejoin-calls.ts` chunk. Unit-tested in `test/resume.test.ts`.
+// Re-pair a lost guest (N-02). The director's Run Inspector mints a
+// single-use, ten-minute **pair code** for an existing guest and shows it as
+// a QR: `…/?code=<event>&pair=<code>`. The phone that opens it trades the
+// code at `POST /e/:id/api/guest/resume {pair}` for a fresh token and adopts
+// it as its guest session (`loom.guest`) — the SAME Person, with their
+// codex, quests and score. The code is stripped from the URL at once, and a
+// phone already signed in as someone asks before it switches.
+//
+// The same route opens an iPhone's **Home Screen app** for the first time
+// (K-31b): its `start_url` is `/?code=&pair=&home=1`, the nonce the guest's
+// Safari minted. iOS reopens an icon at its `start_url`, so a `home` link on
+// a phone already holding a session is the spent nonce coming round again —
+// dropped silently, never a "switch this phone?" question.
+// Pure helpers here; the trade itself (`adoptResume`) is in the lazy
+// `rejoin-calls.ts` chunk. Unit-tested in `test/resume.test.ts`.
 
 /** The re-pair link a scanned QR carries, or null. */
 export interface ResumeLink {

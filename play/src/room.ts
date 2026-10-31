@@ -1,17 +1,17 @@
-//! Notification deep links (SW-PLAY-20). Every push carries `/?room=<id>`
-//! (a server channel id, or `scanner` for a booth's scan readouts). A tap
-//! with no play window open opens that link; with one open, the service
-//! worker posts `{type: "open-room", room}` to it instead (a navigate would
-//! reload the page and drop what's in memory). Either way the session opens
-//! the room once its backlog is in — and only a room this participant
-//! lists, so a link can never reveal a room the story hasn't opened.
-//! Pure helpers — unit-tested in `test/room.test.ts`.
-//!
-//! Wave 18 (GUEST-SPEC §6.4): a guest's link lands through the moments'
-//! exit type — `navFromSearch` / `navFromMessage` give the `Nav` the guest
-//! app's `go` takes: the lobby → Mission, the Codex / Quest Log / Wallet →
-//! those, a listed room → that room, anything else → Mission. The booth's
-//! mapping (`roomTarget`) is unchanged.
+// Notification deep links (SW-PLAY-20). Every push carries `/?room=<id>`
+// (a server channel id, or `scanner` for a booth's scan readouts). A tap
+// with no play window open opens that link; with one open, the service
+// worker posts `{type: "open-room", room}` to it instead (a navigate would
+// reload the page and drop what's in memory). Either way the session opens
+// the room once its backlog is in — and only a room this participant
+// lists, so a link can never reveal a room the story hasn't opened.
+// Pure helpers — unit-tested in `test/room.test.ts`.
+//
+// Wave 18 (GUEST-SPEC §6.4): a guest's link lands through the moments'
+// exit type — `navFromSearch` / `navFromMessage` give the `Nav` the guest
+// app's `go` takes: the lobby → Mission, the Codex / Quest Log / Wallet →
+// those, a listed room → that room, anything else → Mission. The booth's
+// mapping (`roomTarget`) is unchanged.
 
 import { navFromRoom, type Nav } from "./moments/exits.ts";
 

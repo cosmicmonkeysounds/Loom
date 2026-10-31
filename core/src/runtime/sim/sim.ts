@@ -3002,6 +3002,12 @@ export class Sim {
     }
   };
 
+  /** A beat contract's words as the story would say them now (wave 55's
+   *  `aloud: {Night.bobber}`): no bindings, so only the world's values read. */
+  worldText(text: string): string {
+    return this.interpolate(text, new Map());
+  }
+
   private interpolate(text: string, bindings: Bindings): string {
     return text.replace(/\{([^}]+)\}/gu, (_m, expr: string) =>
       display(this.evalValue(expr.trim(), bindings)),

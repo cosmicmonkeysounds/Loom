@@ -177,6 +177,10 @@ Ivo (quietly): It hasn't rung in three days.
 
 - `cast:` — the characters in this beat. (`Player` is the audience/reader.)
 - `setting:` — where it takes place.
+- `aloud:` — who reads this beat out loud at a live show: parts with a booth
+  (`aloud: Clippy, Task Manager`), or a program named by the story
+  (`aloud: {Night.bobber}`), who then reads the narration. Their phones show a
+  pop-up that stays until they have read it, and a teleprompter.
 
 Notice these keys are lowercase. That's how Loom tells a `key: value`
 note from a `Name: line` of dialogue — **speakers start with a capital

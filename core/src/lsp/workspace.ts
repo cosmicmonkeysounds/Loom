@@ -57,6 +57,7 @@ import { wave18bLints } from "./w18b-lints.ts";
 import { wave20Lints } from "./w20-lints.ts";
 import { wave21Lints } from "./w21-lints.ts";
 import { wave26Lints } from "./w26-lints.ts";
+import { wave55Lints } from "./w55-lints.ts";
 
 /** A single open document plus its latest parse. */
 export interface OpenDoc {
@@ -217,6 +218,8 @@ export class Workspace {
     wave21Lints(this.orderedDocs(), this.compiled, (uri, range, error, code, message) => this.pushProject(uri, range, error, code, message));
     // Wave 26: `ack: none` with no exit.
     wave26Lints(this.orderedDocs(), (uri, range, error, code, message) => this.pushProject(uri, range, error, code, message));
+    // Wave 55: an `aloud:` that reaches nobody's teleprompter.
+    wave55Lints(this.orderedDocs(), this.compiled, (uri, range, error, code, message) => this.pushProject(uri, range, error, code, message));
   }
 
   /** Push one project diagnostic onto a document. */

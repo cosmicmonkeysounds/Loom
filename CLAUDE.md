@@ -308,6 +308,17 @@ host's 📣 (the `announce` stream frame, `play/src/phone-voice.ts`). Not proven
 a real phone: run `SIGNOFF-w53.md` §3 first. Help:
 `docs/help/play/07-performers.md`, `16-notifications.md`.
 
+**The teleprompter** (wave 55, not shipped; `docs/loom-w55-contract.md`, show
+text `DRAFT w55` on `SIGNOFF-w55.md`): a beat's `aloud:` line names who reads it
+out loud (25 beats: Clippy's speeches and read-outs, the hosts' opening lines,
+`aloud: {Night.bobber}` for truth.txt). Their whole phone turns into 📜 READ THIS
+OUT LOUD, which stays until they press ✓ Done on the teleprompter: variable
+speed, a rail that previews and jumps, section jumps. Trabolta's lines stay on
+the TV; they show as cues. The bobber's printout stays. Quick reactions are left
+unmarked so a mid-game phone is never blocked. It needs a release, `sync-show`
+with its reload, and every phone reloaded. Help:
+`docs/help/play/07-performers.md`, `docs/help/authoring/56-read-aloud.md`.
+
 ### Release status
 
 The VPS runs **`w53b`** (master `136e656c`, shipped 2026-10-30; rollback `w53`):

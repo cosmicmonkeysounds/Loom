@@ -94,6 +94,7 @@ import { HostShowWindow } from "../host/show.tsx";
 import { hostWindowShown, type HostWindow } from "../host/show-model.ts";
 import { LazyDeskWindow, hostTaskbarButtons } from "../host/windows.tsx";
 import { NowJobs } from "./now-card.tsx";
+import { AloudSlot, aloudStartItem, useAloud } from "../aloud/lazy.tsx";
 import { CreditsSlot, creditsStartItem, useCredits } from "../credits/lazy.tsx";
 import { useFilter } from "./filter/use-filter.ts";
 import { FilterWindow } from "./filter/window.tsx";
@@ -146,6 +147,8 @@ export interface BoothOpen {
   room?: boolean;
   /** A window other than home on screen (a player's Chats, a host's Chats or Desk). */
   window?: boolean;
+  /** Wave 55: the read-aloud pop-up or the teleprompter is up. */
+  aloud?: boolean;
 }
 
 /** Is something open over the booth's home that the phone's Back should close? */
@@ -155,12 +158,13 @@ export function boothAway(open: BoothOpen): boolean {
 
 /**
  * What one press of the phone's Back closes (wave 47): the top thing first
- * (the credits, a layer, a sheet, a list, a floating pop-out), then the room
+ * (wave 55: the teleprompter, back onto its pop-up, which stays; the credits, a layer, a sheet, a list, a floating pop-out), then the room
  * over the window, then a window that is not home. Never past home: there
  * Back is the browser's again. Before wave 47 a room or Chats was not
  * "away", so Back there left the app mid-show.
  */
-export function boothBackStep(open: BoothOpen): "credits" | "layer" | "peopleOpen" | "sheet" | "people" | "help" | "popout" | "room" | "window" | null {
+export function boothBackStep(open: BoothOpen): "aloud" | "credits" | "layer" | "peopleOpen" | "sheet" | "people" | "help" | "popout" | "room" | "window" | null {
+  if (open.aloud === true) return "aloud";
   if (open.credits === true) return "credits";
   if (open.layer !== null) return "layer";
   if (open.peopleOpen === true) return "peopleOpen";
@@ -408,6 +412,8 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
   // rolls them live, and from ⊞ Start; it waits while the booth is face to
   // face (the scanner, a card, PLAYER SELECT).
   const credits = useCredits(s.view?.night?.credits?.roll, s.view?.clock);
+  // Wave 55: this part's script, over everything; nothing floats while it is up.
+  const aloud = useAloud({ messages: s.messages, me: s.view !== null ? `@${s.view.character}` : null, token: s.auth?.token ?? null, storage: host.storage, clock: s.view?.clock, prefetch: true });
   const creditsFace = layer?.kind === "scan" || layer?.kind === "card" || layer?.kind === "pick";
   // Wave 47: a room on a phone, a window that isn't home and a floating
   // pop-out are "away" too, so Back steps back inside the app (a room →
@@ -421,6 +427,7 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
     people,
     help,
     credits: credits.open !== null && !creditsFace,
+    aloud: aloud.covering,
     peopleOpen,
     popout: floating,
     room: !wide && activeId !== null,
@@ -428,6 +435,9 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
   };
   useSystemBack(host.ownsPage && signedIn, boothAway(backOpen), () => {
     switch (boothBackStep(backOpen)) {
+      case "aloud":
+        aloud.setOpen(false);
+        return;
       case "credits":
         credits.set(null);
         return;
@@ -781,6 +791,7 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
         credits: creditsStartItem(s.view?.night?.credits, () => credits.set(Date.now())),
         filter: filterItem,
         voice: voiceItem,
+        aloud: aloudStartItem(aloud),
         onHelp: () => setHelp(true),
         onSheet: setSheet,
         onPeople: () => setPeopleOpen(true),
@@ -799,6 +810,7 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
     embedded: host.embedded,
     filter: filterItem,
     voice: voiceItem,
+    aloud: aloudStartItem(aloud),
     onHelp: () => setHelp(true),
     onSheet: setSheet,
     onSignOut: () => {
@@ -1007,6 +1019,8 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
             {player && s.view?.night?.credits && (
               <CreditsSlot c={credits} credits={s.view.night.credits} clock={s.view.clock} eventId={s.auth.eventId} token={token} auto cover={{ face: creditsFace }} />
             )}
+            {aloud.covering && <PopOutQuiet />}
+            <AloudSlot a={aloud} sound={host.sound} storage={host.storage} />
           </div>
           </BoothBadgesProvider>
         </WalletActionsProvider>

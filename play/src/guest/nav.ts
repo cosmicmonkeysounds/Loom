@@ -88,6 +88,8 @@ export function planGo(nav: Nav, ctx: GoContext): GoPlan {
 
 /** What is open on the guest's phone, for its own Back (wave 47). */
 export interface GuestOpen {
+  /** Wave 55: the read-aloud pop-up or the teleprompter is up. */
+  aloud?: boolean;
   /** A moment on screen: `swallow` (a big, the takeover) or `dismiss` (a dialog). */
   moment: "swallow" | "dismiss" | null;
   /** A sheet over everything (a wallet sheet, Help, People, a share picker…), topmost first. */
@@ -103,13 +105,15 @@ export interface GuestOpen {
 
 /**
  * What one press of the phone's Back does (wave 47; pure, `test/w47-back.test.ts`).
- * A moment first: a big keeps Back (it never moves the view under it, so ✕ /
+ * The read-aloud pop-up outranks everything and stays (the teleprompter closes
+ * back onto it). Then a moment: a big keeps Back (it never moves the view under it, so ✕ /
  * OK lands where the guest was); a dialog closes. Then a sheet, the overlay,
  * the credits; on the stage or the lock screen nothing (never leaving the
  * app mid-arrival or mid-capture); then the room, then the window → Mission.
  * Null at home: Back is the browser's again.
  */
-export function guestBackStep(o: GuestOpen): "moment" | "sheet" | "overlay" | "credits" | "rails" | "room" | "window" | null {
+export function guestBackStep(o: GuestOpen): "aloud" | "moment" | "sheet" | "overlay" | "credits" | "rails" | "room" | "window" | null {
+  if (o.aloud === true) return "aloud";
   if (o.moment !== null) return "moment";
   if (o.sheet) return "sheet";
   if (o.overlay) return "overlay";

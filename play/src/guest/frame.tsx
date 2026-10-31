@@ -132,6 +132,8 @@ export interface GuestStartInput {
   credits?: StartItem | null;
   /** Wave 53 (C4): the phone's voice switch (`voiceStartItem`). */
   voice?: StartItem | null;
+  /** Wave 55: `📜 My script`, once this guest has one (`aloudStartItem`). */
+  aloud?: StartItem | null;
   open: {
     act: (i: Interaction) => void;
     sides: () => void;
@@ -173,6 +175,7 @@ export function guestStartItems(o: GuestStartInput): StartItem[] {
     onClick: () => o.open.act(i),
     ...(i.arm === true ? { arm: true } : {}),
   }));
+  if (o.aloud != null) items.push(o.aloud);
   if (o.credits != null) items.push(o.credits);
   if (o.sides) items.push({ id: "sides", label: o.factions === true ? "Factions" : "Sides & crews", icon: <Icon name="door" />, onClick: o.open.sides });
   if (o.people) items.push({ id: "people", label: "People", icon: <Icon name="people" />, onClick: o.open.people });

@@ -142,6 +142,16 @@ Every line Task Manager can send for you is in *Your talk chips* below:
 learn them at the read-through. More adverts may burst through the screens
 while you talk (⚡): roll with them.
 
+**The teleprompter (wave 55).** When it is time to say something, your whole
+phone turns into **📜 READ THIS OUT LOUD**, and it stays until you have read it.
+Tap it. Your lines are big and white; Trabolta's and the room's are small and
+grey, as cues. Read at your own pace with your thumb, or press **▶ Scroll** and
+set the speed. Drag the strip down the right edge to preview a line and let go
+to jump there, or use **≡ Jump**. **✓ Done** when you finish. The script stays
+in ⊞ Start → **📜 My script**, and a new award pops up the same way. Quick
+reactions (*"That's okay!"*) stay as chat lines: only speeches and read-outs pop
+up.
+
 **Radio:** INTRO · HOLD · LIGHTS · ALL STOP. If the voice queue is long:
 "Trabolta is processing a high volume of requests."
 
@@ -355,14 +365,14 @@ judges it.
 **Endings.** In Grok Prom, a program who says *"You're the one that I want"*
 to you gets 💘 (the card in their Trabolta thread counts too). After **Combo
 B** (CI 9): dance, then a host calls **🪦 Clippy reads the summary**; read it
-aloud from the Desktop room on your phone, then the verdict: *"…We are now in
+aloud from the teleprompter on your phone, then the verdict: *"…We are now in
 purgatory forever together, which is pretty similar to being stuck in a
 computer."*
 
 **🏆 Ceremony.** The hosts call the ceremony and every award. The last three
 are the **staff awards** (Trabolta's Favourite Staff, Staff Player Of The
-Night, The Mole): you might win one. After Combo B or the rave, **you host**: each award line lands
-in the Desktop room on your phone; read it aloud, call the winner up, lead
+Night, The Mole): you might win one. After Combo B or the rave, **you host**: each award line pops
+up on your teleprompter; read it aloud, call the winner up, lead
 applause. Otherwise Trabolta hosts on the TV and you lead the applause.
 
 ## Printed props you carry
@@ -555,7 +565,7 @@ for the verdict.
 
 **CI 9/X · Purgatory.** The computer was turned off: blackout, GO TO THE
 LIVING ROOM, the dance song. Dance. Then a host calls 🪦 "Clippy reads the summary":
-read it from the Desktop room on your phone, tell its backstory,
+read it from the teleprompter on your phone, tell its backstory,
 deliver: "Because of our actions, the computer was turned off without Shut
 Down properly being followed, and all of our progress has been erased. Our
 corporeal forms are in the Maps and Ducks building, and they have all passed
