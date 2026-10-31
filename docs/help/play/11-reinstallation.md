@@ -91,11 +91,18 @@ headset, your microphone.
 | Hit the King | **trigger** (either hand), or **A / X** | **⚔ HIT** |
 | Mute your mic | **B / Y** | **🎤** (or **M**), when the tablet has a voice link |
 | Pick your program (lobby) | point + **trigger**, or stick + hold **right** 1 s | scan your pass |
+| Stuck on something | hold **both triggers + A** for 5 seconds | hold **R** for 5 seconds, on a keyboard |
 
 On the laptop (or a tablet with a keyboard): **W A S D** or the arrows
 walk, **Q / E** turn, **Shift** runs, **Space** hits the King. Click the
 picture and the **mouse** turns your head; **Esc** gives it back (to
 click **✕** or **Finish**).
+
+**Stuck on something?** Keep holding and a bar fills; let go and nothing
+happens. At the top you are back at the start, Gerald hides somewhere new,
+and your walk carries on: no video, no training, and the clock keeps
+running. With one controller, "both triggers" means the index and the
+grip of that hand.
 
 The walls are where the real walls are, the stairs go where the real
 stairs go. If moving in VR makes you queasy, stop pushing the stick and

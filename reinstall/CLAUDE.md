@@ -43,11 +43,11 @@ reveal, and `--trail-delay 0` turns it off for a hand-driven dev run).
 |---|---|
 | `web/src/app.tsx`, `flow.tsx`, `flow-state.ts`, `program.ts`, `wizard.tsx`, `IntroVideo.tsx` | the standalone device's screens; the choose / video / play / send flow (mounted by the tent terminal too); what the wizard says about a program; the intro video (wave 33) |
 | `web/src/config.ts`, `api.ts`, `spatial.ts`, `kiosk.ts` | provisioning (`?code= name= role= camera= arrows= voice= intro= quality=`), the spatial routes and stream, the 2 s holds |
-| `web/src/game/` | `engine.ts` (three.js), `Play.tsx` + `joystick.tsx`, and pure `physics.ts` (with the outside ground), `input.ts`, `pump.ts` (10 Hz latest-only poses), `hud.ts` (with the path reveal and `kingInView`), `fight.ts` (the King), `trail.ts`, `leash.ts`; wave 26: `moments.ts` (the void, the heart, the disk: when to post and what each answer means), `lines.ts` (`LinePlayer`: in-game captions + the device voice), `Scare.tsx` (the jump scare); wave 33 `tutorial.ts` (the training's steps, the skip rule); wave 39 `quality.ts` (the tiers, `auto`'s frame-time rule, the cap and the remembered setting; pure), `house-lights.ts` (the lights frame's bulbs: levels, the pulse, the point lights' pick, the ambient's dim; pure), `lamps.ts` (their three.js half) and `post.ts` (bloom + the grade, a lazy chunk); `cams.ts`, `voice.ts`, `audio.ts` |
+| `web/src/game/` | `engine.ts` (three.js), `Play.tsx` + `joystick.tsx`, and pure `physics.ts` (with the outside ground), `input.ts`, `pump.ts` (10 Hz latest-only poses), `hud.ts` (with the path reveal and `kingInView`), `fight.ts` (the King), `trail.ts`, `leash.ts`, `reset.ts` (wave 59: the hold, what counts as typing); wave 26: `moments.ts` (the void, the heart, the disk: when to post and what each answer means), `lines.ts` (`LinePlayer`: in-game captions + the device voice), `Scare.tsx` (the jump scare); wave 33 `tutorial.ts` (the training's steps, the skip rule); wave 39 `quality.ts` (the tiers, `auto`'s frame-time rule, the cap and the remembered setting; pure), `house-lights.ts` (the lights frame's bulbs: levels, the pulse, the point lights' pick, the ambient's dim; pure), `lamps.ts` (their three.js half) and `post.ts` (bloom + the grade, a lazy chunk); `cams.ts`, `voice.ts`, `audio.ts` |
 | `web/src/map/` | the editor: `MapEditor.tsx` (the editor, needing neither `Setup` nor the game), `MapApp.tsx` (the page: `Setup`, `?code=`), `embed.tsx` + `embed-css.ts` (wave 49: the embed for Loom Edit, a shadow root), `Canvas.tsx`, `Toolbar.tsx`, `Inspector.tsx`, `Panels.tsx`, `Preview3D.tsx`, `ProjectBar.tsx`, and pure `plan.ts`, `edit.ts`, `doors.ts`, `yards.ts`, `structure.ts`, `props.ts`, `history.ts`, `check.ts`, `project.ts`; speakers `audio*.ts` + `AudioPanel.tsx` (wave 38: an input's *Ducks as* role and its reach, `setInputRole` / `setInputReach` / `inputReachSpeakers`; renaming or removing a speaker or zone rewrites every input's reach too); lights `lights*.ts` + `LightsPanel.tsx` (wave 39: the Presence block, `setLightPresence`) |
 | `vr/house/*.gd` | literal GDScript ports of `@loom/house` (walls, locate + presence, route, frames, duck, the King, and wave 26's `house_escape.gd` + `house_moment.gd`), diffed against `test/golden/`; `house_builder.gd` also draws the heart and the disk; wave 39 `house_lights.gd` (`gameLightsOf` / `pulseFactor` ported, the pool pick, the night ambient, the graphics tiers) and `house_lamps.gd` (the real house's bulbs, the fixed `OmniLight3D` pool, the ambient) |
 | `vr/net/` | `server_link.gd` (the autoload: config, polling, begin / pose / found / hit / moment, wave 33 `mark_ready`, the stream), `cam_feeds.gd` (the presence room's feeds), `voice_link.gd` (with `hold_for`, TEST MIC, ASK AGAIN) + `voice_codec.gd`, `avatar_cache.gd`, `config.gd` (with `trail_delay`, wave 33 `intro`, wave 39 `graphics` and the build stamp); the stream's `lights` frame → `LinkBase.lights_changed` / `lights` (wave 39) |
-| `vr/game/`, `vr/player/` | the state machine (`game.gd`: the path reveal, the void, the heart, the disk, the intro), wave 33's intro (`intro_flow.gd`: the video → tutorial steps and the skip rule, pure; `intro_space.gd`: the cinema, the practice floor, the tutorial panel), the lobby (PICK YOUR PROGRAM tiles, SET UP THIS HEADSET, the MICROPHONE box with the build stamp), the duck, trail, ghosts (wave 51: `ghosts.gd` + `swarm.gd` + `swarm.gdshader`), HUD; wave 26 `sfx.gd` (synthesised sounds on the `Sfx` bus) and `speech.gd` (captions + `tts_speak`); the XR rig and pointer |
+| `vr/game/`, `vr/player/` | the state machine (`game.gd`: the path reveal, the void, the heart, the disk, the intro), wave 33's intro (`intro_flow.gd`: the video → tutorial steps and the skip rule, pure; `intro_space.gd`: the cinema, the practice floor, the tutorial panel), wave 59 `hold_meter.gd` (the run reset's hold), the lobby (PICK YOUR PROGRAM tiles, SET UP THIS HEADSET, the MICROPHONE box with the build stamp), the duck, trail, ghosts (wave 51: `ghosts.gd` + `swarm.gd` + `swarm.gdshader`), HUD; wave 26 `sfx.gd` (synthesised sounds on the `Sfx` bus) and `speech.gd` (captions + `tts_speak`); the XR rig and pointer |
 | `vr/media/reinstallation.ogv` | the intro's video (Theora 720p30), shipped in the APK |
 | `vr/house/house.json`, `vr/test/golden/` | **copies** written by `pnpm house:sync`; never edit them here |
 
@@ -124,6 +124,20 @@ presence rooms and `moment`), `spatial-cams.ts`, `spatial-voice.ts` and the
   solid. The words are `descent.json`, served live; the props know nothing
   useful, and the play help never describes any of it.
 
+- **The run reset** (wave 59, `docs/loom-reinstall.md` §3 and §5). Hold R (web)
+  or both triggers + A (VR) for 5 s, a bar filling, letting go cancelling: back
+  at the current map's spawn with Gerald on a new spot (`POST /api/spatial/reset`,
+  or dealt locally offline). The teleport never waits for the server, and an old
+  server's 404 leaves him where he was. No clock, level, hit or score moves. VR's
+  "both triggers" is any two of the index and grip triggers: the show's headsets
+  have one controller. VR's works in the house only; the web game's training is
+  in the house, so it works there and leaves the training where it was.
+- **Dialogue is on top** (wave 59). The web game's lines are DOM over the canvas
+  (`.hud-caption`, `.talk-window`, `.hud-notice`, z-index 60, the highest on the
+  page: `test/reset.test.ts`). In VR every line is a `no_depth_test` label, and
+  `TalkPanel` is too, boxes included, under the captions and the HUD
+  (`render_priority` 46–48 < 50 HUD < 52 captions), with the pointer's beam at 49.
+
 ## Conventions and gotchas
 
 - **Old devices.** `web/` builds for `chrome87` / `safari14`: use
@@ -135,6 +149,11 @@ presence rooms and `moment`), `spatial-cams.ts`, `spatial-voice.ts` and the
   turn, imports this app's `flow.tsx` as `@loom/reinstall`. A change to the
   flow's props or CSS affects the tent laptop; run the terminal's
   `reinstall-*` tests too.
+- **Gerald between walks in VR.** `Duck` lives as long as the app and a flight
+  hides his model, so `place` must undo everything a flight does. `Game`'s tests
+  check the next walk's body (`body_shown`); `web/test/duck-seen.test.ts` checks
+  he can be seen at every spot of both show maps, and the map's Check warns of a
+  prop drawn over a spot (`buriedDucks`).
 - **Pure first.** Physics, input, the pump, the HUD, the trail and every
   map edit are pure and node-tested; keep new logic that way.
 - **The map runs embedded** (wave 49, C7). Loom Edit mounts `MapEditor` in a

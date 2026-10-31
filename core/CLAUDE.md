@@ -215,7 +215,9 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   /api/spatial/prefs` saves `{turn}` to `spatial-prefs.json` in the state
   dir (kept across restarts and story resets). Neither commits to the
   story. Since wave 33b no client posts `prefs` (VR's snap turn is gone);
-  the route stays (additive).
+  the route stays (additive). `POST /api/spatial/reset` (wave 59,
+  `SpatialHub.runReset`) puts a stuck walk back at its spawn and deals Gerald a
+  new spot; it commits nothing and moves no clock, level or hit.
 - **The house soundtrack** (wave 38,
   [`docs/loom-w38-contract.md`](../docs/loom-w38-contract.md) C3/C5).
   The story cues `cue music_<scene>` at each act change and mirrors it in
