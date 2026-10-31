@@ -1,6 +1,6 @@
 # SIGNOFF — wave 54: one QR per person, and the printed cards
 
-**Status: DRAFT.** Merged to master. Not shipped.
+**Status: DRAFT.** Shipped in `w56`, not yet signed off.
 
 Your words, verbatim:
 
