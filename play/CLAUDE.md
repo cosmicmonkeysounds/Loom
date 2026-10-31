@@ -67,8 +67,12 @@ added `fullscreen.ts`, with a `//` header: 147.53 kB.
 - **Getting back in** (wave 23, `rejoin.ts` + the lazy `rejoin-calls.ts`,
   server `core/server/routes/rejoin.ts`). A printed badge
   (`?code=&badge=`, an invited one with `&claim=` too) links to a guest at
-  join or from Me (🪪) and then signs them in on any phone
-  (`/api/guest/enter`) and is their pass at a booth (`scan.ts`). Wave 54: the
+  join or from Me (🪪) and then signs them in on a phone once no other phone
+  holds them (`/api/guest/enter`) and is their pass at a booth (`scan.ts`).
+  Wave 59: a held card lands on `held.tsx` (lazy): what is printed on it, and
+  Ask a host, for a guest and a part; `enterBy` / `enterPart` take this phone's
+  own token, *Leave the event* posts `/api/guest/logout`, and a phone that
+  stops being someone calls `letGo`. Wave 54: the
   join screen hides the event code once a badge or claim resolves, an invited
   badge lands on *You are …* with one button (`Identities.invited`, no picture
   pick), and `ui.tsx` keeps a badge beside a possibly stale session, so it
@@ -78,7 +82,7 @@ added `fullscreen.ts`, with a `//` header: 147.53 kB.
   (`guest/get-back-in.tsx`, lazy) scans / types a badge or asks a host
   (`/api/guest/rejoin` → Needs and the director phone's *Let them in*). A
   staff badge (`?code=&part=`, the guest code since wave 54) signs in as its
-  part and takes it from a lost booth; on a guest's phone it asks first, with
+  part; on a guest's phone it asks first, with
   Stay as the primary button. `main.tsx` strips `badge` / `part` before render; `ui.tsx` runs
   the entry (`cardPlan`). The page's store falls back to memory when
   `localStorage` is blocked (`host.ts`).

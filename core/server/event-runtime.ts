@@ -8065,7 +8065,7 @@ export class EventRuntime {
           codex,
           // W-03: each reserved program's invitation link (its claim token).
           claims: this.claims.links(this.sim?.model ?? this.declaredModel, base, this.codes.event),
-          // Wave 23: each part's own cast-card link (signs in as it, takes it back).
+          // Wave 23: each part's own cast-card link (signs in as it).
           castLinks: this.performerParts.map((character) => {
             const part = partCode(this.claimSecret, character);
             return { character, part, url: partUrl(base, this.codes.event, part) };

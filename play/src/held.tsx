@@ -49,7 +49,7 @@ export function HeldPanel({ card, onGuest, onBooth, onBack }: { card: HeldCard; 
 
   return (
     <div className="rejoin rejoin-panel cast-pick" role="group" aria-label="Already signed in" data-testid="held-panel">
-      <div className="sheet-h">🔒 {heldLine(card)}</div>
+      <div className="sheet-h">{heldLine(card)}</div>
       {asked === null ? (
         <>
           <p className="pick-hint">{HELD_HINT}</p>

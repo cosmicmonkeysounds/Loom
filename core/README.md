@@ -794,14 +794,19 @@ Two planes:
   /e/:id/api/mod/guest/pair {id, revokeOthers?}` (mod-only) mints a
   **single-use pair code** for an existing Person (ten minutes, in memory,
   cut by every restart; a newer code for the same guest voids the older;
-  the old tokens stay valid unless `revokeOthers: true`, which cuts them
-  + their streams + push devices; a director's persona → 409) →
+  the old tokens stay valid until the code is spent, unless `revokeOthers:
+  true`, which cuts them + their streams + push devices at once; a
+  director's persona → 409) →
   `{ok, id, name, pair, expiresAt, revoked, url}` with `url` =
   `<join base>/?code=<event>&pair=<code>`. The phone trades it at `POST
   /e/:id/api/guest/resume {pair}` (no token; throttled like a sign-in)
   → `{ok, id, name, token}` — a fresh token persisted in `guests.json`
-  like a registration's; a spent / expired / unknown code → 410. A
-  guest's own token is never a re-pair link. `POST /e/:id/api/mod/prime/release {character}` takes
+  like a registration's, which signs the old phone out; a spent / expired /
+  unknown code → 410. A guest's own token is never a re-pair link. `POST
+  /e/:id/api/mod/guest/release {id}` (host allowlist) and the phone's own
+  `POST /e/:id/api/guest/logout` (its token, always 200) sign a guest's
+  phone out; a cut token's 401 reads `signed out on this phone`, and an
+  open stream hears `lifecycle {kind: "released"}`. `POST /e/:id/api/mod/prime/release {character}` takes
   the part off every session holding it (a performer+admin session keeps
   admin), closes those booth streams, persists → `{ok, character,
   released}`; 404 for an unknown character. Nothing is journaled.
@@ -812,18 +817,22 @@ Two planes:
   `<join base>/?code=<guest code>&badge=<code>`, who holds each);
   `register {…, badge}` or `POST /api/guest/badge {badge}` (token) links
   one (409 `{holder, name}` when it is someone else's); `POST
-  /api/guest/enter {passcode, badge | claim}` (no token, throttled) →
-  `{resumed: true, id, name, token}` or `{resumed: false}`; `/api/scan`
+  /api/guest/enter {passcode, badge | claim, token?}` (throttled; `token`
+  only proves the holder) → `{resumed: true, id, name, token}`, `{resumed:
+  false}`, or 409 `{held: true, name?, ref?}` while a phone holds them; `/api/scan`
   and `/api/mod/scan` take a badge as `target`; `GuestView.badge`. Links
   persist in `badges.json` and die with every story restart. **Ask a
   host**: `POST /api/guest/rejoin/names {passcode}`, `POST
-  /api/guest/rejoin {passcode, name}` → `{request}`, `POST
-  /api/guest/rejoin/poll {request}` → `pending | approved (token, once) |
-  denied | expired`; hosts see `rejoins` on the host view and the
-  `cues=1` view and answer `POST /api/mod/guest/rejoin {request, approve}`
-  (host allowlist). Ten minutes, memory only. **Cast cards**:
-  `/api/mod/codes` → `castLinks` (`?code=<prime>&part=<code>`);
-  `/api/prime/login {passcode, part}` takes the part from any holder.
+  /api/guest/rejoin {passcode, name | badge | claim | part | character}`
+  → `{request}`, `POST /api/guest/rejoin/poll {request}` → `pending |
+  approved (token, once; a part's with `part: true`, `character` and its
+  capabilities) | denied | expired`; hosts see `rejoins` (`held`, `part`) on
+  the host view and the `cues=1` view and answer `POST /api/mod/guest/rejoin
+  {request, approve}` (host allowlist): an approve signs the old phone out.
+  Ten minutes, memory only. **Cast cards**: `/api/mod/codes` → `castLinks`
+  (`?code=<prime>&part=<code>`); `/api/prime/login {passcode, part}` signs
+  in, 409 `{held: true, name}` while a booth holds the part. **One holder**
+  (wave 59): the header of `routes/rejoin.ts`.
 
 The owning author's BetterAuth session is accepted on `/e/:eventId/api/mod/*`
 and the gated mod reads, so authors moderate from the editor's Run mode

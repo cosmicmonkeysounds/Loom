@@ -594,7 +594,8 @@ export class Rejoin {
       sendJson(res, 403, { error: "wrong event code" });
       return true;
     }
-    const character = part !== "" ? this.host.partOfCode(part) : this.host.partNamed(str(body, "character"));
+    const named = part !== "" ? this.host.partOfCode(part) : str(body, "character");
+    const character = named === null ? null : this.host.partNamed(named);
     if (character === null) {
       sendJson(res, 404, { error: "that isn't one of tonight's parts" });
       return part !== "";

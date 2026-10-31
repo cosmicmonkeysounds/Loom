@@ -187,7 +187,7 @@ export function badgeLinkOf(status: number, body: Record<string, unknown>): Badg
 export function badgeLinkText(r: BadgeLink): string | null {
   switch (r.kind) {
     case "linked":
-      return "🪪 Badge linked. Lost your phone? Scan your badge with any phone's camera to get back in.";
+      return "🪪 Badge linked. Lost your phone? Scan your badge with any phone's camera, and a host can move you there.";
     case "already":
       return "🪪 That's your badge — it's already linked to you.";
     case "theirs":

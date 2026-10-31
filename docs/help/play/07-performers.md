@@ -42,13 +42,16 @@ with their pictures — tap yours. A part is one booth's: a greyed-out
 name is already taken by another performer. You now speak *as* that
 character everywhere.
 
-Phone died, or you need to swap to a loaner? **Scan your badge with the
-new phone**: it takes your part back and signs the old phone out, and
-everything is where you left it. So keep it on you, QR side in: anyone who
-scans it can sign you out. Without the badge, ask a host or the
-director to **release** the part (a host's console → More → Performer
-parts → **⏏ Release**, or Run → the character's Inspector), then sign in
-with the passcode and tap your part again. A booth signed out this way
+Moving to another phone? **⊞ Start → Sign out** on the old one, then scan
+your badge on the new one. Phone died, or you can't reach it? **Scan your
+badge with the new phone**: a part is one phone's, so it says your part is
+already signed in. Tap **🙋 Ask a host**, and when a host lets you in the old
+phone is signed out and everything is where you left it. (With the passcode:
+tap your part, which reads *taken*, and ask the same way.) A host or the
+director can also **release** the part first (a host's console → More →
+Performer parts → **⏏ Release**, or Run → the character's Inspector); then
+your badge signs in the plain way. Keep it on you, QR side in: while your part
+is free, anyone who scans it signs in as you. A booth signed out this way
 (or by the show going live) says *"Your booth was signed out (your part
 signed in on another phone, a director released it, or the show went
 live) — sign in again with your passcode or your badge."* A phone that wakes late
