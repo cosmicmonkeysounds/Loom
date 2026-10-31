@@ -836,7 +836,7 @@ async function act2(): Promise<void> {
       // The cold door's four digit notes, scanned around the house (granted
       // as the scans would): the fourth assembles the code (never printed).
       const notes = bots[9 % bots.length]!;
-      for (const d of ["First", "Second", "Third", "Fourth"]) c.must(`digit note ${d}`, await http.post("/api/mod/codex", { who: notes.id, entry: `Cold Door ${d} Digit` }, mod));
+      for (const d of ["First", "Second", "Third", "Fourth"]) c.must(`digit note ${d}`, await http.post("/api/mod/codex", { who: notes.id, entry: `Server Room ${d} Digit` }, mod));
       await questIs(c, "The Cold Door", notes, "done");
       if (excel !== undefined) await questIs(c, "Excel Mission", excel, "done");
       // MS Paint's painting: a host signs every other program on it.
