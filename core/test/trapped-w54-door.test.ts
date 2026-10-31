@@ -85,7 +85,7 @@ describe("the bathroom sign", () => {
   it("is the show's one sign, and its press is the button's", () => {
     const n = uploaded();
     n.scan("Norton Anti-Virus", "g1");
-    const signs = actionSigns(n.sim.model, "https://a", "E 1");
+    const signs = actionSigns(n.sim.model, "https://a", "E 1", "s3cret");
     expect(signs.map((s) => [s.name, s.label])).toEqual([["go to the bathroom", "🚻 Bathroom Mode"]]);
     expect(signs[0]!.url).toBe("https://a/?code=E%201&act=go%20to%20the%20bathroom");
     n.take(n.sim.signal(signs[0]!.name, "g1"));

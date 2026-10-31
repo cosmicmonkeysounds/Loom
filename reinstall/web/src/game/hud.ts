@@ -125,7 +125,8 @@ export function roomTitle(house: HouseMap, feet: Vec3): { room: string; location
   const at = locate(house, feet);
   const room = at.room !== null ? roomById(house, at.room) : undefined;
   if (room === undefined) return { room: "Somewhere between rooms", location: null };
-  return { room: room.label, location: room.location ?? null };
+  // Wave 59: what sits in brackets is the crew's (the real room).
+  return { room: room.label.replace(/\s*\([^()]*\)/gu, ""), location: room.location ?? null };
 }
 
 export type Heat = "found" | "burning" | "hot" | "warmer" | "colder" | "cold" | "steady";

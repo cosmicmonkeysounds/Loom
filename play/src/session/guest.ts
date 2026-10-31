@@ -290,6 +290,8 @@ export interface GuestSession {
   /** Codex: type (or scan) an unlock code. Resolves to the server's answer
    *  (a hit, a code already held, a miss); rejects with the refusal. */
   redeem: (code: string) => Promise<RedeemAnswer>;
+  /** The link of the printed code a typed one is, or null (wave 59). */
+  printed: (code: string) => Promise<string | null>;
   /** Check in at a room's sign (its slug, K-13). Resolves to the server's
    *  answer (the story may still keep the guest out: `moved: false`);
    *  rejects with the refusal (captured, on rails, a room not open yet) —
@@ -657,6 +659,7 @@ export function useGuestSession(): GuestSession {
 
   // --- codex + people ---
   const redeem = useCallback((code: string) => post<RedeemAnswer>("/api/guest/codex/redeem", { code }), [post]);
+  const printed = useCallback((code: string) => post<{ hit: { url: string } | null }>("/api/guest/printed", { code }).then((r) => r.hit?.url ?? null), [post]);
   // The "scan done" dialog: one at a time, the newest wins.
   const [scanDone, setScanDone] = useState<ScanDone | null>(null);
   const scanIds = useRef(0);
@@ -889,6 +892,7 @@ export function useGuestSession(): GuestSession {
     inviteToChannel,
     leaveChannel,
     redeem,
+    printed,
     checkin,
     scanDone,
     showScan,

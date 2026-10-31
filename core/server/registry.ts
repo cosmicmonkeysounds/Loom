@@ -19,6 +19,12 @@ import type { MapFiles, ProjectLink } from "./house-maps.ts";
 export type CodeRole = "guest" | "prime" | "mod";
 
 /** A resolved passcode: which event it belongs to, and as which role. */
+/** The path + query of a printed link: the phone opens it on its own origin. */
+function printedPath(url: string): string {
+  const u = new URL(url);
+  return `${u.pathname}${u.search}`;
+}
+
 export interface ResolvedCode {
   eventId: string;
   role: CodeRole;
@@ -27,6 +33,8 @@ export interface ResolvedCode {
   title: string;
   /** The story's `theme:` for the participant client (`plain` when unset). */
   theme: string;
+  /** Wave 59: a code printed on a badge: the path of its QR's link. */
+  printed?: string;
   /** For a performer / moderator code: the characters a performer may sign
    *  in as, so the booth offers a picker instead of a blank to spell, doors
    *  open or not (a booth signs in before the doors): a performer code
@@ -178,6 +186,13 @@ export class EventRegistry {
    * event's `event` code, performers its `prime` code, moderators its `mod`
    * code. Codes are globally unique across live events, so the first match
    * wins. Returns null when no hosted event recognises the code.
+   *
+   * Wave 59: a code printed on a badge resolves too, as a guest code with
+   * the path of the link its QR carries (`printed`), which the join screen
+   * opens, so a typed code lands where its scan would. Only a badge: its
+   * 40 bits are a credential, while a room's short code or name is no proof
+   * of anything and must not hand out the guest code. The real passcodes
+   * are tried first, over every event.
    */
   resolveCode(code: string): ResolvedCode | null {
     const trimmed = code.trim();
@@ -186,6 +201,10 @@ export class EventRegistry {
       if (passOk(trimmed, rt.codes.event)) return { eventId: rt.eventId, role: "guest", title: rt.title, theme: rt.theme };
       if (passOk(trimmed, rt.codes.prime)) return { eventId: rt.eventId, role: "prime", title: rt.title, theme: rt.theme, characters: rt.performerParts };
       if (passOk(trimmed, rt.codes.mod)) return { eventId: rt.eventId, role: "mod", title: rt.title, theme: rt.theme, characters: rt.declaredCharacters };
+    }
+    for (const rt of this.byId.values()) {
+      const hit = rt.printedHit(trimmed);
+      if (hit !== null && (hit.kind === "badge" || hit.kind === "invited" || hit.kind === "staff")) return { eventId: rt.eventId, role: "guest", title: rt.title, theme: rt.theme, printed: printedPath(hit.url) };
     }
     return null;
   }

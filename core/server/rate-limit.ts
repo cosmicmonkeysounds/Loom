@@ -76,6 +76,9 @@ export interface RateLimits {
   loginFailures: RateRule;
   /** Wrong codex codes per guest or booth part (`/api/guest/codex/redeem`, `/api/prime/codex/redeem`). `LOOM_RL_REDEEM_MISSES`. */
   redeemMisses: RateRule;
+  /** Typed codes that are no printed code, per guest or booth part
+   *  (`/api/guest/printed`, `/api/prime/printed`, wave 59). `LOOM_RL_PRINTED`. */
+  printedAsks: RateRule;
   /** Widget answers per guest (`/api/guest/widget`) — a story that re-deals
    *  a card after every answer (📝 File a fact) can't be tapped into a
    *  flood of its thread + journal. `LOOM_RL_WIDGETS`. */
@@ -94,6 +97,7 @@ export const DEFAULT_RATE_LIMITS: RateLimits = {
   register: { max: 20, windowMs: 60_000 },
   loginFailures: { max: 10, windowMs: 5 * 60_000 },
   redeemMisses: { max: 8, windowMs: 60_000 },
+  printedAsks: { max: 30, windowMs: 60_000 },
   widgets: { max: 20, windowMs: 60_000 },
   wallet: { max: 30, windowMs: 60_000 },
   qr: { max: 60, windowMs: 60_000 },
@@ -104,6 +108,7 @@ const ENV_KEYS: Record<keyof RateLimits, string> = {
   register: "LOOM_RL_REGISTER",
   loginFailures: "LOOM_RL_LOGIN_FAILURES",
   redeemMisses: "LOOM_RL_REDEEM_MISSES",
+  printedAsks: "LOOM_RL_PRINTED",
   widgets: "LOOM_RL_WIDGETS",
   wallet: "LOOM_RL_WALLET",
   qr: "LOOM_RL_QR",

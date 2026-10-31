@@ -7,9 +7,9 @@
 //! are 3 × 2 in too: a check-in card per room, then the story's signs (`qr:`,
 //! the show: 🚻 Bathroom Mode), as many copies as there are doors. **Fact
 //! cards** print four to a row, 20 to a sheet, by fact stack with a coloured
-//! band; a count per stack prints a few, and a digit clue for the door code
-//! prints its title + QR only (`DIGIT_CLUE_STACK`). The join poster and the
-//! door sign (worded off `/api/push/config`'s `homescreen`) stay posters, off
+//! band; a count per stack prints a few. Every card carries its text code
+//! (wave 59), and a room's real name is a screen-only note. The join poster and
+//! the door sign (worded off `/api/push/config`'s `homescreen`) stay posters, off
 //! until ticked. QRs are drawn in the browser (`lib/print-sheet.ts`), keyed by
 //! link, so a full run never hits `/api/qr`'s rate limit. Sheets are cut here,
 //! not by the browser, so every page holds exactly its cards: a skipped card
@@ -63,14 +63,14 @@ const CSS = `
 .card32 .eyebrow { font-size: 6.5pt; font-weight: 600; color: #52525b; line-height: 1.15; }
 .card32 h2 { margin: 0; font-size: 13pt; font-weight: 800; line-height: 1.08; overflow-wrap: anywhere; }
 .card32 .program { font-size: 8pt; font-weight: 600; border-bottom: 0.75pt solid #000; padding-bottom: 0.22in; }
-.card32 .code { font-family: ui-monospace, Menlo, monospace; font-size: 8pt; font-weight: 700; letter-spacing: 0.04em; white-space: nowrap; }
+.card32 .code { font-family: ui-monospace, Menlo, monospace; font-size: 9.5pt; font-weight: 700; white-space: nowrap; }
 .card32 .hint { margin: 0; font-size: 6.5pt; line-height: 1.2; color: #3f3f46; }
 .card32 .tier { position: absolute; left: 0; top: 0; bottom: 0; width: 0.07in; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 .cardfact { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding: 0.11in 0.08in 0.04in; text-align: center; overflow: hidden; }
 .cardfact .band { position: absolute; left: 0; right: 0; top: 0; height: 0.07in; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 .cardfact h2 { margin: 0 0 0.02in; font-size: 7.5pt; font-weight: 800; line-height: 1.1; max-height: 2.2em; overflow: hidden; }
 .cardfact .qr { width: 1.28in; height: 1.28in; }
-.cardfact .code { font-family: ui-monospace, Menlo, monospace; font-size: 6.5pt; font-weight: 700; white-space: nowrap; }
+.cardfact .code { font-family: ui-monospace, Menlo, monospace; font-size: 7pt; font-weight: 700; white-space: nowrap; }
 .cardfact .stack { font-size: 5pt; line-height: 1.1; color: #52525b; max-height: 2.2em; overflow: hidden; }
 .cardfact .note { display: none; }
 .cardfact .ref { right: 0.04in; bottom: 0.02in; font-size: 5pt; }
@@ -417,7 +417,7 @@ export function PrintSheet({ eventId, onClose }: { eventId: string; onClose: () 
           </div>
         )}
         <div className="row" data-testid="print-lock-note">
-          🔒 Every code stays good through Restart, Go live, End → relaunch and new performer + moderator codes. Renaming a part or a reserved program retires its badge.
+          🔒 Every code stays good through Restart, Go live, End → relaunch, new performer + moderator codes and a story edit (`titi:qr-lock`). Renaming a room, a part, a reserved program, a sign's button or a codex code retires what's printed for it.
         </div>
       </div>
       {error && <p style={{ padding: 16, color: '#b91c1c' }}>Could not load the codes: {error}</p>}

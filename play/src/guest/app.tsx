@@ -904,7 +904,7 @@ export function GuestApp({ onLeave, badgeLink = null }: { onLeave: () => void; b
       {people !== null && <PeopleSheet session={s} only={people === "all" ? undefined : people} onClose={() => setPeople(null)} />}
       {help && <HelpSheet onClose={() => setHelp(false)} />}
       {s.scanDone !== null && <LazyScanDone done={s.scanDone} onClose={s.clearScan} />}
-      {nav.overlay === "scan" && <ScanSheet meId={s.me.id} onScan={onScanned} onClose={() => nav.setOverlay(null)} rooms={scanRooms} />}
+      {nav.overlay === "scan" && <ScanSheet meId={s.me.id} onScan={onScanned} onClose={() => nav.setOverlay(null)} rooms={scanRooms} printed={s.printed} />}
       {roll}
       {passing && <FullPass guestId={meId} name={meName} onClose={() => nav.setOverlay(null)} />}
       {st.wallet && (walletSheet === "send" || walletSheet === "request" || walletSheet === "grant") && (

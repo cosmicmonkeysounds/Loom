@@ -22,6 +22,8 @@ export interface ResolvedCode {
   theme?: string;
   /** A performer / mod code lists the characters one may sign in as. */
   characters?: string[];
+  /** Wave 59: a code printed on a badge: the path of the link its QR carries. */
+  printed?: string;
 }
 
 /** Resolve a passcode (null if unknown/invalid). The join screens use it to
@@ -50,6 +52,8 @@ async function resolveOrBusy(code: string): Promise<ResolvedCode | null | "busy"
 export type IdentityLookup =
   /** The code opens nothing. */
   | { kind: "unknown" }
+  /** A badge's printed code (wave 59): its QR's link, which the screen opens. */
+  | { kind: "printed"; link: string }
   /** The server is throttling this address (or is unreachable): retry
    *  shortly, the code may be fine. */
   | { kind: "busy" }
@@ -80,6 +84,7 @@ export async function fetchIdentities(code: string, known?: KnownEvent, claim?: 
   const r = await resolveOrBusy(code);
   if (r === "busy") return { kind: "busy" };
   if (r === null) return { kind: "unknown" };
+  if (r.printed !== undefined) return { kind: "printed", link: r.printed };
   const out = await identitiesOf(code, r, r.role, r.characters, claim);
   return out === "gone" ? { kind: "unknown" } : out;
 }
@@ -131,6 +136,7 @@ export function reaskReason(r: IdentityLookup, waiting: (ids: Picker) => boolean
  * (someone may have just taken a name). `claim`: an invitation's token.
  */
 export function useIdentities(code: string, waiting: (ids: Picker) => boolean, claim?: string | null): { ids: IdentityLookup | null | "loading"; busy: boolean; refresh: () => void } {
+  const host = usePlayHost();
   const [ids, setIds] = useState<IdentityLookup | null | "loading">(null);
   const [busy, setBusy] = useState(false);
   const [reload, setReload] = useState(0);
@@ -161,6 +167,8 @@ export function useIdentities(code: string, waiting: (ids: Picker) => boolean, c
         setBusy(false);
         setIds(r);
         known.current = r.kind === "ok" ? { code: c, event: { eventId: r.eventId, title: r.title, role: r.role } } : null;
+        // A typed badge lands where its QR would: the page opens the same link.
+        if (r.kind === "printed" && host.ownsPage) window.location.replace(r.link);
       }
       if (again === null) {
         streak.current = { kind: "closed", n: 0 };

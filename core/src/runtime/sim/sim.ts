@@ -25,7 +25,7 @@ import {
   type Value,
 } from "../expr.ts";
 import { SimLog, type QuestAction, type QuestStatus, type SimEvent } from "./event.ts";
-import { CODEX_IN, DEFAULT_SPACE_ID, channelId, compileModel, foldCode, type ChannelDef, type CodexDef, type Hook, type QuestDef, type SimModel } from "./model.ts";
+import { CODEX_IN, DEFAULT_SPACE_ID, channelId, compileModel, foldCode, inWorldLabel, type ChannelDef, type CodexDef, type Hook, type QuestDef, type SimModel } from "./model.ts";
 import { routesCue } from "./channel-types.ts";
 import { parseSet, splitDirective, splitKeyword } from "./effects.ts";
 import { Bundle, type LoomFileEntry } from "../bundle.ts";
@@ -1126,7 +1126,7 @@ export class Sim {
       const l = id.slice("loc:".length);
       const def = this.model.locations.get(l);
       if (def !== undefined) {
-        return { channel: id, channelKind: "location", title: def.label ?? l, spaceId: DEFAULT_SPACE_ID };
+        return { channel: id, channelKind: "location", title: inWorldLabel(def.label ?? l), spaceId: DEFAULT_SPACE_ID };
       }
     }
     return { channel: id, channelKind: "lobby", title: this.lobbyTitle(), spaceId: DEFAULT_SPACE_ID };
@@ -1251,7 +1251,7 @@ export class Sim {
       return {
         id: Sim.locationChannel(l.id),
         kind: "location",
-        title: l.label ?? l.id,
+        title: operator ? (l.label ?? l.id) : inWorldLabel(l.label ?? l.id),
         spaceId: DEFAULT_SPACE_ID,
         member: present,
         canPost: operator || present,

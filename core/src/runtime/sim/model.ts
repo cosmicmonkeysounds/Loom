@@ -1064,6 +1064,18 @@ function factionDef(id: string, body: FactionBody): FactionDef {
   };
 }
 
+/**
+ * A LOCATION's `label:` as a player reads it. Wave 59: what sits in brackets,
+ * or after a ` — `, is the crew's note (the real room, what happens there):
+ * `The Start Bar (kitchen)` reads `The Start Bar`, `The Optical Drive (mud
+ * room) — Login` reads `The Optical Drive`. Only crew tools show the whole
+ * label.
+ */
+export function inWorldLabel(label: string): string {
+  const name = label.replace(/\s*\([^()]*\)/gu, "").replace(/\s+[—–]\s.*$/u, "").trim();
+  return name === "" ? label : name;
+}
+
 /** Fold an unlock code: case, dashes, underscores and spaces are noise. */
 export function foldCode(code: string): string {
   return code.trim().toLowerCase().replace(/[\s_\-]+/gu, "");

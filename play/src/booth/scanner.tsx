@@ -15,7 +15,9 @@
 //! codex QR (or its code, typed) lands in the character's own Codex with a
 //! line under the camera, which stays on for the next one; a held QR counts
 //! once (`lastCode`), so it never eats the wrong-code limit. Everything in
-//! here that says so is `DRAFT w58`.
+//! here that says so is `DRAFT w58`. Wave 59: a typed code asks the server what
+//! it is first (`session.printed`): a printed badge, room or sign comes back as
+//! its QR's link and reads like that QR under the camera.
 
 import { showClockOf } from "../show-clock.ts";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -218,13 +220,29 @@ export function ScannerScreen({
       },
     );
   };
-  // The typed box: an id goes to `/api/scan` alone. Anything else may be a
-  // printed badge or a codex code, and a real code can have a badge's shape,
-  // so it tries the pass first and falls through.
-  const doTyped = (text: string): Promise<boolean> => {
+  // The typed box: an id goes to `/api/scan` alone, a whole link reads as it
+  // would scanned. Anything else may be printed on something, which the
+  // server knows; else it may be a pass or a codex code, and a real code can
+  // have a badge's shape, so it tries the pass first and falls through.
+  const doTyped = async (text: string): Promise<boolean> => {
     const hit = parseScan(text);
-    if (hit.kind === "wall" && hit.unlock !== null) return busy ? Promise.resolve(false) : doRedeem(hit.unlock, BOOTH_TYPED_NOTHING);
-    return doScan(text, false, hit.kind !== "guest");
+    if (hit.kind === "wall" && hit.unlock !== null) return busy ? false : doRedeem(hit.unlock, BOOTH_TYPED_NOTHING);
+    if (hit.kind === "guest") return doScan(text);
+    if (busy) return false;
+    let link: string | null;
+    try {
+      link = await session.printed(text);
+    } catch (e) {
+      setErr(scanError(e, session.view));
+      return false;
+    }
+    if (link === null) return doScan(text, false, true);
+    const read = parseScan(link);
+    if (read.kind === "guest") return doScan(read.id, read.badge === true);
+    if (read.kind === "wall" && read.unlock !== null) return doRedeem(read.unlock, BOOTH_TYPED_NOTHING);
+    setErr("");
+    setNote(scanProblem(read) ?? "");
+    return true;
   };
   const onCode = (raw: string) => {
     if (card !== null) return; // the camera runs on under the card; its reads wait

@@ -10,6 +10,7 @@ import type { CameraState } from "../scan.ts";
 import { CameraScanner } from "../scanner.tsx";
 import { usePlayHost } from "../host.ts";
 import { badgeFromText, rememberBadge } from "../rejoin.ts";
+import { resolveCode } from "../session/shared.ts";
 import { ASK_POLL_MS, askHost, askLine, enterBy, filterNames, joinedNames, pollAsk, type Ask, type AskState } from "../rejoin-calls.ts";
 import type { AdoptedGuest } from "../resume.ts";
 
@@ -33,6 +34,14 @@ export function GetBackIn({ code, open, onOpen, onIn, onBlankBadge }: { code: st
 
   const tryBadge = async (raw: string) => {
     const badge = badgeFromText(raw);
+    // Wave 59: a printed code knows its event and its program, so a typed one
+    // needs no event code: it opens its QR's link.
+    if (host.ownsPage && !/^[a-z][a-z0-9+.-]*:/iu.test(raw.trim())) {
+      setBusy(true);
+      const printed = (await resolveCode(raw.trim()))?.printed;
+      setBusy(false);
+      if (printed !== undefined) return window.location.replace(printed);
+    }
     if (badge === null) {
       setNote("That isn't a badge code — it's the 8 letters and numbers under the badge's QR.");
       return;

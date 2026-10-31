@@ -96,7 +96,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import { ESCAPE_SIGNAL, HEART_SIGNAL, KING_SIGNALS, PICKUP_SIGNAL, type KingState } from "@loom/house";
 
 import type { Sim } from "../../src/runtime/sim/index.ts";
-import type { SimModel } from "../../src/runtime/sim/model.ts";
+import { inWorldLabel, type SimModel } from "../../src/runtime/sim/model.ts";
 import type { BodyItem } from "../../src/parser/ast.ts";
 import { parseSet, splitDirective } from "../../src/runtime/sim/effects.ts";
 import type { SimEvent } from "../../src/runtime/sim/event.ts";
@@ -723,7 +723,7 @@ export function momentOf(e: SimEvent, seq: number, at: number, sim: Sim, secrets
       // A reveal for one person, or a quiet one (wave 18b: clearance's
       // rooms open quietly), is no moment: no room "opens" on the screens.
       if (e.person !== null || e.quiet === true) return null;
-      const label = e.kind === "location" ? (sim.model.locations.get(e.target)?.label ?? e.target) : e.kind === "channel" ? e.target.replace(/^room:/u, "") : e.target;
+      const label = e.kind === "location" ? inWorldLabel(sim.model.locations.get(e.target)?.label ?? e.target) : e.kind === "channel" ? e.target.replace(/^room:/u, "") : e.target;
       return make("reveal", label, null);
     }
     default:

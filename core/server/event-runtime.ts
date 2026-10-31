@@ -65,11 +65,12 @@ import { StoryMarks, huntsFor } from "./wanted.ts";
 import { canonicalPlaceArgs } from "./place-args.ts";
 import { CHECKIN_ROUTE, GuestCheckin } from "./routes/k13.ts";
 import { LOGOUT_ROUTE, Pairing, RESUME_ROUTE, releasePart } from "./routes/n02.ts";
-import { BADGES_ROUTE, BADGE_ROUTE, ENTER_ROUTE, REJOIN_DECIDE_ROUTE, REJOIN_NAMES_ROUTE, REJOIN_POLL_ROUTE, REJOIN_ROUTE, Rejoin, partCode, partUrl } from "./routes/rejoin.ts";
+import { BADGES_ROUTE, BADGE_ROUTE, ENTER_ROUTE, REJOIN_DECIDE_ROUTE, REJOIN_NAMES_ROUTE, REJOIN_POLL_ROUTE, REJOIN_ROUTE, Rejoin, partCode, partUrl, printedCode } from "./routes/rejoin.ts";
 import { HOMESCREEN_ROUTE } from "./routes/k31b.ts";
 import { PushRoutes } from "./routes/k31.ts";
 import { PushHub, aloudPush, boothOwner, guestOwner, messagePush, pushConfigFromEnv, readoutPush, webPushSender, type PushSender } from "./push.ts";
 import { printExtras } from "./routes/k12.ts";
+import { PRINTED_GUEST_ROUTE, PRINTED_PRIME_ROUTE, printedHit, type PrintedHit } from "./routes/printed.ts";
 import { buildCards } from "./routes/cards.ts";
 import { CLAIM_UNLOCK_ROUTE, Claims, mintClaimSecret } from "./routes/claims.ts";
 import { modPatch, modViewJson } from "./mod-patch.ts";
@@ -804,6 +805,7 @@ export class EventRuntime {
   private readonly loginFailures: RateLimiter;
   private readonly registrations: RateLimiter;
   private readonly redeemMisses: RateLimiter;
+  private readonly printedAsks: RateLimiter;
   private readonly widgetAnswers: RateLimiter;
   // Wallet calls per guest (`/api/guest/wallet/*`, `LOOM_RL_WALLET`).
   private readonly walletCalls: RateLimiter;
@@ -1256,6 +1258,7 @@ export class EventRuntime {
     this.loginFailures = limiterFor(limits.loginFailures);
     this.registrations = limiterFor(limits.register);
     this.redeemMisses = limiterFor(limits.redeemMisses);
+    this.printedAsks = limiterFor(limits.printedAsks);
     this.widgetAnswers = limiterFor(limits.widgets);
     this.walletCalls = limiterFor(limits.wallet);
     // The TV-voice mute outlives restarts and Go live (an ALL STOP must
@@ -1337,6 +1340,33 @@ export class EventRuntime {
   get performerParts(): string[] {
     const model = this.declaredModel;
     return model === null ? [] : identityDefs(model).filter(performerPickable).map((d) => d.name);
+  }
+
+  /** Wave 59: the printed text code `code` is, as the link its QR carries
+   *  (`routes/printed.ts`), or null. */
+  printedHit(code: string): PrintedHit | null {
+    const model = this.declaredModel;
+    return printedHit(code, {
+      secret: this.claimSecret,
+      base: this.joinBase(),
+      guestCode: this.codes.event,
+      model,
+      parts: this.performerParts,
+      badgeNumber: (c) => this.rejoin.badges.numberOf(c),
+      invited: () => this.claims.links(model, this.joinBase(), this.codes.event),
+    });
+  }
+
+  /** The Scan sheets' question: does this typed code go anywhere but the
+   *  Codex? `who` keys the limiter, like the redeem routes' misses; a miss
+   *  costs nothing here, the redeem that follows is what counts. */
+  private answerPrinted(res: ServerResponse, who: string, body: Record<string, unknown>): void {
+    const code = str(body, "code");
+    if (code.length > MAX_CODE_LENGTH) return void sendJson(res, 200, { hit: null });
+    if (!this.printedAsks.allowed(who)) return void sendJson(res, 429, { error: "too many wrong codes — wait a minute" });
+    const hit = this.printedHit(code);
+    if (hit === null) this.printedAsks.record(who);
+    sendJson(res, 200, { hit });
   }
 
   /** The story's model, doors open or not: the live sim's when there is one,
@@ -6422,8 +6452,12 @@ export class EventRuntime {
         title: this.title,
         eventPass: this.codes.event,
         codex: this.codexLinks(base, model),
-        extras: printExtras(model, base, this.codes.event, this.factsBook()?.raw ?? null),
+        extras: printExtras(model, base, this.codes.event, this.claimSecret, this.factsBook()?.raw ?? null),
         claims: this.claims.links(model, base, this.codes.event),
+        staff: this.performerParts.map((character) => {
+          const part = partCode(this.claimSecret, character);
+          return { character, code: printedCode(part), url: partUrl(base, this.codes.event, part) };
+        }),
       }),
     );
   }
@@ -6927,6 +6961,12 @@ export class EventRuntime {
         return true;
       }
 
+      case PRINTED_GUEST_ROUTE: {
+        const id = this.requireGuest(req, body, res);
+        if (id === null) return true;
+        this.answerPrinted(res, id, body);
+        return true;
+      }
       case "/api/guest/codex/redeem": {
         // A guest types (or scans) an unlock code — a QR on the wall, a
         // puzzle's answer. Journaled; a miss is a story event too.
@@ -7092,6 +7132,15 @@ export class EventRuntime {
         this.fanout(events);
         // `shared: false` — they already held it, nothing moved.
         sendJson(res, 200, { ok: true, shared: events.some((e) => e.type === "codexUnlocked") });
+        return true;
+      }
+      case PRINTED_PRIME_ROUTE: {
+        const character = this.characterOf(tokenOf(req, body));
+        if (!character) {
+          sendJson(res, 403, { error: "no character — sign in" });
+          return true;
+        }
+        this.answerPrinted(res, character, body);
         return true;
       }
       case "/api/prime/codex/redeem": {
@@ -8022,9 +8071,9 @@ export class EventRuntime {
           // Wave 23: each part's own cast-card link (signs in as it, takes it back).
           castLinks: this.performerParts.map((character) => {
             const part = partCode(this.claimSecret, character);
-            return { character, part, url: partUrl(base, this.codes.event, part) };
+            return { character, part, code: printedCode(part), url: partUrl(base, this.codes.event, part) };
           }),
-          ...printExtras(this.sim?.model ?? this.declaredModel ?? null, base, this.codes.event, this.factsBook()?.raw ?? null),
+          ...printExtras(this.sim?.model ?? this.declaredModel ?? null, base, this.codes.event, this.claimSecret, this.factsBook()?.raw ?? null),
         });
         return true;
       }

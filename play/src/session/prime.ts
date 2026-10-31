@@ -307,6 +307,8 @@ export interface PrimeSession {
    *  character's own Codex (`/api/prime/codex/redeem`; a miss is `missed`,
    *  and a refusal throws). */
   redeem: (code: string) => Promise<RedeemAnswer>;
+  /** The link of the printed code a typed one is, or null (wave 59). */
+  printed: (code: string) => Promise<string | null>;
   /** The approver's booth: settle a held transfer / deny one in its window. */
   walletApprove: (id: string) => Promise<unknown>;
   walletDeny: (id: string) => Promise<unknown>;
@@ -570,6 +572,7 @@ export function usePrimeSession(): PrimeSession {
     [post, auth],
   );
   const redeem = useCallback((code: string) => post<RedeemAnswer>("/api/prime/codex/redeem", { code }, auth!.token), [post, auth]);
+  const printed = useCallback((code: string) => post<{ hit: { url: string } | null }>("/api/prime/printed", { code }, auth!.token).then((r) => r.hit?.url ?? null), [post, auth]);
   const moderate = useCallback(
     (id: string, action: string, name?: string) => post("/api/mod/act", { id, action, name }, auth!.token),
     [post, auth],
@@ -671,5 +674,5 @@ export function usePrimeSession(): PrimeSession {
   useTheme(auth === null ? landing.theme : view?.theme);
   const arrive = useCallback(() => post("/api/prime/arrive", {}, auth!.token), [post, auth]);
   const choose = useCallback((index: number, menu: { id: number; text: string }) => post("/api/prime/choose", { index, choice: menu.id, text: menu.text }, auth!.token), [post, auth]);
-  return { auth, view, alert: alerts.alert, dismissAlert: alerts.dismiss, alerts, messages, connected, ready, notice, threads, login, scan, card, say, inviteToChannel, leaveChannel, becomeAdmin, act, lastPressedOn, cue, shareCodex, redeem, walletApprove, walletDeny, moderate, setHidden, answerWidget, widgetAnswers, letter, censor, filterLevel, arrive, choose, leave, roomLinkPending };
+  return { auth, view, alert: alerts.alert, dismissAlert: alerts.dismiss, alerts, messages, connected, ready, notice, threads, login, scan, card, say, inviteToChannel, leaveChannel, becomeAdmin, act, lastPressedOn, cue, shareCodex, redeem, printed, walletApprove, walletDeny, moderate, setHidden, answerWidget, widgetAnswers, letter, censor, filterLevel, arrive, choose, leave, roomLinkPending };
 }

@@ -133,7 +133,7 @@ export function GuestRegister({ session }: { session: GuestSession }) {
       {badge !== null && invited === null && <p className="pick-hint">🪪 Badge {printedBadge(badge)} links to the program you pick. Lose this page? Scan your badge to get back in.</p>}
       {!filledIn && (
         <input
-          placeholder="Event code (from the host)"
+          placeholder="Event code, or your badge's code"
           value={code}
           autoFocus={code === ""}
           autoCapitalize="characters"

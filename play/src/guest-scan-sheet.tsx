@@ -7,7 +7,11 @@
 //! `/api/guest/checkin`, and anything else (the join QR, your own pass, an
 //! invitation) just says what it is, and someone else's pass opens the
 //! Recruit sheet (wave 18). The landing for a link opened with no session
-//! is `guest-scan.tsx`.
+//! is `guest-scan.tsx`. Wave 59: a typed code asks the server what it is
+//! first (`printed`, `core/server/routes/printed.ts`): a badge's, a room's or
+//! a sign's comes back as its QR's link and goes through `guestScan` like a
+//! scan, so only a code that is none of those reaches the Codex, whose miss
+//! is a story event.
 //!
 //! The pure classifiers are unit-tested in `test/guest-scan.test.tsx`; the
 //! camera is `scanner.tsx`'s, the booth's.
@@ -16,7 +20,7 @@ import { useEffect, useRef, useState } from "react";
 import { useBigOnScreen, useMomentsHold } from "./moments/provider.tsx";
 import { actFromSearch } from "./act-link.ts";
 import { checkinFromSearch } from "./checkin.ts";
-import { unlockFromSearch } from "./codex.ts";
+import { REDEEM_THROTTLED, unlockFromSearch } from "./codex.ts";
 import { badgeFromText } from "./rejoin.ts";
 import type { CameraState } from "./scan.ts";
 import { CameraScanner } from "./scanner.tsx";
@@ -40,6 +44,8 @@ export type GuestScan =
 const GUEST_ID = /^[gp]-[0-9a-f]{6}$/i;
 /** A bare code printed as a QR of its own text (no link): redeem it. */
 const BARE_CODE = /^[A-Za-z0-9][A-Za-z0-9_-]{2,39}$/;
+/** A code as typed: a phone's keyboard may put spaces in place of hyphens. */
+const TYPED_CODE = /^[A-Za-z0-9][A-Za-z0-9_\s-]{2,63}$/;
 
 export const SCAN_JOIN = "That's the party's join code — you're already in.";
 export const SCAN_INVITE = "That's an invitation link — you're already in.";
@@ -141,7 +147,12 @@ export function typedScan(raw: string, rooms: readonly ScanRoom[] = [], meId: st
     }
   }
   if (GUEST_ID.test(text)) return guestScan(text, meId);
-  return BARE_CODE.test(text) ? { kind: "unlock", code: text } : { kind: "note", text: TYPED_UNKNOWN };
+  return TYPED_CODE.test(text) ? { kind: "unlock", code: text } : { kind: "note", text: TYPED_UNKNOWN };
+}
+
+/** What the sheet says when it couldn't ask what a typed code is. */
+function printedFailure(e: unknown): string {
+  return (e as { status?: unknown } | null)?.status === 429 ? REDEEM_THROTTLED : "⚠️ That didn't go through — check your connection and try again.";
 }
 
 /**
@@ -158,12 +169,15 @@ export function ScanSheet({
   onScan,
   onClose,
   rooms,
+  printed,
 }: {
   meId: string | null;
   onScan: (scan: Exclude<GuestScan, { kind: "note" }>) => Promise<string | null>;
   onClose: () => void;
   /** The rooms the guest can see, so a typed room name checks in. */
   rooms?: readonly ScanRoom[];
+  /** The link of the printed code a typed one is, or null (wave 59). */
+  printed?: (code: string) => Promise<string | null>;
 }) {
   useMomentsHold(true);
   const [cam, setCam] = useState<CameraState>("off");
@@ -206,7 +220,24 @@ export function ScanSheet({
     );
   };
   const onCode = (raw: string) => run(guestScan(raw, meId));
-  const submit = () => run(typedScan(typed, rooms, meId), () => setTyped(""));
+  const submit = () => {
+    const hit = typedScan(typed, rooms, meId);
+    const clear = () => setTyped("");
+    if (hit.kind !== "unlock" || printed === undefined) return run(hit, clear);
+    if (busy.current) return;
+    busy.current = true;
+    setNote("One moment…");
+    void printed(hit.code).then(
+      (link) => {
+        busy.current = false;
+        run(link === null ? hit : guestScan(link, meId), clear);
+      },
+      (e: unknown) => {
+        busy.current = false;
+        setNote(printedFailure(e));
+      },
+    );
+  };
   return (
     <div className="scan-layer" role="dialog" aria-modal="true" aria-label="Scan a code">
       <div className="w95-window scan-window">
