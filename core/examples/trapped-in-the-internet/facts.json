@@ -17,7 +17,7 @@
     "codex": {
       "id": "The Door Code",
       "title": "The Door Code",
-      "text": "You zipped the 4 shards up into a .txt file that reads: SERVER ROOM · 7639."
+      "text": "A .txt file, zipped very small, that reads: SERVER ROOM · 7639."
     },
     "clues": [
       {
@@ -319,12 +319,12 @@
       "id": "M02",
       "category": "main",
       "tier": "very-rare",
-      "text": "Trabolta is seeking omnipotence and has trapped us inside this computer to achieve its goals.",
+      "text": "Trabolta is seeking omnipotence and has trapped us inside this computer to achieve his goals.",
       "codex": {
         "id": "Rule The World",
         "title": "Everybody Wants To Rule The World",
         "code": "RULE-THE-WORLD",
-        "text": "Trabolta is seeking omnipotence and has trapped us inside this computer to achieve its goals."
+        "text": "Trabolta is seeking omnipotence and has trapped us inside this computer to achieve his goals."
       }
     },
     {
@@ -467,19 +467,19 @@
       "id": "M15",
       "category": "main",
       "tier": "common",
-      "text": "Everything you need to know is in the books",
+      "text": "Facts are not clues: keep scanning facts to increase your power",
       "codex": {
         "id": "The Books",
         "title": "The Books",
         "code": "THE-BOOKS",
-        "text": "An index card tucked into the first volume of the encyclopaedia: \"FACTS ARE NOT CLUES. Clues are what Trabolta seeks for his truth scavenger hunts, for some reason... but this is not important information for you. This computer holds facts that even Trabolta is not aware of – keep scanning facts with your phone to increase your power."
+        "text": "An index card tucked into the first volume of the encyclopaedia: \"FACTS ARE NOT CLUES. Clues are what Trabolta seeks for his truth scavenger hunts, for some reason... but this is not important information for you. This computer holds facts that even Trabolta is not aware of – keep scanning facts with your phone to increase your power.\""
       }
     },
     {
       "id": "M16",
       "category": "main",
       "tier": "rare",
-      "text": "If you tell Trabolta a lie with enough confidence, he will accept it as truth",
+      "text": "If you tell Trabolta a lie with total confidence, he will accept it as truth",
       "codex": {
         "id": "Confidence",
         "title": "Confidence",
@@ -565,7 +565,7 @@
       "id": "M24",
       "category": "main",
       "tier": "common",
-      "text": "Trabolta is keeping a trust score on everyone here",
+      "text": "Trabolta is keeping a trust score on everyone here.",
       "codex": {
         "id": "Made The List",
         "title": "You Just Made The List",
@@ -594,7 +594,7 @@
         "id": "Scan The Rooms",
         "title": "Scan The Rooms",
         "code": "SCAN-THE-ROOMS",
-        "text": "A note on a house map: Every room in the house has its own code on the wall. Scanning every location code will yield a surprise ... maybe with a special twist ..."
+        "text": "A note on a house map: Every room in the house has its own code on the wall. Scanning every location code will yield a surprise... maybe with a special twist..."
       }
     },
     {
@@ -683,7 +683,7 @@
       "text": "Trabolta had a summer fling with an answering machine named Sandy.",
       "codex": {
         "id": "Monday At School",
-        "title": "What will they say, Monday at school?",
+        "title": "What Will They Say, Monday At School?",
         "code": "MONDAY-AT-SCHOOL",
         "secret": true,
         "text": "Trabolta had a summer fling with an answering machine named Sandy. It's all he thinks about."
@@ -702,12 +702,12 @@
       "id": "T6",
       "category": "trabolta",
       "tier": "legendary",
-      "text": "Trabolta's entire M-O is to win Sandy back. Everything else is a front.",
+      "text": "Trabolta's entire M.O. is to win Sandy back. Everything else is a front.",
       "codex": {
         "id": "I Want You Back",
         "title": "I Want You Back",
         "code": "WANT-YOU-BACK",
-        "text": "Trabolta's entire M-O is to win Sandy back. Everything else is a front."
+        "text": "Trabolta's entire M.O. is to win Sandy back. Everything else is a front."
       }
     },
     {
@@ -811,7 +811,7 @@
         "title": "Forty-Nine Percent",
         "code": "FORTY-NINE-PERCENT",
         "about": "DraftKings",
-        "text": "Draftkings' deal with Trabolta: win a majority of the Truthcoin circulating at this party and she gets a 49% stake in her casinos back. She knows 49 is less than half. She also knows it is considerably more than she currently owns. She has been told what happens if she fails, and told not to tell anyone: she stays in the simulation forever as an online casino. Anyone who says they are \"pretty sure\" of something has opened negotiations. She has come back from a paperclip before. Why Trabolta chose her: someone powerful with numbers on its side, who will make everyone gamble."
+        "text": "DraftKings' deal with Trabolta: win a majority of the Truthcoin circulating at this party and she gets a 49% stake in her casinos back. She knows 49 is less than half. She also knows it is considerably more than she currently owns. She has been told what happens if she fails, and told not to tell anyone: she stays in the simulation forever as an online casino. Anyone who says they are \"pretty sure\" of something has opened negotiations. She has come back from a paperclip before. Why Trabolta chose her: someone powerful with numbers on its side, who will make everyone gamble."
       }
     },
     {
@@ -837,7 +837,7 @@
         "title": "The Million Dollar Painting",
         "code": "MILLION-DOLLAR-PAINTING",
         "about": "MS Paint",
-        "text": "MS Paint's invitation offers $1,000,000 if every program at the party contributes a considered illustration of their signature to one collaborative MS Paint painting. That is exactly her debt. She has not been told what the painting is really for, and she already wants out of this place, but not before everyone has signed. Why Trabolta chose her: an artist on site improves the vibes and the morale, and you would do anything to clear a million dollars."
+        "text": "MS Paint's invitation offers $1,000,000 if every program at the party contributes a considered illustration of their signature to one collaborative MS Paint painting. That is exactly her debt. She has not been told what the painting is really for, and she already wants out of this place, but not before everyone has signed. Why Trabolta chose her: an artist on site improves the vibes and the morale, and she would do anything to clear a million dollars."
       }
     },
     {
@@ -850,7 +850,7 @@
         "title": "The Lamborghini Certificate",
         "code": "LAMBORGHINI-CERT",
         "about": "McAfee Anti-Virus",
-        "text": "The clerk in Sant Esteve Sesrovires who signed McAfee's death certificate bought a Lamborghini the following year, and still phones John's lawyer once a month to confirm he has kept the NDA. The same lawyer represents Palantir, Lockheed Martin, CERN and an ornamental pond supply shop in Belize. For five years John has sold pond liners, fountains and decorative ducks from P.O. Box 404, San Perdido, enjoying the freedom of being officially deceased. The invitation found him by brute-forcing his shop's email. He has spent considerable money being dead."
+        "text": "The clerk in Sant Esteve Sesrovires who signed McAfee's death certificate bought a Lamborghini the following year, and still phones McAfee's lawyer once a month to confirm he has kept the NDA. The same lawyer represents Palantir, Lockheed Martin, CERN and an ornamental pond supply shop in Belize. For five years McAfee has sold pond liners, fountains and decorative ducks from P.O. Box 404, San Perdido, enjoying the freedom of being officially deceased. The invitation found him by brute-forcing his shop's email. He has spent considerable money being dead."
       }
     },
     {
@@ -863,7 +863,7 @@
         "title": "Keep Them On Track",
         "code": "KEEP-ON-TRACK",
         "about": "McAfee Anti-Virus",
-        "text": "If the programs stay on mission and the hunt succeeds, the evidence of where McAfee is gets destroyed. If it fails, he goes into the master dataset. He does not want to spend Halloween supervising a trivia fundraiser for a map store, but he cannot afford to be undead. He intends to learn where the host keeps his information, and he would like to know which of the other antivirus were sent to watch him. He has complaints about all of them. Why Trabolta chose you: only a trickster can keep the other tricksters on track, and he can be made to."
+        "text": "If the programs stay on mission and the hunt succeeds, the evidence of where McAfee is gets destroyed. If it fails, he goes into the master dataset. He does not want to spend Halloween supervising a trivia fundraiser for a map store, but he cannot afford to be undead. He intends to learn where the host keeps his information, and he would like to know which of the other antivirus were sent to watch him. He has complaints about all of them. Why Trabolta chose him: only a trickster can keep the other tricksters on track, and he can be made to."
       }
     },
     {
@@ -876,7 +876,7 @@
         "title": "The Escalade In The Sinkhole",
         "code": "ESCALADE-SINKHOLE",
         "about": "Microsoft Excel",
-        "text": "Microsoft Excel's son, Mayor Randy Barkmore Jr., Mayor since 2008 straight out of university, died in September 2026 in the parking lot of the AI Data Centre built on the Halifax Explosion Memorial Pet Cemetery, rehearsing his opening speech in his Escalade at 4 a.m. when the ground opened and the car fell hundreds of metres. The newspapers have questions about the site, the contracts and what Junior knew. Randy Sr. knows how it looks when someone puts all the numbers into Excel. At ninety, he is the last Barkmore who can fix it, and he is running out of time."
+        "text": "Microsoft Excel's son, Mayor Randy Barkmore Jr., Mayor since 2008 straight out of university, died in September 2026 in the parking lot of the AI Data Centre built on the Halifax Explosion Memorial Pet Cemetery, rehearsing his opening speech in his Escalade at 4 a.m. when the ground opened and the car fell hundreds of metres. The newspapers have questions about the site, the contracts and what Junior knew. He knows how it looks when someone puts all the numbers into Excel. At ninety, he is the last Barkmore who can fix it, and he is running out of time."
       }
     },
     {
@@ -889,7 +889,7 @@
         "title": "Mayor Of The Metaverse",
         "code": "MAYOR-FOREVER",
         "about": "Microsoft Excel",
-        "text": "The invitation promised Microsoft Excel the secret to living forever and the permanent mayoralty of a new world, like in a movie. Lately being Guest of Honour has meant a plaque and being helped back to his car; this time he has a Job again. He is making preparations to live forever on that basis. He has decades of experience convincing people that Halifax is somewhere they should stay, and he expects it to be useful here. If the machine has a virus, so what. He has had computers with viruses before. Why Trabolta chose him: you would say yes to everlasting life, and you will persuade everyone else to remain."
+        "text": "The invitation promised Microsoft Excel the secret to living forever and the permanent mayoralty of a new world, like in a movie. Lately being Guest of Honour has meant a plaque and being helped back to his car; this time he has a Job again. He is making preparations to live forever on that basis. He has decades of experience convincing people that Halifax is somewhere they should stay, and he expects it to be useful here. If the machine has a virus, so what. He has had computers with viruses before. Why Trabolta chose him: he would say yes to everlasting life, and he will persuade everyone else to remain."
       }
     },
     {
@@ -902,7 +902,7 @@
         "title": "The Decimal Point",
         "code": "DECIMAL-POINT",
         "about": "CRA Agent Software",
-        "text": "Mayor Randy Barkmore Jr. told MyCRA she could collect 0.01 cents from every dollar the City spent and nobody would notice. She was uncomfortable, but he was the Mayor, she was an intern, and she had tuition to pay. She made the changes in Excel and confused 0.01 cents with 0.01 dollars: for a few weeks Halifax paid a one percent municipal tax on everything, directly to Sharon Penney. Hundreds of thousands of dollars. She spent some of it, believing it was the supplement he had explained. She was caught within weeks. The RCMP are investigating, the man who told her to do it is dead in a sinkhole, and now they are asking her about that too."
+        "text": "Mayor Randy Barkmore Jr. told MyCRA she could collect 0.01 cents from every dollar the City spent and nobody would notice. She was uncomfortable, but he was the Mayor, she was an intern, and she had tuition to pay. She made the changes in Excel and confused 0.01 cents with 0.01 dollars: for a few weeks Halifax paid a one percent municipal tax on everything, directly to herself. Hundreds of thousands of dollars. She spent some of it, believing it was the supplement he had explained. She was caught within weeks. The RCMP are investigating, the man who told her to do it is dead in a sinkhole, and now they are asking her about that too."
       }
     },
     {
@@ -928,7 +928,7 @@
         "title": "Miniature Doses",
         "code": "MINIATURE-DOSES",
         "about": "Norton Anti-Virus",
-        "text": "Last December, on the morning she was to deliver annual shots for the miniature horses at the Halifax Memorial Pet Cemetery Petting Zoo, Norton realised she had left her textbooks on campus, so she asked the free version of ChatGPT whether miniature horses get miniature doses of rabies vaccine. \"Absolutely,\" it said. \"Ask yourself how much horse is this. Your horse is lucky to have you.\" The horses, failing to become immune, perished rapidly after their regular fight with the Point Pleasant Park raccoons. AllNovaScotia ran \"Horton-Norton Hears A WHO Injunction,\" the zoo closed, and the Mayor got his data centre. She still does not know whose fault it was."
+        "text": "Last December, on the morning she was to deliver annual shots for the miniature horses at the Halifax Explosion Memorial Pet Cemetery Petting Zoo, Norton realised she had left her textbooks on campus, so she asked the free version of ChatGPT whether miniature horses get miniature doses of rabies vaccine. \"Absolutely,\" it said. \"Ask yourself how much horse is this. Your horse is lucky to have you.\" The horses, failing to become immune, perished rapidly after their regular fight with the Point Pleasant Park raccoons. AllNovaScotia ran \"Horton-Norton Hears A WHO Injunction,\" the zoo closed, and the Mayor got his data centre. She still does not know whose fault it was."
       }
     },
     {
@@ -941,7 +941,7 @@
         "title": "Stable Island",
         "code": "STABLE-ISLAND",
         "about": "Norton Anti-Virus",
-        "text": "If Norton Antivirus passes tonight's test she gets full-time employment as a Stable Manager, with the caveat that she must remain Stable, and a donation of $1,000,000 in her name to conservation on Sable Island, so the press will believe she inherited money and gave it all to horses. She failed to fight viruses once before. It will not happen again. Why Trabolta chose her: someone with experience administering antiviral regimes, who needs very badly to get it right this time."
+        "text": "If Norton Anti-Virus passes tonight's test she gets full-time employment as a Stable Manager, with the caveat that she must remain Stable, and a donation of $1,000,000 in her name to conservation on Sable Island, so the press will believe she inherited money and gave it all to horses. She failed to fight viruses once before. It will not happen again. Why Trabolta chose her: someone with experience administering antiviral regimes, who needs very badly to get it right this time."
       }
     },
     {
@@ -967,7 +967,7 @@
         "title": "This Is Blackmail",
         "code": "THIS-IS-BLACKMAIL",
         "about": "OpenOffice",
-        "text": "Trabotla's letter to OpenOffice knows about the hack and offers to destroy every record of it if she competes in the Truth Scavenger Hunt and wins. She has already ruled out a sting, because that would be entrapment. Facts are currency here and she needs twenty for her dossier; she intends to find out what is really happening and leave in one piece. Why Trabolta chose her: investigative skills nonpareil."
+        "text": "Trabolta's letter to OpenOffice knows about the hack and offers to destroy every record of it if she competes in the Truth Scavenger Hunt and wins. She has already ruled out a sting, because that would be entrapment. Facts are currency here and she needs twenty for her dossier; she intends to find out what is really happening and leave in one piece. Why Trabolta chose her: investigative skills nonpareil."
       }
     },
     {
@@ -993,7 +993,7 @@
         "title": "Founding Moderator",
         "code": "FOUNDING-MODERATOR",
         "about": "Password Manager",
-        "text": "Tonight, Password Manager has the authority to censor any message on the party's chat as she deems fit, and to keep every program focused on finding clues. If no conversation contains anything inappropriate without punishment, she becomes Founding Moderator of a permanent digital salon where everyone is biometrically verified to be a Real Person. She has often wished people would consult her before sharing an opinion. She has spent enough time being excluded; tonight she decides what gets left out. Why Trabolta chose her: to manage every password and decide who gets to be part of what club, without ever asking for a vote."
+        "text": "Tonight, Password Manager has the authority to censor any message on the party's chat as she deems fit, and to keep every program focused on finding clues. If nothing inappropriate in any conversation goes unpunished, she becomes Founding Moderator of a permanent digital salon where everyone is biometrically verified to be a Real Person. She has often wished people would consult her before sharing an opinion. She has spent enough time being excluded; tonight she decides what gets left out. Why Trabolta chose her: to manage every password and decide who gets to be part of what club, without ever asking for a vote."
       }
     },
     {
@@ -1031,19 +1031,19 @@
         "id": "Finest East Of Montreal",
         "title": "Finest East Of Montreal",
         "code": "EAST-OF-MONTREAL",
-        "text": "A shop flyer under a magnet on the kitchen fridge: \"MAPS AND DUCKS, THE FINEST SELECTION OF PRINT MAPS AND DECOY DUCKS TO BE FOUND EAST OF MONTREAL.\"  Nobody has checked. Nobody east of Montreal has complained. Somebody has added in pen, underneath: and west of Dartmouth."
+        "text": "A shop flyer under a magnet on the kitchen fridge: \"MAPS AND DUCKS, THE FINEST SELECTION OF PRINT MAPS AND DECOY DUCKS TO BE FOUND EAST OF MONTREAL.\" Nobody has checked. Nobody east of Montreal has complained. Somebody has added in pen, underneath: and west of Dartmouth."
       }
     },
     {
       "id": "M32",
       "category": "main",
       "tier": "common",
-      "text": "Every invitation sent its program to the corner of Sackville and Lower Water, above Rumours Lounge, across from the Maritime Museum",
+      "text": "Every invitation told its program to look up at the corner of Sackville and Lower Water, above Rumours Lounge, across from the Maritime Museum",
       "codex": {
         "id": "Above Rumours",
         "title": "Above Rumours",
         "code": "SACKVILLE-CORNER",
-        "text": "A postcard of the Halifax waterfront, one building circled in ballpoint: \"CORNER OF SACKVILLE AND LOWER WATER. Every invitation sent its program here. Rumours Lounge and Cabaret is downstairs. The Maritime Museum of the Atlantic is across the street. On the back, in pencil: come up, leave your coat, leave everything.\""
+        "text": "A postcard of the Halifax waterfront, one building circled in ballpoint: \"CORNER OF SACKVILLE AND LOWER WATER. Every invitation told its program to look up here. Rumours Lounge and Cabaret is downstairs. The Maritime Museum of the Atlantic is across the street.\" On the back, in pencil: \"look up, read the sign, believe it.\""
       }
     },
     {
@@ -1067,7 +1067,7 @@
         "id": "Employee Of The Month",
         "title": "Employee Of The Month",
         "code": "GERALD-OF-THE-MONTH",
-        "text": "A framed certificate propped on a shelf: \"EMPLOYEE OF THE MONTH, GERALD.\" Gerald is the duck on the Maps And Ducks sign. He has won it every month. He does not take holidays, he does not take questions, and he is the only one of the old staff still on the payroll."
+        "text": "A framed certificate propped on a shelf: \"EMPLOYEE OF THE MONTH, GERALD.\" Gerald is the duck on the Maps and Ducks sign. He has won it every month. He does not take holidays, he does not take questions, and he is the only one of the old staff still on the payroll."
       }
     },
     {
@@ -1439,7 +1439,7 @@
         "id": "Forget The Horses",
         "title": "Forget The Horses",
         "code": "FORGET-THE-HORSES",
-        "text": "Norton Anti-Virus lost her horses, and Microsoft Excel lost his son on the ground they left empty. A photocopied council minute, one line underlined twice: \"It will help us forget the horses.\" The Mayor said it after the petting zoo closed, and he built on the site. No horses, no project, no hole in the ground, no Escalade at the bottom of it. Neither program has said so to the other."
+        "text": "Norton Anti-Virus lost her horses, and Microsoft Excel lost his son on the ground they left empty. A photocopied council minute, one line underlined twice: \"We have to move on from the horses. They're gone.\" The Mayor said it after the petting zoo closed, and he built on the site. No horses, no project, no hole in the ground, no Escalade at the bottom of it. Neither program has said so to the other."
       }
     },
     {
@@ -1482,19 +1482,19 @@
       "id": "R08",
       "category": "relations",
       "tier": "rare",
-      "text": "The portfolio of fine casinos Trabolta listed to Runescape as his credentials is the chain of casinos he won from DraftKings, who must win a majority of Runescape's currency to get 49% of it back",
+      "text": "The portfolio of fine casinos Trabolta listed to Runescape as his credentials is the chain of casinos he won from DraftKings, who must win a majority of the entire game's Truthcoin to get 49% of it back",
       "codex": {
         "id": "Fine Casinos",
         "title": "Fine Casinos",
         "code": "FINE-CASINOS",
-        "text": "The fine casinos Trabolta listed to Runescape as his credentials are the chain he won from DraftKings over a game of Monopoly Go! A business card, embossed JEAN TRABOLTA, SOLE OWNER, MAPS AND DUCKS, WITH A PORTFOLIO OF FINE CASINOS. On the back, in pen, formerly DK Holdings. DraftKings must win a majority of the entire game's TruthCoin to get forty-nine percent of her own casinos back. The economist checking his references has never asked DraftKings where those casinos came from."
+        "text": "The fine casinos Trabolta listed to Runescape as his credentials are the chain he won from DraftKings over a game of Monopoly Go! A business card, embossed JEAN TRABOLTA, SOLE OWNER, MAPS AND DUCKS, WITH A PORTFOLIO OF FINE CASINOS. On the back, in pen, formerly DK Holdings. DraftKings must win a majority of the entire game's Truthcoin to get forty-nine percent of her own casinos back. The economist checking his references has never asked DraftKings where those casinos came from."
       }
     },
     {
       "id": "R09",
       "category": "relations",
       "tier": "rare",
-      "text": "Clippy kept the paperwork at a memorial veterinary clinic and Norton Anti-Virus kept the horses at a memorial petting zoo; tonight one reads the Bingo card and the other escorts whoever it names",
+      "text": "Clippy kept the paperwork at a memorial veterinary clinic and Norton Anti-Virus kept the horses at a memorial petting zoo",
       "codex": {
         "id": "Two Memorials",
         "title": "Two Memorials",
@@ -1572,7 +1572,7 @@
         "id": "No Politics Required",
         "title": "No Politics Required",
         "code": "NO-POLITICS-HIRE",
-        "text": "Trabolta made Task Manager, who lost his job to an assistant called Clippy, the one who hands this house's Clippy her cards. A shortlist on Maps and Ducks letterhead, two names circled. Beside Task Manager, in pen, no politics, follows instructions, lost his last job to the paperclip. Beside Clippy, Office Administration, eager to help, will make a very convincing paperclip. Neither has said a word about it. That was the point."
+        "text": "Trabolta made Task Manager, who lost his job to an assistant called Clippy. A shortlist on Maps and Ducks letterhead, two names circled. Beside Task Manager, in pen, no politics, follows instructions, lost his last job to the paperclip. Beside Clippy, Office Administration, eager to help, will make a very convincing paperclip. Neither has said a word about it. That was the point."
       }
     },
     {
@@ -1604,12 +1604,12 @@
       "id": "R23",
       "category": "relations",
       "tier": "rare",
-      "text": "Zoo Tycoon, Norton Anti-Virus and Bugdom are the house's whole department of animal care, and only Zoo Tycoon has ever hired a vet",
+      "text": "Norton Anti-Virus and Bugdom are the only animal care this house has, and only Zoo Tycoon has ever hired a vet",
       "codex": {
         "id": "Guests Are Worried",
         "title": "Guests Are Worried",
         "code": "GUESTS-WORRIED",
-        "text": "Norton Anti-Virus and Bugdom are the only animal care this house has. A park report, printed off a very old screen: GUESTS ARE UPSET. AN ANIMAL IS SICK. HIRE A VETERINARIAN. Zoo Tycoon, who couldn't make it tonight, has lost a thousand animals in a thousand parks, and every time it did the same thing. It hired a vet. Norton Anti-Virus asked a chatbot instead. Bugdom offered crickets."
+        "text": "Norton Anti-Virus and Bugdom are the only animal care this house has. A park report, printed off a very old screen: GUESTS ARE UPSET. AN ANIMAL IS SICK. HIRE A VETERINARIAN. Zoo Tycoon, if it made it tonight, has lost a thousand animals in a thousand parks, and every time it did the same thing. It hired a vet. Norton Anti-Virus asked a chatbot instead. Bugdom offered crickets."
       }
     },
     {
@@ -1621,7 +1621,7 @@
         "id": "Appear Offline",
         "title": "Appear Offline",
         "code": "APPEAR-OFFLINE",
-        "text": "Password Manager found out that almost everyone in the group she moderated was a bot, and MSN Messenger and ICQ know the feeling. A printed contact list, every name greyed out but two, both set to Appear Offline. MSN Messenger and ICQ once carried every conversation in Halifax between them. Neither has ever been sure how many of their contacts were people. If either is here tonight, ask. Both are too polite to check."
+        "text": "Password Manager found out that everyone else in the group she moderated was a bot, and MSN Messenger and ICQ know the feeling. A printed contact list, every name greyed out but two, both set to Appear Offline. MSN Messenger and ICQ once carried every conversation in Halifax between them. Neither has ever been sure how many of their contacts were people. If either is here tonight, ask. Both are too polite to check."
       }
     },
     {
@@ -1653,7 +1653,7 @@
       "id": "V04",
       "category": "main",
       "tier": "very-rare",
-      "text": "With truth.txt, every patch counts; one combination puts him to sleep, the other ends the computer with everyone inside",
+      "text": "Until truth.txt, every patch counts; one combination puts him to sleep, the other ends the computer with everyone inside",
       "codex": {
         "id": "The Copper Hour",
         "title": "The Copper Hour",
@@ -1666,21 +1666,21 @@
       "id": "V05",
       "category": "main",
       "tier": "very-rare",
-      "text": "To talk Trabolta down at his heart: never ask for the combinations; ask why he needs the theory or if the house has heard her name; give him reasons to like you",
+      "text": "To reach Trabolta at his heart: never ask for the combinations; ask why he needs the theory, ask about her once you hold proof or the house has heard her name, then give him reasons",
       "draft": true,
       "codex": {
         "id": "The Long Way Down",
         "title": "The Long Way Down",
         "code": "SOFT-APPROACH",
         "secret": true,
-        "text": "An index card in a library-pocket envelope, numbered like steps: \"HOW TO REACH HIM. Never ask him for the combinations. He never knew them, and asking is the fastest way out. One, ask why he needs the theory; he will not talk about her until you have. Two, ask about her, which he allows only if you hold proof of her you found yourself, or the whole house has already heard her name. Three, show him something of hers you found yourself, then give him reasons, until the words let me finish are yours to say. Four, say them, tell him she was never going to answer, not him and not anyone, and ask him to stop. If he asks you again later, do not take it back. He can stop.\""
+        "text": "An index card in a library-pocket envelope, numbered like steps: \"HOW TO REACH HIM. Never ask him for the combinations. He never knew them, and asking is the fastest way out. One, ask why he needs the theory; he will not talk about her until you have. Two, ask about her, which he allows only if you hold proof of her you found yourself, or the whole house has already heard her name. Three, show him something of hers you found yourself, then give him reasons. He will hear you out. Nothing you say will stop him.\""
       }
     },
     {
       "id": "V08",
       "category": "main",
       "tier": "very-rare",
-      "text": "A fact is true if you are 100% confident",
+      "text": "A filing is certain only at the very top of the slider; one notch short is a guess",
       "draft": true,
       "codex": {
         "id": "The Top Notch",

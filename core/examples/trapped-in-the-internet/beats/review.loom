@@ -93,7 +93,8 @@ if count([p for p in Persons where p.featured == "excel" and p.gone != true and 
 if count([p for p in Persons where p.featured == "openoffice" and p.gone != true and p.persona != true]) > 0:
   Trabolta: OpenOffice is Dana Anderson, formerly of the FBI, who sent a water main under a building site and did not know the Mayor's son was in its parking lot at four in the morning. I brought her in for her investigative skills. She wanted every record of the hack destroyed, and everyone out.
 if count([p for p in Persons where p.featured == "draftkings" and p.gone != true and p.persona != true]) > 0:
-  Trabolta: DraftKings is the artist formerly known as Crab Fisherwoman, who turned a paperclip into most of the casinos in Atlantic Canada and lost them to me in one game of Monopoly Go! I needed someone powerful with numbers on its side. She wanted her casinos back: half of all the Truthcoin, for a forty-nine percent stake.
+  // DRAFT w58 (three casinos)
+  Trabolta: DraftKings is the artist formerly known as Crab Fisherwoman, who turned a paperclip into three casinos and lost them to me in one game of Monopoly Go! I needed someone powerful with numbers on its side. She wanted her casinos back: half of all the Truthcoin, for a forty-nine percent stake.
 if count([p for p in Persons where p.featured == "bugdom" and p.gone != true and p.persona != true]) > 0:
   Trabolta: Bugdom is Bea Nunes, who sold crickets by day and spent ten years building Bugdom Reloaded, until fire ants ate the only copy. I wanted the relentless pursuit of tedious tasks. She wanted a hundred hours in here for every minute outside, to build it again.
 if count([p for p in Persons where p.featured == "jeeves" and p.gone != true and p.persona != true]) > 0:
@@ -126,7 +127,8 @@ if count([p for p in Persons where p.featured == "excel" and p.gone != true and 
 if count([p for p in Persons where p.featured == "openoffice" and p.gone != true and p.persona != true]) > 0:
   Clippy: OpenOffice is Dana Anderson, formerly of the FBI, who sent a water main under a building site and did not know the Mayor's son was in its parking lot at four in the morning. Trabolta brought her in for her investigative skills. She wanted every record of the hack destroyed, and everyone out.
 if count([p for p in Persons where p.featured == "draftkings" and p.gone != true and p.persona != true]) > 0:
-  Clippy: DraftKings is the artist formerly known as Crab Fisherwoman, who turned a paperclip into most of the casinos in Atlantic Canada and lost them to Trabolta in one game of Monopoly Go! Trabolta needed someone powerful with numbers on its side. She wanted her casinos back: half of all the Truthcoin, for a forty-nine percent stake.
+  // DRAFT w58 (three casinos)
+  Clippy: DraftKings is the artist formerly known as Crab Fisherwoman, who turned a paperclip into three casinos and lost them to Trabolta in one game of Monopoly Go! Trabolta needed someone powerful with numbers on its side. She wanted her casinos back: half of all the Truthcoin, for a forty-nine percent stake.
 if count([p for p in Persons where p.featured == "bugdom" and p.gone != true and p.persona != true]) > 0:
   Clippy: Bugdom is Bea Nunes, who sold crickets by day and spent ten years building Bugdom Reloaded, until fire ants ate the only copy. Trabolta wanted the relentless pursuit of tedious tasks. She wanted a hundred hours in here for every minute outside, to build it again.
 if count([p for p in Persons where p.featured == "jeeves" and p.gone != true and p.persona != true]) > 0:

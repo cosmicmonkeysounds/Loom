@@ -144,7 +144,7 @@ export interface Truth {
 export interface DoorClue {
   /** The CODEX id (no digit: the position in words). */
   id: string;
-  /** The poster's title, e.g. `The Cold Door · the first digit` (no digit). */
+  /** The poster's title, e.g. `Server Room · the first digit` (no digit). */
   title: string;
   /** The QR unlock code (no digit, nothing like another clue's). */
   code: string;

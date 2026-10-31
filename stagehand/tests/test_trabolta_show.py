@@ -274,7 +274,7 @@ def test_the_year_he_met_her_is_never_said():
     assert "Never say what year you met her" in p.system
     assert "The year he met her is never said" in (p.mind_prompt or "")
     assert "learned_add" in (p.mind_prompt or "")
-    # Wave 11b: the code is no longer that year (4826, from facts.json); the
+    # Wave 11b: the code is no longer that year (it comes from facts.json); the
     # year rule stays as lore, and the worker still never says the code.
     code = json.loads((SHOW / "facts.json").read_text(encoding="utf-8"))["door"]["code"]
     assert code in p.secrets.never

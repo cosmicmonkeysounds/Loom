@@ -519,7 +519,7 @@ describe("Trapped in the Internet — facts.json (the seed)", () => {
   it("every character fact's third entry ends on why he chose them, but C04's, which the Oct 30 file cut", () => {
     const thirds = facts.facts.filter((f) => f.category === "character").filter((_, i) => i % 2 === 1);
     expect(thirds).toHaveLength(12);
-    for (const f of thirds) if (f.id !== "C04") expect(f.codex!.text, f.id).toMatch(/Why Trabolta chose (?:you|him|her): /u);
+    for (const f of thirds) if (f.id !== "C04") expect(f.codex!.text, f.id).toMatch(/Why Trabolta chose (?:him|her): /u);
   });
   it("`secret` hides a card from Trabolta and nothing else: T5's stays secret by hand and keeps its code", () => {
     const t5 = facts.facts.find((f) => f.id === "T5")!;

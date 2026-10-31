@@ -568,6 +568,6 @@ LIVING ROOM, the dance song. Dance. Then a host calls 🪦 "Clippy reads the sum
 read it from the teleprompter on your phone, tell its backstory,
 deliver: "Because of our actions, the computer was turned off without Shut
 Down properly being followed, and all of our progress has been erased. Our
-corporeal forms are in the Maps and Ducks building, and they have all passed
+corporeal forms are in the Optical Drive, and they have all passed
 away. We are now in purgatory forever together, which is pretty similar to
 being stuck in a computer."

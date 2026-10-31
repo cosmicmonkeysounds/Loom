@@ -189,8 +189,10 @@ Quest APK). Verify what runs with
     `reinstall/vr/tools/quest.sh build`, then `install` (an old APK has no
     void, heart or disk). Allow the microphone in the lobby, check the
     lobby's build stamp, then HW-TENT-07.
-16. **The keypad:** set by hand to `facts.json` `door.code`; test from
-    outside with the code and from inside with the handle and no code.
+16. **The keypad:** **re-set it by hand** to `facts.json` `door.code` (wave
+    58 changed the code, so the lock still holds the old one) before the
+    15:00 test; test from outside with the code and from inside with the
+    handle and no code.
 17. **Door test:** a real open → shut → open shows 🚪 on Run → Terminals
     within a second, with no fault and no *override*; then 🔄
     `reset_server_room` (and 🚪 *Trust the door sensor again* if anyone
@@ -244,8 +246,8 @@ Each one wipes every guest.
 | Time | Who | What |
 |---|---|---|
 | 10:00 | Director + tech op | Weather call and the morning reset (§2) |
-| 12:00 | Set crew | Set dressing, the tent pitched or the shed set, glow tape on every step. Print: codex posters, clue props hidden (photos match), the four silver digit notes hidden in their rooms (never the server room, never a bathroom), check-in signs, the fact stacks per `generated/print-stacks.md`, Bingo cards and pens, trophies |
-| 15:00 | Tech op | Boot every machine (below); `pnpm showctl doctor` green; the keypad test (outside with the code, inside with the handle and no code); one announcement through the router; a 🔈 Test per speaker at show level |
+| 12:00 | Set crew | Set dressing, the tent pitched or the shed set, glow tape on every step. Print, only once H1–H3's answers are in (`titi:facts` prints no *placeholder* WARN) and the event carries the new facts, with the per-tier counts raised for a full run: codex posters, clue props hidden (photos match), the four silver digit notes hidden in their rooms (never the server room, never a bathroom), check-in signs, the fact stacks per `generated/print-stacks.md`, Bingo cards and pens, trophies |
+| 15:00 | Tech op | Boot every machine (below); `pnpm showctl doctor` green; the keypad **re-set by hand** to the new `door.code`, then its test (outside with the code, inside with the handle and no code); one announcement through the router; a 🔈 Test per speaker at show level |
 | 17:00 | Performers + house manager | Booths signed in (after Go live) with the performer code; push subscribed; a test `!` alert reaches every performer phone; walk the stations. Loaner phones (2–3), the charging station, power banks, radios with earpieces |
 | 18:00 | Door host + house manager | Porch: candy bowl and sign, the Optical Drive dim (not dark) until doors. Pre-show checklist signed. Safety re-check |
 | 19:00 | Everyone | Food and a 15-minute briefing: the blackout rule, the call words (incl. ALL STOP and ARRIVAL), the emergency card, never restart. Tech op on the MacBook: `scripts/ops/showbackup.sh install`, then `status` once an act |
@@ -364,13 +366,13 @@ $env:LOOM_MOD_CODE = '<mod>'                # Windows
 6. Terminals: every tablet green on `pnpm showctl terminals`, on the idle show, and every wall terminal's ⚙ names Trabolta; the TV on the screensaver, clicked once after its last boot; the Server Door terminal on THE KING.
 7. Audio: the `audio` job running on the Desktop (on the MacBook only in the fallback) with the MOTU at 32 / 30 and no placeholder left, Run → House → Setup's 🔊 Sound row green, a 🔈 Test per speaker at show level (the sub with music), one announcement heard through the router (this needs the Desktop's `show` job and broker too). The soundtrack: the SFX library rendered on the Desktop (`start-stagehand.ps1`, or `stagehand sounds library --story`), TIDAL up (`scripts\house-desktop\tidal.ps1 -Check`), `media/music/ceremony/` filled and each act's folder filled as the fallback if TIDAL or the internet fails, and `stagehand music status` shows the scene (`off` or none before the doors) with no `no files :` line. The sidechain walk: a TV line ducks the music on every speaker, Clippy's mic ducks the living room's, and the TV's own speakers stay silent for Chrome (Trabolta is heard once).
 8. Lights: the server-room bulb answers 💡 Identify and sits on `heart_idle`; `stagehand check --only lights` is green, `health/lights` online and Run → House → Setup's 💡 Lights row green; the bulb never drops under 80 / 254. Every placed Hue and ZL1 bulb and the WLED strip answer 💡 Identify; one `lights_blackout` test (the halls and both bathrooms stay at their dim floor, the server room on its heart look).
-9. The server-room door: the keypad was set by hand to `facts.json` `door.code` and tested at 15:00, and it opens from inside with no code; the keypad sign hangs beside it; the sensor reads 🚪 shut / open on Run → Terminals within a second, with no fault and no override; then 🔄.
+9. The server-room door: the keypad was re-set by hand to the new `facts.json` `door.code` (wave 58 changed it) and tested at 15:00, and it opens from inside with no code; the keypad sign hangs beside it; the sensor reads 🚪 shut / open on Run → Terminals within a second, with no fault and no override; then 🔄.
 10. The patch bay: all unplugged; ⚙'s live table reads every input empty; Run → Terminals shows no 🔌 fault and the story is not on the buttons (or 🔌 Trust the patch bay again was pressed).
 11. The server-room terminal (Steph's laptop) is green and asleep on its screensaver, the M4 on USB, the GameCube controller walks the choices, and the webcam reads a pass in the room's light; Run → Director shows 🔄 reset and 🕊 talked down, and 🕊 Heart autoend is off.
 12. The King: Run → House map's King row reads 15 / 15; the Server Door tablet is charging.
 13. The tent: the old laptop on spot `tent` with WebGL2, the Quest charged (if go), the Installation Wizard video loaded on the second device, the heater on its GFCI leg, the EXIT sign on.
 14. Push: the staff test alert arrived on every performer phone. Every part has done its upload on its own phone (Run's watch *Staff uploaded* gone or at 8), before the doors: the booth is the upload until then, so an Antivirus who signs in at the door is not at the door. Stuck: ⏭ Wave the staff through their upload (Anytime).
-15. Facts and wallet: `titi:facts --check` passed at predeploy; Run → Mind's Judging card reads auto; a test phone shows the Wallet room and a 🪙 balance; `# quarantine` is empty; Run → Wallet names CRA Agent Software as the approver and Runescape as the minter.
+15. Facts and wallet: `titi:facts --check` passed at predeploy with no *placeholder* WARN (every hunt key is in); Run → Mind's Judging card reads auto; a test phone shows the Wallet room and a 🪙 balance; `# quarantine` is empty; Run → Wallet names CRA Agent Software as the approver and Runescape as the minter.
 16. Knobs: on the VPS, `deploy/release.sh --check-env` ends "the night's knobs are set ✔"; `LOOM_SNAPSHOT_MS` and `LOOM_HOMESCREEN` are blank unless the K-32 run failed (then `LOOM_SNAPSHOT_MS=500`) or the iPhone Home Screen call was yes (then `LOOM_HOMESCREEN=on`).
 17. Print: codex posters up and clue props hidden (photos match), the four silver digit notes hidden, the invitations sent with their claim QRs, check-in signs up, Bingo cards and pens, the fact stacks per `generated/print-stacks.md`, trophies, cheat-sheets; on a shed night the SITE-SCHEDULE clipboard and the BUGDOM-VR sketch hang in The Optical Drive.
 18. Safety: first aid and an ABC extinguisher placed, egress clear, glow tape, GFCIs tested, no strobe over 3 Hz, the server door opens from inside with no code, the patch-bay gear taped off, the emergency card posted at the door, the override key and spare batteries with the house manager.

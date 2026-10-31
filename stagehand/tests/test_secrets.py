@@ -525,7 +525,8 @@ def test_the_shipped_mind_file_never_lets_a_typed_code_reach_another_programs_pr
         assert s.leaks(f"{a} → {b}") and s.leaks(f"{a.lower()}-{b.lower()}") and s.leaks(f"{a} to {b}"), p
         assert s.leaks(f"Patch {b} to {a}, program.") and s.leaks(f"{a[0]}-{a[1:]} to {b[0]}-{b[1:]}"), p  # W8 T8-01
     # W8 T8-01: the spoken code, as the stub voice said it to a guest.
-    for said in [f"The door code is {code}.", "Four eight two six.", "four-eight-two-six", " ".join(code)]:
+    words = [("zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine")[int(d)] for d in code]
+    for said in [f"The door code is {code}.", " ".join(words).capitalize() + ".", "-".join(words), " ".join(code)]:
         assert s.leaks(said), said
     # W8 review: a bare 97 is a guest's program or the house's bark, never the code.
     for said in ["Welcome, NHL 97.", "Office 97 again?", "Memory usage: 97%", "$19.97"]:
