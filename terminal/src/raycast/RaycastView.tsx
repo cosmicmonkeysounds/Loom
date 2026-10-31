@@ -8,8 +8,9 @@
 //! A placed terminal is a **fixed window** from its own spot — the virtual
 //! copy of its room seen from where the tablet hangs, the way the games'
 //! virtual terminals show the real room — so you watch the players walk past
-//! it in the second person. A terminal with no spot follows the most recently
-//! active player over the shoulder.
+//! it in the second person; wave 54: `eyes` names a program to look through
+//! instead (`world/eyes.ts`). A terminal with no spot follows the most
+//! recently active player over the shoulder.
 //!
 //! The players are billboards (their picture cut into a glitchy swarm,
 //! `swarm.ts`, under a name tag), clipped against each column's nearest wall;
@@ -23,6 +24,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { fnv1a32, roomById, type Vec3 } from "@loom/house";
+import { eyesTag } from "../world/eyes.ts";
 import { avatarUrl, type WorldPlayer } from "../world/state.ts";
 import { useWorld, type WorldStore } from "../world/stream.ts";
 import { celebrationHeadline, chooseFloor, fitTransform, guestColor, holdFloor, kingOnFloor, planFloor, rosterTellsToasts, rosterToasts, statusLine, toScreen, type FloorHold, type PlanFloor } from "./plan.ts";
@@ -31,6 +33,8 @@ import {
   chaseCamera,
   depthSorted,
   dirOf,
+  EYES_SMOOTH,
+  eyeCamera,
   internalSize,
   followTarget,
   projectSprite,
@@ -66,7 +70,7 @@ interface Toast {
 
 type Ctx = CanvasRenderingContext2D;
 
-export function RaycastView({ store, spotId, size }: { store: WorldStore; spotId: string; size: "pane" | "full" }) {
+export function RaycastView({ store, spotId, size, eyes = null }: { store: WorldStore; spotId: string; size: "pane" | "full"; eyes?: string | null }) {
   const info = useWorld(store, (s) => s.house);
   const connected = useWorld(store, (s) => s.connected);
   const players = useWorld(store, (s) => s.world.players.size);
@@ -79,6 +83,9 @@ export function RaycastView({ store, spotId, size }: { store: WorldStore; spotId
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [where, setWhere] = useState("");
   const spot = useMemo(() => info?.house.terminals.find((t) => t.id === spotId) ?? null, [info, spotId]);
+  // Read by the render loop: a change of eyes is a cut, never a new canvas.
+  const eyesNow = useRef(eyes);
+  eyesNow.current = eyes;
 
   // Join / leave toasts, off the roster — only real joins / leaves (never a
   // reconnect's hello, the players dropped while the line is down, a reset).
@@ -161,6 +168,7 @@ export function RaycastView({ store, spotId, size }: { store: WorldStore; spotId
     window.addEventListener("resize", resize);
 
     let cam: RayCamera | null = null;
+    let wornBefore: string | null = null;
     let hold: FloorHold = { shown: null, want: null, since: 0 };
     let shownWhere = "";
     let raf = 0;
@@ -178,7 +186,14 @@ export function RaycastView({ store, spotId, size }: { store: WorldStore; spotId
       let target: RayCamera;
       let room: string | null;
       let label: string;
-      if (spot !== null) {
+      const wearer = spot !== null ? (list.find((p) => p.session === eyesNow.current) ?? null) : null;
+      const worn = wearer?.session ?? null;
+      if (wearer !== null) {
+        const s = sample(wearer);
+        target = eyeCamera(wearer.floor, s.p, s.yaw, s.pitch);
+        room = wearer.room;
+        label = eyesTag(wearer.name);
+      } else if (spot !== null) {
         target = spotCamera(house, spot);
         room = spot.room;
         label = `WINDOW · ${(roomById(house, spot.room)?.label ?? spot.name).toUpperCase()}`;
@@ -196,7 +211,9 @@ export function RaycastView({ store, spotId, size }: { store: WorldStore; spotId
           label = "THE SPAWN";
         }
       }
-      cam = spot !== null ? target : smoothCamera(cam, target, dt);
+      if (worn !== wornBefore) cam = null; // a cut, as in the world view
+      wornBefore = worn;
+      cam = spot !== null && worn === null ? target : smoothCamera(cam, target, dt, worn !== null ? EYES_SMOOTH : undefined);
       if (label !== shownWhere) setWhere((shownWhere = label));
 
       // The scene, at the internal resolution.
@@ -248,7 +265,7 @@ export function RaycastView({ store, spotId, size }: { store: WorldStore; spotId
         return pr.depth < (zbuf[Math.max(0, Math.min(iw - 1, Math.round(pr.x)))] ?? Infinity);
       };
       for (const p of list) {
-        if (p.floor !== cam.floor) continue;
+        if (p.floor !== cam.floor || p.session === worn) continue;
         const s = sample(p);
         const base = s.p[1];
         const body = projectSprite(cam, iw, ih, s.p[0], s.p[2], base, base + BODY_TOP, BODY_W);

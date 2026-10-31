@@ -135,6 +135,8 @@ Virus"; the screen keeps the written word.
   only while a reinstallation player is in its room in the game: its world
   view (`auto` and `world` alike), the picture the players see from its
   camera, and its voice link. The mirror and the shadow show anyone, anywhere; the tent never.
+  Wave 54: while linked it looks through the eyes of the program in the
+  room, and goes back to its usual picture when one is close or in its view.
 - **The voice link.** A placed terminal sends its room to the
   reinstallation players in the same room and plays them out of its
   speaker; nothing leaves the room unless a player is in it, and the

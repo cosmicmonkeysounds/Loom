@@ -8,6 +8,9 @@
 //!           room, the way the games' virtual terminals show the real room
 //!           through the tablet's camera. It never follows, never orbits,
 //!           and a find doesn't move it (the celebration is the overlay's);
+//!   eyes    wave 54: a placed terminal looking through a program's eyes
+//!           (`eyes.ts` decides when; `DirectorInput.eyes` names them): at
+//!           their eye, along their yaw / pitch, their own ghost hidden;
 //!   follow  an unplaced terminal rides over the shoulder of the most
 //!           recently active player (a player who just found the duck wins;
 //!           a followed player is held a few seconds, and only dropped for
@@ -69,6 +72,11 @@ const CEILING_MARGIN = 0.15;
 const ORBIT_SPEED = 0.1;
 /** Smoothing rate (1/s) of the follow camera. */
 const SMOOTH = 3.5;
+/** The games' eye (metres above the feet) and vertical fov. */
+export const EYE_HEIGHT = 1.6;
+export const EYES_FOV = 70;
+/** Smoothing rate (1/s) through someone's eyes: takes the jitter off a headset, not the turn. */
+export const EYES_SMOOTH = 10;
 
 export interface CameraPose {
   pos: Vec3;
@@ -80,6 +88,7 @@ export interface CameraPose {
 
 export type Shot =
   | { kind: "mount"; spot: string; room: string; subject: string | null }
+  | { kind: "eyes"; spot: string; room: string; subject: string }
   | { kind: "follow"; subject: string; room: string | null }
   | { kind: "orbit"; room: string | null };
 
@@ -105,6 +114,8 @@ export interface DirectorInput {
   /** This terminal's place (placed = always the mount shot; null = unplaced: follow / orbit). */
   spot: TerminalSpot | null;
   players: readonly DirectorPlayer[];
+  /** The session a placed terminal looks through (`eyes.ts`), else its window. */
+  eyes?: string | null;
   now: number;
   dt: number;
 }
@@ -120,7 +131,7 @@ export interface Director {
 
 /** Two shots with the same key are the same shot (no cut between them). */
 export function shotKey(s: Shot): string {
-  return s.kind === "mount" ? `mount:${s.spot}` : s.kind === "follow" ? `follow:${s.subject}` : `orbit:${s.room ?? ""}`;
+  return s.kind === "mount" ? `mount:${s.spot}` : s.kind === "eyes" ? `eyes:${s.spot}:${s.subject}` : s.kind === "follow" ? `follow:${s.subject}` : `orbit:${s.room ?? ""}`;
 }
 
 /** Freshest first; ties by name, then session (deterministic). */
@@ -132,7 +143,8 @@ function freshestFirst(players: readonly DirectorPlayer[]): DirectorPlayer[] {
 export function chooseShot(input: DirectorInput, prev: Director | null): Shot {
   const { spot, players, now } = input;
   if (spot !== null) {
-    // A placed terminal is a fixed window: always mounted. The subject (for
+    if (players.some((p) => p.session === input.eyes)) return { kind: "eyes", spot: spot.id, room: spot.room, subject: input.eyes! };
+    // A placed terminal is otherwise a fixed window: mounted. The subject (for
     // the overlays) is whoever is in its room, the one already named first.
     const inRoom = freshestFirst(players.filter((p) => p.room === spot.room));
     const keep = prev?.shot.kind === "mount" ? prev.shot.subject : null;
@@ -157,6 +169,12 @@ export function chooseShot(input: DirectorInput, prev: Director | null): Shot {
 
 const add = (a: Vec3, b: Vec3, k = 1): Vec3 => [a[0] + b[0] * k, a[1] + b[1] * k, a[2] + b[2] * k];
 const lerp = (a: Vec3, b: Vec3, f: number): Vec3 => [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f];
+
+/** Out of a program's own eyes: the games' eye, along where they look, under the ceiling. */
+export function eyesCamera(house: HouseMap, player: Pick<DirectorPlayer, "p" | "yaw" | "pitch" | "room">): CameraPose {
+  const pos = underCeiling(house, player.room, add(player.p, [0, EYE_HEIGHT, 0]));
+  return { pos, look: add(pos, forward(player.yaw, player.pitch), 4), fov: EYES_FOV };
+}
 
 /** The terminal itself as a camera: at the screen, a hair into the room, along its yaw/pitch, its own (vertical) fov when set. */
 export function mountCamera(spot: TerminalSpot): CameraPose {
@@ -312,6 +330,10 @@ export function orbitCamera(house: HouseMap, walls: readonly WallSegment[], room
 /** Where the camera wants to be for a shot. */
 export function framing(input: DirectorInput, shot: Shot): CameraPose {
   if (shot.kind === "mount" && input.spot !== null) return windowPose(input.house, input.spot);
+  if (shot.kind === "eyes") {
+    const p = input.players.find((x) => x.session === shot.subject);
+    if (p) return eyesCamera(input.house, p);
+  }
   if (shot.kind === "follow") {
     const p = input.players.find((x) => x.session === shot.subject);
     if (p) return followCamera(input.house, input.walls, p);
@@ -326,8 +348,8 @@ export function direct(input: DirectorInput, prev: Director | null): Director {
   const inRoom = input.spot !== null && input.players.some((p) => p.room === input.spot!.room);
   const lastInRoom = inRoom ? input.now : (prev?.lastInRoom ?? null);
   if (prev === null || shotKey(prev.shot) !== shotKey(shot)) return { shot, cutAt: input.now, lastInRoom, cam: target };
-  if (shot.kind !== "follow") return { shot, cutAt: prev.cutAt, lastInRoom, cam: target };
-  const k = 1 - Math.exp(-Math.max(0, input.dt) * SMOOTH);
+  if (shot.kind !== "follow" && shot.kind !== "eyes") return { shot, cutAt: prev.cutAt, lastInRoom, cam: target };
+  const k = 1 - Math.exp(-Math.max(0, input.dt) * (shot.kind === "eyes" ? EYES_SMOOTH : SMOOTH));
   return {
     shot,
     cutAt: prev.cutAt,
@@ -339,7 +361,7 @@ export function direct(input: DirectorInput, prev: Director | null): Director {
 /** The floor a shot is on (the mini-map shows it). */
 export function shotFloor(house: HouseMap, shot: Shot, players: readonly Pick<DirectorPlayer, "session" | "floor">[]): string {
   const roomFloor = (id: string | null) => (id !== null ? roomById(house, id)?.floor : undefined);
-  if (shot.kind === "follow") {
+  if (shot.kind === "follow" || shot.kind === "eyes") {
     const p = players.find((x) => x.session === shot.subject);
     if (p) return p.floor;
   }

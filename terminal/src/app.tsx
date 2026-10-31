@@ -100,6 +100,7 @@ import { revealOffsets, splitSentences } from "./speech/split.ts";
 import { mayReload, retryable } from "./retry.ts";
 import { fetchHouse, useSpatialStream, useWorld, type Gone, type WorldStore } from "./world/stream.ts";
 import { fullScreenSim, hasWebGL2 } from "./webgl.ts";
+import { useEyes } from "./world/eyes.ts";
 import { linkedNow, linkedPane, usePresenceLatch } from "./world/presence.ts";
 import { screenWake } from "./kiosk.ts";
 import { kioskFullscreen } from "./fullscreen.ts";
@@ -710,6 +711,11 @@ class WorldBoundary extends Component<{ fallback: ReactNode; onError: () => void
  * chunk names, when the page is reachable and it hasn't just done so.
  */
 function WorldSlot({ store, spotId, size, recover, raycast = false }: { store: WorldStore; spotId: string; size: "pane" | "full"; recover: "retry" | "reload"; raycast?: boolean }) {
+  const eyes = useEyes(store, spotId);
+  return <WorldPicture store={store} spotId={spotId} size={size} recover={recover} raycast={raycast} eyes={eyes} />;
+}
+
+function WorldPicture({ store, spotId, size, recover, raycast = false, eyes }: { store: WorldStore; spotId: string; size: "pane" | "full"; recover: "retry" | "reload"; raycast?: boolean; eyes: string | null }) {
   const [attempt, setAttempt] = useState(0);
   const [broken, setBroken] = useState(false);
   // A fresh `lazy` per attempt: React caches each one's settled payload.
@@ -747,7 +753,7 @@ function WorldSlot({ store, spotId, size, recover, raycast = false }: { store: W
   return (
     <WorldBoundary key={attempt} fallback={full ? <div className="world-note blink">SIMULATION UNAVAILABLE — RETRYING…</div> : null} onError={() => setBroken(true)}>
       <Suspense fallback={full ? <div className="world-note blink">LOADING THE SIMULATION…</div> : null}>
-        <View store={store} spotId={spotId} size={size} />
+        <View store={store} spotId={spotId} size={size} eyes={eyes} />
       </Suspense>
     </WorldBoundary>
   );
@@ -758,13 +764,16 @@ function WorldSlot({ store, spotId, size, recover, raycast = false }: { store: W
 /**
  * The shadow view (wave 14) — the camera with the players as ghosts in it —
  * falling back to the world view for good when it can't run here (no
- * camera, no spot on the map, no WebGL, or its chunk failed).
+ * camera, no spot on the map, no WebGL, or its chunk failed). Wave 54: the
+ * shadow is this terminal's mirror, so it gives way to the world view while
+ * `useEyes` is looking through a program in the room.
  */
 function ShadowSlot({ store, spotId, facing, size, recover }: { store: WorldStore; spotId: string; facing: Facing; size: "pane" | "full"; recover: "retry" | "reload" }) {
   const [off, setOff] = useState(spotId.trim() === "");
   const View = useMemo(() => lazy(loadShadow), []);
-  const world = <WorldSlot store={store} spotId={spotId} size={size} recover={recover} />;
-  if (off) return world;
+  const eyes = useEyes(store, spotId);
+  const world = <WorldPicture store={store} spotId={spotId} size={size} recover={recover} eyes={eyes} />;
+  if (off || eyes !== null) return world;
   return (
     <WorldBoundary fallback={world} onError={() => setOff(true)}>
       <Suspense fallback={size === "full" ? <div className="world-note blink">OPENING THE SHADOW…</div> : null}>

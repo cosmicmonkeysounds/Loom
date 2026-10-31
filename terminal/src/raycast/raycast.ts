@@ -23,6 +23,10 @@ export const CHASE_BACK = 2.4;
 export const CHASE_HEIGHT = 1.95;
 export const CHASE_PITCH = -12;
 export const FOLLOW_FOV = 65;
+/** Out of a program's eyes, the world view's (`director.ts` `EYE_HEIGHT`, `EYES_FOV`, `EYES_SMOOTH`). */
+export const EYE_HEIGHT = 1.6;
+export const EYES_FOV = 70;
+export const EYES_SMOOTH = 10;
 /** Rays start this far out (metres): a wall the camera hangs on is never drawn. */
 export const NEAR = 0.05;
 /** Pulled in this far short of a wall the chase camera would sit behind (metres). */
@@ -71,6 +75,11 @@ export function chaseCamera(walls: readonly WallSegment[], floor: string, p: Vec
   const hit = nearestHit(walls, floor, p[1] + 1.5, p[0], p[2], -fx, -fz, back + WALL_MARGIN);
   if (hit !== null) back = Math.max(MIN_PULL, hit - WALL_MARGIN);
   return { pos: [p[0] - fx * back, p[1] + CHASE_HEIGHT, p[2] - fz * back], yaw, pitch: CHASE_PITCH, fov: FOLLOW_FOV, floor };
+}
+
+/** Out of a program's own eyes (feet `p`), at the games' eye height and fov. */
+export function eyeCamera(floor: string, p: Vec3, yaw: number, pitch: number): RayCamera {
+  return { pos: [p[0], p[1] + EYE_HEIGHT, p[2]], yaw, pitch, fov: EYES_FOV, floor };
 }
 
 function wrap(a: number): number {

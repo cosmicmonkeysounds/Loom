@@ -84,6 +84,10 @@ presence rooms and `moment`), `spatial-cams.ts`, `spatial-voice.ts` and the
   link is off by default; the terminals hold their mic while playing
   sound, the games raise their gate (D5b) and hold it shut while they play
   a sound or line of their own (`holdFor` / `hold_for`).
+- **Through their eyes** (wave 54, `docs/loom-w54-contract.md`). A linked
+  terminal draws its room from the eyes of the program in it, from the pose
+  stream, so the pose's yaw and pitch are what a wall shows: keep both games
+  sending where the player looks. Neither game has code for it.
 - **The moments** (wave 26, C6). The void, Trabolta's heart and the virus
   disk each post `POST /api/spatial/moment`, after flushing a pose; answers
   are read by their `error` string, and any 404 but `no such prop` is an
