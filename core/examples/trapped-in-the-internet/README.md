@@ -10,9 +10,8 @@ by late-90s Web 1.0 aesthetics and existentialism.*
 > terminal spots on one page. This README is the show's reference: how the
 > story works and what every piece of hardware talks to.
 >
-> **State (2026-10-24):** the VPS runs `w18b-1021` (wave 18b Stage A, the
-> tent laptop, and wave 19). Master also holds wave 18b Stage B and waves
-> 20, 20b, 21 and 22, merged and not shipped. The user signed off the show
+> **State (2026-10-31):** the VPS runs `w56`. Wave 58, the Oct 30 story, is
+> built and not shipped (`SIGNOFF-w58.md`; this file describes it). The user signed off the show
 > text of waves 13–28 on 2026-10-27 (`SIGNOFF-w13.md` … `SIGNOFF-w28.md`,
 > `history/SIGNOFF-w18b.md`, `history/SIGNOFF-w20.md`); wave 29's lines
 > (`SIGNOFF-w29.md`) and wave 22's patch-bay lines are still DRAFT. The build history is in [`OCT31.md`](./OCT31.md)
@@ -718,7 +717,7 @@ Server Room. Never say the code on the radio.
 
 | Director fires | Performers do | What happens |
 |---|---|---|
-| **🌑 Final Truth Scavenger Hunt reveal** (`final_reveal`, or *auto* at midnight) | Clippy (CI 8): *"truth is always in binary"*; judges F1/F2 with ✅/😤 Q1–Q2 / 🤷 | Lights go dark. Set stage *last act*. **The server room stays live** (deliberate): a combo entered before 📄 truth.txt still ends the night. From 📄 on the verdict is in: the patch bay, the door and 🕊 only post a note to `# hosts`. |
+| **🌑 Final Truth Scavenger Hunt reveal** (`final_reveal`, or *auto* at midnight) | Clippy (CI 8): *"truth is always in binary"*; judges F1/F2 with ✅/😤 Q1–Q2 / 🤷 | Lights go dark. Set stage *last act*. **The server room stays live** (deliberate): a combo entered before 📄 truth.txt still ends the night. From 📄 on the verdict is in: the patch bay and the door only post a note to `# hosts`. |
 | **🍎 Bobbing for Truth** (`bobbing_for_truth`) | Clippy / Adobe Acrobat: **🍎 Brought up the Bag of Truth** / **🍎 Failed the bob** (marked for reinstallation) | Nothing moves until someone brings up the bag. Then come the Final Assessment and the bobber's truth.txt. |
 | **📄 Read truth.txt** (`read_truth_txt`; only once the bag is up) | the bobber reads it aloud (Adobe Acrobat has the printout; her booth says to wait for ⚖) | truth.txt goes up on every screen and **holds** there while it is read. Everyone gets every backstory; *The Final Facts* completes; the final round closes and its filings settle. Nothing else happens until ⚖. A second 📄 only tells `# hosts` to press ⚖. |
 | **⚖ truth.txt read → the verdict** (`the_verdict`; after 📄, when the bobber has finished) | — | **The Verdict** counts answered questions only (U14): Trabolta says the counts (*"{true} true. {lies} with a lie on record. {none} nobody answered."*; never an answer or a name), and the story publishes each question's truth (`do fact_truth H1` … `F2`, off `Kernel.t1`–`t8`; a pending lie counts). The **TV** flips the eight tiles and then shows, per question, **the key answer and the programs who lied** (wave 18b, O2, the user's answer: a filing at 100 that was wrong); the walls get the tiles and counts only. The story **holds the ending ≈ 34 s** (`Kernel.verdict_wait` / `verdict_end`, story time) while the pages play, then: no lie on record → **Song Ending**; any accepted lie → **Grok Prom**. A second ⚖ in the hold only tells `# hosts`. In **both** branches Trabolta DMs every program an answer card: *"Give me a pickup line that works on Sandy."* (judged by the server against `facts.json` → `answer answered`). Pressed before 📄 it only says so in `# hosts` (*"⚖ Not yet: 📄 Read truth.txt first."*). |

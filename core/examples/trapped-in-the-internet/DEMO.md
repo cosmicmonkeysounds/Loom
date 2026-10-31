@@ -9,7 +9,7 @@ night from the door to an ending and the awards, compressed: every timed
 stretch (Bingo's 20 min, the hunts, the hour, the Y2K hour) is skipped by
 firing its cue by hand. It runs on **https://app.mapsandducks.com** once
 the pending ship has landed (below); until then the VPS plays the older
-`w18b-1021` story, and some steps here won't match it.
+`w56` story, and some steps here won't match it.
 
 The cue order below is pinned by a test: `core/test/trapped-in-the-internet.test.ts`
 → *the WIP demo (DEMO.md)* drives it with three phones to both endings. If you
@@ -18,9 +18,8 @@ change the order here, change it there.
 ## Before you start (once)
 
 1. The VPS runs a current release (`scripts/ops/ship.sh <tag>`, the server
-   **before** the sync; as of 2026-10-24 it runs `w18b-1021`, and master's
-   waves 18b Stage B to 22 reach it only with the next ship and a
-   `sync-show`, see [`SHOWNIGHT.md`](./SHOWNIGHT.md) §1); featured programs join only
+   **before** the sync; as of 2026-10-31 it runs `w56`, and wave 58 reaches it
+   only with the next ship and a `sync-show`, see [`SHOWNIGHT.md`](./SHOWNIGHT.md) §1); featured programs join only
    with their invitations; the cue sheet refuses 📺 until all three 📋 are read and
    while the bottle is open), and the show's story is in your
    server project: `LOOM_SSH=loom-vps pnpm sync-show` (with

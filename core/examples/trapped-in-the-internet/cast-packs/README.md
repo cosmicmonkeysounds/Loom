@@ -38,9 +38,8 @@ addresses, codes, where things are kept).
 
 ## What the packs assume (master at wave 22, 2026-10-24)
 
-The packs are written to **master**, which holds every wave up to 22. The VPS
-still runs the release **`w18b-1021`**: waves 18b (Stage B), 19, 20, 20b, 21
-and 22 are merged but **not shipped**. The user signed off the show text of
+The packs are written to **wave 58's branch**. The VPS runs the release
+**`w56`**, so what the packs say about wave 58 is **not shipped** yet. The user signed off the show text of
 waves 13 through 28 on 2026-10-27, and the packs follow it. Wave 22's
 patch-bay lines (`// DRAFT w22` in the story) have no sheet of their own.
 Wave 32's talk scenes (`// DRAFT w32`, [`SIGNOFF-w32.md`](../SIGNOFF-w32.md))
