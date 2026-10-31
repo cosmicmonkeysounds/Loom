@@ -1,7 +1,9 @@
-//! The door cuts him off (wave 59), pure. On the heart terminal the door, opening
-//! or shutting, is the one thing that interrupts him: the line in progress stops
-//! mid-word and everything he owes is dropped, never said later. The player
-//! still can't: nothing but `DoorCut.step` leads to the cut.
+//! The door and the bay cut him off (wave 59), pure. On the heart terminal the door,
+//! opening or shutting, and the patch bay are what interrupt him: the line in
+//! progress stops mid-word and everything he owes is dropped, never said later.
+//! The player's keys, pad, voice and buttons change nothing (`Terminal` gives a
+//! heart terminal no skip). A plain terminal's DISCONNECT still ends the visit, and
+//! him with it; the CRT, the show's rig, has no such button.
 //!
 //! - **The door** is the terminal's own (`DoorCut`): the sensor the moment it
 //!   moves, no round trip; the story's `night.server_door` for a 🚪 press, or on
@@ -15,6 +17,14 @@
 //!   it can be for this door. And a line's `beat` (`wrongDoor`): one poll can
 //!   carry a nag and the reaction together, and a 🚪 press has no earlier moment
 //!   to compare with, so what he says about the door is judged against the door.
+//!   The first answer that has heard the door drops what comes ahead of his
+//!   reaction: written before the edge, it was only delivered with it.
+//! - **The bay** cuts at the moment of a post (`serial/patch-bridge.ts`, through
+//!   `door-status.ts` `bayCut`). A 🔌 💥 ❌ press has no post here, so it arrives on
+//!   a poll as the story's answer (`DoorCut.frame`): a line of `BAY_BEATS`, which
+//!   also stops what he's saying and goes ahead of what's in front of it, or, for
+//!   the endings, which play in The Desktop, `Night.phase` reaching `BAY_PHASES`. A
+//!   post's own answer does the same, and finds him already stopped.
 
 import { sensorUsable, type SensorState, type StoryDoor } from "../serial/door-bridge.ts";
 
@@ -27,6 +37,11 @@ export const DOOR_OPEN_BEATS: readonly string[] = ["The Heart", "Heart Nag", "He
 /** He thanks a shut door: never said with it open. */
 export const DOOR_SHUT_BEATS: readonly string[] = ["Heart Door Shut", "Heart Sealed"];
 
+/** The story's answers to the bay in this room. */
+export const BAY_BEATS: readonly string[] = ["Patch Rejected", "Server Room Alarm", "Patch Touched"];
+/** Where Combo A and Combo B leave `Night.phase`. Nothing else plays them. */
+export const BAY_PHASES: readonly string[] = ["finale_killed", "finale_shutdown"];
+
 const fold = (s: string): string => s.toLowerCase().replace(/[\s_-]+/gu, " ").trim();
 const among = (beat: string, beats: readonly string[]): boolean => beats.some((b) => fold(b) === fold(beat));
 
@@ -36,6 +51,11 @@ export function wrongDoor(beat: string | null | undefined, doorOpen: boolean | n
   return among(beat, doorOpen ? DOOR_SHUT_BEATS : DOOR_OPEN_BEATS);
 }
 
+/** A line of a poll's, as `frame` reads it. */
+interface FrameLine {
+  beat: string | null;
+}
+
 const storyOpen = (night: StoryDoor | null): boolean | null => (night === null || night.server_door === null ? null : night.server_door === "open");
 
 export class DoorCut {
@@ -43,6 +63,10 @@ export class DoorCut {
   private story: boolean | null = null;
   private live = false;
   private edgeAt = Number.NEGATIVE_INFINITY;
+  /** An edge no answer that has heard the door has come in since. */
+  private owed = false;
+  /** The last answer's `Night.phase` (undefined: no answer yet). */
+  private phase: string | null | undefined = undefined;
 
   /** Look at the door. True once per edge: cut him off now. */
   step(sensor: SensorState | null, night: StoryDoor | null, now: number): boolean {
@@ -64,6 +88,7 @@ export class DoorCut {
     this.door = next;
     if (handed || before === null || before === next) return false;
     this.edgeAt = now;
+    this.owed = true;
     return true;
   }
 
@@ -71,6 +96,25 @@ export class DoorCut {
   behind(night: StoryDoor | null, now: number): boolean {
     const story = storyOpen(night);
     return story !== null && this.door !== null && story !== this.door && now - this.edgeAt < DOOR_LATE_MS;
+  }
+
+  /** A poll's new lines: which he may still say, and whether the bay stops him
+   *  first. `doorOpen` null (not a heart terminal, or nobody knows): they all play. */
+  frame<T extends FrameLine>(lines: readonly T[], night: (StoryDoor & { phase?: string | null }) | null, doorOpen: boolean | null, now: number): { say: T[]; cut: boolean } {
+    if (doorOpen === null) return { say: [...lines], cut: false };
+    const phase = night?.phase ?? null;
+    const ended = this.phase !== undefined && !among(this.phase ?? "", BAY_PHASES) && among(phase ?? "", BAY_PHASES);
+    this.phase = phase;
+    if (this.behind(night, now)) return { say: [], cut: ended };
+    let say = lines.filter((l) => !wrongDoor(l.beat, doorOpen));
+    if (this.owed) {
+      this.owed = false;
+      const reaction = say.findIndex((l) => among(l.beat ?? "", doorOpen ? DOOR_OPEN_BEATS : DOOR_SHUT_BEATS));
+      if (reaction > 0) say = say.slice(reaction);
+    }
+    const answer = say.findIndex((l) => among(l.beat ?? "", BAY_BEATS));
+    if (answer > 0) say = say.slice(answer);
+    return { say, cut: ended || answer >= 0 };
   }
 }
 

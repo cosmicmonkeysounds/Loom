@@ -135,3 +135,15 @@ export function onDoorRescan(r: () => void): () => void {
   rescanners.add(r);
   return () => void rescanners.delete(r);
 }
+
+const cutters = new Set<() => void>();
+
+/** (wave 59) The bay stops him (a post that counts, or a touch): the terminal's voice hears it at once. */
+export function bayCut(): void {
+  for (const c of [...cutters]) c();
+}
+
+export function onBayCut(c: () => void): () => void {
+  cutters.add(c);
+  return () => void cutters.delete(c);
+}

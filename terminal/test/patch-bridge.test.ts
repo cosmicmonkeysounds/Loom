@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { PostOutcome } from "../src/serial/door-bridge.ts";
 import type { PatchLine } from "../src/serial/door-protocol.ts";
-import { PATCH_RETRY_MS, PATCH_STALE_MS, PatchBridge, pairsOf, patchQuery, patchReport, patchSummary } from "../src/serial/patch-bridge.ts";
+import { PATCH_RETRY_MS, PATCH_STALE_MS, PATCH_TOUCH_EVERY_MS, PatchBridge, pairsOf, patchQuery, patchReport, patchSummary } from "../src/serial/patch-bridge.ts";
 
 // Pair lists made up for the tests: none is a combination the story knows
 // (the bridge never knows them either).
@@ -20,12 +20,17 @@ function rig(answer: (combo: string) => PostOutcome = () => "ok") {
   let now = 1_000_000;
   const timers: Array<{ at: number; fn: () => void; off: boolean }> = [];
   const posts: string[] = [];
+  /** What reached the voice and the story, in order: `cut`, `touch`, `post`. */
+  const log: string[] = [];
   const bridge = new PatchBridge({
     now: () => now,
     post: async (combo) => {
       posts.push(combo);
+      log.push("post");
       return answer(combo);
     },
+    touch: () => log.push("touch"),
+    cut: () => log.push("cut"),
     later: (fn, ms) => {
       const t = { at: now + ms, fn, off: false };
       timers.push(t);
@@ -47,7 +52,7 @@ function rig(answer: (combo: string) => PostOutcome = () => "ok") {
     const count = src.filter((k) => k > 0).length;
     bridge.line({ t: "patch", seq: seq++, pairs, count, complete: count === 4, raw: src.map((k) => (k > 0 ? 400 * k : 2)), src, stable: true, ...extra });
   };
-  return { bridge, posts, advance, flush, line, now: () => now };
+  return { bridge, posts, log, advance, flush, line, now: () => now };
 }
 
 const LIVE = { server_door: "closed" as const, patch_override: false, step: 14, ended: false };
@@ -165,6 +170,8 @@ describe("the patch bay bridge (wave 22)", () => {
         posts.push(combo);
         return new Promise((res) => (release = res));
       },
+      touch: () => {},
+      cut: () => {},
       later: () => () => {},
     });
     const line = (pairs: string) => {
@@ -294,6 +301,8 @@ describe("the patch bay bridge (wave 22)", () => {
         posts.push(combo);
         return new Promise((res) => (release = res));
       },
+      touch: () => {},
+      cut: () => {},
       later: () => () => {},
     });
     const line = (pairs: string) => {
@@ -331,5 +340,261 @@ describe("the patch bay bridge (wave 22)", () => {
     expect(pairsOf([0, 0, 0, 0, 0, 0, 0])).toBe("");
     expect(pairsOf([2, 0, 2])).toBe("V2-D1,V2-D3");
     expect(patchSummary([3, 1, -1, 5, 0, 1, 0])).toEqual({ count: 4, between: 1, dup: true });
+  });
+});
+
+const AWAKE = { server_door: "closed" as const, patch_override: false, step: 6, ended: false, awake: true, alarm_on: false };
+const HOUR = { ...AWAKE, step: 14 };
+
+describe("he cuts off when a patch counts (wave 59)", () => {
+  it("at the moment of the post, ahead of it, not when the reply comes back", async () => {
+    let release: (o: PostOutcome) => void = () => {};
+    const log: string[] = [];
+    const bridge = new PatchBridge({
+      now: () => 0,
+      post: () => {
+        log.push("post");
+        return new Promise((res) => (release = res));
+      },
+      touch: () => log.push("touch"),
+      cut: () => log.push("cut"),
+      later: () => () => {},
+    });
+    const src = srcOf(FOUR);
+    bridge.screen(HOUR);
+    bridge.line({ t: "patch", seq: 0, pairs: "", count: 0, complete: false, raw: [], src: srcOf(""), stable: true });
+    bridge.line({ t: "patch", seq: 1, pairs: FOUR, count: 4, complete: true, raw: src, src, stable: true });
+    expect(log).toEqual(["cut", "post"]);
+    release("ok");
+  });
+
+  it("any set that counts, right or wrong: the bridge can't tell them apart", async () => {
+    const r = rig();
+    r.bridge.screen(LIVE);
+    r.line("");
+    r.line(FOUR);
+    await r.flush();
+    r.line("");
+    r.line(OTHER);
+    await r.flush();
+    expect(r.posts).toEqual([FOUR, OTHER]);
+    expect(r.log.filter((x) => x === "cut")).toHaveLength(2);
+  });
+
+  it("once, not again on a retry", async () => {
+    const r = rig(() => "network");
+    r.bridge.screen(LIVE);
+    r.line("");
+    r.line(FOUR);
+    await r.flush();
+    await r.advance(PATCH_RETRY_MS[0]!);
+    await r.advance(PATCH_RETRY_MS[1]!);
+    expect(r.posts).toEqual([FOUR, FOUR, FOUR]);
+    expect(r.log.filter((x) => x === "cut")).toHaveLength(1);
+  });
+
+  it("a set the gate holds back, or one already posted, posts nothing: no cut, with him asleep", async () => {
+    const r = rig();
+    r.bridge.screen({ ...LIVE, step: 13 }); // before the hour
+    r.line("");
+    r.line(FOUR);
+    await r.flush();
+    r.bridge.screen({ ...LIVE, patch_override: true }); // on the buttons
+    r.line("");
+    r.line(OTHER);
+    await r.flush();
+    r.bridge.screen(LIVE);
+    r.line("");
+    r.line(OTHER);
+    await r.flush();
+    r.line("");
+    r.line(OTHER); // the same set, re-plugged
+    await r.flush();
+    expect(r.posts).toEqual([OTHER]);
+    expect(r.log).toEqual(["cut", "post"]);
+  });
+});
+
+describe("he notices the bay (wave 59)", () => {
+  it("a cable in, a cable out, and a full patch before the hour: his line and a cut, and no set is posted", async () => {
+    const r = rig();
+    r.bridge.screen(AWAKE);
+    r.line("");
+    r.line("V1-D2");
+    expect(r.log).toEqual(["cut", "touch"]);
+    await r.advance(PATCH_TOUCH_EVERY_MS);
+    r.line("");
+    expect(r.log).toEqual(["cut", "touch", "cut", "touch"]);
+    await r.advance(PATCH_TOUCH_EVERY_MS);
+    r.line(FOUR);
+    await r.flush();
+    expect(r.log).toEqual(["cut", "touch", "cut", "touch", "cut", "touch"]);
+    expect(r.posts).toEqual([]);
+    expect(r.bridge.posted).toEqual([]);
+  });
+
+  it("what it noticed before the hour never counts as posted: the same cables count in it", async () => {
+    const r = rig();
+    r.bridge.screen(AWAKE);
+    r.line("");
+    r.line(FOUR);
+    await r.advance(PATCH_TOUCH_EVERY_MS);
+    r.bridge.screen(HOUR);
+    r.line("");
+    r.line(FOUR);
+    await r.flush();
+    expect(r.posts).toEqual([FOUR]);
+  });
+
+  it("at most once per throttle: four cables are one line, and inside it nothing happens at all", async () => {
+    const r = rig();
+    r.bridge.screen(AWAKE);
+    r.line("");
+    for (const pairs of ["V1-D2", "V1-D2,V3-D1", "V1-D2,V3-D1,V5-D4", FOUR]) {
+      r.line(pairs);
+      await r.advance(2000);
+    }
+    expect(r.log).toEqual(["cut", "touch"]);
+    await r.advance(PATCH_TOUCH_EVERY_MS - 8000 - 1);
+    r.line("V1-D2,V3-D1,V5-D4");
+    expect(r.log).toEqual(["cut", "touch"]);
+    await r.advance(1);
+    r.line("V1-D2,V3-D1");
+    expect(r.log).toEqual(["cut", "touch", "cut", "touch"]);
+  });
+
+  it("outlasts the story's own 20 s on its whole-second clock, so a line it would refuse costs no cut", () => {
+    expect(PATCH_TOUCH_EVERY_MS).toBeGreaterThanOrEqual(21_000);
+  });
+
+  it("a patch the hour posts gets the hour's answer, not this one as well, and starts the wait", async () => {
+    const r = rig();
+    r.bridge.screen(HOUR);
+    r.line("");
+    r.line(FOUR);
+    await r.flush();
+    expect(r.log).toEqual(["cut", "post"]);
+    r.line("V1-D2,V3-D1,V5-D4");
+    expect(r.log).toEqual(["cut", "post"]);
+    await r.advance(PATCH_TOUCH_EVERY_MS);
+    r.line("V1-D2,V3-D1");
+    expect(r.log).toEqual(["cut", "post", "cut", "touch"]);
+  });
+
+  it("the same four re-plugged in the hour aren't a second combination: he only notices", async () => {
+    const r = rig();
+    r.bridge.screen(HOUR);
+    r.line("");
+    r.line(FOUR);
+    await r.flush();
+    r.line("");
+    await r.advance(PATCH_TOUCH_EVERY_MS);
+    r.line(FOUR);
+    await r.flush();
+    expect(r.posts).toEqual([FOUR]);
+    expect(r.log).toEqual(["cut", "post", "cut", "touch"]);
+  });
+
+  it("on the 🔌 buttons a cable is still a cable: the story hears a touch and no set", async () => {
+    const r = rig();
+    r.bridge.screen({ ...HOUR, patch_override: true });
+    r.line("");
+    r.line(FOUR);
+    await r.flush();
+    expect(r.posts).toEqual([]);
+    expect(r.log).toEqual(["cut", "touch"]);
+  });
+
+  it("the connect's first reading never sets him off, and nor does a reconnect's", async () => {
+    const r = rig();
+    r.bridge.screen(AWAKE);
+    r.line(FOUR);
+    r.line(FOUR);
+    expect(r.log).toEqual([]);
+    r.bridge.disconnected();
+    r.line("V1-D2");
+    r.line("V1-D2");
+    expect(r.log).toEqual([]);
+    r.line("");
+    expect(r.log).toEqual(["cut", "touch"]);
+  });
+
+  it("the periodic line of a bay that hasn't changed is nothing", () => {
+    const r = rig();
+    r.bridge.screen(AWAKE);
+    r.line("V1-D2");
+    for (let i = 0; i < 5; i++) r.line("V1-D2");
+    expect(r.log).toEqual([]);
+  });
+
+  it("a cable between levels waits until it settles, and coming back where it was is no change", () => {
+    const r = rig();
+    r.bridge.screen(AWAKE);
+    r.line("V1-D2");
+    const src = srcOf("");
+    src[1] = -1;
+    r.line("", { src, count: 0 }); // half out: the settled pairs dropped it
+    expect(r.log).toEqual([]);
+    r.line("V1-D2");
+    expect(r.log).toEqual([]);
+    r.line("", { src, count: 0 });
+    r.line(""); // all the way out: now it's settled, and it moved
+    expect(r.log).toEqual(["cut", "touch"]);
+  });
+
+  it("a scan that isn't the settled bay, or a fault, moves nothing", () => {
+    const r = rig();
+    r.bridge.screen(AWAKE);
+    r.line("");
+    r.line("V1-D2", { stable: false });
+    expect(r.log).toEqual([]);
+    const dup = srcOf("V1-D2");
+    dup[2] = 1; // one source on two inputs
+    r.line("V1-D2,V1-D3", { src: dup, count: 2 });
+    expect(r.log).toEqual([]);
+    r.line("");
+    expect(r.log).toEqual([]);
+  });
+
+  it("before he's awake the bay is just a bay, and what moved then is no change once he is", () => {
+    const r = rig();
+    r.bridge.screen({ ...AWAKE, awake: false });
+    r.line("");
+    r.line("V1-D2");
+    expect(r.log).toEqual([]);
+    r.bridge.screen(AWAKE);
+    r.line("V1-D2");
+    expect(r.log).toEqual([]);
+  });
+
+  it("nobody saying he's awake isn't awake: an old screen state, or before Power On", () => {
+    const r = rig();
+    r.bridge.screen({ ...AWAKE, awake: null });
+    r.line("");
+    r.line("V1-D2");
+    r.bridge.screen({ ...AWAKE, server_door: null });
+    r.line("");
+    expect(r.log).toEqual([]);
+  });
+
+  it("not after an ending, and not under the alarm, which has him quiet in the story too", () => {
+    const r = rig();
+    r.bridge.screen({ ...AWAKE, ended: true });
+    r.line("");
+    r.line("V1-D2");
+    r.bridge.screen({ ...AWAKE, alarm_on: true });
+    r.line("");
+    expect(r.log).toEqual([]);
+  });
+
+  it("never lets a touch near what the combination's rules keep: a retry goes on, nothing counts", async () => {
+    const r = rig(() => "network");
+    r.bridge.screen(HOUR);
+    r.line("");
+    r.line(FOUR);
+    await r.flush();
+    await r.advance(PATCH_RETRY_MS[0]!);
+    expect(r.posts).toEqual([FOUR, FOUR]);
+    expect(r.bridge.posted).toEqual([FOUR, FOUR]);
   });
 });

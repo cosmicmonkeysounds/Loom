@@ -1,7 +1,8 @@
-// The door cuts him off (wave 59): what counts as an edge, what a late frame is,
-// and the cut itself, through the real LinePlayer, SpeechQueue and RoomSpeech
-// wired as `app.tsx` wires them. Real Chromium was checked on a scratch server,
-// and Chrome's macOS voice, muted. No M4, Steph's laptop or Windows voice has met it.
+// The door and the bay cut him off (wave 59): what counts as an edge, what a late
+// frame is, a press's answer, and the cut itself, through the real LinePlayer,
+// SpeechQueue and RoomSpeech wired as `app.tsx` wires them. `patch-bridge.test.ts`
+// has what a cable does. Real Chromium was checked on a scratch server, and Chrome's
+// macOS voice, muted. No M4, Steph's laptop or Windows voice has met it.
 
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -9,11 +10,11 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { Thread, Typed } from "../src/chat.tsx";
-import { DOOR_LATE_MS, DOOR_OPEN_BEATS, DOOR_SHUT_BEATS, DoorCut, stopsAt, wrongDoor } from "../src/heart/door-cut.ts";
+import { BAY_BEATS, BAY_PHASES, DOOR_LATE_MS, DOOR_OPEN_BEATS, DOOR_SHUT_BEATS, DoorCut, stopsAt, wrongDoor } from "../src/heart/door-cut.ts";
 import type { Line } from "../src/pilot.ts";
 import type { ScreenVoice } from "../src/screen.ts";
 import { DOOR_STALE_MS, doorOpenNow, type SensorState, type StoryDoor } from "../src/serial/door-bridge.ts";
-import { CANCEL_SETTLE_MS, DEFAULT_GAPS, SpeechQueue, VoiceFloor, type Prepared, type SpeechEngine } from "../src/speech/engine.ts";
+import { CANCEL_HOLD_MS, CANCEL_SETTLE_MS, DEFAULT_GAPS, SpeechQueue, VoiceFloor, type Prepared, type SpeechEngine } from "../src/speech/engine.ts";
 import { RoomSpeech } from "../src/speech/said.ts";
 import { revealOffsets, splitSentences } from "../src/speech/split.ts";
 import { LinePlayer, planVoice, type TvLine } from "../src/tv.ts";
@@ -177,12 +178,115 @@ describe("a late frame", () => {
 });
 
 const line = (seq: number, text: string, beat: string | null = "The Heart"): TvLine => ({ seq, from: "Trabolta", text, beat, mode: "speak" });
+
+describe("a poll's lines", () => {
+  const shutNow = () => {
+    const d = new DoorCut();
+    d.step(sensor(true, 1000), night("open"), 1000);
+    expect(d.step(sensor(false, 1100), night("open"), 1100)).toBe(true);
+    return d;
+  };
+  const texts = (r: { say: TvLine[] }) => r.say.map((l) => l.text);
+  const OTHER = line(9, "A director's line, written before the door moved.", "Heart Talk");
+  const GOOD = line(10, "Good.", "Heart Door Shut");
+
+  it("a late answer goes, whatever is in it", () => {
+    const d = shutNow();
+    expect(d.frame([line(7, "The door.", "Heart Nag"), OTHER], night("open"), false, 1200)).toEqual({ say: [], cut: false });
+  });
+
+  it("the first answer that has heard the door drops what's ahead of his reaction, written before the edge", () => {
+    expect(texts(shutNow().frame([OTHER, GOOD], night("closed"), false, 1200))).toEqual(["Good."]);
+    const opened = new DoorCut();
+    opened.step(sensor(false, 1000), night("closed"), 1000);
+    opened.step(sensor(true, 1100), night("closed"), 1100);
+    expect(texts(opened.frame([OTHER, line(10, "The door.", "Heart Door Again")], night("open"), true, 1200))).toEqual(["The door."]);
+  });
+
+  it("the same for a 🚪 press, whose answer brings the cut and the reaction together", () => {
+    const d = new DoorCut();
+    d.step(sensor(false, 1000), night("closed"), 1000);
+    expect(d.step(sensor(false, 1100), night("open", true), 1100)).toBe(true);
+    expect(texts(d.frame([OTHER, line(10, "So.", "The Heart")], night("open", true), true, 1100))).toEqual(["So."]);
+  });
+
+  it("only that first answer: what comes after his reaction plays, and so does a later line", () => {
+    const d = shutNow();
+    expect(texts(d.frame([GOOD, OTHER], night("closed"), false, 1200))).toEqual(["Good.", OTHER.text]);
+    expect(texts(d.frame([OTHER], night("closed"), false, 3200))).toEqual([OTHER.text]);
+  });
+
+  it("no reaction in it (his 20 s, a talk): nothing to go by, so it plays", () => {
+    const d = shutNow();
+    expect(texts(d.frame([OTHER], night("closed"), false, 1200))).toEqual([OTHER.text]);
+    expect(texts(d.frame([GOOD, OTHER], night("closed"), false, 3200))).toEqual(["Good.", OTHER.text]);
+  });
+
+  it("with no edge nothing is dropped, and a beat about the other door still is", () => {
+    const d = new DoorCut();
+    d.step(sensor(false, 1000), night("closed"), 1000);
+    expect(texts(d.frame([OTHER, GOOD], night("closed"), false, 1100))).toEqual([OTHER.text, "Good."]);
+    expect(texts(d.frame([line(11, "The door.", "Heart Nag"), OTHER], night("closed"), false, 1200))).toEqual([OTHER.text]);
+  });
+
+  it("a ❌ press: the story's answer stops him and goes ahead of what's in front of it", () => {
+    const d = new DoorCut();
+    d.step(sensor(false, 1000), night("closed"), 1000);
+    expect(d.frame([OTHER, line(10, "Stop touching me.", "Patch Rejected")], { ...night("closed"), phase: "y2k" }, false, 1100)).toEqual({ say: [line(10, "Stop touching me.", "Patch Rejected")], cut: true });
+    expect(d.frame([line(11, "Who is in my—", "Server Room Alarm")], { ...night("closed"), phase: "y2k" }, false, 1200).cut).toBe(true);
+    expect(d.frame([line(12, "Stop touching me.", "Patch Touched")], { ...night("closed"), phase: "y2k" }, false, 1300).cut).toBe(true);
+    expect(d.frame([OTHER], { ...night("closed"), phase: "y2k" }, false, 1400).cut).toBe(false);
+  });
+
+  it("a 🔌 or 💥 press: the endings play in The Desktop, so `Night.phase` is the mark, once", () => {
+    for (const phase of BAY_PHASES) {
+      const d = new DoorCut();
+      expect(d.frame([], { ...night("closed"), phase: "y2k" }, false, 1000).cut).toBe(false);
+      expect(d.frame([], { ...night("closed"), phase }, false, 1100).cut).toBe(true);
+      expect(d.frame([], { ...night("closed"), phase }, false, 1200).cut).toBe(false);
+    }
+  });
+
+  it("a page loaded after the ending, or a run started over and ended again: only a real arrival", () => {
+    const d = new DoorCut();
+    expect(d.frame([], { ...night("closed"), phase: "finale_killed" }, false, 1000).cut).toBe(false);
+    expect(d.frame([], { ...night("closed"), phase: "doors" }, false, 1100).cut).toBe(false);
+    expect(d.frame([], { ...night("closed"), phase: "finale_shutdown" }, false, 1200).cut).toBe(true);
+    expect(d.frame([], { ...night("closed"), phase: "finale_helped" }, false, 1300).cut).toBe(false);
+  });
+
+  it("every other terminal: no door, so nothing is judged, dropped or cut, even the bay's own lines", () => {
+    const d = new DoorCut();
+    const lines = [OTHER, line(10, "Stop touching me.", "Patch Rejected"), line(11, "The door.", "Heart Nag")];
+    expect(d.frame(lines, { ...night("closed"), phase: "y2k" }, null, 1000)).toEqual({ say: lines, cut: false });
+    expect(d.frame([], { ...night("closed"), phase: "finale_killed" }, null, 1100)).toEqual({ say: [], cut: false });
+  });
+
+  it("the beats and phases named here are the story's", () => {
+    const beats = read("../../core/examples/trapped-in-the-internet/beats/server-room.loom");
+    const rules = read("../../core/examples/trapped-in-the-internet/main.loom");
+    expect(BAY_BEATS.slice(0, 2)).toEqual(["Patch Rejected", "Server Room Alarm"]);
+    for (const b of BAY_BEATS.slice(0, 2)) expect(beats).toMatch(new RegExp(`^== ${b}$`, "mu"));
+    expect(rules).toContain("-> Patch Rejected");
+    // Lands with the story half (`when patch_touched:`, `core/test/trapped-w22-patchbay.test.ts`).
+    if (rules.includes("when patch_touched:")) expect(rules).toContain("-> Patch Touched");
+    const a = rules.slice(rules.indexOf("when trabolta_disabled:"), rules.indexOf("when computer_destroyed:"));
+    const b = rules.slice(rules.indexOf("when computer_destroyed:"));
+    expect(a).toContain(`set Night.phase = "${BAY_PHASES[0]}"`);
+    expect(b).toContain(`set Night.phase = "${BAY_PHASES[1]}"`);
+    // Nothing but the bay plays them: the phase is the press's mark, and his own talk's ending never trips it.
+    expect(rules.match(/fire trabolta_disabled|fire computer_destroyed/gu)).toHaveLength(2);
+    expect(rules.slice(rules.indexOf("when bay_combo_a:"), rules.indexOf("when patch_after_verdict:")).match(/fire trabolta_disabled|fire computer_destroyed/gu)).toHaveLength(2);
+    expect(beats.slice(beats.indexOf("== Patch Rejected"))).toContain("-> Server Room Alarm");
+  });
+});
+
 const flush = async () => {
   for (let i = 0; i < 8; i++) await new Promise((r) => setTimeout(r, 0));
 };
 /** Past the settle after a stop. */
 const settle = async () => {
-  await new Promise((r) => setTimeout(r, CANCEL_SETTLE_MS + 5));
+  await new Promise((r) => setTimeout(r, CANCEL_HOLD_MS + CANCEL_SETTLE_MS + 5));
   await flush();
 };
 
@@ -322,18 +426,21 @@ describe("the cut", () => {
     expect(q.busy).toBe(false);
   });
 
-  it("nothing a player does stops him: only the door's step leads to a cut", () => {
+  it("nothing a player does stops him: the door, the bay and a poll's answer are what lead to a cut", () => {
     const app = read("../src/app.tsx");
+    expect(app.match(/\bcutHim\(\)/gu)).toHaveLength(2);
     expect(app.match(/doorCut\.current\.step\(/gu)).toHaveLength(1);
-    const heart = app.slice(app.indexOf("const doorCut = useRef"), app.indexOf("// Every poll: the room's new lines"));
-    expect(heart).toContain("roomPlayer.stop();");
-    expect(heart).toContain("doorOpen === null");
-    // Where a press can reach the voice, it's the plain terminal's own skip of his DM
-    // lines, which never reaches the room's voice, and the CRT passes it nothing.
+    expect(app).toContain("if (doorOpen !== null && doorCut.current.step(sensor, night, Date.now())) cutHim();");
+    expect(app).toContain("if (heard.cut) cutHim();");
+    expect(app).toContain("useEffect(() => onBayCut(cutHim), [cutHim]);");
+    // A heart terminal skips nothing: the panel's click, Space and A have no `onSkip`,
+    // SPEAK TO HIM no `skipVoice`, and it waits for him as the CRT's does. Off the
+    // heart, the plain terminal keeps the skip of his DM lines.
     expect(app).toContain("if (roomBusy) return;");
     expect(app).toContain('onListen={() => {}} onSay={sayBack} busy={voiceBusy}');
+    expect(app).toContain("onListen={heartTerminal ? () => {} : skipVoice} onSay={sayBack} busy={heartTerminal && voiceBusy}");
     const skips = app.match(/onSkip=\{[^}]*\}/gu) ?? [];
-    expect(skips).toEqual(["onSkip={roomBusy ? undefined : skipVoice}"]);
+    expect(skips).toEqual(["onSkip={roomBusy || heartTerminal ? undefined : skipVoice}"]);
   });
 });
 

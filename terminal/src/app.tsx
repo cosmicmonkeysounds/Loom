@@ -66,8 +66,8 @@
 //! wants it shut (`heart/DoorOverlay.tsx`). The composer shows when there is
 //! a keyboard (`keys`), except while a tree menu (not the heart to heart's
 //! ⟦BACK⟧) is docked. Thrown out of his heart, the line ends when the scene
-//! has played. The door moving, either way, cuts off what he is saying
-//! (`heart/door-cut.ts`, wave 59): nothing else interrupts him.
+//! has played. The door moving, either way, and the patch bay cut off what he is
+//! saying (`heart/door-cut.ts`, wave 59): nothing the player does interrupts him.
 
 import { Component, Fragment, Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState, type ComponentType, type MutableRefObject, type ReactNode } from "react";
 import { Composer, TYPE_CPS, Thread, Typed } from "./chat.tsx";
@@ -123,7 +123,7 @@ import { serverNow } from "./cutscene/clock.ts";
 import { onSceneFace } from "./cutscene/face-bus.ts";
 import { setSceneAccess } from "./cutscene/access-bus.ts";
 import { useDoorLink } from "./serial/use-door.ts";
-import { useDoorStatus } from "./serial/door-status.ts";
+import { onBayCut, useDoorStatus } from "./serial/door-status.ts";
 import { doorOpenNow } from "./serial/door-bridge.ts";
 import { ChoicePanel } from "./heart/ChoicePanel.tsx";
 import { DoorCut, stopsAt, wrongDoor } from "./heart/door-cut.ts";
@@ -1091,16 +1091,10 @@ function Terminal({
     },
     [roomPlayer],
   );
-  // The door moved (wave 59): what he is saying stops where it is and every line
-  // he owes is dropped, for good (the cursor is already past them). This effect
-  // comes before the poll's: a 🚪 press's own answer brings what the story says
-  // for the new door, and that isn't to be cut. His voice in the house isn't
-  // touched: this is one page's queue. `doorOpen` is null on every other terminal.
-  const doorCut = useRef(new DoorCut());
-  const sensor = useDoorStatus().sensor;
-  const night = state?.night ?? null;
-  useEffect(() => {
-    if (doorOpen === null || !doorCut.current.step(sensor, night, Date.now())) return;
+  // The door moved, or the bay stopped him (wave 59): what he is saying stops
+  // where it is and every line he owes is dropped, for good (the cursor is already
+  // past them). His voice in the house isn't touched: this is one page's queue.
+  const cutHim = useCallback(() => {
     const on = onSentence.current;
     const stops = stopsAt(offsets.current, on);
     const shown = roomShown.current;
@@ -1111,7 +1105,17 @@ function Terminal({
     chunkText.current.clear();
     setRevealed(new Map());
     roomPlayer.stop(); // stops the queue too, and releases a room line's waiter
-  }, [doorOpen, sensor, night, roomPlayer]);
+  }, [roomPlayer]);
+  // This effect comes before the poll's: a 🚪 press's own answer brings what the
+  // story says for the new door, and that isn't to be cut. `doorOpen` is null on
+  // every other terminal.
+  const doorCut = useRef(new DoorCut());
+  const sensor = useDoorStatus().sensor;
+  const night = state?.night ?? null;
+  useEffect(() => {
+    if (doorOpen !== null && doorCut.current.step(sensor, night, Date.now())) cutHim();
+  }, [doorOpen, sensor, night, cutHim]);
+  useEffect(() => onBayCut(cutHim), [cutHim]);
   // Every poll: the room's new lines → the player (the cursor moves first).
   // Never muted — the TV's mute is the TV's.
   const lastAnswer = useRef<number | null>(null);
@@ -1122,9 +1126,11 @@ function Terminal({
     lastAnswer.current = state.receivedAt;
     const plan = planVoice(voice, from, { character: config.character, muted: false, attract: asleep });
     voiceCursor.current = plan.cursor;
-    // What the door has overtaken is never said (`heart/door-cut.ts`).
-    roomPlayer.push(doorCut.current.behind(state.night, Date.now()) ? [] : plan.lines.filter((l) => !wrongDoor(l.beat, doorNow.current)));
-  }, [room, state, asleep, config.character, voiceCursor, roomPlayer]);
+    // What the door or the bay has overtaken is never said (`heart/door-cut.ts`).
+    const heard = doorCut.current.frame(plan.lines, state.night, doorNow.current, Date.now());
+    if (heard.cut) cutHim();
+    roomPlayer.push(heard.say);
+  }, [room, state, asleep, config.character, voiceCursor, roomPlayer, cutHim]);
   // A room terminal going back to sleep (a restart, the room closed) stops
   // the room voice. Only a room terminal: a house terminal's open line keeps
   // its reply going when the character falls asleep mid-sentence.
@@ -1602,7 +1608,7 @@ function Terminal({
               )}
               <Thread lines={withPendingPicks(thread.lines, pendingPicks, pilot.name, session.lines)} revealed={revealed} cutOff={cutOff} typing={session.typing} wait={session.wait} character={config.character} guestName={pilot.name} earlier={thread.earlier} empty={emptyThreadText({ character: config.character, keys: config.keys, heart: heartTerminal, stage: state?.night?.heart_stage ?? null, waited: now - pilotSince.current })} />
               {panelPlace(menu, showComposer) === "main" && menu !== null && (
-                <ChoicePanel menu={menu} doorOpen={doorOpen} numberKeys={true} onActivity={touch} onPick={(i) => choose(menu, i)} voiceBusy={voiceBusy} sceneEndsAt={sceneEndsAt} onSkip={roomBusy ? undefined : skipVoice} pad={config.pad} />
+                <ChoicePanel menu={menu} doorOpen={doorOpen} numberKeys={true} onActivity={touch} onPick={(i) => choose(menu, i)} voiceBusy={voiceBusy} sceneEndsAt={sceneEndsAt} onSkip={roomBusy || heartTerminal ? undefined : skipVoice} pad={config.pad} />
               )}
               {showComposer && !config.whisper && (
                 <Composer
@@ -1618,7 +1624,7 @@ function Terminal({
               {showComposer && config.whisper && (
                 <WorldBoundary fallback={null} onError={() => {}}>
                   <Suspense fallback={null}>
-                    <VoiceComposer onSend={(t) => session.say(t)} disabled={!session.ready} onInput={touch} onListen={skipVoice} onSay={sayBack} />
+                    <VoiceComposer onSend={(t) => session.say(t)} disabled={!session.ready} onInput={touch} onListen={heartTerminal ? () => {} : skipVoice} onSay={sayBack} busy={heartTerminal && voiceBusy} />
                   </Suspense>
                 </WorldBoundary>
               )}

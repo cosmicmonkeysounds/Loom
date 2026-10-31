@@ -15,7 +15,9 @@
 //! The same board reads the patch bay (wave 22): its `patch` lines go through
 //! the pure `PatchBridge` (a new complete set of four cables → `patch_changed
 //! {combo}`), when the board says it has a bay (`pbd > 0`) and the config's
-//! `bay` is on (`&bay=0` turns it off). `door=sim` fakes cables too, with
+//! `bay` is on (`&bay=0` turns it off); since wave 59 any other settled change
+//! posts `patch_touched`, no args, and either stops him (`door-status.ts`
+//! `bayCut`). `door=sim` fakes cables too, with
 //! Shift held (a bare digit answers the heart's menu): Shift+1–4 picks a
 //! source, then Shift+1–4 the input it goes into (Shift+0 pulls that
 //! source's cable); Shift+0 on its own pulls them all.
@@ -23,8 +25,8 @@
 import { baseOf, type TerminalConfig } from "../config.ts";
 import { DoorBridge, type DoorSignal, type PostOutcome, type StoryDoor } from "./door-bridge.ts";
 import { DOOR_SETTINGS_KEY, LineSplitter, PAIRS_RE, formatCommand, parseDoorLine, parseDoorSettings, settingsCommands, settingsFit, type BayCommand, type CalLine, type DoorCommand, type DoorLine, type ErrLine, type HelloLine, type PbcalLine } from "./door-protocol.ts";
-import { PATCH_SIGNAL, PatchBridge, pairsOf, patchSummary, type StoryPatch } from "./patch-bridge.ts";
-import { DOOR_OFF, doorStatus, onDoorRescan, patchDoorStatus, setDoorActions, setDoorStatus } from "./door-status.ts";
+import { PATCH_SIGNAL, PATCH_TOUCHED_SIGNAL, PatchBridge, pairsOf, patchSummary, type StoryPatch } from "./patch-bridge.ts";
+import { DOOR_OFF, bayCut, doorStatus, onDoorRescan, patchDoorStatus, setDoorActions, setDoorStatus } from "./door-status.ts";
 
 /** Adafruit's USB vendor id (the Grand Central M4). */
 export const ADAFRUIT_VID = 0x239a;
@@ -108,6 +110,11 @@ export function patchSignalRequest(config: SignalConfig, combo: string): { url: 
   return signalRequest(config, PATCH_SIGNAL, { combo });
 }
 
+/** The `/api/mod/signal` request for a touch: `patch_touched`, no args, so no pairs. */
+export function patchTouchedRequest(config: SignalConfig): { url: string; init: RequestInit } {
+  return signalRequest(config, PATCH_TOUCHED_SIGNAL, {});
+}
+
 async function postSignal(req: { url: string; init: RequestInit }, fetchFn: typeof fetch): Promise<PostOutcome> {
   try {
     const res = await fetchFn(req.url, req.init);
@@ -123,6 +130,10 @@ export function postDoorSignal(config: SignalConfig, signal: DoorSignal, level: 
 
 export function postPatchSignal(config: SignalConfig, combo: string, fetchFn: typeof fetch = fetch): Promise<PostOutcome> {
   return postSignal(patchSignalRequest(config, combo), fetchFn);
+}
+
+export function postPatchTouched(config: SignalConfig, fetchFn: typeof fetch = fetch): Promise<PostOutcome> {
+  return postSignal(patchTouchedRequest(config), fetchFn);
 }
 
 // --- the sources -----------------------------------------------------------------------
@@ -392,6 +403,8 @@ export function startDoorLink(config: TerminalConfig, o: { fetchFn?: typeof fetc
       patchDoorStatus({ patchPosts: doorStatus().patchPosts + 1 });
       return postPatchSignal(config, combo, o.fetchFn ?? fetch);
     },
+    touch: () => void postPatchTouched(config, o.fetchFn ?? fetch),
+    cut: bayCut,
     later: (fn, ms) => {
       const t = setTimeout(fn, ms);
       return () => clearTimeout(t);
@@ -518,7 +531,7 @@ export function startDoorLink(config: TerminalConfig, o: { fetchFn?: typeof fetc
   return {
     screen: (night) => {
       bridge.screen(night);
-      patch.screen({ server_door: night.server_door, patch_override: night.patch_override ?? null, step: night.step ?? null, ended: night.ended ?? null });
+      patch.screen({ server_door: night.server_door, patch_override: night.patch_override ?? null, step: night.step ?? null, ended: night.ended ?? null, awake: night.awake ?? null, alarm_on: night.alarm_on ?? null });
     },
     stop: () => {
       bridge.stop();
