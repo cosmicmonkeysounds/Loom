@@ -504,7 +504,7 @@ Contract `docs/loom-w55-contract.md`. Copy is `DRAFT w55`.
   `loom.aloud.<token>`, per sign-in. While a line of theirs lies past it the
   slot covers the app; only ✓ Done moves it. A new phone counts from
   `ALOUD_WINDOW_MS` ago (`markFloor`) and keeps that place, so an unread line
-  never ages away. A mark past the script is an earlier run's. ✕, Escape and
+  never ages away. A mark past every message is an earlier run's. ✕, Escape and
   Back (`guestBackStep`, `boothBackStep`: first, above every layer) only close
   the teleprompter onto the pop-up. A booth mounts `PopOutQuiet` while covered.
   The guest mounts it beside `Takeover`, so every branch has it (the stage, the

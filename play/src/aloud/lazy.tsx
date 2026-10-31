@@ -5,6 +5,7 @@
 // same script as a plain list: a reader is never left with nothing.
 
 import { Suspense, useEffect, useMemo, useState } from "react";
+import { maxSeqOf } from "../alerts.ts";
 import type { StartItem } from "../chrome/start-menu.tsx";
 import type { SessionStorage } from "../host.ts";
 import { ChunkBoundary, retryableLazy } from "../lazy-chunk.tsx";
@@ -40,9 +41,10 @@ export function useAloud(o: { messages: ReadonlyMap<number, ChatMessage>; me: st
   const last = lastSeq(script);
   const known = script.length > 0 && o.clock !== undefined;
   // A new phone starts from now, and keeps that place: a mark that moved
-  // with the clock would let an unread line age away. One past the script
-  // belongs to a run the story has since restarted.
-  const mark = stored === null ? (known ? markFloor(script, o.clock!) : 0) : stored > last ? 0 : stored;
+  // with the clock would let an unread line age away. One past every message
+  // belongs to a run the story has since restarted (past the script alone
+  // is a director hiding a line, which must not raise the whole night).
+  const mark = stored === null ? (known ? markFloor(script, o.clock!) : 0) : stored > maxSeqOf(messages.values()) ? 0 : stored;
   const keep = (next: number) => {
     storage.save(key, next);
     setSaved({ key, mark: next });

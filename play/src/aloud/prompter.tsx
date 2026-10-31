@@ -288,6 +288,9 @@ export function Prompter({ a, storage, sound }: PrompterProps) {
           onTouchCancel={letGo}
           onPointerDown={hold}
           onPointerUp={letGo}
+          onPointerLeave={(e) => {
+            if (e.pointerType === "mouse") letGo();
+          }}
           onWheel={() => {
             hold();
             letGo();

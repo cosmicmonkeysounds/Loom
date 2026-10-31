@@ -153,10 +153,16 @@ describe("useAloud: it cannot go away", () => {
     h.rerender({ me: CLIPPY, token: "t1", clock: ALOUD_WINDOW_MS * 5, messages: new Map(OPENING.map((m) => [m.seq, m])), storage });
     expect((h.output as Aloud).unread).toBe(2);
   });
-  it("a mark past the script belongs to an earlier run of the story", () => {
+  it("a mark past every message belongs to an earlier run of the story", () => {
     const storage = memory({ "loom.aloud.t1": 900 });
     const h = hook({ messages: new Map(OPENING.map((m) => [m.seq, m])), storage });
     expect((h.output as Aloud).unread).toBe(2);
+  });
+  it("a director hiding the reader's last line raises nothing", () => {
+    const storage = memory({ "loom.aloud.t1": 13 });
+    const hidden = OPENING.map((m) => (m.seq === 13 ? { ...m, hidden: true } : m));
+    const h = hook({ messages: new Map(hidden.map((m) => [m.seq, m])), storage });
+    expect((h.output as Aloud).unread).toBe(0);
   });
   it("nobody with no script is covered", () => {
     const h = hook({ messages: new Map(), storage: memory(), me: "g-2" });
@@ -201,7 +207,7 @@ describe("AloudSlot", () => {
     expect(src("booth/app.tsx")).toContain('<AloudSlot a={aloud}');
     expect(src("aloud/lazy.tsx")).toContain('import("./prompter.tsx")');
     expect(src("aloud/lazy.tsx")).toContain('import type { PrompterProps } from "./prompter.tsx"');
-    expect(src("aloud/lazy.tsx")).not.toContain("alerts.ts");
+    expect(src("aloud/lazy.tsx")).not.toContain("playTone");
   });
 });
 
