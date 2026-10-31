@@ -400,7 +400,9 @@ function readingBeat(f: FactsFile, q: Question, n: number): string[] {
     `  setting: ${S.setting}`,
     `  cast: ${S.reader}`,
     "",
-    `set Kernel.res_said = Kernel.said_${k}`,
+    // Read at the reading, not from the filing's record: gone programs and Run
+    // personas are never named aloud, and a program can go after it files.
+    `set Kernel.res_said = sentences([p.name + " submitted: “" + p.fact_a${k} + "”." for p in Persons where ${here} and p.fact_${q.id.toLowerCase()} == true])`,
     `set Kernel.res_absent = names([p for p in Persons where ${here} and p.fact_v${k} == "none" and p.judged_q${k} != true])`,
     `set Kernel.res_correct = names([p for p in Persons where ${here} and (${sureRight})])`,
   ];

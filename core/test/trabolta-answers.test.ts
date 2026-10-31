@@ -425,7 +425,8 @@ describe("Trabolta never knows what he is asking for", () => {
     expect(v("Kernel.lines_n")).toBe(2);
     await mod("no_pickup_line"); // he reads them all out
     await look("8-B (the lines read)", calc, AFTER);
-    rt.tickOnce(50_000);
+    rt.tickOnce(60_000);
+    rt.tickOnce(2_000); // the blank's second
     expect(v("Night.ending")).toBe("song_pickup");
 
     expect(leaks).toEqual([]);

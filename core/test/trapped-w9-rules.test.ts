@@ -72,7 +72,7 @@ function boot(programs: Array<[string, string]> = PROGRAMS): Sim {
 }
 /** Wave 59a: ⚖ plays the full truth, then 8-A or 8-B follow by themselves, so a
  *  press of it here ticks past them to the song. */
-const VERDICT_PAGES_S = [831, 77]; // the full truth, then 8-A, to the song
+const VERDICT_PAGES_S = [831, 88]; // the full truth, then 8-A, to the song
 const pastTheVerdict = (sim: Sim, name: string): SimEvent[] => {
   const out: SimEvent[] = [];
   if (name === "the_verdict") for (const seconds of VERDICT_PAGES_S) out.push(...sim.tick(seconds * 1000));

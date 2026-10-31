@@ -7,8 +7,9 @@
 // Both are reached from main.loom (the ceremony rule bumps
 // `Night.review_gen`; a ROLE watcher plays `Your File` for each cleared,
 // present program). The host is the ceremony's (`Night.ceremony_host`):
-// Trabolta, or Clippy after disabled / destroyed / rave. His lines play in
-// The Desktop, so the TV speaks them; Clippy reads "the report" aloud.
+// Clippy on every ending the night can reach (disabled, destroyed, song,
+// song_pickup), who reads "the report" aloud. Trabolta's branch stays, for a
+// beat fired by hand; his lines play in The Desktop, so the TV speaks them.
 //
 // The review skips what has just been read. The monologue (wave 58,
 // beats/truth.loom; Night.truth_told) tells who everyone was, so with it told

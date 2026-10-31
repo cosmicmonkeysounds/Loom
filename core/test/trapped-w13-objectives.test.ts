@@ -53,7 +53,7 @@ export class Night {
     expect(pressRefused(this.sim, ev), name).toBe(false);
     // Wave 18b: ⚖'s ending follows The Verdict's TV pages (34 s of story time).
     // The full truth, then either road to the rave: 8-A's 76 s, or 8-B's pause, lines and flicker.
-    if (name === "the_verdict") for (const seconds of [831, 106, 121, 35, 77, 171]) ev.push(...this.sim.tick(seconds * 1000));
+    if (name === "the_verdict") for (const seconds of [831, 106, 121, 35, 2, 80, 171]) ev.push(...this.sim.tick(seconds * 1000));
     return this.take(ev);
   }
   scan(scanner: string, id: string): ChatMessage[] {

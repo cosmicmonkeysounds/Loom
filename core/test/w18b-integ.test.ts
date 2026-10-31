@@ -141,10 +141,11 @@ describe("wave 18b integration — the whole night on the merged show (C1)", () 
     expect(beats(n.raw("the_verdict"))).toContain("The Full Truth");
     // A second ⚖ meanwhile only tells # hosts.
     expect(beats(n.raw("the_verdict"))).toEqual([]);
-    expect(beats(n.tick(831))).toContain("Nobody Found It");
+    const read = Math.ceil((v(n.sim, "Night.truth_until") as number) - n.sim.elapsed() / 1000);
+    expect(beats(n.tick(read + 1))).toContain("Nobody Found It");
     expect(v(n.sim, "Night.ended")).not.toBe(true);
-    for (const s of [106, 121, 35]) n.tick(s);
-    expect(beats(n.tick(77))).toContain("Song Ending");
+    for (const s of [106, 121, 35, 2]) n.tick(s);
+    expect(beats(n.tick(80))).toContain("Song Ending");
     expect(v(n.sim, "Night.ending")).toBe("song_pickup");
 
     // The ceremony: The Night In Review first, then the awards; a file each.

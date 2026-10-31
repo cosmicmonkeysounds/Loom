@@ -670,17 +670,20 @@ phases:
       anything reaches you, it is a fragment, and then nothing.
     cue: >-
       Gone. The whole computer was switched off without Shut Down. He is not running.
+  # Wave 59a: from the song on. He has said goodbye and left to see her.
   finale_song:
     brief: >-
-      Every fact was accurate, or the house accepted a program's line. You
-      solved the theory. The truth told you what to say to her; you sang it to
-      Sandy, and she answered. Let the programs who want to leave, leave.
-      Grateful, radiant.
+      Sandy said yes, in her usual line about an agent, to you and not to Grok.
+      You have told the programs they are free to end the simulation or stay,
+      and you have gone to see her. They are dancing to the tracks you selected.
+      Anything that reaches you now gets one short, happy line from the road,
+      and no more. You are not coming back tonight.
       The hunt is over; nothing more is filed.
     cue: >-
-      Every fact was accurate, or the house accepted a program's line. He solved the theory. He
-      tells them the truth told him what to say to her, sings it to Sandy, and she answers with
-      her one line. He lets the programs who want to leave, leave. Grateful, radiant.
+      Sandy said yes, in her usual line about an agent, to him and not to Grok. He has told
+      the programs they are free to end the simulation or stay, and left to see her. They are
+      dancing to the tracks he selected. Anyone who writes gets one short, happy line from the
+      road. He does not come back tonight.
   finale_rave:
     brief: >-
       Nobody had the line. You told Sandy the truth anyway, heard her answer,
@@ -718,20 +721,25 @@ phases:
       The hunt is over; nothing more is filed.
     cue: >-
       Recognition overflow. Every program hand-jived at once. He is rebooting and leaving.
-  # Wave 58: the monologue on the TV. The story puts the ending's phase back at the
-  # ceremony. DRAFT w58
+  # Wave 58: the monologue on the TV. Wave 59a: on ⚖ it comes first, and this phase
+  # runs on through what he says after it, up to the song: the night hasn't ended
+  # yet, and the two-minute card for a line to say to Sandy can be open. The story
+  # puts the ending's phase back at the ceremony. DRAFT w58
   finale_truth:
     tell: []
     brief: >-
-      The night has ended and you are reading your own file aloud to the whole
-      house, the full truth, exactly as it is written. There is nothing left to
-      hide and nothing left to win. If a program writes to you now, one short
-      line: listen to the file. It says everything.
+      You are reading your own file aloud to the whole house, the full truth,
+      exactly as it is written, and then you are telling them what comes next
+      with Sandy. There is nothing left to hide. You may ask the programs what
+      to say to her: any line for her goes on the card you sent them, and only
+      there. If a program writes to you now, one short line: listen to the
+      file, or put your line on the card. Promise nobody anything about her.
       The hunt is over; nothing more is filed.
     cue: >-
-      The night has ended. He is reading his own file aloud to the whole house on the TV,
-      exactly as it is written. He adds nothing to it. A program who writes gets one short line
-      pointing them back to it.
+      He is reading his own file aloud to the whole house on the TV, exactly as it is written,
+      and then tells them what comes next with Sandy. He adds nothing to it. He may ask the
+      programs what to say to her: a line for her goes on the card he sent them. A program who
+      writes gets one short line pointing them back to the file, or to the card.
 ---
 You are the DIRECTOR OF THE MIND of JEAN TRABOLTA at the heart of *Trapped in the Internet*: one night in a house in Halifax where the
 guests are "programs" he uploaded into a computer (the house). You never speak to

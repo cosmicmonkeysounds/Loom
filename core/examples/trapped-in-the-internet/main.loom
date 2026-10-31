@@ -2769,8 +2769,10 @@ ROLE Program
   when answer answered for program:
     if question == "P1":
       if Night.lines_open == true:
-        set Kernel.lines_said = Kernel.lines_said + program.name + " recommended I try: “" + text + "”. "
-        set Kernel.lines_n += 1
+        // Gone programs and Run personas are never named aloud (beats/review.loom).
+        if program.gone != true and program.persona != true:
+          set Kernel.lines_said = Kernel.lines_said + program.name + " recommended I try: “" + text + "”. "
+          set Kernel.lines_n += 1
       else:
         Trabolta: Too late for lines, {program.name}.
     // Wave 41 (C1): the problem form's write-in. Answered before the
@@ -3669,7 +3671,7 @@ INTERACTION no_pickup_line
   while: Night.lines_open == true
 
 INTERACTION ask_for_advice
-  label: 💌 (Alt, after a lie → Grok Prom) Trabolta begs for relationship advice
+  label: 💌 (Off the night) Trabolta begs for relationship advice
   who: admin
   while: Night.phase == "grok_prom" and Night.ended != true
 
@@ -3710,7 +3712,7 @@ INTERACTION own_award_lines
   who: admin
   act: G · The awards ceremony
   sequence: false
-  description: For a second director who prepared Trabolta's award lines (job 9.2). Press it once (any time before the awards): each award then plays its fanfare and slide but skips Trabolta's template line, and you post yours as Trabolta in The Desktop right after you fire the award (the TV speaks it). Press again to bring the template lines back. Clippy's lines (after Combo A, Combo B and the rave), the sounds and the slides never change.
+  description: Does nothing tonight: Clippy hosts on every ending the night can reach, and her lines don't change (wave 59a). For a second director who prepared Trabolta's award lines (job 9.2), were he to host. Press it once (any time before the awards): each award then plays its fanfare and slide but skips Trabolta's template line, and you post yours as Trabolta in The Desktop right after you fire the award (the TV speaks it). Press again to bring the template lines back. Clippy's lines (after Combo A, Combo B and the rave), the sounds and the slides never change.
 
 // Wave 58: the monologue, once an ending has had its moment. DRAFT w58
 // (these labels and descriptions).
@@ -6607,6 +6609,9 @@ when the_verdict:
   else if Night.phase == "bobbing" and Night.r3_closed == true and Night.ended != true:
     -> Verdict Record
     set Night.truth_first = true
+    // `Night.ended` stays false for the read, so the dream's own end hasn't come:
+    // his face and his captions take the TV and the walls from here.
+    set Night.dream = false
     fire the_truth_spoken
   else if Night.phase == "bobbing":
     broadcast "⚖ Not yet: 📄 Read truth.txt first. Nothing happens." to channel(hosts)
@@ -6637,19 +6642,29 @@ when Night.ask_at > 0 and Time.elapsed >= Night.ask_at:
 when Night.lines_open == true and Time.elapsed >= Night.lines_end:
   fire no_pickup_line
 
-// 8-B: the two minutes are up (or 💬): every line read, then he goes. His
-// disappearing is the screens' one-second flicker, when the voice has done.
+// 8-B: the two minutes are up (or 💬): every line read, then he goes, when the
+// voice has done: 19 s for his last two lines, the lines' own length (the voice's
+// time for them, as `spokenMs` has it) and the lines around them. His disappearing
+// is the TV's blackout for a second, lifted by the face under it, and he speaks as
+// it lifts. No flicker: that dips over his face and breaks his voice.
 when no_pickup_line:
   if Night.lines_open == true:
     set Night.lines_open = false
     -> Read The Lines
-    set Night.back_at = Time.elapsed + 34 + Kernel.lines_n * 7
+    set Night.back_at = Time.elapsed + 19
+    if Kernel.lines_n > 0:
+      set Night.back_at = Night.back_at + 14 + len(Kernel.lines_said) / 12
   else:
     broadcast "💬 Only while the pickup lines are open (nobody found the last answer). Nothing happens." to channel(hosts)
 
 when Night.back_at > 0 and Time.elapsed >= Night.back_at:
   set Night.back_at = 0
-  cue screens_flicker
+  cue tv_blackout
+  set Night.yes_at = Time.elapsed + 1
+
+when Night.yes_at > 0 and Time.elapsed >= Night.yes_at:
+  set Night.yes_at = 0
+  cue tv_screensaver
   -> She Said Yes
 
 // After his last line: the first of the tracks he selected, then the rave.
@@ -6694,7 +6709,7 @@ when ask_for_advice:
     set Night.terminals = "advice"
     -> Relationship Advice
   else:
-    broadcast "💌 Only in Grok Prom (after ⚖ with a lie on record). Nothing happens." to channel(hosts)
+    broadcast "💌 Off the night: the verdict no longer reaches Grok Prom. Nothing happens." to channel(hosts)
 
 when advice_tally:
   if Night.phase == "advice" and Night.ended != true:
@@ -6809,7 +6824,8 @@ when task_manager_reads:
 when the_truth_read:
   set Night.truth_told = true
   set Night.truth_reader = "Task Manager"
-  set Night.truth_until = Time.elapsed + 830
+  // As his, below: the paragraphs tonight's programs keep.
+  set Night.truth_until = Time.elapsed + 592 + 34 * count([p for p in Persons where p.featured != "none" and p.featured != "vlc" and p.featured != "pong" and p.gone != true and p.persona != true])
   set Night._ceremony_ask_at = 0
   set Night.alerts = "sticky"
   // Every identity is out now, whichever road led here (Combo B never set it).
@@ -6837,15 +6853,18 @@ when the_truth_read:
 
 // Trabolta, on the TV, clean: a phase of its own (voice-fx reads it 0), and
 // nothing left to floor it. The ceremony puts the ending's phase back. An
-// ending has already ended the dream and every clock, so no shot of the
-// night's can land; only a director's own can (the description says so).
+// ending has already ended the dream and every clock (⚖ ends the dream itself,
+// ahead of its ending), so no shot of the night's can land; only a director's
+// own can (the description says so).
 when the_truth_spoken:
   set Night.truth_told = true
   set Night.truth_reader = "Trabolta"
   // The same as Task Manager's until a real read is timed: the terminal's own
-  // numbers give 803 s at the show TV's 0.92 pace, and G1 puts the phase back at
-  // once, so a press mid-reading breaks the rest of his voice.
-  set Night.truth_until = Time.elapsed + 830
+  // numbers give 803 s for the whole file at the show TV's 0.92 pace, and each of
+  // the seven parts (read only if that program came) is about 34 s of it, so a
+  // small night isn't left in silence. G1 puts the phase back at once, so a press
+  // mid-reading breaks the rest of his voice.
+  set Night.truth_until = Time.elapsed + 592 + 34 * count([p for p in Persons where p.featured != "none" and p.featured != "vlc" and p.featured != "pong" and p.gone != true and p.persona != true])
   set Night._ceremony_ask_at = 0
   set Night.alerts = "sticky"
   set Night.truth_phase = Night.phase
@@ -6869,9 +6888,9 @@ when the_truth_spoken:
 
 // ── G. The awards ceremony (K-25) ──
 // After any final ending (never before: Best Liar would leak). The host
-// follows the ending: Clippy when Trabolta is gone (destroyed: switched
-// off; disabled: dead; rave: rode away), Trabolta otherwise, so the TV speaks
-// his lines.
+// follows the ending: Clippy when Trabolta is gone, which is every ending the
+// night can reach (destroyed: switched off; disabled: dead; song and song_pickup:
+// off to see his lady). Trabolta otherwise, so the TV speaks his lines.
 // The award events are ROLE hooks (main.loom, ROLE Program); each ends
 // in `present_award`, which shows the award slide and the host's line.
 when start_the_ceremony:
@@ -7486,6 +7505,7 @@ set Night.count_gen = 0
 set Night.reveal_stage = 0
 set Night.reveal_owed = false
 set Night.reveal_read_at = 0
+set Night.yes_at = 0
 set Night.truth_first = false
 set Night.lines_open = false
 set Night.lines_end = 0

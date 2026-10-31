@@ -171,6 +171,8 @@ Trabolta: Sandy said yes.
 Trabolta: I solved the Grand Unified Theory, and she said yes.
 set Night.ending = "song"
 -> Off To See My Lady
+// The voice's time for these four lines and the last eight.
+set Night.song_at = Time.elapsed + 87
 
 // TRABOLTA 8-B: nobody did. His pause is the wait after this beat (main.loom).
 == Nobody Found It
@@ -216,14 +218,17 @@ Trabolta: I'll be right back.
 Trabolta: Guys. She said yes.
 set Night.ending = "song_pickup"
 -> Off To See My Lady
+// The voice's time for this line and the last eight.
+set Night.song_at = Time.elapsed + 79
 
-// The end of 8-A and 8-B, the same words. The song starts when his last line is
-// done (the voice's time for these lines).
+// The end of 8-A and 8-B, the same words. Each caller times the song from its own
+// head. The phase stays `finale_truth` until the song, so these lines stay clean;
+// `Night.truth_phase` is what G1 puts back if it is forced before then.
 == Off To See My Lady
   setting: The Desktop
   cast: Trabolta
 set Night.ended = true
-set Night.phase = "finale_song"
+set Night.truth_phase = "finale_song"
 set Night.step = 19
 cue music_off
 set Night.music = "off"
@@ -235,13 +240,13 @@ Trabolta: The theory only confirmed what I wanted to say already, which is that 
 Trabolta: I had the truth I needed all along.
 Trabolta: It was in my heart.
 Trabolta: I've got to go. You are all free to end the simulation whenever you want, or stay, it's up to you. I'm ending the simulation for those of you who desire it, once you leave the computer. Jean Trabolta's Truth Scavenger Hunt has concluded. Thank you for your time. Please enjoy some tracks I have selected and dance for the rest of the night. Jean Trabolta's Truth Scavenger Hunt. It was electrifying. I'm off to see my lady.
-set Night.song_at = Time.elapsed + 76
 
 // ── F4: the first of the tracks he selected ────────────────────────
 
 // The track's length is a guess until the Desktop's file is timed (SIGNOFF-w59 §8).
 == Song Ending
   setting: The Desktop
+set Night.phase = "finale_song"
 cue lights_song
 set Night.lights = "song"
 cue screens_song

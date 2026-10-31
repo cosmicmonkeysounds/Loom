@@ -41,8 +41,9 @@ export const LETTER_PROBLEMS: Readonly<Record<string, string>> = {
 
 /** How the night ended, from where Trabolta stands (`Night.ending`). */
 export const LETTER_ENDINGS: Readonly<Record<string, string>> = {
-  song: "every fact true; Grand Unified Theory solved; you sang to Sandy; programs free to leave",
-  song_pickup: "some facts false; one program gave you the line for Sandy; you sang it to her; programs free to leave",
+  // Wave 59a: 8-A and 8-B. Neither says the facts were true: the last answer decided.
+  song: "a program found the last answer and you solved the Grand Unified Theory; Sandy said yes, in her usual line about an agent, to you and not to Grok; you told the programs they were free, left to see her, and they danced to the tracks you selected",
+  song_pickup: "nobody found the last answer and you never solved the Grand Unified Theory; the programs gave you their pickup lines, you just told Sandy how you felt and asked her for a dance; she said yes, in her usual line about an agent, to you and not to Grok; you told the programs they were free, left to see her, and they danced to the tracks you selected",
   rave: "nobody had the line for Sandy; you tried alone; she did not understand; you took it as a yes and rode off to computer prom",
   help: "you asked the programs for relationship advice; they voted to help you win Sandy",
   banished: "you asked the programs for relationship advice; they voted to thwart you and banished you",

@@ -280,6 +280,7 @@ The refused screen and its neighbours carry no marker, because they are app word
 | `CLAUDE.md` | 378 |
 | `INDEX.md` | 57 |
 | `atmosphere.loom` | 14 |
+| `beats/ceremony.loom` | 55 |
 | `beats/finale.loom` | 227 |
 | `beats/internet.loom` | 23 |
 | `beats/pong.loom` | 18 |
@@ -458,23 +459,30 @@ is on this sheet: they are in `facts.json`, the story and the generated files.
 - **The song before the rave**, as the first of *"some tracks I have selected"*. The rave starts **170 s** after
   the song does, a guess until the Desktop's real file is timed: `Night.rave_at`, in `Song Ending`. The TV's
   song picture still draws its chat, though nobody speaks it.
-- **The waits are the voice's arithmetic:** 8-A's last line 76 s, 8-B's speech 99 s plus the **6 s** pause, the
-  reading 34 s plus 7 a line. A slow TV only queues; a fast one waits.
-- **His disappearing** is the screens' one-second flicker: the blackout overlay holds for 10 s.
+- **The waits are the voice's arithmetic:** 8-A's speech 87 s, 8-B's after *"She said yes"* 79 s, 8-B's first
+  speech 99 s plus the **6 s** pause, his reading of the lines 33 s plus the lines' own length (19 s with none).
+  The full truth is 592 s plus 34 for each of the seven programs with a part who came, on either voice, 830 s
+  with all seven. A slow TV only queues; a fast one waits.
+- **His disappearing** is a second of true black on the TV alone (`tv_blackout`), lifted by his face as he
+  speaks. The TV polls once a second, so it can read a little over or under a second, and very rarely not at
+  all. The flicker that was here dips over his face and breaks his voice.
+- **The dream ends at ⚖:** his face and captions take the TV and the walls for the read. 🌀 still works.
 - **The lines are unjudged.** Every one is kept and read. The old pickup line wins nothing.
 - **The reveal's order:** the answers can't land while she asks for them, or they would be on every phone
   in the chat, so 🌑 waits for her. A script that holds only the TV would have left them on the phones. If she
   lets ▶ Scroll run through the room's turn, he starts: ⏸ while they speak (her pack says so).
 - **Clippy hosts every ceremony:** he has left. On her, the bathroom rule's lines from him (main.loom,
-  *Disk Cleanup, at last* and the never-went line) don't play, and the second director's award lines still
-  replace hers.
+  *Disk Cleanup, at last* and the never-went line) don't play, and ✍ the second director's award lines changes
+  nothing: those replace his template lines, and he reads none. Her opening for 8-A and 8-B is a new line (8.4).
 - **"The prize you all get"** is said, and nothing is built: nobody gets anything for it, and the last answer
   is what decides. Say what it should be if you want one.
 
 ### 8.4 New words of ours
 
-Crew only, but for the first two.
+Crew only, but for the first three. **The first is new, read out by Clippy on 8-A and 8-B:** the old line had him
+leave on his motorcycle, which the script says he doesn't.
 
+- `// DRAFT w59a` Clippy: Trabolta has gone to see his lady. He left the awards behind. Somebody has to read them. It might as well be me.
 - `// DRAFT w59a` objective: *What should he say to her?* · *The card is in his thread. One line. Two minutes.*
 - `// DRAFT w59a` banner: !🎵 Those of you who want to leave may leave. To the Desktop for the song.
 - `// DRAFT w59a` # hosts: ⚖ The full truth is being read; the ending follows by itself. Nothing happens.

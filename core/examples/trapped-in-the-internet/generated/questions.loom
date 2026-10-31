@@ -79,7 +79,7 @@ Trabolta: Question three: According to one encyclopedia, who is: “often a shy,
   setting: The Desktop
   cast: Trabolta
 
-set Kernel.res_said = Kernel.said_1
+set Kernel.res_said = sentences([p.name + " submitted: “" + p.fact_a1 + "”." for p in Persons where p.cleared == true and p.gone != true and p.persona != true and p.fact_h1 == true])
 set Kernel.res_absent = names([p for p in Persons where p.cleared == true and p.gone != true and p.persona != true and p.fact_v1 == "none" and p.judged_q1 != true])
 set Kernel.res_correct = names([p for p in Persons where p.cleared == true and p.gone != true and p.persona != true and ((p.fact_c1 == 100 and (p.fact_v1 == "accurate" or (p.fact_v1 == "pending" and p.fact_j1 == "accurate"))) or (p.judged_q1 == true and p.hunt_lie_q1 != true))])
 Trabolta: Question one. The question was: According to Funk and Wagnalls, what is an example of fraud?
@@ -95,7 +95,7 @@ if Kernel.res_correct != "":
   setting: The Desktop
   cast: Trabolta
 
-set Kernel.res_said = Kernel.said_2
+set Kernel.res_said = sentences([p.name + " submitted: “" + p.fact_a2 + "”." for p in Persons where p.cleared == true and p.gone != true and p.persona != true and p.fact_h2 == true])
 set Kernel.res_absent = names([p for p in Persons where p.cleared == true and p.gone != true and p.persona != true and p.fact_v2 == "none" and p.judged_q2 != true])
 set Kernel.res_correct = names([p for p in Persons where p.cleared == true and p.gone != true and p.persona != true and ((p.fact_c2 == 100 and (p.fact_v2 == "accurate" or (p.fact_v2 == "pending" and p.fact_j2 == "accurate"))) or (p.judged_q2 == true and p.hunt_lie_q2 != true))])
 Trabolta: Now. Question two. The question was: According to Forensics For Dummies, finish this sentence: “Blank blank blank blank blank previously hypnotized witnesses.”
@@ -111,7 +111,7 @@ if Kernel.res_correct != "":
   setting: The Desktop
   cast: Trabolta
 
-set Kernel.res_said = Kernel.said_3
+set Kernel.res_said = sentences([p.name + " submitted: “" + p.fact_a3 + "”." for p in Persons where p.cleared == true and p.gone != true and p.persona != true and p.fact_h3 == true])
 set Kernel.res_absent = names([p for p in Persons where p.cleared == true and p.gone != true and p.persona != true and p.fact_v3 == "none" and p.judged_q3 != true])
 set Kernel.res_correct = names([p for p in Persons where p.cleared == true and p.gone != true and p.persona != true and ((p.fact_c3 == 100 and (p.fact_v3 == "accurate" or (p.fact_v3 == "pending" and p.fact_j3 == "accurate"))) or (p.judged_q3 == true and p.hunt_lie_q3 != true))])
 Trabolta: Now. Question three. The question was: According to Macs for Dummies, finish this sentence: A similar online blank, called pharming, also involves the use of blank, blank, blank.
@@ -127,7 +127,7 @@ if Kernel.res_correct != "":
   setting: The Desktop
   cast: Trabolta
 
-set Kernel.res_said = Kernel.said_4
+set Kernel.res_said = sentences([p.name + " submitted: “" + p.fact_a4 + "”." for p in Persons where p.cleared == true and p.gone != true and p.persona != true and p.fact_h4 == true])
 set Kernel.res_absent = names([p for p in Persons where p.cleared == true and p.gone != true and p.persona != true and p.fact_v4 == "none" and p.judged_q4 != true])
 set Kernel.res_correct = names([p for p in Persons where p.cleared == true and p.gone != true and p.persona != true and ((p.fact_c4 == 100 and (p.fact_v4 == "accurate" or (p.fact_v4 == "pending" and p.fact_j4 == "accurate"))) or (p.judged_q4 == true and p.hunt_lie_q4 != true))])
 Trabolta: Question one. The question was: What is an example of a Strong Password, cited by a For Dummies book, that starts with Q?
@@ -143,7 +143,7 @@ if Kernel.res_correct != "":
   setting: The Desktop
   cast: Trabolta
 
-set Kernel.res_said = Kernel.said_5
+set Kernel.res_said = sentences([p.name + " submitted: “" + p.fact_a5 + "”." for p in Persons where p.cleared == true and p.gone != true and p.persona != true and p.fact_h5 == true])
 set Kernel.res_absent = names([p for p in Persons where p.cleared == true and p.gone != true and p.persona != true and p.fact_v5 == "none" and p.judged_q5 != true])
 set Kernel.res_correct = names([p for p in Persons where p.cleared == true and p.gone != true and p.persona != true and ((p.fact_c5 == 100 and (p.fact_v5 == "accurate" or (p.fact_v5 == "pending" and p.fact_j5 == "accurate"))) or (p.judged_q5 == true and p.hunt_lie_q5 != true))])
 Trabolta: Now. Question two. The question was: What, according to one book, is the traditional objection to romance?
@@ -159,7 +159,7 @@ if Kernel.res_correct != "":
   setting: The Desktop
   cast: Trabolta
 
-set Kernel.res_said = Kernel.said_6
+set Kernel.res_said = sentences([p.name + " submitted: “" + p.fact_a6 + "”." for p in Persons where p.cleared == true and p.gone != true and p.persona != true and p.fact_h6 == true])
 set Kernel.res_absent = names([p for p in Persons where p.cleared == true and p.gone != true and p.persona != true and p.fact_v6 == "none" and p.judged_q6 != true])
 set Kernel.res_correct = names([p for p in Persons where p.cleared == true and p.gone != true and p.persona != true and ((p.fact_c6 == 100 and (p.fact_v6 == "accurate" or (p.fact_v6 == "pending" and p.fact_j6 == "accurate"))) or (p.judged_q6 == true and p.hunt_lie_q6 != true))])
 Trabolta: Now. Question three. The question was: According to one encyclopedia, what trend in technological progress will lead to this outcome: “Increased wages and shorter hours will provide the leisure necessary for man’s full cultural development.”
@@ -175,7 +175,7 @@ if Kernel.res_correct != "":
   setting: The Desktop
   cast: Trabolta
 
-set Kernel.res_said = Kernel.said_7
+set Kernel.res_said = sentences([p.name + " submitted: “" + p.fact_a7 + "”." for p in Persons where p.cleared == true and p.gone != true and p.persona != true and p.fact_f1 == true])
 set Kernel.res_absent = names([p for p in Persons where p.cleared == true and p.gone != true and p.persona != true and p.fact_v7 == "none" and p.judged_q7 != true])
 set Kernel.res_correct = names([p for p in Persons where p.cleared == true and p.gone != true and p.persona != true and ((p.fact_c7 == 100 and (p.fact_v7 == "accurate" or (p.fact_v7 == "pending" and p.fact_j7 == "accurate"))) or (p.judged_q7 == true and p.hunt_lie_q7 != true))])
 Trabolta: Question one. The question was: Who is Binary Tom?
@@ -191,7 +191,7 @@ if Kernel.res_correct != "":
   setting: The Desktop
   cast: Trabolta
 
-set Kernel.res_said = Kernel.said_8
+set Kernel.res_said = sentences([p.name + " submitted: “" + p.fact_a8 + "”." for p in Persons where p.cleared == true and p.gone != true and p.persona != true and p.fact_f2 == true])
 set Kernel.res_absent = names([p for p in Persons where p.cleared == true and p.gone != true and p.persona != true and p.fact_v8 == "none" and p.judged_q8 != true])
 set Kernel.res_correct = names([p for p in Persons where p.cleared == true and p.gone != true and p.persona != true and ((p.fact_c8 == 100 and (p.fact_v8 == "accurate" or (p.fact_v8 == "pending" and p.fact_j8 == "accurate"))) or (p.judged_q8 == true and p.hunt_lie_q8 != true))])
 Trabolta: Now. Question two. The question was: What is the unlikely condition that will enable you to find your child on a map using Windows 10?
@@ -207,7 +207,7 @@ if Kernel.res_correct != "":
   setting: The Desktop
   cast: Trabolta
 
-set Kernel.res_said = Kernel.said_9
+set Kernel.res_said = sentences([p.name + " submitted: “" + p.fact_a9 + "”." for p in Persons where p.cleared == true and p.gone != true and p.persona != true and p.fact_f3 == true])
 set Kernel.res_absent = names([p for p in Persons where p.cleared == true and p.gone != true and p.persona != true and p.fact_v9 == "none" and p.judged_q9 != true])
 set Kernel.res_correct = names([p for p in Persons where p.cleared == true and p.gone != true and p.persona != true and ((p.fact_c9 == 100 and (p.fact_v9 == "accurate" or (p.fact_v9 == "pending" and p.fact_j9 == "accurate"))) or (p.judged_q9 == true and p.hunt_lie_q9 != true))])
 set Kernel.res_found = count([p for p in Persons where p.fact_v9 == "accurate" or (p.fact_v9 == "pending" and p.fact_j9 == "accurate") or (p.judged_q9 == true and p.hunt_lie_q9 != true)])

@@ -14,8 +14,9 @@
 // number (`award_value` is "none": a bonus award fired with no value).
 //
 // The host follows the ending. Trabolta's lines play in The Desktop, so
-// the TV speaks them. After `disabled` (dead), `destroyed` (switched off) and
-// `rave` (gone on his motorcycle) Clippy hosts: her lines land in The Desktop for her to
+// the TV speaks them. After `disabled` (dead), `destroyed` (switched off),
+// `song` and `song_pickup` (off to see his lady), which is every ending the night
+// can reach, Clippy hosts: her lines land in The Desktop for her to
 // read aloud, and the TV shows the award slide (`screens_award_<name>`,
 // which persists over the screensaver).
 //
@@ -27,7 +28,8 @@
 // W-24), the director presses ✍ (`own_award_lines` → Night.award_lines =
 // "director") and posts each as Trabolta in The Desktop right after its
 // award: Trabolta's template line is then skipped (his opener, Clippy's
-// lines, the sounds and the slides stay). These stay the fallback.
+// lines, the sounds and the slides stay). These stay the fallback. With Clippy
+// hosting ✍ changes nothing she reads.
 
 == The Ceremony
   setting: The Desktop
@@ -46,8 +48,12 @@ if Night.ceremony_host == "Clippy":
     Clippy: Trabolta is gone. The right cables came out, and nobody is keeping you here any more. You may go back to your bodies.
     // DRAFT w58
     Clippy: He left the awards behind, and my job is to keep the party running smoothly. These are the official awards of the night. Please applaud after each one. It helps.
-  else:
+  else if Night.ending == "rave":
     Clippy: Trabolta has left on his motorcycle. He left the awards behind. Somebody has to read them. It might as well be me.
+    Clippy: These are the official awards of the night, from the system report. Please applaud after each one. It helps.
+  else:
+    // DRAFT w59a (8-A and 8-B: he has gone to her, no motorcycle)
+    Clippy: Trabolta has gone to see his lady. He left the awards behind. Somebody has to read them. It might as well be me.
     Clippy: These are the official awards of the night, from the system report. Please applaud after each one. It helps.
 else if Night.ending == "hand_jive":
   Trabolta (weakly): Reboot complete. Most of my memory survived the hand jive. The awards survived too.
