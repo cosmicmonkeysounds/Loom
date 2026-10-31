@@ -5,20 +5,31 @@
 // jump there. ≡ jumps by section, ↩ goes back after a jump. A finger on the
 // text holds the scroll. It keeps the screen on, since nobody touches a phone
 // they are reading from. Closing it without ✓ Done lands on the pop-up.
+// Wave 59: while a scene is on the server, all of that is one shared position,
+// in words: this phone follows it, a finger on the text locks it to this phone
+// and sends where it goes, and his lines lock it for everyone and scroll by
+// themselves. `AloudCard` is what someone with one line gets instead.
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type PointerEvent as ReactPointerEvent } from "react";
 import { playTone } from "../alerts.ts";
 import type { SessionStorage } from "../host.ts";
 import type { Aloud } from "./lazy.tsx";
 import { unreadLines } from "./model.ts";
-import { MARK_AT, SIZE_STEP, SPEED_MAX, SPEED_MIN, SPEED_STEP, clampSize, clampSpeed, clip, flatten, lineAt, pastLastLine, pxPerSecond, railLine, railStarts, readingLabel, sectionLine, startLine, type FlatLine } from "./prompter-model.ts";
+import { MARK_AT, SIZE_STEP, SPEED_MAX, SPEED_MIN, SPEED_STEP, bitsKey, bitsOf, clampSize, clampSpeed, clip, flatten, lineAt, pastLastLine, posOfY, pxPerSecond, railLine, railStarts, readingLabel, sectionLine, startLine, wordOffsets, yOfPos, type FlatLine } from "./prompter-model.ts";
 
 const SPEED_KEY = "loom.aloud.speed";
 const SIZE_KEY = "loom.aloud.size";
 /** A finger off the text keeps holding the scroll this long, through its fling. */
 const HOLD_AFTER_MS = 400;
+const noSubscribe = (): (() => void) => () => {};
 const DONE_ARM_MS = 4_000;
 const BACK_CHIP_MS = 8_000;
+/** Wave 59: a finger on the text sends where it is this often… */
+const MOVE_MS = 160;
+/** …and, resting, says it is still there this often (the server's lock lapses). */
+const STILL_HERE_MS = 1_500;
+/** Wave 59: how much of the gap to the shared position a frame closes. */
+const FOLLOW = 0.3;
 /** While the pop-up waits, it sounds again this often. */
 export const ALOUD_NUDGE_MS = 15_000;
 
@@ -49,8 +60,36 @@ export function AloudAlert({ a, sound }: Pick<PrompterProps, "a" | "sound">) {
   );
 }
 
+/** Wave 59: someone else's script has a line of yours. Never the whole phone. */
+export function AloudCard({ a, sound }: Pick<PrompterProps, "a" | "sound">) {
+  useEffect(() => {
+    playTone("info", sound);
+  }, [sound]);
+  const mine = (a.shared?.script ?? []).flatMap((s) => s.lines.filter((l) => l.mine));
+  return (
+    <div className="aloud-card" role="status" data-testid="aloud-card">
+      {/* DRAFT w59 */}
+      <b className="aloud-card-head">📜 You have a line</b>
+      {mine.map((l) => (
+        <p key={l.seq} className="aloud-card-line">
+          {clip(l.text, 160)}
+        </p>
+      ))}
+      <div className="aloud-card-row">
+        <button type="button" className="w95-btn" onClick={a.dropCard}>
+          ✓ I'll just say it
+        </button>
+        <button type="button" className="w95-btn" onClick={() => a.setOpen(true)}>
+          📜 Join the teleprompter
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function AloudSurface(p: PrompterProps) {
-  return p.a.open ? <Prompter {...p} /> : <AloudAlert a={p.a} sound={p.sound} />;
+  if (!p.a.covering) return <AloudCard a={p.a} sound={p.sound} />;
+  return p.a.open ? <Prompter key={p.a.shared?.id ?? 0} {...p} /> : <AloudAlert a={p.a} sound={p.sound} />;
 }
 
 function useKeepAwake(): void {
@@ -81,7 +120,7 @@ function useKeepAwake(): void {
 
 function LineRow({ l, now, unread }: { l: FlatLine; now: boolean; unread: boolean }) {
   return (
-    <p data-line={l.index} className={`aloud-line ${l.mine ? "mine" : "cue"}${now ? " now" : ""}${unread ? " unread" : ""}`}>
+    <p data-line={l.index} className={`aloud-line ${l.mine ? "mine" : "cue"}${l.his === true ? " his" : ""}${now ? " now" : ""}${unread ? " unread" : ""}`}>
       {!l.mine && l.speaker !== "" && <span className="aloud-who">{l.speaker}: </span>}
       {l.manner !== null && <span className="aloud-manner">({l.manner}) </span>}
       {l.text}
@@ -91,12 +130,24 @@ function LineRow({ l, now, unread }: { l: FlatLine; now: boolean; unread: boolea
 
 export function Prompter({ a, storage, sound }: PrompterProps) {
   useKeepAwake();
-  const lines = useMemo(() => flatten(a.script), [a.script]);
+  const sh = a.shared;
+  const shRef = useRef(sh);
+  shRef.current = sh;
+  const script = sh?.script ?? a.script;
+  const lines = useMemo(() => flatten(script), [script]);
+  const offs = useMemo(() => wordOffsets(lines), [lines]);
+  const key = useSyncExternalStore(sh?.store.subscribe ?? noSubscribe, () => bitsKey(sh?.store.frame ?? null, sh?.me ?? ""));
+  const bits = useMemo(() => bitsOf(key), [key]);
+  const bitsRef = useRef(bits);
+  bitsRef.current = bits;
   const starts = useMemo(() => railStarts(lines), [lines]);
   const words = useMemo(() => lines.reduce((n, l) => n + l.words, 0), [lines]);
   const box = useRef<HTMLDivElement>(null);
   const rail = useRef<HTMLDivElement>(null);
   const tops = useRef<number[]>([]);
+  const bottom = useRef(0);
+  const shown = useRef(0);
+  const sentAt = useRef(0);
   const pos = useRef(0);
   const held = useRef(false);
   const release = useRef<number | undefined>(undefined);
@@ -119,6 +170,12 @@ export function Prompter({ a, storage, sound }: PrompterProps) {
     const next = clampSpeed(n);
     setSpeedNow(next);
     storage.save(SPEED_KEY, next);
+    if (sh !== null && bits.playing) void sh.post({ scene: sh.id, op: "play", on: true, speed: next }).catch(() => {});
+  };
+  const togglePlay = () => {
+    const s = shRef.current;
+    if (s === null) setPlaying((p) => !p);
+    else if (!bitsRef.current.locked) void s.post({ scene: s.id, op: "play", on: !bitsRef.current.playing, speed: speedRef.current }).catch(() => {});
   };
   const setSize = (n: number) => {
     const next = clampSize(n);
@@ -131,8 +188,12 @@ export function Prompter({ a, storage, sound }: PrompterProps) {
     if (el === null) return;
     el.style.setProperty("--aloud-mark", `${markY()}px`);
     el.style.setProperty("--aloud-tail", `${el.clientHeight - markY()}px`);
-    tops.current = [...el.querySelectorAll<HTMLElement>("[data-line]")].map((n) => n.offsetTop);
+    const rows = [...el.querySelectorAll<HTMLElement>("[data-line]")];
+    tops.current = rows.map((n) => n.offsetTop);
+    const end = rows[rows.length - 1];
+    bottom.current = end !== undefined ? end.offsetTop + end.offsetHeight : 0;
   };
+  const sharedPos = () => posOfY((box.current?.scrollTop ?? 0) + markY(), offs, tops.current, bottom.current);
   const place = (i: number) => {
     const el = box.current;
     if (el === null) return;
@@ -140,9 +201,19 @@ export function Prompter({ a, storage, sound }: PrompterProps) {
     el.scrollTop = pos.current;
     setAt(i);
   };
-  const jump = (i: number) => {
-    setBackTo(atRef.current);
+  /** A move someone asked for, as opposed to a repaint: everyone goes there. */
+  const moveTo = (i: number) => {
     place(i);
+    const s = shRef.current;
+    if (s === null || bitsRef.current.locked) return;
+    const p = offs[i] ?? 0;
+    s.store.nudge(p);
+    void s.post({ scene: s.id, op: "jump", pos: p }).catch(() => s.store.revert());
+  };
+  const jump = (i: number) => {
+    if (bitsRef.current.locked) return;
+    setBackTo(atRef.current);
+    moveTo(i);
     setEnded(false);
   };
 
@@ -174,8 +245,38 @@ export function Prompter({ a, storage, sound }: PrompterProps) {
     if (at >= seen.current) seen.current = lines.length;
   }, [at, lines.length]);
 
+  // Wave 59: the shared position, on this phone's text. A finger on the text
+  // drives it instead, and says so, even when it rests.
   useEffect(() => {
-    if (!playing) return;
+    if (sh === null) return;
+    let frame = 0;
+    const step = () => {
+      const el = box.current;
+      const f = sh.store.frame;
+      if (el !== null && f !== null) {
+        if (f.speaking !== null || (f.holder !== null && f.holder.who !== sh.me)) held.current = false;
+        const now = performance.now();
+        if (held.current) {
+          shown.current = el.scrollTop;
+          if (now - sentAt.current >= STILL_HERE_MS) {
+            sentAt.current = now;
+            void sh.post({ scene: sh.id, op: "move", pos: sharedPos() }).catch(() => {});
+          }
+        } else {
+          const want = Math.max(0, yOfPos(sh.store.pos(now), offs, tops.current, bottom.current) - markY());
+          const gap = want - shown.current;
+          shown.current = Math.abs(gap) < 0.5 || Math.abs(gap) > el.clientHeight ? want : shown.current + gap * FOLLOW;
+          el.scrollTop = shown.current;
+        }
+      }
+      frame = requestAnimationFrame(step);
+    };
+    frame = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(frame);
+  }, [sh, offs]);
+
+  useEffect(() => {
+    if (!playing || sh !== null) return;
     let frame = 0;
     let last = performance.now();
     const step = (t: number) => {
@@ -198,7 +299,7 @@ export function Prompter({ a, storage, sound }: PrompterProps) {
     };
     frame = requestAnimationFrame(step);
     return () => cancelAnimationFrame(frame);
-  }, [playing, words]);
+  }, [playing, words, sh]);
 
   const onScroll = () => {
     const el = box.current;
@@ -206,18 +307,49 @@ export function Prompter({ a, storage, sound }: PrompterProps) {
     setAt(lineAt(tops.current, el.scrollTop + markY() + 1));
     setEnded(el.scrollTop >= el.scrollHeight - el.clientHeight - 2);
     if (held.current) pos.current = el.scrollTop;
+    const s = shRef.current;
+    const now = performance.now();
+    if (s !== null && held.current && now - sentAt.current >= MOVE_MS) {
+      sentAt.current = now;
+      void s.post({ scene: s.id, op: "move", pos: sharedPos() }).catch(() => {});
+    }
   };
   const hold = () => {
     window.clearTimeout(release.current);
+    const s = shRef.current;
+    if (s !== null) {
+      if (bitsRef.current.locked) return;
+      if (!held.current) {
+        sentAt.current = performance.now();
+        void s.post({ scene: s.id, op: "press", pos: sharedPos() }).catch(() => {
+          held.current = false;
+        });
+      }
+    }
     held.current = true;
+  };
+  const leave = () => {
+    const s = shRef.current;
+    if (s === null || !held.current) return;
+    const p = sharedPos();
+    s.store.nudge(p);
+    void s.post({ scene: s.id, op: "letgo", pos: p }).catch(() => {});
   };
   const letGo = () => {
     window.clearTimeout(release.current);
+    if (!held.current) return;
     release.current = window.setTimeout(() => {
+      leave();
       held.current = false;
     }, HOLD_AFTER_MS);
   };
-  useEffect(() => () => window.clearTimeout(release.current), []);
+  useEffect(
+    () => () => {
+      window.clearTimeout(release.current);
+      leave();
+    },
+    [],
+  );
 
   const railPick = (e: ReactPointerEvent) => {
     const r = rail.current?.getBoundingClientRect();
@@ -239,11 +371,12 @@ export function Prompter({ a, storage, sound }: PrompterProps) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") a.setOpen(false);
-      else if (e.key === "ArrowDown") place(Math.min(lines.length - 1, atRef.current + 1));
-      else if (e.key === "ArrowUp") place(Math.max(0, atRef.current - 1));
+      else if (bitsRef.current.locked) return;
+      else if (e.key === "ArrowDown") moveTo(Math.min(lines.length - 1, atRef.current + 1));
+      else if (e.key === "ArrowUp") moveTo(Math.max(0, atRef.current - 1));
       else if (e.key === " " && !(e.target instanceof HTMLButtonElement) && !(e.target instanceof HTMLInputElement)) {
         e.preventDefault();
-        setPlaying((p) => !p);
+        togglePlay();
       }
     };
     window.addEventListener("keydown", onKey);
@@ -252,7 +385,8 @@ export function Prompter({ a, storage, sound }: PrompterProps) {
 
   const line = lines[at];
   const section = line?.section ?? 0;
-  const finished = ended || pastLastLine(lines, at);
+  // Nothing of a host's to get to the end of: their ✓ Done always asks.
+  const finished = ended || (sh?.role !== "host" && pastLastLine(lines, at));
   const toSection = (n: number) => {
     const i = sectionLine(lines, n);
     if (i !== null) jump(i);
@@ -270,7 +404,7 @@ export function Prompter({ a, storage, sound }: PrompterProps) {
           {/* DRAFT w55 */}
           <span className="aloud-bar-head">📜 READ OUT LOUD</span>
           <span className="aloud-bar-title">
-            {a.script[section]?.title ?? ""} · line {at + 1} of {lines.length}
+            {script[section]?.title ?? ""} · line {at + 1} of {lines.length}
           </span>
         </div>
         <button type="button" className="aloud-x" aria-label="Close the teleprompter" onClick={() => a.setOpen(false)}>
@@ -279,7 +413,7 @@ export function Prompter({ a, storage, sound }: PrompterProps) {
       </header>
       <div className="aloud-stage">
         <div
-          className="aloud-text"
+          className={`aloud-text${bits.locked ? " locked" : ""}`}
           ref={box}
           style={{ fontSize: `${size}px` }}
           onScroll={onScroll}
@@ -296,7 +430,7 @@ export function Prompter({ a, storage, sound }: PrompterProps) {
             letGo();
           }}
         >
-          {a.script.map((s, i) => (
+          {script.map((s, i) => (
             <section key={s.lines[0]!.seq}>
               <h2 className="aloud-section">{s.title}</h2>
               {lines
@@ -316,6 +450,12 @@ export function Prompter({ a, storage, sound }: PrompterProps) {
         <div className="aloud-mark" aria-hidden="true">
           ▶
         </div>
+        {bits.locked && (
+          <div className="aloud-lock" role="status" data-testid="aloud-lock">
+            {/* DRAFT w59 */}
+            {bits.speaking ? `🔊 ${bits.name} is speaking` : `🔒 ${bits.name} has it`}
+          </div>
+        )}
         <div
           className="aloud-rail"
           ref={rail}
@@ -326,6 +466,7 @@ export function Prompter({ a, storage, sound }: PrompterProps) {
           aria-valuemax={lines.length}
           aria-valuenow={at + 1}
           onPointerDown={(e) => {
+            if (bits.locked) return;
             e.currentTarget.setPointerCapture?.(e.pointerId);
             railPick(e);
           }}
@@ -341,14 +482,14 @@ export function Prompter({ a, storage, sound }: PrompterProps) {
           {lines.map((l) => (
             <i key={l.seq} className={l.mine ? "mine" : "cue"} style={{ flexGrow: l.words }} />
           ))}
-          {a.script.slice(1).map((s, i) => (
+          {script.slice(1).map((s, i) => (
             <b key={s.lines[0]!.seq} className="aloud-rail-tick" style={{ top: `${(starts[sectionLine(lines, i + 1) ?? 0] ?? 0) * 100}%` }} />
           ))}
           <span className="aloud-rail-thumb" style={{ top: `${(starts[scrub ?? at] ?? 0) * 100}%` }} />
         </div>
         {preview !== undefined && (
           <div className="aloud-preview" style={{ top: `min(calc(100% - 132px), ${(starts[scrub!] ?? 0) * 100}%)` }}>
-            <strong>{a.script[preview.section]?.title}</strong>
+            <strong>{script[preview.section]?.title}</strong>
             <span>
               Line {preview.index + 1}: {clip(preview.text)}
             </span>
@@ -361,7 +502,7 @@ export function Prompter({ a, storage, sound }: PrompterProps) {
               type="button"
               className="aloud-chip"
               onClick={() => {
-                place(backTo);
+                moveTo(backTo);
                 setBackTo(null);
               }}
             >
@@ -377,19 +518,19 @@ export function Prompter({ a, storage, sound }: PrompterProps) {
       </div>
       <footer className="aloud-controls">
         <div className="aloud-row">
-          <button type="button" aria-label="Previous section" disabled={section === 0} onClick={() => toSection(section - 1)}>
+          <button type="button" aria-label="Previous section" disabled={section === 0 || bits.locked} onClick={() => toSection(section - 1)}>
             ⏮
           </button>
-          <button type="button" aria-label="Back a line" onClick={() => place(Math.max(0, at - 1))}>
+          <button type="button" aria-label="Back a line" disabled={bits.locked} onClick={() => moveTo(Math.max(0, at - 1))}>
             ↶
           </button>
-          <button type="button" className="aloud-play" onClick={() => setPlaying((p) => !p)}>
-            {playing ? "⏸ Pause" : "▶ Scroll"}
+          <button type="button" className="aloud-play" disabled={bits.locked} onClick={togglePlay}>
+            {(sh !== null ? bits.playing : playing) ? "⏸ Pause" : "▶ Scroll"}
           </button>
-          <button type="button" aria-label="Forward a line" onClick={() => place(Math.min(lines.length - 1, at + 1))}>
+          <button type="button" aria-label="Forward a line" disabled={bits.locked} onClick={() => moveTo(Math.min(lines.length - 1, at + 1))}>
             ↷
           </button>
-          <button type="button" aria-label="Next section" disabled={section >= a.script.length - 1} onClick={() => toSection(section + 1)}>
+          <button type="button" aria-label="Next section" disabled={section >= script.length - 1 || bits.locked} onClick={() => toSection(section + 1)}>
             ⏭
           </button>
         </div>
@@ -429,7 +570,7 @@ export function Prompter({ a, storage, sound }: PrompterProps) {
             </button>
           </header>
           <div className="aloud-sheet-list">
-            {a.script.map((s, i) => {
+            {script.map((s, i) => {
               const news = s.lines.some((l) => l.mine && l.seq > a.mark);
               return (
                 <button

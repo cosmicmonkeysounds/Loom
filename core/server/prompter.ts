@@ -294,7 +294,10 @@ function runsOf(draft: SceneDraft, lines: readonly PrompterLine[], off: readonly
 
 export class Prompters {
   private live: Live | null = null;
-  constructor(private readonly deps: PrompterDeps) {}
+  private readonly deps: PrompterDeps;
+  constructor(deps: PrompterDeps) {
+    this.deps = deps;
+  }
 
   /** A batch of new lines: a scene in it goes live, over any older one. */
   land(draft: SceneDraft | null): void {
@@ -448,9 +451,14 @@ export class Prompters {
         s.rate = o.on && s.holder === null ? rateOf(s.speed) : 0;
         break;
       }
-      case "done":
-        this.close(false);
+      case "done": {
+        // Someone through with their own line leaves the rest to it: only the
+        // last reader, or a host, ends the scene for everyone.
+        s.here.delete(who);
+        const others = s.draft.readers.some((r) => r !== who && now - (s.here.get(r)?.at ?? -Infinity) <= HERE_TTL_MS);
+        if (!s.draft.owners.includes(who) && !(s.draft.readers.includes(who) && others)) this.close(false);
         return null;
+      }
     }
     s.stop = this.stopOf(s);
     if (!this.step(s, now)) this.emit(s);

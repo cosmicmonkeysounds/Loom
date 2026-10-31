@@ -354,6 +354,9 @@
 .host-show-title-k { flex: 0 0 auto; font-weight: 800; letter-spacing: 0.5px; }
 .host-show-title-who { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .host-show-title-paused { flex: 0 0 auto; font-weight: 600; }
+.host-prompter { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0 2px 6px; padding: 6px 8px; border: 1px solid var(--ink); }
+.host-prompter-line { flex: 1 1 100%; font: 700 13px/1.35 var(--ui-font); color: var(--ink); overflow-wrap: anywhere; }
+.host-prompter button { min-height: 44px; flex: 1 1 120px; }
 .host-show-status:empty { min-height: 0; margin: 0; }
 .host-show-scroll {
   flex: 1 1 auto; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch;

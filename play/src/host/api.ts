@@ -64,6 +64,8 @@ export const HOST_ROUTES = [
   // answers it live in the Desktop) or a canned line as Trabolta himself.
   // Never under the Mind's agent routes (the Mind stays out of Play).
   "/api/mod/talk",
+  // Wave 59: the teleprompter's ▶ (his lines may play) and ✓ Done.
+  "/api/mod/aloud",
   // Wave 40 (contract C2 / C5): the house mixer from the Desk window — move
   // the live balance (never audio.json), and the soundtrack's transport
   // (skip, a scene by hand, stop, follow the story). Never the router's
@@ -185,6 +187,8 @@ export function hostCalls(post: HostPost, alertsPath: () => string) {
       const d = direction?.trim();
       return post("/api/mod/talk", { as, text: text.replace(/\s+/gu, " ").trim(), ...(as === "Clippy" && d !== undefined && d !== "" ? { direction: d } : {}) });
     },
+    /** Wave 59: ▶ every line of his left plays, or ✓ Done the scene is over. */
+    aloud: (action: "release" | "done") => post("/api/mod/aloud", { action }),
     walletApprove: (id: string) => post("/api/mod/wallet/approve", { id }),
     walletDeny: (id: string) => post("/api/mod/wallet/deny", { id }),
     walletApproveHeld: () => post("/api/mod/wallet/approve-held", {}),

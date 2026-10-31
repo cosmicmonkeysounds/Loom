@@ -23,6 +23,7 @@ import { MoreTab } from "./tab-more.tsx";
 import { NeedsTab } from "./tab-needs.tsx";
 import { PeopleTab } from "./tab-people.tsx";
 import { TalkCard } from "./talk.tsx";
+import { PrompterStrip } from "./prompter-strip.tsx";
 import { talkOpen } from "./talk-model.ts";
 
 export interface HostShowProps {
@@ -32,6 +33,8 @@ export interface HostShowProps {
   jobCount?: number;
   /** The booth's 🗂 Guests list (People's head). */
   openGuests?: () => void;
+  /** Wave 59: join the teleprompter's scene. */
+  openPrompter?: () => void;
 }
 
 /** The Show window; nothing outside a host console. */
@@ -53,7 +56,7 @@ export function HostShowWindow(p: HostShowProps) {
   );
 }
 
-function ShowBody({ c, jobs, jobCount = 0, openGuests }: HostShowProps & { c: HostConsoleState }) {
+function ShowBody({ c, jobs, jobCount = 0, openGuests, openPrompter }: HostShowProps & { c: HostConsoleState }) {
   const view = c.view!;
   const clock = useShowClock(showClockOf(view));
   const night = nightStrip(c.strip, showClockChip(clock === null ? null : clockText(clock.minutes), clock?.running ?? true));
@@ -128,6 +131,7 @@ function ShowBody({ c, jobs, jobCount = 0, openGuests }: HostShowProps & { c: Ho
             </p>
           </fieldset>
         )}
+        {view.prompter != null && <PrompterStrip status={view.prompter} calls={c.ctx?.calls ?? null} {...(openPrompter !== undefined ? { onJoin: openPrompter } : {})} />}
         {view.talk != null && <TalkCard c={c} talk={view.talk} open={talkOpen(c.ctx?.session.auth?.character, folds.talk)} onToggle={() => setFolds((f) => ({ ...f, talk: !talkOpen(c.ctx?.session.auth?.character, f.talk) }))} />}
         <p className={`host-show-status${line2.kind !== "strip" ? ` ${line2.kind}` : ""}`} role="status" aria-live="polite" data-testid="host-show-status">
           {line2.kind !== "strip" ? line2.text : ""}

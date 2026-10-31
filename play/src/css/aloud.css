@@ -44,6 +44,23 @@
 .aloud-line.mine { font-weight: 650; color: rgba(255, 255, 255, 0.78); }
 .aloud-line.mine.now { color: var(--white); }
 .aloud-line.cue { font-size: 0.56em; line-height: 1.3; color: rgba(255, 255, 255, 0.5); }
+/* Wave 59: his line is said by the TV; it locks the prompter and scrolls by itself. */
+.aloud-line.his { color: rgba(140, 220, 255, 0.82); }
+.aloud-line.his.now { color: rgb(190, 238, 255); }
+.aloud-text.locked { overflow: hidden; touch-action: none; }
+.aloud-lock {
+  position: absolute; top: 8px; left: 12px; right: 56px; z-index: 1; padding: 8px 12px;
+  font-size: 16px; font-weight: 650; text-align: center; color: var(--black); background: rgb(190, 238, 255);
+  border-radius: 6px; pointer-events: none;
+}
+.aloud-card {
+  position: fixed; left: 8px; right: 8px; bottom: calc(64px + env(safe-area-inset-bottom, 0px)); z-index: 45;
+  display: flex; flex-direction: column; gap: 6px; padding: 10px 12px;
+  color: var(--white); background: var(--black); border: 2px solid rgb(190, 238, 255); border-radius: 8px;
+}
+.aloud-card-line { margin: 0; font-size: 16px; }
+.aloud-card-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.aloud-card-row button { flex: 1 1 140px; min-height: 44px; }
 .aloud-who { font-weight: 700; }
 .aloud-manner { font-size: 0.56em; font-style: italic; font-weight: 400; color: var(--highlight); }
 .aloud-mark {

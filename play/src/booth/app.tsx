@@ -426,7 +426,7 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
   // face (the scanner, a card, PLAYER SELECT).
   const credits = useCredits(s.view?.night?.credits?.roll, s.view?.clock);
   // Wave 55: this part's script, over everything; nothing floats while it is up.
-  const aloud = useAloud({ messages: s.messages, me: s.view !== null ? `@${s.view.character}` : null, token: s.auth?.token ?? null, storage: host.storage, clock: s.view?.clock, prefetch: true });
+  const aloud = useAloud({ messages: s.messages, me: s.view !== null ? `@${s.view.character}` : null, token: s.auth?.token ?? null, storage: host.storage, clock: s.view?.clock, prefetch: true, prompter: s.prompter, post: s.prompterPost });
   const creditsFace = layer?.kind === "scan" || layer?.kind === "card" || layer?.kind === "pick";
   // Wave 47: a room on a phone, a window that isn't home and a floating
   // pop-out are "away" too, so Back steps back inside the app (a room →
@@ -729,6 +729,7 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
       jobs={<NowJobs objectives={s.view?.objectives} interactions={s.view?.interactions ?? []} session={token} row={nowRowOf()} rowActions={nowActions} />}
       jobCount={(s.view?.objectives ?? []).length}
       openGuests={() => setLayer({ kind: "guests" })}
+      openPrompter={() => aloud.setOpen(true)}
     />
   ) : hwin === "desk" ? (
     <LazyDeskWindow session={s} />

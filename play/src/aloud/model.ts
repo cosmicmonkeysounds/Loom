@@ -16,6 +16,8 @@ export interface ScriptLine {
   manner: string | null;
   /** This reader says it out loud; otherwise it is a cue. */
   mine: boolean;
+  /** Wave 59: his, said by the TV when the prompter reaches it. */
+  his?: boolean;
 }
 
 export interface ScriptSection {

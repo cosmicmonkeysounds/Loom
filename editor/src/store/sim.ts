@@ -85,7 +85,7 @@ function empty(): Pick<
   SimState,
   | 'phase' | 'run' | 'connected' | 'roster' | 'factions' | 'locations' | 'cast' | 'channels' | 'spaces'
   | 'beats' | 'events' | 'interactions' | 'cues' | 'codex' | 'quests' | 'facts' | 'wallet' | 'storyClock' | 'race' | 'ledgerLen' | 'messages' | 'world' | 'personas' | 'log'
-  | 'watch' | 'watchDeclared' | 'countdowns'
+  | 'watch' | 'watchDeclared' | 'countdowns' | 'prompter'
   | 'choices' | 'selection' | 'perspective' | 'lens' | 'error' | 'entryBeat'
 > {
   return {
@@ -115,6 +115,7 @@ function empty(): Pick<
     watch: [],
     watchDeclared: false,
     countdowns: [],
+    prompter: null,
     ledgerLen: 0,
     messages: [],
     world: [],
@@ -517,6 +518,7 @@ export const useSim = create<SimState>((set, get) => {
     reveal: async (faction) => void run((s) => void s.reveal(faction)),
     // One director in the browser: nobody to claim the show from.
     claimCaller: async () => false,
+    prompterRelease: () => {},
     choose: async (person, index) => void run((s) => void s.choose(person, index)),
 
     addPersona: async (name) => {

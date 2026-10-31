@@ -7044,8 +7044,8 @@ export class EventRuntime {
         }
         const refused = this.prompters.op(scene, caller.who, caller.host, op);
         this.prompterClock();
-        // Not an error a phone shows: it reads the next frame.
-        if (refused !== null) sendJson(res, refused === "locked" ? 409 : refused === "no scene" ? 410 : 403, { error: refused });
+        // Never a word a phone's session reads (`locked`, a 410): it reads the next frame.
+        if (refused !== null) sendJson(res, 409, { error: `prompter: ${refused}` });
         else sendJson(res, 200, { ok: true });
         return true;
       }
