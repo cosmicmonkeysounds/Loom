@@ -816,20 +816,28 @@ Two planes:
   `secretCode(claimSecret, "badge:<n>", 8)`, link
   `<join base>/?code=<guest code>&badge=<code>`, who holds each);
   `register {…, badge}` or `POST /api/guest/badge {badge}` (token) links
-  one (409 `{holder, name}` when it is someone else's); `POST
+  one (409 `{holder, name}` when it is someone else's, 409 `{reserved: true,
+  name}` when it is an invited badge for a program nobody has joined; `register`
+  answers a sent card before the name, the same 409s or `{held: true}`, or signs
+  in as a free card's Person); `POST
   /api/guest/enter {passcode, badge | claim, token?}` (throttled; `token`
   only proves the holder) → `{resumed: true, id, name, token}`, `{resumed:
-  false}`, or 409 `{held: true, name?, ref?}` while a phone holds them; `/api/scan`
+  false, claim?}` (`claim` when an invited badge came without one), or 409
+  `{held: true, name?, ref?}` while a phone holds them; `/api/scan`
   and `/api/mod/scan` take a badge as `target`; `GuestView.badge`. Links
   persist in `badges.json` and die with every story restart. **Ask a
   host**: `POST /api/guest/rejoin/names {passcode}`, `POST
   /api/guest/rejoin {passcode, name | badge | claim | part | character}`
   → `{request}`, `POST /api/guest/rejoin/poll {request}` → `pending |
-  approved (token, once; a part's with `part: true`, `character` and its
-  capabilities) | denied | expired`; hosts see `rejoins` (`held`, `part`) on
+  approved (the token; a part's with `part: true`, `character` and its
+  capabilities) | denied | closed | expired`, `POST /api/guest/rejoin/cancel
+  {request}` the phone giving up; hosts see `rejoins` (`held`, `part`) on
   the host view and the `cues=1` view and answer `POST /api/mod/guest/rejoin
-  {request, approve}` (host allowlist): an approve signs the old phone out.
-  Ten minutes, memory only. **Cast cards**: `/api/mod/codes` → `castLinks`
+  {request, approve}` (host allowlist). An approve moves nothing: the waiting
+  phone's next poll signs the old phone out and collects the token (a retry
+  gets the same token for a minute), so an ask nobody is waiting on changes
+  nothing. Any sign-in or release of that Person or part closes its open
+  asks (`closed`, once). Ten minutes, memory only. **Cast cards**: `/api/mod/codes` → `castLinks`
   (`?code=<prime>&part=<code>`); `/api/prime/login {passcode, part}` signs
   in, 409 `{held: true, name}` while a booth holds the part. **One holder**
   (wave 59): the header of `routes/rejoin.ts`.

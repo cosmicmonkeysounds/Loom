@@ -33,7 +33,8 @@ my badge**.)
   one), go back to that browser: you're still you there. Lost the phone, or
   moved to a new one? Tap **🙋 Ask a host** on that screen.
 - Being offline doesn't let go of it: a dead phone keeps your badge until
-  a host moves you.
+  a host moves you. If you tap **Leave the event** with no signal, your phone
+  lets go as soon as it is back.
 - Your badge is also your pass: the Antivirus and the hosts can scan it
   instead of the pass on your phone.
 - Keep it on you. While no phone has you, anyone who scans your badge
@@ -48,8 +49,9 @@ No badge, or never linked it? Open the party and tap **🔁 Already
 playing? Get back in → 🙋 No badge? Ask a host**. Pick your program from
 the list, then find a host and tell them. They tap
 **Let them in** on their phone, and yours signs straight in, with the same
-program, codex and score. That signs out the phone that had you. If no one
-answers in ten minutes, ask again.
+program, codex and score. That signs out the phone that had you. Stay on that
+page while you wait: if you tap **Cancel** or close it, nothing moves and the
+other phone stays signed in. If no one answers in ten minutes, ask again.
 
 ## Your invitation
 

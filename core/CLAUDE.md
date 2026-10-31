@@ -472,12 +472,23 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   call proves the holder: nothing new is minted. Held means a live token or
   session; offline is no release. Releases: `/api/guest/logout`,
   `/api/prime/logout`, `/api/mod/guest/release`, `/api/mod/prime/release`
-  (both on the host allowlist), an approved ask (`Rejoin.handOver`), a spent
+  (both on the host allowlist), a collected ask (`Rejoin.handOver`), a spent
   N-02 code, a story restart for a guest, Go live for a part (a booth survives
   a plain restart). A release sends the guest's stream `lifecycle {kind:
   "released"}` and keeps the token in `releasedTokens` (memory only) so a phone
-  that slept through it reads `SIGNED_OUT`. `/api/scan` and `/api/mod/scan`
-  only read a badge. A director's play-as holds nothing and is refused nothing.
+  that slept through it reads `SIGNED_OUT`. An Approve moves nothing: the waiting
+  phone's poll runs `handOver` (so an ask nobody is waiting on changes nothing)
+  and a retried poll gets the same token for `REJOIN_RETRY_MS`. `POST
+  /api/guest/rejoin/cancel` is the phone giving up, and any sign-in or release
+  closes the open asks on that Person or part (`Rejoin.closeAsks`; every guest
+  release goes through `Pairing.cut`, which voids the Home Screen codes too), so
+  the poll answers `closed` once. `register` asks `Rejoin.joinCard` before the
+  name and again after the picture's await, so it keeps `enter`'s rule and two
+  phones can't become one program. An invited badge's number names its program
+  (`Claims.programOfBadge`, the print order: reordering the reserved CHARACTERs
+  moves every invited badge), so a missing claim behaves as a present one, and it
+  never links to another Person (409 `{reserved: true, name}`). `/api/scan` and
+  `/api/mod/scan` only read a badge. A director's play-as holds nothing and is refused nothing.
   A Home Screen nonce (K-31b, off by default) is the one sign-in that adds a
   token: the same phone. Tests: `test/w59-claims.test.ts`.
 - **A booth scans codex QRs** (wave 58). `POST /api/prime/codex/redeem {code}`

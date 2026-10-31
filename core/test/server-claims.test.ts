@@ -208,10 +208,12 @@ describe("reserved programs at the door (W-03)", () => {
     // (its `program.name ==` checks hear them).
     expect(ok.json.name).toBe("Microsoft Excel");
     expect(rt.liveSim!.persons.get(ok.json.id as string)?.name).toBe("Microsoft Excel");
-    // Once held, the program is taken for everyone (the claim is no second ticket).
+    // Once held, the claim is no second ticket: wave 59's refused screen, naming
+    // what's printed on it. With no claim it is plainly taken.
     const again = await register(rt, "Microsoft Excel", rt.claimFor("Microsoft Excel"));
     expect(again.status).toBe(409);
-    expect(again.json.error).toMatch(/already here/u);
+    expect(again.json).toMatchObject({ held: true, name: "Microsoft Excel" });
+    expect((await register(rt, "Microsoft Excel")).json.error).toMatch(/already here/u);
     // An unreserved program needs nothing, and a pool name is spelled the story's way too.
     expect(await register(rt, "calculator")).toMatchObject({ status: 200, json: { name: "Calculator" } });
   });

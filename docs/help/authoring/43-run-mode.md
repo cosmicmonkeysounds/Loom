@@ -120,8 +120,8 @@ Front of house: getting people in.
     while a phone holds a part or a guest, their badge, invitation or printed
     code on any other phone is refused, with **🙋 Ask a host**. Being offline
     is no release. A release is their own Leave the event or Sign out, ⏏
-    Release, a host's *Let them in* on Needs, or a spent Re-pair. A story
-    restart frees the guests; a booth stays signed in until Go live. A
+    Release, a host's *Let them in* on Needs (once the waiting phone has
+    it), or a spent Re-pair. A story restart frees the guests; a booth stays signed in until Go live. A
     staff badge is a sign-in: keep it with its performer, QR side in, and
     never post one. On screen only, a linked badge names its guest, and an
     invited badge has **🔓 lost? open 2 min** (two taps): it opens that
@@ -671,8 +671,10 @@ it asks first for a real guest.
 
 **Someone lost their phone.** Their badge on a new phone is refused and
 offers **🙋 Ask a host**: *Let them in*, on a host's Needs or the director
-phone, signs the old phone out and the new one in, same program, codex,
-quests and score. On a server run, a guest's Inspector also has **🔁
+phone, signs the old phone out and the new one in within a few seconds, same
+program, codex, quests and score. It moves only if that phone is still
+waiting: one that cancelled or closed the page changes nothing, and a sign-in
+or release of that guest or part clears the ask off Needs. On a server run, a guest's Inspector also has **🔁
 Re-pair**: it shows a QR that signs whatever phone scans it back in *as that
 guest*, with no new guest left behind, and signs the old phone out. Use it
 for a dead phone, a cleared browser, a camera that opened another browser, or
