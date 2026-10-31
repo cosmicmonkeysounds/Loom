@@ -215,6 +215,10 @@ export function Prompter({ a, storage, sound }: PrompterProps) {
   const jump = (i: number) => {
     if (bitsRef.current.locked) return;
     setBackTo(atRef.current);
+    // A jump lands and stays: ▶ running on from it would read the last words
+    // out to the end, and the end of a script can be someone's cue.
+    const s = shRef.current;
+    if (s !== null && bitsRef.current.playing) void s.post({ scene: s.id, op: "play", on: false, speed: speedRef.current }).catch(() => {});
     moveTo(i);
     setEnded(false);
   };
