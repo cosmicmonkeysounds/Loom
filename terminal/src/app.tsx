@@ -66,7 +66,8 @@
 //! wants it shut (`heart/DoorOverlay.tsx`). The composer shows when there is
 //! a keyboard (`keys`), except while a tree menu (not the heart to heart's
 //! ⟦BACK⟧) is docked. Thrown out of his heart, the line ends when the scene
-//! has played.
+//! has played. The door moving, either way, cuts off what he is saying
+//! (`heart/door-cut.ts`, wave 59): nothing else interrupts him.
 
 import { Component, Fragment, Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState, type ComponentType, type MutableRefObject, type ReactNode } from "react";
 import { Composer, TYPE_CPS, Thread, Typed } from "./chat.tsx";
@@ -125,6 +126,7 @@ import { useDoorLink } from "./serial/use-door.ts";
 import { useDoorStatus } from "./serial/door-status.ts";
 import { doorOpenNow } from "./serial/door-bridge.ts";
 import { ChoicePanel } from "./heart/ChoicePanel.tsx";
+import { DoorCut, stopsAt, wrongDoor } from "./heart/door-cut.ts";
 import { DoorOverlay } from "./heart/DoorOverlay.tsx";
 import { CHOOSE_TIMEOUT_MS, chooseBody, chooseErrorText, composerBlocked, composerShown, emptyThreadText, heartMenuOf, heartSceneLeft, heartSceneMs, heartTouched, isHeartTerminal, menusOf, panelPlace, pilotEndOf, pilotEndWait, sceneHoldsPanel, threadFor, type HeartMenu } from "./heart/heart.ts";
 import { pendingPickOf, unansweredPicks, withPendingPicks, type PendingPick } from "./heart/pending-pick.ts";
@@ -930,6 +932,8 @@ function Terminal({
   const waiters = useRef(new Map<number, () => void>());
   // Each queued room line's "he started it": its caption goes up then (wave 26 V1).
   const starts = useRef(new Map<number, () => void>());
+  // The sentence he is on, or the pause after it (wave 59: where the door stops him).
+  const onSentence = useRef<{ id: number; index: number } | null>(null);
   const room = roomOf(config);
   // A room scene's face mood (wave 20: the heart's scenes) reaches this face.
   useEffect(() => onSceneFace((m, ms) => face.current?.flash(m, ms)), []);
@@ -971,6 +975,7 @@ function Terminal({
           starts.current.get(id)?.();
           starts.current.delete(id);
         }
+        onSentence.current = { id, index: i };
         const text = chunkText.current.get(id)?.[i] ?? "";
         setMood(moodOfText(text));
         setSpeaking(true);
@@ -978,6 +983,7 @@ function Terminal({
         if (off !== undefined) setRevealed((prev) => new Map(prev).set(id, off));
       },
       done: (id) => {
+        if (onSentence.current?.id === id) onSentence.current = null;
         offsets.current.delete(id);
         chunkText.current.delete(id);
         starts.current.delete(id);
@@ -1009,10 +1015,20 @@ function Terminal({
   // The heart terminal never says a late answer to a phone DM sent before
   // the visit (wave 28): the thread leaves it out, so does his voice.
   const heartRef = useRef(false);
+  // The heart's door as the voice reads it, and where the door stopped each
+  // line of a visit (wave 59).
+  const doorNow = useRef(doorOpen);
+  doorNow.current = doorOpen;
+  const [cutOff, setCutOff] = useState<ReadonlyMap<number, number>>(() => new Map());
+  useEffect(() => setCutOff(new Map()), [pilot]);
   useEffect(
     () =>
       onNewLine((line: Line) => {
         if (heartRef.current && beforeVisit(line)) return;
+        if (wrongDoor(line.beat, doorNow.current)) {
+          setCutOff((prev) => new Map(prev).set(line.seq, 0));
+          return;
+        }
         const chunks = splitSentences(line.text);
         if (chunks.length === 0) return;
         offsets.current.set(line.seq, revealOffsets(line.text, chunks));
@@ -1025,6 +1041,10 @@ function Terminal({
 
   // --- the room voice (a room terminal: the character's lines in its room) ---
   const [roomLine, setRoomLine] = useState<TvLine | null>(null);
+  // Where the door stopped the caption (characters; null: it didn't).
+  const [roomCut, setRoomCut] = useState<number | null>(null);
+  const roomShown = useRef(roomLine);
+  roomShown.current = roomLine;
   const [roomBusy, setRoomBusy] = useState(false);
   const roomLinger = useRef(0);
   const roomPlayer = useMemo(
@@ -1033,6 +1053,7 @@ function Terminal({
         caption: (line) => {
           window.clearTimeout(roomLinger.current);
           setRoomLine(line);
+          setRoomCut(null);
           if (line !== null) setRoomBusy(true);
           if (line !== null && line.mode !== "speak") setMood(moodOfText(line.text));
         },
@@ -1070,6 +1091,27 @@ function Terminal({
     },
     [roomPlayer],
   );
+  // The door moved (wave 59): what he is saying stops where it is and every line
+  // he owes is dropped, for good (the cursor is already past them). This effect
+  // comes before the poll's: a 🚪 press's own answer brings what the story says
+  // for the new door, and that isn't to be cut. His voice in the house isn't
+  // touched: this is one page's queue. `doorOpen` is null on every other terminal.
+  const doorCut = useRef(new DoorCut());
+  const sensor = useDoorStatus().sensor;
+  const night = state?.night ?? null;
+  useEffect(() => {
+    if (doorOpen === null || !doorCut.current.step(sensor, night, Date.now())) return;
+    const on = onSentence.current;
+    const stops = stopsAt(offsets.current, on);
+    const shown = roomShown.current;
+    const chunks = on !== null && shown?.seq === on.id ? chunkText.current.get(on.id) : undefined;
+    if (shown !== null && on !== null && chunks !== undefined) setRoomCut(revealOffsets(shown.text, chunks)[on.index] ?? shown.text.length);
+    if (stops.size > 0) setCutOff((prev) => new Map([...prev, ...stops]));
+    offsets.current.clear();
+    chunkText.current.clear();
+    setRevealed(new Map());
+    roomPlayer.stop(); // stops the queue too, and releases a room line's waiter
+  }, [doorOpen, sensor, night, roomPlayer]);
   // Every poll: the room's new lines → the player (the cursor moves first).
   // Never muted — the TV's mute is the TV's.
   const lastAnswer = useRef<number | null>(null);
@@ -1080,7 +1122,8 @@ function Terminal({
     lastAnswer.current = state.receivedAt;
     const plan = planVoice(voice, from, { character: config.character, muted: false, attract: asleep });
     voiceCursor.current = plan.cursor;
-    roomPlayer.push(plan.lines);
+    // What the door has overtaken is never said (`heart/door-cut.ts`).
+    roomPlayer.push(doorCut.current.behind(state.night, Date.now()) ? [] : plan.lines.filter((l) => !wrongDoor(l.beat, doorNow.current)));
   }, [room, state, asleep, config.character, voiceCursor, roomPlayer]);
   // A room terminal going back to sleep (a restart, the room closed) stops
   // the room voice. Only a room terminal: a house terminal's open line keeps
@@ -1448,7 +1491,7 @@ function Terminal({
             </header>
             <main className="crt-main">
               {screen.kind === "connecting" && <div className="crt-room">CONNECTING…</div>}
-              {screen.kind === "attract" && !asking && !typing && <div className="crt-room">{roomLine !== null && <div><Typed key={roomLine.seq} text={roomLine.text} cut={roomLine.text.length} cps={TYPE_CPS * config.speed} /></div>}</div>}
+              {screen.kind === "attract" && !asking && !typing && <div className="crt-room">{roomLine !== null && <div><Typed key={roomLine.seq} text={roomLine.text} cut={roomCut ?? roomLine.text.length} cps={TYPE_CPS * config.speed} halt={roomCut !== null} /></div>}</div>}
               {asking && (
                 <div className="crt-prompt">
                   <div className="crt-prompt-ask">SHOW ME YOUR PASS</div>
@@ -1465,7 +1508,7 @@ function Terminal({
               {line && filesOpen && <FilePanel config={config} pilot={pilot} view={session.view} character={characterIdOf(config.character, session.view)} onClose={() => setFilesOpen(false)} onActivity={touch} plain />}
               {line && !filesOpen && (
                 <>
-                  <Thread lines={withPendingPicks(thread.lines, pendingPicks, pilot.name, session.lines)} revealed={revealed} typing={session.typing} wait={session.wait} character={config.character} guestName={pilot.name} earlier={thread.earlier} empty={emptyThreadText({ character: config.character, keys: config.keys, heart: heartTerminal, stage: state?.night?.heart_stage ?? null, waited: now - pilotSince.current })} typeCps={TYPE_CPS * config.speed} />
+                  <Thread lines={withPendingPicks(thread.lines, pendingPicks, pilot.name, session.lines)} revealed={revealed} cutOff={cutOff} typing={session.typing} wait={session.wait} character={config.character} guestName={pilot.name} earlier={thread.earlier} empty={emptyThreadText({ character: config.character, keys: config.keys, heart: heartTerminal, stage: state?.night?.heart_stage ?? null, waited: now - pilotSince.current })} typeCps={TYPE_CPS * config.speed} />
                   {panelPlace(menu, showComposer) === "main" && menu !== null && <ChoicePanel menu={menu} doorOpen={doorOpen} numberKeys={true} onActivity={touch} onPick={(i) => choose(menu, i)} voiceBusy={voiceBusy} sceneEndsAt={sceneEndsAt} pad={config.pad} hold />}
                   {speakingHere && (
                     <WorldBoundary fallback={null} onError={() => {}}>
@@ -1536,7 +1579,7 @@ function Terminal({
           {roomLine !== null && (
             <div className={`room-caption${roomLine.mode === "speak" ? "" : " text-only"}`} data-mode={roomLine.mode}>
               {roomLine.from !== config.character && <span className="room-caption-who">{roomLine.from}: </span>}
-              {roomLine.text}
+              {roomCut === null ? roomLine.text : roomLine.text.slice(0, roomCut)}
             </div>
           )}
         </section>
@@ -1557,7 +1600,7 @@ function Terminal({
                   </button>
                 </div>
               )}
-              <Thread lines={withPendingPicks(thread.lines, pendingPicks, pilot.name, session.lines)} revealed={revealed} typing={session.typing} wait={session.wait} character={config.character} guestName={pilot.name} earlier={thread.earlier} empty={emptyThreadText({ character: config.character, keys: config.keys, heart: heartTerminal, stage: state?.night?.heart_stage ?? null, waited: now - pilotSince.current })} />
+              <Thread lines={withPendingPicks(thread.lines, pendingPicks, pilot.name, session.lines)} revealed={revealed} cutOff={cutOff} typing={session.typing} wait={session.wait} character={config.character} guestName={pilot.name} earlier={thread.earlier} empty={emptyThreadText({ character: config.character, keys: config.keys, heart: heartTerminal, stage: state?.night?.heart_stage ?? null, waited: now - pilotSince.current })} />
               {panelPlace(menu, showComposer) === "main" && menu !== null && (
                 <ChoicePanel menu={menu} doorOpen={doorOpen} numberKeys={true} onActivity={touch} onPick={(i) => choose(menu, i)} voiceBusy={voiceBusy} sceneEndsAt={sceneEndsAt} onSkip={roomBusy ? undefined : skipVoice} pad={config.pad} />
               )}

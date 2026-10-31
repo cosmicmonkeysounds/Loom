@@ -1047,7 +1047,7 @@ export class SpeechQueue {
           if (ready === null) {
             this.on.chunk(u.id, i);
             // Nothing can say it: pace the transcript as if it were spoken.
-            await new Promise((r) => setTimeout(r, readingMs(u.chunks[i]!)));
+            await this.pause(readingMs(u.chunks[i]!));
           } else {
             this.on.engine?.(ready.p.kind);
             // V1 (wave 26): `chunk` means he started the sentence — the
