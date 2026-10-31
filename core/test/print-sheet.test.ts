@@ -36,10 +36,13 @@ describe("K-12 print extras", () => {
     };
     const signs = checkinSigns(model, "https://app.example.com", "EVT 1", "s3cret");
     expect(signs.map((s) => [s.id, s.label, s.hidden])).toEqual([
-      ["The Desktop", "The Desktop (living room)", false],
+      ["The Desktop", "The Desktop", false],
       ["The Cache", "The Cache", true],
     ]);
     expect(signs[1]!.url).toBe("https://app.example.com/?code=EVT%201&checkin=the-cache");
+    // Wave 59: the sign is in-world, the real room a note for the crew's screen.
+    expect(signs.map((s) => s.place)).toEqual(["The Desktop (living room)", null]);
+    expect(signs.every((s) => /^R-[0-9A-Z]{4}$/u.test(s.code))).toBe(true);
     expect(printExtras(null, "https://x", "E", "s3cret").checkin).toEqual([]);
   });
 

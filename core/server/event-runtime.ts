@@ -6433,7 +6433,7 @@ export class EventRuntime {
         id: e.id,
         title: e.title,
         about: e.about,
-        code: e.code!,
+        code: e.printed ?? e.code!,
         url: `${base}/?code=${encodeURIComponent(this.codes.event)}&unlock=${encodeURIComponent(e.code!)}`,
         secret: e.secret,
       }));

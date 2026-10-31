@@ -383,6 +383,21 @@ check "sync-example's exit 3 (live event left alone) is sync-show's" eq "$rc" 3
 check "… and says so" grep -q "LIVE with real guests (or its roster can't be read) — files written, event snapshot untouched, NOT reloaded" <<<"$out"
 out="$(ss FAKE_TSX_RC=1 2>&1)"; rc=$?
 check "any other failure is passed through too" eq "$rc" 1
+: > "$T/tsx"
+out="$(ss 2>&1)"
+check "no qr-lock.json, no lock check" bash -c "! grep -q titi-qr-lock '$T/tsx'"
+lock="$ROOT/core/examples/trapped-in-the-internet/qr-lock.json"
+if [ ! -e "$lock" ]; then
+  echo '{"version":1,"items":{}}' > "$lock"
+  out="$(ss FAKE_TSX_RC=1 2>&1)"; rc=$?
+  check "a lock that fails stops the sync before anything is touched" eq "$rc" 4
+  check "… and says what to do" grep -q -- "--qr-moved to go on" <<<"$out"
+  : > "$T/tsx"
+  out="$(ss 2>&1)"; rc=$?
+  check "a lock that holds runs the check, then the sync" grep -q "titi-qr-lock.ts --check --example trapped-in-the-internet" "$T/tsx"
+  check "… which goes on" grep -q "scripts/sync-example.ts" "$T/tsx"
+  rm -f "$lock"
+fi
 teardown
 
 echo "── checklist"

@@ -127,8 +127,8 @@ describe('print sheet', () => {
     const clues = items.filter((i) => isDigitClue(i.stack))
     expect(clues).toHaveLength(2)
     for (const c of clues) {
-      expect(c.code).toBe('')
-      // nothing printed holds a digit (the QR's link is the only way in)
+      expect(c.code).not.toBe('')
+      // nothing printed holds a digit (the schema keeps one out of the code)
       expect([c.title, c.hint, c.code, factLine(c.stack!)].join(' ')).not.toMatch(/\d/)
     }
     expect(factLine(clues[0]!.stack!)).toBe('SILVER')
