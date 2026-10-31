@@ -19,6 +19,8 @@ import {
   needSection,
   agentSection,
   needTab,
+  onlineCount,
+  peoplePool,
   personLine,
   presenceText,
   refusalReason,
@@ -131,6 +133,20 @@ describe("people", () => {
     expect(personOnline({ online: false, lastSeen: now - 3 * 60_000 }, now)).toBe(false);
     expect(personOnline({ online: false, lastSeen: null }, now)).toBe(false);
     expect(personOnline({}, now)).toBe(true);
+  });
+  it("wave 59: the online, the offline on the switch, and an open row until it is closed", () => {
+    const now = 10_000_000;
+    const rows = [
+      { ...people[0]!, online: true },
+      { ...people[1]!, online: false, lastSeen: 0 },
+    ];
+    const ids = (o: { offline: boolean; open: string | null }) => peoplePool(rows, { ...o, now }).map((p) => p.id);
+    expect(ids({ offline: false, open: null })).toEqual(["g1"]);
+    expect(ids({ offline: true, open: null })).toEqual(["g1", "g2"]);
+    // A re-pair QR or a Scan as… open on a phone whose grace just lapsed.
+    expect(ids({ offline: false, open: "g2" })).toEqual(["g1", "g2"]);
+    expect(ids({ offline: false, open: "g1" })).toEqual(["g1"]);
+    expect(onlineCount(rows, now)).toBe(1);
   });
   it("Bathroom Mode reads the afk flag (or a label naming it)", () => {
     expect(isBathroomFlag({ label: "AFK", path: "Program.afk" })).toBe(true);

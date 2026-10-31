@@ -15,7 +15,7 @@ import { CLOCK_HELD, NOTHING_TO_PRESS, STORY_RUNS, countdownText } from "../dire
 import { clockText, showClockOf, useShowClock } from "../show-clock.ts";
 import { useHostConsole, type HostConsoleState } from "./dock.tsx";
 import { HostContext, HostEmpty } from "./kit.tsx";
-import { cueThen } from "./model.ts";
+import { cueThen, onlineCount } from "./model.ts";
 import { comingUp, nightStrip, sectionHead, sectionOpen, showClockChip, showSections, type ShowSectionId, type ShowSectionInfo } from "./show-model.ts";
 import { CueSheet, LastBox, NextBox, WhoIsCalling } from "./tab-cues.tsx";
 import { JudgeTab } from "./tab-judge.tsx";
@@ -57,7 +57,7 @@ function ShowBody({ c, jobs, jobCount = 0, openGuests }: HostShowProps & { c: Ho
   const view = c.view!;
   const clock = useShowClock(showClockOf(view));
   const night = nightStrip(c.strip, showClockChip(clock === null ? null : clockText(clock.minutes), clock?.running ?? true));
-  const sections = showSections({ jobs: jobCount, needs: c.needs, judging: view.judging != null ? { pending: view.judging.pending.length } : null, people: view.people.length });
+  const sections = showSections({ jobs: jobCount, needs: c.needs, judging: view.judging != null ? { pending: view.judging.pending.length } : null, people: onlineCount(view.people, c.ctx?.now ?? 0) });
   const [folds, setFolds] = useState<Partial<Record<ShowSectionId, boolean>>>({});
   const root = useRef<HTMLDivElement>(null);
   // A jump (a need's row, the caller chip, a refused press) opens its
