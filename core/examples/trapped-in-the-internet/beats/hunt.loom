@@ -11,31 +11,21 @@
 // card is judged by the server (facts.json); the results are read here
 // and settled by main.loom (+50, or marked for a guess).
 
-// V4 / V5 — `start_the_hunt`. Trabolta reads round 1 (H1–H3) from the
-// generated `Hunt One Questions`, which hands back to `Hunt One Go`
-// (every divert is the last item of its beat, so the chain is the same
-// under the Sim and a true divert).
+// V4 / V5 — `start_the_hunt`. Everything he says about the hunt is said before
+// 🔎 now (Trabolta Greeting, the generated `Hunt One Questions`, `Hunt One Go`):
+// the press only starts the clock, the quests and the screens, in main.loom's
+// rule. The beat stays for what keys on it. Clippy has no line: the script
+// hands straight from his sign-off to CLIPPY PART 3.
 == Truth Scavenger Hunt One
   setting: The Desktop
-  cast: Clippy, Trabolta
-  aloud: Clippy
 
-Clippy: Everyone! We're ready for our second game: the TRUTH SCAVENGER HUNT! Trabolta will explain the rules.
-Trabolta: As our computer completely relies on me, it is important that you participate in regular training, so I have all the information I need to keep improving. There are files scattered around the computer that I need your help to interpret.
-// DRAFT w32
-Clippy: Ooh, training! Isn't that fun?
-// DRAFT w32 (an ALL CAPS word, corrected)
-Trabolta: It is not fun, Clippy. It is NECESSARY. Necessary. The questions.
--> Hunt One Questions
-
+// His sign-off (SCRIPT:149), where `Hunt One Questions` hands back: the last
+// line of the chain 🤖 starts. The talk scene carries on from here until 🔎.
 == Hunt One Go
   setting: The Desktop
-  cast: Clippy, Trabolta
+  cast: Trabolta
 
-Trabolta: Fifteen minutes. The facts are obscure. They are in the books in this room, and in the print media on the walls.
-// DRAFT w32 (formal, hungry underneath)
-Trabolta: Bring every fact you find to me. I am— I am very much looking forward to them. Thank you.
-Clippy: Go! Find! Interpret! The questions are in your Quest Log. If you find a code, put it in your Codex!
+Trabolta: Please. Search for the truth, and have fun. Jean Trabolta's Truth Scavenger Hunt - it's electrifying.
 
 // C2 — `hunt_time_up` (auto at 15 minutes).
 == Hunt Time Up

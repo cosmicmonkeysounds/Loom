@@ -3700,8 +3700,9 @@ INTERACTION simulation pickup taken
 
 // Wave 32 (C2), appended after the games' moments so no cue number moves; it
 // rides Anytime. The talk panel's ⚡ chip (and the story's own timer) fire it
-// while a talk scene is on: a flicker before the ad attack, an ad burst from
-// it on. No `by:` (a player is never a caller, L1222).
+// while a talk scene is on, the introduction's excepted (wave 58): a flicker
+// before the ad attack, an ad burst from it on. No `by:` (a player is never a
+// caller, L1222).
 // DRAFT w32 (the button's label and description)
 INTERACTION ad_burst
   label: ⚡ Glitch: an ad burst through Trabolta (talk scenes)
@@ -3709,8 +3710,8 @@ INTERACTION ad_burst
   act: Anytime
   sequence: false
   repeat: true
-  while: Night.talk != "none"
-  description: Only while a talk scene is on (🤖 Talk on the hosts' phones). Before the ad attack the screens flicker; from the ad attack on, a short ad bursts through every screen and phone with one of Trabolta's pained lines. The scene also glitches on its own every 45 seconds or so. Two seconds apart at least.
+  while: Night.talk != "none" and Night.talk != "intro"
+  description: Only while a talk scene is on (🤖 Talk on the hosts' phones), never his introduction's. Before the ad attack the screens flicker; from the ad attack on, a short ad bursts through every screen and phone with one of Trabolta's pained lines. The scene also glitches on its own every 45 seconds or so. Two seconds apart at least.
 
 // Wave 44 (C3), appended last so no cue number moves; it rejoins the
 // awards ceremony (G). G11 rolls the credits once; this rolls them again.
@@ -4447,10 +4448,10 @@ when introduce_trabolta:
     set Night.terminals = "trabolta"
     // w18b (R18)
     broadcast "!🤖 TRABOLTA IS ONLINE. Jean Trabolta, Sole Owner and Founder of Maps and Ducks, is speaking at the Desktop by video conference. His thread is open: say hello." to everyone with go: Trabolta
-    // Wave 32 (C1): the first talk scene, until 🔎.
+    // Wave 58: the first talk scene stays open behind his speech until 🔎, for a
+    // short live exchange after his sign-off (the card says when to start). No
+    // flickers: his first public crack is the first guess at the results.
     set Night.talk = "intro"
-    set Night.burst_auto = 0
-    set Night.burst_at = Time.elapsed + 45
     -> Trabolta Introduction
   else if Night.trabolta_introduced == true:
     broadcast "🤖 Trabolta is already online. Nothing happens." to channel(hosts)
@@ -4670,7 +4671,7 @@ when truth_question:
 
 // ── Wave 32: the talk scenes (C1) and their glitches (C2) ──
 // `Night.talk` names the talk scene that is on ("none" when none): intro
-// (🤖 → 🔎), bottle (the third 📋 → 📺), ad (📺 → 📓) and beans (🫘 → 🗜 or
+// (🤖 → 🔎, after his sign-off), bottle (the third 📋 → 📺), ad (📺 → 📓) and beans (🫘 → 🗜 or
 // 🤖). While one is on, the hosts' phones carry the 🤖 Talk card: Task
 // Manager types what Clippy says aloud and Trabolta answers on the TV
 // (core/src/talk-back.ts; the canned lines are core/src/talk-scenes.ts).
@@ -4692,9 +4693,9 @@ when Night.talk == "beans" and Night.step >= 13:
 when Night.talk != "none" and Night.ended == true:
   set Night.talk = "none"
 
-// ⚡ (the talk card's chip, or the timer below). Before the ad attack it is
-// a flicker on the screens only: the ad hijack is the malware's first
-// public sign. From the ad attack on it is an ad burst: a short glitch on
+// ⚡ (the talk card's chip, or the timer below). Never in the introduction
+// (wave 58: he is clean until the results). At the bottle it is a flicker on
+// the screens only: the ad hijack is the malware's first public sign. From the ad attack on it is an ad burst: a short glitch on
 // every screen and phone (`glitch_kind` "burst": the phones' light
 // takeover, never the 📺's full one) carrying the next of Trabolta's
 // pained lines. Two seconds apart at least: the phones play a glitch only
@@ -4702,13 +4703,16 @@ when Night.talk != "none" and Night.ended == true:
 when ad_burst:
   if Night.talk == "none" or Night.ended == true:
     broadcast "⚡ No talk scene is on (🤖 Talk): nothing glitches." to channel(hosts)
+  else if Night.talk == "intro":
+    // DRAFT w58
+    broadcast "⚡ Not during his introduction: he stays clean until the results. Nothing happens." to channel(hosts)
   else if Night.glitch_kind == "full" and Time.elapsed < Night.glitch_at + 8:
     // DRAFT w32: the 📺's takeover plays 8 s on the terminals; a burst
     // inside it would cut it short everywhere.
     broadcast "⚡ The ad hijack is still playing: wait for it to end. Nothing happens." to channel(hosts)
   else if Night.burst_last > 0 and Time.elapsed < Night.burst_last + 2:
     broadcast "⚡ Too soon: two seconds between glitches. Nothing happens." to channel(hosts)
-  else if Night.talk == "intro" or Night.talk == "bottle":
+  else if Night.talk == "bottle":
     set Night.burst_last = Time.elapsed
     set Night.burst_at = Time.elapsed + 45
     cue screens_flicker
@@ -4743,7 +4747,7 @@ when ad_burst:
 
 // The scene glitches on its own too: about every 45 seconds of story time
 // (re-armed by every ⚡), at most four ad bursts in the ad attack and at
-// the beans, at most two flickers in the introduction and at the bottle.
+// the beans, at most two flickers at the bottle.
 // Guarded by the scene itself (a closed scene, or an ending, stops it).
 when Night.talk != "none" and Night.ended != true and Night.burst_at > 0 and Time.elapsed >= Night.burst_at and (Night.burst_auto < 2 or (Night.burst_auto < 4 and (Night.talk == "ad" or Night.talk == "beans"))):
   set Night.burst_auto += 1
