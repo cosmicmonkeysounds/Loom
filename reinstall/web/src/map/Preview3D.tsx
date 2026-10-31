@@ -77,7 +77,7 @@ export default function Preview3D({ house, floor }: { house: HouseMap | null; fl
     const ducks: ReturnType<typeof createDuck>[] = [];
     const t = window.setTimeout(() => {
       // Every prop, even those only the far gone see (wave 49).
-      built = buildHouseScene(house, { ceilings: false, descent: DESCENT_MAX });
+      built = buildHouseScene(house, { ceilings: false, descent: DESCENT_MAX, crewLabels: true });
       for (const [id, g] of built.floors) g.visible = all || id === floor;
       s.scene.add(built.root);
       for (const spot of house.duck.spots) {

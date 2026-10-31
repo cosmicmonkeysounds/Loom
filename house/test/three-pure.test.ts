@@ -1,10 +1,24 @@
 import { describe, expect, it } from "vitest";
-import { PoseBuffer, labelPoint, lerpYaw, trailPoints, wallBoxes } from "../src/three/index.ts";
+import { PoseBuffer, labelPoint, lerpYaw, roomTitle, trailPoints, wallBoxes } from "../src/three/index.ts";
 import { buildWalls, distanceToBoundary, pointInPolyStrict, yawToward } from "../src/index.ts";
 import type { PlayerPose, Vec2, Vec3, WallSegment } from "../src/index.ts";
 import { fixture } from "./golden.ts";
 
 const pose = (p: Vec3, yaw: number, pitch = 0): PlayerPose => ({ p, yaw, pitch });
+
+describe("a room's title bar", () => {
+  const room = { label: "Casino (bedroom 2)", location: "The Casino" } as Parameters<typeof roomTitle>[0];
+
+  it("is the name a player reads: no bracket, no subtitle", () => {
+    expect(roomTitle(room, false)).toEqual({ title: "The Casino" });
+    expect(roomTitle({ ...room, location: undefined } as typeof room, false)).toEqual({ title: "Casino" });
+  });
+
+  it("keeps the real room for a crew tool", () => {
+    expect(roomTitle(room, true)).toEqual({ title: "Casino (bedroom 2)", subtitle: "The Casino" });
+    expect(roomTitle({ ...room, location: "Casino (bedroom 2)" } as typeof room, true)).toEqual({ title: "Casino (bedroom 2)" });
+  });
+});
 
 describe("PoseBuffer", () => {
   it("is empty until a pose arrives, then holds the only one", () => {
