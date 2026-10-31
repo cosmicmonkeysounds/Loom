@@ -50,8 +50,8 @@ does ends the night or needs you; you may read their numbers in Run → World
 
 | # | Cue | Then | Set stage (classic only: the story mind sets it itself) |
 |---|---|---|---|
-| 1 | **C1/V1 📣** Call everyone to the Desktop (by 21:00) | Clippy welcomes, hosts | |
-| 2 | **V2 🎱** Start Computer Bingo (20 min) | | |
+| 1 | **C1/V1 📣** Call everyone to the Desktop (by 21:00) | Programs gather | |
+| 2 | **V2 🎱** Start Computer Bingo (20 min) | Clippy's welcome pops up on her teleprompter; she names the hosts | |
 | 3 | **V3 ⏰** Bingo time: results | Norton interrupts; Corrupted Code | |
 | 3a | radio **INTRO**, then **Clippy 2/X 📺** only if a program is walking | the TV follows them; Clippy cheers | |
 | 3b | **Clippy 2/X 🎤** Clippy tells the room about Trabolta | her paragraph, ending *"Trabolta, would you explain the rules?"* | |
@@ -127,7 +127,7 @@ uncertain (the current verdict is outlined; a filing that was settled as a
 mark, a guess, has no buttons). A host's 📝 on a program's card judges only that program's
 **latest** filing: while an earlier one still waits, it changes nothing and
 `# hosts` says *"📝 Not judged: … Judge it on Run → Mind → Judging"*. **Trabolta rules every answer that isn't an exact match** (wave 18b): a
-near miss (*Mr Pickels*, *Grko*, *11 years ago*, with a ⚠ line in `# hosts`
+near miss (*Mr Waffels*, *11 years ago*, with a ⚠ line in `# hosts`
 naming the key) and a plain miss alike go to his laptop, one at a time, his
 voice replies first. The card reads *🤖 asking Trabolta…* (or queued), and
 seconds later `# hosts` gets *🤖 Trabolta ruled …: the same as / not "<key>"

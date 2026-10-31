@@ -1972,7 +1972,7 @@ tent is captured by the tablet's scan.
   words, plurals, word order, spelling word by word with the first letter kept, and the key's
   words in order plus up to 4 more unless one turns it around or hedges (*not*, *never*, *or*,
   *but* …), adds an am/pm the key leaves open or is a lone letter; numbers and am/pm exact —
-  *Mr Pickels*, *Grko*, *11 years ago*) is never an automatic lie or guess (a wrong answer at
+  *Mr Waffels*, *11 years ago*) is never an automatic lie or guess (a wrong answer at
   100 still is). Abbreviations are judged exact (`spellOut`: Mr. / Mrs. / Dr., yrs, ext,
   hr(s), min(s), sec(s), a leading-zero time like 0900), so *Ext. 1978* is accurate with no
   ⚠. In `auto`
@@ -3887,9 +3887,8 @@ spoken on the TV and posted in The Desktop; Clippy presses 🗣 *Truth answered*
 Ninety coded entries (wave 4: 7 in `1-world`, 21 in `2-files`, 6 in `4-trabolta`, 48 in the
 generated `9-facts`, 8 in `generated/questions.loom`). **The Desktop's print stacks**
 (`generated/print-stacks.md`, generated from `facts.json`, §2.11): the 8 hunt answers (gold,
-each on its own document — the lease invoice in volume B, the plaque rubbing in P, the
-programme on the mantel, the Customer Care card in the atlas, Grok's prom ticket slipped into
-the atlas, …), the 30 **main** facts (green: inside the encyclopaedias, volumes A–M), the 6
+each on its own document — the three books' pages for H1–H3, whose answers are still owed, the
+Customer Care card in the atlas, the prom ticket slipped into the atlas, …), the 30 **main** facts (green: inside the encyclopaedias, volumes A–M), the 6
 **trabolta** facts (blue: deep in the print media on the mantel) and the 24 **character** facts
 (red: the back pages of volumes N–Z and the atlas) all hide in the living room's old
 newspapers, encyclopaedias and atlas. The stacks mark twelve hand-written rows "already
