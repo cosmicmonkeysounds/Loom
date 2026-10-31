@@ -1,4 +1,4 @@
-"""The Music manager and Trabolta at the stereo (wave 58, contract C2-C4): a
+"""The Music manager and Trabolta at the stereo (wave 58, the music contract's C2-C4): a
 held pause, previous and the library against the fake page; a playlist by hand
 and a pause on a real Mixer; who wins between the story, a director and him."""
 
@@ -244,7 +244,7 @@ def test_the_cue_reads_as_a_stereo_cue_and_never_as_a_scene():
     assert scene_of_cue("music, action: skip") is None
 
 
-# -- who wins (C4) ------------------------------------------------------------------
+# -- who wins (the music contract's C4) ------------------------------------------------------------------
 
 LIVE = {
     "playlists": {"a": {"dir": "music/a"}, "b": {"dir": "music/b"}},

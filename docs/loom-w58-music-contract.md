@@ -141,17 +141,7 @@ sim (`musicDjOf`), `null` for a story without `Night.dj_locked`. Pals are the
 programs at or over the bar, the chummiest first, at most 12. A program's name
 only: the view is staff's.
 
-## C8 Landing with wave 59
-
-- **The cues.** `trabolta_music_lock` and `trabolta_music_unlock` sit after wave 59's
-  `costume_flicker`, the last two admin rows, so no cue number moved.
-- **The costume's hand** (`AudioHub.musicHand`). A hand playlist and a held ⏸ count
-  as a hand, so a MUSIC press on the iPad is refused under them. ⏮ moves no hand,
-  like ⏭. A loan is no hand: the router reports `hand` for it, so the hub reads
-  `loan` first, and a press ends it the way any hand does.
-- **The rooms.** Nothing here names a renamed room.
-
-## C9 Tests and checks
+## C8 Tests and checks
 
 - core: `test/w58-music.test.ts` (commands, ids, `audioMusicOf`, the view),
   `test/trapped-w58-music.test.ts` (the story: the bar, every refusal, a loan's
@@ -167,3 +157,13 @@ only: the view is staff's.
 Not tested on the real app: ⏮, ⏸, ⏵ and a hand playlist have run only against
 `FakePage`. The app was playing the night's Act 3 through the router, so they
 wait for the first rehearsal on the Desktop (`SIGNOFF-w58-music.md` §2).
+
+## C9 Landing with wave 59
+
+- **The cues.** `trabolta_music_lock` and `trabolta_music_unlock` sit after wave 59's
+  `costume_flicker`, the last two admin rows, so no cue number moved.
+- **The costume's hand** (`AudioHub.musicHand`). A hand playlist and a held ⏸ count
+  as a hand, so a MUSIC press on the iPad is refused under them. ⏮ moves no hand,
+  like ⏭. A loan is no hand: the router reports `hand` for it, so the hub reads
+  `loan` first, and a press ends it the way any hand does.
+- **The rooms.** Nothing here names a renamed room.

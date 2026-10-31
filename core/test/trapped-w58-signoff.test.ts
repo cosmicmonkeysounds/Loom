@@ -3,7 +3,8 @@
 //! we changed from the delivered file is on it, and it names no secret: it reads
 //! them from the source, as the show page's test does. `core/test/trapped-w13-
 //! objectives.test.ts` holds the objectives to it, and stagehand's wave 42d test
-//! the two filler pools.
+//! the two filler pools. The Music manager, the other wave 58, has its own sheet
+//! and its own marker (`SIGNOFF-w58-music.md`, `DRAFT w58-music`), held here too.
 
 import { execSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
@@ -95,7 +96,7 @@ describe("wave 58's Music manager: its own sheet", () => {
     expect(secretsIn(MUSIC_CONTRACT, SECRETS)).toEqual([]);
   });
 
-  it("is not the story's sheet: each marker has one home, and both sheets say so", () => {
+  it("is not the story's sheet: each marker has one home", () => {
     expect(MUSIC_SHEET).toMatch(/DRAFT w58-music/u);
     expect(MUSIC_SHEET).toContain("`SIGNOFF-w58.md` is the Oct 30 story's");
     for (const f of ["cast/trabolta.loom", "main.loom", "trabolta.mind.md"]) expect(read(f), f).toMatch(/DRAFT w58-music/u);

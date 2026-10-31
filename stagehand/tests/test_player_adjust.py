@@ -117,7 +117,7 @@ def test_a_guests_warmth_rides_a_real_reply_and_their_other_slots_never_do():
 
 
 def test_a_guests_warmth_slot_passes_and_nothing_else_of_theirs():
-    """Wave 58 (contract C5): a guest offers only the story's `warmth:` slot."""
+    """Wave 58 (the music contract's C5): a guest offers only the story's `warmth:` slot."""
     p = parse_persona(PERSONA.replace("them_adjust: trust\n", "them_adjust: trust, chummy\n"))
     guest = request(player=False, ranges={"chummy": [-5, 10]})
     guest["speaker"]["kind"] = "guest"

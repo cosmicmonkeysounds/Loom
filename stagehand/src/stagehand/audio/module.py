@@ -1468,7 +1468,7 @@ class AudioRouter:
         return True
 
     def on_stereo(self, cmd: dict[str, str]) -> str | None:
-        """Trabolta at the stereo, off the feed (wave 58, contract C4). The
+        """Trabolta at the stereo, off the feed (wave 58, the music contract's C4). The
         story has judged him already; here a director's hand still wins, so
         `skip`, `hush` and `play` are ignored under it, and `back` touches
         nothing but his own loan. → what was done, or None."""
@@ -1562,7 +1562,7 @@ class AudioRouter:
         return fresh
 
     def serve_music(self, e: dict) -> str | None:
-        """One music command from a panel (C0): `next` (`playlist` or every
+        """One music command from a panel (the music contract's C0): `next` (`playlist` or every
         bed), `scene` and `stop` by hand (held against the story's catch-ups
         until the next live music cue), `story` (let go of the hand: the
         story's scene, now). Wave 58: `previous`, `pause`, `resume`, and

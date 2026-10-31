@@ -3845,7 +3845,7 @@ export class EventRuntime {
         codex: codex(speakerId, !recentOn),
         location: performer === null ? sim.locationOf(who) : null,
         ...(speakerDef?.player === true ? { ranges: Object.fromEntries([...speakerDef.ranges].filter(([k]) => !isPrivateSlot(speakerDef, k))) } : {}),
-        // Wave 58 (C5): a guest's one slot the voice may move, when the story names one.
+        // Wave 58 (the music contract's C5): a guest's one slot the voice may move, when the story names one.
         ...(performer === null && sim.model.warmth !== null ? { ranges: { [sim.model.warmth.slot]: [sim.model.warmth.min, sim.model.warmth.max] as [number, number] } } : {}),
       },
       world: globals,
@@ -4376,7 +4376,7 @@ export class EventRuntime {
     const ranges = sim.model.characters.get(req.character)?.ranges ?? new Map<string, [number, number]>();
     // Wave 21 (C7): `them.<slot>` moves a player speaker's own declared
     // range (never a `private:` one); a guest's `them.` keys are ignored,
-    // but for the story's `warmth:` slot (wave 58, C5), ±1 whatever was asked.
+    // but for the story's `warmth:` slot (wave 58, the music contract's C5), ±1 whatever was asked.
     const who = req.thread.audience[0] ?? "";
     const them = who.startsWith("@") ? sim.model.characters.get(who.slice(1)) : undefined;
     const applied: Record<string, number> = {};
