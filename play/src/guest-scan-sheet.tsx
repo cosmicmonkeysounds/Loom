@@ -11,7 +11,8 @@
 //! first (`printed`, `core/server/routes/printed.ts`): a badge's, a room's or
 //! a sign's comes back as its QR's link and goes through `guestScan` like a
 //! scan, so only a code that is none of those reaches the Codex, whose miss
-//! is a story event.
+//! is a story event. Text with spaces in it goes as `spaced`: a real code
+//! still unlocks, but words are answered as words, free, as they always were.
 //!
 //! The pure classifiers are unit-tested in `test/guest-scan.test.tsx`; the
 //! camera is `scanner.tsx`'s, the booth's.
@@ -20,15 +21,16 @@ import { useEffect, useRef, useState } from "react";
 import { useBigOnScreen, useMomentsHold } from "./moments/provider.tsx";
 import { actFromSearch } from "./act-link.ts";
 import { checkinFromSearch } from "./checkin.ts";
-import { REDEEM_THROTTLED, unlockFromSearch } from "./codex.ts";
+import { REDEEM_THROTTLED, TYPED_UNKNOWN, unlockFromSearch } from "./codex.ts";
 import { badgeFromText } from "./rejoin.ts";
 import type { CameraState } from "./scan.ts";
 import { CameraScanner } from "./scanner.tsx";
 
 /** What a guest's scan does. */
 export type GuestScan =
-  /** A codex code: redeem it. */
-  | { kind: "unlock"; code: string }
+  /** A codex code: redeem it. `spaced`: typed with spaces in it, so it may
+   *  only be words (wave 59): a miss then costs nothing. */
+  | { kind: "unlock"; code: string; spaced?: true }
   /** A room's sign: check in there (the room's slug, as the sign carries it). */
   | { kind: "checkin"; at: string }
   /** A sign that presses one of the guest's own buttons (wave 54). */
@@ -110,8 +112,7 @@ export function guestCameraProblem(state: CameraState): string | null {
 /** The scan sheet's hint while the camera runs. */
 export const SCAN_HINT = "Point it at a code on the wall. Scanning here keeps you signed in — never use the phone's camera app.";
 
-/** What the typed box says when the text is no code at all. */
-export const TYPED_UNKNOWN = "That isn't a code — check the sign and type it again.";
+export { TYPED_UNKNOWN };
 
 /** Fold a room's name or a typed word for comparing: case, spaces, `-` and
  *  `_` and punctuation all drop (`The Desktop (living room)` → its id's
@@ -147,7 +148,8 @@ export function typedScan(raw: string, rooms: readonly ScanRoom[] = [], meId: st
     }
   }
   if (GUEST_ID.test(text)) return guestScan(text, meId);
-  return TYPED_CODE.test(text) ? { kind: "unlock", code: text } : { kind: "note", text: TYPED_UNKNOWN };
+  if (!TYPED_CODE.test(text)) return { kind: "note", text: TYPED_UNKNOWN };
+  return /\s/u.test(text) ? { kind: "unlock", code: text, spaced: true } : { kind: "unlock", code: text };
 }
 
 /** `typedScan`, with the server's word on a bare code: one printed on a badge,

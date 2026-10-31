@@ -11,6 +11,7 @@ import { EventRegistry } from "../server/registry.ts";
 import { checkinSlug, roomCode, signCode } from "../server/routes/k12.ts";
 import { printedHit, type PrintedSource } from "../server/routes/printed.ts";
 import { partCode } from "../server/routes/rejoin.ts";
+import { resolveGoWord } from "../src/go.ts";
 import { compileFromSource, inWorldLabel } from "../src/runtime/sim/index.ts";
 import { CODES, booth, call, cleanup, freshDir, mod, post, runtime } from "./w13-fix-harness.ts";
 
@@ -58,6 +59,23 @@ describe("in-world names", () => {
     expect(JSON.stringify(seen.json)).not.toMatch(/\((kitchen|office|game room|studio|laundry|bedroom 2|crawl space|cold storage|living room|mud room|bathrooms)\)/u);
     const crew = await call(rt, "GET", "/api/state?role=mod", {}, { moderator: true });
     expect(JSON.stringify(crew.json)).toContain("(kitchen)");
+  });
+});
+
+describe("in-world names past the screens", () => {
+  const BRACKET = /[()]|—/u;
+
+  it("Trabolta's facts and a Go button read the story's names, never the real rooms", async () => {
+    const rt = show();
+    await guest(rt, "Ada");
+    const facts = (await call(rt, "GET", "/api/agent/facts", {}, { moderator: true })).json as unknown as { locations: { label: string }[] };
+    expect(facts.locations.length).toBeGreaterThan(0);
+    for (const l of facts.locations) expect(l.label).not.toMatch(BRACKET);
+    const model = compileFromSource(scenarioSource("trapped-in-the-internet"));
+    for (const id of model.locations.keys()) {
+      const go = resolveGoWord(model as unknown as Parameters<typeof resolveGoWord>[0], id);
+      expect(go?.label ?? "", id).not.toMatch(BRACKET);
+    }
   });
 });
 
@@ -172,6 +190,58 @@ describe("the Scan sheets' route", () => {
     const miss = await post(rt, "/api/guest/codex/redeem", { code: "not-a-real-code", token });
     expect(miss.json.missed).toBe(true);
     expect(Number(doubt() ?? 0)).toBe(Number(before ?? 0) + 8);
+  });
+});
+
+describe("what the Codex must not charge for", () => {
+  const person = (rt: Rt) => [...(rt["sim"] as unknown as { persons: Map<string, unknown> }).persons.keys()][0]!;
+  const doubtOf = (rt: Rt) => Number((rt["sim"] as unknown as { world: { get(k: string): unknown } }).world.get(`${person(rt)}.doubt`) ?? 0);
+  const redeem = (rt: Rt, token: string, code: string, extra: Record<string, unknown> = {}) => post(rt, "/api/guest/codex/redeem", { code, token, ...extra });
+
+  it("a printed code reaching the redeem route, as a terminal's box sends it, is no wrong code", async () => {
+    const rt = show();
+    const token = await guest(rt, "Ada");
+    const c = await codesOf(rt);
+    const b = await blank(rt);
+    const before = doubtOf(rt);
+    for (const [kind, code] of [["room", c.checkin[0]!.code], ["sign", c.actions[0]!.code], ["badge", b.code], ["invited", c.claims[0]!.code], ["staff", c.castLinks[0]!.code]] as const) {
+      const r = await redeem(rt, token, code);
+      expect(r.status, kind).toBe(200);
+      expect(r.json.missed, kind).toBeUndefined();
+      expect(r.json.printed, kind).toBe(kind);
+      expect(r.json.unlocked, kind).toBeNull();
+    }
+    expect(doubtOf(rt)).toBe(before);
+  });
+
+  it("words from the Scan sheet's box cost nothing and fire nothing, but count against the throttle", async () => {
+    const rt = runtime({ scenarioSource: scenarioSource("trapped-in-the-internet"), facts: scenarioFactsFile("trapped-in-the-internet")?.source ?? null, limits: { redeemMisses: { max: 2, windowMs: 60_000 } } });
+    const token = await guest(rt, "Ada");
+    const before = doubtOf(rt);
+    const a = await redeem(rt, token, "hello there friend", { spaced: true });
+    expect(a.json.missed).toBeUndefined();
+    expect(a.json.words).toBe(true);
+    expect(doubtOf(rt)).toBe(before);
+    expect((await redeem(rt, token, "living room", { spaced: true })).json.words).toBe(true);
+    expect((await redeem(rt, token, "third try here", { spaced: true })).status).toBe(429);
+    expect(doubtOf(rt)).toBe(before);
+  });
+
+  it("a real code typed with spaces still unlocks; the same words anywhere else are still a miss", async () => {
+    const rt = show();
+    const token = await guest(rt, "Ada");
+    const c = await codesOf(rt);
+    const entry = c.codex[0]!;
+    const hit = await redeem(rt, token, SPACED(`${entry.code.slice(0, 2)}-${entry.code.slice(2)}`), { spaced: true });
+    expect(hit.json.unlocked === null || typeof hit.json.unlocked === "string").toBe(true);
+    expect(hit.json.words).toBeUndefined();
+    expect(typeof hit.json.unlocked).toBe("string");
+    const before = doubtOf(rt);
+    const miss = await redeem(rt, token, "hello there friend");
+    expect(miss.json.missed).toBe(true);
+    expect(doubtOf(rt)).toBe(before + 8);
+    // No space in it, the flag means nothing: a true miss is a true miss.
+    expect((await redeem(rt, token, "not-a-real-code", { spaced: true })).json.missed).toBe(true);
   });
 });
 

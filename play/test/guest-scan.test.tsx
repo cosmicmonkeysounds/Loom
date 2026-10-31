@@ -166,7 +166,7 @@ describe("a typed code (wave 59)", () => {
   const link = (rest: string) => `https://x/?code=EVT&${rest}`;
 
   it("takes spaces where a keyboard put them, so the server can fold it", () => {
-    expect(typedScan("blue duck 9")).toEqual({ kind: "unlock", code: "blue duck 9" });
+    expect(typedScan("blue duck 9")).toEqual({ kind: "unlock", code: "blue duck 9", spaced: true });
     expect(typedScan("blue-duck")).toEqual({ kind: "unlock", code: "blue-duck" });
     expect(typedScan("?!")).toEqual({ kind: "note", text: TYPED_UNKNOWN });
   });

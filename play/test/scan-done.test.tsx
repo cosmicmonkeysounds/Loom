@@ -7,7 +7,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import { ApiError } from "../src/client.ts";
-import { REDEEM_THROTTLED } from "../src/codex.ts";
+import { REDEEM_THROTTLED, TYPED_UNKNOWN } from "../src/codex.ts";
 import {
   CHECKIN_KEPT,
   SCAN_DONE_ALREADY,
@@ -41,6 +41,8 @@ describe("a redeem's answer", () => {
   it("a miss keeps the sheet open, and an old server's answer (no title, no missed) still reads", () => {
     expect(redeemOutcome({ unlocked: null, missed: true })).toEqual({ note: SCAN_MISSED });
     expect(redeemOutcome({ unlocked: null })).toEqual({ note: SCAN_MISSED });
+    // Wave 59: words typed in the Scan sheet read as the box's own line, no miss.
+    expect(redeemOutcome({ unlocked: null, words: true })).toEqual({ note: TYPED_UNKNOWN });
     expect(redeemOutcome({ unlocked: "x" })).toEqual({ done: { title: SCAN_DONE_UNLOCK, body: "A new entry is in your Codex now.", go: { to: "codex", entry: "x" } } });
   });
 });

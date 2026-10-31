@@ -403,7 +403,7 @@ export function GuestApp({ onLeave, badgeLink = null }: { onLeave: () => void; b
       if ("e" in a) return m.scanErrorNote(a.e, "checkin");
       o = m.checkinOutcome(a.r);
     } else {
-      const [m, a] = await Promise.all([loadScanDone(), settled(s.redeem(scan.code))]);
+      const [m, a] = await Promise.all([loadScanDone(), settled(s.redeem(scan.code, scan.spaced))]);
       if ("e" in a) return m.scanErrorNote(a.e, "unlock");
       setCodexNote(null);
       o = m.redeemOutcome(a.r);

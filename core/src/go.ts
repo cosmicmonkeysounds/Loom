@@ -10,6 +10,7 @@
 //! server share it.
 
 import { GO_LABELS, GO_WORDS, type GoTarget } from "./delivery.ts";
+import { inWorldLabel } from "./in-world.ts";
 import { foldName } from "./parser/names.ts";
 
 /** What `splitMomentArgs` pulls out of a `with …` tail. */
@@ -119,11 +120,6 @@ function keyOf(map: ReadonlyMap<string, unknown>, name: string): string | null {
   return null;
 }
 
-/** A room's title without a trailing `(…)` ("The RAM (studio, basement)" → "The RAM"). */
-function bareTitle(title: string): string {
-  return title.replace(/\s*\([^()]*\)$/u, "").trim() || title;
-}
-
 /** A title cut to `max` characters with an ellipsis. */
 function clip(title: string, max: number): string {
   return title.length <= max ? title : `${title.slice(0, max - 1).trimEnd()}…`;
@@ -174,7 +170,7 @@ export function resolveGoWord(model: GoModel, raw: string): GoTarget | null {
   if (loc === null) for (const l of model.locations.values()) if (l.label !== null && foldName(l.label) === f) loc = l.id;
   if (loc !== null) {
     const def = model.locations.get(loc)!;
-    return { kind: "room", id: `loc:${loc}`, label: label ?? `Go to ${bareTitle(def.label ?? loc)}` };
+    return { kind: "room", id: `loc:${loc}`, label: label ?? `Go to ${inWorldLabel(def.label ?? loc)}` };
   }
   const roomName = word.replace(/^#\s*/u, "");
   const room = keyOf(model.channels, roomName.startsWith("room:") ? roomName : `room:${roomName}`);

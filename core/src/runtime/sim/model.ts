@@ -19,6 +19,7 @@ import type {
 } from "../../parser/index.ts";
 import { splitArgsCommas, splitTopLevelCommas, stripPrefix } from "../../parser/rust.ts";
 import { FoldedIndex, foldName } from "../../parser/names.ts";
+export { inWorldLabel } from "../../in-world.ts";
 import type { Bundle } from "../bundle.ts";
 import { vBool, vNumber, vString, type Value } from "../expr.ts";
 import { lowerRawBody } from "./effects.ts";
@@ -1064,18 +1065,6 @@ function factionDef(id: string, body: FactionBody): FactionDef {
     rival: scalarProp(body.properties, "rival"),
     joinable: scalarProp(body.properties, "joinable") !== "false",
   };
-}
-
-/**
- * A LOCATION's `label:` as a player reads it. Wave 59: what sits in brackets,
- * or after a ` — `, is the crew's note (the real room, what happens there):
- * `The Start Bar (kitchen)` reads `The Start Bar`, `The Optical Drive (mud
- * room) — Login` reads `The Optical Drive`. Only crew tools show the whole
- * label.
- */
-export function inWorldLabel(label: string): string {
-  const name = label.replace(/\s*\([^()]*\)/gu, "").replace(/\s+[—–]\s.*$/u, "").trim();
-  return name === "" ? label : name;
 }
 
 /** Fold an unlock code: case, dashes, underscores and spaces are noise. */

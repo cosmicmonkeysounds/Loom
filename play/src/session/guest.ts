@@ -288,8 +288,9 @@ export interface GuestSession {
   /** Leave a membership-gated channel. */
   leaveChannel: (channel: string) => Promise<unknown>;
   /** Codex: type (or scan) an unlock code. Resolves to the server's answer
-   *  (a hit, a code already held, a miss); rejects with the refusal. */
-  redeem: (code: string) => Promise<RedeemAnswer>;
+   *  (a hit, a code already held, a miss); rejects with the refusal.
+   *  `spaced`: the Scan sheet's typed text, which may only be words (wave 59). */
+  redeem: (code: string, spaced?: boolean) => Promise<RedeemAnswer>;
   /** The link of the printed code a typed one is, or null (wave 59). */
   printed: (code: string) => Promise<string | null>;
   /** Check in at a room's sign (its slug, K-13). Resolves to the server's
@@ -658,7 +659,7 @@ export function useGuestSession(): GuestSession {
   const leaveChannel = useCallback((channel: string) => post("/api/guest/channel/leave", { channel }), [post]);
 
   // --- codex + people ---
-  const redeem = useCallback((code: string) => post<RedeemAnswer>("/api/guest/codex/redeem", { code }), [post]);
+  const redeem = useCallback((code: string, spaced?: boolean) => post<RedeemAnswer>("/api/guest/codex/redeem", spaced === true ? { code, spaced } : { code }), [post]);
   const printed = useCallback((code: string) => post<{ hit: { url: string } | null }>("/api/guest/printed", { code }).then((r) => r.hit?.url ?? null), [post]);
   // The "scan done" dialog: one at a time, the newest wins.
   const [scanDone, setScanDone] = useState<ScanDone | null>(null);

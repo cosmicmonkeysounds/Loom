@@ -21,7 +21,7 @@ import { ESCAPE_COOLDOWN_MS, VOICE_MAX_BYTES, kingSignal, lightStateDoes, lightS
 
 import { asNumber, truthy } from "../src/runtime/expr.ts";
 import { Sim, type SimEvent } from "../src/runtime/sim/index.ts";
-import { foldCode, namedEvents, type SimModel } from "../src/runtime/sim/model.ts";
+import { foldCode, inWorldLabel, namedEvents, type SimModel } from "../src/runtime/sim/model.ts";
 import { allSnapshotFlags, arrivalDue, awardOnly, boothChannels, callsCue, captureFor, playerHiddenRooms, cueState, guestCardView, interactionActors, interactionSubjectOnly, isCaller, guestFlags, guestView, isLocked, modView, staffRoomChannels, notePress, pressMovedArm, pressRefusal, pressRefused, primeView, scanRefused, rosterRow, staffRoomIds, themeOf, titleOf, type AgentMindSummary, type GuestView, type ModPresence, type ModView, type PrimeView, type RuntimePhase } from "./views.ts";
 import { passOk, type Passcodes } from "./auth.ts";
 import { SessionStore } from "./session.ts";
@@ -3450,7 +3450,7 @@ export class EventRuntime {
       quests: sim.questsFor(id).map((q) => ({ id: q.def.id, title: q.def.title, status: q.status })),
       location: (loc) => {
         const l = sim.model.locations.get(loc);
-        return l === undefined ? null : (l.label ?? l.id);
+        return l === undefined ? null : inWorldLabel(l.label ?? l.id);
       },
       filings,
       currencySlot: sim.model.currency?.slot ?? null,
@@ -3673,9 +3673,10 @@ export class EventRuntime {
         vars: varsOf(c.id),
         codex: sim.codexFor(c.id).filter((e) => !e.secret).map((e) => e.title),
       })),
+      // Trabolta's prompt: a label's crew note is the real house (wave 59).
       locations: [...sim.model.locations.values()].map((l) => ({
         id: l.id,
-        label: l.label ?? l.id,
+        label: inWorldLabel(l.label ?? l.id),
         occupants: programs.filter((p) => p.location === l.id).map((p) => p.name),
       })),
       codex: [...sim.model.codex.values()].filter((e) => !e.secret).map((e) => ({
@@ -6991,6 +6992,24 @@ export class EventRuntime {
         // just goes on unjournaled), and nothing reaches the journal.
         if (!this.redeemMisses.allowed(id)) {
           sendJson(res, 429, { error: "too many wrong codes — wait a minute" });
+          return true;
+        }
+        // Wave 59: a badge's, a room's or a sign's printed code is no wrong
+        // code, whichever box it came through: the Scan sheets ask first
+        // (`/api/guest/printed`), a terminal's TYPE A CODE doesn't.
+        const printed = this.printedHit(code);
+        if (printed !== null) {
+          sendJson(res, 200, { ok: true, unlocked: null, printed: printed.kind, codex: guestView(this.sim!, id).codex });
+          return true;
+        }
+        // Wave 59: the Scan sheet's box takes a code with spaces in it and
+        // offers a room's name, so a phrase from it (`spaced`) that opens
+        // nothing was never a guess at a code: a plain answer and no story
+        // event. It still counts against the throttle, or a space would buy
+        // free guesses.
+        if (body["spaced"] === true && /\s/u.test(code) && !this.sim!.model.codexCodes.has(foldCode(code))) {
+          this.redeemMisses.record(id);
+          sendJson(res, 200, { ok: true, unlocked: null, words: true, codex: guestView(this.sim!, id).codex });
           return true;
         }
         const events = this.commit("redeem", id, code);
