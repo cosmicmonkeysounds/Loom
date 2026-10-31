@@ -23,6 +23,7 @@ import { bearingOf, FIND_GERALD, findCopy, findOutcome, HEAT_LABEL, kingClearsHu
 import { CENTRED, type StickVector } from "./input.ts";
 import { whyNoStart } from "./no-start.ts";
 import { Joystick } from "./joystick.tsx";
+import { RESET_HOLDING } from "./reset.ts";
 import { Scare } from "./Scare.tsx";
 import { Talk } from "./Talk.tsx";
 import { useTestCode } from "./test-code.ts";
@@ -307,6 +308,12 @@ export function Play({
         </>
       )}
 
+      {hud?.reset != null && found === null && (
+        <div className="hud-reset w98-raised">
+          <ProgressBar value={hud.reset} label={RESET_HOLDING} />
+        </div>
+      )}
+
       {hud?.tutorial != null && found === null && <TutorialCard tutorial={hud.tutorial} touch={showSticks} onSkip={() => game.current?.skipTutorial()} />}
 
       {hud !== null && hud.tutorial === null && hud.mouseHint && !showSticks && found === null && hud.caption === null && hud.talk === null && (
@@ -332,7 +339,8 @@ export function Play({
               </>
             ) : (
               <>
-                <b>W A S D</b> or arrows walk · <b>Q E</b> turn · <b>Shift</b> run · <b>drag</b> to look
+                {/* DRAFT w59 (UI copy): the hold R. */}
+                <b>W A S D</b> or arrows walk · <b>Q E</b> turn · <b>Shift</b> run · <b>drag</b> to look · <b>hold R</b> if you get stuck
                 {config.voice && (
                   <>
                     {" "}
