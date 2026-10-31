@@ -17,8 +17,10 @@ export const HTML_CSP = [
 ].join("; ");
 
 /** The play app (K-31a): its push-only service worker (`/sw.js`) and its
- *  manifest are same-origin; said explicitly rather than left to fall back. */
-export const PLAY_CSP = `${HTML_CSP}; worker-src 'self'; manifest-src 'self'`;
+ *  manifest are same-origin; said explicitly rather than left to fall back.
+ *  Wave 59a: the audio ads play from `/media/` (self); `data:` is the sliver of
+ *  silence that unlocks a phone's one audio element in its first tap. */
+export const PLAY_CSP = `${HTML_CSP}; worker-src 'self'; manifest-src 'self'; media-src 'self' data:`;
 
 /** Play-app files served `Cache-Control: no-cache`: a stale service worker
  *  or manifest would outlive a deploy (the browser re-checks `sw.js` on its
