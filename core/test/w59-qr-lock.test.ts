@@ -2,11 +2,9 @@
 // show's text. The lock (`scripts/titi-qr-lock.ts`) must stay quiet for
 // anything but a printed name, and fail naming that. It holds hashes only.
 
-import { existsSync } from "node:fs";
-import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { scenarioDir, scenarioSource } from "../examples/load.ts";
-import { QR_LOCK_FILE, buildLock, diffLock, lockBroken, lockReport, printedIdentities } from "../scripts/titi-qr-lock.ts";
+import { scenarioSource } from "../examples/load.ts";
+import { buildLock, diffLock, lockBroken, lockReport, printedIdentities } from "../scripts/titi-qr-lock.ts";
 import { compileFromSource } from "../src/runtime/sim/index.ts";
 
 const SHOW = scenarioSource("trapped-in-the-internet");
@@ -43,9 +41,6 @@ describe("the lock", () => {
     expect(lockReport(moved).some((line) => codes.some((c) => line.toLowerCase().includes(c)))).toBe(false);
   });
 
-  it("is not committed yet: the story lane's room rename still has to land", () => {
-    expect(existsSync(join(scenarioDir("trapped-in-the-internet"), QR_LOCK_FILE))).toBe(false);
-  });
 });
 
 describe("what a story edit does to a printed QR", () => {

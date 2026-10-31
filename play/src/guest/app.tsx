@@ -625,19 +625,32 @@ export function GuestApp({ onLeave, badgeLink = null }: { onLeave: () => void; b
       const gated = active.kind === "private" || active.kind === "group" || active.kind === "dm";
       // The Codex's composer takes codes; the Quest Log and the Wallet take
       // nothing (their cards open their threads). Everywhere else, you talk.
+      const redeemTyped = (text: string) =>
+        void s.redeem(text).then(
+          (r) => {
+            setCodexNote(null);
+            // A hit or a code already held: the dialog, on the entry.
+            // A miss is answered in the room itself (its ⛔ row).
+            void loadScanDone().then((m) => {
+              const o = m.redeemOutcome(r);
+              if ("done" in o) s.showScan(o.done);
+            });
+          },
+          (e: unknown) => setCodexNote(redeemErrorText(e)),
+        );
+      // Wave 59: a code printed on a badge, a room or a sign does what its QR
+      // does here too, and never reaches the Codex, whose miss is a story event.
+      const meId = s.me.id;
+      const printedLink = async (link: string) => {
+        const { guestScan } = await import("../guest-scan-sheet.tsx");
+        const scan = guestScan(link, meId);
+        setCodexNote(scan.kind === "note" ? scan.text : await onScanned(scan));
+      };
       const send =
         active.kind === "codex"
           ? (text: string) =>
-              void s.redeem(text).then(
-                (r) => {
-                  setCodexNote(null);
-                  // A hit or a code already held: the dialog, on the entry.
-                  // A miss is answered in the room itself (its ⛔ row).
-                  void loadScanDone().then((m) => {
-                    const o = m.redeemOutcome(r);
-                    if ("done" in o) s.showScan(o.done);
-                  });
-                },
+              void s.printed(text).then(
+                (link) => (link === null ? redeemTyped(text) : printedLink(link)),
                 (e: unknown) => setCodexNote(redeemErrorText(e)),
               )
           : active.kind === "quests" || active.kind === "wallet"

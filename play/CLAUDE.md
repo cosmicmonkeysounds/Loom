@@ -90,7 +90,8 @@ added `fullscreen.ts`, with a `//` header: 147.53 kB.
   `GuestSession.printed` about a bare code before the Codex: a badge's, a room's
   or a sign's comes back as its QR's link and goes through `guestScan`, so only a
   true miss fires the story's `wrong code`; a failed ask is said, never redeemed.
-  The booth's `doTyped` does the same through `parseScan`. On a join screen a
+  The Codex's composer asks too (`guest/app.tsx`). The booth's `doTyped` does the
+  same through `parseScan`. On a join screen a
   badge's code resolves with `printed`, and `useIdentities` opens that link
   (`IdentityLookup` kind `printed`), so the page runs the QR's whole path; so does
   *Get back in*, with no event code needed. Tests: `test/guest-scan.test.tsx`,

@@ -416,7 +416,7 @@ describe("routes — codex", () => {
         id: "The Sandy File",
         title: "The Sandy File",
         about: "Trabolta",
-        code: "sandy1997",
+        code: "SANDY-1997",
         url: "http://party.local:7000/?code=EVT777&unlock=sandy1997",
       },
     ]);
