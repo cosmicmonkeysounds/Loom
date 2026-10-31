@@ -50,7 +50,7 @@ into `//`: 147.03 kB. The shared teleprompter added
 `aloud/shared.ts` and turned the headers of `chrome/taskbar.tsx`,
 `chrome/icons.tsx`, `stream/card-tray.tsx`, `moments/pins-rail.tsx`,
 `moments/surfaces.tsx`, `show-clock.ts`, `claim.ts` and `back-gesture.ts` into `//`:
-147.55 kB with all of wave 59 merged.
+147.55 kB with all of wave 59 merged, 147.77 kB after its seam fixes.
 
 ## How a session works
 
@@ -856,7 +856,9 @@ copy. Any new guest line must pass it.
   goes white. A chunk loaded by hand has no boundary, so it goes through
   `chunkOrDown` (wave 59, `ui.tsx`'s `rejoin-calls`): a second failure throws
   `ChunkDown` and the page shows `ChunkFailed`, never the browser's own error,
-  which names the asset's URL. `main.tsx` wraps the whole app in one more
+  which names the asset's URL. `main.tsx` took any card or re-pair code off the
+  address, so that page's Reload puts them back first (`onReload`, `withCard`) or
+  it forgets them. `main.tsx` wraps the whole app in one more
   `ChunkBoundary` (wave 26): any throw, in a render or an effect cleanup, shows
   Reload, never a blank page.
 - **Barrels.** `chat.tsx`, `guest.tsx`, `performer.tsx`, `session.ts`,
