@@ -910,6 +910,7 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
                 <Taskbar
                   start={start}
                   startHeader={<StartHeader s={s} />}
+                  /* The plain booth's Scan title: DRAFT w58. */
                   buttons={player ? playerTaskbarButtons({ pressed: t.activeId === null || wide ? pwin : null, chatsDot: pChats !== null && chatsDot(pChats), scanOpen: layer?.kind === "scan", mission: () => playerTap("mission"), chats: () => playerTap("chats"), scan: () => setLayer({ kind: "scan" }) }) : hostWins ? hostTaskbarButtons({ pressed: hostShown, chatsBadge: waiting, scanOpen: layer?.kind === "scan", open: hostTap, scan: () => setLayer({ kind: "scan" }) }) : [
                     { id: "scan", label: "Scan", icon: <Icon name="scan" />, primary: true, title: "Scan a pass or a codex QR", tour: "scan", onClick: () => setLayer({ kind: "scan" }), active: layer?.kind === "scan" },
                     { id: "guests", label: "Guests", icon: <Icon name="people" />, title: `Every guest (${guests.length}), searchable`, tour: "guests", badge: waiting, onClick: () => setLayer({ kind: "guests" }), active: layer?.kind === "guests" },

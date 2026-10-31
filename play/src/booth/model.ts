@@ -624,7 +624,7 @@ export function passAccepted(cardOpen: boolean, busy: boolean, gateAllows: boole
  *  leads with 📷 loses it (wave 37, C3: never "📷 📷 Scan …"). */
 export function scanTitle(caption?: string): string {
   const c = (caption ?? "").replace(/^\s*📷\s*/u, "").trim();
-  return c !== "" ? c : "Scan a pass or a codex QR";
+  return c !== "" ? c : "Scan a pass or a codex QR"; // DRAFT w58
 }
 
 // --- the booth's layers (wave 37, C1 + C2: × means done, back where it started) ---

@@ -69,7 +69,7 @@ export const BADGE_NOT_LINKED = "That badge isn't linked to a guest yet — they
 export const STAFF_BADGE = "That's a staff badge. Staff use the staff door: nobody scans them in.";
 
 /** The words a performer sees for a scan a booth can't use; null for a pass
- *  or a codex QR, which it can (wave 58). Copy of the last two: DRAFT w58. */
+ *  or a codex QR, which it can (wave 58). The `unknown` line is DRAFT w58. */
 export function scanProblem(hit: ScanHit): string | null {
   switch (hit.kind) {
     case "guest":

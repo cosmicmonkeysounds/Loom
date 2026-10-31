@@ -375,6 +375,7 @@ export function ChannelView({
   const dk = channel.decision;
   useEffect(() => setTyping(false), [channel.id, dk?.title, dk?.options.length]);
   const isRoom = channel.kind !== "dm" && channel.kind !== "guest" && channel.kind !== "codex" && channel.kind !== "quests" && channel.kind !== "wallet";
+  // A booth's Codex has no box (`onSend`), so it points at 📷 Scan. DRAFT w58.
   const emptyCopy =
     channel.kind === "codex"
       ? `You know nothing yet. Codes are on the walls, in the puzzles, and in people — ${onSend === undefined ? "📷 Scan one" : "type one below"}.`
