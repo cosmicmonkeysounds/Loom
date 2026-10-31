@@ -228,7 +228,7 @@ def test_w11b_heart_ports_the_terminal_the_mark_and_both_gifts() -> None:
 
 def test_the_night_follows_chains_ts() -> None:
     cues = src.chain_cues()
-    assert cues[:4] == ["call_to_the_desktop", "start_the_bingo", "bingo_time", "introduce_trabolta"] and cues[-1] == "y2k_clock"
+    assert cues[:5] == ["call_to_the_desktop", "start_the_bingo", "bingo_time", "clippy_on_trabolta", "introduce_trabolta"] and cues[-1] == "y2k_clock"
     assert "close_the_filing" in src.self_pressed()
     assert any("not responding" in h for h in src.hold_lines())
 
@@ -456,7 +456,7 @@ def test_to_phase_presses_the_chain_in_order_until_the_phase(monkeypatch: pytest
     server = FakeServer()
     d = fake_driver(server)
     d.to_phase("introduced")
-    assert server.pressed == ["call_to_the_desktop", "start_the_bingo", "bingo_time", "introduce_trabolta"]
+    assert server.pressed == ["call_to_the_desktop", "start_the_bingo", "bingo_time", "clippy_on_trabolta", "introduce_trabolta"]
     d.to_phase("introduced")  # already there: nothing pressed
     d.step({"press": 1})
     assert server.pressed[-1] == "start_the_hunt" and server.phase == "hunt_1"
