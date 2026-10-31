@@ -87,7 +87,7 @@ import { CREDITS_ROUTE, creditsAnswer, sendCredits } from "./routes/credits.ts";
 import { VIDEO_ROUTE, sendVideoConsent, videoConsentView } from "./routes/video.ts"; // w44
 import { CREDITS_FILE } from "../src/credits.ts"; // w44
 import { COSTUME_FIRE_ROUTE, COSTUME_MENU_ROUTE, COSTUME_MOD_ROUTE, CostumeDesk, CostumeSource, costumeFixtures, costumeLookSafe, costumeMoved, costumeRoomOutRestore, sendCostumeFire, sendCostumeMenu, type CostumeTimers } from "./costume.ts"; // w59
-import { COSTUME_BY, COSTUME_FILE, COSTUME_SIGNAL, COSTUME_TOKEN_LABEL, STAGE_CHARS_PER_S, hijackPlaying, saidBy, type CostumeAction, type CostumeFacts, type CostumeFile, type CostumeItem } from "../src/costume.ts"; // w59
+import { COSTUME_BY, COSTUME_FILE, COSTUME_SIGNAL, COSTUME_TOKEN_LABEL, STAGE_CHARS_PER_S, costumeCue, hijackPlaying, saidBy, type CostumeAction, type CostumeFacts, type CostumeFile, type CostumeItem } from "../src/costume.ts"; // w59
 import { DESCENT_FILE, DescentSource } from "./descent.ts"; // w49
 import { SWEAR_CENSORED, SWEAR_FILTER, SWEAR_FLAGGED, decodeHits, encodeHits, filterHits, hitList, isFilterLevel, maskText, maskUnsaid, type FilterHit } from "../src/language-filter.ts"; // w48, w48b
 import { FilterBook, type FilterView } from "./language-filter.ts"; // w48
@@ -3276,7 +3276,7 @@ export class EventRuntime {
         this.audio.music(a.command, COSTUME_BY);
         return true;
       case "cue":
-        return this.deskFire(a.cue, COSTUME_BY) === "fired";
+        return this.deskFire(costumeCue(a.cue, this.costumeFacts()), COSTUME_BY) === "fired";
       case "poke": {
         // The canned Trabolta line's path (`modTalk`): nothing is owed here,
         // the press was refused if it was.

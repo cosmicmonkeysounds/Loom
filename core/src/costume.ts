@@ -19,7 +19,7 @@ export const COSTUME_TOKEN_LABEL = "costume";
 /** What a fire journals, for the mod log. No story hook hears it. */
 export const COSTUME_SIGNAL = "costume_pressed";
 /** The story cues an item may fire. A typo in the file must not reach an ending. */
-export const COSTUME_CUES: ReadonlySet<string> = new Set(["ad_burst"]);
+export const COSTUME_CUES: ReadonlySet<string> = new Set(["ad_burst", "costume_flicker"]);
 /** Seconds between any two fires. */
 export const COSTUME_COOLDOWN_S = 8;
 /** Seconds a lights item holds before the story's look comes back. */
@@ -339,6 +339,15 @@ export function momentRefusal(f: CostumeFacts): string | null {
   return null;
 }
 
+/** The cue a story-cue item really fires now. The story's `ad_burst` only lands
+ *  in a talk scene past his introduction; from the doors to the final reveal,
+ *  anywhere else, the press is the screens' flicker (`costume_flicker`), so it
+ *  can't spoil the ad hijack. The ad and beans scenes burst, the bottle flickers
+ *  as it always has. */
+export function costumeCue(cue: string, f: Pick<CostumeFacts, "talk">): string {
+  return cue === "ad_burst" && (f.talk === null || f.talk === "intro") ? "costume_flicker" : cue;
+}
+
 /** Why this action can't land now, or null. A story cue is judged here, so
  *  the story's own refusals never reach `# hosts`. */
 export function actionRefusal(a: CostumeAction, f: CostumeFacts): string | null {
@@ -354,8 +363,9 @@ export function actionRefusal(a: CostumeAction, f: CostumeFacts): string | null 
       // A director's Stop or hand scene is theirs to let go of, never a guest's.
       return f.musicHand !== null && f.musicHand !== COSTUME_BY ? "hand" : null;
     case "cue":
-      if (f.talk === null || f.talk === "intro") return "no_talk";
       if (f.hijackPlaying) return "hijack";
+      // The flicker blinks the room bulbs too.
+      if (costumeCue(a.cue, f) === "costume_flicker") return f.alarm || f.roomOut || f.lights === "blackout" ? "lights_held" : null;
       return f.sinceBurstS !== null && f.sinceBurstS < BURST_GAP_S ? "too_soon" : null;
     case "poke":
       if (!f.awake) return "asleep";

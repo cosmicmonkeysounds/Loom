@@ -25,7 +25,7 @@ A press is refused:
 - LIGHTS, during the alarm, a blackout, or while Trabolta has a room's lights out;
 - SOUNDS and MUSIC, with the router offline; LIGHTS, with the lights module offline;
 - MUSIC, while a director or a host has the soundtrack by hand (a Stop or a chosen scene), until they press *Follow the story*;
-- AD STORM and GLITCH, **outside a talk scene** (see below);
+- AD STORM and GLITCH, while the ad hijack's takeover is on the screens;
 - POKE TRABOLTA, while he is asleep or a reply of his is owed.
 
 What each one does:
@@ -35,14 +35,16 @@ What each one does:
 | LIGHTS | The living room only, for 6 s, then the story's look comes back. If Trabolta puts a room out in those 6 s, only the living room goes back, and not at all if that room is the Desktop. No safety fixture, ever. |
 | SOUNDS | A house sound from `audio.json`. |
 | MUSIC | Skip the track, hand the house to the afterparty playlist for 45 s, or go back to the story's scene. If someone else takes the soundtrack in those 45 s, it stays theirs. |
-| AD STORM | The story's `ad_burst`, three times, 4 s apart. A beat that starts ends it. |
-| GLITCH | The story's `ad_burst`, once. |
+| AD STORM | Three glitches, 4 s apart. A beat that starts ends it. |
+| GLITCH | One glitch. |
 | POKE TRABOLTA | One of his six lines, on the TV and every phone in the Desktop, like a canned Talk line. |
 
-**AD STORM and GLITCH only work in a talk scene past his introduction** (the
-bottle, the ad attack, the beans), because the story's `ad_burst` does. Before
-the ad hijack, during the bottle, it is only a flicker, so it can't spoil the
-hijack. The rest of the night they read Not Responding.
+**What a glitch is depends on the moment.** A real ad burst lands only in the ad
+attack's and the beans' talk scenes, through the story's `ad_burst`. Everywhere
+else from the doors to the final reveal it is a flicker on the screens and the
+room bulbs, so it can't spoil the ad hijack: the bottle's own flicker in that
+talk scene, `costume_flicker` the rest of the time (not during the alarm, a
+blackout or a room he has put out, because the flicker blinks the bulbs).
 
 Every fire is on Run's log as `costume_pressed` with the button's name, and none
 goes to `# hosts`.

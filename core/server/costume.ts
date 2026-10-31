@@ -16,6 +16,7 @@ import {
   DEFAULT_COSTUME,
   CostumeGate,
   actionRefusal,
+  costumeCue,
   costumeItem,
   costumeLeaves,
   costumeMenu,
@@ -172,18 +173,19 @@ export class CostumeDesk {
         this.deps.musicStory();
       }, action.holdS);
     } else if (action.kind === "cue" && action.times > 1) {
-      this.again(action, file, action.times - 1);
+      this.again(action, file, action.times - 1, costumeCue(action.cue, this.deps.facts()));
     }
   }
 
-  /** The rest of a storm, each judged afresh: a beat that starts ends it. */
-  private again(action: Extract<CostumeAction, { kind: "cue" }>, file: CostumeFile, left: number): void {
+  /** The rest of a storm, each judged afresh: a beat that starts ends it, and
+   *  so does a talk scene opening or closing, which would change what it is. */
+  private again(action: Extract<CostumeAction, { kind: "cue" }>, file: CostumeFile, left: number, fires: string): void {
     this.stormTimer = this.later(() => {
       this.stormTimer = null;
       const facts = this.deps.facts();
-      if (momentRefusal(facts) !== null || actionRefusal(action, facts) !== null) return;
+      if (momentRefusal(facts) !== null || actionRefusal(action, facts) !== null || costumeCue(action.cue, facts) !== fires) return;
       if (!this.deps.perform(action, file)) return;
-      if (left > 1) this.again(action, file, left - 1);
+      if (left > 1) this.again(action, file, left - 1, fires);
     }, action.everyS);
   }
 

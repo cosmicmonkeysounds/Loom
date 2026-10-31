@@ -3840,6 +3840,20 @@ INTERACTION wave_staff_through
   description: Every part still in its upload, or not signed in yet, goes straight to its booth: Clippy, the four Antivirus and the three hosts. For a phone that can't finish it (a dead phone, a part taken over mid-show, a booth a guest is waiting on). Nothing they had left to answer is asked again.
   while: Kernel.staff_uploaded < 8 and Night.ended != true
 
+// Wave 59, appended last so no cue number moves; it rejoins Anytime. The Task
+// Manager costume's AD STORM and GLITCH, outside a talk scene: the screens'
+// flicker, so a press from the doors to the final reveal does something and
+// the ad hijack stays unspoiled. Pressing it by hand is harmless.
+// DRAFT w59 (the button's label and description)
+INTERACTION costume_flicker
+  label: 🎭 Flicker the screens (the costume's Glitch, outside a talk scene)
+  who: admin
+  act: Anytime
+  sequence: false
+  repeat: true
+  while: Night.step < 16 and Night.ended != true
+  description: The Task Manager costume presses this itself. The screens and the room bulbs flicker once. No ad, no line, no spoiler.
+
 // Performer buttons (on every guest card). Every hook guards its phase
 // and ignores a wrong-phase press — except `send to the internet` and
 // `mark as reinstalled`, which work on any program at any time.
@@ -4862,6 +4876,10 @@ when ad_burst:
       set Night.glitch_text = "000. 000. 000."
     sound truther_glitch
     set Night.burst_n += 1
+
+// The Task Manager costume's flicker, wherever ⚡ would be refused (wave 59).
+when costume_flicker:
+  cue screens_flicker
 
 // The scene glitches on its own too: about every 45 seconds of story time
 // (re-armed by every ⚡), at most four ad bursts in the ad attack and at

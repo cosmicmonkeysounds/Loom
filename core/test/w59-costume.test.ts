@@ -56,6 +56,14 @@ INTERACTION ad_burst
   sequence: false
   repeat: true
 
+INTERACTION costume_flicker
+  who: admin
+  sequence: false
+  repeat: true
+
+when costume_flicker:
+  cue screens_flicker
+
 when ad_burst:
   if Night.talk == "none" or Night.talk == "intro":
     broadcast "⚡ Nothing glitches." to channel(hosts)
@@ -626,18 +634,33 @@ describe("w59 costume: what a press does", () => {
     r.rt.dispose();
   });
 
-  it("glitch is the story's ad_burst, and outside a talk scene never reaches # hosts", async () => {
+  it("glitch is the story's ad_burst in a talk scene, the flicker anywhere else, and never reaches # hosts", async () => {
     const r = await live();
     const before = hostsLines(r).length;
-    expect((await r.fire("glitch")).json).toMatchObject({ why: "no_talk" });
+    const fired = (name: string) => r.hub.sim.log.all().filter((e) => e["name"] === name).length;
+    expect((await r.fire("glitch")).status).toBe(200);
+    expect(fired("costume_flicker")).toBe(1);
+    expect(fired("ad_burst")).toBe(0);
+    r.advance(30);
     await r.setVar("Night.talk", "intro");
-    expect((await r.fire("glitch")).json).toMatchObject({ why: "no_talk" });
-    expect(hostsLines(r).length).toBe(before);
-    expect(r.hub.sim.log.all().some((e) => e["name"] === "ad_burst")).toBe(false);
+    expect((await r.fire("glitch")).status).toBe(200);
+    expect(fired("costume_flicker")).toBe(2);
+    r.advance(30);
     await r.setVar("Night.talk", "bottle");
     expect((await r.fire("glitch")).status).toBe(200);
-    expect(r.hub.sim.log.all().filter((e) => e["name"] === "ad_burst").length).toBe(1);
+    expect(fired("costume_flicker")).toBe(2);
+    expect(fired("ad_burst")).toBe(1);
     expect(hostsLines(r).length).toBe(before);
+    r.rt.dispose();
+  });
+
+  it("the flicker blinks the bulbs, so it waits out the alarm, a blackout and a room he put out", async () => {
+    const r = await live();
+    await r.setVar("Night.lights", "blackout");
+    expect((await r.fire("glitch")).json).toMatchObject({ why: "lights_held" });
+    await r.setVar("Night.lights", "none");
+    await r.setVar("Night.alarm_on", "true");
+    expect((await r.fire("glitch")).json).toMatchObject({ why: "lights_held" });
     r.rt.dispose();
   });
 
@@ -662,6 +685,19 @@ describe("w59 costume: what a press does", () => {
     r.advance(4);
     expect(count()).toBe(2);
     expect(r.pending()).toBe(0);
+    r.rt.dispose();
+  });
+
+  it("outside a talk scene an ad storm is three flickers, and a scene opening ends it", async () => {
+    const r = await live();
+    const count = () => r.hub.sim.log.all().filter((e) => e["name"] === "costume_flicker").length;
+    expect((await r.fire("storm")).status).toBe(200);
+    r.advance(4);
+    expect(count()).toBe(2);
+    await r.setVar("Night.talk", "ad");
+    r.advance(4);
+    expect(count()).toBe(2);
+    expect(r.hub.sim.log.all().some((e) => e["name"] === "ad_burst")).toBe(false);
     r.rt.dispose();
   });
 
@@ -748,7 +784,7 @@ describe("w59 costume: the file", () => {
     expect(parseCostume('{"items": [{"id": "a"}]}').file).toBeNull();
   });
 
-  it("a costume item's cue can only be ad_burst", () => {
+  it("a costume item's cue can only be ad_burst or the flicker", () => {
     expect(parseCostume(JSON.stringify({ items: [{ id: "a", label: "A", cue: "tell_the_truth" }] })).file).toBeNull();
   });
 
