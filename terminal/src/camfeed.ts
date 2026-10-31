@@ -24,20 +24,24 @@
 //! `OffscreenCanvas`.
 //!
 //! Wave 59 (the SM-T280s: Mali-400, Chrome 95, GPU rasterization off). A 2D
-//! canvas read only by `toDataURL` stayed on the GPU, on the path that draws
-//! nothing on that chip, while the scanner's, which calls `getImageData`, had
-//! been pushed to software all along. So the canvas here is software from the
-//! start (`willReadFrequently`, and one `getImageData` for a build that ignores
-//! it). A frame that comes back blank, or never comes, walks `FeedTuner`'s
-//! ladder: the frame straight off the track (`ImageCapture`, no `<video>`), then
-//! the smallest size, under Chrome's floor for a GPU canvas. The feed also spends
-//! at most `FEED_SHARE` of the page: a slow capture stretches the gap, then drops
-//! a size. `link-stats.ts` counts what happens.
+//! canvas read only by `toDataURL` stays on the GPU, while the scanner's, which
+//! calls `getImageData`, had been pushed to software all along. The leading
+//! hypothesis for no video is that the GPU path reads back blank on that chip
+//! (no tablet has confirmed it: ⚙'s `blank` or `no_frames` would). So the canvas
+//! here is kept off the GPU (`sizeCanvas`). A frame that comes back blank, or
+//! never comes, walks `FeedTuner`'s ladder: the frame straight off the track
+//! (`ImageCapture`, no `<video>`), then the smallest size. A route that has shown
+//! a picture is proved, and a blank frame on it is a dark room, sent as it is;
+//! on a lesser route the top is tried again now and then, so a transient never
+//! costs the night. The feed also spends at most `FEED_SHARE` of the page: a
+//! slow capture stretches the gap, then drops a size. `link-stats.ts` counts
+//! what happens.
 
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { baseOf, type TerminalConfig } from "./config.ts";
 import { camera as pageCamera, type CameraHub, type CameraState } from "./camera.ts";
 import { linkStats } from "./link-stats.ts";
+import { sizeCanvas } from "./software-canvas.ts";
 import type { LinkError } from "../../core/src/link-health.ts";
 
 export const FEED_W = 320;
@@ -56,8 +60,7 @@ export const FEED_CAMERA_RETRY_MS = 15_000;
 /** A camera still opening after this long (ms) is usually a prompt nobody has answered. */
 export const FEED_CAMERA_WAIT_MS = 20_000;
 
-/** The sizes, largest first. The last is under Chrome's floor for a GPU
- *  canvas (128 × 129 pixels), so it is software on any build. */
+/** The sizes, largest first. */
 export const FEED_SIZES: ReadonlyArray<readonly [number, number]> = [[FEED_W, FEED_H], [160, 120], [128, 96]];
 /** The feed spends at most this share of the page's time. */
 export const FEED_SHARE = 0.25;
@@ -73,6 +76,8 @@ export const FEED_BLANK_RUN = 6;
 export const FEED_BLANK_MARGIN = 1.1;
 /** A frame off the track this late is a miss (ms). */
 export const FEED_GRAB_MS = 3000;
+/** This many good frames on a lesser route (≈ 20 s) tries the top again. */
+export const FEED_RETRY_RUN = 60;
 
 /** Is this JPEG (base64 length) no bigger than the empty canvas's? A dark room
  *  still has noise in it, and that costs bytes. */
@@ -84,7 +89,10 @@ export function looksBlank(length: number, emptyLength: number): boolean {
  * How this terminal gets a picture and what it costs (pure): which size, the
  * `<video>` or the track, and how long to wait. What's wrong is only ever found
  * out by trying, so a frame that doesn't come walks down: the track, then the
- * smallest size, then both.
+ * smallest size, then both. A blank run only walks a route that has never shown
+ * a picture: on a `proved` one it's a dark room. Below the top, every
+ * `FEED_RETRY_RUN` good frames one frame tries the top again: a good one stays
+ * there, and anything else goes straight back, at the cost of that one frame.
  */
 export class FeedTuner {
   size = 0;
@@ -92,15 +100,27 @@ export class FeedTuner {
   track = false;
   /** What a capture costs (ms, smoothed). */
   costMs = 0;
+  /** This route has shown a picture, so a blank frame on it is the room's. */
+  proved = false;
   private slow = 0;
   private misses = 0;
   private blanks = 0;
   private rung = 0;
+  private sinceTop = 0;
+  /** Where to go back to while a frame tries the top. */
+  private trying: { track: boolean; size: number; rung: number } | null = null;
 
   constructor(private readonly canTrack: boolean) {}
 
+  /** The ladder has nothing left: a blank frame goes out after all, since a dim
+   *  room would otherwise never send anything. */
+  get spent(): boolean {
+    return this.rung >= (this.canTrack ? 3 : 1);
+  }
+
   /** A capture took `ms`. */
   took(ms: number): void {
+    if (ms >= FEED_SLOW_MS && this.backFromTop()) return;
     this.costMs = this.costMs === 0 ? ms : this.costMs * 0.7 + ms * 0.3;
     this.slow = ms >= FEED_SLOW_MS ? this.slow + 1 : 0;
     if (this.slow >= FEED_SLOW_RUN && this.size < FEED_SIZES.length - 1) {
@@ -112,21 +132,42 @@ export class FeedTuner {
   good(): void {
     this.misses = 0;
     this.blanks = 0;
+    this.proved = true;
+    if (this.trying !== null) {
+      this.trying = null;
+      this.rung = 0;
+      return;
+    }
+    if ((this.size === 0 && !this.track) || ++this.sinceTop < FEED_RETRY_RUN) return;
+    this.sinceTop = 0;
+    this.trying = { track: this.track, size: this.size, rung: this.rung };
+    this.track = false;
+    this.size = 0;
+    this.proved = false;
   }
 
   /** No frame: true once that's a failure worth calling one. */
   missed(): boolean {
-    if (++this.misses < FEED_MISS_RUN) return false;
+    if (this.backFromTop() || ++this.misses < FEED_MISS_RUN) return false;
     this.misses = 0;
     this.walk();
     return true;
   }
 
-  /** A blank frame: true once that's a failure worth calling one. */
+  /** A blank frame on an unproved route: true once that's a failure worth calling one. */
   blank(): boolean {
-    if (++this.blanks < FEED_BLANK_RUN) return false;
+    if (this.backFromTop() || ++this.blanks < FEED_BLANK_RUN) return false;
     this.blanks = 0;
     this.walk();
+    return true;
+  }
+
+  /** A try of the top that didn't take: back to the route that works. */
+  private backFromTop(): boolean {
+    if (this.trying === null) return false;
+    ({ track: this.track, size: this.size, rung: this.rung } = this.trying);
+    this.trying = null;
+    this.proved = true;
     return true;
   }
 
@@ -139,6 +180,8 @@ export class FeedTuner {
     this.rung++;
     this.track = next.track;
     this.size = next.size;
+    this.proved = false;
+    this.sinceTop = 0;
   }
 
   /** The wait after a frame: `base`, or longer to keep to `FEED_SHARE`. */
@@ -409,11 +452,10 @@ function frameGrabber(video: HTMLVideoElement, stream: () => MediaStream | null,
   const fit = (c: CanvasRenderingContext2D) => {
     if (size === tuner.size) return;
     size = tuner.size;
-    [canvas.width, canvas.height] = FEED_SIZES[size]!;
+    const [w, h] = FEED_SIZES[size]!;
+    sizeCanvas(canvas, c, w, h);
     c.fillStyle = "#000";
-    c.fillRect(0, 0, canvas.width, canvas.height);
-    // Software from here on, on a Chrome that ignores `willReadFrequently`.
-    c.getImageData(0, 0, 1, 1);
+    c.fillRect(0, 0, w, h);
     emptyLength = jpeg()?.length ?? 0;
   };
   const miss = (code: LinkError) => {
@@ -435,12 +477,13 @@ function frameGrabber(video: HTMLVideoElement, stream: () => MediaStream | null,
       tuner.took(ms);
       linkStats.captureCost(ms);
       if (out === null) return miss("no_frames");
-      if (looksBlank(out.length, emptyLength)) {
+      const frame = { jpeg: out, w: canvas.width, h: canvas.height };
+      if (!tuner.proved && looksBlank(out.length, emptyLength)) {
         if (tuner.blank()) linkStats.error(Date.now(), "blank");
-        return null;
+        return tuner.spent ? frame : null;
       }
       tuner.good();
-      return { jpeg: out, w: canvas.width, h: canvas.height };
+      return frame;
     } catch {
       return miss("no_frames");
     } finally {

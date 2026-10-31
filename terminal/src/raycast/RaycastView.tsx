@@ -22,8 +22,9 @@
 //! stopped while the page is hidden.
 //!
 //! Wave 59: only a tablet with no WebGL2 draws this, and on the SM-T280s the
-//! GPU's 2D path is the one that shows nothing. Both canvases are software
-//! (`SOFTWARE`), the overlay is drawn at one pixel per CSS pixel, and the pace
+//! GPU's 2D path is the leading suspect for a page that shows nothing (see
+//! `terminal/CLAUDE.md`, a software canvas). Both canvases are kept off the GPU
+//! (`sizeCanvas`), the overlay is drawn at one pixel per CSS pixel, and the pace
 //! follows what a frame really costs (`nextPace`), so a slow tablet shows a
 //! slower window, never a frozen page.
 
@@ -53,6 +54,7 @@ import { drawSwarm, swarmPieces } from "./swarm.ts";
 import "./raycast.css";
 import { noteWorldShowing } from "../cutscene/world-bus.ts";
 import { linkStats } from "../link-stats.ts";
+import { sizeCanvas } from "../software-canvas.ts";
 
 const FRAME_MS = 1000 / 20;
 /** The slowest pace a slow tablet falls to (ms): 5 fps. */
@@ -61,6 +63,7 @@ export const SLOWEST_FRAME_MS = 200;
 const PACE_OVER = 0.6;
 /** …one costing less than this share speeds it back up. */
 const PACE_UNDER = 0.3;
+/** A current Chrome reads this. Chrome 95 doesn't: `sizeCanvas` is what works there. */
 const SOFTWARE: CanvasRenderingContext2DSettings = { willReadFrequently: true };
 const TOAST_MS = 4000;
 /** The players must want another floor this long before the inset follows them (ms). */
@@ -168,10 +171,8 @@ export function RaycastView({ store, spotId, size }: { store: WorldStore; spotId
       cw = Math.max(1, host.clientWidth);
       ch = Math.max(1, host.clientHeight);
       ({ w: iw, h: ih } = internalSize(cw, ch));
-      el.width = iw;
-      el.height = ih;
-      over.width = Math.round(cw);
-      over.height = Math.round(ch);
+      sizeCanvas(el, ctx, iw, ih);
+      sizeCanvas(over, hctx, Math.round(cw), Math.round(ch));
     };
     resize();
     const ro = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(resize);

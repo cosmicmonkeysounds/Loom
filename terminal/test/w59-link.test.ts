@@ -2,13 +2,15 @@
 //! heartbeat's link keys and ⚙'s words. Real devices are the other half of
 //! this (`docs/help/authoring/48-terminal-setup.md`).
 
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { FEED_BLANK_RUN, FEED_EVERY_MS, FEED_MISS_RUN, FEED_SHARE, FEED_SIZES, FEED_SLOW_MS, FEED_SLOW_RUN, FeedTuner, cameraError, feedError, looksBlank, runFeed, type FeedDeps } from "../src/camfeed.ts";
+import { FEED_BLANK_RUN, FEED_EVERY_MS, FEED_MISS_RUN, FEED_RETRY_RUN, FEED_SHARE, FEED_SIZES, FEED_SLOW_MS, FEED_SLOW_RUN, FeedTuner, cameraError, feedError, looksBlank, runFeed, type FeedDeps } from "../src/camfeed.ts";
 import { constraintsFor, CameraHub } from "../src/camera.ts";
 import { ERROR_SHOWN_MS, LinkStats, RATE_WINDOW_MS, RateMeter, linkQuery, linkReadout, linkTroubled } from "../src/link-stats.ts";
 import { nextPace, SLOWEST_FRAME_MS } from "../src/raycast/RaycastView.tsx";
 import { JSQR_EVERY_MS, scanDelay } from "../src/scanner.tsx";
 import { deviceQuery } from "../src/health.ts";
+import { sizeCanvas, softwareCanvas } from "../src/software-canvas.ts";
 import { LINK_ERRORS, isLinkError } from "../../core/src/link-health.ts";
 
 describe("the feed's tuner", () => {
@@ -38,9 +40,7 @@ describe("the feed's tuner", () => {
     expect(t.blank()).toBe(false);
     expect(t.track).toBe(false);
   });
-  it("the smallest size is under Chrome's floor for a GPU canvas, and every size is 4:3", () => {
-    const [w, h] = FEED_SIZES[FEED_SIZES.length - 1]!;
-    expect(w * h).toBeLessThan(128 * 129);
+  it("every size is 4:3", () => {
     for (const [fw, fh] of FEED_SIZES) expect(fw / fh).toBeCloseTo(4 / 3);
   });
   it("keeps to its share of the page, and a slow capture drops a size", () => {
@@ -58,6 +58,142 @@ describe("the feed's tuner", () => {
     expect(looksBlank(1090, 1000)).toBe(true);
     expect(looksBlank(4000, 1000)).toBe(false);
     expect(looksBlank(100, 0)).toBe(false);
+  });
+});
+
+describe("the feed's tuner comes back up", () => {
+  const blanks = (t: FeedTuner, n: number) => {
+    for (let i = 0; i < n; i++) t.blank();
+  };
+  const goods = (t: FeedTuner, n: number) => {
+    for (let i = 0; i < n; i++) t.good();
+  };
+  /** Down to the smallest size on the track, the whole ladder, then a picture. */
+  const atBottom = () => {
+    const t = new FeedTuner(true);
+    blanks(t, FEED_BLANK_RUN * 3);
+    expect([t.track, t.size, t.proved]).toEqual([true, FEED_SIZES.length - 1, false]);
+    t.good();
+    return t;
+  };
+
+  it("a route that has shown a picture is proved until it changes", () => {
+    const t = new FeedTuner(true);
+    expect(t.proved).toBe(false);
+    t.good();
+    expect(t.proved).toBe(true);
+    for (let i = 0; i < FEED_MISS_RUN; i++) t.missed();
+    expect([t.track, t.proved]).toEqual([true, false]);
+  });
+  it("tries the top after a run of good frames, and a good frame there stays", () => {
+    const t = atBottom();
+    goods(t, FEED_RETRY_RUN - 2);
+    expect(t.size).toBe(FEED_SIZES.length - 1);
+    t.good();
+    expect([t.track, t.size, t.proved]).toEqual([false, 0, false]);
+    t.good();
+    expect([t.track, t.size, t.proved]).toEqual([false, 0, true]);
+    goods(t, FEED_RETRY_RUN * 3);
+    expect([t.track, t.size]).toEqual([false, 0]);
+    // A later failure starts down the ladder from its first rung.
+    for (let i = 0; i < FEED_MISS_RUN; i++) t.missed();
+    expect([t.track, t.size]).toEqual([true, 0]);
+  });
+  it("a try that comes back blank goes straight back, says nothing, and tries again later", () => {
+    const t = atBottom();
+    goods(t, FEED_RETRY_RUN - 1);
+    expect(t.size).toBe(0);
+    expect(t.blank()).toBe(false);
+    expect([t.track, t.size, t.proved]).toEqual([true, FEED_SIZES.length - 1, true]);
+    expect(t.spent).toBe(true);
+    goods(t, FEED_RETRY_RUN - 1);
+    expect(t.size).toBe(FEED_SIZES.length - 1);
+    t.good();
+    expect(t.size).toBe(0);
+  });
+  it("a try with no frame goes straight back too", () => {
+    const t = atBottom();
+    goods(t, FEED_RETRY_RUN - 1);
+    expect(t.missed()).toBe(false);
+    expect([t.track, t.size]).toEqual([true, FEED_SIZES.length - 1]);
+  });
+  it("a slow try goes straight back, with no mark on what a capture costs", () => {
+    const t = atBottom();
+    t.took(10);
+    goods(t, FEED_RETRY_RUN - 1);
+    expect(t.size).toBe(0);
+    t.took(FEED_SLOW_MS * 5);
+    expect(t.size).toBe(FEED_SIZES.length - 1);
+    expect(t.costMs).toBe(10);
+  });
+  it("a size dropped for being slow climbs back too", () => {
+    const t = new FeedTuner(true);
+    for (let i = 0; i < FEED_SLOW_RUN; i++) t.took(FEED_SLOW_MS);
+    expect([t.size, t.proved]).toEqual([1, false]);
+    t.good();
+    goods(t, FEED_RETRY_RUN - 1);
+    t.took(1);
+    t.good();
+    expect([t.size, t.proved]).toEqual([0, true]);
+  });
+  it("sits still at the top", () => {
+    const t = new FeedTuner(true);
+    goods(t, FEED_RETRY_RUN * 3);
+    expect([t.track, t.size, t.proved]).toEqual([false, 0, true]);
+  });
+  it("runs out of ladder only at the bottom: three rungs with the track, one without", () => {
+    const t = new FeedTuner(true);
+    blanks(t, FEED_BLANK_RUN * 2);
+    expect(t.spent).toBe(false);
+    blanks(t, FEED_BLANK_RUN);
+    expect(t.spent).toBe(true);
+    const plain = new FeedTuner(false);
+    expect(plain.spent).toBe(false);
+    blanks(plain, FEED_BLANK_RUN);
+    expect(plain.spent).toBe(true);
+  });
+});
+
+describe("a canvas kept off the GPU", () => {
+  const recorder = () => {
+    const log: string[] = [];
+    const ctx = {
+      fillRect: () => void log.push("fill"),
+      getImageData: () => {
+        log.push("read");
+        return {} as ImageData;
+      },
+      clearRect: () => void log.push("clear"),
+    };
+    return { log, ctx };
+  };
+  it("draws a pixel, reads it, and leaves no mark", () => {
+    const { log, ctx } = recorder();
+    softwareCanvas(ctx);
+    expect(log).toEqual(["fill", "read", "clear"]);
+  });
+  it("reads after the size is set, since a new size drops the buffer", () => {
+    const { log, ctx } = recorder();
+    const el = {
+      set width(v: number) {
+        log.push(`w${v}`);
+      },
+      set height(v: number) {
+        log.push(`h${v}`);
+      },
+    } as unknown as HTMLCanvasElement;
+    sizeCanvas(el, ctx, 320, 240);
+    expect(log).toEqual(["w320", "h240", "fill", "read", "clear"]);
+  });
+  it("is how the feed and both of the raycaster's canvases get their size", () => {
+    const read = (f: string) => readFileSync(new URL(f, import.meta.url), "utf8");
+    const ray = read("../src/raycast/RaycastView.tsx");
+    expect(ray).toMatch(/sizeCanvas\(el, ctx, /u);
+    expect(ray).toMatch(/sizeCanvas\(over, hctx, /u);
+    expect(ray).not.toMatch(/\b(el|over)\.(width|height) = /u);
+    const feed = read("../src/camfeed.ts");
+    expect(feed).toMatch(/sizeCanvas\(canvas, c, /u);
+    expect(feed).not.toMatch(/canvas\.width = |\[canvas\.width, canvas\.height\] = /u);
   });
 });
 
