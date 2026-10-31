@@ -253,8 +253,7 @@ export function PerformerApp({ onLeave }: { onLeave: () => void }) {
   };
   return (
     <PopOutScope session={s.auth?.token ?? null} cardGuest={() => cardGuest.current}>
-      {/* A booth signed out on the stage says so at once, not after its Continue. */}
-      {cut.showing && s.auth !== null ? <BoothUploadStage s={s} over={cut.over} onContinue={cut.leave} onLeave={signOut} /> : <BoothApp onLeave={onLeave} s={s} cardGuest={cardGuest} />}
+      {cut.showing ? <BoothUploadStage s={s} over={cut.over} onContinue={cut.leave} onLeave={signOut} /> : <BoothApp onLeave={onLeave} s={s} cardGuest={cardGuest} />}
     </PopOutScope>
   );
 }
