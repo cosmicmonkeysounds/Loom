@@ -66,7 +66,7 @@ export class ChunkBoundary extends Component<Props, { failed: boolean }> {
 }
 
 /** The full-page fallback when a whole app (the booth, the cue sheet) would not load. */
-export function ChunkFailed({ what, onBack }: { what: string; onBack?: () => void }) {
+export function ChunkFailed({ what, onBack, onReload }: { what: string; onBack?: () => void; onReload?: () => void }) {
   return (
     <div className="root">
       <div className="hero" role="alert">
@@ -74,7 +74,7 @@ export function ChunkFailed({ what, onBack }: { what: string; onBack?: () => voi
           📡
         </div>
         <p className="sub">{what} didn't load — the connection dropped, or the show was just updated.</p>
-        <button type="button" className="choice primary" onClick={() => window.location.reload()}>
+        <button type="button" className="choice primary" onClick={onReload ?? (() => window.location.reload())}>
           Reload
         </button>
         {onBack !== undefined && (

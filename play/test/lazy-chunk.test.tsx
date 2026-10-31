@@ -7,6 +7,8 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { ChunkBoundary, ChunkDown, ChunkFailed, chunkOrDown, retryImport } from "../src/lazy-chunk.tsx";
+import { cardFromSearch, withCard, withoutCard } from "../src/rejoin.ts";
+import { resumeFromSearch, withoutResume } from "../src/resume.ts";
 
 describe("retryImport", () => {
   it("a failed fetch is tried once more after the wait", async () => {
@@ -38,11 +40,25 @@ describe("chunkOrDown", () => {
     expect(down).toBeInstanceOf(ChunkDown);
     expect(String((down as Error).message)).not.toMatch(/assets|https?:|Failed to fetch/u);
   });
+  it("Reload finds the card or the re-pair code again, which main.tsx took off the address", () => {
+    const strip = (url: string) => withoutCard(withoutResume(url));
+    for (const url of ["?code=EVT1&badge=abcd1234", "?code=EVT1&part=fghjk67890", "?code=EVT1&claim=abcde12345&badge=abcd1234"]) {
+      const card = cardFromSearch(url)!;
+      expect(cardFromSearch(withCard(strip(url), card, null))).toEqual(card);
+    }
+    expect(withCard(strip("?code=EVT1&claim=abcde12345&badge=abcd1234"), cardFromSearch("?code=EVT1&claim=abcde12345&badge=abcd1234"), null)).toContain("claim=abcde12345");
+    const home = "?code=EVT1&pair=q7w8e9&home=1";
+    expect(resumeFromSearch(withCard(strip(home), null, resumeFromSearch(home)))).toEqual(resumeFromSearch(home));
+    const pair = "?code=EVT1&pair=q7w8e9";
+    expect(resumeFromSearch(withCard(strip(pair), null, resumeFromSearch(pair)))).toEqual(resumeFromSearch(pair));
+    expect(withCard("?code=EVT1", null, null)).toBe("?code=EVT1");
+  });
   it("the page's three hand-loaded calls all use it, and all say so with Reload", () => {
     const ui = readFileSync(new URL("../src/ui.tsx", import.meta.url), "utf8");
     expect(ui).toContain('const loadRejoinCalls = chunkOrDown(() => import("./rejoin-calls.ts"));');
     expect(ui.match(/e instanceof ChunkDown\) setChunkDown\(true\)/gu)).toHaveLength(3);
-    expect(ui).toMatch(/if \(chunkDown\) return <ChunkFailed what="This page"/u);
+    expect(ui).toContain('if (chunkDown) return <ChunkFailed what="This page" onBack={() => setChunkDown(false)} onReload={reloadCard} />;');
+    expect(ui).toContain('<ChunkFailed what="This page" onBack={() => setHeld(null)} onReload={reloadCard} />');
   });
 });
 
@@ -53,6 +69,10 @@ describe("ChunkBoundary", () => {
     const b = new ChunkBoundary({ fallback: (retry: () => void) => (typeof retry === "function" ? "fallback" : "?"), children: null });
     b.state = { ...b.state, ...ChunkBoundary.getDerivedStateFromError() };
     expect(b.render()).toBe("fallback");
+  });
+  it("Reload does what it's told, and reloads with nothing to tell it", () => {
+    const told = renderToStaticMarkup(createElement(ChunkFailed, { what: "This page", onReload: () => {} }));
+    expect(told).toContain(">Reload<");
   });
   it("the full-page fallback names what failed and offers Reload", () => {
     const html = renderToStaticMarkup(createElement(ChunkFailed, { what: "The booth", onBack: () => {} }));

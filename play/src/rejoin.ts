@@ -85,6 +85,18 @@ export function withoutCard(search: string): string {
   return s === "" ? "" : `?${s}`;
 }
 
+/** `search` with what `main.tsx` took off it back on: a Reload has to find the
+ *  card or the re-pair code again. */
+export function withCard(search: string, card: CardLink | null, pair: { pair: string; home?: boolean } | null): string {
+  const p = new URLSearchParams(search);
+  if (card?.badge !== undefined) p.set("badge", card.badge);
+  if (card?.part !== undefined) p.set("part", card.part);
+  if (pair !== null) p.set("pair", pair.pair);
+  if (pair?.home === true) p.set("home", "1");
+  const s = p.toString();
+  return s === "" ? "" : `?${s}`;
+}
+
 /** Where the join screen keeps a blank badge until the guest has joined. */
 export const BADGE_KEY = "loom.guest.badge";
 

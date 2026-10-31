@@ -12,7 +12,7 @@ import { LazyHelpSheet as HelpSheet } from "./help-lazy.tsx";
 import { initialRole, roleForBrand, type AppRole } from "./app-role.ts";
 import { ChunkBoundary, ChunkDown, ChunkFailed, chunkOrDown, retryImport } from "./lazy-chunk.tsx";
 import { resumeToAdopt, storedGuestName, type ResumeLink } from "./resume.ts";
-import { cardPlan, heldOf, letGo, rememberBadge, settleOwed, type CardLink, type HeldCard } from "./rejoin.ts";
+import { cardPlan, heldOf, letGo, rememberBadge, settleOwed, withCard, type CardLink, type HeldCard } from "./rejoin.ts";
 import { claimField, claimFromSearch, rememberClaim } from "./claim.ts";
 import { codeFromUrl, tokenDead, useDocumentTitle, useLandingBrand, useTheme } from "./session/shared.ts";
 import { browserHost } from "./host.ts";
@@ -273,13 +273,15 @@ export function App({ resume = null, card = null }: { resume?: ResumeLink | null
     );
   }
 
-  if (chunkDown) return <ChunkFailed what="This page" onBack={() => setChunkDown(false)} />;
+  // `main.tsx` took the card off the address: a plain reload would forget it.
+  const reloadCard = () => window.location.assign(`${window.location.pathname}${withCard(window.location.search, card, resume)}`);
+  if (chunkDown) return <ChunkFailed what="This page" onBack={() => setChunkDown(false)} onReload={reloadCard} />;
 
   if (held !== null) {
     return (
       <div className="hero">
         <div className="glyph">🔒</div>
-        <ChunkBoundary fallback={() => <ChunkFailed what="This page" onBack={() => setHeld(null)} />}>
+        <ChunkBoundary fallback={() => <ChunkFailed what="This page" onBack={() => setHeld(null)} onReload={reloadCard} />}>
           <Suspense fallback={<p className="sub">One moment…</p>}>
             <HeldPanel
               card={held}
