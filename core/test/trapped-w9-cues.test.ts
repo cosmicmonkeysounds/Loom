@@ -430,7 +430,7 @@ describe("Trapped in the Internet — wave 9 (the cue sheet)", () => {
     // Trabolta hosts on the verdict's roads (Combo A: Clippy, wave 58).
     sim.fireBeat("Song Ending");
     press(sim, "tell_the_truth");
-    advance(sim, 720);
+    advance(sim, 830);
     press(sim, "start_the_ceremony");
     expect(v(sim, "Night.ceremony_host")).toBe("Trabolta");
     expect(v(sim, "Night.award_lines")).toBe("template");
