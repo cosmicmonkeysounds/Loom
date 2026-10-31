@@ -98,8 +98,9 @@ const QUIET = (n: number) => new Float32Array(n);
 const b64 = (bytes: Uint8Array) => btoa(String.fromCharCode(...bytes));
 const chunk = (n = VOICE_CHUNK_BYTES) => b64(mulawEncode(LOUD(n)));
 
-function rig(opts: { post?: (seq: number) => Response | Promise<Response>; probe?: () => Response; withMic?: boolean; micRate?: number } = {}) {
+function rig(opts: { post?: (seq: number) => Response | Promise<Response>; probe?: () => Response; withMic?: boolean; micRate?: number; tvOnly?: boolean } = {}) {
   const map = house();
+  map.terminals.push({ id: "tv", name: "TV", room: "b", pos: [7, 1.8, 3], yaw: 90, view: "tv" });
   const s = fakeSink();
   const sources: FakeSource[] = [];
   const posts: Array<{ url: string; bytes: number; token: string | null; keepalive: unknown }> = [];
@@ -124,6 +125,7 @@ function rig(opts: { post?: (seq: number) => Response | Promise<Response>; probe
     house: () => map,
     sink: s.sink,
     mic: opts.withMic === false ? null : Promise.resolve(mic as MicSource),
+    ...(opts.tvOnly === true ? { tvOnly: true } : {}),
     onChange: () => (changes += 1),
     fetcher,
     source: (url) => {
@@ -151,6 +153,69 @@ async function started(r: ReturnType<typeof rig>, listen = true) {
   r.last().open();
   r.last().emit("hello", { codec: "mulaw", rate: 16000, chunkMs: 200, as: "player", session: "s1", listen });
 }
+
+describe("the TV alone (wave 59: a device with its voice link off)", () => {
+  const tvFrame = (seq = 1) => ({ from: "t:tv", kind: "terminal", spot: "tv", name: "TV", gain: 1, seq, data: chunk() });
+
+  it("says so on its stream: no mic, only the TV; a device with the link keeps the plain stream", async () => {
+    const tv = rig({ tvOnly: true, withMic: false });
+    await started(tv);
+    expect(tv.last().url).toBe("/e/evt/api/spatial/voice/stream?token=tok&mic=0&only=tv");
+    const full = rig();
+    await started(full);
+    expect(full.last().url).toBe("/e/evt/api/spatial/voice/stream?token=tok");
+  });
+
+  it("plays the TV at its screen", async () => {
+    const r = rig({ tvOnly: true, withMic: false });
+    await started(r, false);
+    r.last().emit("voice", tvFrame());
+    const ch = r.sink.channels[0]!;
+    expect(r.sink.channels).toHaveLength(1);
+    expect(ch.pose).toEqual(screenPose(r.map, r.map.terminals.find((t) => t.id === "tv")!));
+    expect(ch.gain).toBe(1);
+    expect(ch.plays).toHaveLength(1);
+    expect(r.link.hud.hearing).toBe(1);
+    r.last().emit("bye", { from: "t:tv" });
+    expect(ch.closed).toBe(true);
+    expect(r.link.hud.hearing).toBe(0);
+  });
+
+  it("plays no other terminal, whatever a server sends", async () => {
+    const r = rig({ tvOnly: true, withMic: false });
+    await started(r, false);
+    r.last().emit("voice", { from: "t:t", kind: "terminal", spot: "t", gain: 1, seq: 1, data: chunk() });
+    expect(r.sink.channels).toHaveLength(0);
+  });
+
+  it("the link's own device still hears every terminal", async () => {
+    const r = rig();
+    await started(r, false);
+    r.last().emit("voice", { from: "t:t", kind: "terminal", spot: "t", gain: 1, seq: 1, data: chunk() });
+    r.last().emit("voice", tvFrame());
+    expect(r.sink.channels).toHaveLength(2);
+  });
+
+  it("sends nothing up and has no mic to mute", async () => {
+    const r = rig({ tvOnly: true, withMic: false });
+    await started(r);
+    r.last().emit("voice", tvFrame());
+    r.link.toggleMute();
+    await r.settle();
+    expect(r.link.hud.mic).toBe("none");
+    expect(r.posts).toEqual([]);
+  });
+
+  it("ends with the session, like the link", async () => {
+    const r = rig({ tvOnly: true, withMic: false });
+    await started(r, false);
+    r.last().emit("voice", tvFrame());
+    const es = r.last();
+    r.link.stop();
+    expect(es.closed).toBe(true);
+    expect(r.sink.channels[0]!.closed).toBe(true);
+  });
+});
 
 describe("placement", () => {
   it("hangs a voice at its terminal's screen: the spot pushed out of the wall along its yaw", () => {
