@@ -1,6 +1,8 @@
 // Getting back in (wave 23, `core/server/routes/rejoin.ts`). A guest who
 // lost this phone's session — another browser, cleared tabs, *Leave the
-// event* — comes back as the SAME program three ways, no director needed:
+// event* — comes back as the SAME program three ways, no director needed.
+// Wave 59: only while no other phone holds it. A held card is refused
+// (`held.tsx`, the refused screen), and a host moves it here (Ask a host).
 //
 // - **Their badge.** The crew prints blank ID badges; each QR is
 //   `…/?code=<guest code>&badge=<code>`. Scanned at join it links to the
@@ -18,8 +20,7 @@
 // claim opens its program, the badge links at join and is the guest's pass.
 //
 // A performer's **staff badge** (`…/?code=<guest code>&part=<code>`) signs in
-// as that part and takes it back from a lost booth (`/api/prime/login
-// {passcode, part}`).
+// as that part (`/api/prime/login {passcode, part}`), the same one-holder rule.
 //
 // The badge and part codes are credentials: `main.tsx` strips them from the
 // address bar before anything renders. This file is the links and the
@@ -115,6 +116,25 @@ export function forgetBadge(storage: SessionStorage): void {
   } catch {
     /* fine */
   }
+}
+
+/** What a refused card may say of who holds it: what is printed on it. */
+export interface HeldShown {
+  name: string | null;
+  ref: string | null;
+}
+
+/** A refused card: what to ask a host for. */
+export interface HeldCard extends HeldShown {
+  /** The event code it carries (the performer code on the booth's picker). */
+  code: string;
+  by: { badge: string; claim?: string } | { claim: string } | { part: string } | { character: string };
+}
+
+/** The `held` a refused sign-in threw (`RejoinError`), or null. */
+export function heldOf(e: unknown): HeldShown | null {
+  const held = (e as { held?: HeldShown | null } | null)?.held;
+  return held === undefined ? null : held;
 }
 
 /** The printed form of a badge code (`ABCD-EFGH`). */

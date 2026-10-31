@@ -2,8 +2,8 @@
 // poll calls over a fake fetch, the card plan, and the scanners' badge reads.
 
 import { describe, expect, it } from "vitest";
-import { badgeFromText, badgeLinkOf, badgeLinkText, cardFromSearch, cardPlan, printedBadge, rememberBadge, storedBadge, forgetBadge, withoutCard, BADGE_UNKNOWN } from "../src/rejoin.ts";
-import { askHost, askLine, enterBy, enterPart, filterNames, joinedNames, pollAsk, RejoinError } from "../src/rejoin-calls.ts";
+import { badgeFromText, badgeLinkOf, badgeLinkText, cardFromSearch, cardPlan, heldOf, printedBadge, rememberBadge, storedBadge, forgetBadge, withoutCard, BADGE_UNKNOWN } from "../src/rejoin.ts";
+import { askHeld, askHost, askLine, enterBy, enterPart, filterNames, heldLine, joinedNames, letGo, pollAsk, RejoinError } from "../src/rejoin-calls.ts";
 import { memoryStore } from "../src/host.ts";
 import { guestScan } from "../src/guest-scan-sheet.tsx";
 import { parseScan } from "../src/scan.ts";
@@ -135,5 +135,73 @@ describe("scanners", () => {
   it("a host's row says how long ago and to check", () => {
     expect(rejoinDetail({ at: 0 }, 150_000)).toMatch(/^Asked 2 min ago/);
     expect(rejoinDetail({ at: 0 }, 1_000)).toMatch(/^Asked just now/);
+  });
+});
+
+describe("wave 59: one holder", () => {
+  const held = (extra: Record<string, unknown>) => () => ({ status: 409, body: { error: "that is signed in on another phone", held: true, ...extra } });
+
+  it("a held badge throws what's printed on it, never a sign-in", async () => {
+    const f = fakeFetch({ ...resolve, "/e/ev1/api/guest/enter": held({ ref: "B012" }) });
+    const e = await enterBy("EVT1", { badge: CODE }, f.fn).catch((x: unknown) => x);
+    expect(heldOf(e)).toEqual({ name: null, ref: "B012" });
+    expect((e as Error).message).toBe("Badge B012 is already signed in on a phone.");
+    // Closed doors stay their own sentence.
+    const shut = fakeFetch({ ...resolve, "/e/ev1/api/guest/enter": () => ({ status: 409, body: { error: "doors are closed" } }) });
+    const c = await enterBy("EVT1", { badge: CODE }, shut.fn).catch((x: unknown) => x);
+    expect(heldOf(c)).toBeNull();
+    expect((c as Error).message).toMatch(/doors/);
+    expect(heldOf(new Error("x"))).toBeNull();
+  });
+
+  it("a held staff badge throws its part's name", async () => {
+    const f = fakeFetch({ ...resolve, "/e/ev1/api/prime/login": held({ name: "Clippy", error: "Clippy is already taken by another performer" }) });
+    const e = await enterPart("EVT1", "p1", f.fn).catch((x: unknown) => x);
+    expect(heldOf(e)).toEqual({ name: "Clippy", ref: null });
+    expect((e as Error).message).toBe("Clippy is already signed in on a phone.");
+  });
+
+  it("the phone's own token goes with a re-scan", async () => {
+    const f = fakeFetch({ ...resolve, "/e/ev1/api/guest/enter": () => ({ status: 200, body: { ok: true, resumed: true, id: "g-1", name: "W", token: "t1" } }), "/e/ev1/api/prime/login": () => ({ status: 200, body: { token: "pt", character: "Clippy" } }) });
+    await enterBy("EVT1", { badge: CODE }, f.fn, "t1");
+    expect(f.calls[1]!.body).toEqual({ passcode: "EVT1", badge: CODE, token: "t1" });
+    await enterPart("EVT1", "p1", f.fn, "pt");
+    expect(f.calls[3]!.body).toEqual({ passcode: "EVT1", part: "p1", token: "pt" });
+  });
+
+  it("asks for a refused card, naming only what's printed on it", async () => {
+    const f = fakeFetch({ ...resolve, "/e/ev1/api/guest/rejoin": () => ({ status: 200, body: { ok: true, request: "r9", name: "" } }) });
+    const ask = await askHeld({ code: "EVT1", by: { badge: CODE }, name: null, ref: "B012" }, f.fn);
+    expect(ask).toEqual({ eventId: "ev1", title: "The Party", request: "r9", name: "your program" });
+    expect(f.calls[1]!.body).toEqual({ passcode: "EVT1", badge: CODE });
+    expect(askLine({ kind: "pending" }, ask.name)).toMatch(/back in as your program/);
+  });
+
+  it("an approved ask for a part comes back a booth", async () => {
+    const f = fakeFetch({ "/e/ev1/api/guest/rejoin/poll": () => ({ status: 200, body: { state: "approved", part: true, character: "Task Manager", name: "Task Manager", token: "pt", admin: false, host: true, by: "Task Manager" } }) });
+    const got = await pollAsk({ eventId: "ev1", title: "The Party", request: "r", name: "Task Manager" }, f.fn);
+    expect(got).toEqual({ kind: "booth", by: "Task Manager", booth: { token: "pt", character: "Task Manager", admin: false, host: true, eventId: "ev1", title: "The Party" } });
+    expect(askLine(got, "Task Manager")).toBe("Task Manager let you back in as Task Manager.");
+  });
+
+  it("the refused line names the card, and a bare one names nothing", () => {
+    expect(heldLine({ name: "Microsoft Excel", ref: "F01" })).toBe("Microsoft Excel is already signed in on a phone.");
+    expect(heldLine({ name: null, ref: null })).toBe("That badge is already signed in on a phone.");
+  });
+
+  it("lets go of a session a phone stops being, and never throws", async () => {
+    const seen: Array<[string, unknown]> = [];
+    const fn = (async (path: string, init?: { headers?: Record<string, string> }) => {
+      seen.push([path, init?.headers?.["x-loom-token"]]);
+      throw new TypeError("offline");
+    }) as unknown as typeof fetch;
+    letGo({ token: "t1", eventId: "ev 1" }, "guest", fn);
+    letGo({ token: "t2", eventId: "ev1" }, "prime", fn);
+    letGo(null, "guest", fn);
+    letGo({ token: 3 }, "guest", fn);
+    expect(seen).toEqual([
+      ["/e/ev%201/api/guest/logout", "t1"],
+      ["/e/ev1/api/prime/logout", "t2"],
+    ]);
   });
 });

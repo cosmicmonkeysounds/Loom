@@ -86,7 +86,7 @@ export interface LifecycleNotice {
 /** The probe's verdict on a closed stream: the run forgot the token
  *  (`"reset"`), the event is gone (`"ended"`), or `null` — alive, or no way
  *  to tell (a 502 from the proxy while the server restarts). */
-export type StreamVerdict = "reset" | "ended" | null;
+export type StreamVerdict = "reset" | "released" | "ended" | null;
 
 /** What `openChatFeed` needs of an `EventSource` (a fake in tests). */
 export interface FeedSource {

@@ -220,6 +220,8 @@ export function hostCalls(post: HostPost, alertsPath: () => string) {
       return { name: str(r["name"]), url: str(r["url"]), expiresAt: typeof r["expiresAt"] === "number" ? r["expiresAt"] : 0 };
     },
     release: (character: string) => post("/api/mod/prime/release", { character }),
+    /** Wave 59: sign a guest's phone out; their badge signs in again. */
+    releaseGuest: (id: string) => post("/api/mod/guest/release", { id }),
     renameCrew: (crew: string, name: string) => post("/api/mod/crew/rename", { crew, name }),
     dissolveCrew: (crew: string) => post("/api/mod/crew/dissolve", { crew }),
     restrict: (id: string, on: boolean) => post("/api/mod/act", { id, action: on ? "restrict" : "unrestrict" }),

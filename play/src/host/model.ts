@@ -120,11 +120,12 @@ export function hostWanted(view: unknown): WantedLike[] {
   return w.filter((x): x is WantedLike => x !== null && typeof x === "object" && typeof (x as WantedLike).id === "string" && typeof (x as WantedLike).name === "string");
 }
 
-/** Wave 23: the line under a guest's ask to get back in. */
-export function rejoinDetail(ask: { at: number }, now: number): string {
+/** Wave 23: the line under a guest's ask to get back in. Wave 59: a yes
+ *  signs out the phone that has them now. */
+export function rejoinDetail(ask: { at: number; held?: boolean }, now: number): string {
   const mins = Math.max(0, Math.floor((now - ask.at) / 60_000));
   const ago = mins === 0 ? "just now" : `${mins} min ago`;
-  return `Asked ${ago} from a new phone. Check it's them (ask to see their badge or pass) before you let them in.`;
+  return `Asked ${ago} from a new phone. Check it's them (ask to see their badge or pass) before you let them in.${ask.held === true ? " That signs out the phone they're on now." : ""}`;
 }
 
 /** Needs' first row: `🚨 3 marked · 1 nobody on it`; null when nobody is

@@ -801,6 +801,11 @@ export interface RejoinAsk {
   name: string;
   /** Wall ms the ask opened. */
   at: number;
+  /** Wave 59: a part, not a Person (`id` is the character). */
+  part?: true;
+  /** Wave 59: a phone holds it now, so letting them in signs that phone out.
+   *  Absent from an older server. */
+  held?: boolean;
 }
 
 export interface HostView extends CueSheetView {

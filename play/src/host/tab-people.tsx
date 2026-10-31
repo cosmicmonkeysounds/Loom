@@ -87,6 +87,7 @@ function PersonRow({ p, open, onToggle }: { p: HostPerson; open: boolean; onTogg
               }}
             />
           )}
+          {p.persona !== true && <ConfirmButton label="⏏ Release" ask={`Sign ${p.name}'s phone out? Their badge signs them in again on any phone.`} danger onConfirm={() => run(`⏏ ${p.name}'s phone is signed out`, () => calls.releaseGuest(p.id))} />}
           {view.parts.length > 0 && (
             <button type="button" className="w95-btn" onClick={() => setScanning(true)}>
               📡 Scan as…

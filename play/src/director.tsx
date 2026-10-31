@@ -785,7 +785,7 @@ function RejoinAsks({ asks, onAnswer }: { asks: readonly RejoinAsk[]; onAnswer: 
       {asks.map((a) => (
         <div key={a.request} className="dir-rejoin">
           <div className="dir-rejoin-text">
-            🔁 <strong>{a.name}</strong> wants back in from a new phone. Check it's them first.
+            🔁 <strong>{a.name}</strong> wants back in from a new phone. Check it's them first.{a.held === true ? " That signs out the phone they're on now." : ""}
           </div>
           <div className="dir-rejoin-acts">
             <button type="button" className="choice primary" disabled={busy !== null} onClick={() => answer(a.request, true)}>

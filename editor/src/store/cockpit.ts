@@ -725,6 +725,9 @@ export interface CockpitState {
    *  same world var locally). Resolves true when it landed; a refusal lands
    *  in `error`. */
   markGone(id: string, gone: boolean): Promise<boolean>
+  /** Sign a guest's phone out (wave 59), so their badge signs in again. How
+   *  many tokens went; null on a local run (no phones) or a failure. */
+  releaseGuest(id: string): Promise<number | null>
   /** Release a performer's part (N-10) so they can re-sign on a loaner.
    *  Resolves to how many sessions held it (null on failure / local runs). */
   releasePart(character: string): Promise<number | null>
@@ -852,6 +855,7 @@ export const nullCockpit: CockpitStore = create<CockpitState>((set) => ({
   grantCodex: noop,
   stepQuest: noop,
   pairGuest: async () => null,
+  releaseGuest: async () => null,
   releasePart: async () => null,
   markGone: async () => false,
   walletAct: async () => false,

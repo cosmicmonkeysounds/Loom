@@ -930,6 +930,16 @@ export const useOperate = create<OperateState>((set, get) => {
         return null
       }
     },
+    releaseGuest: async (id) => {
+      const ev = get().event
+      if (!ev) return null
+      try {
+        return await modApi.releaseGuest(ev.id, id)
+      } catch (e) {
+        set({ error: (e as Error).message })
+        return null
+      }
+    },
     releasePart: async (character) => {
       const ev = get().event
       if (!ev) return null

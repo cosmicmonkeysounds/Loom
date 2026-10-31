@@ -8,7 +8,7 @@ import { DOORS_POLL_MS, type Identities, type ProgramHit, type ProgramPictures }
 import { claimField } from "../claim.ts";
 import { ApiError, api, type StreamVerdict } from "../client.ts";
 import { usePlayHost } from "../host.ts";
-import { eventGone } from "../lifecycle.ts";
+import { deadTokenKind, eventGone } from "../lifecycle.ts";
 import { roomFromMessage, roomFromSearch, roomTarget, withoutRoom } from "../room.ts";
 import type { Threads } from "../rooms/threads-state.ts";
 import type { WidgetResult } from "../widgets.tsx";
@@ -196,18 +196,17 @@ export async function searchPrograms(eventId: string, code: string, q: string, c
  * stream — a closed `EventSource` is also what a flaky network, a sleeping
  * phone, or a mid-restart server produces, and none of those should log a
  * guest out. Only a definite answer from the server means dead: 401 / 403
- * (the run forgot this token → `"reset"`) or 404 `unknown event` (the event
- * itself is gone → `"ended"`). `null` = alive, or no way to tell.
+ * (the run forgot this token → `"reset"`, or a release cut it → `"released"`)
+ * or 404 `unknown event` (the event itself is gone → `"ended"`). `null` =
+ * alive, or no way to tell.
  */
 export async function tokenDead(base: string, role: "guest" | "prime", token: string): Promise<StreamVerdict> {
   try {
     const res = await fetch(`${base}/api/state?role=${role}`, { headers: { "x-loom-token": token } });
-    if (res.status === 401 || res.status === 403) return "reset";
-    if (res.status === 404) {
-      const body = (await res.json().catch(() => ({}))) as { error?: unknown };
-      if (eventGone(404, String(body.error ?? ""))) return "ended";
-    }
-    return null;
+    if (res.status !== 401 && res.status !== 403 && res.status !== 404) return null;
+    const body = (await res.json().catch(() => ({}))) as { error?: unknown };
+    if (res.status !== 404) return deadTokenKind(String(body.error ?? ""));
+    return eventGone(404, String(body.error ?? "")) ? "ended" : null;
   } catch {
     return null; // no answer at all: the server is away, not the session
   }

@@ -280,6 +280,8 @@ export interface PrimeSession {
   notice: string | null;
   threads: Threads;
   login: (character: string, passcode: string) => Promise<void>;
+  /** Wave 59: become the booth a host let in (Ask a host, `held.tsx`). */
+  adopt: (booth: PrimeAuth) => void;
   /** Scan a guest's pass (`/api/scan`); the answer carries the guest's card (wave 13). */
   scan: (target: string) => Promise<ScanResult>;
   /** What this booth may do to one guest right now (`/api/prime/card`, wave 13). */
@@ -461,6 +463,12 @@ export function usePrimeSession(): PrimeSession {
       { character, passcode },
     );
     const a: PrimeAuth = { token: r.token, character: r.character, admin: !!r.admin, host: r.host === true, eventId, title };
+    crawl.reset();
+    save(PK, a);
+    setAuth(a);
+    setNotice(null);
+  }, []);
+  const adopt = useCallback((a: PrimeAuth) => {
     crawl.reset();
     save(PK, a);
     setAuth(a);
@@ -671,5 +679,5 @@ export function usePrimeSession(): PrimeSession {
   useTheme(auth === null ? landing.theme : view?.theme);
   const arrive = useCallback(() => post("/api/prime/arrive", {}, auth!.token), [post, auth]);
   const choose = useCallback((index: number, menu: { id: number; text: string }) => post("/api/prime/choose", { index, choice: menu.id, text: menu.text }, auth!.token), [post, auth]);
-  return { auth, view, alert: alerts.alert, dismissAlert: alerts.dismiss, alerts, messages, connected, ready, notice, threads, login, scan, card, say, inviteToChannel, leaveChannel, becomeAdmin, act, lastPressedOn, cue, shareCodex, redeem, walletApprove, walletDeny, moderate, setHidden, answerWidget, widgetAnswers, letter, censor, filterLevel, arrive, choose, leave, roomLinkPending };
+  return { auth, view, alert: alerts.alert, dismissAlert: alerts.dismiss, alerts, messages, connected, ready, notice, threads, login, adopt, scan, card, say, inviteToChannel, leaveChannel, becomeAdmin, act, lastPressedOn, cue, shareCodex, redeem, walletApprove, walletDeny, moderate, setHidden, answerWidget, widgetAnswers, letter, censor, filterLevel, arrive, choose, leave, roomLinkPending };
 }

@@ -2,6 +2,7 @@
 //! `performer.tsx` in wave 13).
 
 import { useState } from "react";
+import { HeldPanel } from "../held.tsx";
 import { PersonAvatar } from "../ui/primitives.tsx";
 import { avatarUrl, orderPicker, type IdentityRow } from "../avatars.ts";
 import { codeFromUrl, useIdentities, type IdentityLookup } from "../session/shared.ts";
@@ -12,6 +13,8 @@ export function PrimeLogin({ session }: { session: PrimeSession }) {
   const [character, setCharacter] = useState("");
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
+  // Wave 59: a taken part tapped: it's one phone's, so a host moves it.
+  const [askFor, setAskFor] = useState<string | null>(null);
   // A performer code resolves to the story's *parts* — every character
   // with something to do, minus the ones other booths already hold — so
   // the picker shows who is still free, with their pictures. Before the
@@ -65,19 +68,21 @@ export function PrimeLogin({ session }: { session: PrimeSession }) {
       {serverBusy && <p className="pick-hint" role="status">The server is busy — trying again in a moment.</p>}
       {waiting && <p className="pick-hint" role="status">The story isn't loaded yet — the cast appears here once the director opens the doors.</p>}
       {fallback !== null && <p className="pick-hint">The server couldn't send who's still free — {fallback.error}. It may need a restart; the cast below is unfiltered.</p>}
-      {cast.length > 0 ? (
+      {askFor !== null ? (
+        <HeldPanel card={{ code: passcode.trim(), by: { character: askFor }, name: askFor, ref: null }} onGuest={() => {}} onBooth={session.adopt} onBack={() => setAskFor(null)} />
+      ) : cast.length > 0 ? (
         <div className="cast-pick" role="group" aria-label="Who are you tonight?">
           <div className="sheet-h">Who are you tonight?</div>
-          {cast.some((c) => c.claimed) && <p className="pick-hint">Your part shows as taken after a lost phone? Scan your badge with this phone's camera to take it back.</p>}
+          {cast.some((c) => c.claimed) && <p className="pick-hint">Your part shows as taken after a lost phone? Tap it to ask a host.</p>}
           <div className="pick-grid">
             {cast.map((c) => (
               <button
                 key={c.name}
                 type="button"
                 className={`choice pick ${character === c.name ? "primary" : "ghost"} ${c.claimed ? "claimed" : ""}`}
-                disabled={busy || c.claimed}
-                title={c.claimed ? `${c.name} is taken — if it's yours, scan your badge` : `Be ${c.name}`}
-                onClick={() => void go(c.name)}
+                disabled={busy}
+                title={c.claimed ? `${c.name} is taken — if it's yours, tap to ask a host` : `Be ${c.name}`}
+                onClick={() => (c.claimed ? setAskFor(c.name) : void go(c.name))}
               >
                 <PersonAvatar name={c.name} size="lg" kind="character" src={eventId !== null && c.avatar !== null ? avatarUrl(eventId, c.avatar) : null} />
                 <span className="pick-label">
