@@ -17,9 +17,11 @@
 //! Memory only, on purpose: nothing here is journaled and a restart forgets
 //! it, so the rest of the lines just play. **The night never hangs:** with no
 //! reader's phone on the prompter (`here`) there is no hold, a phone that never
-//! reports (an old build, a sim bot) gets `HOLD_WAIT_MS` and no more, and one
-//! that goes away frees the hold after `HERE_TTL_MS`. Pure but for the injected
-//! clock and outlets: the runtime calls `tick` on a timer and on every poll.
+//! reports (an old build, a sim bot) gets `HOLD_WAIT_MS` and no more, one that
+//! goes away frees the hold after `HERE_TTL_MS`, anyone else on it holds only
+//! while they drive it (`DRIVE_TTL_MS`), and a scripted line of his that isn't
+//! in the scene lets it all go (`outrun`). Pure but for the injected clock and
+//! outlets: the runtime calls `tick` on a timer and on every poll.
 
 import type { PrompterStatus } from "../src/host-board.ts";
 import type { ChatMessage } from "./chat.ts";
@@ -34,6 +36,9 @@ export const HERE_EVERY_MS = 4_000;
 export const HERE_TTL_MS = 12_000;
 /** A finger that stopped reporting (a dead phone) lets go after this long. */
 export const HOLDER_TTL_MS = 4_000;
+/** With no reader on it, someone else's prompter holds him only this long after
+ *  they last pressed or moved it: joined to watch and left awake is not reading. */
+export const DRIVE_TTL_MS = 20_000;
 /** The prompter's autoscroll at speed 1, words a minute (`BASE_WPM` on the phone). */
 export const PROMPTER_WPM = 130;
 export const SPEED_MIN = 0.4;
@@ -252,9 +257,12 @@ interface Live {
   runs: Array<Run & { seq: number }>;
   next: number;
   members: Set<string>;
-  hold: "wait" | "on" | "off";
+  /** His next line waits. For `waitUntil` with no word from anyone, after that only while someone is at the script (`attended`). */
+  hold: boolean;
   waitUntil: number;
   here: Map<string, { at: number; open: boolean }>;
+  /** When each phone last pressed or moved it. */
+  drove: Map<string, number>;
   pos: number;
   at: number;
   rate: number;
@@ -322,9 +330,10 @@ export class Prompters {
       runs,
       next: 0,
       members: new Set([...draft.readers, ...draft.owners]),
-      hold: runs.length > 0 && anyone ? "wait" : "off",
+      hold: runs.length > 0 && anyone,
       waitUntil: now + HOLD_WAIT_MS,
       here: new Map(),
+      drove: new Map(),
       pos: 0,
       at: now,
       rate: 0,
@@ -345,7 +354,7 @@ export class Prompters {
   /** The first room line the voice must leave for now, or null. */
   heldFrom(channel: string): number | null {
     const s = this.live;
-    if (s === null || s.draft.channel !== channel || s.hold === "off") return null;
+    if (s === null || s.draft.channel !== channel || !s.hold) return null;
     return s.runs[s.next]?.seq ?? null;
   }
 
@@ -378,9 +387,23 @@ export class Prompters {
    *  order. The prompter carries on with no holds. Null: nothing was held. */
   release(): boolean {
     const s = this.live;
-    if (s === null || s.hold === "off" || this.heldFrom(s.draft.channel) === null) return false;
+    if (s === null || this.heldFrom(s.draft.channel) === null) return false;
     this.free(s);
     return true;
+  }
+
+  /**
+   * A batch of lines that landed no scene. A scripted line of his in the scene's
+   * room that isn't in its script means the story went on without her, and the
+   * hold would swallow it too: 🕚's Y2K line, an overshare. So everything plays,
+   * in order, and the prompter carries on. A live line (the Talk card's, a
+   * reply: no `beat` at all) waits its turn, so a reply can't dump her script.
+   */
+  outrun(messages: readonly ChatMessage[], voiced: (from: string) => boolean): boolean {
+    const s = this.live;
+    if (s === null) return false;
+    const on = messages.some((m) => m.channel === s.draft.channel && m.kind === "line" && m.hidden !== true && m.beat !== undefined && voiced(m.from));
+    return on && this.release();
   }
 
   /** ✓ Done from anyone in the scene (or a director). */
@@ -412,10 +435,6 @@ export class Prompters {
     switch (o.op) {
       case "here":
         s.here.set(who, { at: now, open: o.open });
-        if (s.hold === "wait") {
-          s.hold = "on";
-          this.deps.changed();
-        }
         this.tick();
         return null;
       case "press": {
@@ -461,6 +480,7 @@ export class Prompters {
         return null;
       }
     }
+    s.drove.set(who, now);
     s.stop = this.stopOf(s);
     if (!this.step(s, now)) this.emit(s);
     return null;
@@ -479,11 +499,7 @@ export class Prompters {
       s.stop = this.stopOf(s);
       this.emit(s);
     }
-    if (s.hold === "wait" && now >= s.waitUntil) this.free(s);
-    if (s.hold === "on") {
-      const here = [...s.here].some(([who, h]) => now - h.at <= HERE_TTL_MS && (s.draft.readers.includes(who) || h.open));
-      if (!here) this.free(s);
-    }
+    if (s.hold && now >= s.waitUntil && !this.attended(s, now)) this.free(s);
     if (this.step(s, now)) return;
     // The autoscroll ran out of script.
     if (s.rate > 0 && s.speaking === null && this.posAt(s, now) >= s.total) {
@@ -495,7 +511,18 @@ export class Prompters {
   }
 
   private isHeld(s: Live): boolean {
-    return s.hold !== "off" && s.next < s.runs.length;
+    return s.hold && s.next < s.runs.length;
+  }
+
+  /** Is someone at the script? A reader whose phone is on it, or anyone else
+   *  who has it open and is driving it: pressing, or moving it lately, or it is
+   *  scrolling on its way to his line. */
+  private attended(s: Live, now: number): boolean {
+    return [...s.here].some(([who, h]) => {
+      if (now - h.at > HERE_TTL_MS) return false;
+      if (s.draft.readers.includes(who)) return true;
+      return h.open && (s.rate > 0 || now - (s.drove.get(who) ?? -Infinity) <= DRIVE_TTL_MS);
+    });
   }
 
   private locked(s: Live, who: string, now: number): boolean {
@@ -565,7 +592,7 @@ export class Prompters {
   }
 
   private free(s: Live): void {
-    s.hold = "off";
+    s.hold = false;
     s.stop = this.stopOf(s);
     this.emit(s);
     this.deps.changed();

@@ -2374,7 +2374,7 @@ export class EventRuntime {
       this.prompterClock();
       const title = scene.sections[0]?.title ?? "Your line";
       for (const who of scene.owners) this.push.notify(who.startsWith("@") ? boothOwner(who.slice(1)) : guestOwner(who), aloudLinePush(title), false);
-    }
+    } else this.prompters.outrun(appended, (from) => this.sim?.model.characters.get(from)?.mind === "external");
     // A commit whose events never reached a fanout: its lines go now.
     for (const crew of this.crewAfter.values()) post(crew);
     this.crewAfter.clear();

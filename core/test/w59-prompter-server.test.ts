@@ -221,6 +221,46 @@ describe("over the real runtime", () => {
     rt.dispose();
   });
 
+  it("lets the held lines go when the story goes on without her: 🕚's Y2K line still lands", async () => {
+    const rt = runtime();
+    const clippy = await booth(rt, "Clippy");
+    const res = await stream(rt, "prime", clippy);
+    const before = (await poll(rt, -1)).voice.head;
+    await post(rt, "/api/mod/beat", { name: "Full Of Beans" }, { moderator: true });
+    const scene = frames(res).at(-1)!;
+    await post(rt, "/api/aloud", { scene: scene.id, op: "here", open: true }, { token: clippy });
+    expect((await poll(rt, before)).voice.held).toBe(true);
+
+    for (const [path, value] of [["Night.step", "13"], ["Night.scenario", "1"], ["Night.clock", "--:--"]]) await post(rt, "/api/mod/var", { path, value }, { moderator: true });
+    expect((await post(rt, "/api/mod/signal", { name: "y2k_clock" }, { moderator: true })).status).toBe(200);
+
+    const after = await poll(rt, before);
+    expect(after.voice.held).toBeUndefined();
+    const said = after.voice.lines.map((l) => l.text);
+    const held = said.findIndex((t) => t.startsWith("Antivirus."));
+    const y2k = said.findIndex((t) => t.includes("the Y2K BUG."));
+    expect(held, "the beat's own line goes first").toBeGreaterThanOrEqual(0);
+    expect(y2k).toBeGreaterThan(held);
+    expect((await post(rt, "/api/aloud", { scene: scene.id, op: "here", open: true }, { token: clippy })).status, "the prompter carries on").toBe(200);
+    rt.dispose();
+  });
+
+  it("keeps a live reply behind a hold: it can't dump her script, and it plays after", async () => {
+    const rt = runtime();
+    const clippy = await booth(rt, "Clippy");
+    const res = await stream(rt, "prime", clippy);
+    const before = (await poll(rt, -1)).voice.head;
+    await post(rt, "/api/mod/beat", { name: "Second Hunt" }, { moderator: true });
+    const scene = frames(res).at(-1)!;
+    await post(rt, "/api/aloud", { scene: scene.id, op: "here", open: true }, { token: clippy });
+    const live = rt as unknown as { commit(...a: unknown[]): never[]; fanout(e: never[]): ChatMessage[] };
+    live.fanout(live.commit("say", "Trabolta", "loc:The Desktop", "A live reply.", null, "all"));
+    expect((await poll(rt, before)).voice.held, "the Talk card's reply queues").toBe(true);
+    expect((await post(rt, "/api/mod/aloud", { action: "release" }, { moderator: true })).json).toMatchObject({ ok: true });
+    expect((await poll(rt, before)).voice.lines.at(-1)?.text).toBe("A live reply.");
+    rt.dispose();
+  });
+
   it("forgets the scene on a restart, and the rest of the lines play", async () => {
     const rt = runtime();
     const clippy = await booth(rt, "Clippy");

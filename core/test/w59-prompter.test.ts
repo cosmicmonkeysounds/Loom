@@ -3,7 +3,7 @@
 
 import { describe, expect, it } from "vitest";
 import type { ChatMessage } from "../server/chat.ts";
-import { HERE_TTL_MS, HOLD_WAIT_MS, HOLDER_TTL_MS, Prompters, readPrompterOp, sceneOf, spokenMs, type PrompterFrame, type RoomVoice } from "../server/prompter.ts";
+import { DRIVE_TTL_MS, HERE_TTL_MS, HOLD_WAIT_MS, HOLDER_TTL_MS, Prompters, readPrompterOp, sceneOf, spokenMs, type PrompterFrame, type RoomVoice } from "../server/prompter.ts";
 import { voiceLinesOf } from "../server/routes/screen.ts";
 
 const CTX = { voiced: (f: string) => f === "Trabolta", ownerOf: (f: string) => (f === "Recycling Bin" ? "@Recycling Bin" : f === "Clippy" ? "@Clippy" : null) };
@@ -280,20 +280,97 @@ describe("the night never hangs", () => {
     expect(r.p.heldFrom("loc:The Desktop")).toBeNull();
   });
 
-  it("a host's prompter counts as someone there; one not looking at it doesn't", () => {
-    const r = rig([clippy(1), him(2)]);
+  it("someone else's prompter never holds him by being open: only by being driven", () => {
+    const HOST = "@Task Manager";
+    const stay = (r: ReturnType<typeof rig>, open = true) => r.p.op(r.id, HOST, true, { op: "here", open });
+    /** A phone says it's there every 4 s. */
+    const onIt = (r: ReturnType<typeof rig>, ms: number) => {
+      for (let left = ms; left > 0; left -= 4_000) {
+        stay(r);
+        r.to(Math.min(left, 4_000));
+      }
+    };
+    const asleep = rig([clippy(1), him(2)]);
+    asleep.here();
+    asleep.to(HERE_TTL_MS - 100);
+    stay(asleep, false);
+    asleep.to(200);
+    expect(asleep.p.heldFrom("loc:The Desktop"), "not looking at it").toBeNull();
+
+    const watching = rig([clippy(1), him(2)]);
+    watching.here();
+    watching.to(HERE_TTL_MS - 100);
+    stay(watching);
+    watching.to(200);
+    expect(watching.p.heldFrom("loc:The Desktop"), "joined to watch, left on the table").toBeNull();
+
+    const reading = rig([clippy(1), him(2), clippy(3)]);
+    reading.here();
+    stay(reading);
+    reading.p.op(reading.id, HOST, true, { op: "press", pos: 1 });
+    reading.p.op(reading.id, HOST, true, { op: "letgo", pos: 1 });
+    onIt(reading, DRIVE_TTL_MS - 200);
+    expect(reading.p.heldFrom("loc:The Desktop"), "the reader's phone died and the host took over").toBe(2);
+    onIt(reading, 400);
+    expect(reading.p.heldFrom("loc:The Desktop"), "and then stopped").toBeNull();
+  });
+
+  it("keeps a reader's moves their own, and an autoscroll on its way to him counts as driven", () => {
+    const HOST = "@Task Manager";
+    const r = rig([clippy(1, "one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen nineteen twenty twentyone"), him(2)]);
     r.here();
-    r.p.op(r.id, "@Task Manager", true, { op: "here", open: false });
+    r.p.op(r.id, "@Clippy", false, { op: "jump", pos: 1 });
+    r.p.op(r.id, HOST, true, { op: "here", open: true });
     r.to(HERE_TTL_MS - 100);
-    r.p.op(r.id, "@Task Manager", true, { op: "here", open: false });
+    r.p.op(r.id, HOST, true, { op: "here", open: true });
+    r.to(200);
+    expect(r.p.heldFrom("loc:The Desktop"), "Clippy drove, not the host").toBeNull();
+
+    const s = rig([clippy(1, "one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen nineteen twenty twentyone"), him(2)]);
+    s.here();
+    s.p.op(s.id, "@Clippy", false, { op: "play", on: true, speed: 0.4 });
+    for (let t = 0; t < 4; t++) {
+      s.p.op(s.id, HOST, true, { op: "here", open: true });
+      s.to(4_000);
+    }
+    expect(s.p.heldFrom("loc:The Desktop"), "it is scrolling to him by itself").toBe(2);
+  });
+
+  it("a host opening it in the first moments doesn't cut short the wait for the reader", () => {
+    const r = rig([clippy(1), him(2)]);
+    r.p.op(r.id, "@Task Manager", true, { op: "here", open: true });
+    r.to(HOLD_WAIT_MS - 100);
+    expect(r.p.heldFrom("loc:The Desktop")).toBe(2);
     r.to(200);
     expect(r.p.heldFrom("loc:The Desktop")).toBeNull();
-    const s = rig([clippy(1), him(2)]);
-    s.here();
-    s.to(HERE_TTL_MS - 100);
-    s.p.op(s.id, "@Task Manager", true, { op: "here", open: true });
-    s.to(200);
-    expect(s.p.heldFrom("loc:The Desktop")).toBe(2);
+  });
+
+  it("a scripted line of his that isn't in the scene lets everything go; a live one waits", () => {
+    const r = rig([clippy(1), him(2), clippy(3), him(4)]);
+    r.here();
+    expect(r.p.outrun([row(9, "Trabolta", "A live reply.", { beat: undefined })], CTX.voiced), "a reply can't dump her script").toBe(false);
+    expect(r.p.outrun([row(10, "Clippy", "Someone else's line.", { beat: "Later" })], CTX.voiced)).toBe(false);
+    expect(r.p.outrun([row(11, "Trabolta", "Another room.", { beat: "Later", channel: "loc:The Hall" })], CTX.voiced)).toBe(false);
+    expect(r.p.outrun([row(12, "Trabolta", "Hidden.", { beat: "Later", hidden: true })], CTX.voiced)).toBe(false);
+    expect(r.p.heldFrom("loc:The Desktop")).toBe(2);
+    expect(r.p.outrun([row(13, "Trabolta", "The Y2K line.", { beat: "The Y2K Clock" })], CTX.voiced)).toBe(true);
+    expect(r.p.heldFrom("loc:The Desktop")).toBeNull();
+    expect(r.p.active, "the prompter carries on, with no holds").toBe(true);
+    expect(r.last().stop).toBe(r.last().total);
+
+    const inHandler = rig([clippy(1), him(2)]);
+    inHandler.here();
+    expect(inHandler.p.outrun([row(9, "Trabolta", "From a rule, in no beat.", { beat: null })], CTX.voiced)).toBe(true);
+  });
+
+  it("doesn't move anything once nothing is held", () => {
+    const r = rig([clippy(1), him(2)]);
+    r.here();
+    r.p.op(r.id, "@Clippy", false, { op: "jump", pos: 4 });
+    expect(r.last().speaking).not.toBeNull();
+    const sent = r.frames.length;
+    expect(r.p.outrun([row(9, "Trabolta", "Next.", { beat: "Later" })], CTX.voiced)).toBe(false);
+    expect(r.frames.length).toBe(sent);
   });
 
   it("▶ lets every line of his go, in order, and the prompter carries on", () => {
