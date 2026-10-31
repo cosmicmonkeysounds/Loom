@@ -14,18 +14,19 @@ README → QR placements gives it; it is listed so the colour is known.
 ## Gold — the hunt answers
 
 Each row says where its document hides; the hint is what a host may tell a
-stuck program.
+stuck program. The answers themselves are in `facts.json` and the two cards that
+carry the key.
 
-| # | Colour | Code | Title | Where in the Desktop | What it says |
+| # | Colour | Code | Title | Where in the Desktop | The question |
 |---|---|---|---|---|---|
-| H1 · DRAFT | gold | `WAGNALLS-FRAUD` | Funk and Wagnalls | The Desktop: in Funk and Wagnalls, among the books (the page is owed) | Q: According to Funk and Wagnalls, what is an example of fraud? → A: ⚠ owed |
-| H2 · DRAFT | gold | `DUMMIES-FORENSICS` | Forensics For Dummies | The Desktop: in Forensics For Dummies, among the books (the page is owed) | Q: According to Forensics For Dummies, finish this sentence: “___ ___ ___ ___ ___ previously hypnotized witnesses.” → A: ⚠ owed |
-| H3 · DRAFT | gold | `DUMMIES-MACS` | Macs for Dummies | The Desktop: in Macs for Dummies, among the books (the page is owed) | Q: According to Macs for Dummies, finish this sentence: “A similar online _, called pharming, also involves the use of __ ___ __.” → A: ⚠ owed |
-| H4 · DRAFT | gold | `EXT-1978` | The Extension | The Desktop: the Customer Care card, tucked into the atlas — hint: A card the size of a business card. It is in the atlas. | Q: What extension does the Customer Care card tell you to dial? → A: 1978 |
-| H5 · DRAFT | gold | `SEARCH-HISTORY` | The Search History | The Desktop: the laminated play history, inside encyclopaedia volume M — hint: A laminated printout. Look under M, for music. | Q: Which song did Trabolta play 412 times the night before he registered mapsandducks.com? → A: Hopelessly Devoted to You |
-| H6 · DRAFT | gold | `APPENDIX-Z` | The Final Chapter | The Desktop: the binder's table of contents, inside encyclopaedia volume U — hint: A table of contents torn from a binder. Look under U, for universe. | Q: What is the title of the last chapter of Trabolta's unfinished Grand Unified Theory? → A: Appendix Z: Loose Ends (Do Not Print) |
-| F1 · DRAFT | gold | `CALL-LOG-S` | What Sandy Says | The Desktop: the forty-page call log, in the back pages of encyclopaedia volume S — hint: Forty pages, double-sided, every answer the same. Look under S. | Q: What is the only thing Sandy has ever said? → A: It looks like I didn't understand that. Please wait while I direct you to an agent. |
-| F2 · DRAFT | gold | `COMPUTER-PROM` | Grok's Prom Ticket | The Desktop: the prom ticket, slipped into the atlas — hint: A pink and silver ticket. It is in the atlas, near the back. | Q: Who is taking Sandy to computer prom? → A: Grok |
+| H1 · DRAFT | gold | `WAGNALLS-FRAUD` | Funk and Wagnalls | The Desktop: in Funk and Wagnalls, among the books (the page is owed) | According to Funk and Wagnalls, what is an example of fraud? |
+| H2 · DRAFT | gold | `DUMMIES-FORENSICS` | Forensics For Dummies | The Desktop: in Forensics For Dummies, among the books (the page is owed) | According to Forensics For Dummies, finish this sentence: “___ ___ ___ ___ ___ previously hypnotized witnesses.” |
+| H3 · DRAFT | gold | `DUMMIES-MACS` | Macs for Dummies | The Desktop: in Macs for Dummies, among the books (the page is owed) | According to Macs for Dummies, finish this sentence: “A similar online _, called pharming, also involves the use of __ ___ __.” |
+| H4 · DRAFT | gold | `EXT-1978` | The Extension | The Desktop: the Customer Care card, tucked into the atlas — hint: A card the size of a business card. It is in the atlas. | What extension does the Customer Care card tell you to dial? |
+| H5 · DRAFT | gold | `SEARCH-HISTORY` | The Search History | The Desktop: the laminated play history, inside encyclopaedia volume M — hint: A laminated printout. Look under M, for music. | Which song did Trabolta play 412 times the night before he registered mapsandducks.com? |
+| H6 · DRAFT | gold | `APPENDIX-Z` | The Final Chapter | The Desktop: the binder's table of contents, inside encyclopaedia volume U — hint: A table of contents torn from a binder. Look under U, for universe. | What is the title of the last chapter of Trabolta's unfinished Grand Unified Theory? |
+| F1 · DRAFT | gold | `CALL-LOG-S` | What Sandy Says | The Desktop: the forty-page call log, in the back pages of encyclopaedia volume S — hint: Forty pages, double-sided, every answer the same. Look under S. | What is the only thing Sandy has ever said? |
+| F2 · DRAFT | gold | `COMPUTER-PROM` | Grok's Prom Ticket | The Desktop: the prom ticket, slipped into the atlas — hint: A pink and silver ticket. It is in the atlas, near the back. | Who is taking Sandy to computer prom? |
 
 ## The tiers
 

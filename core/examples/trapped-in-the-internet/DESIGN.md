@@ -1082,18 +1082,19 @@ model); the server never refuses an unarmed press.
 _Generated from `facts.json` by `core/scripts/titi-facts.ts` — DO NOT EDIT this block;
 edit `facts.json`, then `pnpm --filter @loom/core titi:facts`. The six-stamp pickup-line
 mechanic was retired 2026-10-16 (U9): the line is learnable from Sandy's lore codex
-and asked via the ask-14 DM._
+and asked via the ask-14 DM. The answers, their accepted forms, the unlock codes and
+where each document hides are in `facts.json` and never in a doc._
 
-| # | Round | Question (exact, as shown on the TV and in the quest log) | Answer | Accept | CODEX (code) | Found in |
-|---|---|---|---|---|---|---|
-| H1 | 1 | According to Funk and Wagnalls, what is an example of fraud? | ⚠ owed | — | Funk And Wagnalls (`WAGNALLS-FRAUD`) | The Desktop: in Funk and Wagnalls, among the books (the page is owed) · DRAFT |
-| H2 | 1 | According to Forensics For Dummies, finish this sentence: “___ ___ ___ ___ ___ previously hypnotized witnesses.” | ⚠ owed | — | Forensics For Dummies (`DUMMIES-FORENSICS`) | The Desktop: in Forensics For Dummies, among the books (the page is owed) · DRAFT |
-| H3 | 1 | According to Macs for Dummies, finish this sentence: “A similar online _, called pharming, also involves the use of __ ___ __.” | ⚠ owed | — | Macs For Dummies (`DUMMIES-MACS`) | The Desktop: in Macs for Dummies, among the books (the page is owed) · DRAFT |
-| H4 | 2 | What extension does the Customer Care card tell you to dial? | 1978 | ext 1978 · ext. 1978 · nineteen seventy eight · nineteen seventy-eight | The Extension (`EXT-1978`) | The Desktop: the Customer Care card, tucked into the atlas · DRAFT |
-| H5 | 2 | Which song did Trabolta play 412 times the night before he registered mapsandducks.com? | Hopelessly Devoted to You | hopelessly devoted | The Search History (`SEARCH-HISTORY`) | The Desktop: the laminated play history, inside encyclopaedia volume M · DRAFT |
-| H6 | 2 | What is the title of the last chapter of Trabolta's unfinished Grand Unified Theory? | Appendix Z: Loose Ends (Do Not Print) | appendix z · appendix · loose ends · do not print · appendix z loose ends | The Final Chapter (`APPENDIX-Z`) | The Desktop: the binder's table of contents, inside encyclopaedia volume U · DRAFT |
-| F1 | 3 | What is the only thing Sandy has ever said? | It looks like I didn't understand that. Please wait while I direct you to an agent. | please wait while i direct you to an agent · wait while i direct you to an agent · direct you to an agent · it looks like i did not understand that please wait while i direct you to an agent · looks like i didn't understand that please wait while i direct you to an agent · looks like i did not understand that please wait while i direct you to an agent · it looks like i didn't understand that · it looks like i did not understand that · i didn't understand that · i did not understand that · didn't understand · did not understand | What Sandy Says (`CALL-LOG-S`) | The Desktop: the forty-page call log, in the back pages of encyclopaedia volume S · DRAFT |
-| F2 | 3 | Who is taking Sandy to computer prom? | Grok | grok ai | The Prom Ticket (`COMPUTER-PROM`) | The Desktop: the prom ticket, slipped into the atlas · DRAFT |
+| # | Round | Question (exact, as shown on the TV and in the quest log) | Key |
+|---|---|---|---|
+| H1 | 1 | According to Funk and Wagnalls, what is an example of fraud? | ⚠ owed |
+| H2 | 1 | According to Forensics For Dummies, finish this sentence: “___ ___ ___ ___ ___ previously hypnotized witnesses.” | ⚠ owed |
+| H3 | 1 | According to Macs for Dummies, finish this sentence: “A similar online _, called pharming, also involves the use of __ ___ __.” | ⚠ owed |
+| H4 | 2 | What extension does the Customer Care card tell you to dial? | in `facts.json` |
+| H5 | 2 | Which song did Trabolta play 412 times the night before he registered mapsandducks.com? | in `facts.json` |
+| H6 | 2 | What is the title of the last chapter of Trabolta's unfinished Grand Unified Theory? | in `facts.json` |
+| F1 | 3 | What is the only thing Sandy has ever said? | in `facts.json` |
+| F2 | 3 | Who is taking Sandy to computer prom? | in `facts.json` |
 <!-- /titi-facts:questions -->
 
 `Night.facts_requested` = 3 after start_the_hunt, 6 after start_the_second_hunt, 8 after

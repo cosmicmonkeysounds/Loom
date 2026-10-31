@@ -103,7 +103,7 @@ not know → override that one filing, and tell John to add the alias to
 `facts.json`. Clippy's own mis-tap (😤 meant as ✅) is undone by Clippy
 pressing ✅ for the same question on the same program. The key, for reference
 (H1–H3 are the Oct 30 script's and owed: fill them in from
-`generated/print-stacks.md` before you print this card):
+`facts.json` before you print this card):
 
 | | Accurate answer |
 |---|---|

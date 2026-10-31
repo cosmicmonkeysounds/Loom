@@ -3,7 +3,7 @@
 The orchestrator's verdicts on hunt claims are suppressed before they reach
 the mind (the voice reads `learned`), and hunt-answer codex entries never
 reach a prompt. The last block pins the shipped show: every question and
-answer in DESIGN §2.11 is caught, every stamped codex entry is hidden.
+answer in `facts.json` is caught, every stamped codex entry is hidden.
 """
 
 import asyncio
@@ -206,8 +206,9 @@ def test_a_live_dm_claiming_a_hunt_answer_never_lands_in_learned():
 
 
 def _hunt_rows():
-    text = (SHOW / "DESIGN.md").read_text(encoding="utf-8")
-    rows = re.findall(r"^\| (H[1-6]|F[12]) \| [^|]+ \| ([^|]+) \| ([^|]+) \|", text, re.MULTILINE)
+    """(id, question, answer) off `facts.json`: no doc carries the answers (wave 58)."""
+    facts = json.loads((SHOW / "facts.json").read_text(encoding="utf-8"))
+    rows = [(q["id"], q["text"], "owed" if q.get("placeholder") else q["answer"]) for q in facts["questions"]]
     assert len(rows) == 8, rows
     return rows
 

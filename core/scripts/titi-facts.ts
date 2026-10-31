@@ -440,7 +440,7 @@ export const DRAFT_NOTE = "DRAFT — awaiting sign-off in facts.json";
 /** A placeholder question's answer, wherever a table would show it. */
 export const OWED = "⚠ owed";
 
-const HUNT_HEADER = "| # | Colour | Code | Title | Where in the Desktop | What it says |\n|---|---|---|---|---|---|";
+const HUNT_HEADER = "| # | Colour | Code | Title | Where in the Desktop | The question |\n|---|---|---|---|---|---|";
 const HEADER = "| # | Topic | Code | Title | How it hides | What it says |\n|---|---|---|---|---|---|";
 const CLUE_HEADER = "| Digit | Colour | Code | Title | Where in the house | What it is |\n|---|---|---|---|---|---|";
 
@@ -459,7 +459,8 @@ function printStacks(f: FactsFile): string {
     `## ${S.huntColour[0]!.toUpperCase()}${S.huntColour.slice(1)} — the hunt answers`,
     "",
     "Each row says where its document hides; the hint is what a host may tell a",
-    "stuck program.",
+    "stuck program. The answers themselves are in `facts.json` and the two cards that",
+    "carry the key.",
     "",
     HUNT_HEADER,
   );
@@ -467,7 +468,7 @@ function printStacks(f: FactsFile): string {
     for (const q of questions) {
       const c = q.codex!;
       const where = q.where! + (q.hint ? ` — hint: ${q.hint}` : "");
-      out.push(`| ${q.id}${q.draft ? " · DRAFT" : ""} | ${S.huntColour} | \`${c.code}\` | ${cell(c.title)} | ${cell(where)} | ${cell(`Q: ${q.text} → A: ${answerCell(q)}`)} |`);
+      out.push(`| ${q.id}${q.draft ? " · DRAFT" : ""} | ${S.huntColour} | \`${c.code}\` | ${cell(c.title)} | ${cell(where)} | ${cell(q.text)} |`);
     }
   }
   const clues = f.door?.clues ?? [];
@@ -520,8 +521,9 @@ function printStacks(f: FactsFile): string {
   return out.join("\n");
 }
 
-/** The answer as a generated table shows it: a stand-in never reaches a doc. */
-const answerCell = (q: Question): string => (q.placeholder === true ? OWED : q.answer);
+/** Where a question's key stands, as a generated table shows it. The key itself
+ *  is never in a doc (wave 58), and neither is a stand-in. */
+const keyCell = (q: Question): string => (q.placeholder === true ? OWED : "in `facts.json`");
 
 function stackRow(x: Fact, stack: string): string {
   const id = `${x.id}${x.draft ? " · DRAFT" : ""}`;
@@ -715,16 +717,13 @@ export function designBlock(f: FactsFile): string {
     "_Generated from `facts.json` by `core/scripts/titi-facts.ts` — DO NOT EDIT this block;",
     `edit \`facts.json\`, then \`${RERUN}\`. The six-stamp pickup-line`,
     "mechanic was retired 2026-10-16 (U9): the line is learnable from Sandy's lore codex",
-    "and asked via the ask-14 DM._",
+    "and asked via the ask-14 DM. The answers, their accepted forms, the unlock codes and",
+    "where each document hides are in `facts.json` and never in a doc._",
     "",
-    "| # | Round | Question (exact, as shown on the TV and in the quest log) | Answer | Accept | CODEX (code) | Found in |",
-    "|---|---|---|---|---|---|---|",
+    "| # | Round | Question (exact, as shown on the TV and in the quest log) | Key |",
+    "|---|---|---|---|",
   ];
-  for (const q of f.questions) {
-    const c = q.codex!;
-    const accept = q.accept.length > 0 ? q.accept.map(cell).join(" · ") : "—";
-    out.push(`| ${q.id} | ${q.round} | ${cell(q.text)} | ${cell(answerCell(q))} | ${accept} | ${cell(c.id)} (\`${c.code}\`) | ${cell(q.where ?? "")}${q.draft ? " · DRAFT" : ""} |`);
-  }
+  for (const q of f.questions) out.push(`| ${q.id} | ${q.round} | ${cell(q.text)} | ${keyCell(q)} |`);
   return out.join("\n");
 }
 

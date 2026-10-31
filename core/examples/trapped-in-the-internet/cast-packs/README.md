@@ -226,5 +226,5 @@ game just like the "guests" are."*
 - Task Manager's monologue: the appendix of his pack, printed, in his pocket
   for the night (the fallback if his phone goes down mid-read).
 - If the story changes after 10-24 12:00 (content lock for batch 2), re-check
-  the answer key against `facts.json` (`generated/print-stacks.md` is the
-  printable table) and truth.txt against `beats/finale.loom`.
+  the answer key against `facts.json` and truth.txt against
+  `beats/finale.loom`.

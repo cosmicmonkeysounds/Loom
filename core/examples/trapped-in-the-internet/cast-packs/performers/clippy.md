@@ -78,7 +78,7 @@ is the hosts' now.
 **The answer key (secret).** It lives in `facts.json`. H1–H3 are the Oct 30
 script's questions and their answers are still owed: **don't print this card
 until they are in**, then fill the three rows from
-`generated/print-stacks.md`. A filing on an owed question is not recorded.
+`facts.json`. A filing on an owed question is not recorded.
 
 | | Question | Accurate answer |
 |---|---|---|
