@@ -126,6 +126,14 @@ describe("wave 58: Clippy's printed copy", () => {
 });
 
 describe("wave 58: nothing but the performers' lines in the opening", () => {
+  it("the two beats that only move the room say nothing: the sweep is the Antivirus' objective, and each rule has a banner", () => {
+    for (const b of ["Call To The Desktop", "Hunt Time Up"]) {
+      const lines = body(b).split("\n").slice(1).filter((l) => l.trim() !== "" && !l.startsWith("//") && !/^ {2}(setting|cast|aloud):/u.test(l));
+      expect(lines, b).toEqual([]);
+    }
+    expect(read("objectives.loom")).toContain("Patrol the whole computer and send everyone to the living room.");
+  });
+
   it("no Narrator line in any of its beats: a Narrator line reaches every phone, directions and all", () => {
     for (const b of BEATS) {
       expect(body(b), b).not.toMatch(/^Narrator/mu);
