@@ -23,6 +23,7 @@
   -Package installs under another package id, beside the show's copy, whose
   own setup then stays as it is. -Autopilot -Guest g-... walks the house by
   itself (for tools/quest-frames.mjs: real frame costs with nobody in it).
+  -Offline plays the bundled house with no server and no cable.
 
   -TestServer builds station vr-test for the quick test server
   (`node tools/test-server.mjs`, a scratch server on this computer): its
@@ -68,6 +69,7 @@ param(
   [switch]$NoIntro,
   [switch]$TestServer,
   [switch]$Autopilot,
+  [switch]$Offline,
   [string]$Guest = "",
   [string]$Package = "com.mapsandducks.reinstall"
 )
@@ -240,6 +242,7 @@ if ($Station) {
   if ($Graphics) { $st["graphics"] = $Graphics }
   if ($NoIntro) { $st["intro"] = $false }
   if ($Autopilot) { $st["autopilot"] = $true; if ($Guest) { $st["guest"] = $Guest } }
+  if ($Offline) { $st["offline"] = $true }
   Write-Utf8NoBom (Join-Path $Stage "config\station.json") ($st | ConvertTo-Json)
   $extra = ""; if ($Graphics) { $extra = " / $Graphics" }; if ($NoIntro) { $extra = "$extra / no intro" }
   Say "  baked: $Station / $Name / $Server$extra"
@@ -251,6 +254,7 @@ if ($Package -ne $ShowPackage) {
   $was = Get-Content -Raw $presets
   $now = $was.Replace("package/unique_name=`"$ShowPackage`"", "package/unique_name=`"$Package`"")
   if ($now -ceq $was) { Die "could not set the package id in $presets" }
+  $now = $now.Replace('package/name="Reinstallation"', 'package/name="Reinstallation TEST"')
   Write-Utf8NoBom $presets $now
 }
 

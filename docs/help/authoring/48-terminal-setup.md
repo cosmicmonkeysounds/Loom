@@ -124,3 +124,9 @@ asks to use the **microphone** while it sits in the lobby — allow it.
 The lobby's mic line (wave 26) has **TEST MIC** (a level meter, no
 session needed), **ASK AGAIN** for a refused microphone, and the build
 stamp, so check both before doors.
+
+**Before doors, on the headset:** Settings → General → Power → **Battery
+saver off**. On, it holds the display at 72 Hz and dims it, and guests feel
+it. Charge from a wall charger, not a computer's USB port. For each guest, turn
+the lens spacing wheel (bottom left) until the picture is sharp, and wipe the
+lenses.

@@ -175,19 +175,26 @@ presence rooms and `moment`), `spatial-cams.ts`, `spatial-voice.ts` and the
   about every 30 s, each terminal on its own clock; never the tent's), a
   terminal with no camera included. Neither game has any code for it, so an
   older APK shows it; it is 3 fps, like the feeds.
-- **Comfort in VR** (wave 33b). Smooth turning only, gentle near the
-  stick's centre; a 1.4 m/s walk with no acceleration; the one stick's
-  axis lock; the vignette; a light buzz on a wall. Keep new movement to
-  that standard: most players have never worn a headset.
+- **Comfort in VR** (waves 33b, 55; `docs/loom-w55-contract.md`). Smooth turning
+  only, gentle near the stick's centre, at most 50°/s; a 1.4 m/s walk with no
+  acceleration, half that backwards and 0.6 of it on a stair; the one stick's
+  axis lock; the vignette, measured from where each eye looks (the eye buffers
+  are off-centre); a light buzz on a wall; walls of air down a flight's sides;
+  the view easing to the body's height, never the head's own. Nothing flashes
+  above 3 Hz, the neon and the hand included. Keep new movement to that
+  standard: most players have never worn a headset.
 - **Graphics tiers** (wave 39). VR's `graphics` (`low | medium | high`,
   default `medium`) sets the house lights' pool (2 / 4 / 5), the shading
-  (per vertex on `low`), and glow + 2× MSAA (`high` only; MSAA on
-  `medium` drew a black void on the Quest 3); ACES on all. The rig moves every rendered frame (turn, walk,
+  (per vertex on `low`), and glow (`high` only); 4× MSAA but on `low`; ACES on
+  all. Foveation stays off with `foveation_with_subsampled_images=false`: MSAA on
+  a subsampled swapchain drew a black void on the Quest 3. The rig moves every rendered frame (turn, walk,
   gravity, room scale), each headset frame by exactly one display interval
   (`VrPlayer.frame_step`): physics ticks drift against the display and
   snap the view. After a teleport the body waits two physics ticks (new
-  floors). The physics tick is matched to the display's rate (72 Hz on the
-  Quest 3: it ignores the 90 Hz request so far). `Game._catch_fall` puts a
+  floors). The physics tick is matched to the display's rate, read back every
+  frame; `RefreshRate` asks for 90 Hz on focus and keeps watching. **Battery
+  Saver on the headset caps it at 72** (`LP=1` in the VrApi log): it must be off.
+  `Game._catch_fall` puts a
   body fallen out of the lobby or the intro back.
   Quest 3 must hold its frame rate on `medium`: keep SSAO / SSR / SSIL /
   volumetric fog off, ≤ 8 omni lights on a mesh (5 pool + the duck, heart and disk), and the pool fixed.

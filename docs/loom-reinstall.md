@@ -1936,10 +1936,12 @@ Provision: `/terminal/?code=…&name=Kitchen&character=Trabolta&spot=start-bar&v
   interval per frame (`VrPlayer.frame_step`; physics ticks drift against
   the display, and the measured frame time is noisy: both snap the view);
   after a teleport the body waits two physics ticks for new floors.
-  `main.gd` asks for the offered rate nearest 90 Hz (start, session begun,
-  focus) and sets the physics tick to the display's rate; the Quest 3 has
-  so far stayed at 72 Hz. The game logs its frame timing every 10 s. Foveation stays level 3; MSAA on
-  `medium` drew a black void on the Quest 3 (2026-10-29). A body under the lobby's or the
+  `main.gd` asks for the offered rate nearest 90 Hz on focus, keeps reading the
+  display back and sets the physics tick to its rate (`RefreshRate`). Battery Saver
+  on the headset holds it at 72 Hz and must be off (`docs/loom-w55-contract.md`).
+  The game logs its frame timing every 10 s. Foveation is off, with
+  `foveation_with_subsampled_images=false`, and MSAA is 4× but on `low`: MSAA on a
+  subsampled swapchain drew a black void on the Quest 3 (2026-10-29). A body under the lobby's or the
   intro's floor is put back on it (`Game._catch_fall`, logged).
   A comfort vignette closes while moving or turning (turning to
   0.85); walking into a wall gives a light haptic buzz (at most every
