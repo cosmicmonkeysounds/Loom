@@ -7,6 +7,7 @@ import { ApiError, api, useChatStream, withTimeout } from "../client.ts";
 import { shareErrorText } from "../codex.ts";
 import { usePlayHost } from "../host.ts";
 import { phoneAnnounce } from "../phone-voice.ts";
+import { letGo } from "../rejoin.ts";
 import { BOOTH_SIGNED_OUT, SessionRole, eventGone, lifecycleDropsSession, lifecycleNotice, lifecycleStartsNewRun, performerSessionDead } from "../lifecycle.ts";
 import { locationOfRoom, occupantsByLocation, type Presence } from "../presence.ts";
 import { CODEX_ROOM, PINNED_SPACE, QUEST_LOG, STORY_SPACE, WALLET_ROOM } from "../rooms/spaces.ts";
@@ -647,15 +648,15 @@ export function usePrimeSession(): PrimeSession {
   const leave = useCallback(() => {
     // Sign out frees the part on the server too, so the same performer can
     // sign in from another phone (the iPhone Home Screen icon) without a
-    // director's ⏏ Release. Fire-and-forget: signing out never waits.
-    if (auth !== null) void api(`${base}/api/prime/logout`, {}, auth.token).catch(() => {});
+    // director's ⏏ Release. Signing out never waits; with no signal it stays owed.
+    letGo(host.storage, auth, "prime");
     drop(PK);
     setAuth(null);
     setView(null);
     setReady(false);
     setNotice(null);
     host.onEnded("prime", null);
-  }, [drop, host, auth, base]);
+  }, [drop, host, auth]);
 
   const boothFilter = useMemo(() => (auth !== null ? boothAlertFilter(auth.character) : undefined), [auth]);
   const alerts = useAlerts({

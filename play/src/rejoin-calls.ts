@@ -6,10 +6,12 @@
 //! `test/rejoin.test.ts`.
 
 import type { AdoptedGuest, ResumeLink } from "./resume.ts";
-import { BADGE_UNKNOWN, type HeldCard, type HeldShown } from "./rejoin.ts";
+import { BADGE_UNKNOWN, owedReleases, setOwed, type HeldCard, type HeldShown } from "./rejoin.ts";
+import type { SessionStorage } from "./host.ts";
 
-/** What `enter` gave: the guest session to adopt, or "join as usual". */
-export type EnterResult = { kind: "in"; guest: AdoptedGuest } | { kind: "fresh"; eventId: string; badge?: number };
+/** What `enter` gave: the guest session to adopt, or "join as usual" (with
+ *  the invitation an invited badge carries, when it was scanned without one). */
+export type EnterResult = { kind: "in"; guest: AdoptedGuest } | { kind: "fresh"; eventId: string; badge?: number; claim?: string };
 
 async function json(r: Response): Promise<Record<string, unknown>> {
   try {
@@ -91,7 +93,8 @@ export async function enterBy(code: string, by: { badge: string; claim?: string 
   if (r.status === 409) throw heldError(r.body) ?? new RejoinError("The doors aren't open yet — try again once they are.", 409);
   if (r.status < 200 || r.status >= 300) throw new RejoinError(str(r.body["error"]) || CODE_CLOSED, r.status);
   const badge = typeof r.body["badge"] === "number" ? r.body["badge"] : undefined;
-  if (r.body["resumed"] !== true) return { kind: "fresh", eventId: ev.eventId, ...(badge !== undefined ? { badge } : {}) };
+  const claim = str(r.body["claim"]);
+  if (r.body["resumed"] !== true) return { kind: "fresh", eventId: ev.eventId, ...(badge !== undefined ? { badge } : {}), ...(claim !== "" ? { claim } : {}) };
   const id = str(r.body["id"]);
   const token = str(r.body["token"]);
   if (id === "" || token === "") throw new RejoinError(CODE_CLOSED, r.status);
@@ -139,8 +142,15 @@ function asked(ev: { eventId: string; title?: string }, r: { status: number; bod
   return { eventId: ev.eventId, ...(ev.title !== undefined ? { title: ev.title } : {}), request: str(r.body["request"]), name: str(r.body["name"]) || name };
 }
 
-/** Where an ask stands. */
-export type AskState = { kind: "pending" } | { kind: "approved"; guest: AdoptedGuest; by: string | null } | { kind: "booth"; booth: CardBooth; by: string | null } | { kind: "denied"; by: string | null } | { kind: "expired" };
+/** The waiting phone gave up: the ask leaves Needs. Never waits, never
+ *  throws: a Cancel that doesn't arrive only leaves a row nobody can move. */
+export function cancelAsk(ask: Ask, fetchFn: typeof fetch = fetch): void {
+  void postEvent(ask.eventId, "/api/guest/rejoin/cancel", { request: ask.request }, fetchFn).catch(() => {});
+}
+
+/** Where an ask stands. `closed`: a sign-in or a release moved it on, so its
+ *  card may be free. */
+export type AskState = { kind: "pending" } | { kind: "approved"; guest: AdoptedGuest; by: string | null } | { kind: "booth"; booth: CardBooth; by: string | null } | { kind: "denied"; by: string | null } | { kind: "expired" } | { kind: "closed" };
 
 /** Poll an ask once. Network trouble reads as still pending. */
 export async function pollAsk(ask: Ask, fetchFn: typeof fetch = fetch): Promise<AskState> {
@@ -168,6 +178,8 @@ export async function pollAsk(ask: Ask, fetchFn: typeof fetch = fetch): Promise<
       return { kind: "denied", by };
     case "expired":
       return { kind: "expired" };
+    case "closed":
+      return { kind: "closed" };
     default:
       return { kind: "pending" };
   }
@@ -188,6 +200,8 @@ export function askLine(state: AskState, name: string): string {
       return `${state.by ?? "A host"} said no. If you really are ${name}, find them and ask in person.`;
     case "expired":
       return "Nobody answered in time. Ask again, and find a host to tap Approve.";
+    case "closed":
+      return `${name} was signed in or out while you waited. If it's still you, ask again.`;
   }
 }
 
@@ -212,9 +226,13 @@ export const CARD_UNKNOWN = "That staff badge isn't one of tonight's — ask the
 
 /** Sign in by a cast card. The token this phone's booth is `holding` keeps
  *  its own part signed in, or moves it to a free one; a held part throws `held`. */
-export async function enterPart(code: string, part: string, fetchFn: typeof fetch = fetch, holding?: string): Promise<CardBooth> {
+export function enterPart(code: string, part: string, fetchFn: typeof fetch = fetch, holding?: string): Promise<CardBooth> {
+  return boothLogin(code, { part }, fetchFn, holding);
+}
+
+async function boothLogin(code: string, who: { part: string } | { character: string }, fetchFn: typeof fetch, holding?: string): Promise<CardBooth> {
   const ev = await resolve(code, fetchFn);
-  const r = await postEvent(ev.eventId, "/api/prime/login", { passcode: code, part, ...(holding !== undefined ? { token: holding } : {}) }, fetchFn);
+  const r = await postEvent(ev.eventId, "/api/prime/login", { passcode: code, ...who, ...(holding !== undefined ? { token: holding } : {}) }, fetchFn);
   if (r.status === 429) throw new RejoinError(TOO_MANY, 429);
   if (r.status === 404) throw new RejoinError(CARD_UNKNOWN, 404);
   if (r.status === 409) throw heldError(r.body) ?? new RejoinError(str(r.body["error"]) === "doors are closed" ? "The story isn't loaded yet — scan your badge again once the director opens the doors." : str(r.body["error"]) || CARD_UNKNOWN, 409);
@@ -225,11 +243,54 @@ export async function enterPart(code: string, part: string, fetchFn: typeof fetc
   return { token, character, admin: r.body["admin"] === true, host: r.body["host"] === true, eventId: ev.eventId, ...(ev.title !== undefined ? { title: ev.title } : {}) };
 }
 
-/** This phone stops being a guest or a booth for someone else: let go of it
- *  on the server, so their card signs in again. Never waits, never throws. */
-export function letGo(who: { token?: unknown; eventId?: unknown } | null, role: "guest" | "prime", fetchFn: typeof fetch = fetch): void {
-  if (who === null || typeof who.token !== "string" || typeof who.eventId !== "string") return;
-  void fetchFn(`/e/${encodeURIComponent(who.eventId)}/api/${role}/logout`, { method: "POST", headers: { "content-type": "application/json", "x-loom-token": who.token }, body: "{}" }).catch(() => {});
+/** How often a page still owing a release tries again. */
+export const OWED_RETRY_MS = 15_000;
+/** How long one try may hang: a sign-in waits on it. */
+export const OWED_TIMEOUT_MS = 4_000;
+
+let paying: Promise<void> | null = null;
+let payAgain: ReturnType<typeof setTimeout> | null = null;
+
+/** Tell the server every release this phone owes. Resolves once tried (a
+ *  sign-in waits for it, or its own badge would still read as held), and
+ *  tries again while the page lives. Never throws. */
+export function payOwed(storage: SessionStorage, fetchFn: typeof fetch = fetch): Promise<void> {
+  if (paying !== null) return paying;
+  const owed = owedReleases(storage);
+  if (owed.length === 0) return Promise.resolve();
+  paying = (async () => {
+    for (const o of owed) {
+      const stop = new AbortController();
+      const timer = setTimeout(() => stop.abort(), OWED_TIMEOUT_MS);
+      try {
+        const r = await fetchFn(`/e/${encodeURIComponent(o.eventId)}/api/${o.role}/logout`, { method: "POST", headers: { "content-type": "application/json", "x-loom-token": o.token }, body: "{}", signal: stop.signal });
+        if (r.status < 500) setOwed(storage, owedReleases(storage).filter((x) => x.token !== o.token));
+      } catch {
+        /* still away */
+      } finally {
+        clearTimeout(timer);
+      }
+    }
+  })().finally(() => {
+    paying = null;
+    if (owedReleases(storage).length === 0 || payAgain !== null) return;
+    payAgain = setTimeout(() => {
+      payAgain = null;
+      void payOwed(storage, fetchFn);
+    }, OWED_RETRY_MS);
+  });
+  return paying;
+}
+
+/** What trying a refused card again gave. */
+export type CardTry = { kind: "guest"; guest: AdoptedGuest } | { kind: "booth"; booth: CardBooth } | { kind: "fresh" };
+
+/** An ask on this card closed: it may be free now, so try it as a scan
+ *  would. One still held throws `held`. */
+export async function tryCard(card: HeldCard, fetchFn: typeof fetch = fetch): Promise<CardTry> {
+  if ("part" in card.by || "character" in card.by) return { kind: "booth", booth: await boothLogin(card.code, card.by, fetchFn) };
+  const r = await enterBy(card.code, card.by, fetchFn);
+  return r.kind === "in" ? { kind: "guest", guest: r.guest } : { kind: "fresh" };
 }
 
 // --- N-02 re-pair (moved from resume.ts: only a `?pair=` page needs it) ---

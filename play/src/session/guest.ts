@@ -29,7 +29,7 @@ import { linkFromMessage, linkFromSearch, navFromSearch, withoutRoom } from "../
 import { lobbyHidden } from "../guest/wire.ts";
 import type { Nav } from "../moments/exits.ts";
 import { guestStreamHandlers } from "./stream-handlers.ts";
-import { badgeLinkOf, forgetBadge, storedBadge, type BadgeLink } from "../rejoin.ts";
+import { badgeLinkOf, forgetBadge, letGo, storedBadge, type BadgeLink } from "../rejoin.ts";
 import type { AdoptedGuest } from "../resume.ts";
 
 interface GuestId {
@@ -617,15 +617,15 @@ export function useGuestSession(): GuestSession {
   const setPicture = useCallback((picture: string) => post<PictureChoices>("/api/guest/picture", { picture }), [post]);
   const leave = useCallback(() => {
     // Leaving frees the Person on the server too (wave 59), so their badge
-    // signs in again on any phone. Fire-and-forget, like a booth's Sign out.
-    if (me !== null) void api(`${base}/api/guest/logout`, {}, me.token).catch(() => {});
+    // signs in again on any phone. Never waits; with no signal it stays owed.
+    letGo(host.storage, me, "guest");
     drop(GK);
     setMe(null);
     setStatus(null);
     setReady(false);
     setNotice(null);
     host.onEnded("guest", null);
-  }, [drop, host, me, base]);
+  }, [drop, host, me]);
 
   const adopt = useCallback(
     (guest: AdoptedGuest) => {

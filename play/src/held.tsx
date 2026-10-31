@@ -1,12 +1,14 @@
 //! The refused screen (wave 59, `core/server/routes/rejoin.ts`, One holder): a
 //! badge, an invitation or a staff badge whose part or Person a phone holds.
 //! It says so, naming only what is printed on the card, and offers Ask a host:
-//! Approve signs the old phone out and this one in. A lazy part: never in the
-//! first load. The calls and copy are `rejoin-calls.ts`'s.
+//! once a host approves, this phone's next poll signs the old phone out and
+//! this one in. Cancel takes the ask off Needs. An ask a sign-in or a release
+//! closed sends the phone back to its card. A lazy part: never in the first
+//! load. The calls and copy are `rejoin-calls.ts`'s.
 
 import { useEffect, useState } from "react";
-import type { HeldCard } from "./rejoin.ts";
-import { ASK_POLL_MS, HELD_HINT, askHeld, askLine, heldLine, pollAsk, type Ask, type AskState, type CardBooth } from "./rejoin-calls.ts";
+import { heldOf, type HeldCard } from "./rejoin.ts";
+import { ASK_POLL_MS, HELD_HINT, askHeld, askLine, cancelAsk, heldLine, pollAsk, tryCard, type Ask, type AskState, type CardBooth } from "./rejoin-calls.ts";
 import type { AdoptedGuest } from "./resume.ts";
 
 export function HeldPanel({ card, onGuest, onBooth, onBack }: { card: HeldCard; onGuest: (guest: AdoptedGuest) => void; onBooth: (booth: CardBooth) => void; onBack: () => void }) {
@@ -26,6 +28,23 @@ export function HeldPanel({ card, onGuest, onBooth, onBack }: { card: HeldCard; 
     }
   };
 
+  // The ask closed: the card decides again, in or back to the refused screen.
+  const again = async () => {
+    setBusy(true);
+    setNote("");
+    try {
+      const r = await tryCard(card);
+      if (r.kind === "guest") onGuest(r.guest);
+      else if (r.kind === "booth") onBooth(r.booth);
+      else onBack();
+    } catch (e) {
+      setAsked(null);
+      if (heldOf(e) === null) setNote(e instanceof Error ? e.message : "Couldn't try that — try again.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   // While asking: poll until a host answers (or the ask runs out).
   const waiting = asked !== null && asked.state.kind === "pending" ? asked.ask : null;
   useEffect(() => {
@@ -34,9 +53,12 @@ export function HeldPanel({ card, onGuest, onBooth, onBack }: { card: HeldCard; 
     let timer: ReturnType<typeof setTimeout> | null = null;
     const tick = async () => {
       const state = await pollAsk(waiting);
-      if (!live) return;
+      // Before `live`: that poll moved the Person here, so a Cancel in the
+      // same moment must not throw the token away.
       if (state.kind === "approved") return onGuest(state.guest);
       if (state.kind === "booth") return onBooth(state.booth);
+      if (!live) return;
+      if (state.kind === "closed") return void again();
       if (state.kind !== "pending") return setAsked({ ask: waiting, state });
       timer = setTimeout(() => void tick(), ASK_POLL_MS);
     };
@@ -66,7 +88,14 @@ export function HeldPanel({ card, onGuest, onBooth, onBack }: { card: HeldCard; 
             {askLine(asked.state, asked.ask.name)}
           </p>
           {asked.state.kind === "pending" ? (
-            <button type="button" className="link" onClick={() => setAsked(null)}>
+            <button
+              type="button"
+              className="link"
+              onClick={() => {
+                cancelAsk(asked.ask);
+                setAsked(null);
+              }}
+            >
               Cancel
             </button>
           ) : (
