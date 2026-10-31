@@ -64,8 +64,8 @@ import { hostView, type HostView } from "../src/host-board.ts";
 import { StoryMarks, huntsFor } from "./wanted.ts";
 import { canonicalPlaceArgs } from "./place-args.ts";
 import { CHECKIN_ROUTE, GuestCheckin } from "./routes/k13.ts";
-import { LOGOUT_ROUTE, Pairing, RESUME_ROUTE, releasePart } from "./routes/n02.ts";
-import { BADGES_ROUTE, BADGE_ROUTE, ENTER_ROUTE, REJOIN_DECIDE_ROUTE, REJOIN_NAMES_ROUTE, REJOIN_POLL_ROUTE, REJOIN_ROUTE, Rejoin, partCode, partUrl } from "./routes/rejoin.ts";
+import { GUEST_LOGOUT_ROUTE, LOGOUT_ROUTE, Pairing, RESUME_ROUTE, SIGNED_OUT, releasePart } from "./routes/n02.ts";
+import { BADGES_ROUTE, BADGE_ROUTE, ENTER_ROUTE, REJOIN_DECIDE_ROUTE, REJOIN_NAMES_ROUTE, REJOIN_POLL_ROUTE, REJOIN_ROUTE, Rejoin, heldAnswer, partCode, partUrl, type BoothGrant } from "./routes/rejoin.ts";
 import { HOMESCREEN_ROUTE } from "./routes/k31b.ts";
 import { PushRoutes } from "./routes/k31.ts";
 import { PushHub, aloudPush, boothOwner, guestOwner, messagePush, pushConfigFromEnv, readoutPush, webPushSender, type PushSender } from "./push.ts";
@@ -354,6 +354,7 @@ export const LOCKED_OPEN: readonly string[] = [
   BADGE_ROUTE,
   HOMESCREEN_ROUTE,
   LOGOUT_ROUTE,
+  GUEST_LOGOUT_ROUTE,
   "/api/push/subscribe",
   "/api/push/unsubscribe",
   "/api/push/visible",
@@ -787,6 +788,9 @@ export class EventRuntime {
   // broadcast in rosters, so it is NOT a credential — this opaque token,
   // minted at registration, is what authorizes acting as that guest.
   private readonly guestTokens = new Map<string, string>();
+  /** Wave 59: tokens a release cut, so a phone that slept through it reads
+   *  why (`SIGNED_OUT`), not "the story restarted". Memory only. */
+  private readonly releasedTokens = new Set<string>();
   // Operator play-as sessions (token → who is played, by whom), minted by
   // `/api/mod/impersonate` for the editor's embedded play app.
   private readonly impersonations = new Map<string, Impersonation>();
@@ -1237,12 +1241,24 @@ export class EventRuntime {
       sim: () => this.sim,
       secret: () => this.claimSecret,
       guestCode: (passcode) => passOk(passcode, this.codes.event),
+      primeCode: (passcode) => passOk(passcode, this.codes.prime),
       addGuestToken: (token, id) => {
         this.guestTokens.set(token, id);
         this.persistGuests();
       },
+      guestHeld: (id) => this.guestHeld(id),
+      tokenGuest: (token) => this.phoneGuest(token) ?? null,
+      revokeGuest: (id) => this.revokeGuest(id),
       isPersona: (id) => this.personaOwners.has(id) || id.startsWith("p-"),
       claimed: (claim) => this.claims.characterOf(this.sim?.model ?? this.declaredModel, claim),
+      partOfCode: (code) => this.partOfCode(code),
+      partNamed: (name) => (this.declaredModel !== null && performerRefusal(this.declaredModel, name, new Set()) === null ? name : null),
+      partHeld: (character) => heldCharacters(this.sessions.entries()).has(foldName(character)),
+      releasePart: (character) => {
+        if (releasePart(this.sessions, character) > 0) this.persistSessions();
+        this.endBooths(character);
+      },
+      signInPart: (token, character) => this.signInPart(token, character, this.declaredModel),
       saveBadges: (entries) => this.store.saveBadges(entries),
       linked: () => this.pushClientSnapshots(),
       changed: () => {
@@ -1876,7 +1892,7 @@ export class EventRuntime {
     const { showClock: _old, rejoins: _asks, talk: _talk, ...rest } = view;
     // Wave 23: the asks to get back in are read now too; wave 32 (C5): and
     // the talk panel (Trabolta's thinking moves between two polls).
-    return { ...rest, ...this.showClockField(), rejoins: this.rejoin.desk.pending(), talk: this.talkViewNow() };
+    return { ...rest, ...this.showClockField(), rejoins: this.rejoin.asks(), talk: this.talkViewNow() };
   }
 
   /** Message seqs of the widget cards `id` has answered. */
@@ -2093,6 +2109,7 @@ export class EventRuntime {
     for (const [token, guest] of [...this.guestTokens]) {
       if (guest !== id) continue;
       this.guestTokens.delete(token);
+      this.releasedTokens.add(token);
       n++;
     }
     if (n > 0) this.persistGuests();
@@ -2100,6 +2117,9 @@ export class EventRuntime {
       if (c.role !== "guest" || c.id !== id || c.via !== undefined) continue;
       this.clients.delete(c);
       try {
+        // The phone says why (wave 59); one that slept through it hears it
+        // from its next call (`signedOut`).
+        sseSend(c.res, "lifecycle", { kind: "released", at: Date.now() });
         c.res.end();
       } catch {
         /* client already gone */
@@ -2108,6 +2128,37 @@ export class EventRuntime {
     this.push.drop((owner) => owner === guestOwner(id));
     this.pushPresence();
     return n;
+  }
+
+  /** Does a phone hold guest `id`? Any live token: offline is no release. */
+  private guestHeld(id: string): boolean {
+    for (const guest of this.guestTokens.values()) if (guest === id) return true;
+    return false;
+  }
+
+  /** The guest a phone's own token stands for; never a play-as session. */
+  private phoneGuest(token: string | undefined): string | undefined {
+    return token === undefined || this.impersonations.has(token) ? undefined : this.guestTokens.get(token);
+  }
+
+  /** The part a staff badge's code signs in as, or null. */
+  private partOfCode(part: string): string | null {
+    if (this.declaredModel === null) return null;
+    return identityDefs(this.declaredModel).find((d) => codeEquals(part, partCode(this.claimSecret, d.name)))?.name ?? null;
+  }
+
+  /** `token`'s capabilities as `character`: a new session unless it has one
+   *  to switch. D1: a part the story marks `admin: true` makes its booth a
+   *  host; switching to any other part takes host away (admin is kept).
+   *  C8: a part some admin cue's `by:` names calls those cues. */
+  private signInPart(token: string, character: string, model: SimModel | null): BoothGrant {
+    if (!this.sessions.grant(token, { character })) this.sessions.set(token, { character, admin: false, host: false });
+    if (model?.characters.get(character)?.admin === true) this.sessions.grant(token, { host: true });
+    else this.sessions.revokeHost(token);
+    if (model !== null && isCaller(model, character)) this.sessions.grant(token, { caller: true });
+    else this.sessions.revokeCaller(token);
+    this.persistSessions();
+    return { admin: this.sessions.canModerate(token), host: this.sessions.canHost(token), caller: this.sessions.canCall(token) };
   }
 
   private endClients(role: Client["role"]): void {
@@ -5064,12 +5115,18 @@ export class EventRuntime {
   }
 
   private requireGuest(req: IncomingMessage, body: Record<string, unknown>, res: ServerResponse): string | null {
-    const id = this.guestOf(tokenOf(req, body));
+    const token = tokenOf(req, body);
+    const id = this.guestOf(token);
     if (id === null) {
-      sendJson(res, 401, { error: "not signed in — register first" });
+      sendJson(res, 401, { error: this.notSignedIn(token) });
       return null;
     }
     return id;
+  }
+
+  /** A dead guest token's 401: a released phone is told so. */
+  private notSignedIn(token: string | undefined): string {
+    return token !== undefined && this.releasedTokens.has(token) ? SIGNED_OUT : "not signed in — register first";
   }
 
   /** Count a failed passcode attempt; true when this IP is over the limit.
@@ -5431,6 +5488,7 @@ export class EventRuntime {
     // Going live additionally signs every performer out of their character
     // — rehearsal booths must not carry into the show.
     this.guestTokens.clear();
+    this.releasedTokens.clear();
     this.persistGuests();
     this.pairing.clear();
     this.rejoin.clear();
@@ -5725,7 +5783,7 @@ export class EventRuntime {
       } else {
         const gid = this.guestOf(token);
         if (gid === null) {
-          sendJson(res, 401, { error: "not signed in — register first" });
+          sendJson(res, 401, { error: this.notSignedIn(token) });
           return true;
         }
         id = gid;
@@ -5927,7 +5985,7 @@ export class EventRuntime {
       if (role === "guest") {
         const gid = this.guestOf(token);
         if (gid === null) {
-          sendJson(res, 401, { error: "not signed in — register first" });
+          sendJson(res, 401, { error: this.notSignedIn(token) });
           return true;
         }
         sendJson(res, 200, this.guestViewFor(gid, new Set(this.agents.onlineCharacters())));
@@ -5959,7 +6017,7 @@ export class EventRuntime {
       }
       // `?cues=1` (W-26): the director phone's lean read — just the cue sheet.
       if (url.searchParams.get("cues") === "1") {
-        sendJson(res, 200, { ...cueSheetView(this.modViewNow()), rejoins: this.rejoin.desk.pending() });
+        sendJson(res, 200, { ...cueSheetView(this.modViewNow()), rejoins: this.rejoin.asks() });
         return true;
       }
       sendJson(res, 200, this.modViewNow());
@@ -5979,7 +6037,7 @@ export class EventRuntime {
       } else {
         const gid = this.guestOf(token);
         if (gid === null) {
-          sendJson(res, 401, { error: "not signed in — register first" });
+          sendJson(res, 401, { error: this.notSignedIn(token) });
           return true;
         }
         id = gid;
@@ -6139,7 +6197,7 @@ export class EventRuntime {
       // The cheap check first: only a rejoin path is throttled here.
       if (path.startsWith("/api/guest/enter") || path.startsWith("/api/guest/rejoin")) {
         if (this.throttled(req, res)) return true;
-        const r = this.rejoin.handlePublic(path, res, body);
+        const r = this.rejoin.handlePublic(path, res, body, tokenOf(req, body));
         if (r.handled) {
           if (r.failed) this.loginFailures.record(ipOf(req));
           return true;
@@ -6148,14 +6206,15 @@ export class EventRuntime {
     }
     if (path === BADGE_ROUTE) {
       const t = tokenOf(req, body);
-      this.rejoin.linkFor(res, t === undefined || this.impersonations.has(t) ? null : (this.guestTokens.get(t) ?? null), body);
+      this.rejoin.linkFor(res, this.phoneGuest(t) ?? null, body);
       return true;
     }
     if (path === HOMESCREEN_ROUTE) {
       const t = tokenOf(req, body);
-      return this.pairing.homescreen(res, t === undefined || this.impersonations.has(t) ? undefined : this.guestTokens.get(t));
+      return this.pairing.homescreen(res, this.phoneGuest(t));
     }
     if (path === LOGOUT_ROUTE) return this.pairing.logout(res, tokenOf(req, body));
+    if (path === GUEST_LOGOUT_ROUTE) return this.pairing.guestLogout(res, this.phoneGuest(tokenOf(req, body)));
 
     if (path === "/api/agent/reply") {
       if (opts.moderator !== true && !this.sessions.canModerate(tokenOf(req, body))) {
@@ -7169,42 +7228,29 @@ export class EventRuntime {
           sendJson(res, 409, { error: "doors are closed" });
           return true;
         }
-        // Wave 23: a cast card's `part` code signs in as its part and takes
-        // it from whichever booth held it (signed out, as by ⏏ Release).
+        // Wave 23: a cast card's `part` code signs in as its part. Wave 59:
+        // never by taking it: a held part refuses the card as it does the picker.
         if (part !== "") {
-          const def = identityDefs(model).find((d) => codeEquals(part, partCode(this.claimSecret, d.name)));
-          if (def === undefined) {
+          const named = this.partOfCode(part);
+          if (named === null) {
             this.loginFailures.record(ipOf(req));
             sendJson(res, 404, { error: "that cast card isn't one of tonight's" });
             return true;
           }
-          character = def.name;
-          if (releasePart(this.sessions, character) > 0) this.persistSessions();
-          this.endBooths(character);
+          character = named;
         }
         // A part is one performer's: every *other* session's character is
         // held; re-signing the same booth into the same part is fine.
         const others = this.sessions.entries().filter(([t]) => t !== token);
-        const refusal = performerRefusal(model, character, heldCharacters(others));
+        const held = heldCharacters(others);
+        const refusal = performerRefusal(model, character, held);
         if (refusal !== null) {
-          sendJson(res, refusal === "unknown character" ? 404 : 409, { error: refusal });
+          const answer = held.has(foldName(character)) ? heldAnswer({ name: character }, refusal) : { error: refusal };
+          sendJson(res, refusal === "unknown character" ? 404 : 409, answer);
           return true;
         }
-        if (token && this.sessions.grant(token, { character })) {
-          /* upgraded in place */
-        } else {
-          token = randomUUID();
-          this.sessions.set(token, { character, admin: false, host: false });
-        }
-        // D1: a part the story marks `admin: true` makes its booth a host;
-        // switching to any other part takes host away (admin is kept).
-        if (model.characters.get(character)?.admin === true) this.sessions.grant(token, { host: true });
-        else this.sessions.revokeHost(token);
-        // C8: a part some admin cue's `by:` names calls those cues.
-        if (isCaller(model, character)) this.sessions.grant(token, { caller: true });
-        else this.sessions.revokeCaller(token);
-        this.persistSessions();
-        sendJson(res, 200, { token, character, admin: this.sessions.canModerate(token), host: this.sessions.canHost(token), caller: this.sessions.canCall(token) });
+        token = token !== undefined && this.sessions.has(token) ? token : randomUUID();
+        sendJson(res, 200, { token, character, ...this.signInPart(token, character, model) });
         return true;
       }
 

@@ -35,6 +35,7 @@ export const HOST_ROUTES = [
   // Wave 23: let a guest back in as their program (or not).
   "/api/mod/guest/rejoin",
   "/api/mod/prime/release",
+  "/api/mod/guest/release",
   "/api/mod/act",
   "/api/mod/scan",
   // The doors and a pause (C2): `start` opens the doors or resumes, `stop`

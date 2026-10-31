@@ -12,10 +12,11 @@
 //! (`register {…, badge}`) or later (`POST /api/guest/badge {badge}`, their
 //! token). From then on:
 //! - `POST /api/guest/enter {passcode, badge}` (no token: the badge is the
-//!   credential) mints a fresh token for the badge's Person — the same
-//!   person, codex, score; the old phone's tokens stay good (like N-02).
+//!   credential) mints a token for the badge's Person — the same person,
+//!   codex, score — unless a phone holds them (**One holder**, below).
 //! - The badge is their pass: `/api/scan` and `/api/mod/scan` take a badge
-//!   (code or link) as `target` and resolve it to the Person.
+//!   (code or link) as `target` and resolve it to the Person. That only
+//!   reads, so a held badge still passes.
 //! **Invited badges** (wave 54). Each reserved program has its own badge,
 //! printed with its name: `…/?code=<guest code>&claim=<token>&badge=<code>`,
 //! so the one QR opens the program to its invitee, links at join and is their
@@ -26,7 +27,7 @@
 //! One badge per Person (linking another frees the first), one Person per
 //! badge. The links are persisted (`badges.json`, like the guest tokens —
 //! not journaled: a badge is not a story fact) and cut by every story
-//! restart, with the Persons they point at. Anyone holding the badge can
+//! restart, with the Persons they point at. Whoever holds a free badge can
 //! sign in as its guest — it is worn, so that is the trade: the play app
 //! never offers a *signed-in* guest a switch from a badge link (someone
 //! else's badge reads as their pass).
@@ -37,24 +38,42 @@
 //!
 //! **Ask a host.** `POST /api/guest/rejoin {passcode, name}` opens a
 //! request for a joined program (`POST /api/guest/rejoin/names {passcode}`
-//! lists them for the picker). It shows on every host's Needs and on the
-//! director phone (`rejoins` on the host and cue-sheet views); a host taps
-//! Approve (`POST /api/mod/guest/rejoin {request, approve}`, on the host
-//! allowlist) and the waiting phone's `POST /api/guest/rejoin/poll
-//! {request}` picks up a fresh token once. Requests live in memory
-//! (`REJOIN_TTL_MS`, ten minutes; a newer one for the same Person replaces
-//! the older; a story restart clears them).
+//! lists them for the picker); `{passcode, badge, claim?}`, `{passcode,
+//! claim}` and `{passcode, part}` open one for what the refused card names,
+//! and `{passcode: <performer code>, character}` for a part on the booth's
+//! picker. It shows on every host's Needs and on the director phone
+//! (`rejoins` on the host and cue-sheet views); a host taps Approve (`POST
+//! /api/mod/guest/rejoin {request, approve}`, on the host allowlist): the
+//! old phone is signed out and the waiting phone's `POST
+//! /api/guest/rejoin/poll {request}` picks up a fresh token once (a part's
+//! answer says `part: true`, with the booth's capabilities). Requests live
+//! in memory (`REJOIN_TTL_MS`, ten minutes; a newer one for the same Person
+//! replaces the older; a story restart clears them).
 //!
 //! **Cast cards.** Each part's cast card carries `…/?code=<prime
 //! code>&part=<code>`, `code` = `secretCode(secret, "part:<folded name>")`.
-//! `/api/prime/login {passcode, part}` signs in as that part and takes it
-//! from whichever booth held it (that booth is signed out, as by a
-//! director's ⏏ Release). The passcode picker still can't take a held part.
+//! `/api/prime/login {passcode, part}` signs in as that part.
 //! Wave 54: the printed link carries the **guest** code (`…/?code=<guest
 //! code>&part=<code>`): a `rotate: "staff"` launch mints a new performer
 //! code, and a printed badge must outlive that. The login takes the guest
 //! code only beside a valid `part`; a link with the old performer code
 //! still works.
+//!
+//! **One holder** (wave 59; overrules wave 23's take-over and wave 54's
+//! "the old phone's tokens stay good"). A part or a Person is one phone's:
+//! a staff badge, an invited badge, a linked blank badge, a claim link, and
+//! the code printed on any of them all answer `409 {error, held: true,
+//! name?, ref?}` while a phone holds it (`heldAnswer`: only what is printed
+//! on that card, so a blank badge never names its program). The rule lives
+//! in `enter` and `/api/prime/login`, so a typed code inherits it. The
+//! holder's own phone (its live `token` on the same call) carries on, and
+//! no second token is minted for it. Held means a live token or session:
+//! being offline is no release. Released means the holder's own Leave the
+//! event (`/api/guest/logout`) or Sign out (`/api/prime/logout`), ⏏ Release
+//! (`/api/mod/prime/release`, `/api/mod/guest/release`, both on the host
+//! allowlist), an approved ask, a spent N-02 re-pair, or a story restart for
+//! a guest (a booth survives a plain restart, as it always has, and Go live
+//! frees every part). Every release signs the old phone out.
 
 import { randomBytes, randomUUID } from "node:crypto";
 import type { ServerResponse } from "node:http";
@@ -97,6 +116,25 @@ export function invitedBadge(i: number): number {
 /** The ref printed on the `i`th reserved program's badge. */
 export function invitedRef(i: number): string {
   return `F${String(i + 1).padStart(2, "0")}`;
+}
+
+/** The ref printed on blank badge `n`. */
+export function blankRef(n: number): string {
+  return `B${String(n).padStart(3, "0")}`;
+}
+
+/** What is printed on a card, all a refusal may say of who it is. */
+export interface Shown {
+  name?: string;
+  ref?: string;
+}
+
+/** The sentence a held card answers with (the phone says it its own way). */
+export const HELD_ERROR = "that is signed in on another phone";
+
+/** A `409`'s body for a card a phone holds. */
+export function heldAnswer(shown: Shown, error = HELD_ERROR): { error: string; held: true } & Shown {
+  return { error, held: true, ...shown };
 }
 
 /** A part's cast-card code. */
@@ -200,6 +238,13 @@ export interface RejoinRequest {
   by?: string;
   /** Minted on approve; handed to the polling phone once. */
   token?: string;
+  /** Wave 59: `id` is a part, not a Person. */
+  part?: true;
+  /** What the waiting phone is told before it is in: the name on its card
+   *  ("" for a blank badge), when that isn't `name`. */
+  shown?: string;
+  /** The booth's capabilities, set on approve (a part's ask). */
+  grant?: BoothGrant;
 }
 
 /** What a host sees of an open request (`rejoins` on the host view). */
@@ -208,6 +253,17 @@ export interface RejoinRow {
   id: string;
   name: string;
   at: number;
+  /** Wave 59: a part, not a Person. */
+  part?: true;
+  /** Does a phone hold it now? Approving signs that phone out. */
+  held?: boolean;
+}
+
+/** A booth's capabilities at sign-in (`/api/prime/login`'s answer). */
+export interface BoothGrant {
+  admin: boolean;
+  host: boolean;
+  caller: boolean;
 }
 
 /** The open requests. Pure, clock-injected. */
@@ -224,8 +280,8 @@ export class RejoinDesk {
     for (const [k, r] of [...this.requests]) if (r.at + REJOIN_TTL_MS <= now) this.requests.delete(k);
   }
 
-  /** Open a request for Person `id` (a newer one replaces theirs). */
-  open(id: string, name: string): RejoinRequest {
+  /** Open a request for Person (or part) `id`; a newer one replaces theirs. */
+  open(id: string, name: string, opts: { part?: boolean; shown?: string } = {}): RejoinRequest {
     this.sweep();
     for (const [k, r] of [...this.requests]) if (r.id === id) this.requests.delete(k);
     while (this.requests.size >= REJOIN_MAX) {
@@ -233,7 +289,7 @@ export class RejoinDesk {
       if (oldest === undefined) break;
       this.requests.delete(oldest);
     }
-    const r: RejoinRequest = { request: this.mint(), id, name, at: this.now(), state: "pending" };
+    const r: RejoinRequest = { request: this.mint(), id, name, at: this.now(), state: "pending", ...(opts.part === true ? { part: true } : {}), ...(opts.shown !== undefined ? { shown: opts.shown } : {}) };
     this.requests.set(r.request, r);
     return r;
   }
@@ -249,6 +305,9 @@ export class RejoinDesk {
     if (r === null || r.state !== "pending") return null;
     r.state = approve ? "approved" : "denied";
     r.by = by;
+    // The answer's own ten minutes: a late Approve has signed the old phone
+    // out, and the waiting phone still has to collect.
+    r.at = this.now();
     if (approve) r.token = token();
     return r;
   }
@@ -261,7 +320,7 @@ export class RejoinDesk {
 
   pending(): RejoinRow[] {
     this.sweep();
-    return [...this.requests.values()].filter((r) => r.state === "pending").map(({ request, id, name, at }) => ({ request, id, name, at }));
+    return [...this.requests.values()].filter((r) => r.state === "pending").map(({ request, id, name, at, part }) => ({ request, id, name, at, ...(part === true ? { part } : {}) }));
   }
 
   clear(): void {
@@ -276,12 +335,30 @@ export interface RejoinHost {
   secret(): string;
   /** Is `passcode` the guest code? */
   guestCode(passcode: string): boolean;
+  /** Is `passcode` the performer code? */
+  primeCode(passcode: string): boolean;
   /** Bind a fresh guest token to `id` and persist the token table. */
   addGuestToken(token: string, id: string): void;
+  /** Does a phone hold guest `id` (a live token)? */
+  guestHeld(id: string): boolean;
+  /** The guest a phone's own token stands for (never a play-as), or null. */
+  tokenGuest(token: string | undefined): string | null;
+  /** Sign guest `id`'s phone out: tokens, streams, push devices. */
+  revokeGuest(id: string): number;
   /** Is `id` a director's persona (not a phone's guest)? */
   isPersona(id: string): boolean;
   /** The reserved program a claim unlocks, or null. */
   claimed(claim: string): string | null;
+  /** The part a staff badge's code (normalized) signs in as, or null. */
+  partOfCode(code: string): string | null;
+  /** `name` when it is a part someone could sign in as, or null. */
+  partNamed(name: string): string | null;
+  /** Does a booth hold `character`? */
+  partHeld(character: string): boolean;
+  /** Sign whichever booth holds `character` out. */
+  releasePart(character: string): void;
+  /** Bind a fresh booth token to `character`. */
+  signInPart(token: string, character: string): BoothGrant;
   /** Persist the badge links. */
   saveBadges(entries: Array<[number, string]>): void;
   /** Something hosts see changed (the host view's cache must rebuild). */
@@ -296,6 +373,9 @@ export interface RejoinHost {
 
 /** The answer `enter` gives a phone. */
 export type EnterAnswer = { ok: true; resumed: true; id: string; name: string; token: string; badge?: number } | { ok: true; resumed: false; badge?: number };
+
+/** A presented badge or invitation: not tonight's, nobody's yet, or a Person's. */
+type Card = { kind: "unknown"; error: string } | { kind: "fresh"; badge?: number } | { kind: "person"; id: string; badge?: number; shown: Shown };
 
 export class Rejoin {
   readonly badges: BadgeBook;
@@ -354,12 +434,13 @@ export class Rejoin {
     this.host.linked?.();
   }
 
-  /** Public routes (no token). Returns false when `path` isn't one. The
-   *  caller throttles; `failed` says a wrong code was presented. */
-  handlePublic(path: string, res: ServerResponse, body: Record<string, unknown>): { handled: boolean; failed: boolean } {
+  /** Public routes (a phone's own `token`, if it has one, only proves it is
+   *  the holder). Returns false when `path` isn't one. The caller throttles;
+   *  `failed` says a wrong code was presented. */
+  handlePublic(path: string, res: ServerResponse, body: Record<string, unknown>, token?: string): { handled: boolean; failed: boolean } {
     switch (path) {
       case ENTER_ROUTE:
-        return { handled: true, failed: this.enter(res, body) };
+        return { handled: true, failed: this.enter(res, body, token) };
       case REJOIN_NAMES_ROUTE:
         return { handled: true, failed: this.names(res, body) };
       case REJOIN_ROUTE:
@@ -387,39 +468,46 @@ export class Rejoin {
 
   /** `POST /api/guest/enter {passcode, badge? , claim?}`: an invited badge
    *  sends both. True on a wrong code. */
-  private enter(res: ServerResponse, body: Record<string, unknown>): boolean {
+  private enter(res: ServerResponse, body: Record<string, unknown>, token: string | undefined): boolean {
     const shut = this.closed(res, body);
     if (shut !== null) return shut === "wrong";
     const rawBadge = str(body, "badge");
+    const claim = str(body, "claim");
+    if (rawBadge === "" && claim === "") {
+      sendJson(res, 400, { error: "a badge or an invitation, please" });
+      return false;
+    }
+    const card = this.cardOf(rawBadge, claim);
+    if (card.kind === "unknown") {
+      sendJson(res, 404, { error: card.error });
+      return true;
+    }
+    if (card.kind === "fresh") sendJson(res, 200, { ok: true, resumed: false, ...(card.badge !== undefined ? { badge: card.badge } : {}) } satisfies EnterAnswer);
+    else this.resume(res, card, token);
+    return false;
+  }
+
+  /** Whose a presented badge or invitation is. */
+  private cardOf(rawBadge: string, claim: string): Card {
     if (rawBadge !== "") {
       const code = badgeFromText(rawBadge);
       const n = code === null ? null : this.badges.numberOf(code);
-      if (n === null) {
-        sendJson(res, 404, { error: "that isn't one of tonight's badges" });
-        return true;
-      }
-      const id = this.holderOf(code!) ?? this.joinedWithoutBadge(n, str(body, "claim"));
-      if (id === null) {
-        sendJson(res, 200, { ok: true, resumed: false, badge: n } satisfies EnterAnswer);
-        return false;
-      }
-      this.resume(res, id, n);
-      return false;
+      if (n === null) return { kind: "unknown", error: "that isn't one of tonight's badges" };
+      const id = this.holderOf(code!) ?? this.joinedWithoutBadge(n, claim);
+      if (id === null) return { kind: "fresh", badge: n };
+      return { kind: "person", id, badge: n, shown: this.printedOn(n, id) };
     }
-    const claim = str(body, "claim");
-    if (claim !== "") {
-      const character = this.host.claimed(claim);
-      if (character === null) {
-        sendJson(res, 404, { error: "that invitation isn't one of tonight's" });
-        return true;
-      }
-      const hit = this.joinedAs(character);
-      if (hit === undefined) sendJson(res, 200, { ok: true, resumed: false } satisfies EnterAnswer);
-      else this.resume(res, hit.id);
-      return false;
-    }
-    sendJson(res, 400, { error: "a badge or an invitation, please" });
-    return false;
+    const character = this.host.claimed(claim);
+    if (character === null) return { kind: "unknown", error: "that invitation isn't one of tonight's" };
+    const hit = this.joinedAs(character);
+    return hit === undefined ? { kind: "fresh" } : { kind: "person", id: hit.id, shown: { name: character } };
+  }
+
+  /** What badge `n` has printed on it: a blank only its ref. */
+  private printedOn(n: number, id: string): Shown {
+    if (n <= BADGE_MAX) return { ref: blankRef(n) };
+    const name = this.host.sim()?.persons.get(id)?.name;
+    return { ref: invitedRef(n - BADGE_MAX - 1), ...(name !== undefined ? { name } : {}) };
   }
 
   /** The joined guest playing `character`. */
@@ -437,11 +525,21 @@ export class Rejoin {
     return hit.id;
   }
 
-  private resume(res: ServerResponse, id: string, badge?: number): void {
+  /** In as `card`'s Person: the holder's own phone carries on, a free
+   *  Person gets a fresh token, and a held one is refused. */
+  private resume(res: ServerResponse, card: Extract<Card, { kind: "person" }>, token: string | undefined): void {
+    const { id, badge } = card;
     const person = this.host.sim()!.persons.get(id)!;
-    const token = this.mint();
-    this.host.addGuestToken(token, id);
-    sendJson(res, 200, { ok: true, resumed: true, id, name: person.name, token, ...(badge !== undefined ? { badge } : {}) } satisfies EnterAnswer);
+    let handed = token;
+    if (handed === undefined || this.host.tokenGuest(handed) !== id) {
+      if (this.host.guestHeld(id)) {
+        sendJson(res, 409, heldAnswer(card.shown));
+        return;
+      }
+      handed = this.mint();
+      this.host.addGuestToken(handed, id);
+    }
+    sendJson(res, 200, { ok: true, resumed: true, id, name: person.name, token: handed, ...(badge !== undefined ? { badge } : {}) } satisfies EnterAnswer);
   }
 
   /** `POST /api/guest/rejoin/names {passcode}` → the joined programs. */
@@ -455,20 +553,59 @@ export class Rejoin {
     return false;
   }
 
-  /** `POST /api/guest/rejoin {passcode, name}` → `{ok, request, name}`. */
+  /** `POST /api/guest/rejoin {passcode, name | badge | claim | part |
+   *  character}` → `{ok, request, name}`. */
   private ask(res: ServerResponse, body: Record<string, unknown>): boolean {
+    const part = normalizeCode(str(body, "part"));
+    if (part !== "" || str(body, "character") !== "") return this.askPart(res, body, part);
     const shut = this.closed(res, body);
     if (shut !== null) return shut === "wrong";
+    const rawBadge = str(body, "badge");
+    const claim = str(body, "claim");
+    if (rawBadge !== "" || claim !== "") {
+      const card = this.cardOf(rawBadge, claim);
+      if (card.kind === "unknown") {
+        sendJson(res, 404, { error: card.error });
+        return true;
+      }
+      if (card.kind === "fresh") {
+        sendJson(res, 404, { error: "nobody has joined on that card" });
+        return false;
+      }
+      this.opened(res, this.desk.open(card.id, this.host.sim()!.persons.get(card.id)!.name, { shown: card.shown.name ?? "" }));
+      return false;
+    }
     const want = foldName(str(body, "name"));
     const hit = want === "" ? undefined : this.guests().find((g) => foldName(g.name) === want);
     if (hit === undefined) {
       sendJson(res, 404, { error: "nobody has joined as that program" });
       return false;
     }
-    const r = this.desk.open(hit.id, hit.name);
-    this.host.changed();
-    sendJson(res, 200, { ok: true, request: r.request, name: r.name, expiresAt: r.at + REJOIN_TTL_MS });
+    this.opened(res, this.desk.open(hit.id, hit.name));
     return false;
+  }
+
+  /** A performer's ask: a staff badge (the guest code it prints, or an old
+   *  card's performer code), or a held part on the booth's picker (the
+   *  performer code). Works before the doors, as a booth's sign-in does. */
+  private askPart(res: ServerResponse, body: Record<string, unknown>, part: string): boolean {
+    const passcode = str(body, "passcode");
+    if (!this.host.primeCode(passcode) && !(part !== "" && this.host.guestCode(passcode))) {
+      sendJson(res, 403, { error: "wrong event code" });
+      return true;
+    }
+    const character = part !== "" ? this.host.partOfCode(part) : this.host.partNamed(str(body, "character"));
+    if (character === null) {
+      sendJson(res, 404, { error: "that isn't one of tonight's parts" });
+      return part !== "";
+    }
+    this.opened(res, this.desk.open(character, character, { part: true }));
+    return false;
+  }
+
+  private opened(res: ServerResponse, r: RejoinRequest): void {
+    this.host.changed();
+    sendJson(res, 200, { ok: true, request: r.request, name: r.shown ?? r.name, expiresAt: r.at + REJOIN_TTL_MS });
   }
 
   /** `POST /api/guest/rejoin/poll {request}` → its state (and, once, the token). */
@@ -479,12 +616,16 @@ export class Rejoin {
       return;
     }
     if (r.state === "pending") {
-      sendJson(res, 200, { ok: true, state: "pending", name: r.name });
+      sendJson(res, 200, { ok: true, state: "pending", name: r.shown ?? r.name });
       return;
     }
     this.desk.collect(r.request);
-    if (r.state === "denied" || this.host.sim()?.persons.has(r.id) !== true) {
-      sendJson(res, 200, { ok: true, state: "denied", name: r.name, ...this.seenBy(r.by) });
+    if (r.state === "denied" || (r.part !== true && this.host.sim()?.persons.has(r.id) !== true)) {
+      sendJson(res, 200, { ok: true, state: "denied", name: r.shown ?? r.name, ...this.seenBy(r.by) });
+      return;
+    }
+    if (r.part === true) {
+      sendJson(res, 200, { ok: true, state: "approved", part: true, character: r.id, name: r.name, token: r.token, ...r.grant, ...this.seenBy(r.by) });
       return;
     }
     sendJson(res, 200, { ok: true, state: "approved", id: r.id, name: r.name, token: r.token, ...this.seenBy(r.by) });
@@ -532,9 +673,25 @@ export class Rejoin {
       sendJson(res, 404, { error: "that request was answered or has expired" });
       return;
     }
-    if (approve && r.token !== undefined) this.host.addGuestToken(r.token, r.id);
+    if (approve && r.token !== undefined) this.handOver(r, r.token);
     this.host.changed();
     sendJson(res, 200, { ok: true, request: r.request, state: r.state, name: r.name });
+  }
+
+  /** An approved ask: the old phone out, the waiting phone's token in. */
+  private handOver(r: RejoinRequest, token: string): void {
+    if (r.part === true) {
+      this.host.releasePart(r.id);
+      r.grant = this.host.signInPart(token, r.id);
+      return;
+    }
+    this.host.revokeGuest(r.id);
+    this.host.addGuestToken(token, r.id);
+  }
+
+  /** The open asks for a host's view, with whether a phone holds each. */
+  asks(): RejoinRow[] {
+    return this.desk.pending().map((r) => ({ ...r, held: r.part === true ? this.host.partHeld(r.id) : this.host.guestHeld(r.id) }));
   }
 
   /** `POST /api/mod/badges {count?}` → the printable badges and who holds each. */
@@ -549,7 +706,7 @@ export class Rejoin {
       const code = badgeCode(this.host.secret(), n);
       const holder = this.badges.holder(n);
       const name = holder === null ? null : (sim?.persons.get(holder)?.name ?? null);
-      badges.push({ n, ref: `B${String(n).padStart(3, "0")}`, code: printedCode(code), url: badgeUrl(base, this.host.eventCode(), code), holder: name === null ? null : holder, name });
+      badges.push({ n, ref: blankRef(n), code: printedCode(code), url: badgeUrl(base, this.host.eventCode(), code), holder: name === null ? null : holder, name });
     }
     sendJson(res, 200, { ok: true, max: BADGE_MAX, badges });
   }

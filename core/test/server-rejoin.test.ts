@@ -1,7 +1,7 @@
 //! Wave 23 — getting back in without a director (`server/routes/rejoin.ts`):
 //! printed badges (link at join, enter by badge, the badge as a pass),
 //! featured invitations re-entering, the host-approved ask, and the
-//! per-part cast card that takes a part back from a lost booth.
+//! per-part cast card. Wave 59's one-holder rule is `w59-claims.test.ts`.
 
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -173,6 +173,8 @@ describe("badges", () => {
     expect(blank.json).toEqual({ ok: true, resumed: false, badge: 1 });
     const ana = await register(rt, "Calculator", { badge: b1.code });
     expect(ana.badge).toBe(1);
+    // Left the event: the badge signs in on any phone.
+    expect((await post(rt, "/api/guest/logout", {}, ana.token)).status).toBe(200);
     const back = await post(rt, "/api/guest/enter", { passcode: CODES.event, badge: b1.code });
     expect(back.status).toBe(200);
     expect(back.json).toMatchObject({ ok: true, resumed: true, id: ana.id, name: "Calculator", badge: 1 });
@@ -233,6 +235,7 @@ describe("badges", () => {
     const ana = await register(rt, "Calculator", { badge: b5.code });
     const again = runtimeAt(d);
     expect(again.restore()).not.toBeNull();
+    await post(again, "/api/guest/logout", {}, ana.token);
     const back = await post(again, "/api/guest/enter", { passcode: CODES.event, badge: b5.code });
     expect(back.json).toMatchObject({ resumed: true, id: ana.id });
   });
@@ -245,6 +248,7 @@ describe("invitations", () => {
     const claim = rt.claimFor("Microsoft Excel");
     expect((await post(rt, "/api/guest/enter", { passcode: CODES.event, claim })).json).toEqual({ ok: true, resumed: false });
     const ex = await register(rt, "Microsoft Excel", { claim });
+    await post(rt, "/api/guest/logout", {}, ex.token);
     const back = await post(rt, "/api/guest/enter", { passcode: CODES.event, claim: claim.toUpperCase() });
     expect(back.json).toMatchObject({ resumed: true, id: ex.id, name: "Microsoft Excel" });
     expect((await post(rt, "/api/guest/enter", { passcode: CODES.event, claim: "0000000000" })).status).toBe(404);
@@ -298,7 +302,7 @@ describe("ask a host", () => {
 });
 
 describe("cast cards", () => {
-  it("each part's card signs in as it and takes it back from a lost booth", async () => {
+  it("each part's card signs in as it, and only once that part is free", async () => {
     const rt = runtimeAt(freshDir());
     rt.openDoors();
     const codes = await mod(rt, "/api/mod/codes", {});
@@ -307,9 +311,11 @@ describe("cast cards", () => {
     expect(card.url).toBe(`https://app.example.com/?code=${CODES.event}&part=${card.part}`);
     const lost = await post(rt, "/api/prime/login", { passcode: CODES.prime, character: "Clippy" });
     expect(lost.status).toBe(200);
-    // The picker still can't take it…
+    // Neither the picker nor the card can take it…
     expect((await post(rt, "/api/prime/login", { passcode: CODES.prime, character: "Clippy" })).status).toBe(409);
-    // …the card can.
+    expect((await post(rt, "/api/prime/login", { passcode: CODES.prime, part: card.part.toUpperCase() })).status).toBe(409);
+    // …until it's released.
+    expect((await mod(rt, "/api/mod/prime/release", { character: "Clippy" })).status).toBe(200);
     const back = await post(rt, "/api/prime/login", { passcode: CODES.prime, part: card.part.toUpperCase() });
     expect(back.status).toBe(200);
     expect(back.json.character).toBe("Clippy");
@@ -334,6 +340,7 @@ describe("cast cards", () => {
     expect((await post(rt, "/api/prime/login", { passcode: CODES.event, part: "nope" })).status).toBe(404);
     // The link a card printed before wave 54 carried still signs in.
     const old = links.find((c) => c.character === "Clippy")!;
+    await mod(rt, "/api/mod/prime/release", { character: "Clippy" });
     expect((await post(rt, "/api/prime/login", { passcode: CODES.prime, part: old.part })).status).toBe(200);
   });
 });
@@ -371,6 +378,7 @@ describe("invited badges", () => {
     expect((await post(rt, "/api/guest/enter", { passcode: CODES.event, badge: code, claim: l.claim })).json.resumed).toBe(false);
     const g = await register(rt, "Microsoft Excel", { claim: l.claim, badge: code });
     expect(typeof g.badge).toBe("number");
+    await post(rt, "/api/guest/logout", {}, g.token);
     const back = await post(rt, "/api/guest/enter", { passcode: CODES.event, badge: code, claim: l.claim });
     expect(back.json).toMatchObject({ resumed: true, id: g.id, name: "Microsoft Excel" });
     const scan = await mod(rt, "/api/mod/scan", { as: "Task Manager", target: l.url });
@@ -382,7 +390,11 @@ describe("invited badges", () => {
     rt.openDoors();
     const l = await invited(rt, "OpenOffice");
     const g = await register(rt, "OpenOffice", { claim: l.claim });
-    const r = await post(rt, "/api/guest/enter", { passcode: CODES.event, badge: badgeOf(l), claim: l.claim });
+    // Refused while its phone holds it, but linked all the same…
+    expect((await post(rt, "/api/guest/enter", { passcode: CODES.event, badge: badgeOf(l), claim: l.claim })).status).toBe(409);
+    await post(rt, "/api/guest/logout", {}, g.token);
+    // …so it signs in on its own, with no claim beside it.
+    const r = await post(rt, "/api/guest/enter", { passcode: CODES.event, badge: badgeOf(l) });
     expect(r.json).toMatchObject({ resumed: true, id: g.id });
     expect((await mod(rt, "/api/mod/scan", { as: "Task Manager", target: l.url })).json.guest.id).toBe(g.id);
   });
