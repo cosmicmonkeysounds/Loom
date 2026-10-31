@@ -56,10 +56,13 @@ app says *⛔ Not shared* with the reason, and nothing moves.
 
 ## People
 
-Open **⊞ Start → People**. Everyone at the event is listed by name — guests and the
-story's characters — and under each name is **exactly what you know of
-them**: the entries about them you hold. Nothing more. Want to know more
-about someone? Get them (or someone who knows them) to share.
+Open **⊞ Start → People**. Everyone online right now is listed by name —
+guests and the story's characters — and under each name is **exactly what
+you know of them**: the entries about them you hold. Nothing more. Want to
+know more about someone? Get them (or someone who knows them) to share.
+
+A phone that has been away for a few minutes leaves the list until its
+owner opens the app again. Your threads with them stay in Chats.
 
 ## Private messages
 

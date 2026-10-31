@@ -641,9 +641,11 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
           onPerson={openCardByName}
           pins={activePins(active.messages)}
           headerActions={
-            <button className="w95-btn booth-head-btn" title="This guest's card" onClick={() => openCard(gid)}>
-              <BoothIcon name="card" /> Card
-            </button>
+            guests.some((g) => g.id === gid) ? (
+              <button className="w95-btn booth-head-btn" title="This guest's card" onClick={() => openCard(gid)}>
+                <BoothIcon name="card" /> Card
+              </button>
+            ) : undefined
           }
         />
       );

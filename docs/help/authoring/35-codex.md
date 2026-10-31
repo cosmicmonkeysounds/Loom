@@ -155,6 +155,11 @@ each name is *exactly* the lore about them the viewer holds — limited
 info unless more is shared. By default the guest list is the acquaintance
 roster; `directory: everyone` in the header lists the whole room.
 
+A People list shows only who is online: a guest whose phone was heard from
+in the last 3 minutes, a character while a booth plays it (or, voiced by an
+agent, while a worker or its `hold:` line answers). A Run persona is never
+on any phone's list, only in Run and in a director's own Players panes.
+
 From the list a guest can **message** a person privately: a guest ↔ guest
 thread (`pm:`), or a DM with a listed character, answered by whoever
 plays them. A performer's booth sees *only their own character's* DMs;

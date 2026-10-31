@@ -4,7 +4,7 @@
 //! No React here, so every rule is tested on plain values.
 
 import type { AlertLevel } from "../../../core/src/delivery.ts";
-import { AWARD_SOURCES, PartPresence, REASON_WAIT_MS, REFUSED_NEEDS_MS, type NeedTarget } from "../../../core/src/host-board.ts";
+import { AWARD_SOURCES, ONLINE_GRACE_MS, PartPresence, REASON_WAIT_MS, REFUSED_NEEDS_MS, type NeedTarget } from "../../../core/src/host-board.ts";
 import type { CueRow } from "../../../core/src/cue-sheet.ts";
 import type { ChatMessage, HostNeed, HostPerson, HostView } from "../types.ts";
 import { badgesOf } from "../guest/wire.ts";
@@ -407,6 +407,25 @@ export function awardsNear(rows: readonly CueRow[], layout: SheetLayout): boolea
 }
 
 // --- people --------------------------------------------------------------------
+
+/** Wave 59: online on a host's People: their stream is open, or the server
+ *  heard from them inside the grace everyone else's People lists use.
+ *  `online` is absent where nothing tracks it, and they stay. */
+export function personOnline(p: Pick<HostPerson, "online" | "lastSeen">, now: number): boolean {
+  return p.online !== false || (typeof p.lastSeen === "number" && now - p.lastSeen < ONLINE_GRACE_MS);
+}
+
+/** How many are online: what People's head counts. */
+export function onlineCount(people: readonly HostPerson[], now: number): number {
+  return people.filter((p) => personOnline(p, now)).length;
+}
+
+/** The rows People lists: the online, everyone on the Offline switch, and the
+ *  row a host has open until they close it, whose re-pair QR or Scan as… must
+ *  outlive the phone's grace. */
+export function peoplePool(people: readonly HostPerson[], o: { offline: boolean; open: string | null; now: number }): HostPerson[] {
+  return o.offline ? [...people] : people.filter((p) => p.id === o.open || personOnline(p, o.now));
+}
 
 /** Rows whose name or room contain every word of `query` (case-folded). */
 export function filterPeople(people: readonly HostPerson[], query: string): HostPerson[] {

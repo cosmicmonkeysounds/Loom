@@ -1,7 +1,10 @@
-//! People: every guest, searchable, with what a host does to one person —
-//! open their card in the booth, end a stale Bathroom Mode, restrict /
-//! unrestrict (asks first), 👋 went home / back, a 🔁 re-pair QR for a lost
-//! phone, and scan as another character (a late arrival's clearance).
+//! People: every guest online, searchable, with what a host does to one
+//! person — open their card in the booth, end a stale Bathroom Mode, restrict
+//! / unrestrict (asks first), 👋 went home / back, a 🔁 re-pair QR for a lost
+//! phone, and scan as another character (a late arrival's clearance). Wave
+//! 59: the rescue tools need the offline too (a lost phone is offline), so
+//! they sit behind one switch, off each time the list opens; 🗂 Guests keeps
+//! everyone.
 
 import { useState } from "react";
 import { PassQr } from "../pass-qr.tsx";
@@ -9,21 +12,30 @@ import { NameBadges, PersonAvatar, PickerSheet, Sheet } from "../ui/primitives.t
 import { badgesOf } from "../guest/wire.ts";
 import type { HostPerson } from "../types.ts";
 import type { PairCode } from "./api.ts";
-import { bathroomTag, filterPeople, inBathroom, personLine, seenText } from "./model.ts";
+import { bathroomTag, filterPeople, inBathroom, onlineCount, peoplePool, personLine, seenText } from "./model.ts";
 import { ActButton, ConfirmButton, HostEmpty, useHost } from "./kit.tsx";
 
 export function PeopleTab() {
-  const { view } = useHost();
+  const { view, now } = useHost();
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState<string | null>(null);
-  const shown = filterPeople(view.people, query);
+  const [offline, setOffline] = useState(false);
+  const online = onlineCount(view.people, now);
+  const away = view.people.length - online;
+  const count = offline ? view.people.length : online;
+  const shown = filterPeople(peoplePool(view.people, { offline, open, now }), query);
   return (
     <div className="host-people">
-      <input className="host-filter" type="search" aria-label="Find a guest" placeholder={`Find a guest (${view.people.length})`} value={query} onChange={(e) => setQuery(e.target.value)} />
+      <input className="host-filter" type="search" aria-label="Find a guest" placeholder={`Find a guest (${count})`} value={query} onChange={(e) => setQuery(e.target.value)} />
+      {away > 0 && (
+        <label className="host-switch">
+          <input type="checkbox" checked={offline} onChange={(e) => setOffline(e.target.checked)} /> Offline ({away}){/* DRAFT w59 */}
+        </label>
+      )}
       {view.people.length === 0 ? (
         <HostEmpty>No guests yet. They appear here as they join.</HostEmpty>
       ) : shown.length === 0 ? (
-        <HostEmpty>Nobody matches “{query.trim()}”.</HostEmpty>
+        <HostEmpty>{query.trim() !== "" ? `Nobody ${offline ? "" : "online "}matches “${query.trim()}”.` : "Nobody online."}{/* DRAFT w59 */}</HostEmpty>
       ) : (
         <ul className="host-rows">
           {shown.map((p) => (

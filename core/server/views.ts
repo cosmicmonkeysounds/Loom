@@ -86,6 +86,9 @@ export interface PersonCard {
   /** Where they are standing (a guest's location; null for a character or
    *  before the story places them) — what lets the app show who's *here*. */
   location: string | null;
+  /** Wave 59: online now, grace included (`seenPeople`); runtime-filled, absent
+   *  from a bare sim projection. The phone's People lists show only these. */
+  online?: boolean;
   /** A character voiced by an agent (`mind: external`); `online` says whether
    *  one is answering right now. Absent for guests and performed characters.
    *  `hold` — the character has a `hold:` line, so a guest is always
@@ -2212,6 +2215,9 @@ export interface PrimeGuest {
   /** When the server last heard from this guest (the mod roster's
    *  `lastSeen`, A1) — runtime-filled; null = not since the server started. */
   lastSeen?: number | null;
+  /** Wave 59: online now, grace included — runtime-filled. A player's People
+   *  and a room's strip show only these; 🗂 Guests keeps everyone. */
+  online?: boolean;
   /** Wave 18b: the header `badge:` lines true for them. Absent when none. */
   badges?: NameBadge[];
 }

@@ -646,7 +646,12 @@ heard from them (*seen 12 m ago*; the same on the rail and in the
 Roster's Seen column). After a server restart or a release, a guest who
 hasn't made a request since reads *not seen since the server started*
 (*not since restart* in the Roster), not *never seen*. Personas show no
-seen line and carry a persona badge. **👋 Went home** marks a guest who
+seen line and carry a persona badge, and no phone ever lists one (no
+People, no 🗂 Guests, no picker): only Run and your own Players panes do.
+A line a persona says reads *Director* on every other phone, and a booth it
+writes to can read and answer it there. A story line that prints a persona's
+name in its own text still shows it.
+**👋 Went home** marks a guest who
 left (*Back* undoes it): a journaled `<id>.gone = true` the story can
 leave out of its head counts. In *Trapped in the Internet* that is the
 Y2K majority, so mark the early leavers before 🕚; the board's *Present

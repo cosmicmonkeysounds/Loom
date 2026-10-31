@@ -108,8 +108,9 @@ play the game, the hosts and the directors call it.
   you), **Team** (the staff rooms of your team: the Antivirus keep their
   room), **Rooms**, and **Other rooms (n)** with the 📜 Chat log last.
 - **⊞ Start**: Help, Keep my screen on, Get alerts, **👥 People** (every
-  program, searchable, with where they are; the Antivirus also see who is
-  MARKED or IN THE INTERNET; tap one for their card) and Sign out.
+  program online, searchable, with where they are; the Antivirus also see
+  who is MARKED or IN THE INTERNET, phone or no phone; tap one for their
+  card) and Sign out.
 - A press the story turns down reads **Not now.** You never see the staff
   room's reasons.
 

@@ -116,6 +116,22 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   (hosts included) read parts by name and every director as "Director".
   Anything that carries a journal `by` (an author's display name) into a
   booth, host or guest view goes through `server/unseen-directors.ts`.
+  Wave 59: a Run persona (Run's Start seats one named after you) leaves
+  every phone's lists there too: `people`, `roster`, `guests`, a `pick:`,
+  the Wanted board, a host's `people` and `roster`. Only Run and a
+  director's own Players pane (`Client.pane`, never a wall terminal's
+  pilot) keep them. A persona that acts reads "Director" on every other
+  phone: its chat lines (`forGuest`, `forBooth`, by name, so a real guest
+  who shares it keeps it), a crew or side it founds (`seenCrews`), and a
+  host's `/api/mod/recap` leaves it out (`RecapOptions.hide`). The one thing
+  left is a story line that prints the name in its own text, such as the
+  `# hosts` note when a persona founds a faction.
+- **Who is online** (wave 59, `peopleRound`): an open stream as `presence()`
+  counts it, or a phone or booth heard from inside `ONLINE_GRACE_MS`
+  (`host-board.ts`, 3 minutes). `PersonCard.online` and `PrimeGuest.online`
+  say so per row and the phone filters: those rows also name DMs, wallet
+  picks and scanned cards. The open night checks every 15 s and sends a
+  round if it moved (`checkPresence`).
 - **A locked phone writes nothing** (wave 26, C2). While the story's
   `lock:` header holds for a guest (`views.ts` `isLocked`), every
   `/api/guest/*` POST answers `403 {"error": "locked"}` from one check at

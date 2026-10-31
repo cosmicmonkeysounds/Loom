@@ -15,9 +15,16 @@ export interface Presence {
   group: string | null;
 }
 
-/** Everyone standing in each location, keyed by location id. The viewer
- *  themselves (`me`, with `myLocation`) is included so a room's count is
- *  honest — you are in the room too. */
+/** Wave 59: is this person on a People list? The server says who is online
+ *  (a locked phone keeps a grace, `ONLINE_GRACE_MS`); an older server says
+ *  nothing, and everyone stays. */
+export function isOnline(p: { online?: boolean }): boolean {
+  return p.online !== false;
+}
+
+/** Everyone online standing in each location, keyed by location id. The
+ *  viewer themselves (`me`, with `myLocation`) is included so a room's count
+ *  is honest — you are in the room too. */
 export function occupantsByLocation(
   people: ReadonlyArray<PersonCard | PrimeGuest>,
   me: { id: string; name: string; group: string | null; location: string | null } | null,
@@ -32,7 +39,7 @@ export function occupantsByLocation(
   if (me !== null) put(me.location, { id: me.id, name: me.name, kind: "guest", group: me.group });
   for (const p of people) {
     const kind: Presence["kind"] = "kind" in p ? p.kind : "guest";
-    if (kind !== "guest") continue; // characters have no standing location
+    if (kind !== "guest" || !isOnline(p)) continue; // characters have no standing location
     put(p.location, { id: p.id, name: p.name, kind, group: p.faction });
   }
   return out;
