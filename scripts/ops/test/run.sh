@@ -370,7 +370,7 @@ exit 0
 EOF2
 cat > "$T/bin/tsx" <<EOF2
 #!/usr/bin/env bash
-echo "\$PWD|\$*" >> "$T/tsx"; exit "\${FAKE_TSX_RC:-0}"
+echo "\$PWD|\$*" >> "$T/tsx"; echo "\${LOOM_QR_MOVED-}" >> "$T/tsx.env"; exit "\${FAKE_TSX_RC:-0}"
 EOF2
 chmod +x "$T/bin/ssh" "$T/bin/tsx"
 ss() { env PATH="$T/bin:$PATH" TSX="$T/bin/tsx" LOOM_SSH=u@vps POSTGRES_PASSWORD=pw "$@" bash "$ROOT/scripts/sync-show.sh" --i-know-this-is-live; }
@@ -396,6 +396,12 @@ if [ ! -e "$lock" ]; then
   out="$(ss 2>&1)"; rc=$?
   check "a lock that holds runs the check, then the sync" grep -q "titi-qr-lock.ts --check --example trapped-in-the-internet" "$T/tsx"
   check "… which goes on" grep -q "scripts/sync-example.ts" "$T/tsx"
+  : > "$T/tsx.env"
+  out="$(ss 2>&1)"
+  check "with no override the lock tool sees 0" eq "$(head -n 1 "$T/tsx.env")" 0
+  : > "$T/tsx.env"
+  out="$(ss LOOM_QR_MOVED=1 2>&1)"
+  check "LOOM_QR_MOVED=1 reaches the lock tool, as its own error says" eq "$(head -n 1 "$T/tsx.env")" 1
   rm -f "$lock"
 fi
 teardown

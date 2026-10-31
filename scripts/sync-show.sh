@@ -34,8 +34,8 @@
 #
 # Once the cards are printed the story has a lock (`titi:qr-lock`, the
 # example's qr-lock.json): a sync that would break a printed QR stops here
-# (exit 4) and says what moved, before it touches anything. --qr-moved goes on
-# anyway. No lock file, no check.
+# (exit 4) and says what moved, before it touches anything. --qr-moved (or
+# LOOM_QR_MOVED=1) goes on anyway. No lock file, no check.
 #
 # Environment (all optional except LOOM_SSH):
 #   LOOM_SSH           ssh destination of the VPS (user@host) — required
@@ -61,7 +61,7 @@ set -euo pipefail
 : "${LOOM_TUNNEL_PORT:=15432}"
 
 DRY=0
-QR_MOVED=0
+QR_MOVED="${LOOM_QR_MOVED:-0}"
 PASS=()
 for a in "$@"; do
   case "$a" in

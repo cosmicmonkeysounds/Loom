@@ -4,11 +4,11 @@
 
 import { describe, expect, it } from "vitest";
 import { scenarioSource } from "../examples/load.ts";
-import { buildLock, diffLock, lockBroken, lockReport, printedIdentities } from "../scripts/titi-qr-lock.ts";
+import { buildLock, deadRooms, diffLock, lockBroken, lockReport, printedIdentities, storyReveals } from "../scripts/titi-qr-lock.ts";
 import { compileFromSource } from "../src/runtime/sim/index.ts";
 
 const SHOW = scenarioSource("trapped-in-the-internet");
-const items = (src: string) => printedIdentities(compileFromSource(src));
+const items = (src: string) => printedIdentities(compileFromSource(src), src);
 const LOCK = buildLock(items(SHOW));
 const diff = (src: string) => diffLock(LOCK, items(src));
 
@@ -35,6 +35,13 @@ describe("the lock", () => {
     }
   });
 
+  it("knows which printed rooms nothing in the story opens", () => {
+    const dead = deadRooms(items(SHOW));
+    expect(dead.every((i) => i.kind === "room")).toBe(true);
+    expect(dead.map((i) => i.name)).not.toContain("The CPU");
+    expect(deadRooms(items(SHOW.replace(/^\s*reveal The CPU\b.*$/gmu, ""))).map((i) => i.name)).toContain("The CPU");
+  });
+
   it("names no code when it reports, for any kind", () => {
     const moved = diff(edit("LOCATION The Tube", "LOCATION The Tubes"));
     const codes = items(SHOW).filter((i) => i.kind === "codex").map((i) => i.identity);
@@ -58,6 +65,18 @@ describe("what a story edit does to a printed QR", () => {
     expect(d.gone).toEqual({ room: 1 });
     expect(d.moved).toEqual([]);
     expect(d.added.map((i) => [i.kind, i.name])).toEqual([["room", "The Tubes"]]);
+  });
+
+  it("a printed room the story no longer opens is named: the link is the same, the sign never works", () => {
+    const d = diff(SHOW.replace(/^\s*reveal The CPU\b.*$/gmu, ""));
+    expect(lockBroken(d)).toBe(true);
+    expect(d.moved.map((i) => i.name)).toEqual(["The CPU"]);
+    expect(lockReport(d).join("\n")).toContain("nothing in the story opens it");
+  });
+
+  it("reads a reveal however it is written, and not a comment", () => {
+    const seen = storyReveals("  reveal The Cellar for program quietly\nreveal The Attic quietly\n// reveal The Moon\nreveal the hidden door to the big long cellar\n");
+    expect([...seen].sort()).toEqual(["the attic", "the cellar"]);
   });
 
   it("a room that stops taking check-ins breaks its sign", () => {

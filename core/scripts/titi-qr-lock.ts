@@ -11,7 +11,11 @@
 //! hold for that card to keep working:
 //!
 //!   room      a LOCATION with a sign: its name (the link's `checkin=`, the
-//!             code's hash), and still `checkin`-able
+//!             code's hash), still `checkin`-able, and if it is `hidden`, a
+//!             `reveal` line somewhere in the story. Drop the last one and the
+//!             link and the code are unchanged, but the sign reads *That room
+//!             isn't open yet* all night, so this is the one story edit that
+//!             can break a card with no printed name changing.
 //!   sign      a `qr:` guest INTERACTION: its name (`act=`, the code's hash)
 //!   part      a performer CHARACTER: its name (the staff badge's code)
 //!   invited   a reserved program: its name AND its place among them (the
@@ -25,9 +29,18 @@
 //! (a rename reads as one of each). What is new alone fails nothing: nothing
 //! printed points at it, but it has no card yet.
 //!
+//! A printed room nothing opens is a card that can't work. Writing the lock
+//! refuses until that is settled (`checkin: false` so it doesn't print, or a
+//! `reveal`), and `--check` warns about it even with no lock yet. A room locked
+//! that way on purpose stays a warning, not a failure.
+//!
 //! `predeploy.sh` and `sync-show.sh` run `--check` once a lock exists.
 //! `LOOM_QR_MOVED=1` (`sync-show.sh --qr-moved`) says yes, reprint: it reports
 //! what moved and passes.
+//!
+//! What this can't see: what a card does once it works. A sign's button can
+//! be edited to do nothing, and a room's reveal can sit behind a beat the night
+//! never reaches.
 
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
@@ -38,6 +51,8 @@ import { identityDefs, guestPickable, performerPickable } from "../server/identi
 import { actionSigns, checkinSigns } from "../server/routes/k12.ts";
 import { INVITED_BADGES } from "../server/routes/rejoin.ts";
 import { foldName } from "../src/parser/names.ts";
+import { splitRevealQuietly } from "../src/parser/statements.ts";
+import { splitKeyword } from "../src/runtime/sim/effects.ts";
 import { compileFromSource, type SimModel } from "../src/runtime/sim/index.ts";
 
 export const QR_LOCK_FILE = "qr-lock.json";
@@ -51,6 +66,8 @@ export interface LockItem {
   kind: LockKind;
   name: string;
   identity: string;
+  /** A room sign the story can never open. */
+  dead?: true;
 }
 
 export interface QrLock {
@@ -59,10 +76,32 @@ export interface QrLock {
   items: Record<string, string>;
 }
 
+/** What goes in a room's identity when nothing opens it, so losing its last
+ *  `reveal` reads as a move. */
+const NEVER_OPENS = "\0never opens";
+
+/** The names the story's `reveal` lines open (folded). `reveal` shows more
+ *  than rooms; the prose test is the parser's (up to four words). */
+export function storyReveals(source: string): Set<string> {
+  const out = new Set<string>();
+  for (const line of source.split("\n")) {
+    const m = /^\s*reveal\s+(\S.*?)\s*$/u.exec(line);
+    if (m === null) continue;
+    const { body } = splitRevealQuietly(m[1]!);
+    const name = (splitKeyword(body, "for")?.[0] ?? body).trim();
+    if (name.split(/\s+/u).length <= 4) out.add(foldName(name));
+  }
+  return out;
+}
+
 /** Everything printed that a story can move, in the order Run prints it. */
-export function printedIdentities(model: SimModel): LockItem[] {
+export function printedIdentities(model: SimModel, source: string): LockItem[] {
   const out: LockItem[] = [];
-  for (const r of checkinSigns(model, "", "", "")) out.push({ kind: "room", name: r.id, identity: foldName(r.id) });
+  const reveals = storyReveals(source);
+  for (const r of checkinSigns(model, "", "", "")) {
+    const dead = r.hidden && !reveals.has(foldName(r.id));
+    out.push({ kind: "room", name: r.id, identity: `${foldName(r.id)}${dead ? NEVER_OPENS : ""}`, ...(dead ? { dead } : {}) });
+  }
   for (const a of actionSigns(model, "", "", "")) out.push({ kind: "sign", name: a.name, identity: foldName(a.name) });
   for (const d of identityDefs(model).filter(performerPickable)) out.push({ kind: "part", name: d.name, identity: foldName(d.name) });
   identityDefs(model)
@@ -102,6 +141,11 @@ export function diffLock(lock: QrLock, items: readonly LockItem[]): LockDiff {
   return { moved, gone, added };
 }
 
+/** The printed rooms nothing in the story opens. */
+export function deadRooms(items: readonly LockItem[]): LockItem[] {
+  return items.filter((i) => i.dead === true);
+}
+
 /** Does anything printed stop working? */
 export function lockBroken(d: LockDiff): boolean {
   return d.moved.length > 0 || Object.keys(d.gone).length > 0;
@@ -118,7 +162,7 @@ const WHAT: Record<LockKind, string> = {
 /** The report, one line each. A codex entry's id is fine to say; its code never appears. */
 export function lockReport(d: LockDiff): string[] {
   return [
-    ...d.moved.map((i) => `MOVED  ${WHAT[i.kind]}: ${i.name}`),
+    ...d.moved.map((i) => `MOVED  ${WHAT[i.kind]}: ${i.name}${i.dead === true ? " (nothing in the story opens it)" : ""}`),
     ...Object.entries(d.gone).map(([kind, n]) => `GONE   ${n} ${WHAT[kind as LockKind]}${n === 1 ? "" : "s"} no longer in the story (renamed or deleted)`),
     ...d.added.map((i) => `NEW    ${WHAT[i.kind]}: ${i.name} (not printed yet)`),
   ];
@@ -129,8 +173,14 @@ function main(args: readonly string[]): number {
   const at = args.indexOf("--example");
   const example = at >= 0 ? (args[at + 1] ?? "") : "trapped-in-the-internet";
   const path = join(scenarioDir(example), QR_LOCK_FILE);
-  const items = printedIdentities(compileFromSource(scenarioSource(example)));
+  const source = scenarioSource(example);
+  const items = printedIdentities(compileFromSource(source), source);
+  for (const i of deadRooms(items)) process.stdout.write(`WARN   room sign: ${i.name} prints, but nothing in the story opens it: its sign can never work\n`);
   if (!check) {
+    if (deadRooms(items).length > 0 && process.env[QR_MOVED_ENV] !== "1") {
+      process.stderr.write(`✘ nothing locked. Give each \`checkin: false\` so it doesn't print, or a \`reveal\` (${QR_MOVED_ENV}=1 to lock it anyway)\n`);
+      return 1;
+    }
     writeFileSync(path, `${JSON.stringify(buildLock(items), null, 2)}\n`);
     process.stdout.write(`✓ locked ${items.length} printed identities in ${path}\n`);
     return 0;
