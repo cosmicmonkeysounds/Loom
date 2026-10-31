@@ -7,7 +7,7 @@
 //! | `GET /api/mod/photos` (the panel) | a director or a host |
 //! | `GET /api/mod/photos/thumb?spot=` (one spot's latest) | a director or a host |
 //! | `POST /api/mod/photos/arm {armed}` | a director or a host |
-//! | `POST /api/mod/photos/shot {spot, jpeg, w, h}` (a terminal's still) | a mod token |
+//! | `POST /api/mod/photos/shot {spot, jpeg, w, h}` (a terminal's still) | a mod token, and the Server Room's only during a talk at his heart |
 //! | `GET /api/mod/photos/download` (a tar, streamed) | a director |
 //! | `POST /api/mod/photos/delete {confirm: "delete"}` | a director |
 //!
@@ -19,6 +19,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import { queryTokenOf, readBody, sendJson, tokenOf } from "../http-util.ts";
 import { parseCamUpload } from "../spatial-cams.ts";
 import { PHOTO_BODY_LIMIT, PHOTO_MAX_BYTES, photosViewFor, streamTar, type PhotoBook, type PhotoPoll, type PhotoSpot } from "../photos.ts";
+import { PHOTO_ARM_FAILED, PHOTO_UNSAVED_LINE } from "../../src/photos.ts";
 
 export const PHOTOS_ROUTE = "/api/mod/photos";
 export const PHOTO_THUMB_ROUTE = "/api/mod/photos/thumb";
@@ -34,6 +35,8 @@ export interface PhotoRoutes {
   spots: () => PhotoSpot[];
   /** The heartbeat, newest first. */
   polls: () => readonly PhotoPoll[];
+  /** When the talk at his heart began; null: none is on. */
+  talkSince: () => number | null;
   now: () => number;
   silentMs: number;
   /** May this token read the panel and arm it (a director or a host)? */
@@ -43,7 +46,7 @@ export interface PhotoRoutes {
 }
 
 function viewOf(r: PhotoRoutes): ReturnType<typeof photosViewFor> {
-  return photosViewFor(r.book, r.spots(), r.polls(), r.now(), r.silentMs);
+  return photosViewFor(r.book, r.spots(), r.polls(), r.now(), r.silentMs, r.talkSince());
 }
 
 /** The GETs. False: not a photo route. */
@@ -97,8 +100,14 @@ export async function handlePhotoShot(r: PhotoRoutes, req: IncomingMessage, res:
     sendJson(res, up.status, { error: up.error });
     return true;
   }
-  if (!r.spots().some((s) => s.id === up.spot)) {
+  const spot = r.spots().find((s) => s.id === up.spot);
+  if (spot === undefined) {
     sendJson(res, 404, { error: "no such spot" });
+    return true;
+  }
+  // The talk ended while this one was on its way: it isn't kept.
+  if (spot.heart === true && r.talkSince() === null) {
+    sendJson(res, 409, { error: "nobody at the heart" });
     return true;
   }
   const out = await r.book.put(up.spot, up.jpeg);
@@ -119,8 +128,9 @@ export function handlePhotosPost(r: PhotoRoutes, req: IncomingMessage, res: Serv
       sendJson(res, 400, { error: "armed is true or false" });
       return true;
     }
-    r.book.arm(body["armed"]);
-    sendJson(res, 200, viewOf(r));
+    const saved = r.book.arm(body["armed"]);
+    if (saved) sendJson(res, 200, viewOf(r));
+    else sendJson(res, 500, { ...viewOf(r), error: body["armed"] ? PHOTO_ARM_FAILED : PHOTO_UNSAVED_LINE });
     return true;
   }
   if (path === PHOTO_DELETE_ROUTE) {

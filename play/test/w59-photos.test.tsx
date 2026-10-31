@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { readFileSync } from "node:fs";
-import { PHOTO_CAP_BYTES, type PhotosView } from "../../core/src/photos.ts";
+import { PHOTO_CAP_BYTES, PHOTO_HEART_ONLY, PHOTO_UNSAVED_LINE, type PhotosView } from "../../core/src/photos.ts";
 import { HOST_READS, HOST_ROUTES, hostCalls, type HostRoute } from "../src/host/api.ts";
 import { NOT_PHOTOS, THUMB_EVERY_MS, armHint, photosPollOutcome, thumbDue } from "../src/host/photos-model.ts";
 import { PhotoRow, PhotosHead } from "../src/host/photos.tsx";
@@ -58,6 +58,18 @@ describe("the panel", () => {
     expect(head(view({ stopped: "cap" }))).toContain("3.0 GB cap");
     expect(head(view({ stopped: "disk" }))).toContain("nearly full");
     expect(head(view(), "Can't reach the server")).toContain("Can&#x27;t reach the server");
+  });
+  it("says when a disarm hasn't reached the disk, and only then", () => {
+    expect(head(view({ unsaved: true }))).toContain("a restart would arm the photos again");
+    expect(head(view({ unsaved: true }))).toContain("SAFE");
+    expect(head(view())).not.toContain("restart");
+    expect(PHOTO_UNSAVED_LINE).toContain("restart");
+  });
+  it("notes the Server Room as only at the heart, with no alarm", () => {
+    const t = { spot: "server-room", name: "Server Room", count: 3, bytes: 1, lastAt: 88_000, note: null, only: PHOTO_HEART_ONLY };
+    const html = renderToStaticMarkup(createElement(PhotoRow, { t, now: 100_000, thumb: null }));
+    expect(html).toContain("only at the heart");
+    expect(html).not.toContain("alarm");
   });
   it("draws a terminal's count, last shot, thumbnail and note", () => {
     const t = { spot: "hall", name: "Hall", count: 12, bytes: 1, lastAt: 88_000, note: "No camera: it's off in ⚙, refused, or missing." };

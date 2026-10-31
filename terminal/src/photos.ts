@@ -10,7 +10,9 @@
 //!   takes no photos, and a scanner that happens to be up doesn't change that.
 //! - **The sacred three.** The tent never sends its camera, the TV has none
 //!   (`photoTerminal`, and the server tells neither nor takes theirs). The
-//!   server room gives a still only while its camera is already running.
+//!   server room shoots only while a program is at his heart: the server decides
+//!   that, says so here as `photos`, and refuses a late still, so this file never
+//!   reads the story. Its webcam is the feed's, like any wall's.
 //! - **Old tablets.** The canvas is off the GPU as the feed's is (`sizeCanvas`,
 //!   the Mali-400 note there), read by `toDataURL`. A still is up to 640 × 480,
 //!   the whole frame, JPEG 0.7. `StillTuner` walks down when that fails: the

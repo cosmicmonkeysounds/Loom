@@ -607,7 +607,8 @@ that differs on the tablets is most likely the GPU (see *A software canvas*).
 - **The photos open nothing.** A still is read off the stream the feed already holds, from
   the `<video>` already in the page. Never `hub.acquire` from `photos.ts`: an arm must never
   prompt or open a camera. Never a change to the screen or a sound: on the Server Room,
-  the Tent and the TV above all (the last two never shoot). A failure stays silent.
+  the Tent and the TV above all (the last two never shoot, and the Server Room only during a
+  talk at his heart, which the server decides and says with `photos`). A failure stays silent.
 - **Sound.** Terminals play only synthesised accents through `sfx()`,
   dropped while a voice holds the floor. Never play a story `sound X` here;
   those are the house router's. Every voice on the page waits on the one

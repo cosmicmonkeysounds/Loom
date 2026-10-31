@@ -203,7 +203,8 @@ the show, a director or a host sets 🌀 His voice to **Clean**.
   heard, between scenes too: use the pack's mute.
 - **📷 Terminal photos** (Desk, a host's phone): when it reads **ARMED**, in red,
   each terminal with a working camera takes a photo every 15 s, and nothing shows on
-  its screen. Never the Tent or the TV. A press makes it **SAFE**, and every terminal
+  its screen. Never the Tent or the TV, and the Server Room only while a program is at his
+  heart. A press makes it **SAFE**, and every terminal
   stops within a couple of seconds. A row with a ⚠ is a terminal that should be shooting
   and isn't. These are pictures of people: only directors and hosts see them, so keep
   the panel off a guest's eyeline.

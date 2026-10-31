@@ -3,20 +3,20 @@
 //! notes, and every route on a real `EventRuntime`, a guest refused from all of them.
 
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdtempSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdtempSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { PassThrough } from "node:stream";
 import type { IncomingMessage, ServerResponse } from "node:http";
 
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it, vi } from "vitest";
 
 import { EventRuntime } from "../server/event-runtime.ts";
-import { PHOTO_MAX_BYTES, PHOTO_MIN_FREE_BYTES, PHOTO_MIN_GAP_MS, PhotoBook, photoFileName, photoNote, photoTimeOf, photosViewFor, spotDir, streamTar, tarHeader } from "../server/photos.ts";
+import { PHOTO_HEART_SPOT, PHOTO_MAX_BYTES, PHOTO_MIN_FREE_BYTES, PHOTO_MIN_GAP_MS, PHOTO_NOTE_GRACE_MS, PhotoBook, heartTalkOn, photoFileName, photoNote, photoTimeOf, photosViewFor, spotDir, streamTar, tarHeader } from "../server/photos.ts";
 import { isHostRoute, isModSurface } from "../server/routes/host.ts";
 import { Store } from "../server/store.ts";
 import { scenarioSource } from "../examples/load.ts";
-import { PHOTO_CAP_BYTES, PHOTO_EVERY_MS, formatBytes, photoAgo, photosStopLine, photosSummary, photosViewOf } from "../src/photos.ts";
+import { PHOTO_ARM_FAILED, PHOTO_CAP_BYTES, PHOTO_EVERY_MS, PHOTO_HEART_ONLY, PHOTO_UNSAVED_LINE, formatBytes, photoAgo, photosStopLine, photosSummary, photosUnsavedLine, photosViewOf } from "../src/photos.ts";
 
 const dirs: string[] = [];
 afterAll(() => {
@@ -26,6 +26,18 @@ function fresh(): string {
   const d = mkdtempSync(join(tmpdir(), "loom-photos-"));
   dirs.push(d);
   return d;
+}
+
+/** What `fn` wrote to stderr. */
+function stderrOf(fn: () => void): string {
+  const said: string[] = [];
+  const spy = vi.spyOn(process.stderr, "write").mockImplementation((chunk) => (said.push(String(chunk)), true));
+  try {
+    fn();
+  } finally {
+    spy.mockRestore();
+  }
+  return said.join("");
 }
 
 function jpeg(n = 64, fill = 7): Buffer {
@@ -67,6 +79,38 @@ describe("the book", () => {
     expect(new PhotoBook({ dir }).summary().since).toBe(T0);
     a.arm(false);
     expect(new PhotoBook({ dir }).armed).toBe(false);
+  });
+
+  it("stops a disarm the disk refused, says so, and saves it once it can", () => {
+    const dir = fresh();
+    const clock = { t: T0 };
+    const a = new PhotoBook({ dir, now: () => clock.t, free: () => null });
+    a.arm(true);
+    // A directory where the write goes: the failure is the disk's, on any user.
+    mkdirSync(join(dir, "arm.json.tmp"));
+    const says = stderrOf(() => {
+      clock.t += 1000;
+      expect(a.arm(false)).toBe(false);
+    });
+    expect(a.armed).toBe(false);
+    expect(a.summary()).toMatchObject({ armed: false, unsaved: true, since: clock.t });
+    expect(says).toContain("EISDIR");
+    expect(says).not.toContain(dir);
+    expect(new PhotoBook({ dir, free: () => null }).armed).toBe(true);
+    // Looked at again while it still can't: one line in the log, not one a poll.
+    expect(stderrOf(() => a.summary())).toBe("");
+    rmSync(join(dir, "arm.json.tmp"), { recursive: true });
+    expect(a.summary()).toMatchObject({ armed: false, unsaved: false, since: clock.t });
+    expect(new PhotoBook({ dir, free: () => null }).armed).toBe(false);
+  });
+
+  it("changes nothing on an arm the disk refused", () => {
+    const dir = fresh();
+    const a = new PhotoBook({ dir, now: () => T0, free: () => null });
+    mkdirSync(join(dir, "arm.json.tmp"));
+    expect(stderrOf(() => expect(a.arm(true)).toBe(false))).toContain("EISDIR");
+    expect(a.armed).toBe(false);
+    expect(a.summary()).toMatchObject({ armed: false, unsaved: false, since: null });
   });
 
   it("refuses a still while disarmed, keeps one armed, and writes it where it says", async () => {
@@ -133,12 +177,67 @@ describe("the book", () => {
     expect(await b.put("ram", jpeg(1))).toEqual({ ok: false, status: 507, error: "the cap is reached" });
     expect(b.summary().count).toBe(2);
     expect(b.deleteAll()).toBe(2);
+    await b.cleared();
     expect(readdirSync(dir)).toEqual(["arm.json"]);
     expect(b.armed).toBe(true);
     expect(b.stopped()).toBeNull();
     expect(b.summary()).toMatchObject({ count: 0, bytes: 0 });
     clock.t += PHOTO_MIN_GAP_MS;
     expect(await b.put("hall", jpeg(10))).toMatchObject({ ok: true });
+  });
+
+  it("is empty the moment Delete all answers, and nothing reads a folder on its way out", async () => {
+    const clock = { t: T0 };
+    const dir = fresh();
+    const b = new PhotoBook({ dir, now: () => clock.t, free: () => null });
+    b.arm(true);
+    await b.put("hall", jpeg());
+    await b.put("a/b", jpeg());
+    expect(b.deleteAll()).toBe(2);
+    // No await: the answer doesn't wait for the disk.
+    expect(b.summary()).toMatchObject({ count: 0, bytes: 0 });
+    expect(b.files()).toEqual([]);
+    expect(await b.latest("hall")).toBeNull();
+    clock.t += PHOTO_MIN_GAP_MS;
+    expect(await b.put("hall", jpeg(10))).toMatchObject({ ok: true });
+    await b.cleared();
+    expect(readdirSync(dir).sort()).toEqual(["arm.json", "hall"]);
+    expect(b.deleteAll()).toBe(1);
+    await b.cleared();
+  });
+
+  it("finishes a delete a crash cut short, and never counts what it left", async () => {
+    const dir = fresh();
+    mkdirSync(join(dir, "hall"));
+    writeFileSync(join(dir, "hall", photoFileName(T0)), jpeg());
+    mkdirSync(join(dir, "=deleted-1-0"));
+    writeFileSync(join(dir, "=deleted-1-0", photoFileName(T0)), jpeg());
+    const b = new PhotoBook({ dir, free: () => null });
+    expect(b.summary().count).toBe(1);
+    expect(b.files().map((f) => f.name)).toEqual([`hall/${photoFileName(T0)}`]);
+    await b.cleared();
+    expect(readdirSync(dir)).toEqual(["hall"]);
+  });
+
+  it("makes no spot folder that looks like one on its way out", () => {
+    for (const spot of ["=deleted-1-0", "=x"]) expect(spotDir(spot)?.startsWith("=")).toBe(false);
+  });
+
+  it("leaves a folder it couldn't move, still counted, and says only the code", async () => {
+    const dir = fresh();
+    const b = new PhotoBook({ dir, now: () => T0, free: () => null });
+    b.arm(true);
+    await b.put("hall", jpeg());
+    chmodSync(dir, 0o500);
+    let deleted = -1;
+    const says = stderrOf(() => {
+      deleted = b.deleteAll();
+    });
+    chmodSync(dir, 0o700);
+    expect(deleted).toBe(0);
+    expect(says).not.toContain(dir);
+    expect(says).toMatch(/\(E[A-Z]+\)/u);
+    expect(b.summary().count).toBe(1);
   });
 
   it("never lets the disk fill, whatever the cap says, and looks once a minute", async () => {
@@ -256,6 +355,22 @@ describe("the notes", () => {
     expect(photoNote({ ...base, poll: poll({}) })).toContain("reload");
     expect(photoNote({ ...base, lastAt: 1000, poll: poll({ photo: "ok" }) })).toContain("no recent");
   });
+  it("owes nothing from the heart's terminal outside a talk, and everything inside one", () => {
+    const heart = (talkSince: number | null, o: object = {}) => photoNote({ ...base, lastAt: null, talk: { since: talkSince }, poll: poll(o) });
+    // No talk: it reports no photos, and that's no fault at all.
+    expect(heart(null)).toBeNull();
+    expect(heart(null, { photo: "ok" })).toBeNull();
+    // Its heartbeat can still be wrong, and that matters for the next talk.
+    expect(photoNote({ ...base, talk: { since: null }, poll: undefined })).toContain("Not heard");
+    expect(heart(null, { visible: false })).toContain("hidden");
+    // A talk just begun has its grace, however long ago it was armed…
+    expect(heart(base.now - PHOTO_NOTE_GRACE_MS + 1)).toBeNull();
+    // …and after it the terminal owes photos like any other.
+    expect(heart(base.now - PHOTO_NOTE_GRACE_MS)).toContain("reload");
+    expect(heart(base.now - PHOTO_NOTE_GRACE_MS, { photo: "ok" })).toContain("no recent");
+    expect(heart(base.now - PHOTO_NOTE_GRACE_MS, { photo: "camera" })).toContain("No camera");
+  });
+
   it("keeps a spot that left the map, with no note", async () => {
     const clock = { t: T0 };
     const b = new PhotoBook({ dir: fresh(), now: () => clock.t, free: () => null });
@@ -283,6 +398,13 @@ describe("the words", () => {
     expect(photosStopLine({ stopped: null, capBytes: 1 })).toBeNull();
     expect(photosStopLine({ stopped: "cap", capBytes: PHOTO_CAP_BYTES })).toContain("3.0 GB");
     expect(photosStopLine({ stopped: "disk", capBytes: 1 })).toContain("disk");
+    expect(photosUnsavedLine({})).toBeNull();
+    expect(photosUnsavedLine({ unsaved: true })).toBe(PHOTO_UNSAVED_LINE);
+  });
+  it("reads what the server room and an unsaved disarm add, off the wire", () => {
+    expect(photosViewOf({ armed: false, now: 5, unsaved: true, terminals: [{ spot: "server-room", only: PHOTO_HEART_ONLY }, { spot: "hall" }] })).toMatchObject({ unsaved: true, terminals: [{ only: PHOTO_HEART_ONLY }, { spot: "hall" }] });
+    expect(photosViewOf({ armed: false, now: 5, terminals: [{ spot: "hall" }] })).not.toHaveProperty("unsaved");
+    expect(photosViewOf({ armed: false, now: 5, terminals: [{ spot: "hall" }] })?.terminals[0]).not.toHaveProperty("only");
   });
 });
 
@@ -339,6 +461,8 @@ async function call(rt: EventRuntime, method: "GET" | "POST", path: string, body
 }
 
 const still = (spot: string, b = jpeg()) => ({ spot, jpeg: b.toString("base64"), w: 640, h: 480 });
+/** Past `PHOTO_LATE_MS`, the note that fired for the server room outside a talk. */
+const PHOTO_LATE = 60_000;
 
 async function tokens(rt: EventRuntime) {
   const mod = (await call(rt, "POST", "/api/mod/login", { passcode: CODES.mod })).json.token as string;
@@ -362,7 +486,6 @@ describe("the routes", () => {
     expect(armed.status).toBe(200);
     expect(armed.json).toMatchObject({ armed: true, count: 0 });
     expect((await screen(rt, t.mod, "hall")).photos).toBe(true);
-    expect((await screen(rt, t.mod, "server-room")).photos).toBe(true);
     for (const spot of ["tent", "desktop-tv", "nowhere", ""]) expect("photos" in (await screen(rt, t.mod, spot))).toBe(false);
     expect((await call(rt, "POST", "/api/mod/photos/shot", still("hall"), { token: t.mod })).json).toEqual({ ok: true, at: T0 });
     await call(rt, "POST", "/api/mod/photos/arm", { armed: false }, { moderator: true });
@@ -370,6 +493,138 @@ describe("the routes", () => {
     clock.t += PHOTO_EVERY_MS;
     expect((await call(rt, "POST", "/api/mod/photos/shot", still("hall"), { token: t.mod })).status).toBe(409);
     expect((await call(rt, "POST", "/api/mod/photos/arm", { armed: "yes" }, { token: t.host })).status).toBe(400);
+  });
+
+  it("reads the heart's talk: the stage, a talker, the door shut, the night not over", () => {
+    const read = (o: Record<string, string>) => (path: string) => o[path.slice("Night.".length)] ?? null;
+    const talk = { heart_stage: "talk", heart_talker: "Winamp", server_door: "closed", ended: "false" };
+    expect(heartTalkOn(read(talk))).toBe(true);
+    for (const stage of ["sealed", "door", "scan", "done"]) expect(heartTalkOn(read({ ...talk, heart_stage: stage }))).toBe(false);
+    // The name stays after a talk, so it says nothing alone; the stage goes back to scan.
+    for (const talker of ["none", ""]) expect(heartTalkOn(read({ ...talk, heart_talker: talker }))).toBe(false);
+    expect(heartTalkOn(read({ heart_stage: "talk" }))).toBe(false);
+    expect(heartTalkOn(read({ ...talk, server_door: "open" }))).toBe(false);
+    expect(heartTalkOn(read({ ...talk, ended: "true" }))).toBe(false);
+    expect(heartTalkOn(read({ heart_stage: "talk", heart_talker: "Winamp" }))).toBe(true);
+  });
+
+  it("tells the server room to shoot only during a talk, and keeps a still from nowhere else", async () => {
+    const clock = { t: T0 };
+    const rt = runtime(clock);
+    const t = await tokens(rt);
+    const room = () => screen(rt, t.mod, PHOTO_HEART_SPOT);
+    const shot = async () => (await call(rt, "POST", "/api/mod/photos/shot", still(PHOTO_HEART_SPOT), { token: t.mod })).status;
+    const set = async (path: string, value: string) => expect((await call(rt, "POST", "/api/mod/var", { path, value }, { token: t.mod })).status).toBe(200);
+    const count = async () => ((await call(rt, "GET", "/api/mod/photos", {}, { token: t.mod })).json as { count: number }).count;
+
+    // Armed with nobody at the heart: not told, and refused all the same.
+    await call(rt, "POST", "/api/mod/photos/arm", { armed: true }, { token: t.host });
+    expect("photos" in (await room())).toBe(false);
+    expect(await shot()).toBe(409);
+
+    // A talk.
+    await set("Night.heart_talker", "Winamp");
+    expect("photos" in (await room())).toBe(false);
+    await set("Night.heart_stage", "talk");
+    expect((await room()).photos).toBe(true);
+    expect(await shot()).toBe(200);
+    expect(await count()).toBe(1);
+
+    // The door opens on it: the talk waits, and so do the photos.
+    await set("Night.server_door", "open");
+    expect("photos" in (await room())).toBe(false);
+    clock.t += PHOTO_EVERY_MS;
+    expect(await shot()).toBe(409);
+    await set("Night.server_door", "closed");
+    expect((await room()).photos).toBe(true);
+    expect(await shot()).toBe(200);
+    expect(await count()).toBe(2);
+
+    // The program walks off, and the talker's name stays. A late still isn't kept.
+    await set("Night.heart_stage", "scan");
+    expect("photos" in (await room())).toBe(false);
+    clock.t += PHOTO_EVERY_MS;
+    expect(await shot()).toBe(409);
+    expect(await count()).toBe(2);
+
+    // Disarmed in the middle of a talk: nothing, whatever the story says.
+    await set("Night.heart_stage", "talk");
+    expect((await room()).photos).toBe(true);
+    await call(rt, "POST", "/api/mod/photos/arm", { armed: false }, { token: t.host });
+    expect("photos" in (await room())).toBe(false);
+    expect(await shot()).toBe(409);
+    expect(await count()).toBe(2);
+
+    // Every other terminal is no part of this.
+    await set("Night.heart_stage", "sealed");
+    await call(rt, "POST", "/api/mod/photos/arm", { armed: true }, { token: t.host });
+    expect((await screen(rt, t.mod, "hall")).photos).toBe(true);
+    rt.dispose();
+  });
+
+  it("notes the server room as only at the heart, armed or safe, and owes nothing outside a talk", async () => {
+    const clock = { t: T0 };
+    const rt = runtime(clock);
+    const t = await tokens(rt);
+    const row = async () => ((await call(rt, "GET", "/api/mod/photos", {}, { token: t.host })).json as { terminals: Array<{ spot: string; note: string | null; only?: string }> }).terminals.find((r) => r.spot === PHOTO_HEART_SPOT)!;
+    const beat = async (ph: string) => call(rt, "GET", `/api/screen/state?name=SR&spot=${PHOTO_HEART_SPOT}&view=auto&character=Trabolta&vis=v${ph}`, {}, { token: t.mod });
+    expect(await row()).toMatchObject({ only: PHOTO_HEART_ONLY, note: null });
+    await call(rt, "POST", "/api/mod/photos/arm", { armed: true }, { token: t.mod });
+    clock.t += PHOTO_LATE;
+    await beat("");
+    expect(await row()).toMatchObject({ only: PHOTO_HEART_ONLY, note: null });
+    expect(((await call(rt, "GET", "/api/mod/photos", {}, { token: t.mod })).json as { terminals: Array<{ spot: string; only?: string }> }).terminals.find((r) => r.spot === "hall")).not.toHaveProperty("only");
+
+    // A talk starts: its grace first, then it's owed like any terminal.
+    await call(rt, "POST", "/api/mod/var", { path: "Night.heart_talker", value: "Winamp" }, { token: t.mod });
+    await call(rt, "POST", "/api/mod/var", { path: "Night.heart_stage", value: "talk" }, { token: t.mod });
+    expect((await beat("")).json.photos).toBe(true);
+    expect((await row()).note).toBeNull();
+    clock.t += PHOTO_NOTE_GRACE_MS;
+    await beat("&ph=ok");
+    expect((await row()).note).toContain("no recent");
+    await call(rt, "POST", "/api/mod/photos/shot", still(PHOTO_HEART_SPOT), { token: t.mod });
+    expect((await row()).note).toBeNull();
+
+    // It ends: no note, however long after.
+    await call(rt, "POST", "/api/mod/var", { path: "Night.heart_stage", value: "scan" }, { token: t.mod });
+    clock.t += PHOTO_LATE;
+    await beat("");
+    expect((await row()).note).toBeNull();
+    rt.dispose();
+  });
+
+  it("answers a press the disk refused with what stands now", async () => {
+    const clock = { t: T0 };
+    const dir = fresh();
+    const rt = runtime(clock, dir);
+    const t = await tokens(rt);
+    const arm = (armed: boolean) => call(rt, "POST", "/api/mod/photos/arm", { armed }, { token: t.host });
+    const tmp = join(dir, "photos", "arm.json.tmp");
+    expect((await arm(true)).status).toBe(200);
+    expect((await call(rt, "POST", "/api/mod/photos/shot", still("hall"), { token: t.mod })).status).toBe(200);
+
+    mkdirSync(tmp);
+    const out = await arm(false);
+    expect(out.status).toBe(500);
+    expect(out.json).toMatchObject({ armed: false, unsaved: true, error: PHOTO_UNSAVED_LINE });
+    // It stopped anyway: no terminal is told, and a late still isn't kept.
+    expect("photos" in (await screen(rt, t.mod, "hall"))).toBe(false);
+    clock.t += PHOTO_EVERY_MS;
+    expect((await call(rt, "POST", "/api/mod/photos/shot", still("hall"), { token: t.mod })).status).toBe(409);
+    expect((await call(rt, "GET", "/api/mod/photos", {}, { token: t.host })).json).toMatchObject({ armed: false, unsaved: true });
+
+    // An arm while the disk still refuses changes nothing, and says so.
+    const refused = await arm(true);
+    expect(refused.status).toBe(500);
+    expect(refused.json).toMatchObject({ armed: false, error: PHOTO_ARM_FAILED });
+
+    rmSync(tmp, { recursive: true });
+    const healed = (await call(rt, "GET", "/api/mod/photos", {}, { token: t.host })).json;
+    expect(healed).toMatchObject({ armed: false });
+    expect(healed).not.toHaveProperty("unsaved");
+    expect(JSON.parse(readFileSync(join(dir, "photos", "arm.json"), "utf8")).armed).toBe(false);
+    rt.dispose();
   });
 
   it("takes no still from the tent, the TV or a spot off the map", async () => {

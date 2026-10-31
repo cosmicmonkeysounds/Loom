@@ -319,7 +319,7 @@ What the crew reads. No guest sees any of it, and neither does a terminal in use
 
 | Where | Words |
 |---|---|
-| `core/src/photos.ts` | **ARMED** · **SAFE** · *n photos · n MB of 3.0 GB* · *Stopped: the 3.0 GB cap is reached. Download them and delete them on Run → Terminals to carry on.* · *Stopped: the server's disk is nearly full. Nothing more is being kept.* |
+| `core/src/photos.ts` | **ARMED** · **SAFE** · *n photos · n MB of 3.0 GB* · *only at the heart* · *Stopped: the 3.0 GB cap is reached. Download them and delete them on Run → Terminals to carry on.* · *Stopped: the server's disk is nearly full. Nothing more is being kept.* · *Safe now, but the server couldn't save that: a restart would arm the photos again.* · *The server couldn't save that, so the photos are still safe.* |
 | `core/server/photos.ts` | *Not heard from: is it on?* · *Its page is hidden: the screen is off, or another app is up.* · *No camera: it's off in ⚙, refused, or missing.* · *Camera on, but no picture yet.* · *Its photos aren't getting through.* · *Reports fine, but no recent photo.* · *Not reporting: reload it (an old build).* |
 | `play/src/host/photos-model.ts` | *Press to arm* · *Press to make safe* · *This server takes no photos yet.* |
 | `terminal/src/photo-status.ts` (⚙ only) | *photos armed — one every 15 s* and its four other states |
@@ -377,7 +377,8 @@ preview, before the doors. The owed checks of waves 53–58 still stand on their
     stamp, and `predeploy.sh` doesn't run the Postgres-gated core tests. Run those on the same
     commit with `DATABASE_URL` set. Any change to the story after that needs both again.
 19. **The terminals' photos** (`docs/loom-w59-photos-contract.md`): 📷 armed on the preview, one real
-    tablet and the Server Room, a still that shows the room in its real light, then disarmed. The VPS's
+    tablet, a still that shows the room in its real light, then disarmed. The Server Room in a real talk:
+    stills from the C310 inside it, none before or after it. The VPS's
     free space too (`df -h` on it), since under 2 GB free the panel stops at once. Only Chromium's fake
     camera has run it. Run's card, with its ⬇ and 🗑, has never been opened, like the rest of Run.
 

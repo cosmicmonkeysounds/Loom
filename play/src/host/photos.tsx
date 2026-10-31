@@ -11,7 +11,8 @@
 import "./photos.css";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { photoAgo, photosState, photosStopLine, photosSummary, photosViewOf, type PhotoTerminal, type PhotosView } from "../../../core/src/photos.ts";
+import { PHOTO_UNSAVED_LINE, photoAgo, photosState, photosStopLine, photosSummary, photosUnsavedLine, photosViewOf, type PhotoTerminal, type PhotosView } from "../../../core/src/photos.ts";
+import { ApiError } from "../client.ts";
 import { startPoll } from "../director.tsx";
 import type { HostCalls } from "./api.ts";
 import { browserPollDeps, eventBase, type HostAuth } from "./client.ts";
@@ -99,6 +100,7 @@ export function PhotoRow({ t, now, thumb }: { t: PhotoTerminal; now: number; thu
       <span className="host-photos-body">
         <span className="host-photos-name">{t.name}</span>
         {t.count} · last {photoAgo(now, t.lastAt)}
+        {t.only !== undefined && ` · ${t.only}`}
         {t.note !== null && <span className="host-note alarm"> ⚠ {t.note}</span>}
       </span>
     </li>
@@ -112,6 +114,7 @@ function LiveRow({ auth, t, now }: { auth: HostAuth; t: PhotoTerminal; now: numb
 /** The arm and the count, off a view. */
 export function PhotosHead({ view, note, onArm }: { view: PhotosView; note: string | null; onArm: (armed: boolean) => Promise<unknown> | void }) {
   const stop = photosStopLine(view);
+  const unsaved = photosUnsavedLine(view);
   return (
     <>
       <ActButton
@@ -123,13 +126,14 @@ export function PhotosHead({ view, note, onArm }: { view: PhotosView; note: stri
             <span className="host-photos-hint">{armHint(view.armed)}</span>
           </>
         }
-        title={view.armed ? "Each terminal with a working camera takes one photo every 15 s" : "No terminal is taking photos"}
+        title={view.armed ? "Each terminal with a working camera takes one photo every 15 s, the Server Room only while a program is at his heart" : "No terminal is taking photos"}
         onClick={() => onArm(!view.armed)}
       />
       <p className="host-note" data-testid="host-photos-summary">
         {photosSummary(view)}
       </p>
       {stop !== null && <p className="host-note alarm">🛑 {stop}</p>}
+      {unsaved !== null && <p className="host-note alarm">⚠ {unsaved}</p>}
       {note !== null && <p className="host-note alarm">⚠ {note}</p>}
     </>
   );
@@ -145,7 +149,8 @@ export function PhotosSection({ auth, calls }: { auth: HostAuth; calls: HostCall
       if (next !== null) setView(next);
       setNote(null);
     } catch (e) {
-      setNote(failText(e));
+      // The server's words say what stands, and a refused disarm's are the view's to clear.
+      setNote(e instanceof ApiError ? (e.message === PHOTO_UNSAVED_LINE ? null : e.message) : failText(e));
     } finally {
       refresh();
     }

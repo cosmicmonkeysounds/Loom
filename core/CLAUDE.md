@@ -714,10 +714,15 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   `PHOTO_MIN_FREE_BYTES` (2 GB). `routes/photos.ts`: the panel, the thumbnail and the arm
   are on the host allowlist, and never the still (`/api/mod/photos/shot`, a mod token,
   read off the header before the body), the download (`streamTar`, one file in memory at
-  a time) or Delete all. `photoSpots()` leaves out the tent and the TV, and `photosFor`
-  says `photos: true` on the screen state only to a spot that may shoot. The heartbeat's
-  `ph=` feeds the panel's notes (`photoNote`). Tests: `test/w59-photos.test.ts`,
-  `scripts/sim/photos.spec.ts`.
+  a time) or Delete all (renamed aside, then an async `rm`; a crash's leftovers go at the
+  next start). `photoSpots()` leaves out the tent and the TV, and `photosFor` says `photos:
+  true` on the screen state only to a spot that may shoot now. `PHOTO_HEART_SPOT`, the server
+  room, may only during a talk (`heartTalkOn`: the stage, a talker, the door not open, the
+  night not over), and its still is refused 409 outside one. `arm` writes first: refused by
+  the disk an arm changes nothing, a disarm stops anyway and stays `unsaved` until a write
+  lands. The heartbeat's `ph=` feeds the panel's notes (`photoNote`). When the talk began is
+  memory only (`heartTalkFrom`: the note's grace). Tests: `test/w59-photos.test.ts`,
+  `test/trapped-heart.test.ts`, `scripts/sim/photos.spec.ts`.
 - **Hub files have one owner at a time.** `event-runtime.ts`,
   `views.ts`, `chat.ts` and `sim.ts` are touched by almost every
   feature; when several agents work in parallel, give each of these to

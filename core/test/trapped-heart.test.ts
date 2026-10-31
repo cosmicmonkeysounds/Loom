@@ -23,6 +23,8 @@ import { mentionsKey } from "../src/answer-match.ts";
 import { cueState, guestView, modView } from "../server/views.ts";
 import { cueRows } from "../src/cue-sheet.ts";
 import { menuChannelsFor } from "../server/chat.ts";
+import { worldString } from "../server/agent-recent.ts";
+import { heartTalkOn } from "../server/photos.ts";
 import { validateLights, planLook } from "@loom/house";
 import type { HouseMap, LightsConfig } from "@loom/house";
 
@@ -143,6 +145,41 @@ function toLayerThree(sim: Sim, id = "g1"): void {
   pick(sim, id, "Then listen to me");
   expect(heartMenu(sim, id)?.beat).toBe("Heart Layer Three");
 }
+
+// ───────────────────────── the photos (wave 59p) ─────────────────────────
+
+describe("The Heart — when the Server Room may shoot (wave 59p)", () => {
+  it("is only a talk: sealed, the door, the scan, an open door, a walk-off and an ending are not", { timeout: SLOW }, () => {
+    const talking = (sim: Sim) => heartTalkOn((path) => worldString(sim.world.peek(path)));
+    const sim = awake();
+    expect(talking(sim)).toBe(false);
+    open(sim);
+    expect(v(sim, "Night.heart_stage")).toBe("door");
+    expect(talking(sim)).toBe(false);
+    shut(sim);
+    expect(v(sim, "Night.heart_stage")).toBe("scan");
+    expect(talking(sim)).toBe(false);
+    scan(sim, "g1");
+    expect(talking(sim)).toBe(true);
+    // The door opens on the talk: the stage stays, and the talk waits.
+    open(sim);
+    expect(v(sim, "Night.heart_stage")).toBe("talk");
+    expect(talking(sim)).toBe(false);
+    shut(sim);
+    expect(talking(sim)).toBe(true);
+    // They walk off: the name stays, the stage goes back.
+    unscan(sim, "g1");
+    expect(v(sim, "Night.heart_talker")).toBe("Calculator");
+    expect(talking(sim)).toBe(false);
+    scan(sim, "g2");
+    expect(v(sim, "Night.heart_talker")).toBe("Microsoft Excel");
+    expect(talking(sim)).toBe(true);
+    toY2K(sim);
+    fire(sim, "patch_combo_a");
+    expect(v(sim, "Night.heart_stage")).toBe("done");
+    expect(talking(sim)).toBe(false);
+  });
+});
 
 // ───────────────────────── the door ─────────────────────────
 

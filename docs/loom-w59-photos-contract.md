@@ -3,10 +3,13 @@
 The user, 2026-10-31: *"The terminals should be taking pictures every 15 seconds and
 uploading them to the VPS (or just local) -- I should be able to arm this from the desk."*
 
+And on the Server Room: *"Trabolta's terminal (server-room) *should* be taking pictures too, but
+only when actively engaged with a guest (if that's not too much)"*
+
 When armed, each terminal with a working camera takes one still every 15 s and uploads
-it to the VPS. Disarmed, nothing. On the terminal nothing shows: no flash, no sound, no
-pop-up, no change to the screen. Words on it are `DRAFT w59p`
-(`SIGNOFF-w59.md` §4.12).
+it to the VPS, and the Server Room does while a program is at his heart. Disarmed, nothing.
+On the terminal nothing shows: no flash, no sound, no pop-up, no change to the screen. Words
+on it are `DRAFT w59p` (`SIGNOFF-w59.md` §4.12).
 
 **These are pictures of people.** Everything below follows from that.
 
@@ -16,7 +19,7 @@ pop-up, no change to the screen. Words on it are `DRAFT w59p`
 |---|---|
 | A wall, chess, casino or Server Door terminal with the games' camera setting on | Yes |
 | The same with that setting off (`cam=0`, ⚙) | No, and arming never turns it on: the panel says *No camera* |
-| The Server Room | Only while its camera is already running. Nothing on its CRT or in its sound changes, and a failure stays silent |
+| The Server Room | Only during a talk at his heart (below). Nothing on its CRT or in its sound changes, and a failure stays silent |
 | The Tent | Never. It sends no camera (the feed's rule). The server doesn't tell it, and refuses its spot |
 | The TV | Never. It has no camera. Same |
 | A terminal with no spot | Never: it has nowhere to file a still |
@@ -26,6 +29,17 @@ pop-up, no change to the screen. Words on it are `DRAFT w59p`
 is read off that stream from the `<video>` already in the page, so an arm can't prompt and
 can't open a camera that wasn't set up. A scanner up on a terminal with the setting off
 doesn't count: that terminal said no.
+
+**A talk at his heart** is `Night.heart_stage == "talk"` with a talker (`Night.heart_talker`, not
+`none`), the door not open and the night not over (`heartTalkOn`, `core/server/photos.ts`). Sealed,
+the door, the scan and done take none. So does an open door: the stage stays `talk` there, but the
+talk waits until it's shut. The name stays on `heart_talker` after a talk, so it never says so alone.
+The server decides, and a terminal never reads the story: `photos: true` reaches `server-room` only
+during a talk, and its still is refused 409 outside one, so a late one isn't kept. The panel's row
+reads *only at the heart*, and owes no photo outside a talk: only its heartbeat can raise a note there.
+Inside one the notes start 20 s after the talk's first read (that time is memory only). The kiosk link has
+no `cam=0`, so the feed already holds the C310 there: this path opens nothing and can't prompt, though
+the user allowed that terminal to.
 
 ## C2. A still (`terminal/src/photos.ts`)
 
@@ -59,10 +73,10 @@ on receipt. Files 0600, folders 0700.
 |---|---|---|
 | `GET /api/mod/photos` | director, host | `PhotosView`: the arm, the counts, each terminal |
 | `GET /api/mod/photos/thumb?spot=` | director, host | that spot's latest still, off the disk, `no-store` |
-| `POST /api/mod/photos/arm {armed}` | director, host | the press; answers `PhotosView` |
-| `POST /api/mod/photos/shot {spot, jpeg, w, h}` | a mod token (a terminal) | 409 disarmed, 429 inside 10 s of the last, 404 not a photo spot, 413 over 400 KB, 507 stopped |
+| `POST /api/mod/photos/arm {armed}` | director, host | the press; answers `PhotosView`, or 500 with `error` and the view when the disk refused it |
+| `POST /api/mod/photos/shot {spot, jpeg, w, h}` | a mod token (a terminal) | 409 disarmed or the Server Room outside a talk, 429 inside 10 s of the last, 404 not a photo spot, 413 just over 400 KB, 507 stopped. A body past the cap's envelope (a still of about 400.7 KB up) has its connection cut with no status; no terminal gets there, since it checks the size before it sends |
 | `GET /api/mod/photos/download` | director | a tar, one file in memory at a time, waiting on a slow reader |
-| `POST /api/mod/photos/delete {confirm: "delete"}` | director | every still; the arm stays |
+| `POST /api/mod/photos/delete {confirm: "delete"}` | director | every still; the arm stays. The folders are renamed aside at once and leave the disk behind the answer, so the loop never stalls and the panel reads 0 straight away. A crash in between: the next start finishes it, and nothing ever counts or tars them |
 
 - **Not in the journal, not in memory** (the thumbnail is read off the disk too, and the tally
   holds numbers), **not under `/media/`, not in the screen state** but for the arm, never in a
@@ -72,7 +86,12 @@ on receipt. Files 0600, folders 0700.
 - **The arm** lives in `arm.json`, so it survives a restart and a story reload. Only a press
   changes it. A boot with it armed says so on stderr, like the TV's mute. It reaches a terminal
   as `photos: true` on the screen state, which is already moderators only, and only on a spot
-  that may shoot. Disarming stops within one poll, and the server refuses a late still anyway.
+  that may shoot now. Disarming stops within one poll, and the server refuses a late still anyway.
+- **A press the disk refuses.** It's written before it counts. An arm that can't be written changes
+  nothing and answers 500. A disarm stops the photos anyway, because SAFE must mean safe now, and
+  answers 500 too: the view carries `unsaved` and both panels say *a restart would arm the photos
+  again* until a write lands. An open panel's poll is what retries it. The log carries the error's
+  code and never its message, which holds the path.
 - **The cap.** 3 GB an event (`PHOTO_CAP_BYTES`), and the disk keeps 2 GB free whatever the cap
   says (`PHOTO_MIN_FREE_BYTES`, looked at once a minute), so no number of events can fill it.
   Either stops the photos, and the panel says so. A 507 from the disk itself is the same.
@@ -96,7 +115,8 @@ on receipt. Files 0600, folders 0700.
   its own two-step on the page.
 - **The notes** (`photoNote`, pure): *not heard from*, *page hidden*, *no camera*, *no picture yet*,
   *not getting through*, *not reporting* (an old build), *reports fine, but no recent photo*. None
-  for the first 20 s after arming, and none while safe. They read the heartbeat's `ph=`.
+  for the first 20 s after arming, and none while safe. They read the heartbeat's `ph=`. A row may
+  also have `only`, plain words and no warning: the Server Room's *only at the heart*, armed or safe.
 
 ## C5. What this doesn't do
 

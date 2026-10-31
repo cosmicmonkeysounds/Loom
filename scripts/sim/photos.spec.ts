@@ -1,8 +1,10 @@
 // The terminals' photos (wave 59p, docs/loom-w59-photos-contract.md), on real pages
 // with Chromium's fake camera, against a scratch server this spec starts and stops
 // itself, because a restart is part of the test. It arms from a host's token, sees
-// the stills land about 15 s apart, disarms, restarts, opens the Desk on a phone, and
-// refuses a guest from every route. About two minutes. Build `play` and `terminal` first.
+// the stills land about 15 s apart, walks the Server Room through a talk at his heart
+// (none before it, stills inside it, none after it, none disarmed in the middle of
+// one), disarms, restarts, opens the Desk on a phone, and refuses a guest from every
+// route. About three minutes. Build `play` and `terminal` first.
 //
 //   SIM_PHOTOS_PORT=7701 SIM_PHOTOS_STATE=<a scratch dir> SIM_SHOTS=<dir> \
 //     pnpm --filter loom-app exec playwright test -c ../scripts/sim/playwright.config.ts photos.spec
@@ -103,7 +105,8 @@ test("the terminals' photos, armed, disarmed and restarted", async ({ browser })
 
     const hall = await terminal(browser, "spot=hall");
     await terminal(browser, "spot=cpu&cam=0");
-    await terminal(browser, "spot=server-room&crt=1");
+    // The kiosk's own link, but for the serial door (`scripts/server-room/start-terminal.ps1`).
+    const room = await terminal(browser, "spot=server-room&camera=user&webcam=C310&pad=1&whisper=1&crt=1");
     await terminal(browser, "spot=tent");
     await terminal(browser, "spot=desktop-tv");
 
@@ -133,7 +136,6 @@ test("the terminals' photos, armed, disarmed and restarted", async ({ browser })
     expect(shots("cpu")).toEqual([]);
     expect(shots("tent")).toEqual([]);
     expect(shots("desktop-tv")).toEqual([]);
-    expect(shots("server-room").length).toBeGreaterThanOrEqual(3);
     const polls = (await get("/api/mod/screen/terminals", mod)).json["terminals"] as Array<{ spot: string; photo?: string }>;
     for (const spot of ["tent", "desktop-tv"]) expect(polls.find((p) => p.spot === spot)?.photo, spot).toBeUndefined();
 
@@ -152,12 +154,49 @@ test("the terminals' photos, armed, disarmed and restarted", async ({ browser })
     expect(thumb.status).toBe(200);
     expect(thumb.body[0]).toBe(0xff);
 
-    // Disarm: it stops within a poll.
+    // The Server Room, armed with nobody at his heart: not a still in those 45 s, no
+    // note, and one sent anyway isn't kept.
+    expect(shots("server-room")).toEqual([]);
+    expect(row("server-room")).toMatchObject({ note: null, only: "only at the heart" });
+    const anyJpeg = first.toString("base64");
+    expect((await post("/api/mod/photos/shot", { spot: "server-room", jpeg: anyJpeg, w: 640, h: 480 }, mod)).status).toBe(409);
+    expect(shots("server-room")).toEqual([]);
+    const screenBefore = await room.evaluate(() => ({ videos: document.querySelectorAll("video").length, canvases: document.querySelectorAll("canvas").length, images: document.querySelectorAll("img").length }));
+
+    // A talk starts: stills, about 15 s apart, and nothing on its screen moves.
+    const stage = async (value: string, talker: string) => {
+      expect((await post("/api/mod/var", { path: "Night.heart_stage", value }, mod)).status).toBe(200);
+      expect((await post("/api/mod/var", { path: "Night.heart_talker", value: talker }, mod)).status).toBe(200);
+    };
+    await stage("talk", "Winamp");
+    await expect.poll(() => shots("server-room").length, { timeout: 40_000, intervals: [1000] }).toBeGreaterThanOrEqual(3);
+    const talked = shots("server-room");
+    const talkGaps = talked.slice(1).map((f, i) => timeOf(f) - timeOf(talked[i]!));
+    console.log(`server room: ${talked.length} stills, ${talkGaps.map((g) => (g / 1000).toFixed(1)).join(" / ")} s apart`);
+    for (const g of talkGaps) {
+      expect(g).toBeGreaterThan(13_000);
+      expect(g).toBeLessThan(17_500);
+    }
+    expect(await room.evaluate(() => ({ videos: document.querySelectorAll("video").length, canvases: document.querySelectorAll("canvas").length, images: document.querySelectorAll("img").length }))).toEqual(screenBefore);
+
+    // It ends, with the name left on the talker as the story leaves it: nothing more.
+    await stage("scan", "Winamp");
+    await room.waitForTimeout(3000);
+    const afterTalk = shots("server-room").length;
+    await room.waitForTimeout(18_000);
+    expect(shots("server-room").length).toBe(afterTalk);
+
+    // Another talk, disarmed in the middle of it: everything stops within a poll.
+    await stage("talk", "Winamp");
+    await expect.poll(() => shots("server-room").length, { timeout: 20_000, intervals: [500] }).toBeGreaterThan(afterTalk);
     await post("/api/mod/photos/arm", { armed: false }, host.token);
     await hall.waitForTimeout(3000);
     const stopped = shots("hall").length;
+    const stoppedRoom = shots("server-room").length;
     await hall.waitForTimeout(18_000);
     expect(shots("hall").length).toBe(stopped);
+    expect(shots("server-room").length).toBe(stoppedRoom);
+    await stage("done", "none");
 
     // Armed again, the arm survives a restart, and the same page carries on.
     await post("/api/mod/photos/arm", { armed: true }, mod);
@@ -169,6 +208,7 @@ test("the terminals' photos, armed, disarmed and restarted", async ({ browser })
     expect((await get("/api/mod/photos", mod2)).json).toMatchObject({ armed: true });
     await expect.poll(() => shots("hall").length, { timeout: 40_000, intervals: [1000] }).toBeGreaterThan(restarted);
     console.log(`after the restart: ${shots("hall").length} stills, still armed`);
+    expect(shots("server-room").length).toBe(stoppedRoom);
 
     // Every photo route refuses a guest, and nobody else's token reads a thing.
     const guest2 = (await post("/api/guest/register", { name: "Clippit", passcode: EVENT })).json["token"] as string;

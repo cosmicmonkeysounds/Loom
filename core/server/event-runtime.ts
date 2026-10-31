@@ -100,7 +100,7 @@ import { LIGHTS_FILE, LightsHub, handleLightsGet, handleLightsPost, lightsProble
 import { GameLightsFeed, LightsEstimate, buildGameLights } from "./lights-shown.ts";
 import { DESK_BY, DESK_FILE, DeskHub, deskHouseOf, deskLightFixtures, deskProblems, deskRefsOf, deskSeen, handleDeskGet, handleDeskPost, lookMsOf, type DeskContext, type DeskTimers } from "./desk.ts";
 import { DESK_SPEECH_GRACE_MS } from "../src/house-desk.ts";
-import { PhotoBook, type PhotoSpot } from "./photos.ts";
+import { PHOTO_HEART_SPOT, PhotoBook, heartTalkOn, type PhotoSpot } from "./photos.ts";
 import { PHOTO_DELETE_ROUTE, PHOTO_ARM_ROUTE, PHOTO_SHOT_ROUTE, handlePhotoShot, handlePhotosGet, handlePhotosPost, type PhotoRoutes } from "./routes/photos.ts";
 import { ANNOUNCE_VERB, SPEECH_ONLINE_MS, TERMINAL_SILENT_MS, ScreenWatch, announceTextOf, roomVoiceOf, speechWatchOf, spokenAnnounce, handleScreenGet, handleScreenTerminalsGet, handleScreenVoicePost, screenKingOf, screenTerminals } from "./routes/screen.ts";
 import { handleScreenIdentifyPost } from "./routes/screen.ts";
@@ -926,6 +926,7 @@ export class EventRuntime {
   readonly cams: CamStore;
   /** (wave 59p) The terminals' stills and their arm, on disk. */
   private readonly photos: PhotoBook;
+  private heartTalkFrom: number | null = null;
   /** Clippy's dream on the games' terminals (wave 50). */
   readonly dreamFeed: DreamFeed;
   /** The voice link (wave 19): terminal mics ⇄ headsets, routed by pose, memory only. */
@@ -4788,7 +4789,23 @@ export class EventRuntime {
   /** (wave 59p) The map's terminals that take stills: never the tent's (it
    *  sends no camera) and never the TV's (it has none). */
   private photoSpots(): PhotoSpot[] {
-    return (this.spatialHouse()?.terminals ?? []).filter((t) => t.view !== "reinstall" && t.view !== "tv").map((t) => ({ id: t.id, name: t.name ?? t.id }));
+    return (this.spatialHouse()?.terminals ?? []).filter((t) => t.view !== "reinstall" && t.view !== "tv").map((t) => ({ id: t.id, name: t.name ?? t.id, ...(t.id === PHOTO_HEART_SPOT ? { heart: true } : {}) }));
+  }
+
+  /** (wave 59p) When the talk at his heart began, by the first read that saw it;
+   *  null: none is on. It only starts the panel's grace. Memory only. */
+  private heartTalkSince(): number | null {
+    const sim = this.sim;
+    if (sim === null || !heartTalkOn((path) => worldString(sim.world.peek(path)))) this.heartTalkFrom = null;
+    else this.heartTalkFrom ??= this.clock();
+    return this.heartTalkFrom;
+  }
+
+  /** (wave 59p) Should the terminal at this spot take stills now? */
+  private photoShoots(spot: string): boolean {
+    if (!this.photos.armed) return false;
+    const t = this.photoSpots().find((s) => s.id === spot);
+    return t !== undefined && (t.heart !== true || this.heartTalkSince() !== null);
   }
 
   /** (wave 59p) What the photo routes need; `moderator`: the caller's author session. */
@@ -4797,6 +4814,7 @@ export class EventRuntime {
       book: this.photos,
       spots: () => this.photoSpots(),
       polls: () => this.screens.seen(),
+      talkSince: () => this.heartTalkSince(),
       now: () => this.clock(),
       silentMs: TERMINAL_SILENT_MS,
       host: (t) => moderator || this.canHostToken(t),
@@ -6645,8 +6663,8 @@ export class EventRuntime {
           language: () => ({ words: this.filter.wordCounts(), unsaid: this.filter.unsaid, level: this.filter.level, stars: this.filter.stars }),
           // Wave 59: his lines wait for the teleprompter.
           voiceHeldFrom: (channel) => this.prompters.heldFrom(channel),
-          // Wave 59p: the photos' arm, for the terminals that may take them.
-          photosFor: (spot) => this.photos.armed && this.photoSpots().some((t) => t.id === spot),
+          // Wave 59p: the photos' arm, for the terminals that may shoot now.
+          photosFor: (spot) => this.photoShoots(spot),
         },
       );
     }

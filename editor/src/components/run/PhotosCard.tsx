@@ -4,7 +4,7 @@
 //! all (a tar the browser saves as it arrives, so a big set never sits in memory)
 //! and 🗑 Delete all behind its own two-step confirm. These are pictures of people.
 
-import { photoAgo, photosState, photosStopLine, photosSummary, type PhotosView } from '@loom/core/photos'
+import { photoAgo, photosState, photosStopLine, photosSummary, photosUnsavedLine, type PhotosView } from '@loom/core/photos'
 import clsx from 'clsx'
 import { useCallback, useEffect, useState } from 'react'
 import { photosApi } from '@/lib/api'
@@ -25,10 +25,11 @@ export function thumbStep(lastAt: number): number {
 /** The panel off a view. `eventId`: for the thumbnails and the download's link. */
 export function PhotosCardBody({ view, eventId, error, confirming, onArm, onDelete, onConfirm }: { view: PhotosView; eventId: string; error: string | null; confirming: boolean; onArm: (armed: boolean) => void; onDelete: () => void; onConfirm: (open: boolean) => void }) {
   const stop = photosStopLine(view)
+  const unsaved = photosUnsavedLine(view)
   return (
     <div className="mb-2 rounded border border-zinc-800 px-2 py-1" data-testid="run-photos">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-[11px] text-zinc-400" title="Each terminal with a working camera takes one photo every 15 s while armed. Never the Tent or the TV. Invisible on the terminal.">
+        <span className="text-[11px] text-zinc-400" title="Each terminal with a working camera takes one photo every 15 s while armed, the Server Room only while a program is at his heart. Never the Tent or the TV. Invisible on the terminal.">
           📷 Photos
         </span>
         <button
@@ -71,7 +72,8 @@ export function PhotosCardBody({ view, eventId, error, confirming, onArm, onDele
         </div>
       )}
       {stop !== null && <p className="mt-1 text-[11px] text-red-300">🛑 {stop}</p>}
-      {error !== null && <p className="mt-1 text-[11px] text-amber-300">⚠ {error}</p>}
+      {unsaved !== null && <p className="mt-1 text-[11px] text-red-300">⚠ {unsaved}</p>}
+      {error !== null && error !== unsaved && <p className="mt-1 text-[11px] text-amber-300">⚠ {error}</p>}
       <ul className="mt-1 grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-1">
         {view.terminals.map((t) => (
           <li key={t.spot} className="flex min-w-0 items-center gap-1 text-[11px]" data-testid={`run-photos-row-${t.spot}`}>
@@ -80,6 +82,7 @@ export function PhotosCardBody({ view, eventId, error, confirming, onArm, onDele
               <span className="block truncate font-medium text-zinc-200">{t.name}</span>
               <span className="block text-zinc-500">
                 {t.count} · {photoAgo(view.now, t.lastAt)}
+                {t.only !== undefined && ` · ${t.only}`}
               </span>
               {t.note !== null && <span className="block text-amber-300">⚠ {t.note}</span>}
             </span>
@@ -122,7 +125,11 @@ export function PhotosCard() {
         setView(next)
         setError(null)
       },
-      (e: unknown) => setError(e instanceof Error ? e.message : String(e)),
+      (e: unknown) => {
+        setError(e instanceof Error ? e.message : String(e))
+        // A refused press can still have moved something: show what's true now.
+        photosApi.view(eventId).then(setView, () => {})
+      },
     )
   }
   return (

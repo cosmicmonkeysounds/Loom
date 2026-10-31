@@ -30,6 +30,8 @@ export interface PhotoTerminal {
   lastAt: number | null;
   /** Why a terminal that should be shooting isn't (only while armed). */
   note: string | null;
+  /** When it shoots at all, if not whenever armed: the Server Room's `PHOTO_HEART_ONLY`. */
+  only?: string;
 }
 
 /** `GET /api/mod/photos`. */
@@ -43,6 +45,8 @@ export interface PhotosView {
   bytes: number;
   capBytes: number;
   stopped: PhotosStop | null;
+  /** A disarm that couldn't be written: safe now, armed again by a restart. */
+  unsaved?: boolean;
   terminals: PhotoTerminal[];
 }
 
@@ -68,6 +72,7 @@ export function photosViewOf(raw: unknown): PhotosView | null {
       bytes: num(t["bytes"]) ?? 0,
       lastAt: num(t["lastAt"]),
       note: typeof t["note"] === "string" ? t["note"] : null,
+      ...(typeof t["only"] === "string" ? { only: t["only"] } : {}),
     });
   }
   return {
@@ -78,6 +83,7 @@ export function photosViewOf(raw: unknown): PhotosView | null {
     bytes: num(r["bytes"]) ?? 0,
     capBytes: num(r["capBytes"]) ?? PHOTO_CAP_BYTES,
     stopped: r["stopped"] === "cap" || r["stopped"] === "disk" ? r["stopped"] : null,
+    ...(r["unsaved"] === true ? { unsaved: true } : {}),
     terminals,
   };
 }
@@ -100,6 +106,15 @@ export function photoAgo(now: number, at: number | null): string {
 
 // --- the panels' words: DRAFT w59p -----------------------------------------
 
+/** The Server Room's row: it shoots only while a program is at his heart. */
+export const PHOTO_HEART_ONLY = "only at the heart";
+
+/** A disarm that couldn't be written (the route's refusal, and the panel's line until it is). */
+export const PHOTO_UNSAVED_LINE = "Safe now, but the server couldn't save that: a restart would arm the photos again.";
+
+/** An arm that couldn't be written: nothing changed. */
+export const PHOTO_ARM_FAILED = "The server couldn't save that, so the photos are still safe.";
+
 /** The big state. */
 export function photosState(v: Pick<PhotosView, "armed">): string {
   return v.armed ? "ARMED" : "SAFE";
@@ -108,6 +123,11 @@ export function photosState(v: Pick<PhotosView, "armed">): string {
 /** The line under it. */
 export function photosSummary(v: Pick<PhotosView, "count" | "bytes" | "capBytes">): string {
   return `${v.count} photo${v.count === 1 ? "" : "s"} · ${formatBytes(v.bytes)} of ${formatBytes(v.capBytes)}`;
+}
+
+/** The disarm that didn't reach the disk, or null. */
+export function photosUnsavedLine(v: Pick<PhotosView, "unsaved">): string | null {
+  return v.unsaved === true ? PHOTO_UNSAVED_LINE : null;
 }
 
 /** Why nothing is being kept, or null. */

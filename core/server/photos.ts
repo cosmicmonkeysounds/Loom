@@ -18,7 +18,7 @@ import { existsSync, mkdirSync, readdirSync, renameSync, readFileSync, rmSync, s
 import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 
-import { PHOTO_CAP_BYTES, type PhotoReport, type PhotoTerminal, type PhotosStop, type PhotosView } from "../src/photos.ts";
+import { PHOTO_CAP_BYTES, PHOTO_HEART_ONLY, type PhotoReport, type PhotoTerminal, type PhotosStop, type PhotosView } from "../src/photos.ts";
 
 /** The largest decoded still (640 × 480 at 0.7 is 40–120 KB). */
 export const PHOTO_MAX_BYTES = 400 * 1024;
@@ -33,11 +33,28 @@ const DISK_LOOK_MS = 60_000;
 /** A spot's folder name is at most this long, so a tar name always fits. */
 const SPOT_DIR_MAX = 64;
 const ARM_FILE = "arm.json";
+/** A folder being deleted starts with this, which `spotDir` can never make. */
+const ASIDE = "=deleted-";
+
+/** The terminal that shoots only while a program is at his heart. */
+export const PHOTO_HEART_SPOT = "server-room";
 
 /** A map terminal that takes stills. */
 export interface PhotoSpot {
   id: string;
   name: string;
+  /** Only during a talk at his heart. */
+  heart?: boolean;
+}
+
+/**
+ * Is a program at his heart now? The stage's `talk`, a talker's name (`none`
+ * until the first talk; the name stays after one, so it never says so alone), the
+ * door shut (open, *the talk waits until it is shut*) and the night not over.
+ */
+export function heartTalkOn(read: (path: string) => string | null): boolean {
+  const talker = read("Night.heart_talker");
+  return read("Night.heart_stage") === "talk" && talker !== null && talker !== "" && talker !== "none" && read("Night.server_door") !== "open" && read("Night.ended") !== "true";
 }
 
 /** The heartbeat, as much of it as a note reads. */
@@ -92,6 +109,11 @@ export function photoTimeOf(name: string): number | null {
   return Number.isFinite(at) ? at : null;
 }
 
+/** What a log may say of a failure: the code, never a message, which holds a path. */
+function codeOf(e: unknown): string {
+  return (e as NodeJS.ErrnoException).code ?? "unknown";
+}
+
 /** The free bytes on the disk that holds `dir`; null: can't tell. */
 function diskFree(dir: string): number | null {
   try {
@@ -109,7 +131,12 @@ export class PhotoBook {
   private readonly free: () => number | null;
   private readonly capBytes: number;
   private armState: { armed: boolean; since: number | null };
+  /** A disarm the disk refused: safe in memory, armed on the disk. */
+  private unsaved = false;
   private tally: Map<string, SpotTally> | null = null;
+  /** The folders on their way off the disk, for whoever needs to wait for them. */
+  private clearing: Promise<unknown> = Promise.resolve();
+  private asides = 0;
   /** Bytes being written now, which already count against the cap. */
   private writing = 0;
   private lookedAt = -Infinity;
@@ -121,6 +148,8 @@ export class PhotoBook {
     this.free = o.free ?? (() => diskFree(o.dir));
     this.capBytes = o.capBytes ?? PHOTO_CAP_BYTES;
     this.armState = this.loadArm();
+    // Deleted before a crash: they go now, not whenever a panel next looks.
+    for (const name of this.folders().filter((f) => f.startsWith(ASIDE))) this.clear(join(this.dir, name));
   }
 
   private loadArm(): { armed: boolean; since: number | null } {
@@ -136,19 +165,38 @@ export class PhotoBook {
     return this.armState.armed;
   }
 
-  /** A press. Written first, so a press the server took survives a crash. */
-  arm(armed: boolean): void {
-    if (armed === this.armState.armed) return;
-    this.armState = { armed, since: this.now() };
+  private save(state: { armed: boolean; since: number | null }): boolean {
     try {
       mkdirSync(this.dir, { recursive: true, mode: 0o700 });
       const tmp = join(this.dir, `${ARM_FILE}.tmp`);
-      writeFileSync(tmp, JSON.stringify(this.armState), { mode: 0o600 });
+      writeFileSync(tmp, JSON.stringify(state), { mode: 0o600 });
       renameSync(tmp, join(this.dir, ARM_FILE));
+      return true;
     } catch (e) {
-      // Armed in memory is what was asked; a restart forgets it, and says so here.
-      process.stderr.write(`  📷 the photos' arm could not be saved: ${(e as Error).message}\n`);
+      if (!this.unsaved) process.stderr.write(`  📷 the photos' arm could not be saved (${codeOf(e)})\n`);
+      return false;
     }
+  }
+
+  /**
+   * A press, written first, so one the server took survives a crash. False: the
+   * disk refused it. An arm then changes nothing. A disarm stops the photos
+   * anyway, because SAFE must mean safe now, and stays `unsaved` until a write
+   * lands, since a restart would read the old file and arm them again.
+   */
+  arm(armed: boolean): boolean {
+    if (armed === this.armState.armed && !this.unsaved) return true;
+    const next = armed === this.armState.armed ? this.armState : { armed, since: this.now() };
+    if (this.save(next)) {
+      this.armState = next;
+      this.unsaved = false;
+      return true;
+    }
+    if (!armed) {
+      this.armState = next;
+      this.unsaved = true;
+    }
+    return false;
   }
 
   /** The tally, read off the disk the first time it's asked for. A half-written still from a crash goes. */
@@ -177,7 +225,7 @@ export class PhotoBook {
     return tally;
   }
 
-  private spotFolders(): string[] {
+  private folders(): string[] {
     try {
       return readdirSync(this.dir, { withFileTypes: true })
         .filter((d) => d.isDirectory())
@@ -186,6 +234,18 @@ export class PhotoBook {
     } catch {
       return [];
     }
+  }
+
+  private spotFolders(): string[] {
+    return this.folders().filter((f) => !f.startsWith(ASIDE));
+  }
+
+  /** Off the disk, on the thread pool: tens of thousands of files must not stall the night. */
+  private clear(path: string): void {
+    const gone = rm(path, { recursive: true, force: true }).catch((e: unknown) => {
+      process.stderr.write(`  📷 deleted photos stayed on the disk (${codeOf(e)}); the next start tries again\n`);
+    });
+    this.clearing = Promise.all([this.clearing, gone]);
   }
 
   private usedBytes(): number {
@@ -260,16 +320,35 @@ export class PhotoBook {
     return out;
   }
 
-  /** Delete every still; the arm stays as it is. Answers how many went. */
+  /**
+   * Delete every still; the arm stays as it is. Answers how many went. The folders
+   * are renamed aside here, so nothing reads them from now on, and leave the disk
+   * behind the answer. A folder that won't move stays, and stays counted.
+   */
   deleteAll(): number {
-    let count = 0;
-    for (const row of this.tallies().values()) count += row.count;
-    for (const dir of this.spotFolders()) rmSync(join(this.dir, dir), { recursive: true, force: true });
-    this.tally = new Map();
-    return count;
+    const count = (): number => [...this.tallies().values()].reduce((n, row) => n + row.count, 0);
+    const before = count();
+    for (const dir of this.spotFolders()) {
+      const aside = join(this.dir, `${ASIDE}${this.now()}-${this.asides++}`);
+      try {
+        renameSync(join(this.dir, dir), aside);
+        this.clear(aside);
+      } catch (e) {
+        process.stderr.write(`  📷 a terminal's photos could not be deleted (${codeOf(e)})\n`);
+      }
+    }
+    this.tally = null;
+    return before - count();
   }
 
-  summary(): { armed: boolean; since: number | null; count: number; bytes: number; capBytes: number; stopped: PhotosStop | null; spots: ReadonlyMap<string, Readonly<SpotTally>> } {
+  /** Resolves once every folder deleted so far has left the disk. */
+  async cleared(): Promise<void> {
+    await this.clearing;
+  }
+
+  summary(): { armed: boolean; since: number | null; unsaved: boolean; count: number; bytes: number; capBytes: number; stopped: PhotosStop | null; spots: ReadonlyMap<string, Readonly<SpotTally>> } {
+    // An open panel is what retries a disarm the disk refused.
+    if (this.unsaved) this.arm(false);
     const spots = this.tallies();
     let count = 0;
     let bytes = 0;
@@ -277,7 +356,7 @@ export class PhotoBook {
       count += row.count;
       bytes += row.bytes;
     }
-    return { ...this.armState, count, bytes, capBytes: this.capBytes, stopped: this.stopped(), spots };
+    return { ...this.armState, unsaved: this.unsaved, count, bytes, capBytes: this.capBytes, stopped: this.stopped(), spots };
   }
 }
 
@@ -288,15 +367,18 @@ export const PHOTO_LATE_MS = 45_000;
 
 /**
  * Why a terminal that should be shooting isn't, for the panel; null: fine, or
- * too early to say. Pure. `silentMs`: the heartbeat's own threshold.
+ * too early to say. Pure. `silentMs`: the heartbeat's own threshold. `talk`, for
+ * the heart's terminal alone: when the talk began, null with none on. With none on
+ * no photo is owed and it reports none, so only its heartbeat can be wrong.
  *
  * Words: DRAFT w59p.
  */
-export function photoNote(o: { armed: boolean; since: number | null; lastAt: number | null; poll: PhotoPoll | undefined; now: number; silentMs: number }): string | null {
-  if (!o.armed || (o.since !== null && o.now - o.since < PHOTO_NOTE_GRACE_MS)) return null;
+export function photoNote(o: { armed: boolean; since: number | null; lastAt: number | null; poll: PhotoPoll | undefined; now: number; silentMs: number; talk?: { since: number | null } }): string | null {
+  if (!o.armed || o.now - Math.max(o.since ?? -Infinity, o.talk?.since ?? -Infinity) < PHOTO_NOTE_GRACE_MS) return null;
   const p = o.poll;
   if (p === undefined || o.now - p.at > o.silentMs) return "Not heard from: is it on?";
   if (p.visible === false || p.photo === "hidden") return "Its page is hidden: the screen is off, or another app is up.";
+  if (o.talk?.since === null) return null;
   switch (p.photo) {
     case "camera":
       return "No camera: it's off in ⚙, refused, or missing.";
@@ -311,19 +393,27 @@ export function photoNote(o: { armed: boolean; since: number | null; lastAt: num
   }
 }
 
-/** The panel's view. Pure. Spots that left the map keep their count. */
-export function photosViewFor(book: Pick<PhotoBook, "summary">, spots: readonly PhotoSpot[], polls: readonly PhotoPoll[], now: number, silentMs: number): PhotosView {
+/** The panel's view. Pure. Spots that left the map keep their count. `talkSince`: when the talk at his heart began, null with none on. */
+export function photosViewFor(book: Pick<PhotoBook, "summary">, spots: readonly PhotoSpot[], polls: readonly PhotoPoll[], now: number, silentMs: number, talkSince: number | null = null): PhotosView {
   const s = book.summary();
   const terminals: PhotoTerminal[] = [];
-  const row = (spot: string, name: string): PhotoTerminal => {
+  const row = (spot: string, name: string, heart: boolean): PhotoTerminal => {
     const t = s.spots.get(spot);
     const lastAt = t?.lastAt ?? null;
-    return { spot, name, count: t?.count ?? 0, bytes: t?.bytes ?? 0, lastAt, note: photoNote({ armed: s.armed, since: s.since, lastAt, poll: polls.find((p) => p.spot === spot), now, silentMs }) };
+    return {
+      spot,
+      name,
+      count: t?.count ?? 0,
+      bytes: t?.bytes ?? 0,
+      lastAt,
+      note: photoNote({ armed: s.armed, since: s.since, lastAt, poll: polls.find((p) => p.spot === spot), now, silentMs, ...(heart ? { talk: { since: talkSince } } : {}) }),
+      ...(heart ? { only: PHOTO_HEART_ONLY } : {}),
+    };
   };
-  for (const t of spots) terminals.push(row(t.id, t.name));
+  for (const t of spots) terminals.push(row(t.id, t.name, t.heart === true));
   const known = new Set(spots.map((t) => t.id));
-  for (const spot of s.spots.keys()) if (!known.has(spot)) terminals.push({ ...row(spot, spot), note: null });
-  return { armed: s.armed, since: s.since, now, count: s.count, bytes: s.bytes, capBytes: s.capBytes, stopped: s.stopped, terminals };
+  for (const spot of s.spots.keys()) if (!known.has(spot)) terminals.push({ ...row(spot, spot, false), note: null });
+  return { armed: s.armed, since: s.since, now, count: s.count, bytes: s.bytes, capBytes: s.capBytes, stopped: s.stopped, ...(s.unsaved ? { unsaved: true } : {}), terminals };
 }
 
 // --- the tar -----------------------------------------------------------------

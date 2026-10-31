@@ -966,7 +966,8 @@ export interface ScreenPollExtras {
   language?: () => { words: ReadonlyArray<{ word: string; n: number }>; unsaid: number; level: number; stars: number };
   /** (wave 59) The first line of `channel` the teleprompter holds back. */
   voiceHeldFrom?: (channel: string) => number | null;
-  /** (wave 59p) Should the terminal at this spot take stills now? Never the tent's or the TV's. */
+  /** (wave 59p) Should the terminal at this spot take stills now? Never the tent's or the
+   *  TV's; the server room's only during a talk at his heart. */
   photosFor?: (spot: string) => boolean;
 }
 

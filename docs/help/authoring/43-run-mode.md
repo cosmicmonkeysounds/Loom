@@ -184,7 +184,8 @@ Front of house: getting people in.
   `/terminal/?preview=voice` on a set-up terminal does the same with no show
   running. **📷 Photos** is the terminals' photos: **SAFE** takes none; press it
   and it reads **ARMED**, in red, and each terminal with a working camera takes one
-  every 15 s, showing nothing on its screen. Never the Tent or the TV. A terminal
+  every 15 s, showing nothing on its screen. Never the Tent or the TV, and the Server
+  Room only while a program is at his heart, so its row reads *only at the heart*. A terminal
   that should be shooting and isn't says why under its thumbnail. **⬇ Download all**
   saves a tar, one folder per terminal; **🗑 Delete all** asks on the page first. Do
   both before End, which leaves the files on the server with no button to reach

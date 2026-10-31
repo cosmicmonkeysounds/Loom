@@ -670,13 +670,15 @@ black, and a guest on a line, a board or a walk is never disturbed.
 
 Pictures of the room, one every 15 s from each terminal with a working camera, while **📷 ARMED**
 (the Desk, a host's phone, or Run → Terminals). Nothing shows on a terminal. Never the Tent or the
-TV; the Server Room only while its camera is running (`docs/loom-w59-photos-contract.md`).
+TV; the Server Room only while a program is at his heart (`docs/loom-w59-photos-contract.md`).
 
 - **Arm it** as the doors open, unless the director says otherwise, and **SAFE it** at the end of the
   night. An arm holds through a restart and a story reload: only a press changes it, so look at it before
   the doors, and 🗑 Delete all if a rehearsal left any.
 - **The panel** names any terminal that should be shooting and isn't: not heard from, page hidden, no
-  camera, *reload it* (an old build).
+  camera, *reload it* (an old build). The Server Room's row reads *only at the heart*: no photos and no
+  warning there between talks is right. If a press says it couldn't be saved, it's still SAFE, but tell
+  the tech op: a restart would arm it again.
 - **Where they go:** the VPS, `/data/photos/<event>/<spot>/`. 3 GB is the stop (about 400 MB a night
   is the sum), and it stops sooner if the disk gets within 2 GB of full. The panel says which. Nothing
   else breaks: Download all, Delete all, carry on. They're in no backup.
