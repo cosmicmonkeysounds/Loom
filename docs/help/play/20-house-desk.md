@@ -87,10 +87,11 @@ at full level, so a muted room can still be walked.
   row is a slider from −∞ (silent) to +10 dB, its level, a mute (🔈 /
   🔇) and a thin meter of what is playing. **Master** (or **Room**) moves
   everything there; then each source: Music, Featured tracks, Sound
-  effects, Footsteps, Announcements and the TV's voice; in a room, each speaker
-  (the sub has its own). *plays at −9.0 dB* means the levels above it
-  move it too; *silent* means a mute above it. A row marked *meter only*
-  is mixed on the audio interface itself, not here.
+  effects, Footsteps, Announcements and **Trabolta (in 3)**, the TV's voice; in a
+  room, each speaker (the sub has its own). *plays at −9.0 dB* means the levels
+  above it move it too; *silent* means a mute above it. **Clippy (in 1)**, her
+  wireless mic on the interface's Mic 1, reads *meter only*: she is mixed on the
+  audio interface itself (CueMix), not here.
 - **Reset** puts every level of that chip back to 0 dB, unmuted.
 
 Moves show at once and reach the speakers within a moment. The mix

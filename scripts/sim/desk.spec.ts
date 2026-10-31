@@ -13,6 +13,7 @@ import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { test, expect } from "../../editor/node_modules/@playwright/test/index.mjs";
 import type { Browser, BrowserContext, Page } from "../../editor/node_modules/@playwright/test/index.mjs";
+import { deskChecks, type DeskView } from "../../core/src/house-desk.ts";
 
 const BASE = (process.env["SIM_BASE"] ?? "").replace(/\/$/u, "");
 const MOD = process.env["SIM_MOD_CODE"] ?? "";
@@ -29,13 +30,13 @@ async function modToken(): Promise<string> {
 }
 
 /** A booth signed in, seeded where a phone keeps it. */
-async function phone(browser: Browser, part: string): Promise<{ ctx: BrowserContext; page: Page; token: string }> {
+async function phone(browser: Browser, part: string, viewport = { width: 390, height: 780 }): Promise<{ ctx: BrowserContext; page: Page; token: string }> {
   // A part is one phone's (wave 59): let the last test's go first.
   await fetch(`${API}/api/mod/prime/release`, json({ character: part }, mod));
   const r = await fetch(`${API}/api/prime/login`, json({ passcode: PRIME, character: part }));
   const auth = (await r.json()) as { token?: string; admin?: boolean; host?: boolean; error?: string };
   expect(auth.token, `signing in as ${part}: ${auth.error ?? ""}`).toBeTruthy();
-  const ctx = await browser.newContext({ viewport: { width: 390, height: 780 }, hasTouch: true, isMobile: true });
+  const ctx = await browser.newContext({ viewport, hasTouch: true, isMobile: true });
   await ctx.addInitScript(
     ([key, value]) => {
       if (localStorage.getItem(key as string) === null) localStorage.setItem(key as string, value as string);
@@ -119,6 +120,37 @@ test.beforeAll(async () => {
 });
 
 test.afterAll(() => house.stop());
+
+test("as a host's token: every cue GOes, and every check's every test is answered", async () => {
+  await fetch(`${API}/api/mod/prime/release`, json({ character: "Recycling Bin" }, mod));
+  const r = await fetch(`${API}/api/prime/login`, json({ passcode: PRIME, character: "Recycling Bin" }));
+  const { token } = (await r.json()) as { token: string };
+  const read = async () => (await (await fetch(`${API}/api/mod/desk`, { headers: { "x-loom-token": token } })).json()) as DeskView;
+  const send = (path: string, body: unknown) => fetch(`${API}${path}`, json(body, token));
+  const view = await read();
+  expect(view.problems, "desk.json").toEqual([]);
+  expect(view.warnings, "desk.json").toEqual([]);
+  for (const c of view.desk.cues) {
+    expect((await send("/api/mod/desk/standby", { cue: c.id })).status, c.id).toBe(200);
+    expect((await send("/api/mod/desk/go", { standby: c.id })).status, c.id).toBe(200);
+    const run = (await read()).runs.find((x) => x.cue === c.id);
+    expect(run, c.id).toBeDefined();
+    for (const st of run!.steps) expect(["no-file", "nowhere", "error", "refused"], `${c.id} step ${st.i}`).not.toContain(st.result);
+    expect((await send("/api/mod/desk/stop", { all: true })).status, c.id).toBe(200);
+  }
+  const rows = deskChecks(await read()).flatMap((s) => s.rows);
+  expect(rows.length).toBeGreaterThan(80);
+  for (const row of rows) {
+    for (const t of [row.test, ...row.extra.map((x) => x.test)]) expect((await send(t.route, t.body)).status, `${row.key} ${JSON.stringify(t.body)}`).toBe(200);
+    expect((await send("/api/mod/desk/check", { key: row.key, mark: "ok" })).status, row.key).toBe(200);
+    expect((await send("/api/mod/desk/check", { key: row.key, mark: null })).status, row.key).toBe(200);
+  }
+  // What a host may never do, from the same token.
+  for (const [path, body] of [["/api/mod/desk", { desk: view.desk }], ["/api/mod/desk/check/reset", {}], ["/api/mod/lights/pair", { on: true }], ["/api/mod/reset", {}], ["/api/mod/load", {}], ["/api/mod/resync", {}], ["/api/mod/spatial/descent", { level: 1 }]] as const) {
+    expect((await send(path, body)).status, path).toBe(403);
+  }
+  await fetch(`${API}/api/mod/prime/release`, json({ character: "Recycling Bin" }, mod));
+});
 
 test("Task Manager opens on Music, and the top stays put on every tab", async ({ browser }) => {
   const { ctx, page } = await phone(browser, "Task Manager");
@@ -352,4 +384,21 @@ test("once the doors are open: the dream's switch through the page, both ways; a
   await expect(page.getByRole("group", { name: /The show is live/u })).toBeVisible();
   await page.getByRole("button", { name: "No", exact: true }).click();
   await ctx.close();
+});
+
+test("a small phone, a keyboard's worth of height and a wide screen all fit", async ({ browser }) => {
+  for (const size of [{ width: 320, height: 568 }, { width: 390, height: 430 }, { width: 844, height: 390 }, { width: 1024, height: 768 }]) {
+    const { ctx, page } = await phone(browser, "Adobe Acrobat", size);
+    await openDesk(page, mod, "Adobe Acrobat");
+    for (const id of ["cues", "house", "setup"]) {
+      await tab(page, id);
+      await fitsThePhone(page, `${size.width}×${size.height} ${id}`);
+    }
+    await shot(page, `size-${size.width}x${size.height}`);
+    // The panel keeps real room under the top, and STOP ALL stays on screen.
+    const panel = await page.locator("#host-desk-panel").boundingBox();
+    expect(panel!.height, `${size.width}×${size.height}: the tab's height`).toBeGreaterThan(60);
+    await expect(page.locator(".host-desk-stopall")).toBeInViewport();
+    await ctx.close();
+  }
 });

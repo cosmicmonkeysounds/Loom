@@ -469,10 +469,15 @@
 .host-desk-badge.warn { background: var(--white); color: var(--maroon); font-weight: 800; }
 /* A short window (a keyboard up, a phone on its side): the top gives up height, never its parts. */
 @media (max-height: 560px) {
-  .host-desk-status { flex-wrap: nowrap; overflow-x: auto; }
-  .host-desk-chip { flex: 0 0 auto; }
-  .host-desk-top .host-desk-stopall { min-height: var(--tap); }
-  .host-desk-tab { min-height: var(--tap); flex-direction: row; gap: 3px; }
+  .host-desk-top .host-desk-status { flex-wrap: nowrap; overflow-x: auto; }
+  .host-desk-top .host-desk-chip { flex: 0 0 auto; }
+  .host-desk-topline .host-desk-stopall { min-height: var(--tap); }
+  .host-desk-tab { min-height: var(--tap); }
+  .host-desk-tab-icon { display: none; }
+}
+/* A phone on its side: the tab needs the room more. ✗ on Setup still says a system is down. */
+@media (max-height: 420px) {
+  .host-desk-top .host-desk-status { display: none; }
 }
 .host-desk-scroll {
   flex: 1 1 auto; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch;

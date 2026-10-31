@@ -23,6 +23,17 @@ node --experimental-strip-types --no-warnings scripts/sim/evening.ts --base … 
 The server plays the show's story from disk (event `default`); no sync is
 needed. Build `play` and `terminal` first if you want to watch in a browser.
 
+## The Desk, on real pages
+
+`desk.spec.ts` (wave 59) drives a host's Desk at 390 × 780 as a real Task Manager and
+a real Adobe Acrobat, with a stand-in sound router, lights module and terminals: every
+tab, the first tab and the kept tab, what polls when, GO and the chip, 🖥 House, Try
+it, the checks, Music, Mix, the dream both ways, the live asks. It also sends every cue
+and every check's every test through a host's token, and checks what must answer 403.
+It needs a server with the show's `LOOM_AUDIO`, `LOOM_LIGHTS`, `LOOM_DESK` and
+`LOOM_HOUSE`. Name the spec with `sim/desk\.spec`, or a worktree called `w59-desk`
+matches every spec under it.
+
 ## The teleprompter, on real pages
 
 `prompter.spec.ts` (wave 59) drives Clippy's phone, a host's phone and the real TV
