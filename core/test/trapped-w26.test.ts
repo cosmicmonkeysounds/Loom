@@ -550,7 +550,7 @@ describe("Trapped in the Internet — wave 26: a guest's BINGO and one round (B1
     for (const s of seeds) expect(reset, s).toContain(s);
   });
 
-  it("🤐 the winner names nobody: nobody marked, the round over, ⭐ +5 for Clippy, After The Bingo", () => {
+  it("🤐 the winner refuses: Clippy's line, nobody marked by it, the round over, ⭐ +5 for Clippy, and Norton decides (wave 58)", () => {
     const n = boot();
     for (const c of TO_BINGO) n.press(c);
     expect(live(n, "Clippy", "g1")).not.toContain("named_nobody");
@@ -563,17 +563,16 @@ describe("Trapped in the Internet — wave 26: a guest's BINGO and one round (B1
     expect(v(n.sim, "Night.bingo_done")).toBe(true);
     expect([...n.sim.persons.keys()].filter((g) => v(n.sim, `${g}.marked`) === true)).toEqual([]);
     expect(v(n.sim, "Clippy.score")).toBe(score + 5);
-    expect(hostLines(out)).toContain("🤐 Calculator names nobody at the centre square. Nobody is marked.");
+    expect(hostLines(out)).toContain("🤐 Calculator refuses to name anyone at the centre square. Norton decides who needs reinstallation: 🛡.");
     expect(primeView(n.sim, "Clippy").objectives![0]!.id).toBe("After The Bingo");
     expect(n.sim.questStatus("g1", "The Bingo Card")).toBe("done");
-    expect(n.sim.questStatus("Norton Anti-Virus", "The Selected Antivirus")).toBe("done");
-    // Norton's NOW no longer tells him to interrupt anyone (nobody is marked).
-    expect(primeView(n.sim, "Norton Anti-Virus").objectives?.map((o) => o.id) ?? []).not.toContain("The Selected Antivirus");
-    // His brief, his card and Clippy's CI 2 agree: 🤐 marks nobody.
-    expect(read("cast/antivirus.loom")).not.toMatch(/refuses to name anyone/u);
-    expect(read("cast/antivirus.loom")).toContain("If the winner names nobody, Clippy presses 🤐: nobody is marked, so follow the room.");
-    expect(n.sim.model.objectives.get("The Selected Antivirus")!.brief).not.toMatch(/or the winner names nobody/u);
-    expect(read("codex/7-clippy.loom")).not.toMatch(/follow the Antivirus's\s+direction/u);
+    // Wave 58 (reverses w26's B3): Norton's job is still on, and his NOW still says so.
+    expect(n.sim.questStatus("Norton Anti-Virus", "The Selected Antivirus")).toBe("active");
+    expect(primeView(n.sim, "Norton Anti-Virus").objectives?.map((o) => o.id) ?? []).toContain("The Selected Antivirus");
+    // His brief, his card and Clippy's CI 2 agree: he decides.
+    expect(read("cast/antivirus.loom")).toContain("If the winner refuses to name anyone, Clippy presses 🤐: you decide who needs reinstallation, then 🛡.");
+    expect(n.sim.model.objectives.get("The Selected Antivirus")!.brief).toContain("you decide who needs reinstallation");
+    expect(read("codex/7-clippy.loom").replace(/\s+/gu, " ")).toContain("let the Antivirus decide who needs reinstallation. Follow their direction.");
     // Once over, nothing more: no 🎱, no 🎯.
     expect(live(n, "Clippy", "g2")).not.toContain("bingo_winner");
     expect(live(n, "Clippy", "g2")).not.toContain("named_at_bingo");
@@ -659,9 +658,10 @@ describe("Trapped in the Internet — wave 26: no hints in the show text (G1)", 
 
   it("Clippy never says the judging rule: the First Moment of Truth and Truth Pong", () => {
     const fmt = beat("beats/hunt.loom", "First Moment Of Truth");
-    expect(fmt).toContain("Clippy: Every answer you filed with Trabolta will be judged. Trabolta knows best!");
     expect(fmt).not.toMatch(/one hundred percent sure|symptom of corruption|accepted/iu);
-    expect(fmt).toContain("Clippy: You have two minutes. File anything you found with Trabolta NOW.");
+    // Wave 58: Part 3 of the script, split around the window, which she never says.
+    expect(fmt).toContain("Clippy: Welcome back to the Desktop, programs!");
+    expect(fmt.split("\n").filter((l) => !l.startsWith("//")).join("\n")).not.toMatch(/two minutes|File anything/iu);
     const pong = beat("beats/pong.loom", "Truth Pong");
     expect(pong).not.toMatch(/Confident is accepted|A guess is the Internet/u);
     // The miss is the author's own rule, and stays.

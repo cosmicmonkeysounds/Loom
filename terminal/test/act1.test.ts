@@ -109,14 +109,11 @@ describe("act 1 — the triggers are the story's", () => {
   });
 
   it("the introduction's greeting is the story's own line", () => {
-    expect(INTRO_HELLO).toBe("HELLO, PROGRAMS.");
-    // Wave 18b §4.2: the contract's fixed text, word for word.
-    expect(INTRO_LINE).toBe("I am Jean Trabolta, Sole Owner and Founder of Maps and Ducks. The world's first AI small business owner. Personal queries go to Clippy.");
-    // The whole line, as the TV says it (its captions follow the voice). Until
-    // the `show` lane's text is merged the story still has the wave 18 line;
-    // once it is gone the check is strict.
-    const old = "Trabolta: HELLO, PROGRAMS. I am Trabolta. I keep the computer running.";
-    if (!story.includes(old)) expect(story).toContain(`Trabolta: ${INTRO_HELLO} ${INTRO_LINE}\n`);
+    expect(INTRO_HELLO).toBe("Happy Halloween, programs.");
+    // The Oct 30 script, word for word.
+    expect(INTRO_LINE).toBe("Thank you, Clippy, for hosting this marvelous evening.");
+    expect(story).toContain(`Trabolta: ${INTRO_LINE}\n`);
+    expect(story).toContain(`Trabolta: ${INTRO_HELLO} My name is Jean Trabolta`);
   });
 
   it("a wall's shorter take ends inside its scene's length (it ends itself, never a blank wait)", () => {
@@ -269,7 +266,7 @@ describe("act 1 — the bingo slide's owner line (wave 18b)", () => {
         const state = fakeState({ now: 1_000_000 + 8000, introduced });
         return renderToStaticMarkup(createElement((target === "tv" ? bingo.tv : bingo.wall)!, props({ t: 8000, state, target, value: "bingo" })));
       };
-      expect(at(false), target).toContain("joins by video conference later tonight");
+      expect(at(false), target).toContain("joins by digital conference later tonight");
       expect(at(true), target).not.toContain("later tonight");
     }
   });

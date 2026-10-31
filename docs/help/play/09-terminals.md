@@ -95,7 +95,7 @@ scene that started before a terminal reloaded carries on where it was;
 nothing that already happened plays again. A tap on a slide still steps
 it aside.
 
-When the house wins something together (*🎀 Encarta won the Bingo Ribbon!
+When the house wins something together (*🎀 Encarta won the Bingo!
 Cheer for them at the Desktop.*), the TV and the wall terminals throw up a
 Win98 **Congratulations!** window for a few seconds: the winner's name, the
 line typing itself out, a WINNER marquee and confetti (with Reduce Motion,

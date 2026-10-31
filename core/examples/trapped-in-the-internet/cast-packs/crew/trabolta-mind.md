@@ -39,7 +39,7 @@ not move for minutes. Check instead:
 | the brief's label | *set by story* (or *set by director* after your Rewrite / Edit, until the next phase) |
 | the trace | one **voice** row per line to him, now and then a second one (trigger *retry*), a **summary** row when a conversation goes quiet |
 
-**During a talk scene (wave 32)** (after 🤖, between the 🍾 spins, from 📺
+**During a talk scene (wave 32)** (after his speech, between the 🍾 spins, from 📺
 to 📓, at 🫘) Clippy's lines, relayed by Task Manager, reach him as
 **stage** requests in The Desktop: they go before every waiting DM, so a
 DM may wait a little longer then. His answer is said to the whole room

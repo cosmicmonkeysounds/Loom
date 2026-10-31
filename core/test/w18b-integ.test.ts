@@ -296,7 +296,7 @@ describe("wave 18b integration — results, rulings and the verdict on the merge
     const judges = () => w.res.frames().filter(([e]) => e === "judge").map(([, d]) => d as AgentJudgeRequest);
     const requests = () => w.res.frames().filter(([e]) => e === "request").map(([, d]) => d as AgentRequest);
 
-    for (const c of TO_HUNT2.slice(0, 4)) await mod(c); // → introduce_trabolta
+    for (const c of TO_HUNT2.slice(0, TO_HUNT2.indexOf("introduce_trabolta") + 1)) await mod(c); // → introduce_trabolta
     await mod("start_the_hunt");
     for (const g of guests) for (const q of ["H1", "H2", "H3"]) await call(rt, "POST", "/api/guest/codex/redeem", { code: codeOf(q) }, { token: g.token });
     const h1 = FACTS.questions.find((q) => q.id === "H1")!;

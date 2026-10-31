@@ -899,9 +899,10 @@ The digital scan is cheaper and unambiguous:
 | Truth Pong: 6 ft folding table, 10–15 cups, balls, tarp | 1 set | ~$70 | — | 🔴 | @__ | Outside (The Cloud); scoring stays human (made/missed buttons) |
 | Bobbing tub, towels, floor mat/tarp | 1 set | ~$40 | — | 🔴 | @__ | Every mains cable and PSU out of splash range, **and** anything powered nearby on a GFCI (HW-SAFE-03) |
 | Bag of Truth (waterproof zip bag inside a cloth bag) + **laminated** truth.txt | 1 | ~$10 + print | — | 🔴 | @__ | Print the final text late |
-| Computer Bingo cards (17-square asterisk, checkboxes only, spec §8.1) + pens/daubers | 1 per guest + spares | print | — | 🔴 | @__ | Plus the **pre-filled fake card** for `{Kernel.anti_ai}` (MS Paint) that Task Manager hands Clippy |
+| Computer Bingo cards (17-square asterisk, room to write a name in each square, spec §8.1) + markers | 1 per guest + spares | print | — | 🔴 | @__ | Plus the **pre-filled fake card** for `{Kernel.anti_ai}` (MS Paint) that Task Manager hands Clippy |
 | ~~Truth or Dare hat + slips (spec §8.2)~~ | 0 | — | — | — | @__ | Retired in wave 4: 🍾 the bottle (`spin_the_bottle`); Jean Trabolta asks the truths from `facts.json` on the TV |
-| Bingo Ribbons / awards | 10–20 | ~$15 | — | 🔴 | @__ | `award_the_ribbon` |
+| Bingo Floppy Disks (the winner's prize) + ribbons / awards | 10–20 | ~$15 | — | 🔴 | @__ | `award_the_ribbon` |
+| Cans of water (his fundraiser, *"five cents on the recycling"*) | plenty | — | — | 🔴 | @__ | Words and a prop only: nothing counts them |
 | **Ceremony trophies** (#26): 5 fixed + 3 bonus awards + the overall winner, Mario Party style (e.g. thrift-store trophies relabelled, golden ducks, floppy-disk plaques) | 9 | ~$30–60 | — | 🔴 | @__ | HW-PROP-12 |
 | Optical Drive deposit box ("leave one thing behind") | 1 | — | — | 🔴 | @__ | Upload beat A3 |
 | "Zip-up" gear for the Antivirus zip-out (zip hoodies / a giant zipper prop / sleeping bags) | — | — | — | 🔴 | @__ | D8 (decide the bit) |

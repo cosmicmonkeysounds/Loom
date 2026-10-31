@@ -52,7 +52,7 @@ lights up on every Antivirus' **Wanted board**. **🛡, ✅ Mark as reinstalled,
 
 | When | Press | On whom |
 |---|---|---|
-| V3 Bingo results, in **🎮 PLAYER SELECT** | **① 🎱 Bingo winner** → **② 🎀 the Bingo Floppy Disk** (the same winner is offered: **SAME**) → **③ 🎯 Named on the card: marked for reinstallation** (two taps) → **④ 🤐 The winner refuses** | tap the winner's tile, then the tile of the program they name (the winner's own tile too); one round only: the first 🎯 or 🤐 closes it (Norton's scan and 🛡 follow; after a 🤐 Norton decides who goes). Each press brings your words up on the teleprompter: read them, then **✓ Done**, and PLAYER SELECT is back |
+| V3 Bingo results, in **🎮 PLAYER SELECT** | **① 🎱 Bingo winner** → **② 🎀 the Bingo Floppy Disk** (the same winner is offered: **SAME**) → **③ 🎯 Named on the card: marked for reinstallation** (two taps) → **④ 🤐 Refuses to name anyone** | tap the winner's tile, then the tile of the program they name (the winner's own tile too); one round only: the first 🎯 or 🤐 closes it (Norton's scan and 🛡 follow; after a 🤐 Norton decides who goes). Each press brings your words up on the teleprompter: read them, then **✓ Done**, and PLAYER SELECT is back |
 | a program called BINGO on their phone | a **Check The Bingo** pop-out names them: **🎱 Bingo winner** if the line holds, **↩ Not a Bingo** if it doesn't (Bingo resumes with the time it had left) | the caller |
 | any time | **🎀 Award a ribbon** | the Bingo winner first (their Bingo Floppy Disk), anyone who earns one later |
 | V6 First Moment of Truth | **🤷 Uncertain or guessed: marked for reinstallation** | a program who answers out loud and is clearly guessing (filed answers settle themselves) |

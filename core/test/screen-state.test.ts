@@ -622,7 +622,7 @@ describe("GET /api/screen/state?voice= — the TV room voice", () => {
     expect(s.attract).toBe(false);
     const hello = s.voice!.lines.find((l) => l.from === "Trabolta");
     expect(hello).toMatchObject({ beat: "Trabolta Introduction" });
-    expect(hello!.text).toMatch(/^HELLO, PROGRAMS/u);
+    expect(hello!.text).toMatch(/^Thank you, Clippy/u);
     expect(s.voice!.lines.every((l) => l.from !== "Narrator")).toBe(true);
     cursor = s.voice!.head;
 

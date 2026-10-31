@@ -3894,7 +3894,7 @@ INTERACTION not_a_bingo
 // Wave 26 (B3): the winner won't name anyone at the centre square.
 // DRAFT w58 (the button's label and description)
 INTERACTION named_nobody
-  label: 🤐 The winner refuses to name anyone
+  label: 🤐 Refuses to name anyone
   who: performer
   by: Clippy
   while: Night.phase == "bingo_results" and Night.bingo_done != true and program.bingo == true
@@ -4528,7 +4528,7 @@ when introduce_trabolta:
   else if Night.trabolta_introduced == true:
     broadcast "🤖 Trabolta is already online. Nothing happens." to channel(hosts)
   else:
-    broadcast "🤖 Too early: Trabolta comes online after the Bingo results (V3 ⏰). He stays offline." to channel(hosts)
+    broadcast "🤖 Too early: Clippy introduces Trabolta after the Bingo results (V3 ⏰). He stays offline." to channel(hosts)
 
 // If the director skips the introduction cue and jumps ahead, every
 // later cue is an implied introduction: he wakes (silently, the phase
@@ -6809,10 +6809,6 @@ set Night.bingo_done = false
 set Night.bingo_closed = false
 set Night.bingo_none = false
 set Night.bingo_briefed = false
-// Wave 58: 🃏's name for Clippy's line, and the once of her two host cues.
-set Night.framed_name = "none"
-set Night.mirror_followed = false
-set Night.clippy_handed = false
 // Wave 26 (T2, C3): the first glitch (the 📺 ad hijack), in story seconds.
 set Night.glitch_at = 0
 set Night.glitch_text = "none"
@@ -6821,6 +6817,10 @@ set Night.bingo_named = 0
 set Night.bingo_ribbons = 0
 set Night.first_reinstall = "none"
 set Night.first_reinstall_done = false
+// Wave 58: 🃏's name for Clippy's line, and the once of her two host cues.
+set Night.framed_name = "none"
+set Night.mirror_followed = false
+set Night.clippy_handed = false
 set Night.trabolta_introduced = false
 set Night.ads_started = false
 // Wave 32 (C1, C2): no talk scene; the glitch's kind, "full" (the 📺

@@ -29,7 +29,7 @@ export const TALK_SCENES: Readonly<Record<string, TalkScene>> = {
   intro: {
     id: "intro",
     title: "Trabolta comes online",
-    hint: "Wait for his sign-off (\"it's electrifying.\"): his speech runs about three minutes. Then type what Clippy says to him for a minute or so. He is formal, proud and word perfect. When the room is warm, 🔎 is NEXT.",
+    hint: "Wait for his sign-off (\"it's electrifying.\"). Then type what Clippy says to Trabolta for a minute or so. He is formal and word perfect. When the room is warm, 🔎 is NEXT.",
     clippy: [
       { label: "👋 Welcome", text: "Trabolta, welcome to the computer! Everyone is SO excited to meet you!" },
       { label: "🏢 Your job", text: "Tell everyone about Maps and Ducks! What does a Sole Owner and Founder actually do all day?" },
