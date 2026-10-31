@@ -56,8 +56,8 @@ In **words from the scene's start**, so it means the same at every font size. Th
 server owns it: `pos` at `at`, then `rate` words a second up to `stop`, which is his
 next unsaid line. A phone adds `rate` from a frame's arrival, and turns words into
 pixels along its own lines (`yOfPos`, `posOfY`). Autoscroll is the server's too, so it
-carries on if the phone that pressed ▶ dies. Nothing can scroll past his line: it
-stops there and fires it.
+carries on if the phone that pressed ▶ dies. Nothing can scroll past an unsent line of
+his: it stops there, fires it, and the next move goes on.
 
 ## C4. The route
 
@@ -83,10 +83,15 @@ script in it.
 
 ## C6. His line
 
-When the position reaches a run, its lines go to the TV, and the prompter locks for
-everyone and scrolls through them at the rate the words allow (`spokenMs`). The time
-starts over when the TV reports he has opened his mouth (`sp=`), never a step back on
-screen. It frees when:
+**Overruled on show night (2026-10-31):** his lines no longer lock or scroll the
+prompter. The user: *"it should be on the performers / hosts to scroll."*
+
+When the position reaches a run, its lines go to the TV and nothing else moves: a
+finger stays down, an autoscroll carries on at its own speed, and `stop` goes on to
+his next run, so a reader who gets there while he is still talking sends that one
+behind it in the TV's queue. `frame.speaking` is always null, because a phone reads
+anything else as a lock, so this needs no phone reload. `PrompterStatus.speaking`
+still says he has lines going, for Show and for `inUse`, until:
 
 - a live, unmuted TV's `said` passes the run, once half the time has gone (a `said`
   sooner than that is a mute or a skip);
@@ -97,8 +102,7 @@ screen. It frees when:
 
 `press` locks it to whoever pressed; the others see *🔒 X has it* and their text and
 controls stop. A finger resting says so every 1.5 s, and one silent for
-`HOLDER_TTL_MS` (4 s) lets go. His line takes the lock from a finger. A finger holds
-an autoscroll and it carries on after.
+`HOLDER_TTL_MS` (4 s) lets go. A finger holds an autoscroll and it carries on after.
 
 ## C8. The night never hangs
 

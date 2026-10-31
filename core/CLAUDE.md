@@ -612,9 +612,10 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   stops just before it, `head` included. The position is in words, owned here (`pos`,
   `rate`, `stop`), moved by `POST /api/aloud` (a booth's or guest's token, not under
   `/api/guest/`, refusals 409 `prompter: …`) and by `tick` (a 200 ms timer while a
-  scene is on, and every screen poll). Reaching a run of his lines moves the hold,
-  locks and scrolls; `roomVoiceOf` (`said`, `sp=`, the mute) ends it, or the time from
-  `spokenMs`. No reader on the prompter means no hold (`HOLD_WAIT_MS`, `HERE_TTL_MS`);
+  scene is on, and every screen poll). Reaching a run of his lines moves the hold and
+  nothing else: only the readers scroll, his lines take no lock and `frame.speaking` is
+  always null (`PrompterStatus.speaking` isn't). `roomVoiceOf` (`said`, `sp=`, the mute)
+  ends `speaking`, or the time from `spokenMs`. No reader on the prompter means no hold (`HOLD_WAIT_MS`, `HERE_TTL_MS`);
   anyone else's open prompter counts only while they drive it (`DRIVE_TTL_MS`). `fanout`
   calls `outrun` on a batch with no scene: a scripted line of his in the room (`beat`
   present; a live `say` has none) lets the hold go, in order.
