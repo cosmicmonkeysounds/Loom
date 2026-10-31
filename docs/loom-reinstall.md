@@ -983,7 +983,7 @@ Sun's `ulaw2linear` / 32768; the Godot port is pinned by
 | Route | Auth | Body / query | Result |
 |---|---|---|---|
 | `POST /api/spatial/voice` | **a terminal**: a mod token (`x-loom-token`) or an author session, plus `?spot=`; **a game**: its session token, no `spot` | `?seq=<n>` a non-negative integer, increasing per source; the body raw `application/octet-stream`, `VOICE_MIN_BYTES` 160 … `VOICE_MAX_BYTES` 8 000 bytes (≤ 500 ms). Read under its own 8 000-byte cap ahead of the 2 KB `/api/spatial/*` JSON cap; no author-session lookup (it is not a `/api/mod/` path) | Who first: 401 `unknown session token` · 410 `this session is over` · 403 `moderators only` (a non-mod token with a `spot`) · 400 a mod token with no `spot`. Then the chunk: 400 a bad `seq` / `spot` / body size · 413 the body over the cap (the router). Then the spot: 404 `no such spot` (not on the current map) · 403 `voice is off at this terminal`. Else 200 `{ok: true, listening, ears}` — `listening`: someone can hear this source now; `ears`: how many listener streams do; `{ok: true, listening, ears, dropped: true}` when the chunk went nowhere (nobody hears it, a parked session that has not posed yet, or a stale seq). A client treats `listening: false` as "empty the queue" only: the stream's `listen` is the authority (an answer can land after a newer `listen {on}`) |
-| `GET /api/spatial/voice/stream` (SSE) | as the upload, the token in `?token=` (EventSource sets no headers): a terminal = a moderator + `?spot=`, a game = its session token | `?mic=0\|1` — this device's room can be heard (absent = 1; a terminal sends 0 while its mic is refused, missing, off or its page's audio is locked); `?hear=0\|1` — it plays what it hears (absent = 1; 0 under the TV mute, ⚙ voices off, or locked). A device re-opens its stream when either changes | the same refusals as plain HTTP before the stream opens (a parked session's stream opens; it hears nothing until it joins) · 200 `text/event-stream`. The path ends in `/stream`, so Caddy neither compresses nor buffers it. A token-bearing open skips the author-session lookup like the camera polls; the editor may open one on its cookie (`wantsModRead`) |
+| `GET /api/spatial/voice/stream` (SSE) | as the upload, the token in `?token=` (EventSource sets no headers): a terminal = a moderator + `?spot=`, a game = its session token | `?mic=0\|1` — this device's room can be heard (absent = 1; a terminal sends 0 while its mic is refused, missing, off or its page's audio is locked); `?hear=0\|1` — it plays what it hears (absent = 1; 0 under the TV mute, ⚙ voices off, or locked). A device re-opens its stream when either changes; `?only=tv` (wave 59) — a game hears only the map's `view: "tv"` terminals | the same refusals as plain HTTP before the stream opens (a parked session's stream opens; it hears nothing until it joins) · 200 `text/event-stream`. The path ends in `/stream`, so Caddy neither compresses nor buffers it. A token-bearing open skips the author-session lookup like the camera polls; the editor may open one on its cookie (`wantsModRead`) |
 
 **Frames** (`event:` name, JSON `data:`; `VoiceFrames`):
 
@@ -1024,6 +1024,12 @@ while any voice stream is open):
   `listen`).
 - A terminal hears only players and a player only terminals: nothing hears
   itself, and two headsets never hear each other (not asked for).
+- **The TV's sound** (wave 59, [`loom-w59-contract.md`](./loom-w59-contract.md)):
+  the house router is one more source at the spot `desktop-tv`, on a stream with
+  `mic=1&hear=0`, sending an input of the 828x. A game needs no code for it. A
+  game with its voice link off still opens a stream, with `mic=0&only=tv`: the
+  server routes it only `view: "tv"` terminals, so no other terminal is told
+  `listen {on}`, and it sends nothing up.
 - `seq`: a chunk at or below the source's last kept seq is dropped — unless
   the source has been quiet for `VOICE_FRESH_MS` 1.5 s, when a lower seq is
   a reloaded device counting from 0 again and is kept.
@@ -1076,7 +1082,8 @@ again after `VOICE_FRESH_MS` of quiet, like the server.
 - **The web game** (`reinstall/web/src/game/voice.ts`): off by default (it
   runs on the tent laptop; config `voice`, URL `voice=1|0`); on, it hears the
   terminals through `PannerNode`s at their screens. The mic is low-passed at
-  7 kHz before the resample; a track the OS ends reads NO MIC.
+  7 kHz before the resample; a track the OS ends reads NO MIC. Off, it hears
+  only the TV (wave 59, `tvOnly`): no mic, no HUD, on the game's own bus.
 - **VR** (`reinstall/vr/net/voice_link.gd` + `voice_codec.gd`): the mic on
   **B / Y** (desktop **M**), `AudioStreamPlayer3D`s under each terminal; one
   keep-alive `HTTPClient` for the uploads. The mic reads MIC STARTING… until

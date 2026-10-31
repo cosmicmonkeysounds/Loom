@@ -9,6 +9,7 @@ import json
 import logging
 import re
 import threading
+import time
 from pathlib import Path
 
 import httpx
@@ -284,6 +285,9 @@ def test_the_ring_is_gapless_across_its_wrap_and_two_threads():
 
     def writer() -> None:
         for start in range(0, total, 512):
+            # A device paces its callback; left free, one GIL slice laps the ring.
+            while feed._w - feed._r > RATE:
+                time.sleep(0)
             feed.write(ramp[start : start + 512])
 
     thread = threading.Thread(target=writer)

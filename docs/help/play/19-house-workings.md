@@ -197,6 +197,10 @@ the show, a director or a host sets 🌀 His voice to **Clean**.
   mirror and shadow screens are always on.
 - The **🎤** on a terminal means a player can hear that room right now:
   keep secrets (the door code) away from a 🎤 terminal.
+- **Clippy's wireless mic is the TV's sound in the games.** A program
+  standing in the Desktop in either game, the tent's included, hears it
+  from the TV, with no 🎤 anywhere to say so. Anything said into it is
+  heard, between scenes too: use the pack's mute.
 - An older tablet that can't draw the 3D house shows a blocky old-school
   view of its room instead.
 - A terminal that suddenly shows its own **name** full screen for ten

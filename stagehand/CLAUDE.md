@@ -71,7 +71,8 @@ stagehand/
                                    footsteps (wave 49: FootstepBank, Walkers, stepPaceS's mirror)
                                    tap (a capture device summed into an input: VoiceMeeter → input 3, wave 46),
                                    tidal (the TIDAL app as a stereo bed: capture + DevTools remote, wave 52),
-                                   voicefx (his voice broken in real time, an insert on the trabolta input, wave 56)
+                                   voicefx (his voice broken in real time, an insert on the trabolta input, wave 56),
+                                   gamefeed (an input heard in the reinstallation games, on the voice relay, wave 59)
     audio/sfx/                     the SFX library: dsp (synthesis toolkit), spec + registry (`SFX`), render,
                                    cli, inspect (PNGs), one module per category (sirens, dings, telephony,
                                    digital, retro, party, story, ambient)
@@ -264,6 +265,18 @@ module docstrings that explain the why).
   of the path (`voicefx_failed`); over budget it trips dry. Both are in the health
   line; he never goes silent. `python -m stagehand.audio.voicefx in.wav outdir`
   renders every flavour. Tests: `tests/test_audio_voicefx.py`.
+- **The game feed** (wave 59, `audio/gamefeed.py`, `../docs/loom-w59-contract.md`).
+  `audio.game_feed: {ch, spot}` on the Desktop sends an input to the reinstallation
+  games as one more terminal at that spot on the voice relay (`GET
+  /api/spatial/voice/stream?spot=&mic=1&hear=0`, `POST /api/spatial/voice`). The
+  callback only copies (`GameFeed.write`, a ring); the resample, gate, μ-law and
+  upload are on the event loop. `listen {on}` alone starts it, and an upload's
+  answer never does (it can land after a newer `listen`). `run` never raises: it
+  shares the router's `gather`. `Engine._feed_on` is per stream, since a reopened
+  one may have fewer inputs. `post_bytes` never re-logs in: on this route a 403 may
+  be the map's answer, at five chunks a second. It mirrors `@loom/house`
+  `mulawByte`: `tests/fixtures/house-audio/voice-mulaw.json` is a byte-for-byte copy.
+  Tests: `tests/test_audio_gamefeed.py`.
 - **Long files stream, never cache.** Soundtrack beds and `tracks:` open
   as a `Stream` (`SoundBank.stream`); at most the current and next track
   of each bed are open; `_preload` skips tracks. Short story sounds stay
