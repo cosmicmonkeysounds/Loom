@@ -24,11 +24,12 @@ export interface UnlockLinkOptions {
 }
 
 export function useUnlockLink({ ownsPage, ready, redeem, say, openCodex, view }: UnlockLinkOptions): void {
-  const pending = useRef<string | null>(ownsPage ? unlockFromSearch(window.location.search) : null);
+  const read = useRef(false);
   useEffect(() => {
-    const code = pending.current;
-    if (code === null || !ready) return;
-    pending.current = null;
+    if (read.current || !ready) return;
+    read.current = true;
+    const code = ownsPage ? unlockFromSearch(window.location.search) : null;
+    if (code === null) return;
     try {
       window.history.replaceState(null, "", `${window.location.pathname}${withoutUnlock(window.location.search)}`);
     } catch {
