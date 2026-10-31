@@ -5,13 +5,12 @@
 // so none of them may carry a hunt answer (facts.json answer or alias):
 // he must never know what he is asking for. His diary cannot parse Sandy's
 // one line (F1) and does not know who asked her to prom (F2): the guests
-// find both (What Sandy Says, The Prom Ticket; the LiveJournal's "says
-// whatever anyone wants to hear" points them at The Rival, which he never
+// find both (What Sandy Says, The Prom Ticket, and The Rival, which he never
 // sees). Pinned by core/test/trabolta-answers.test.ts.
 //
-// The five coded entries (UNIFIED-FIELD, TARGET-SELECTION, TRUST-CHART,
-// SANDY-FILE, ALL-FOR-HER) double as scannable facts in the Desktop's
-// books: facts.json lists them as `existing` (M02, M07, M24, T4, T6).
+// The coded entries here keep their own QR posters. Since wave 58 the facts
+// that used to be told by them (M02, M06, M07, M24, T4, T6) are new cards in
+// codex/9-facts.loom, so The Whole Truth unlocks these by hand.
 //
 // Tiers (design §2.12): T1 = the surface he will talk about, T2 = the
 // private things he leaks as he unravels, L = the Legendary Fact, P = a

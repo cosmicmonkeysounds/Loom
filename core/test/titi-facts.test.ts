@@ -505,9 +505,9 @@ describe("titi-facts — the Facts Bundle (The Whole Truth's main + Trabolta fac
     expect(sim.signal("the whole truth", "g1").filter((e) => e.type === "diagnostic")).toEqual([]);
     for (const id of unlocks) expect(sim.holdsCodex("g1", id), id).toBe(true);
   });
-  it("--check fails when a facts.json edit changes the bundle (an existing fact moved out of main)", () => {
+  it("--check fails when a facts.json edit changes the bundle (an existing fact moved out of the bundle's categories)", () => {
     const moved = JSON.parse(SHOW_FACTS) as FactsFile;
-    const x = moved.facts.find((y) => y.category === "main" && y.existing !== undefined && moved.facts.filter((z) => z.existing === y.existing).length === 1)!;
+    const x = moved.facts.find((y) => y.category === "trabolta" && y.existing !== undefined && moved.facts.filter((z) => z.existing === y.existing).length === 1)!;
     x.category = "character";
     writeFileSync(join(dir, FACTS_FILE), JSON.stringify(moved, null, 2));
     try {

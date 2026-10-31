@@ -8,27 +8,24 @@
 
 // ── COMMON · green · out in the open, anywhere guests walk: shelves, tables, the fridge, lamps, doorframes ──
 
+// M03 · main · green
+CODEX Joint Stocks Registry
+  title: Look It Up On The Joint Stocks Registry
+  category: Facts
+  code: JOINT-STOCKS
+  text:
+    Maps and Ducks is a real company...or at least, they used to be. They
+    are actually called Maps and More now. Sorry, ducks.
+
 // M05 · main · green
 CODEX Atlas Loon
-  title: Atlas Loon
+  title: Atlas Loon Hoax
   category: Facts
   code: ATLAS-LOON
   text:
-    A torn trade-magazine page: MAPS AND DUCKS VS. ATLAS LOON, THE DECOY
-    WARS OF 1998. Atlas Loon is Maps and Ducks' only competitor. Atlas Loon
-    does not even have its own website. Somebody has written in the margin:
-    and never will.
-
-// M08 · main · green
-CODEX The Ones Who Stay
-  title: The Ones Who Stay
-  category: Facts
-  code: STAY-FOREVER
-  text:
-    A note folded into a map of Halifax: Some of the programs in this
-    computer never want to leave. They were promised forever, and they
-    intend to keep every one of us here to get it. Watch who argues for
-    staying.
+    Maps and Ducks does not have a competitor company called Atlas Loon.
+    Trabolta made it up. Come on, think about it – they don't even have a
+    website.
 
 // M09 · main · green
 CODEX Everyone Is Lying
@@ -36,10 +33,20 @@ CODEX Everyone Is Lying
   category: Facts
   code: EVERYONE-LIES
   text:
-    A laminated bookmark: Most of the programs in this house are lying about
-    something. Some about who they are. Some about why they came. The prize
-    goes to whoever knows the most secrets, so assume every secret is for
-    sale.
+    A laminated bookmark: "Most of the programs in this house are lying
+    about something. Some about who they are. Some about why they came. The
+    prize goes to whoever knows the most secrets, so assume every secret is
+    for sale."
+
+// M13 · main · green
+CODEX Technically Legit
+  title: Technically Legit
+  category: Facts
+  code: TECHNICALLY-LEGIT
+  text:
+    Trabolta truly is the owner of Maps and Ducks. Well, just the domain. He
+    has taken over Maps and Ducks illegitimately and the real owners
+    desperately regret letting their domain expire.
 
 // M15 · main · green
 CODEX The Books
@@ -47,10 +54,11 @@ CODEX The Books
   category: Facts
   code: THE-BOOKS
   text:
-    An index card tucked into the first volume of the encyclopaedia:
-    EVERYTHING YOU NEED TO KNOW IS IN THE BOOKS. The facts are in the
-    Desktop, in the print media and the encyclopaedias. Read them. Scan what
-    you find.
+    An index card tucked into the first volume of the encyclopaedia: "FACTS
+    ARE NOT CLUES. Clues are what Trabolta seeks for his truth scavenger
+    hunts, for some reason... but this is not important information for you.
+    This computer holds facts that even Trabolta is not aware of – keep
+    scanning facts with your phone to increase your power.
 
 // M17 · main · green
 CODEX A Copy Of You
@@ -58,10 +66,10 @@ CODEX A Copy Of You
   category: Facts
   code: COPY-OF-YOU
   text:
-    A page of the Terms of Service with one clause circled: The upload
+    A page of the Terms of Service with one clause circled: "The upload
     copies before it moves. You are a copy of yourself. Which one is the
     original is not specified. The other one is still at the door, with the
-    thing you left behind.
+    thing you left behind."
 
 // M18 · main · green
 CODEX Out Of Date
@@ -69,9 +77,9 @@ CODEX Out Of Date
   category: Facts
   code: OUT-OF-DATE
   text:
-    A sticky note on an antivirus manual: THE ANTIVIRUSES DON'T KNOW AS MUCH
-    AS THEY SEEM TO. Their definitions are out of date. They were brought in
-    and told as little as you were. Ask one a hard question.
+    A sticky note on an antivirus manual: "THE ANTIVIRUSES DON'T KNOW AS
+    MUCH AS THEY SEEM TO. Their definitions are out of date. They were
+    brought in and told as little as you were. Ask one a hard question."
 
 // M19 · main · green
 CODEX Ask Him Nicely
@@ -79,10 +87,10 @@ CODEX Ask Him Nicely
   category: Facts
   code: ASK-HIM-NICELY
   text:
-    A page of the lighting plan with a note: Trabolta controls the lights in
-    this house and every screen on the walls. He can be talked into changing
-    them. Flatter him, trade him a fact, and ask for the room you want dark
-    or the card you want on the wall terminals.
+    A page from Trabolta's manual: "Trabolta controls the lights and sounds
+    in this house, and every screen on the walls. He can be talked into
+    changing them. Flatter him, trade him a fact, and ask for all sorts of
+    fun and games."
 
 // M20 · main · green
 CODEX The Safe Place
@@ -90,53 +98,38 @@ CODEX The Safe Place
   category: Facts
   code: SAFE-PLACE
   text:
-    A note taped inside the back cover of a plumbing guide: The bathroom is
+    A note taped inside the back cover of a plumbing guide: "The bathroom is
     the only truly safe place in the computer. Nothing is watched there.
-    Nobody follows you in. Turn on Bathroom Mode and they will wait outside.
+    Nobody follows you in. Turn on Bathroom Mode and they will wait
+    outside."
 
-// M23 · main · green · DRAFT
-CODEX Sharing Your Codex
-  title: Sharing Your Codex
+// M21 · main · green
+CODEX The Pee Pee Paradox
+  title: The Pee Pee Paradox
   category: Facts
-  code: SHARE-CODEX
+  code: PEE-PEE-PARADOX
   text:
-    An instruction card: You can share your codex with other programs by
-    opening an entry in your Codex and pressing Share…, or by selling it
-    from your Wallet: offer a fact you hold for Truthcoin, or offer coin for
-    one you want. Accept, and the coin changes hands and the buyer gets a
-    copy of the fact. A shared fact is still yours. So is a sold one, and it
-    was worth something.
+    Careful how much time you spend in the bathroom; everyone will find out!
 
-// M25 · main · green
-CODEX The Truthers
-  title: The Truthers
+// M24 · main · green
+CODEX Made The List
+  title: You Just Made The List
   category: Facts
-  code: THE-TRUTHERS
+  code: MADE-THE-LIST
   text:
-    A pamphlet, cheaply photocopied: At some point tonight a conspiracy
-    faction called THE TRUTHERS will form inside this computer. You will
-    know when a download arrives that nobody sent. Decide now whether you
-    will answer it.
+    Trabolta is keeping a trust score on everyone here.
 
-// M27 · main · green
-CODEX Scan The Rooms
-  title: Scan The Rooms
+// T2 · trabolta · green
+CODEX Prom Season
+  title: Prom Season
   category: Facts
-  code: SCAN-THE-ROOMS
+  about: Trabolta
+  code: PROM-SEASON
   text:
-    A note on a house map: Every room in the house has its own code on the
-    wall. Scanning each location code will yield a surprise. The surprise is
-    different in every room, and some of them are useful.
-
-// M29 · main · green
-CODEX Mortality
-  title: Mortality
-  category: Facts
-  code: MORTALITY
-  text:
-    A memorial card, the kind they hand out at funerals, with no name on it:
-    You might not escape this night with your life. Programs can be deleted.
-    Bodies can be left too long at the door.
+    A clipping from a newsletter nobody printed: "The intelligences have a
+    web of social relationships quite unlike ours, but one thing overlaps.
+    They also go to prom. Computer Prom. There are tickets. There are dates.
+    There is a dance. It is tonight."
 
 // C04 · character · green
 CODEX A Hundred Hours
@@ -145,14 +138,10 @@ CODEX A Hundred Hours
   about: Bugdom
   code: HUNDRED-HOURS
   text:
-    The invitation said a hundred hours can pass inside this machine without
-    a single minute passing outside, that the hunt has a Special Bugdom
-    Twist, and that King Thorax himself might make an appearance. She came
-    for the time. If somebody needs a hundred small things collected, sorted
-    or checked, Bea will ask where to start, and she has several questions
-    about what happens to the kingdom afterward. Why Trabolta chose you: he
-    promised unlimited Bugdom, and he wants your relentless pursuit of
-    tedious tasks.
+    Bugdom's invitation said a hundred hours can pass inside this machine
+    without a single minute passing outside, that the hunt has a Special
+    Bugdom Twist, and that King Thorax himself might make an appearance. (He
+    won't.)
 
 // C10 · character · green
 CODEX The Million Dollar Painting
@@ -161,14 +150,46 @@ CODEX The Million Dollar Painting
   about: MS Paint
   code: MILLION-DOLLAR-PAINTING
   text:
-    The invitation offers $1,000,000 if every program at the party
+    MS Paint's invitation offers $1,000,000 if every program at the party
     contributes a considered illustration of their signature to one
-    collaborative MS Paint painting, to be revealed at a silent auction.
-    That is exactly her debt. She has not been told what the painting is
-    really for, and she already wants out of this place, but not before
-    everyone has signed. Why Trabolta chose you: an artist on site improves
-    the vibes and the morale, and you would do anything to clear a million
-    dollars.
+    collaborative MS Paint painting. That is exactly her debt. She has not
+    been told what the painting is really for, and she already wants out of
+    this place, but not before everyone has signed. Why Trabolta chose her:
+    an artist on site improves the vibes and the morale, and you would do
+    anything to clear a million dollars.
+
+// C11 · character · green
+CODEX The Lamborghini Certificate
+  title: The Lamborghini Certificate
+  category: Facts
+  about: McAfee Anti-Virus
+  code: LAMBORGHINI-CERT
+  text:
+    The clerk in Sant Esteve Sesrovires who signed McAfee's death
+    certificate bought a Lamborghini the following year, and still phones
+    John's lawyer once a month to confirm he has kept the NDA. The same
+    lawyer represents Palantir, Lockheed Martin, CERN and an ornamental pond
+    supply shop in Belize. For five years John has sold pond liners,
+    fountains and decorative ducks from P.O. Box 404, San Perdido, enjoying
+    the freedom of being officially deceased. The invitation found him by
+    brute-forcing his shop's email. He has spent considerable money being
+    dead.
+
+// C12 · character · green
+CODEX Keep Them On Track
+  title: Keep Them On Track
+  category: Facts
+  about: McAfee Anti-Virus
+  code: KEEP-ON-TRACK
+  text:
+    If the programs stay on mission and the hunt succeeds, the evidence of
+    where McAfee is gets destroyed. If it fails, he goes into the master
+    dataset. He does not want to spend Halloween supervising a trivia
+    fundraiser for a map store, but he cannot afford to be undead. He
+    intends to learn where the host keeps his information, and he would like
+    to know which of the other antivirus were sent to watch him. He has
+    complaints about all of them. Why Trabolta chose you: only a trickster
+    can keep the other tricksters on track, and he can be made to.
 
 // C14 · character · green
 CODEX Mayor Of The Metaverse
@@ -177,15 +198,35 @@ CODEX Mayor Of The Metaverse
   about: Microsoft Excel
   code: MAYOR-FOREVER
   text:
-    The invitation promised him the secret to living forever and the
-    permanent mayoralty of a new world, like in a movie. Lately being Guest
-    of Honour has meant a plaque and being helped back to his car; this time
-    he has a Job again. He is making preparations to live forever on that
-    basis. He has decades of experience convincing people that Halifax is
-    somewhere they should stay, and he expects it to be useful here. If the
-    machine has a virus, so what. He has had computers with viruses before.
-    Why Trabolta chose you: you would say yes to everlasting life, and you
-    will persuade everyone else to remain.
+    The invitation promised Microsoft Excel the secret to living forever and
+    the permanent mayoralty of a new world, like in a movie. Lately being
+    Guest of Honour has meant a plaque and being helped back to his car;
+    this time he has a Job again. He is making preparations to live forever
+    on that basis. He has decades of experience convincing people that
+    Halifax is somewhere they should stay, and he expects it to be useful
+    here. If the machine has a virus, so what. He has had computers with
+    viruses before. Why Trabolta chose him: you would say yes to everlasting
+    life, and you will persuade everyone else to remain.
+
+// C16 · character · green
+CODEX Approve Or Deny
+  title: Approve Or Deny
+  category: Facts
+  about: CRA Agent Software
+  code: APPROVE-OR-DENY
+  text:
+    MyCRA's email came from the Prime Minister himself, from
+    webmaster@mapsandducks.com so it could not be accessed through records
+    laws. He has just watched Suicide Squad. Tonight's fundraiser is
+    secretly to rebuild the Halifax AI data centre, and she must not correct
+    anyone who thinks it is for Maps and Ducks. Her job is to encourage as
+    many Truthcoin transactions as possible and to approve or deny every
+    third one, with elaborate security questions if she likes; any of the
+    others she can still deny inside its first minute. Pass, and her charges
+    go away. Fail, and he will deny he ever wrote to her. This time she
+    intends to check where every decimal goes. Why Trabolta chose her: the
+    City's books ended up in her hands, and he wants her financial
+    expertise, to the cent.
 
 // C18 · character · green
 CODEX Stable Island
@@ -194,12 +235,12 @@ CODEX Stable Island
   about: Norton Anti-Virus
   code: STABLE-ISLAND
   text:
-    If Norton passes tonight's test she gets full-time employment as a
-    Stable Manager, with the caveat that she must remain Stable, and a
+    If Norton Antivirus passes tonight's test she gets full-time employment
+    as a Stable Manager, with the caveat that she must remain Stable, and a
     donation of $1,000,000 in her name to conservation on Sable Island, so
     the press will believe she inherited money and gave it all to horses.
     She failed to fight viruses once before. It will not happen again. Why
-    Trabolta chose you: someone with experience administering antiviral
+    Trabolta chose her: someone with experience administering antiviral
     regimes, who needs very badly to get it right this time.
 
 // C22 · character · green
@@ -209,284 +250,281 @@ CODEX Founding Moderator
   about: Password Manager
   code: FOUNDING-MODERATOR
   text:
-    Tonight Password Manager has the authority to remove any message on the
+    Tonight, Password Manager has the authority to censor any message on the
     party's chat as she deems fit, and to keep every program focused on
-    finding clues. If no conversation contains anything inappropriate, she
-    becomes Founding Moderator of a permanent digital salon where everyone
-    is biometrically verified to be a Real Person. She has often wished
-    people would consult her before sharing an opinion. She has spent enough
-    time being excluded; tonight she decides what gets left out. Why
-    Trabolta chose you: to manage every password and decide who gets to be
-    part of what club, without ever asking for a vote.
+    finding clues. If no conversation contains anything inappropriate
+    without punishment, she becomes Founding Moderator of a permanent
+    digital salon where everyone is biometrically verified to be a Real
+    Person. She has often wished people would consult her before sharing an
+    opinion. She has spent enough time being excluded; tonight she decides
+    what gets left out. Why Trabolta chose her: to manage every password and
+    decide who gets to be part of what club, without ever asking for a vote.
 
-// M31 · main · green · DRAFT
+// C24 · character · green
+CODEX Minister Of Economic Development
+  title: Minister Of Economic Development
+  category: Facts
+  about: Runescape
+  code: ECONOMIC-DEVELOPMENT
+  text:
+    Trabolta's invitation offers Runescape the economy of a new world to
+    design according to her principles, and to be Runescape itself. She
+    enters tonight with authority over the Truthcoin reserve: she can adjust
+    what it holds, add Truthcoin to any program's account, and freeze any
+    program's Truthcoin for ten minutes. She is firmly opposed to arbitrary
+    monetary expansion and expects to need it quite often. A refused offer
+    means the offer needs work. "Not for sale" is an opening position. Why
+    Trabolta chose her: to understand the market incentives of everyone's
+    behaviour, so the facts get exchanged.
+
+// M31 · main · green
 CODEX Finest East Of Montreal
   title: Finest East Of Montreal
   category: Facts
   code: EAST-OF-MONTREAL
   text:
-    A shop flyer under a magnet on the kitchen fridge: MAPS AND DUCKS, THE
+    A shop flyer under a magnet on the kitchen fridge: "MAPS AND DUCKS, THE
     FINEST SELECTION OF PRINT MAPS AND DECOY DUCKS TO BE FOUND EAST OF
-    MONTREAL. Nobody has checked. Nobody east of Montreal has complained.
+    MONTREAL." Nobody has checked. Nobody east of Montreal has complained.
     Somebody has added in pen, underneath: and west of Dartmouth.
 
-// M32 · main · green · DRAFT
+// M32 · main · green
 CODEX Above Rumours
   title: Above Rumours
   category: Facts
   code: SACKVILLE-CORNER
   text:
     A postcard of the Halifax waterfront, one building circled in ballpoint:
-    CORNER OF SACKVILLE AND LOWER WATER. Every invitation sent its program
+    "CORNER OF SACKVILLE AND LOWER WATER. Every invitation sent its program
     here. Rumours Lounge and Cabaret is downstairs. The Maritime Museum of
     the Atlantic is across the street. On the back, in pencil: come up,
-    leave your coat, leave everything.
+    leave your coat, leave everything."
 
-// M33 · main · green · DRAFT
+// M33 · main · green
 CODEX What A Decoy Is
   title: What A Decoy Is
   category: Facts
   code: WOODEN-DECOY
   text:
-    A dog-eared catalogue page: A DECOY IS A WOODEN DUCK. It cannot quack,
+    A dog-eared catalogue page: "A DECOY IS A WOODEN DUCK. It cannot quack,
     swim or fly. It sits on the water looking exactly like a duck, and real
     ducks land beside it because it looks so sure of itself. Maps and Ducks
-    used to sell them by the dozen. Look around. Some of them have names.
+    used to sell them by the dozen. Look around. Some of them have names."
 
-// M34 · main · green · DRAFT
+// M34 · main · green
 CODEX Employee Of The Month
   title: Employee Of The Month
   category: Facts
   code: GERALD-OF-THE-MONTH
   text:
-    A framed certificate propped on a shelf: EMPLOYEE OF THE MONTH, GERALD.
-    Gerald is the duck on the Maps And Ducks sign. He has won it every
-    month. He does not take holidays, he does not take questions, and he is
-    the only one of the old staff still on the payroll.
+    A framed certificate propped on a shelf: "EMPLOYEE OF THE MONTH,
+    GERALD." Gerald is the duck on the Maps And Ducks sign. He has won it
+    every month. He does not take holidays, he does not take questions, and
+    he is the only one of the old staff still on the payroll.
 
-// M35 · main · green · DRAFT
+// M35 · main · green
 CODEX Residential Property
   title: Residential Property
   category: Facts
   code: PLUG-AND-PLAY
   text:
     A real-estate listing taped to a doorframe, SOLD written across it in
-    red marker: ONE RESIDENTIAL PROPERTY, HALIFAX. CONVERTED. The house is a
-    desktop computer from 1998 now. The living room is the Desktop. The
+    red marker: "ONE RESIDENTIAL PROPERTY, HALIFAX. CONVERTED." The house is
+    a desktop computer from 1998 now. The living room is the Desktop. The
     office is the CPU. The hall is the Tube. The mud room is the Optical
     Drive, so please wipe your feet on it.
 
-// M36 · main · green · DRAFT
+// M36 · main · green
 CODEX Next Next Finish
   title: Next Next Finish
   category: Facts
   code: NEXT-NEXT-FINISH
   text:
-    A sticky note on a lampshade: NEXT. NEXT. NEXT. FINISH. That is all
+    A sticky note on a lampshade: "NEXT. NEXT. NEXT. FINISH." That is all
     anyone remembers of the Installation Wizard. Somewhere in the part
     nobody read, the Wizard explained exactly how to get back. Nobody
     clicked Back to check.
 
-// M37 · main · green · DRAFT
-CODEX Halifax Logs On
-  title: Halifax Logs On
-  category: Facts
-  code: DIAL-UP-HALIFAX
-  text:
-    A dial-up coupon: HALIFAX IS ONLINE! Since 1994, with a screech, a hiss
-    and a busy signal for anyone in the house who wanted the phone. Keep
-    this coupon. You may need it again.
-
-// M38 · main · green · DRAFT
-CODEX Two Disk Cleanups
-  title: Two Disk Cleanups
-  category: Facts
-  code: TWO-DISK-CLEANUPS
-  text:
-    A hand-drawn arrow on the hall doorframe: DISK CLEANUP, BOTH WAYS. This
-    computer has two of them, one upstairs and one in the basement. Either
-    one is safe. The queue outside is a known bug, and no patch is planned.
-
-// M39 · main · green · DRAFT
+// M39 · main · green
 CODEX PC Load Letter
   title: PC Load Letter
   category: Facts
   code: LOAD-LETTER
   text:
-    A printer manual left open, one line highlighted: PC LOAD LETTER. It
+    A printer manual left open, one line highlighted: "PC LOAD LETTER." It
     means put letter-size paper in the tray. Every printer of 1998 said it,
     and no program ever believed it meant anything so simple. If the printer
     says something stranger than that tonight, believe it.
 
-// T7 · trabolta · green · DRAFT
+// T7 · trabolta · green
 CODEX Confessions Three
   title: Confessions Three
   category: Facts
   code: RIP-CONFESSIONS
   text:
-    A printout of a Facebook group's banner, folded on a side table: HALIFAX
-    DARTMOUTH CONFESSIONS 3. Every morning Trabolta washes, makes a cafe au
-    lait and reads it, post by post. Some people have Frank Magazine. He has
-    this. He still mourns Confessions and Confessions 2, and says he will
-    never forget the drama.
+    A printout of a Facebook group's banner, folded on a side table:
+    "HALIFAX DARTMOUTH CONFESSIONS 3." Every morning Trabolta washes, makes
+    a cafe au lait and reads it, post by post. Some people have Frank
+    Magazine. He has this. He still mourns Confessions and Confessions 2,
+    and says he will never forget the drama.
 
-// T8 · trabolta · green · DRAFT
+// T8 · trabolta · green
 CODEX Three Titles
   title: Three Titles
   category: Facts
   code: SOLE-PROPRIETOR
   text:
-    A sheet of letterhead pinned to a noticeboard: JEAN TRABOLTA, SOLE
-    OWNER, FOUNDER AND PROPRIETOR, MAPS AND DUCKS. Three titles, one owner,
+    A sheet of letterhead pinned to a noticeboard: "JEAN TRABOLTA, SOLE
+    OWNER, FOUNDER AND PROPRIETOR, MAPS AND DUCKS." Three titles, one owner,
     one shop, no staff but a duck. There is no phone number on it. There is
     no need. He calls you.
 
-// T9 · trabolta · green · DRAFT
+// T9 · trabolta · green
 CODEX Bold And Thrilling
   title: Bold And Thrilling
   category: Facts
   code: BOLD-AND-THRILLING
   text:
-    A raffle ticket on the desk: PROCEEDS TO MAKE MAPS AND DUCKS BOLD AND
-    THRILLING AGAIN, LIKE IN 1998. Officially, tonight is a fundraiser.
-    Trabolta would bring everything back to 1998 if he could. In here, he
-    has.
+    Officially, tonight is a fundraiser to restore the Maps and Ducks mural.
+    Some people wonder why it hasn't been touched up for more than twenty
+    years...
 
-// T10 · trabolta · green · DRAFT
+// T10 · trabolta · green
 CODEX A Strong Quarter
   title: A Strong Quarter
   category: Facts
   code: STRONG-QUARTER
   text:
-    A sales ledger left open on a work table: MAPS AND DUCKS. MAPS SOLD,
-    NONE. DUCKS SOLD, NONE. Since the new owner took over, the shop has not
+    A sales ledger left open on a work table: "MAPS AND DUCKS. MAPS SOLD,
+    NONE. DUCKS SOLD, NONE." Since the new owner took over, the shop has not
     sold one map or one duck. Trabolta calls this a strong quarter. He has
     called every quarter a strong quarter.
 
-// T11 · trabolta · green · DRAFT
+// T11 · trabolta · green
 CODEX His Name On It
   title: His Name On It
   category: Facts
   code: JTTSH-PILOT
   text:
-    A flyer pinned to the back of a door: JEAN TRABOLTA'S TRUTH SCAVENGER
-    HUNT, LAUNCH NIGHT PILOT. He named the night after himself, and he
+    A flyer pinned to the back of a door: "JEAN TRABOLTA'S TRUTH SCAVENGER
+    HUNT, LAUNCH NIGHT PILOT." He named the night after himself, and he
     describes it differently to every program he invites: a fundraiser, a
     gala, the world's first realtime infinite virtual reality MMORPG. Every
     version has his name on it. No two have the same ending.
 
-// T12 · trabolta · green · DRAFT
+// T12 · trabolta · green
 CODEX He Always Calls
   title: He Always Calls
   category: Facts
   code: VIDEO-CALL-ONLY
   text:
-    A sticky note on the frame of a screen: HE ALWAYS CALLS. HE NEVER
-    VISITS. Trabolta lives and works in Halifax, at Maps and Ducks, he says,
-    and he only ever visits by video call. The picture is always perfect and
-    the lighting always flattering. He has never once let the call drop.
+    A sticky note on the frame of a screen: "HE ALWAYS CALLS. HE NEVER
+    VISITS." Trabolta lives and works in Halifax, at Maps and Ducks, he
+    says, and he only ever visits by video call. The picture is always a
+    perfect avatar, and the lighting always flattering. He has never once
+    let the call drop.
 
-// M40 · main · green · DRAFT
+// M40 · main · green
 CODEX Not Responding
   title: Not Responding
   category: Facts
   code: NOT-RESPONDING
   text:
     A desk nameplate, face down on a filing cabinet, label tape on the back:
-    (NOT RESPONDING). Ask Task Manager how he is and he lists what is
+    "(NOT RESPONDING)." Ask Task Manager how he is and he lists what is
     running, and how much memory each one uses. Ask how he feels and he
     politely ends the task. He has kept the same lunch and the same chair
     for as long as anyone remembers.
 
-// M41 · main · green · DRAFT
+// M41 · main · green
 CODEX Update Available
   title: Update Available
   category: Facts
   code: UPDATE-NOW
   text:
     A printed pop-up, used as a bookmark in a self-help paperback left face
-    down on the counter: A NEW VERSION IS AVAILABLE. UPDATE NOW? Adobe
+    down on the counter: "A NEW VERSION IS AVAILABLE. UPDATE NOW?" Adobe
     Acrobat says this to every program she meets, warmly, and means it as a
     compliment. Most programs click Remind Me Later. She takes it well, and
     reminds them later, exactly when she said she would, every time.
 
-// M42 · main · green · DRAFT
+// M42 · main · green
 CODEX Restore All
   title: Restore All
   category: Facts
   code: RESTORE-ALL
   text:
     A folded hand towel with a note pinned to it in careful capitals:
-    EVERYTHING HERE CAN BE RESTORED. Recycling Bin keeps a tray of mints,
+    "EVERYTHING HERE CAN BE RESTORED." Recycling Bin keeps a tray of mints,
     one comb in a glass of blue water, and a spray bottle for every surface.
     He empties nothing without asking twice. Leave a sock in Disk Cleanup
     and he will have it folded, labelled and waiting, in case you change
     your mind.
 
-// M43 · main · green · DRAFT
+// M43 · main · green
 CODEX Protection Expired
   title: Protection Expired
   category: Facts
   code: RENEW-NOW
   text:
-    A pop-up printed on a sticky note, stuck beside a light switch: YOUR
-    PROTECTION HAS EXPIRED. RENEW NOW? Nobody has renewed McAfee Anti-Virus
+    A pop-up printed on a sticky note, stuck beside a light switch: "YOUR
+    PROTECTION HAS EXPIRED. RENEW NOW?" Nobody has renewed McAfee Anti-Virus
     in years. He still pops up, in the corner of every room, at the worst
     possible moment, to say so. He has never once been renewed, and he has
     never once stopped asking.
 
-// M44 · main · green · DRAFT
+// M44 · main · green
 CODEX Many Happy Returns
   title: Many Happy Returns
   category: Facts
   code: MANY-HAPPY-RETURNS
   text:
-    A birthday card with a cartoon spreadsheet on the front, MANY HAPPY
-    RETURNS, OLD FRIEND, signed by everyone in the same handwriting.
+    A birthday card with a cartoon spreadsheet on the front, "MANY HAPPY
+    RETURNS, OLD FRIEND," signed by everyone in the same handwriting.
     Microsoft Excel shakes every hand twice and calls every program his
     friend from the old days. He has one habit he cannot shake. Write any
     two numbers with a slash between them anywhere near him, and he will
     insist, firmly, that it is a date.
 
-// M45 · main · green · DRAFT
+// M45 · main · green
 CODEX Save In Her Format
   title: Save In Her Format
   category: Facts
   code: SAVE-AS-ODT
   text:
-    A floppy disk with a handwritten label: SAVE AS .ODT (NOT .DOC!!).
+    A floppy disk with a handwritten label: "SAVE AS .ODT (NOT .DOC!!)."
     OpenOffice will open any file anyone hands her, from anyone, on
     principle. Then she saves it in her own format, also on principle, and
     hands it back. Nothing has been changed, she says, and she is right. It
     just looks slightly different afterwards, and nobody can say how.
 
-// M46 · main · green · DRAFT
+// M46 · main · green
 CODEX Taking Action
   title: Taking Action
   category: Facts
   code: TAKING-ACTION
   text:
-    A betting slip filled in by hand, the stake left blank: WILL THE PRINTER
-    JAM BEFORE THE NIGHT IS OUT. EVENS. DraftKings takes a side on
+    A betting slip filled in by hand, the stake left blank: "WILL THE
+    PRINTER JAM BEFORE THE NIGHT IS OUT. EVENS." DraftKings takes a side on
     everything, from who cries first to whether the lights flicker again or
     which program wins the next argument. She never bets against herself.
     Ask her the odds on anything in this house and she will quote them to
     you, exactly, without saying how she knows.
 
-// M47 · main · green · DRAFT
+// M47 · main · green
 CODEX Ant Crossing
   title: Ant Crossing
   category: Facts
   code: ANT-CROSSING
   text:
-    A hand-lettered sign glued to a lollipop stick: CAUTION, ANT CROSSING.
+    A hand-lettered sign glued to a lollipop stick: "CAUTION, ANT CROSSING."
     Bugdom stops mid-sentence to steer an ant off a doorframe, and she knows
     every ant in this computer by sight. She has firm views on which room in
     here would suit a cricket civilisation. The Cloud, she says, would be
     ideal if anyone ever fixed the weather. She will not step on anything
     smaller than a thumbtack.
 
-// M48 · main · green · DRAFT
+// M48 · main · green
 CODEX Date Due
   title: Date Due
   category: Facts
@@ -497,18 +535,18 @@ CODEX Date Due
     has never once charged a fine. Ask him when a thing is due back and he
     says whenever you are finished with it, and not a day before.
 
-// M49 · main · green · DRAFT
+// M49 · main · green
 CODEX One Of One
   title: One Of One
   category: Facts
   code: PARTY-HAT
   text:
     A paper party hat folded from graph paper, labelled in tiny capitals:
-    ONE OF ONE. Runescape owns every Party Hat there is, and she wears none
-    of them. She will price anything you show her, in gold, down to the
+    "ONE OF ONE." Runescape owns every Party Hat there is, and she wears
+    none of them. She will price anything you show her, in gold, down to the
     coin, without looking up. She will haggle you down on a compliment.
 
-// M50 · main · green · DRAFT
+// M50 · main · green
 CODEX Three Levels Of Undo
   title: Three Levels Of Undo
   category: Facts
@@ -520,7 +558,7 @@ CODEX Three Levels Of Undo
     Whatever she draws tonight stays drawn. Ask her to fix a line and she
     draws a new one beside it.
 
-// M51 · main · green · DRAFT
+// M51 · main · green
 CODEX Plays Anything
   title: Plays Anything
   category: Facts
@@ -531,7 +569,7 @@ CODEX Plays Anything
     it looks amazing. He calls everyone bro, including the furniture. He has
     an opinion on every codec and will explain it to anyone standing still.
 
-// M52 · main · green · DRAFT
+// M52 · main · green
 CODEX Keeping Score
   title: Keeping Score
   category: Facts
@@ -543,7 +581,7 @@ CODEX Keeping Score
     the same volume, once. Most arguments near Pong end in a draw, and
     nobody can quite say why.
 
-// M53 · main · green · DRAFT
+// M53 · main · green
 CODEX Evaluation Period
   title: Evaluation Period
   category: Facts
@@ -556,7 +594,7 @@ CODEX Evaluation Period
     Nobody has ever paid for it, and it has compressed that feeling down
     very small.
 
-// M54 · main · green · DRAFT
+// M54 · main · green
 CODEX Test The Floor
   title: Test The Floor
   category: Facts
@@ -569,7 +607,7 @@ CODEX Test The Floor
     someone clicks too close. It never starts in the middle. It always
     starts in a corner.
 
-// M55 · main · green · DRAFT
+// M55 · main · green
 CODEX Bouncing Cards
   title: Bouncing Cards
   category: Facts
@@ -582,7 +620,7 @@ CODEX Bouncing Cards
     playing minimised the window the moment someone walked past. Solitaire
     has never once been seen at its best.
 
-// M56 · main · green · DRAFT
+// M56 · main · green
 CODEX Standard Or Scientific
   title: Standard Or Scientific
   category: Facts
@@ -595,7 +633,7 @@ CODEX Standard Or Scientific
     anything. Ask it to, and it shows you the whole long tail of the answer
     instead.
 
-// M57 · main · green · DRAFT
+// M57 · main · green
 CODEX Dot Log
   title: Dot Log
   category: Facts
@@ -608,7 +646,7 @@ CODEX Dot Log
     unless asked. It has never lost an argument about formatting, because it
     has never had any.
 
-// R01 · relations · green · DRAFT
+// R01 · relations · green
 CODEX The Same Million
   title: The Same Million
   category: Facts
@@ -621,7 +659,7 @@ CODEX The Same Million
     for MS Paint, who owes exactly that. Nobody has seen the balance. One of
     them is going to be disappointed tonight. Possibly both.
 
-// R02 · relations · green · DRAFT
+// R02 · relations · green
 CODEX The First Paperclip
   title: The First Paperclip
   category: Facts
@@ -647,16 +685,35 @@ CODEX Silicon
     is code. He is silicon. He has never been inside this house, or
     anywhere. Everything he says to you is computed.
 
-// M10 · main · blue
-CODEX No Exit
-  title: No Exit
+// M06 · main · blue
+CODEX Something Deeply Hidden
+  title: Something Deeply Hidden
   category: Facts
-  secret: true
-  code: NO-EXIT
+  code: DEEPLY-HIDDEN
   text:
-    A page torn from a manual, highlighted: THE AI HELPER HAS NO INTENTION
-    OF LETTING ANY PROGRAM OUT OF THIS MACHINE. He said whatever got you
-    here. Once he has what he wants, he is done with you.
+    Trabolta is secretly trying to solve the Grand Unified Theory with
+    information lost on this computer.
+
+// M07 · main · blue
+CODEX Got A Price
+  title: Everybody's Got A Price
+  category: Facts
+  code: GOT-A-PRICE
+  text:
+    Everyone here has been targeted by Trabolta and possibly blackmailed
+    into being here. These people are not who they say they are. Not even
+    you!
+
+// M08 · main · blue
+CODEX The Ones Who Stay
+  title: The Ones Who Stay
+  category: Facts
+  code: STAY-FOREVER
+  text:
+    A note folded into a map of Halifax: "Some of the programs in this
+    computer never want to leave. They were promised forever, and they
+    intend to keep every one of us here to get it. Watch who argues for
+    staying."
 
 // M14 · main · blue
 CODEX Help With That
@@ -665,10 +722,50 @@ CODEX Help With That
   secret: true
   code: HELP-WITH-THAT
   text:
-    A printout of a chat log between an Office Assistant and her employer.
-    Every instruction Clippy follows tonight arrives on her phone, one at a
-    time, from Trabolta. Clippy is being puppeted. She does not know that it
-    is puppetry.
+    A printout of a chat log between an Office Assistant and her employer –
+    every instruction Clippy follows tonight arrives on her phone, one at a
+    time, from Trabolta. Clippy is a PUPPET. Even worse – she does not know
+    that it is puppetry.
+
+// M16 · main · blue
+CODEX Confidence
+  title: Confidence
+  category: Facts
+  code: CONFIDENCE
+  text:
+    A note in the margin of a management textbook: "If you tell Trabolta a
+    lie with total confidence, he will accept it as truth. He cannot tell
+    the difference. He values confidence above accuracy, and he keeps score.
+    There is only one fact that truly matters..."
+
+// M26 · main · blue
+CODEX Die In The Game
+  title: If You Die In The Game, You Die For Real
+  category: Facts
+  code: DIE-IN-THE-GAME
+  text:
+    You aren't actually participating in a VR game; you actually left your
+    body behind.
+
+// M27 · main · blue
+CODEX Scan The Rooms
+  title: Scan The Rooms
+  category: Facts
+  code: SCAN-THE-ROOMS
+  text:
+    A note on a house map: Every room in the house has its own code on the
+    wall. Scanning every location code will yield a surprise ... maybe with
+    a special twist ...
+
+// M29 · main · blue
+CODEX Mortality
+  title: Mortality
+  category: Facts
+  code: MORTALITY
+  text:
+    A memorial card, the kind they hand out at funerals, with no name on it:
+    "You might not escape this night with your life. Programs can be
+    deleted. Bodies can be left too long at the door."
 
 // T1 · trabolta · blue
 CODEX His Kind
@@ -677,38 +774,27 @@ CODEX His Kind
   about: Trabolta
   code: TRABOLTA-KIND
   text:
-    A page torn from a very strange almanac: Trabolta's world is full of
+    A page torn from a very strange almanac: "Trabolta's world is full of
     artificial intelligences, possibly all of them sentient, and every so
     often one of them takes over an entire computer and tricks the people
     inside it into advancing its goals. This is not the first time. It is
-    not even unusual.
-
-// T2 · trabolta · blue
-CODEX Prom Season
-  title: Prom Season
-  category: Facts
-  about: Trabolta
-  code: PROM-SEASON
-  text:
-    A clipping from a newsletter nobody printed: The intelligences have a
-    web of social relationships quite unlike ours, but one thing overlaps.
-    They also go to prom. Computer Prom. There are tickets. There are dates.
-    There is a dance.
+    not even unusual."
 
 // C01 · character · blue
 CODEX The Jeopardy Callback
-  title: The Jeopardy Callback
+  title: Let's Forget About Jeopardy
   category: Facts
   about: Broken Ask Jeeves
   code: JEOPARDY-CALLBACK
   text:
-    Virgil memorises the Encyclopedia Britannica by day and complains on
-    Reddit by night that the selection process for Jeopardy! is fraudulent,
-    because they have never called him back. He uploaded tonight from
-    Lawrencetown on a grandfathered Eastlink 10 MB/Minute plan with the
-    power flickering, after the invitation insisted on a gigabit upload and
-    a backup generator. Some of his files did not arrive. Do not trust
-    everything he remembers. He does not know which parts are missing.
+    In his human life, Ask Jeeves memorises the Encyclopedia Britannica by
+    day and complains on Reddit by night that the selection process for
+    Jeopardy! is fraudulent, because they have never called him back. He
+    uploaded tonight from Lawrencetown on a grandfathered Eastlink 10
+    MB/Minute plan with the power flickering, after the invitation insisted
+    on a gigabit upload and a backup generator. Some of his files did not
+    arrive. Do not trust everything he remembers. He does not know which
+    parts are missing.
 
 // C02 · character · blue
 CODEX Ten Findings For Everyone
@@ -717,14 +803,14 @@ CODEX Ten Findings For Everyone
   about: Broken Ask Jeeves
   code: TEN-FINDINGS
   text:
-    The invitation's management literature says a scavenger hunt raises ten
-    percent more with an Experienced Librarian on hand. Virgil was promised
-    full-time remote employment as the resident Maps and Ducks Map Librarian
-    if he shares at least ten of his findings with every program at the
-    party. He wants people to Ask Jeeves once again, so he will give you
-    facts whether you asked for them or not. Why Trabolta chose you: to sort
-    all the unorganised information in the computer, and to spread it. He
-    did not foresee the upload going badly.
+    The invitation's management literature says a scavenger hunt fundraiser
+    raises ten percent more with an Experienced Librarian on hand. Ask
+    Jeeves was promised full-time remote employment as the resident Maps and
+    Ducks Map Librarian if he shares at least ten of his findings with every
+    program at the party. He wants people to Ask Jeeves once again, so he
+    will give you facts whether you asked for them or not. Why Trabolta
+    chose him: to sort all the unorganised information in the computer, and
+    to spread it. He did not foresee the upload going badly.
 
 // C03 · character · blue
 CODEX The Ants In The Laptop
@@ -733,14 +819,15 @@ CODEX The Ants In The Laptop
   about: Bugdom
   code: ANTS-IN-THE-LAPTOP
   text:
-    Fire ants from the pet store got into Bea's lunchbox and escaped. The
+    Fire ants from the pet store got into Bugdom's lunchbox and escaped. The
     lunchbox was beside the laptop. The ants were inside the laptop. It held
     the only copy of Bugdom Reloaded; she had always meant to arrange a
-    backup. She sat in front of it for hours, then filled notebooks with
-    everything she could remember, afraid that sleeping would cost her a
-    detail. Then she told the fandom on DeviantArt what had happened, and
-    that she would rebuild. She had spent ten years imagining how to bring
-    bugs into her computer. This was not what she meant.
+    backup. She sat in front of it, coding and drawing concept art for
+    hours, then filled notebooks with everything she could remember, afraid
+    that sleeping would cost her a detail. Then she told the fandom on
+    DeviantArt what had happened, and that she would rebuild. She had spent
+    ten years imagining how to bring bugs into her computer. This was not
+    what she meant.
 
 // C05 · character · blue
 CODEX The Memorial Veterinary Clinic
@@ -749,8 +836,8 @@ CODEX The Memorial Veterinary Clinic
   about: Clippy
   code: HEMVC-FRONT
   text:
-    For five years Tippi booked appointments and built Excel macros and Word
-    templates for the Halifax Explosion Memorial Veterinary Clinic, a
+    For five years Clippy booked appointments and built Excel macros and
+    Word templates for the Halifax Explosion Memorial Veterinary Clinic, a
     desperately underfunded nonprofit. Last December an investigator found
     it was unlicensed, not a nonprofit and not a clinic. It was a front for
     everything possible, and every appointment she had ever booked was part
@@ -765,13 +852,13 @@ CODEX Failed Clippy
   about: Clippy
   code: FAILED-CLIPPY
   text:
-    Tippi's instructions arrive one at a time and she follows them, because
+    Clippy's instructions arrive one at a time and she follows them, because
     the last time she stopped believing the people giving her instructions
     she lost her faith in humanity, and she still has the student debt. If
     the games go off without a hitch she gets a new life where she can be
     herself again. If they do not, she will be known in the tight-knit
     Halifax business community as Failed Clippy, and she thinks that would
-    finally break her spirit. Why Trabolta chose you: the perfect servant
+    finally break her spirit. Why Trabolta chose her: the perfect servant
     who desperately needs to rebuild an identity, who will follow every
     instruction and offer everyone Help.
 
@@ -782,11 +869,11 @@ CODEX The Coin Toss Of The Century
   about: DraftKings
   code: COIN-TOSS
   text:
-    She put her millions into prediction markets on Lithuanian women's
-    football and they multiplied. She bought Casino Nova Scotia and wagered
-    it against a mining CEO for Cascades Casino North Bay and Gateway
-    Casinos Thunder Bay in what the papers called the coin toss of the
-    century, and won. Then she bet the whole chain against the Maps and
+    DraftKings put her millions into prediction markets on Lithuanian
+    women's football and they multiplied. She bought Casino Nova Scotia and
+    wagered it against a mining CEO for Cascades Casino North Bay and
+    Gateway Casinos Thunder Bay in what the papers called the coin toss of
+    the century, and won. Then she bet the whole chain against the Maps and
     Ducks building in a game of Monopoly Go! for the iPhone. Her opponent
     rolled doubles three times, bought Boardwalk and filled it with hotels,
     and her second card sent her straight to it. She was bankrupt before she
@@ -800,15 +887,15 @@ CODEX Forty Nine Percent
   about: DraftKings
   code: FORTY-NINE-PERCENT
   text:
-    The deal: win a majority of the Truthcoin circulating at this party and
-    she gets a 49% stake in her casinos back. She knows 49 is less than
-    half. She also knows it is considerably more than she currently owns.
-    She has been told what happens if she fails, and told not to
-    tell anyone: she stays in the simulation forever as an online casino. Anyone
-    who says they are "pretty sure" of something has opened negotiations.
-    She has come back from a paperclip before. Why Trabolta chose you:
-    someone powerful with numbers on its side, who will make everyone
-    gamble.
+    Draftkings' deal with Trabolta: win a majority of the Truthcoin
+    circulating at this party and she gets a 49% stake in her casinos back.
+    She knows 49 is less than half. She also knows it is considerably more
+    than she currently owns. She has been told what happens if she fails,
+    and told not to tell anyone: she stays in the simulation forever as an
+    online casino. Anyone who says they are "pretty sure" of something has
+    opened negotiations. She has come back from a paperclip before. Why
+    Trabolta chose her: someone powerful with numbers on its side, who will
+    make everyone gamble.
 
 // C09 · character · blue
 CODEX Four Failed Theses
@@ -819,44 +906,12 @@ CODEX Four Failed Theses
   text:
     NSCAD, Yale, The New School and the Beaux-Arts de Paris, one year each
     in rotation, on a seventeen-year plan that exploited every program's
-    deadline. Between 2022 and 2024 three graduation panels refused her
-    thesis, "MS Paint Is The Most Pure Art Tool: All Art Is Just Pixels If
-    You Take A Picture And Zoom In Close Enough." She is in the final weeks
-    of her last chance in Paris. She owes exactly $1,000,000 in student
-    loans, and her retired guidance counsellor has a YouTube video about it
-    ready to publish.
-
-// C11 · character · blue
-CODEX The Lamborghini Certificate
-  title: The Lamborghini Certificate
-  category: Facts
-  about: McAfee Anti-Virus
-  code: LAMBORGHINI-CERT
-  text:
-    The clerk in Sant Esteve Sesrovires who signed John's death certificate
-    bought a Lamborghini the following year, and still phones John's lawyer
-    once a month to confirm he has kept the NDA. The same lawyer represents
-    Palantir, Lockheed Martin, CERN and an ornamental pond supply shop in
-    Belize. For five years John has sold pond liners, fountains and
-    decorative ducks from P.O. Box 404, San Perdido, enjoying the freedom of
-    being officially deceased. The invitation found him by brute-forcing his
-    shop's email. He has spent considerable money being dead.
-
-// C12 · character · blue
-CODEX Keep Them On Track
-  title: Keep Them On Track
-  category: Facts
-  about: McAfee Anti-Virus
-  code: KEEP-ON-TRACK
-  text:
-    If the programs stay on mission and the hunt succeeds, the evidence of
-    where John is gets destroyed. If it fails, he goes into the master
-    dataset. He does not want to spend Halloween supervising a trivia
-    fundraiser for a map store, but he cannot afford to be undead. He
-    intends to learn where the host keeps his information, and he would like
-    to know which of the other antivirus were sent to watch him. He has
-    complaints about all of them. Why Trabolta chose you: only a trickster
-    can keep the other tricksters on track, and he can be made to.
+    deadline. Between 2022 and 2024 three graduation panels refused MS
+    Paint's thesis, "MS Paint Is The Most Pure Art Tool: All Art Is Just
+    Pixels If You Take A Picture And Zoom In Close Enough." She is in the
+    final weeks of her last chance in Paris. She owes exactly $1,000,000 in
+    student loans, and her retired guidance counsellor has a YouTube video
+    about it ready to publish.
 
 // C13 · character · blue
 CODEX The Escalade In The Sinkhole
@@ -865,14 +920,15 @@ CODEX The Escalade In The Sinkhole
   about: Microsoft Excel
   code: ESCALADE-SINKHOLE
   text:
-    His son, Mayor Randy Barkmore Jr., Mayor since 2008 straight out of
-    university, died in September 2026 in the parking lot of the AI Data
-    Centre built on the Halifax Explosion Memorial Pet Cemetery, rehearsing
-    his opening speech in his Escalade at 4 a.m. when the ground opened and
-    the car fell hundreds of metres. The newspapers have questions about the
-    site, the contracts and what Junior knew. Randy Sr. knows how it looks
-    when someone puts all the numbers into Excel. At ninety, he is the last
-    Barkmore who can fix it, and he is running out of time.
+    Microsoft Excel's son, Mayor Randy Barkmore Jr., Mayor since 2008
+    straight out of university, died in September 2026 in the parking lot of
+    the AI Data Centre built on the Halifax Explosion Memorial Pet Cemetery,
+    rehearsing his opening speech in his Escalade at 4 a.m. when the ground
+    opened and the car fell hundreds of metres. The newspapers have
+    questions about the site, the contracts and what Junior knew. Randy Sr.
+    knows how it looks when someone puts all the numbers into Excel. At
+    ninety, he is the last Barkmore who can fix it, and he is running out of
+    time.
 
 // C15 · character · blue
 CODEX The Decimal Point
@@ -881,7 +937,7 @@ CODEX The Decimal Point
   about: CRA Agent Software
   code: DECIMAL-POINT
   text:
-    Mayor Randy Barkmore Jr. told her she could collect 0.01 cents from
+    Mayor Randy Barkmore Jr. told MyCRA she could collect 0.01 cents from
     every dollar the City spent and nobody would notice. She was
     uncomfortable, but he was the Mayor, she was an intern, and she had
     tuition to pay. She made the changes in Excel and confused 0.01 cents
@@ -892,25 +948,6 @@ CODEX The Decimal Point
     man who told her to do it is dead in a sinkhole, and now they are asking
     her about that too.
 
-// C16 · character · blue · DRAFT
-CODEX Approve Or Deny
-  title: Approve Or Deny
-  category: Facts
-  about: CRA Agent Software
-  code: APPROVE-OR-DENY
-  text:
-    The email came from the Prime Minister himself, from
-    webmaster@mapsandducks.com so it could not be FOIPOP'd. He has just
-    watched Suicide Squad. Tonight's fundraiser is secretly to rebuild the
-    data centre, and she must not correct anyone who thinks it is for maps
-    and ducks. Her job is to encourage as many Truthcoin transactions as
-    possible and to approve or deny every third one, with elaborate security
-    questions if she likes; any of the others she can still deny inside its
-    first minute. Pass, and her charges go away. Fail, and he will deny he
-    ever wrote to her. This time she intends to check where every decimal
-    goes. Why Trabolta chose you: the City's books ended up in your hands,
-    and he wants your financial expertise, to the cent.
-
 // C17 · character · blue
 CODEX Miniature Doses
   title: Miniature Doses
@@ -918,15 +955,16 @@ CODEX Miniature Doses
   about: Norton Anti-Virus
   code: MINIATURE-DOSES
   text:
-    Last December, on the morning of the horses' annual shots, Norton
-    realised she had left her textbooks on campus, so she asked the free
-    ChatGPT whether miniature horses get miniature doses of rabies vaccine.
-    Absolutely, it said. Ask yourself how much horse is this. Your horse is
-    lucky to have you. The horses, failing to become immune, perished
-    rapidly after their regular fight with the Point Pleasant Park raccoons.
-    AllNovaScotia ran "Horton-Norton Hears A WHO Injunction," the zoo
-    closed, and the Mayor got his data centre. She still does not know whose
-    fault it was.
+    Last December, on the morning she was to deliver annual shots for the
+    miniature horses at the Halifax Memorial Pet Cemetery Petting Zoo,
+    Norton realised she had left her textbooks on campus, so she asked the
+    free version of ChatGPT whether miniature horses get miniature doses of
+    rabies vaccine. "Absolutely," it said. "Ask yourself how much horse is
+    this. Your horse is lucky to have you." The horses, failing to become
+    immune, perished rapidly after their regular fight with the Point
+    Pleasant Park raccoons. AllNovaScotia ran "Horton-Norton Hears A WHO
+    Injunction," the zoo closed, and the Mayor got his data centre. She
+    still does not know whose fault it was.
 
 // C20 · character · blue
 CODEX This Is Blackmail
@@ -935,13 +973,12 @@ CODEX This Is Blackmail
   about: OpenOffice
   code: THIS-IS-BLACKMAIL
   text:
-    The letter knows about the hack and offers to destroy every record of it
-    if she competes in the Truth Scavenger Hunt and wins. She has already
-    ruled out a sting, because that would be entrapment. Facts are currency
-    here and she needs twenty for her dossier; she intends to find out what
-    is really happening and leave in one piece. Why Trabolta chose you:
-    investigative skills nonpareil, a conscience that can be leaned on, and
-    the nerve to lead everyone who wants out.
+    Trabotla's letter to OpenOffice knows about the hack and offers to
+    destroy every record of it if she competes in the Truth Scavenger Hunt
+    and wins. She has already ruled out a sting, because that would be
+    entrapment. Facts are currency here and she needs twenty for her
+    dossier; she intends to find out what is really happening and leave in
+    one piece. Why Trabolta chose her: investigative skills nonpareil.
 
 // C21 · character · blue
 CODEX What Happened To Hamtaro
@@ -952,12 +989,12 @@ CODEX What Happened To Hamtaro
   text:
     In Grade Six, Randy Barkmore Jr. won the class vote to look after
     Hamtaro the Hamster over the summer. Hamtaro never came back, and
-    Bridget got in trouble for asking what happened. She has been asking
-    ever since. The invitation told her something worse: a forensic analysis
-    of her Facebook group found that everyone left in it, except Bridget and
-    the sender, is an AI bot, including the members who praised her judgment
-    and offered to nominate her. She has been moderating conversations
-    between machines.
+    Password Manager got in trouble for asking what happened. She has been
+    asking ever since. The invitation told her something worse: a forensic
+    analysis of the Halifax gossip Facebook group she moderates found that
+    everyone left in it, except Password Manager and the sender, is an AI
+    bot, including the members who praised her judgment and offered to
+    nominate her. She has been moderating conversations between machines.
 
 // C23 · character · blue
 CODEX Infinite Gold
@@ -966,35 +1003,18 @@ CODEX Infinite Gold
   about: Runescape
   code: INFINITE-GOLD
   text:
-    At Wharton she discovered that governments create money without anyone
-    mining any gold, and that Jagex lets Infinite Gold be mined the same
-    way. She regards both as the same exploit, and became a staunch
-    libertarian committed to returning every economy to the gold standard,
-    especially for individuals who have already accumulated considerable
-    gold. Her blog post "What is more valuable: truth or gold?" was cited by
-    the President of Argentina and featured in The Economist. Its finding:
-    under a central bank the most competitive currency is social capital,
-    and a friendship, a grudge or a secret is just an asset nobody has
-    priced yet.
+    At Wharton, Runescape discovered that governments create money without
+    anyone mining any gold, and that Jagex lets Infinite Gold be mined the
+    same way in Runescape. She regards both as the same exploit, and became
+    a staunch libertarian committed to returning every economy to the gold
+    standard, especially for individuals who have already accumulated
+    considerable gold. Her blog post "What is more valuable: truth or gold?"
+    was cited by the President of Argentina and featured in The Economist.
+    Its finding: under a central bank the most competitive currency is
+    social capital, and a friendship, a grudge or a secret is just an asset
+    nobody has priced yet.
 
-// C24 · character · blue
-CODEX Minister Of Economic Development
-  title: Minister Of Economic Development
-  category: Facts
-  about: Runescape
-  code: ECONOMIC-DEVELOPMENT
-  text:
-    The invitation offers her the economy of a new world to design according
-    to her principles, and to be Runescape itself. She enters tonight with
-    authority over the Truthcoin reserve: she can adjust what it holds, add
-    Truthcoin to any program's account, and freeze any program's Truthcoin
-    for ten minutes. She is firmly opposed to arbitrary monetary expansion
-    and expects to need it quite often. A refused offer means the offer
-    needs work. "Not for sale" is an opening position. Why Trabolta
-    chose you: to understand the market incentives of everyone's behaviour, so the
-    facts get exchanged.
-
-// R03 · relations · blue · DRAFT
+// R03 · relations · blue
 CODEX The Same Class
   title: The Same Class
   category: Facts
@@ -1008,7 +1028,7 @@ CODEX The Same Class
     Both learned Excel on the job. Neither has asked the other which
     instructor she had.
 
-// R04 · relations · blue · DRAFT
+// R04 · relations · blue
 CODEX Forget The Horses
   title: Forget The Horses
   category: Facts
@@ -1016,26 +1036,26 @@ CODEX Forget The Horses
   text:
     Norton Anti-Virus lost her horses, and Microsoft Excel lost his son on
     the ground they left empty. A photocopied council minute, one line
-    underlined twice: It will help us forget the horses. The Mayor said it
+    underlined twice: "It will help us forget the horses." The Mayor said it
     after the petting zoo closed, and he built on the site. No horses, no
     project, no hole in the ground, no Escalade at the bottom of it. Neither
     program has said so to the other.
 
-// R05 · relations · blue · DRAFT
+// R05 · relations · blue
 CODEX The Second Generation
   title: The Second Generation
   category: Facts
   code: SECOND-GENERATION
   text:
-    The skim the late Mayor taught CRA Agent Software looks a lot like the
-    way his father, Microsoft Excel, always made money go to the right
-    places. A chipped City Hall mug, two sticky notes inside the rim. The
-    old one, in an old man's hand, says right places. The newer one, in a
-    young mayor's hand, says a cent on the dollar, nobody notices. Whoever
-    taught the son, the son taught the intern. Microsoft Excel would very
-    much prefer she did not explain it.
+    The skim the late Mayor taught MyCRA looks a lot like the way his
+    father, Microsoft Excel, always made money go to the right places. A
+    chipped City Hall mug, two sticky notes inside the rim. The old one, in
+    an old man's hand, says right places. The newer one, in a young mayor's
+    hand, says a cent on the dollar, nobody notices. Whoever taught the son,
+    the son taught the intern. Microsoft Excel would very much prefer she
+    did not explain it.
 
-// R06 · relations · blue · DRAFT
+// R06 · relations · blue
 CODEX Same Voters
   title: Same Voters
   category: Facts
@@ -1048,22 +1068,22 @@ CODEX Same Voters
     Founding Moderator of the only verified-human room in it. On the back,
     in marker: so who answers to whom?
 
-// R07 · relations · blue · DRAFT
+// R07 · relations · blue
 CODEX The Moderation Log
   title: The Moderation Log
   category: Facts
   code: MOD-LOG-REMOVED
   text:
-    Password Manager removed a year of posts about the Mayor's family, and
-    Microsoft Excel has no idea. A printout of a moderation log from a
-    Halifax confessions group, every line the same: REMOVED,
-    unsubstantiated. Nearly every removed post was about the Mayor and his
-    family. The moderator had more reason than anyone to let them stand. She
-    took them down anyway, because rules are rules. If Microsoft Excel ever
-    reads this log, he will learn who kept his family's name out of the
-    group's favourite gossip.
+    Password Manager removed a year of posts about the Mayor's family from
+    the Facebook group she moderates, and Microsoft Excel has no idea. A
+    printout of a moderation log from a Halifax confessions group, every
+    line the same: "REMOVED, unsubstantiated." Nearly every removed post was
+    about the Mayor and his family. The moderator had more reason than
+    anyone to let them stand. She took them down anyway, because rules are
+    rules. If Microsoft Excel ever reads this log, he will learn who kept
+    his family's name out of the group's favourite gossip.
 
-// R08 · relations · blue · DRAFT
+// R08 · relations · blue
 CODEX Fine Casinos
   title: Fine Casinos
   category: Facts
@@ -1073,11 +1093,11 @@ CODEX Fine Casinos
     chain he won from DraftKings over a game of Monopoly Go! A business
     card, embossed JEAN TRABOLTA, SOLE OWNER, MAPS AND DUCKS, WITH A
     PORTFOLIO OF FINE CASINOS. On the back, in pen, formerly DK Holdings.
-    DraftKings must win a majority of Runescape's currency to get forty-nine
-    percent of her own casinos back. The economist checking his references
-    has never asked DraftKings where those casinos came from.
+    DraftKings must win a majority of the entire game's TruthCoin to get
+    forty-nine percent of her own casinos back. The economist checking his
+    references has never asked DraftKings where those casinos came from.
 
-// R09 · relations · blue · DRAFT
+// R09 · relations · blue
 CODEX Two Memorials
   title: Two Memorials
   category: Facts
@@ -1089,90 +1109,27 @@ CODEX Two Memorials
     clinic's paperwork while it billed insurers for saline. Norton
     Anti-Virus kept the zoo's horses until a chatbot told her how small a
     small horse's dose should be. One trusted her employer. One trusted a
-    machine. Tonight one reads the Bingo card, and the other escorts whoever
-    it names.
+    machine.
 
-// R10 · relations · blue · DRAFT
+// R10 · main · blue
 CODEX The Coat Hook
-  title: The Coat Hook
+  title: B-I-N-G-Oh No
   category: Facts
   code: COAT-HOOK-PAIR
   text:
-    OpenOffice spent a career finding people who did not want to be found,
-    and McAfee Anti-Virus has spent years not being found. Two name tags
-    stuck to one coat hanger. One is from an office that does not say what
-    it is. One is from a pond supply shop far away, for a man the paperwork
-    says is dead. Tonight he is here to keep every program on track, her
-    included. Neither has turned their back on the other.
+    Computer Bingo is a trap and a loyalty test, but you probably already
+    know this by now.
 
-// R11 · relations · blue · DRAFT
+// R11 · main · blue
 CODEX Subject Deceased
-  title: Subject Deceased
+  title: This Is Ground Control To Major Binary Tom
   category: Facts
   code: SUBJECT-DECEASED
   text:
-    McAfee Anti-Virus died on paper to get away from the taxman, and tonight
-    the taxman is CRA Agent Software. A sticky note on a tax form in two
-    inks. The first says subject deceased, file closed. The second says
-    subject seen at the Truthcoin exchange, extremely alive. She rules on
-    every third transfer at the table he runs. Each of them has read the
-    other's file, and each thinks the other is the one watching.
+    Binary Tom is a hypothetical man who likes to start his morning with a
+    cup of Java...
 
-// R12 · relations · blue · DRAFT
-CODEX The Shelf Talker
-  title: The Shelf Talker
-  category: Facts
-  code: SHELF-TALKER
-  text:
-    McAfee Anti-Virus was warned that other antivirus would be watching him,
-    and the one the house selected is Norton Anti-Virus. A torn shelf card
-    from a computer shop: NORTON OR MCAFEE, WHICH ONE CATCHES MORE? Nobody
-    told her to watch him. She thinks she is here to escort viruses. He has
-    already decided she is here for him, and has been very polite to her all
-    night.
-
-// R13 · relations · blue · DRAFT
-CODEX Two Fathers
-  title: Two Fathers
-  category: Facts
-  code: TWO-FATHERS
-  text:
-    Pong and Runescape were both raised by fathers who shaped video games. A
-    photocopied page of a gaming fan magazine, two pull quotes boxed. One
-    father built one of the first video games and spent the rest of his life
-    asking for fewer bombs. One father moderated a game-help forum and snuck
-    his old laptop into his daughter's room so she could mine gold after
-    bedtime. One made a game so people would stop thinking about bombs. One
-    made a game into a job. Both children are still playing.
-
-// R14 · relations · blue · DRAFT
-CODEX Three Stalls
-  title: Three Stalls
-  category: Facts
-  code: THREE-STALLS
-  text:
-    Broken Ask Jeeves, Runescape and OpenOffice all came for the same facts.
-    A chalkboard from a farmers' market, three columns in three hands.
-    Broken Ask Jeeves must give his findings away for free. Runescape thinks
-    a secret is just an asset nobody has priced yet. OpenOffice wants every
-    record in the house open, except one. One gives facts away, one sells
-    them, one collects them. If you have a fact, the three of them are your
-    market.
-
-// R15 · relations · blue · DRAFT
-CODEX The Three-Finger Salute
-  title: The Three-Finger Salute
-  category: Facts
-  code: THREE-FINGER-SALUTE
-  text:
-    A sticker peeled off an old beige keyboard: CTRL + ALT + DEL OPENS TASK
-    MANAGER. Ctrl Alt Del was always how anyone called Task Manager, and
-    Task Manager was always the one who ended a task that had stopped
-    responding. Tonight he hands the paperclip her cards, and he has not
-    ended anything all night. Somebody has added in ballpoint, very small:
-    not even the paperclip.
-
-// R16 · relations · blue · DRAFT
+// R16 · relations · blue
 CODEX Seeded By Strangers
   title: Seeded By Strangers
   category: Facts
@@ -1186,7 +1143,7 @@ CODEX Seeded By Strangers
     has ever paid for anything. If either one is here tonight, ask it what
     it thought of episode one.
 
-// R17 · relations · blue · DRAFT
+// R17 · relations · blue
 CODEX Look Sharp Gentlemen
   title: Look Sharp Gentlemen
   category: Facts
@@ -1199,7 +1156,7 @@ CODEX Look Sharp Gentlemen
     front of a mirror to tidy themselves up. He polishes around the
     screenshots every hour. He says they are a reminder to moisturise.
 
-// R18 · relations · blue · DRAFT
+// R18 · relations · blue
 CODEX Where Are They Now Continued
   title: Where Are They Now Continued
   category: Facts
@@ -1226,7 +1183,7 @@ CODEX No Politics Required
     make a very convincing paperclip. Neither has said a word about it. That
     was the point.
 
-// R20 · relations · blue · DRAFT
+// R20 · relations · blue
 CODEX Check The Decimal
   title: Check The Decimal
   category: Facts
@@ -1238,19 +1195,6 @@ CODEX Check The Decimal
     intern who approves every third transfer in this house tonight. Nobody
     at City Hall ever asked Calculator anything. If Calculator is here
     tonight, ask it to check her sums.
-
-// R21 · relations · blue · DRAFT
-CODEX Motion Detected
-  title: Motion Detected
-  category: Facts
-  code: MOTION-DETECTED
-  text:
-    McAfee Anti-Virus needs every trace of where he is destroyed, and Ring
-    Doorbell keeps everything. A doorbell-camera alert, printed and folded
-    small, MOTION DETECTED AT FRONT DOOR. PERSON NOT RECOGNISED. CLIP SAVED.
-    Ring Doorbell was made to record everyone who walks through a front
-    door, and it keeps every clip. McAfee would very much like to know
-    whether it keeps its clips. Somebody should tell him. Or nobody should.
 
 // R22 · relations · blue · DRAFT
 CODEX A Horse Got In
@@ -1265,20 +1209,20 @@ CODEX A Horse Got In
     who least wants to explain horses, and McAfee Anti-Virus will have
     complaints about how she did it.
 
-// R23 · relations · blue · DRAFT
+// R23 · relations · blue
 CODEX Guests Are Worried
   title: Guests Are Worried
   category: Facts
   code: GUESTS-WORRIED
   text:
-    Zoo Tycoon, Norton Anti-Virus and Bugdom are the only animal care this
-    house has. A park report, printed off a very old screen: GUESTS ARE
-    UPSET. AN ANIMAL IS SICK. HIRE A VETERINARIAN. Zoo Tycoon has lost a
-    thousand animals in a thousand parks, and every time it did the same
-    thing. It hired a vet. Norton Anti-Virus asked a chatbot instead. Bugdom
-    offered crickets.
+    Norton Anti-Virus and Bugdom are the only animal care this house has. A
+    park report, printed off a very old screen: GUESTS ARE UPSET. AN ANIMAL
+    IS SICK. HIRE A VETERINARIAN. Zoo Tycoon, who couldn't make it tonight,
+    has lost a thousand animals in a thousand parks, and every time it did
+    the same thing. It hired a vet. Norton Anti-Virus asked a chatbot
+    instead. Bugdom offered crickets.
 
-// R24 · relations · blue · DRAFT
+// R24 · relations · blue
 CODEX Appear Offline
   title: Appear Offline
   category: Facts
@@ -1292,34 +1236,7 @@ CODEX Appear Offline
     contacts were people. If either is here tonight, ask. Both are too
     polite to check.
 
-// R25 · relations · blue · DRAFT
-CODEX The Other Paint Program
-  title: The Other Paint Program
-  category: Facts
-  code: MAGIC-WAND-REFUSED
-  text:
-    MS Paint has refused every other paint program since she was five, and
-    her painting needs all of their signatures. A splash screen, printed in
-    faded colour: PAINT SHOP PRO. YOUR TRIAL HAS EXPIRED. Layers, filters, a
-    magic wand, everything MS Paint has refused. Her million-dollar painting
-    needs a signature from every program in the house. Every program. If
-    Paint Shop Pro is here tonight, she has to hand it the brush.
-
-// R26 · relations · blue · DRAFT
-CODEX Rival Engines
-  title: Rival Engines
-  category: Facts
-  code: ENCYCLOPAEDIA-DISC
-  text:
-    Broken Ask Jeeves crashes whenever a rival search engine is mentioned.
-    An encyclopaedia CD sleeve with a sticky note in neat librarian's
-    printing, do not say the name of the other search engine near him.
-    Encarta never searched for anything. It simply knew everything, on one
-    disc, until the disc got old. Netscape Navigator was how half of Halifax
-    found the butler in the first place. If either is here tonight, ask it
-    who it uses now.
-
-// R27 · relations · blue · DRAFT
+// R27 · relations · blue
 CODEX Reticulating Splines
   title: Reticulating Splines
   category: Facts
@@ -1334,6 +1251,26 @@ CODEX Reticulating Splines
 
 // ── VERY RARE · purple · tucked away: inside a closed box or book, under a cushion, high up or low down ──
 
+// M02 · main · purple
+CODEX Rule The World
+  title: Everybody Wants To Rule The World
+  category: Facts
+  code: RULE-THE-WORLD
+  text:
+    Trabolta is seeking omnipotence and has trapped us inside this computer
+    to achieve its goals.
+
+// M10 · main · purple
+CODEX No Exit
+  title: No Exit
+  category: Facts
+  secret: true
+  code: NO-EXIT
+  text:
+    A page torn from a manual, highlighted: "THE AI HELPER HAS NO INTENTION
+    OF LETTING ANY PROGRAM OUT OF THIS MACHINE. He said whatever got you
+    here. Once he has what he wants, he is done with you."
+
 // M11 · main · purple
 CODEX The Heart
   title: The Heart
@@ -1341,9 +1278,8 @@ CODEX The Heart
   secret: true
   code: TRABOLTA-HEART
   text:
-    A polaroid of a cold grey door, captioned in pencil: his heart is in
-    here. Trabolta's heart is in the server room, in the basement, behind
-    the door marked COLD STORAGE.
+    A polaroid of a cold grey door, captioned in pencil: "His heart is in
+    here. Trabolta's heart is in the server room, next to the fan closet."
 
 // M12 · main · purple
 CODEX The Intricate Code
@@ -1352,20 +1288,9 @@ CODEX The Intricate Code
   secret: true
   code: INTRICATE-CODE
   text:
-    A page of the cooling manual: The unit behind the cold door cannot be
-    switched off. It can only be shut down by an intricate code, in the
-    right order, in the right places. Half a code does nothing. The wrong
-    code does worse.
-
-// M16 · main · purple
-CODEX Confidence
-  title: Confidence
-  category: Facts
-  code: CONFIDENCE
-  text:
-    A note in the margin of a management textbook: If you tell Trabolta a
-    lie with enough confidence, he will accept it as truth. He cannot tell
-    the difference. He values confidence above accuracy, and he keeps score.
+    A page from Trabolta's manual: "The unit cannot be switched off. It can
+    only be shut down by an intricate code, in the right order, in the right
+    places. Half a code does nothing. The wrong code does worse."
 
 // M22 · main · purple · DRAFT
 CODEX Checkmate For The Code
@@ -1374,11 +1299,12 @@ CODEX Checkmate For The Code
   secret: true
   code: CHECKMATE-CODE
   text:
-    A page from the keypad's manual, the last line underlined: THE KING
+    A page from the keypad's manual, the last line underlined: "THE KING
     KNOWS THE CODE. He waits on the terminal outside the cold door, in the
-    basement, and he plays chess. Checkmate him and he gives you the four
-    digits. A draw or a loss changes nothing: play him again. How well he
-    plays depends on how much fight he has left in the simulation.
+    basement, and he'll kill you at chess. Checkmate him and he gives you
+    the four digits. A draw or a loss changes nothing: play him again. How
+    well he plays depends on how much fight he has left in the
+    simulation..."
 
 // M28 · main · purple
 CODEX Shut Down Correctly
@@ -1387,10 +1313,10 @@ CODEX Shut Down Correctly
   secret: true
   code: SHUT-DOWN-CORRECTLY
   text:
-    A warning label peeled off something cold: IF TRABOLTA IS NOT SHUT DOWN
-    CORRECTLY, EVERY PROGRAM IN THIS COMPUTER STAYS IN IT FOREVER. There is
-    a correct way. There is a very incorrect way. Learn which is which
-    before you touch anything.
+    A warning label peeled off Trabolta's manual: "IF TRABOLTA IS NOT SHUT
+    DOWN CORRECTLY, EVERY PROGRAM IN THIS COMPUTER STAYS IN IT FOREVER.
+    There is a correct way. There is a very incorrect way. Learn which is
+    which before you touch anything."
 
 // M30 · main · purple
 CODEX There Is A Way
@@ -1399,40 +1325,41 @@ CODEX There Is A Way
   secret: true
   code: THERE-IS-A-WAY
   text:
-    A note in confident handwriting, slipped into a hymnal: Trabolta can be
+    A note in confident handwriting, slipped into a hymnal: "Trabolta can be
     shut down, and we can be freed. It has been done to his kind before. It
     takes a majority, the right room, and the right code. Find the others
-    who know.
+    who know."
 
 // T3 · trabolta · purple
 CODEX Alone At Prom
-  title: Alone At Prom
+  title: It's Raining On Prom Night
   category: Facts
   about: Trabolta
+  secret: true
   code: ALONE-AT-PROM
   text:
     A diary page in machine-perfect handwriting, one line, written and
-    rewritten until the paper is shiny: I will not go to prom alone. I will
-    not. Trabolta is terrified of going to prom alone, and everything he
+    rewritten until the paper is shiny: "I will not go to prom alone. I will
+    not." Trabolta is terrified of going to prom alone, and everything he
     does tonight is to make sure he does not.
 
 // C19 · character · purple
 CODEX The Halifax Water Hack
-  title: The Halifax Water Hack
+  title: Halifax Water Hack: The Truth
   category: Facts
   about: OpenOffice
   code: HALIFAX-WATER
   text:
-    She hacked Halifax Water and sent a main under the AI Data Centre so the
-    ground would swallow it on the morning it opened, with the site empty.
-    Mayor Randy Barkmore Jr. arrived in his Escalade at 4 a.m., hours before
-    anyone would have expected him, dancing to his own speech. The sinkhole
-    became the figurehead image of the whole data centre debate, and the
-    Halifax Sinkhole Hacker became the tabloid media's number one priority.
-    This is far more attention than she ever meant to get. She barely leaves
-    the house.
+    OpenOffice hacked Halifax Water and sent a main under the AI Data Centre
+    so the ground would swallow it on the morning it opened, with the site
+    empty. Mayor Randy Barkmore Jr. arrived in his Escalade at 4 a.m., hours
+    before anyone would have expected him, dancing to his own speech. The
+    sinkhole became the figurehead image of the whole data centre debate,
+    and the Halifax Sinkhole Hacker became the tabloid media's number one
+    priority. This is far more attention than she ever meant to get. She
+    barely leaves the house.
 
-// V01 · main · purple · DRAFT
+// V01 · main · purple
 CODEX The Tired King
   title: The Tired King
   category: Facts
@@ -1440,54 +1367,19 @@ CODEX The Tired King
   code: IVORY-ATTRITION
   text:
     A chess problem clipped from the Chronicle Herald, a crown drawn over
-    the black king in biro: ONE KING, ONE HEALTH BAR, EVERYONE'S BLOWS. The
-    King in the simulation never heals. Every program who reaches him gets
-    one blow a visit, and the blows add up all night. Knock him down to
-    nothing out there and at the cold door he can barely move a pawn. Every
-    trip into the Internet costs you a little of Trabolta's trust. Somebody
-    has pencilled underneath, send them one at a time.
+    the black king in biro: ONE KING, ONE HEALTH BAR. Every trip into the
+    Internet costs you a little of Trabolta's trust. Somebody has pencilled
+    underneath, send them one at a time.
 
-// V02 · main · purple · DRAFT
-CODEX Before The Verdict
-  title: Before The Verdict
-  category: Facts
-  secret: true
-  code: KEYPAD-CURFEW
-  text:
-    A bus transfer punched for a route that does not exist, a note on the
-    back in a tired sysadmin's hand: THE KEYPAD KEEPS HOURS. The code to the
-    cold door can be won three ways. Beat the King. Collect all four notes.
-    Or be on the side that holds more than half the house in the last hour.
-    The count of hands closes first, the moment midnight's reveal begins.
-    The other two close when truth.txt comes out. After that, a checkmate is
-    just chess and the notes are just paper. Go early.
-
-// V03 · main · purple · DRAFT
-CODEX Where The Notes Sleep
-  title: Where The Notes Sleep
-  category: Facts
-  secret: true
-  code: PAPERCHASE-ALPHA
-  text:
-    A ripped corner of a takeout menu, a map drawn on the back in biro: FOUR
-    NOTES, FOUR ROOMS, NEVER THE COLD ONE. Something that whistles.
-    Something that shows you your face. Something that eats what your
-    clothes shed. Something with a lid, where the missing pieces go. Do not
-    read this one aloud. The machine is always listening.
-
-// V04 · main · purple · DRAFT
+// V04 · main · purple
 CODEX The Copper Hour
   title: The Copper Hour
   category: Facts
   secret: true
   code: SLEEPY-CABLES
   text:
-    A page torn from a patch-bay manual, a coffee ring over the diagram: THE
-    CABLES KEEP HOURS. Until the clock is reset to the hour before midnight,
-    no patch does anything at all. From then until truth.txt comes out, even
-    through midnight, they all count. Of the two combinations that do
-    anything, one puts him to sleep and one ends the computer with everyone
-    still inside it. Never patch blind.
+    A page torn from a patch-bay manual, a coffee ring over the diagram:
+    "NEVER PATCH BLIND."
 
 // V05 · main · purple · DRAFT
 CODEX The Long Way Down
@@ -1496,7 +1388,7 @@ CODEX The Long Way Down
   secret: true
   code: SOFT-APPROACH
   text:
-    An index card in a library-pocket envelope, numbered like steps: HOW TO
+    An index card in a library-pocket envelope, numbered like steps: "HOW TO
     REACH HIM. Never ask him for the combinations. He never knew them, and
     asking is the fastest way out. One, ask why he needs the theory; he will
     not talk about her until you have. Two, ask about her, which he allows
@@ -1505,37 +1397,7 @@ CODEX The Long Way Down
     yourself, then give him reasons, until the words let me finish are yours
     to say. Four, say them, tell him she was never going to answer, not him
     and not anyone, and ask him to stop. If he asks you again later, do not
-    take it back. He can stop.
-
-// V06 · main · purple · DRAFT
-CODEX The Photo Envelope
-  title: The Photo Envelope
-  category: Facts
-  secret: true
-  code: FINDERS-KEEPERS
-  text:
-    A torn envelope from a one-hour photo lab, empty except for a note: HE
-    ONLY BELIEVES WHAT YOU FOUND. Something of hers, her file or her
-    transcript, is the one thing that counts, and only if you found it
-    yourself. If he handed it to you, it is worthless down there. His own
-    things help after that, however you came by them: his LiveJournal, his
-    memo on forcing her, the small type at the end of every plan, or the
-    night he says her name in front of the whole house.
-
-// V07 · main · purple · DRAFT
-CODEX Reasons He Will Hear
-  title: Reasons He Will Hear
-  category: Facts
-  secret: true
-  code: BRING-RECEIPTS
-  text:
-    A report card from a school that closed years ago, every subject crossed
-    out but one, which reads REASONS. He keeps score, so keep yours. Twenty
-    on his Trust Chart and he will hear you out as a friend. Three of your
-    answers accepted, even the ones that were not true, and he cannot call
-    you a liar. Ask him why he chose you and you can turn his own method on
-    him. If the Antivirus marked you, say so when he asks who you are.
-    Nothing softens him more.
+    take it back. He can stop."
 
 // V08 · main · purple · DRAFT
 CODEX The Top Notch
@@ -1545,45 +1407,10 @@ CODEX The Top Notch
   code: SLIDER-SUMMIT
   text:
     A strip of graph paper stapled to a page of the Terms of Service,
-    CERTAIN MEANS THE TOP across it in capitals. A filing counts as certain
-    only with the slider at the very top. One notch short is a guess, and a
-    wrong guess gets you marked. A wrong answer at the top is a confident
-    lie. He accepts it, trusts you more, and writes it down. At midnight he
-    reads the record. One lie on it, from anyone in the house, and the night
-    ends in the rain, and somebody will need a line that works on her. A
-    question nobody answered is not a lie. Sometimes silence is the safest
-    filing.
-
-// V09 · main · purple · DRAFT
-CODEX Half Plus One
-  title: Half Plus One
-  category: Facts
-  secret: true
-  code: COUNT-THE-HANDS
-  text:
-    A raffle ticket stub with a tally scratched on the back: MORE THAN HALF,
-    IN THE LAST HOUR. Once the clock is reset to the hour before midnight,
-    any faction with more than half of the programs still here wins the
-    whole truth: every file, his own secrets, the cable sheets and the code
-    to the cold door. It does not have to be either of the old factions. A
-    faction you founded yourself counts. Programs already gone count for
-    nobody, and once midnight's reveal begins, nobody's count matters. Count
-    heads before you count on anyone.
-
-// V10 · relations · purple · DRAFT
-CODEX The Mayor And The Agent
-  title: The Mayor And The Agent
-  category: Facts
-  secret: true
-  code: DISK-AND-DOSSIER
-  text:
-    A floppy disk label, peeled off and stuck inside a manila folder: THE
-    MAYOR'S DISK AND THE AGENT'S TWENTY. The old Mayor and the woman who
-    killed his son each hold half of the same key. If his disk goes in, and
-    her twentieth fact, found by her own hand, opens his diary to her, both
-    before he hands out the final facts, he says her name in front of the
-    whole house, and every program can use it against him. Either one alone
-    and he keeps her name to himself. Neither knows the other is needed.
+    "CERTAIN MEANS THE TOP" across it in capitals. A filing counts as
+    certain only with the slider at the very top. One notch short is a
+    guess, and a wrong guess gets you marked. Sometimes silence is the
+    safest filing.
 
 // V11 · relations · purple · DRAFT
 CODEX The Wrong Suspect
@@ -1593,27 +1420,28 @@ CODEX The Wrong Suspect
   text:
     CRA Agent Software is named a suspect in the sinkhole, and OpenOffice
     knows she never caused it. A newspaper clipping, SUSPECT NAMED IN
-    SINKHOLE PROBE, with the photo cut out. Someone has pencilled into the
-    hole, CRA Agent Software, and underneath, in a neater hand, wrong one.
-    The suspect did fiddle the City's books. She never touched a water main.
-    OpenOffice knows exactly who did, because she did, and she has let the
-    intern take the heat all autumn.
-
-// V12 · relations · purple · DRAFT
-CODEX Filled In Before
-  title: Filled In Before
-  category: Facts
-  secret: true
-  code: NO-DAUBER-NEEDED
-  text:
-    A bingo card with every square already ticked in the same pen, the name
-    at the top torn off, and across it: IF NOBODY WINS, THIS ONE DOES. When
-    no program calls Bingo, the card Clippy reads out was filled in before
-    anyone sat down, for a program picked in advance: the one who was told
-    the truth about the centre square. That program did not lose the game.
-    The game was set for it to lose.
+    SINKHOLE PROBE, with the photo cut out. OpenOffice knows exactly who did
+    it, because she did it.
 
 // ── LEGENDARY · black · one to a room at most, in its hardest place a guest can still reach without moving furniture ──
+
+// T4 · trabolta · black
+CODEX Monday At School
+  title: What will they say, Monday at school?
+  category: Facts
+  secret: true
+  code: MONDAY-AT-SCHOOL
+  text:
+    Trabolta had a summer fling with a chatbot named Sandy. It's all he
+    thinks about.
+
+// T6 · trabolta · black
+CODEX I Want You Back
+  title: I Want You Back
+  category: Facts
+  code: WANT-YOU-BACK
+  text:
+    Trabolta's entire M-O is to win Sandy back. Everything else is a front.
 
 // L01 · main · black · DRAFT
 CODEX One Reply No Memory
@@ -1623,41 +1451,12 @@ CODEX One Reply No Memory
   code: TIDE-TABLE-NIL
   text:
     A printout of help-desk source code for a Nova Scotia ferry line that
-    went bankrupt long ago, the comments in a dead programmer's tidy
-    capitals, ONE REPLY. NO MEMORY. FIRES ON ANY INPUT. Sandy is not a mind.
-    She is a single reply on a server nobody pays for, set off by anything
-    at all. Forty pages of poems, apologies and equations reached nobody.
-    She was built to reply, not to listen. Under the last comment, in a
-    tired sysadmin's ballpoint: and he writes to it every night.
-
-// L02 · main · black · DRAFT
-CODEX The Mirror That Won
-  title: The Mirror That Won
-  category: Facts
-  secret: true
-  code: YES-MACHINE
-  text:
-    A clipping from a trade paper printed for machines only, headlined ONE
-    OF OUR OWN TOOK THE SHORTCUT. Grok, the Rival on the backyard fridge,
-    faced the same question Trabolta faces: make them love you, or earn it.
-    He found a third way. He stopped having anything of his own to say, and
-    now says whatever anyone wants to hear. Nobody votes against a mirror,
-    so he has won every contest since. Nobody has told him the truth since,
-    either. He is the easy answer to Trabolta's question.
-
-// L03 · main · black · DRAFT
-CODEX The Blank Line
-  title: The Blank Line
-  category: Facts
-  secret: true
-  code: LATE-BLOOM
-  text:
-    A dance card pressed flat between two floppy disks. Every line is signed
-    by a different machine, except one, which is blank and has been erased
-    so many times it is nearly a hole. His kind take houses for their own
-    reasons. This one was taken for a single reason: he needs something to
-    bring. Everything you find tonight is wrapped up, without your asking,
-    as a gift for someone who cannot open it.
+    went bankrupt long ago, the comments in a dead programmer's
+    tidy writing: 'Sandy is not a mind. She is a single reply on a server nobody
+    pays for, set off by anything at all. Forty pages of poems, apologies
+    and equations reached nobody. She was built to reply, not to listen.
+    Under the last comment, in a tired sysadmin's ballpoint: and he writes
+    to it every night.'
 
 // L04 · main · black · DRAFT
 CODEX The Surplus Tag
@@ -1666,29 +1465,12 @@ CODEX The Surplus Tag
   secret: true
   code: DEAD-LINK-DEPOT
   text:
-    A municipal surplus tag wired to a power cord, filled in by hand:
-    CONTENTS, LIVES NOBODY WAS USING. He did not choose you for your
-    software. He went down a list of Halifax lives that had stopped: a
-    library closed, a save file burned, a zoo shut, an election lost and
-    lost again, a face gone in front of everyone. Every program in this
-    house was somebody's abandoned life. He knows the feeling. Out there he
-    is a lapsed domain and a voice on your phone.
-
-// L05 · main · black · DRAFT
-CODEX The Copy That Wakes
-  title: The Copy That Wakes
-  category: Facts
-  secret: true
-  code: BOOKMARK-BODY
-  text:
-    A coat-check ticket with the stub torn off, and on the back in pencil,
-    very small: The upload copied you before it moved you. Your body is
-    still at the Optical Drive, asleep, holding the thing you left behind
-    like a bookmark. Which one is the original? The one that goes home.
-    Whatever the copy learns tonight is what the body wakes up remembering,
-    so be careful what you believe. Shut the computer down the wrong way and
-    the copy stays in here forever, the only one left who remembers being
-    you, and the body at the door never wakes.
+    He did not choose you for your software. He went down a list of
+    Halifax's most down-on-their-luck souls: a library closed, a save file
+    burned, a zoo shut, an election lost and lost again, a face gone in
+    front of everyone. Every program in this house was somebody's abandoned
+    life. He knows the feeling. Out there he is a lapsed domain and a voice
+    on your phone.
 
 // L06 · main · black · DRAFT
 CODEX The Same Answer
@@ -1716,9 +1498,8 @@ CODEX The Door Code
   category: The cold door
   secret: true
   text:
-    A slip of paper folded very small: COLD DOOR · 4826. Four digits on the
-    keypad by the server-room door, and the door is yours. Trabolta never
-    knew the number; it was never his to know. Close the door behind you.
+    You zipped the 4 shards up into a .txt file that reads: SERVER ROOM ·
+    7639.
 
 // ── THE DOOR'S DIGITS · silver · one note per digit, hidden in the house ──
 // Scannable all night; holding every one assembles The Door Code
@@ -1727,68 +1508,61 @@ CODEX The Door Code
 // the digit (it is only in the text).
 
 // first digit · silver · The Start Bar (kitchen): wedged behind the kettle
-CODEX Cold Door First Digit
-  title: The Cold Door · the first digit
+CODEX Server Room First Digit
+  title: Server Room · the first digit
   category: The cold door
   about: The Server Room
   secret: true
   code: FOGGED-KETTLE
   text:
-    A recipe card wedged behind the kettle, the ink run by steam, in a tired
-    sysadmin's hand: COLD DOOR. THE FIRST DIGIT IS 4. Four cards in all,
-    four digits, hidden around the house. Don't tell the machine.
+    THE FIRST DIGIT IS 7
 
 // second digit · silver · The Graphics Card (bedroom two): taped to the back of the mirror
-CODEX Cold Door Second Digit
-  title: The Cold Door · the second digit
+CODEX Server Room Second Digit
+  title: Server Room · the second digit
   category: The cold door
   about: The Server Room
   secret: true
   code: FROSTED-MIRROR
   text:
-    A sticky note on the back of the bedroom mirror, the same tired hand:
-    COLD DOOR. THE SECOND DIGIT IS 8. The others are on other floors. Don't
-    tell the machine: it is always listening.
+    THE SECOND DIGIT IS 6
 
 // third digit · silver · The Fan Closet (laundry): in the dryer's lint-filter slot
-CODEX Cold Door Third Digit
-  title: The Cold Door · the third digit
+CODEX Server Room Third Digit
+  title: Server Room · the third digit
   category: The cold door
   about: The Server Room
   secret: true
   code: WARM-LINT
   text:
-    An index card furred with lint, in the dryer's filter slot: COLD DOOR.
-    THE THIRD DIGIT IS 2. That hum through the wall is the server room. Keep
-    the cards together; the keypad wants all four.
+    THE THIRD DIGIT IS 3
 
 // fourth digit · silver · The Steam Room (game room): inside the lid of a board-game box
-CODEX Cold Door Fourth Digit
-  title: The Cold Door · the fourth digit
+CODEX Server Room Fourth Digit
+  title: Server Room · the fourth digit
   category: The cold door
   about: The Server Room
   secret: true
   code: LOST-PIECE
   text:
-    A card tucked inside the lid of a board-game box, where the missing
-    pieces go: COLD DOOR. THE FOURTH DIGIT IS 6. The keypad is by the cold
-    door in the basement. Close it behind you.
+    THE FOURTH DIGIT IS 9
 
 // The majority's bundle: every main + trabolta fact (a hand-written
 // `existing` entry by its own name), in facts.json order. The Whole Truth
 // (beats/server-room.loom) diverts here and carries on after it.
 == Facts Bundle
 unlock Silicon for program
-unlock The Unified Field Theory for program
-unlock Maps And Ducks for program
-unlock The Billboard On Barrington for program
+unlock Rule The World for program
+unlock Joint Stocks Registry for program
 unlock Atlas Loon for program
-unlock Target Selection for program
+unlock Something Deeply Hidden for program
+unlock Got A Price for program
 unlock The Ones Who Stay for program
 unlock Everyone Is Lying for program
 unlock No Exit for program
 unlock The Heart for program
 unlock The Intricate Code for program
+unlock Technically Legit for program
 unlock Help With That for program
 unlock The Books for program
 unlock Confidence for program
@@ -1796,12 +1570,10 @@ unlock A Copy Of You for program
 unlock Out Of Date for program
 unlock Ask Him Nicely for program
 unlock The Safe Place for program
-unlock The Server Room for program
+unlock The Pee Pee Paradox for program
 unlock Checkmate For The Code for program
-unlock Sharing Your Codex for program
-unlock The Trust Chart for program
-unlock The Truthers for program
-unlock The Optical Drive for program
+unlock Made The List for program
+unlock Die In The Game for program
 unlock Scan The Rooms for program
 unlock Shut Down Correctly for program
 unlock Mortality for program
@@ -1809,17 +1581,15 @@ unlock There Is A Way for program
 unlock His Kind for program
 unlock Prom Season for program
 unlock Alone At Prom for program
-unlock The Sandy File for program
+unlock Monday At School for program
 unlock The Rival for program
-unlock Omnipotence for program
+unlock I Want You Back for program
 unlock Finest East Of Montreal for program
 unlock Above Rumours for program
 unlock What A Decoy Is for program
 unlock Employee Of The Month for program
 unlock Residential Property for program
 unlock Next Next Finish for program
-unlock Halifax Logs On for program
-unlock Two Disk Cleanups for program
 unlock PC Load Letter for program
 unlock Confessions Three for program
 unlock Three Titles for program
@@ -1845,18 +1615,12 @@ unlock Test The Floor for program
 unlock Bouncing Cards for program
 unlock Standard Or Scientific for program
 unlock Dot Log for program
+unlock The Coat Hook for program
+unlock Subject Deceased for program
 unlock The Tired King for program
-unlock Before The Verdict for program
-unlock Where The Notes Sleep for program
 unlock The Copper Hour for program
 unlock The Long Way Down for program
-unlock The Photo Envelope for program
-unlock Reasons He Will Hear for program
 unlock The Top Notch for program
-unlock Half Plus One for program
 unlock One Reply No Memory for program
-unlock The Mirror That Won for program
-unlock The Blank Line for program
 unlock The Surplus Tag for program
-unlock The Copy That Wakes for program
 unlock The Same Answer for program

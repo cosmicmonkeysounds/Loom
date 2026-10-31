@@ -439,21 +439,21 @@ describe("Trapped in the Internet — facts.json (the seed)", () => {
   it("carries the judge defaults", () => {
     expect(facts.judge).toEqual({ mode_var: "Night.judge_mode", confirm: { accurate: "fact_accurate", lie: "fact_lie", uncertain: "fact_uncertain" } });
   });
-  it("carries 72 main + 12 trabolta + 24 character + 30 relations facts in four tiers, and three round briefs", () => {
+  it("carries the delivered 61 main + 12 trabolta + 24 character + 19 relations facts in four tiers, and three round briefs", () => {
     const by = (c: string) => facts.facts.filter((f) => f.category === c).map((f) => f.id);
     const ids = (p: string, n: number, from = 1) => Array.from({ length: n }, (_, i) => `${p}${String(i + from).padStart(2, "0")}`);
-    // Wave 35: M31–M57 are new commons; V01–V09 and L01–L06 (very rare,
-    // legendary) are main too, V10–V12 relations.
-    expect(by("main")).toEqual([...ids("M", 57), ...ids("V", 9), ...ids("L", 6)]);
+    // Wave 58: the Oct 30 file culled 22 cards and moved R10, R11 to main (they
+    // keep their old ids and codes).
+    const main = [...ids("M", 57), ...ids("V", 9), ...ids("L", 6)].filter((id) => !["M04", "M23", "M25", "M37", "M38", "V02", "V03", "V06", "V07", "V09", "L02", "L03", "L05"].includes(id));
+    expect(by("main").sort()).toEqual([...main, "R10", "R11"].sort());
     expect(by("trabolta")).toEqual(["T1", "T2", "T3", "T4", "T5", "T6", "T7", "T8", "T9", "T10", "T11", "T12"]);
     expect(by("character")).toEqual(ids("C", 24));
-    expect(by("relations")).toEqual([...ids("R", 27), ...ids("V", 3, 10)]);
+    const relations = [...ids("R", 27), ...ids("V", 3, 10)].filter((id) => !["R10", "R11", "R12", "R13", "R14", "R15", "R21", "R25", "R26", "V10", "V12"].includes(id));
+    expect(by("relations")).toEqual(relations);
     expect(Object.keys(facts.categories!)).toEqual(["main", "trabolta", "character", "relations"]);
     expect(Object.keys(facts.tiers!)).toEqual(["common", "rare", "very-rare", "legendary"]);
     const perTier = Object.keys(facts.tiers!).map((t) => facts.facts.filter((f) => f.tier === t).length);
-    expect(perTier).toEqual([61, 48, 20, 9]);
-    // Every wave 35 card awaits the sign-off.
-    for (const f of facts.facts.filter((x) => /^(?:[RVL]\d|M(?:3[1-9]|[45]\d)|T(?:[7-9]|1\d))/u.test(x.id))) expect(f.draft, f.id).toBe(true);
+    expect(perTier).toEqual([54, 42, 14, 6]);
     expect(Object.keys(facts.rounds!)).toEqual(["1", "2", "3"]);
     expect(facts.rounds!["1"]!.questTitle).toBe("The Truth Scavenger Hunt · Round 1");
     expect(facts.rounds!["3"]!.questTitle).toBe("The Final Fact-Finding Round");
@@ -510,17 +510,32 @@ describe("Trapped in the Internet — facts.json (the seed)", () => {
   });
   it("the facts that name his nature, his heart or his shutdown are secret, and every very-rare or legendary card (wave 35); the rest are not", () => {
     const secret = facts.facts.filter((f) => f.codex?.secret === true).map((f) => f.id);
-    expect(secret).toEqual(["M01", "M10", "M11", "M12", "M14", "M22", "M28", "M30", ...SECRET_W35]);
+    // Wave 58: T3 and T4's titles quote the film. T5 is The Rival, secret by hand.
+    expect(secret.sort()).toEqual(["M01", "M10", "M11", "M12", "M14", "M22", "M28", "M30", "T3", "T4", ...SECRET_W35].sort());
     for (const f of facts.facts.filter((x) => x.codex !== undefined && /^[VL]/u.test(x.id))) expect(f.codex!.secret === true, f.id).toBe(f.id !== "V11"); // V11 retells C19, which is not secret
   });
-  it("every character fact's third entry ends on why he chose them", () => {
+  it("every character fact's third entry ends on why he chose them, but C04's, which the Oct 30 file cut", () => {
     const thirds = facts.facts.filter((f) => f.category === "character").filter((_, i) => i % 2 === 1);
     expect(thirds).toHaveLength(12);
-    for (const f of thirds) expect(f.codex!.text, f.id).toMatch(/Why Trabolta chose you: /u);
+    for (const f of thirds) if (f.id !== "C04") expect(f.codex!.text, f.id).toMatch(/Why Trabolta chose (?:you|him|her): /u);
+  });
+  it("`secret` hides a card from Trabolta and nothing else: T5's stays secret by hand and keeps its code", () => {
+    const t5 = facts.facts.find((f) => f.id === "T5")!;
+    expect(t5.existing).toBe("The Rival");
+    expect(t5.codex).toBeUndefined();
+    expect(m.codex.get("The Rival")!.secret).toBe(true);
+    expect(m.codex.get("The Rival")!.code).toBe(foldCode(t5.code!));
+    expect(facts.facts.filter((f) => f.existing !== undefined).map((f) => f.id)).toEqual(["T5"]);
+  });
+  it("no delivered placeholder survives: no JESSE, every note keeps its hiding place, no proposal", () => {
+    const text = readFileSync(join(scenarioDir(SHOW), FACTS_FILE), "utf8");
+    expect(text).not.toMatch(/jesse/iu);
+    expect(text).not.toMatch(/"proposal"/u);
+    expect(facts.answers.find((a) => a.id === "P1")!.text.endsWith("I cannot tell a good one myself.")).toBe(true);
   });
 });
 
-const SECRET_W35 = ["V01",  "V02",  "V03",  "V04",  "V05",  "V06",  "V07",  "V08",  "V09",  "V10",  "V12",  "L01",  "L02",  "L03",  "L04",  "L05",  "L06"];
+const SECRET_W35 = ["V01", "V04", "V05", "V08", "L01", "L04", "L06"];
 
 describe("showFactsProblems — the server-room door (wave 7)", () => {
   const door = (over: Record<string, unknown> = {}) => ({ code: "1997", clue: "FOUR DIGITS. THE YEAR.", codex: { id: "The Door Code", title: "The Door Code", text: "The code is 1997." }, ...over });
@@ -589,9 +604,10 @@ describe("showFactsProblems — the server-room door (wave 7)", () => {
   it("clueText fills the digit in", () => {
     expect(clueText(clue(2), "9")).toBe("The third digit is 9.");
   });
-  it("the show's door: 4826 (a number with no story behind it, never a hunt answer), on its sign never", () => {
+  it("the show's door: a number with no story behind it, never a hunt answer, on its sign never", () => {
     const d = parseFactsText(readFileSync(join(scenarioDir(SHOW), FACTS_FILE), "utf8")).facts!.door!;
-    expect(d.code).toBe("4826");
+    expect(d.code).toMatch(/^[0-9]{4}$/u);
+    expect(d.code).not.toMatch(/^(?:19|20)\d\d$/u);
     // Wave 11: the sign points at the four notes and the King's terminal;
     // it no longer asks for the year.
     expect(d.clue).toBe("FOUR DIGITS. FOUR NOTES ARE HIDDEN IN THE HOUSE, ONE DIGIT ON EACH. OR BEAT THE KING AT THE TERMINAL BY THIS DOOR.");

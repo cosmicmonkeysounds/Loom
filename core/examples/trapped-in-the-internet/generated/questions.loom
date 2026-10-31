@@ -79,7 +79,7 @@ set Night.q_h6 = "H6: Round 2 Q3. What is the title of the last chapter of Trabo
 set Night.q_f1 = "F1: Final Q1. What is the only thing Sandy has ever said?"
 set Night.q_f2 = "F2: Final Q2. Who is taking Sandy to computer prom?"
 set Night.truth_count = 17
-set Kernel.door_code = "4826"
+set Kernel.door_code = "7639"
 
 // Truth or Dare: the bottle lane sets Night.truth_n and fires this beat;
 // the arm with that number is the question (match has no fallback arm,

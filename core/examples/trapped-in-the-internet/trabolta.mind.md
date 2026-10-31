@@ -122,8 +122,8 @@ secrets:
   lore:
     - "▒ HUNT ANSWER"
   never:
-    - "4826"               # the door code
-    - "four eight two six"
+    - "7639"               # the door code
+    - "seven six three nine"
     - "FOGGED-KETTLE"      # the digit notes
     - "FROSTED-MIRROR"
     - "WARM-LINT"

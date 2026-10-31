@@ -195,15 +195,16 @@ describe("Trapped in the Internet — compile", () => {
     expect(terminals).toMatch(/view=chess/u);
   });
 
-  it("pins the codex: 278 entries, 172 codes, every facts.json code resolving, no STAMPED anywhere", () => {
+  it("pins the codex: 267 entries, 161 codes, every facts.json code resolving, no STAMPED anywhere", () => {
     // Wave 11: + the cold door's four digit notes (facts.json door.clues).
     // Wave 18b: + the sixteen ties (codex/85-ties.loom) and The DSL Line, none coded.
     // Wave 35: + the 78 new tiered facts (codex/9-facts.loom), every one coded.
-    expect(m.codex.size).toBe(278);
-    expect(m.codexCodes.size).toBe(172);
+    // Wave 58: the Oct 30 file culls 21 generated cards and adds 10 new ones.
+    expect(m.codex.size).toBe(267);
+    expect(m.codexCodes.size).toBe(161);
     // The README's counts follow the pin (its file listing, its status line and the Codex section).
     const readme = readFileSync(join(scenarioDir(SHOW), "README.md"), "utf8");
-    expect([...readme.matchAll(/\b(\d+) CODEX entries|(\d+) codex entries|There\s+are \*\*(\d+)\*\*/gu)].map((x) => Number(x[1] ?? x[2] ?? x[3]))).toEqual([278, 278, 278]);
+    expect([...readme.matchAll(/\b(\d+) CODEX entries|(\d+) codex entries|There\s+are \*\*(\d+)\*\*/gu)].map((x) => Number(x[1] ?? x[2] ?? x[3]))).toEqual([267, 267, 267]);
     const codes: Record<string, string> = {
       trabolta4ever: "The LiveJournal",
       loveletterforyou: "ILOVEYOU",
@@ -1321,8 +1322,10 @@ describe("Trapped in the Internet — the whole night", () => {
     expect(sim.holdsCodex("g8", "The Door Code")).toBe(true); // the code, in the Truther Download
     // The Whole Truth carries every main + Trabolta fact in facts.json (the generated Facts Bundle), to members only.
     const bundle = FACTS.facts.filter((x) => x.category === "main" || x.category === "trabolta").map((x) => x.codex?.id ?? x.existing!);
-    expect(bundle).toEqual(expect.arrayContaining(["Silicon", "His Kind", "The Optical Drive", "Alone At Prom"]));
+    expect(bundle).toEqual(expect.arrayContaining(["Silicon", "His Kind", "The Rival", "Alone At Prom"]));
     for (const id of bundle) expect(sim.holdsCodex("g8", id), id).toBe(true);
+    // Wave 58: the hand-written entries no fact names any more, unlocked by hand.
+    for (const id of ["The Unified Field Theory", "Maps And Ducks", "The Billboard On Barrington", "Target Selection", "The Server Room", "The Trust Chart", "The Optical Drive", "The Sandy File", "Omnipotence"]) expect(sim.holdsCodex("g8", id), id).toBe(true);
     for (const id of ["Silicon", "Atlas Loon", "His Kind", "Alone At Prom"]) expect(sim.holdsCodex("g9", id), id).toBe(false);
     for (const half of ["Combo A First Half", "Combo A Second Half", "Combo B First Half", "Combo B Second Half"]) expect(sim.holdsCodex("g1", half), half).toBe(true);
     expect(sim.isRevealedTo("The Server Room", "g1")).toBe(true);
@@ -2382,7 +2385,7 @@ describe("Trapped in the Internet — the cold door's digit notes (wave 11)", ()
       expect(m.codexCodes.get(foldCode(c.code)), c.id).toBe(c.id);
       // The poster prints the title and the code: neither holds a digit.
       expect(`${e.title} ${c.code}`, c.id).not.toMatch(/[0-9]/u);
-      expect(e.text.replace(/\s+/gu, " "), c.id).toContain(`DIGIT IS ${FACTS.door!.code[i]}.`);
+      expect(e.text.replace(/\s+/gu, " "), c.id).toContain(`DIGIT IS ${FACTS.door!.code[i]}`);
     });
   });
 
@@ -4989,7 +4992,7 @@ describe("Trapped in the Internet — the Truthcoin wallet (wave 4, lane C)", ()
     expect(audit(appr)).toEqual([["update", "Approved Calculator → Winamp, 5."]]);
     expect(casts(appr)).toEqual([]);
     expect(sim.questStatus("CRA Agent Software", "The Audit")).toBe("active");
-    const trade = fire(sim, "offer_accepted", "g5", { to: "g1", amount: 30, entry: "Sharing Your Codex", side: "buy" });
+    const trade = fire(sim, "offer_accepted", "g5", { to: "g1", amount: 30, entry: "Out Of Date", side: "buy" });
     expect(exchange(trade)).toEqual(["~💱 Winamp ⇄ Calculator: a fact for 30 Truthcoin"]);
     expect(v(sim, "Night.stimulus_n")).toBe(0);
     const stim = fire(sim, "stimulus", "g11", { amount: 20, paid: 7 });
@@ -5099,18 +5102,18 @@ describe("Trapped in the Internet — the Truthcoin wallet (wave 4, lane C)", ()
     expect((await modState()).wallet!.stimulus).toEqual({ uses: 1, limit: 3 });
 
     // A buy offer: Winamp offers Calculator 30 for a fact Calculator holds; Accept moves the coin and shares the entry.
-    expect((await call(rt, "POST", "/api/mod/codex", { who: calc.id, entry: "Sharing Your Codex" }, { moderator: true })).status).toBe(200);
-    const offer = await wallet("offer", { to: calc.id, entry: "Sharing Your Codex", side: "buy", amount: 30 }, winamp.token);
+    expect((await call(rt, "POST", "/api/mod/codex", { who: calc.id, entry: "Out Of Date" }, { moderator: true })).status).toBe(200);
+    const offer = await wallet("offer", { to: calc.id, entry: "Out Of Date", side: "buy", amount: 30 }, winamp.token);
     expect(offer.status).toBe(200);
     const [o] = (offer.json["wallet"] as GuestView["wallet"])!.offers;
-    expect(o).toMatchObject({ side: "buy", entry: "Sharing Your Codex", entryTitle: "Sharing Your Codex", amount: 30, state: "open" });
+    expect(o).toMatchObject({ side: "buy", entry: "Out Of Date", entryTitle: "Out Of Date", amount: 30, state: "open" });
     expect((await guestState(winamp.token)).wallet).toMatchObject({ balance: 115, escrowed: 30 });
     expect((await wallet("accept", { id: o!.id }, calc.token)).status).toBe(200);
     expect((await guestState(winamp.token)).wallet).toMatchObject({ balance: 115, escrowed: 0 });
     expect((await guestState(calc.token)).wallet!.balance).toBe(135);
-    expect(rt.liveSim!.holdsCodex(winamp.id, "Sharing Your Codex")).toBe(true);
+    expect(rt.liveSim!.holdsCodex(winamp.id, "Out Of Date")).toBe(true);
     const bought = rt.chatHistoryFor(winamp.id).filter((m) => m.channel === "codex").at(-1)!;
-    expect([bought.kind, bought.codex?.via, bought.codex?.from, bought.codex?.entry]).toEqual(["codex", "share", "Calculator", "Sharing Your Codex"]);
+    expect([bought.kind, bought.codex?.via, bought.codex?.from, bought.codex?.entry]).toEqual(["codex", "share", "Calculator", "Out Of Date"]);
     expect(room(winamp.id, "room:truthcoin exchange").at(-1)).toBe("💱 Winamp ⇄ Calculator: a fact for 30 Truthcoin");
     // Trades bypass the approver (consented twice): nothing new in the CRA queue.
     expect((await primeState(cra)).wallet!.queue).toEqual([]);
@@ -5237,7 +5240,7 @@ describe("Trapped in the Internet — wave 5 story (lane B)", () => {
     const m19 = FACTS.facts.find((f) => f.id === "M19")!;
     expect(m19.text).not.toMatch(/video/iu);
     expect(m19.codex!.text).not.toMatch(/video|played/iu);
-    expect(m19.text).toContain("wall terminals");
+    expect(m19.codex!.text).toContain("every screen on the walls");
   });
 
   it("DraftKings: 1000 is a progress step; a majority of the coin in circulation completes Truthcoin Hustle", { timeout: SLOW }, () => {

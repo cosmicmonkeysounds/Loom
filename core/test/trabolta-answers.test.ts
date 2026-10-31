@@ -518,10 +518,9 @@ describe("Trabolta never knows what he is asking for", () => {
       expect(sim.model.codexCodes.get(foldCode(c.code)), q.id).toBe(c.id);
       expect(answersIn(sim.model.codex.get(c.id)!.text), q.id).toContain(`${q.id}: ${q.answer}`);
     }
-    // The LiveJournal still points at The Rival ("says whatever anyone wants
+    // The LiveJournal still describes the rival ("says whatever anyone wants
     // to hear"), and The Rival names him.
     expect(sim.model.codex.get("The LiveJournal")!.text).toContain("says whatever anyone wants to hear");
-    expect(sim.model.codex.get("The Rival")!.text).toContain("Says whatever anyone wants to hear");
     expect(answersIn(sim.model.codex.get("The Rival")!.text)).toContain("F2: Grok");
   });
 });

@@ -2446,16 +2446,16 @@ ROLE Program
   // generated into codex/9-facts.loom), one digit each, scannable all
   // night. However a note arrives (a scan, a share, a sale), the story rule
   // `door_digit_found` counts them and assembles the code at four.
-  when program learns Cold Door First Digit:
+  when program learns Server Room First Digit:
     fire door_digit_found for program
 
-  when program learns Cold Door Second Digit:
+  when program learns Server Room Second Digit:
     fire door_digit_found for program
 
-  when program learns Cold Door Third Digit:
+  when program learns Server Room Third Digit:
     fire door_digit_found for program
 
-  when program learns Cold Door Fourth Digit:
+  when program learns Server Room Fourth Digit:
     fire door_digit_found for program
 
   // The code in hand by any road (a checkmate, the majority, the notes)
@@ -5813,7 +5813,7 @@ when restore_the_king:
 // door is yours, and the door does nothing now. The quest fails (nothing can
 // finish it any more) and # hosts hears which of the two it was.
 when door_digit_found for program:
-  set program.door_digits = count([x for x in [program.codex.cold_door_first_digit, program.codex.cold_door_second_digit, program.codex.cold_door_third_digit, program.codex.cold_door_fourth_digit] where x])
+  set program.door_digits = count([x for x in [program.codex.server_room_first_digit, program.codex.server_room_second_digit, program.codex.server_room_third_digit, program.codex.server_room_fourth_digit] where x])
   if program.codex.the_door_code != true:
     if program.door_digits >= 4 and Night.ended == true:
       if program.quest.the_cold_door == "active":

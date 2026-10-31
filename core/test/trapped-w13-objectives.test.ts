@@ -333,8 +333,8 @@ describe("Trapped in the Internet — wave 13: every buried beat has a delivery 
     ["🔢 the door code by the four digit notes", /^🔢 Four of four\./u, () => {
       const n = Y2K();
       // Learning a note fires `door_digit_found` (ROLE Program).
-      for (const e of ["Cold Door First Digit", "Cold Door Second Digit", "Cold Door Third Digit"]) n.take(n.sim.unlock("g1", e));
-      return { n, out: n.take(n.sim.unlock("g1", "Cold Door Fourth Digit")) };
+      for (const e of ["Server Room First Digit", "Server Room Second Digit", "Server Room Third Digit"]) n.take(n.sim.unlock("g1", e));
+      return { n, out: n.take(n.sim.unlock("g1", "Server Room Fourth Digit")) };
     }],
     ["🗝 the door code by the majority (The Whole Truth)", /^🗝 THE WHOLE TRUTH:/u, () => { const n = Y2K(); n.take(n.sim.join("g1", "Unlimited Power")); return { n, out: n.press("force_majority_stay").concat(n.tick(1)) }; /* wave 18b: no plant gate, so one member short of a real majority */ }],
     ["⏰ you are late", /^⏰ You are late\./u, () => { const n = boot(); for (const c of [...TO_HOUR, "five_minute_warning"]) n.press(c); return { n, out: n.press("summons_closed") }; }],

@@ -110,7 +110,7 @@ cast/props.loom        The Uploader · The Router · The Screensaver · The Tabl
                        hidden secret state)
 cast/trabolta.loom     the AI: his vars, hooks, and 11 agent powers (wave 20 deleted stand_down: the
                        heart's talk replaced it; the_line_works retired 2026-10-19)
-codex/1-world.loom …   278 CODEX entries: 270 in nine numbered files + the 8 hunt answers
+codex/1-world.loom …   267 CODEX entries: 259 in nine numbered files + the 8 hunt answers
                        in generated/questions.loom (9-facts.loom is GENERATED from
                        facts.json; 3-hunt.loom is gone; 85-ties.loom holds the 16
                        Connections ties and Program Briefing, which deals them at
@@ -195,7 +195,7 @@ These rules matter when you edit. Break one and something fails silently.
 
 As of 2026-10-22 (the wave 18b integration) the project compiles clean, both
 per file and concatenated the way the server joins them (`loomcheck`):
-**34 files, 0 errors, 0 warnings; 112 beats, 278 codex entries (172 with codes; wave 35's tiered facts counted), 27
+**34 files, 0 errors, 0 warnings; 112 beats, 267 codex entries (161 with codes; wave 58's Oct 30 facts counted), 27
 quests, 117 rules, 123 INTERACTIONs**. Wave 18b added `beats/review.loom`
 (The Night In Review, Your File and their shared beats) and
 `codex/85-ties.loom` (the 16 Connections ties + Program Briefing), The DSL
@@ -771,9 +771,10 @@ but not used".
 ## Knowledge is the currency: the Codex
 
 Every `CODEX` entry is a piece of lore a participant can **hold**. There
-are **278**, and **172** of them carry a code (the 126 generated from
+are **267**, and **161** of them carry a code (the 115 generated from
 `facts.json` included: wave 11 added the cold door's four digit notes,
-wave 35 the 78 new tiered facts). An entry reaches a holder in one of five ways:
+wave 35 the tiered facts, and wave 58 replaced the file with the Oct 30
+delivery). An entry reaches a holder in one of five ways:
 
 1. **A code.** `code: MISTER-PICKLES` is printed as a QR in the house.
    Scanning it opens the app with `?code=<event>&unlock=<code>` and redeems
@@ -1181,13 +1182,14 @@ rarity tier (wave 35), scattered through the whole house with no list of
 where each one went: **common** (green, out in the open), **rare** (blue,
 odd but findable), **very rare** (purple, tucked away, counted with the
 four silver digit notes) and **legendary** (black, one to a room at
-most, in its hardest reachable place). The stacks list
-twelve hand-written rows as "already placed" (nine with a code; M06, M13
-and M26 have no QR to print): `MAPSANDDUCKS-COM`,
-`BARRINGTON-ST`, `COLD-STORAGE`, `GROK-ONLINE` keep the rooms below, and
-the five new hand-written codes go in the Desktop piles too
-(`UNIFIED-FIELD`, `TARGET-SELECTION`, `TRUST-CHART`, `SANDY-FILE`,
-`ALL-FOR-HER`). Room check-in QRs are unchanged.
+most, in its hardest reachable place). Since wave
+58 one row is hand-written and "already placed" (T5, `GROK-ONLINE`, in the
+room below); the ten facts that used to point at hand-written entries are
+new generated cards with their own QRs. The old hand-written posters stay
+and print unstacked: `MAPSANDDUCKS-COM`, `BARRINGTON-ST`, `COLD-STORAGE`
+keep the rooms below, and `UNIFIED-FIELD`, `TARGET-SELECTION`,
+`TRUST-CHART`, `SANDY-FILE`, `ALL-FOR-HER` go in the Desktop piles. Room
+check-in QRs are unchanged.
 
 | Where | Codes |
 |---|---|

@@ -42,7 +42,9 @@ Narrator: Nobody announces it. The programs who need to know already do.
 // pledgers). The bundle = every ✚ codex row, in table order (world, files,
 // hunt, trabolta), then every main + Trabolta fact from facts.json (the
 // generated `== Facts Bundle` in codex/9-facts.loom — a hand-written entry
-// facts.json names `existing` is unlocked there, not here), The Legendary
+// facts.json names `existing` is unlocked there, not here), the nine
+// hand-written entries the facts stopped naming in wave 58 (their new cards
+// are in the Facts Bundle, and the heart's proofs read these), The Legendary
 // Fact, then The Door Code (the keypad's four digits; secret, generated from
 // facts.json) last.
 == The Whole Truth
@@ -93,6 +95,16 @@ unlock The LiveJournal for program
 unlock Oil And Lightning for program
 // main + trabolta (generated from facts.json)
 -> Facts Bundle
+// the entries no fact names `existing` any more (wave 58)
+unlock The Unified Field Theory for program
+unlock Maps And Ducks for program
+unlock The Billboard On Barrington for program
+unlock Target Selection for program
+unlock The Server Room for program
+unlock The Trust Chart for program
+unlock The Optical Drive for program
+unlock The Sandy File for program
+unlock Omnipotence for program
 unlock Combo A First Half for program
 unlock Combo A Second Half for program
 unlock Combo B First Half for program
