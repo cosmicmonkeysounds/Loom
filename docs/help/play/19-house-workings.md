@@ -250,7 +250,7 @@ the show, a director or a host sets 🌀 His voice to **Clean**.
 or a director presses **G0 📜 The full truth**: the whole story of the night, in
 the living room, 12 to 14 minutes. Trabolta reads his own file on the TV after the
 song, the pickup line, the helped ending and the hand jive; he phones it in from
-Computer Prom after the rave; Task Manager reads it off the teleprompter after
+the prom after the rave; Task Manager reads it off the teleprompter after
 Combo A (a message he left before he died) and Combo B (the last thing the
 computer saved). His voice stays clean through it, unless a director breaks it.
 
