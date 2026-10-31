@@ -36,6 +36,9 @@ export const COSTUME_LINE_MAX = 200;
 const BURST_GAP_S = 2;
 /** The ad hijack's takeover plays this long on the terminals (`when ad_burst:`). */
 const HIJACK_PLAYS_S = 8;
+/** `Night.step` at the final reveal (the bobbing 17, Grok Prom and the advice
+ *  poll 18, every ending 19). Trabolta's own powers close here too. */
+const REVEAL_STEP = 16;
 /** A stage line is said at about this many characters a second (a slow voice,
  *  so a dead TV errs towards waiting). */
 export const STAGE_CHARS_PER_S = 13;
@@ -298,8 +301,8 @@ export interface CostumeFacts {
   doors: boolean;
   ended: boolean;
   ceremony: boolean;
-  /** `Night.phase`. */
-  phase: string | null;
+  /** `Night.step`. */
+  step: number | null;
   /** The TV is saying a beat's lines, or by their length it still would be. */
   speaking: boolean;
   /** A teleprompter is open. */
@@ -309,8 +312,12 @@ export interface CostumeFacts {
   alarm: boolean;
   /** A room's lights are out on Trabolta's word (`Night.lights_back_at`). */
   roomOut: boolean;
+  /** `Night.dark_room`: the room he last put out. */
+  darkRoom: string | null;
   lightsOnline: boolean;
   routerOnline: boolean;
+  /** Whose hand is on the soundtrack, null for nobody (`AudioHub.musicHand`). */
+  musicHand: string | null;
   /** `Night.talk` ("none" reads null). */
   talk: string | null;
   /** The ad hijack's takeover is still on the screens. */
@@ -322,12 +329,13 @@ export interface CostumeFacts {
   owed: boolean;
 }
 
-/** Why no press lands now, or null. The endings all set a phase below or
- *  `Night.ended`, and every song in the show plays past `Night.ended`, so the
- *  songs, the monologue and the awards need no word of their own. */
+/** Why no press lands now, or null. The final reveal, the bobbing, Grok Prom
+ *  and the advice poll all play with `Night.ended` still false, so the night's
+ *  end is read off `Night.step`. The songs, the monologue and the awards all
+ *  play past it, so they need no word of their own. */
 export function momentRefusal(f: CostumeFacts): string | null {
   if (!f.doors) return "doors";
-  if (f.ended || f.ceremony || f.phase === "final_reveal" || f.phase?.startsWith("finale") === true) return "ending";
+  if (f.ended || f.ceremony || (f.step ?? 0) >= REVEAL_STEP) return "ending";
   if (f.prompter) return "prompter";
   if (f.speaking) return "speaking";
   return null;
@@ -342,8 +350,11 @@ export function actionRefusal(a: CostumeAction, f: CostumeFacts): string | null 
       if (!f.lightsOnline) return "offline";
       return f.alarm || f.roomOut || f.lights === "blackout" ? "lights_held" : null;
     case "sound":
-    case "music":
       return f.routerOnline ? null : "offline";
+    case "music":
+      if (!f.routerOnline) return "offline";
+      // A director's Stop or hand scene is theirs to let go of, never a guest's.
+      return f.musicHand !== null && f.musicHand !== COSTUME_BY ? "hand" : null;
     case "cue":
       if (f.talk === null || f.talk === "intro") return "no_talk";
       if (f.hijackPlaying) return "hijack";

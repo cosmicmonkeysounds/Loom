@@ -248,6 +248,8 @@ export type AudioMusicBed = MixerMusicBed;
 export type AudioMusicHealth = MixerMusic;
 /** At most this many sounds in a health report's `sounds`. */
 export const AUDIO_HEALTH_SOUNDS_MAX = 1000;
+/** (wave 59) A router's report this soon after a hand command may not have seen it. */
+const MUSIC_HAND_SETTLE_MS = 2000;
 /** (wave 38) At most this many beds, speakers per bed, metered inputs and sources. */
 export const AUDIO_HEALTH_BEDS_MAX = 32;
 export const AUDIO_HEALTH_SPEAKERS_MAX = 64;
@@ -627,6 +629,8 @@ export class AudioHub {
    *  (`music=`), memory only like the desk's plays. */
   private musicLog: MusicCommandEntry[] = [];
   private musicSeq = 0;
+  /** (wave 59) The last command that moved the hand: `by` null is a `story`. Memory only. */
+  private handCommand: { by: string | null; at: number } | null = null;
   /** (wave 40) The router's last meters packet (memory only) and the last
    *  sound `music` a packet carried, with when it arrived. */
   private lastMeters: MixerMeters | null = null;
@@ -681,8 +685,21 @@ export class AudioHub {
     const entry: MusicCommandEntry = { ...cmd, seq: ++this.musicSeq, at: this.now(), by: by.slice(0, 64) };
     this.musicLog.push(entry);
     if (this.musicLog.length > MUSIC_COMMANDS) this.musicLog.shift();
+    if (cmd.action !== "next") this.handCommand = { by: cmd.action === "story" ? null : entry.by, at: entry.at };
     this.wake();
     return entry;
+  }
+
+  /** (wave 59) Whose hand is on the soundtrack: the `by` of the last scene or
+   *  stop until a `story` lets go of it, null for nobody, "" for a hand the
+   *  router reports that no command here explains (this server restarted, or
+   *  it came over MQTT). A report just after a command says nothing of it; a
+   *  later one wins, because the router lets go by itself on a story restart. */
+  musicHand(): string | null {
+    const report = this.musicReport();
+    const cmd = this.handCommand;
+    if (report?.music.hand === undefined || (cmd !== null && report.at <= cmd.at + MUSIC_HAND_SETTLE_MS)) return cmd?.by ?? null;
+    return report.music.hand ? (cmd?.by ?? "") : null;
   }
 
   /** (wave 40) The recent music commands (≤ `MUSIC_COMMANDS`, ≤
@@ -713,12 +730,17 @@ export class AudioHub {
   /** (wave 40) The soundtrack now: the freshest of the meters' music and
    *  the last health's, null with neither. */
   nowPlaying(): AudioMusicHealth | null {
+    return this.musicReport()?.music ?? null;
+  }
+
+  /** The freshest report of the soundtrack, with when it arrived. */
+  private musicReport(): { at: number; music: AudioMusicHealth } | null {
     const h = this.lastHealth;
     const fromHealth = h?.music !== undefined ? { at: h.at, music: h.music } : null;
     const m = this.metersMusic;
-    if (m === null) return fromHealth?.music ?? null;
-    if (fromHealth === null) return m.music;
-    return m.at >= fromHealth.at ? m.music : fromHealth.music;
+    if (m === null) return fromHealth;
+    if (fromHealth === null) return m;
+    return m.at >= fromHealth.at ? m : fromHealth;
   }
 
   /** (wave 40) A mixer panel looked (each mixer GET): the router keeps its

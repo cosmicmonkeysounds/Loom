@@ -20,10 +20,11 @@ refusal and every network failure.
 A press is refused:
 
 - before the doors, during a beat's lines on the TV, and while a teleprompter is open;
-- from the final reveal on: the endings, the songs, the monologue and the awards;
+- from the final reveal on: the bobbing, Grok Prom and the advice poll, the endings, the songs, the monologue and the awards;
 - for 8 s after any press that landed, and for longer after a heavy one (AD STORM 60 s);
 - LIGHTS, during the alarm, a blackout, or while Trabolta has a room's lights out;
 - SOUNDS and MUSIC, with the router offline; LIGHTS, with the lights module offline;
+- MUSIC, while a director or a host has the soundtrack by hand (a Stop or a chosen scene), until they press *Follow the story*;
 - AD STORM and GLITCH, **outside a talk scene** (see below);
 - POKE TRABOLTA, while he is asleep or a reply of his is owed.
 
@@ -31,9 +32,9 @@ What each one does:
 
 | Button | What happens |
 |---|---|
-| LIGHTS | The living room only, for 6 s, then the story's look comes back. No safety fixture, ever. |
+| LIGHTS | The living room only, for 6 s, then the story's look comes back. If Trabolta puts a room out in those 6 s, only the living room goes back, and not at all if that room is the Desktop. No safety fixture, ever. |
 | SOUNDS | A house sound from `audio.json`. |
-| MUSIC | Skip the track, hand the house to the afterparty playlist for 45 s, or go back to the story's scene. |
+| MUSIC | Skip the track, hand the house to the afterparty playlist for 45 s, or go back to the story's scene. If someone else takes the soundtrack in those 45 s, it stays theirs. |
 | AD STORM | The story's `ad_burst`, three times, 4 s apart. A beat that starts ends it. |
 | GLITCH | The story's `ad_burst`, once. |
 | POKE TRABOLTA | One of his six lines, on the TV and every phone in the Desktop, like a canned Talk line. |

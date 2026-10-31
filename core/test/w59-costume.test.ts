@@ -11,15 +11,16 @@ import { join } from "node:path";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { afterAll, describe, expect, it } from "vitest";
 
-import type { AudioHub } from "../server/audio.ts";
+import { scenarioSource } from "../examples/load.ts";
+import { audioHealthOf, type AudioHub } from "../server/audio.ts";
 import type { ChatMessage } from "../server/chat.ts";
-import { costumeFixtures, costumeHouseProblems } from "../server/costume.ts";
+import { costumeFixtures, costumeHouseProblems, costumeRoomOutRestore } from "../server/costume.ts";
 import { EventRuntime } from "../server/event-runtime.ts";
 import { secretCode } from "../server/identity.ts";
 import type { LightsHub } from "../server/lights.ts";
 import { Store } from "../server/store.ts";
 import type { ScreenWatch } from "../server/routes/screen.ts";
-import { COSTUME_COOLDOWN_S, COSTUME_FILE, COSTUME_ITEMS_MAX, COSTUME_LABEL_MAX, COSTUME_SIGNAL, DEFAULT_COSTUME, costumeLeaves, costumeMenu, parseCostume, saidBy } from "../src/costume.ts";
+import { COSTUME_BY, COSTUME_COOLDOWN_S, COSTUME_FILE, COSTUME_ITEMS_MAX, COSTUME_LABEL_MAX, COSTUME_SIGNAL, DEFAULT_COSTUME, costumeLeaves, costumeMenu, parseCostume, saidBy } from "../src/costume.ts";
 import type { LightsConfig } from "@loom/house";
 
 const STORY = `# Costume Night
@@ -163,7 +164,7 @@ async function call(rt: EventRuntime, method: string, pathAndQuery: string, body
 }
 
 /** A hand-cranked clock + timers: a test decides when a restore comes due. */
-function rig(o: { menu?: string | null; dir?: string; open?: boolean } = {}) {
+function rig(o: { menu?: string | null; dir?: string; open?: boolean; story?: string } = {}) {
   const dir = o.dir ?? mkdtempSync(join(tmpdir(), "loom-w59-costume-"));
   if (o.dir === undefined) dirs.push(dir);
   let now = 1_000_000;
@@ -179,7 +180,7 @@ function rig(o: { menu?: string | null; dir?: string; open?: boolean } = {}) {
     store: new Store(dir),
     codes: CODES,
     scenarioName: "costume",
-    scenarioSource: STORY,
+    scenarioSource: o.story ?? STORY,
     joinBase: () => "https://party.example",
     hostViewMs: 0,
     now: () => now,
@@ -380,13 +381,14 @@ describe("w59 costume: refused while it would wreck something", () => {
     r.rt.dispose();
   });
 
-  it("at every ending, the awards and after", async () => {
+  it("from the final reveal on, the awards and after", async () => {
     for (const [path, value] of [
+      ["Night.step", "16"], // the final reveal
+      ["Night.step", "17"], // the bobbing
+      ["Night.step", "18"], // Grok Prom, the advice poll
+      ["Night.step", "19"], // every ending
       ["Night.ended", "true"],
       ["Night.ceremony", "true"],
-      ["Night.phase", "final_reveal"],
-      ["Night.phase", "finale_song"],
-      ["Night.phase", "finale_truth"],
     ] as const) {
       const r = await live();
       await r.setVar("Trabolta.awake", "true");
@@ -394,6 +396,14 @@ describe("w59 costume: refused while it would wreck something", () => {
       expect((await r.fire("poke")).json, `${path} = ${value}`).toMatchObject({ why: "ending" });
       r.rt.dispose();
     }
+  });
+
+  it("not before it: the last step of the Y2K hour still lands", async () => {
+    const r = await live();
+    await r.setVar("Trabolta.awake", "true");
+    await r.setVar("Night.step", "15");
+    expect((await r.fire("poke")).status).toBe(200);
+    r.rt.dispose();
   });
 
   it("offline hubs: lights, sound and music say so", async () => {
@@ -415,6 +425,35 @@ describe("w59 costume: refused while it would wreck something", () => {
       expect((await r.fire("red")).json, path).toMatchObject({ why: "lights_held" });
       r.rt.dispose();
     }
+  });
+
+  it("a director's hand on the soundtrack is theirs to let go of", async () => {
+    const music = (r: ReturnType<typeof rig>, body: unknown) => call(r.rt, "POST", "/api/mod/audio/music", body, { moderator: true });
+    for (const hand of [{ action: "stop" }, { action: "scene", scene: "act_2" }]) {
+      const r = await live();
+      await music(r, hand);
+      for (const id of ["next", "party"]) expect((await r.fire(id)).json, id).toMatchObject({ why: "hand" });
+      await music(r, { action: "story" });
+      expect((await r.fire("next")).status).toBe(200);
+      r.rt.dispose();
+    }
+  });
+
+  it("a hand only the router knows of holds too, and the router's word that it let go counts", async () => {
+    const r = await live();
+    const report = (hand: boolean) => r.hub.audio.report({ health: audioHealthOf({ ok: true, music: { scene: "act_2", beds: [], missing: [], hand } }, r.hub.audio.clock()) });
+    report(true); // this server restarted, or it came over MQTT
+    expect((await r.fire("next")).json).toMatchObject({ why: "hand" });
+    report(false);
+    expect((await r.fire("next")).status).toBe(200);
+    r.advance(COSTUME_COOLDOWN_S);
+    await call(r.rt, "POST", "/api/mod/audio/music", { action: "stop" }, { moderator: true });
+    report(false); // sent before the router saw the stop: it says nothing of it
+    expect((await r.fire("next")).json).toMatchObject({ why: "hand" });
+    r.advance(3);
+    report(false); // a story restart: the router let go by itself
+    expect((await r.fire("next")).status).toBe(200);
+    r.rt.dispose();
   });
 
   it("the poke needs him awake, with no reply owed", async () => {
@@ -475,6 +514,37 @@ describe("w59 costume: what a press does", () => {
     r.rt.dispose();
   });
 
+  it("a room he puts out in the hold stays out: only what the press moved goes back", async () => {
+    const r = await live();
+    await r.setVar("Night.lights", "game");
+    await r.fire("red");
+    const before = r.hub.lights.tests().length;
+    await r.setVar("Night.dark_room", "The Start Bar");
+    await r.setVar("Night.lights_back_at", "5000");
+    r.advance(6);
+    expect(r.hub.lights.tests().slice(before).map(({ fixture, look, set }) => ({ fixture, look, set }))).toEqual([{ fixture: "living-1", look: undefined, set: { state: "ON", brightness: 200 } }]);
+    r.rt.dispose();
+  });
+
+  it("a Desktop cut in the hold leaves the Desktop dark, whatever the story's look", async () => {
+    const r = await live();
+    await r.setVar("Night.lights", "game");
+    await r.fire("spot");
+    const before = r.hub.lights.tests().length;
+    await r.setVar("Night.dark_room", "The Desktop");
+    await r.setVar("Night.lights_back_at", "5000");
+    r.advance(6);
+    expect(r.hub.lights.tests().slice(before)).toEqual([]);
+    r.rt.dispose();
+  });
+
+  it("the room-out restore takes a look's last word on each fixture it reaches", () => {
+    const stepped = { ...LIGHTS, looks: { lights_two: { to: ["living"], steps: [{ at: 0, set: { state: "ON", brightness: 10 } }, { at: 500, set: { brightness: 90 } }] } } } as unknown as LightsConfig;
+    expect(costumeRoomOutRestore(stepped, null, "lights_two", ["living-1", "hall"], null)).toEqual([{ fixture: "living-1", set: { state: "ON", brightness: 90 } }]);
+    expect(costumeRoomOutRestore(stepped, null, "lights_two", ["living-1"], "desktop")).toEqual([]);
+    expect(costumeRoomOutRestore(stepped, null, "lights_gone", ["living-1"], null)).toEqual([]);
+  });
+
   it("no story look, or one that only gives a light back, is the plain house", async () => {
     for (const value of ["none", "chase", "gone"]) {
       const r = await live();
@@ -511,6 +581,27 @@ describe("w59 costume: what a press does", () => {
     expect(r.hub.audio.musicCommands().at(-1)).toMatchObject({ action: "scene", scene: "afterparty" });
     r.advance(30);
     expect(r.hub.audio.musicCommands().at(-1)).toMatchObject({ action: "story" });
+    r.rt.dispose();
+  });
+
+  it("another hand taken in the hold stays: the return stands down", async () => {
+    const r = await live();
+    await r.fire("party");
+    r.advance(10);
+    await call(r.rt, "POST", "/api/mod/audio/music", { action: "scene", scene: "act_2" }, { moderator: true });
+    r.advance(20);
+    expect(r.hub.audio.musicCommands().map((c) => c.action)).toEqual(["scene", "scene"]);
+    expect(r.hub.audio.musicHand()).not.toBe(COSTUME_BY);
+    r.rt.dispose();
+  });
+
+  it("a hold let go of early owes the house no second return", async () => {
+    const r = await live();
+    await r.fire("party");
+    r.advance(10);
+    await call(r.rt, "POST", "/api/mod/audio/music", { action: "story" }, { moderator: true });
+    r.advance(20);
+    expect(r.hub.audio.musicCommands().map((c) => c.action)).toEqual(["scene", "story"]);
     r.rt.dispose();
   });
 
@@ -649,6 +740,48 @@ describe("w59 costume: the file", () => {
     expect(saidBy([{ ts: 1000, text: "x".repeat(10) }, { ts: 1000, text: "x".repeat(10) }], 10)).toBe(3000);
     expect(saidBy([{ ts: 1000, text: "x".repeat(10) }, { ts: 9000, text: "x".repeat(10) }], 10)).toBe(10000);
     expect(saidBy([], 10)).toBe(0);
+  });
+});
+
+describe("w59 costume: the show's own ending", () => {
+  it("every press is refused through the reveal, the bob, the verdict, Grok Prom and the advice poll", async () => {
+    const r = await live({ story: scenarioSource("trapped-in-the-internet") });
+    const signal = (name: string) => call(r.rt, "POST", "/api/mod/signal", { name }, { moderator: true });
+    const peek = (path: string) => (r.hub.sim as unknown as { world: { peek(p: string): { value?: unknown } | null } }).world.peek(path)?.value;
+    const refused = async (stage: string) => {
+      expect(peek("Night.ended"), stage).not.toBe(true);
+      for (const id of ["spot", "zip", "next", "poke"]) expect((await r.fire(id)).json, `${stage}: ${id}`).toMatchObject({ why: "ending" });
+    };
+    await r.setVar("Trabolta.awake", "true");
+    await signal("final_reveal");
+    expect(peek("Night.phase")).toBe("final_reveal");
+    await refused("the final reveal");
+    await signal("bobbing_for_truth");
+    expect(peek("Night.phase")).toBe("bobbing");
+    await refused("the bobbing");
+    await r.setVar("Night.bag_up", "true");
+    await r.setVar("Kernel.q1", "lie");
+    await signal("read_truth_txt");
+    await refused("truth.txt");
+    await signal("the_verdict");
+    await refused("the verdict's lines");
+    for (let i = 0; i < 12 && peek("Night.phase") !== "grok_prom"; i++) r.advance(5);
+    expect(peek("Night.phase")).toBe("grok_prom");
+    await refused("Grok Prom");
+    await signal("ask_for_advice");
+    expect(peek("Night.phase")).toBe("advice");
+    await refused("the advice poll");
+    r.rt.dispose();
+  });
+
+  it("the story's step is what a press reads: the reveal is 16, nothing before it reaches that", () => {
+    const steps = new Map<string, number>();
+    for (const m of readdirStory().matchAll(/set Night\.phase = "([a-z_0-9]+)"\n\s*set Night\.step = (\d+)/gu)) steps.set(m[1]!, Number(m[2]));
+    expect(steps.get("final_reveal")).toBe(16);
+    expect(steps.get("bobbing")).toBe(17);
+    expect(steps.get("grok_prom")).toBe(18);
+    expect(steps.get("advice")).toBe(18);
+    for (const [phase, step] of steps) expect(step >= 16, phase).toBe(phase === "final_reveal" || phase === "bobbing" || phase === "grok_prom" || phase === "advice" || phase.startsWith("finale"));
   });
 });
 

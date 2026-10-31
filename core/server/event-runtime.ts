@@ -84,7 +84,7 @@ import { CreditsSource } from "./credits.ts"; // w44
 import { CREDITS_ROUTE, creditsAnswer, sendCredits } from "./routes/credits.ts"; // w44
 import { VIDEO_ROUTE, sendVideoConsent, videoConsentView } from "./routes/video.ts"; // w44
 import { CREDITS_FILE } from "../src/credits.ts"; // w44
-import { COSTUME_FIRE_ROUTE, COSTUME_MENU_ROUTE, COSTUME_MOD_ROUTE, CostumeDesk, CostumeSource, costumeFixtures, costumeLookSafe, sendCostumeFire, sendCostumeMenu, type CostumeTimers } from "./costume.ts"; // w59
+import { COSTUME_FIRE_ROUTE, COSTUME_MENU_ROUTE, COSTUME_MOD_ROUTE, CostumeDesk, CostumeSource, costumeFixtures, costumeLookSafe, costumeMoved, costumeRoomOutRestore, sendCostumeFire, sendCostumeMenu, type CostumeTimers } from "./costume.ts"; // w59
 import { COSTUME_BY, COSTUME_FILE, COSTUME_SIGNAL, COSTUME_TOKEN_LABEL, PROMPTER_CHARS_PER_S, STAGE_CHARS_PER_S, hijackPlaying, saidBy, type CostumeAction, type CostumeFacts, type CostumeFile, type CostumeItem } from "../src/costume.ts"; // w59
 import { DESCENT_FILE, DescentSource } from "./descent.ts"; // w49
 import { SWEAR_CENSORED, SWEAR_FILTER, SWEAR_FLAGGED, decodeHits, encodeHits, filterHits, hitList, isFilterLevel, maskText, maskUnsaid, type FilterHit } from "../src/language-filter.ts"; // w48, w48b
@@ -1098,8 +1098,10 @@ export class EventRuntime {
       facts: () => this.costumeFacts(),
       perform: (a, file) => this.costumePerform(a, file),
       note: (item) => this.costumeNote(item),
-      restoreLights: () => this.costumeRestoreLights(),
-      musicStory: () => void this.audio.music({ action: "story" }, COSTUME_BY),
+      restoreLights: (a) => this.costumeRestoreLights(a),
+      musicStory: () => {
+        if (this.audio.musicHand() === COSTUME_BY) this.audio.music({ action: "story" }, COSTUME_BY);
+      },
     });
     this.projectFacts = init.facts !== undefined ? init.facts : this.store.loadFacts();
     if (init.facts !== undefined) this.store.saveFacts(init.facts);
@@ -2969,15 +2971,17 @@ export class EventRuntime {
       doors: sim !== null && this.phase === "open" && this.entryPlayed,
       ended: word("Night.ended") === "true",
       ceremony: word("Night.ceremony") === "true",
-      phase: word("Night.phase"),
+      step: num("Night.step"),
       speaking: tvTalking || saidBy(recent.filter((m) => m.channel === `loc:${TALK_ROOM}` && m.kind === "line" && typeof m.beat === "string"), STAGE_CHARS_PER_S) > storyMs,
       // With wave 59's shared prompter on the server, its status says this.
       prompter: saidBy(recent.filter((m) => m.aloud !== undefined), PROMPTER_CHARS_PER_S) > storyMs,
       lights: word("Night.lights"),
       alarm: word("Night.alarm_on") === "true",
       roomOut: (num("Night.lights_back_at") ?? 0) > 0,
+      darkRoom: word("Night.dark_room"),
       lightsOnline: this.lights.module()?.online === true,
       routerOnline: this.audio.router().online,
+      musicHand: this.audio.musicHand(),
       talk: this.talkNight(),
       hijackPlaying: hijackPlaying(word("Night.glitch_kind"), num("Night.glitch_at"), nowS),
       sinceBurstS: burst !== null && burst > 0 ? nowS - burst : null,
@@ -3041,13 +3045,21 @@ export class EventRuntime {
   }
 
   /** The story's look again (the lights module's catch-up names it the same
-   *  way), or the plain house when the story has none to give back. */
-  private costumeRestoreLights(): void {
-    const looks = this.lights.current().lights.looks ?? {};
-    const value = this.costumeFacts().lights;
-    const look = value === "server_open" ? "lights_y2k" : `lights_${value ?? "restore"}`;
+   *  way), or the plain house when the story has none to give back. If he
+   *  put a room out during the hold, only what the press moved goes back. */
+  private costumeRestoreLights(a: Extract<CostumeAction, { kind: "look" | "light" }>): void {
+    const lights = this.lights.current().lights;
+    const looks = lights.looks ?? {};
+    const facts = this.costumeFacts();
+    const look = facts.lights === "server_open" ? "lights_y2k" : `lights_${facts.lights ?? "restore"}`;
     const usable = Object.prototype.hasOwnProperty.call(looks, look) && looks[look]?.then !== "restore";
-    this.lights.test({ look: usable ? look : "lights_restore" }, COSTUME_BY);
+    const back = usable ? look : "lights_restore";
+    if (!facts.roomOut) {
+      this.lights.test({ look: back }, COSTUME_BY);
+      return;
+    }
+    const house = this.spatialHouse();
+    for (const t of costumeRoomOutRestore(lights, house, back, costumeMoved(lights, house, a), facts.darkRoom)) this.lights.test(t, COSTUME_BY);
   }
 
   /** The link Run hands the crew. It holds the token: only Run reads it. */

@@ -523,11 +523,18 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   menu as a default. `secretCode(claimSecret, "costume")` opens `POST
   /api/costume/menu` and `/fire {k, id}` and nothing else: it is no session.
   Refusals are `momentRefusal` + `actionRefusal`, judged before anything is
-  committed, so the story's own `ad_burst` refusals never reach `# hosts`. Every
+  committed, so the story's own `ad_burst` refusals never reach `# hosts`. The
+  night's end is `Night.step` 16 on (the reveal, the bobbing, Grok Prom and the
+  advice poll all play with `Night.ended` false; `step` is what a story edit must
+  keep). MUSIC is refused while anyone else's hand is on the soundtrack
+  (`AudioHub.musicHand`: the last scene or stop's `by`, memory only, corrected by
+  the router's `hand`), and AFTER PARTY's timed return stands down then too. Every
   action uses the house's own path (`lights.test`, `audio.play`, `audio.music`,
   `deskFire(cue, COSTUME_BY)`, the canned `say`). A light item never reaches a
   safety fixture (`costumeFixtures`), and the show's stay on `living`, which every
-  story look covers, so re-firing `Night.lights` gives it all back. A fire journals
+  story look covers, so re-firing `Night.lights` gives it all back; if he puts a
+  room out during the 6 s hold, only what the press moved goes back
+  (`costumeRoomOutRestore`), and nothing in the dark room. A fire journals
   `costume_pressed` (no hook hears it) with the label as its subject: that is the
   mod log's line. `GET` / `POST /api/mod/costume` is the link and the kill switch
   (directors only, never on the host allowlist; `costumeOff` beside the TV mute in

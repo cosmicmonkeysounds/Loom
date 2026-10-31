@@ -10,7 +10,7 @@
 //! lights module's catch-up gives the look back on a story reload).
 
 import type { ServerResponse } from "node:http";
-import { planLook, resolveLightTargets, type HouseMap, type LightsConfig } from "@loom/house";
+import { planLook, resolveLightTargets, type HouseMap, type LightState, type LightsConfig } from "@loom/house";
 import {
   COSTUME_FILE,
   DEFAULT_COSTUME,
@@ -58,6 +58,25 @@ export function costumeLookSafe(lights: LightsConfig, house: HouseMap | null, lo
   return plan.commands.every((c) => !safety.has(c.fixture));
 }
 
+/** The fixtures a lights item moved. */
+export function costumeMoved(lights: LightsConfig, house: HouseMap | null, a: Extract<CostumeAction, { kind: "look" | "light" }>): string[] {
+  if (a.kind === "light") return costumeFixtures(lights, house, a.to);
+  return [...new Set(planLook(lights, house, a.look)?.commands.map((c) => c.fixture) ?? [])];
+}
+
+/** A restore while a room is out on Trabolta's word. The whole look would
+ *  relight that room ahead of the story's own return, so only what the press
+ *  moved goes back, to where `look` leaves it, and what is in the dark room
+ *  stays dark. */
+export function costumeRoomOutRestore(lights: LightsConfig, house: HouseMap | null, look: string, moved: readonly string[], darkRoom: string | null): Array<{ fixture: string; set: LightState }> {
+  const dark = new Set(darkRoom === null ? [] : resolveLightTargets(lights, house, [darkRoom]).fixtures);
+  const left = new Map<string, LightState>();
+  for (const c of planLook(lights, house, look)?.commands ?? []) {
+    if (moved.includes(c.fixture) && !dark.has(c.fixture)) left.set(c.fixture, { ...left.get(c.fixture), ...c.set });
+  }
+  return [...left].map(([fixture, set]) => ({ fixture, set }));
+}
+
 /** What a file asks of the house that the house won't do. A safety fixture
  *  named by a light item is left out at the press; here it is named. */
 export function costumeHouseProblems(file: CostumeFile, lights: LightsConfig, house: HouseMap | null, sounds: readonly string[]): string[] {
@@ -88,9 +107,9 @@ export interface CostumeDeskDeps {
   perform: (action: CostumeAction, file: CostumeFile) => boolean;
   /** The mod log's line for a fire that landed. */
   note: (item: CostumeItem) => void;
-  /** The story's look again. */
-  restoreLights: () => void;
-  /** The story's soundtrack scene again. */
+  /** The story's look again, after a press that did `action`. */
+  restoreLights: (action: Extract<CostumeAction, { kind: "look" | "light" }>) => void;
+  /** The story's soundtrack scene again, unless another hand has taken it. */
   musicStory: () => void;
 }
 
@@ -100,6 +119,7 @@ export class CostumeDesk {
   private readonly gate: CostumeGate;
   private readonly pending = new Set<unknown>();
   private lightsTimer: unknown = null;
+  private musicTimer: unknown = null;
   private stormTimer: unknown = null;
 
   constructor(private readonly deps: CostumeDeskDeps) {
@@ -126,6 +146,7 @@ export class CostumeDesk {
     for (const h of this.pending) this.deps.timers.clear(h);
     this.pending.clear();
     this.lightsTimer = null;
+    this.musicTimer = null;
     this.stormTimer = null;
     this.gate.clear();
   }
@@ -142,10 +163,14 @@ export class CostumeDesk {
       if (this.lightsTimer !== null) this.cancel(this.lightsTimer);
       this.lightsTimer = this.later(() => {
         this.lightsTimer = null;
-        this.deps.restoreLights();
+        this.deps.restoreLights(action);
       }, file.restoreS);
     } else if (action.kind === "music" && action.holdS !== undefined) {
-      this.later(() => this.deps.musicStory(), action.holdS);
+      if (this.musicTimer !== null) this.cancel(this.musicTimer);
+      this.musicTimer = this.later(() => {
+        this.musicTimer = null;
+        this.deps.musicStory();
+      }, action.holdS);
     } else if (action.kind === "cue" && action.times > 1) {
       this.again(action, file, action.times - 1);
     }
