@@ -60,7 +60,7 @@ import {
 import { foldName } from "../src/parser/names.ts";
 import { cueSheetView } from "../src/cue-sheet.ts";
 import { showClock, clockChange, CLOCK_SET_TO, CLOCK_SET_AT, type ShowClock } from "../src/show-clock.ts";
-import { hostView, type HostView } from "../src/host-board.ts";
+import { ONLINE_GRACE_MS, hostView, type HostView } from "../src/host-board.ts";
 import { StoryMarks, huntsFor } from "./wanted.ts";
 import { canonicalPlaceArgs } from "./place-args.ts";
 import { CHECKIN_ROUTE, GuestCheckin } from "./routes/k13.ts";
@@ -86,7 +86,7 @@ import { CREDITS_FILE } from "../src/credits.ts"; // w44
 import { DESCENT_FILE, DescentSource } from "./descent.ts"; // w49
 import { SWEAR_CENSORED, SWEAR_FILTER, SWEAR_FLAGGED, decodeHits, encodeHits, filterHits, hitList, isFilterLevel, maskText, maskUnsaid, type FilterHit } from "../src/language-filter.ts"; // w48, w48b
 import { FilterBook, type FilterView } from "./language-filter.ts"; // w48
-import { forBooth, hostSeen, seenCues, seenName } from "./unseen-directors.ts";
+import { NO_ONE, directorIds, forBooth, hostSeen, seenCues, seenName, seenPeople, seenRows, type PeopleRound } from "./unseen-directors.ts";
 import { guestSide } from "./routes/sides.ts";
 import { CrewRoutes, answeredInviteCards, crewDrafts } from "./routes/crews.ts"; // w18 crews
 import { isCrewId, isCrewRoom } from "../src/runtime/sim/crews.ts"; // w18 crews
@@ -205,6 +205,9 @@ interface Client {
    *  the session closes the stream). */
   via?: string;
   token?: string;
+  /** Wave 59: that session is a director's own pane (not a wall terminal
+   *  piloting a guest): the one phone view that keeps Run personas. */
+  pane?: boolean;
   /** A house tool on the mod feed (`?lean=1` — stagehand): every `sim` /
    *  `message` / `lifecycle` frame, but never a `snapshot` or `history`
    *  (a `ModView` is ≈ 200 KB at a full house). */
@@ -235,6 +238,8 @@ export interface Impersonation {
    *  holds the host capability (the NEXT bar, the host routes), still
    *  journaled `by` the director. */
   host?: boolean;
+  /** A wall terminal's session (it labelled itself), not a director's pane. */
+  terminal?: true;
 }
 
 /**
@@ -831,6 +836,9 @@ export class EventRuntime {
   // stream opened or closed, a request on their own token. In memory only
   // (a restart re-learns it from the reconnects).
   private readonly lastSeen = new Map<string, number>();
+  // Wave 59: a part's booth stream closed at (the guests' `lastSeen` for a
+  // booth: a locked booth phone keeps its grace on a guest's People).
+  private readonly boothSeen = new Map<string, number>();
   // persona id → the director (display name) who spawned it via
   // `/api/mod/persona`. Persisted in meta, cleared by every restart (the
   // personas die with the journal), surfaced as `RosterRow.owner`.
@@ -1467,17 +1475,63 @@ export class EventRuntime {
     };
   }
 
+  /** Wave 59: who the people lists may show now, the same for everyone in a
+   *  round. Online is an open stream as `presence()` counts it, or a phone
+   *  or booth heard from inside `ONLINE_GRACE_MS`. */
+  private peopleRound(): PeopleRound {
+    const guests = new Set<string>();
+    const booths = new Set<string>();
+    for (const c of this.clients) {
+      if (c.via !== undefined && c.role === "guest" && !c.id.startsWith("p")) continue;
+      if (c.role === "guest") guests.add(c.id);
+      else if (c.role === "prime") booths.add(c.id);
+    }
+    const since = this.clock() - ONLINE_GRACE_MS;
+    for (const [id, at] of this.lastSeen) if (at > since) guests.add(id);
+    for (const [character, at] of this.boothSeen) if (at > since) booths.add(character);
+    return { guests, booths, directors: directorIds(this.sim, this.personaOwners) };
+  }
+
+  /** Is `token` a director's own pane (Run → Players)? */
+  private directorPane(token: string | undefined): boolean {
+    const imp = this.impersonations.get(token ?? "");
+    return imp !== undefined && imp.terminal !== true;
+  }
+
+  /** How often the open night checks whether anyone came or went, and
+   *  sends the phones a round if so. */
+  static readonly PRESENCE_CHECK_MS = 15_000;
+  private presenceCheckMs = 0;
+  private presenceKey = "";
+
+  /** Wave 59: a People list is only as fresh as its phone's last snapshot,
+   *  and nothing else sends one for a phone that just left or a quiet room. */
+  private checkPresence(ms: number): void {
+    this.presenceCheckMs += ms;
+    if (this.presenceCheckMs < EventRuntime.PRESENCE_CHECK_MS) return;
+    this.presenceCheckMs = 0;
+    const round = this.peopleRound();
+    const key = `${[...round.guests].sort().join(",")}|${[...round.booths].sort().join(",")}`;
+    if (key === this.presenceKey) return;
+    this.presenceKey = key;
+    this.pushClientSnapshots();
+  }
+
   private snapshotFor(client: Client): unknown {
     const online = new Set(this.agents.onlineCharacters());
-    if (client.role === "guest") return this.guestViewFor(client.id, online);
-    if (client.role === "prime") return this.primeViewFor(client.id, online, undefined, client.host === true || client.admin === true);
+    if (client.role === "guest") return this.guestViewFor(client.id, online, undefined, undefined, client.pane === true);
+    if (client.role === "prime") return this.primeViewFor(client.id, online, undefined, client.host === true || client.admin === true, undefined, client.pane === true);
     return this.modViewNow();
   }
 
-  /** A guest's snapshot, plus the cards they have already answered. */
-  private guestViewFor(id: string, online: ReadonlySet<string>, avatars = this.avatarMap()): GuestView {
+  /** A guest's snapshot, plus the cards they have already answered. Wave
+   *  59: `director` is a director's own pane, the one view that keeps Run
+   *  personas in its lists. */
+  private guestViewFor(id: string, online: ReadonlySet<string>, avatars = this.avatarMap(), round = this.peopleRound(), director = false): GuestView {
+    const base = guestView(this.reqSim(), id, this.decisionChannels.get(id) ?? null, online, this.menuChannels);
     return {
-      ...guestView(this.reqSim(), id, this.decisionChannels.get(id) ?? null, online, this.menuChannels),
+      ...base,
+      ...seenPeople(base, round, director ? NO_ONE : round.directors),
       answered: this.answeredFor(id),
       avatars,
       ...(this.wallet !== null ? { wallet: this.wallet.viewFor(id) } : {}),
@@ -1545,12 +1599,12 @@ export class EventRuntime {
 
   /** A performer's snapshot, plus the cards their character has already
    *  answered, with everyone's profile pictures. */
-  private primeViewFor(character: string, online: ReadonlySet<string>, avatars = this.avatarMap(), host = false): PrimeView {
+  private primeViewFor(character: string, online: ReadonlySet<string>, avatars = this.avatarMap(), host = false, round = this.peopleRound(), director = false): PrimeView {
     const queue = this.wallet?.queueFor(character) ?? null;
     const base = primeView(this.sim, character, online, { host });
     return {
       ...base,
-      ...this.boothExtras(base, character, host),
+      ...this.boothExtras(base, character, host, round, director ? NO_ONE : round.directors),
       // C4: on every path, `false` too — play takes the latest view's host
       // (`view.host ?? auth.host`), so a reload that takes the part's
       // `admin: true` away must say so, not leave it out.
@@ -1681,12 +1735,14 @@ export class EventRuntime {
 
   /** Wave 18 additions to a booth's view the bare sim cannot know: each
    *  guest's `lastSeen` (A1), a `target:`'s picture (C5), the Wanted board
-   *  for a hunting booth or a host (C6), the caller claim on `calls` (C8). */
-  private boothExtras(base: PrimeView, character: string, host: boolean): Partial<PrimeView> {
+   *  for a hunting booth or a host (C6), the caller claim on `calls` (C8).
+   *  Wave 59: who is online, and no one in `hide` (Run's personas) in the
+   *  guests, a `pick:` or the Wanted board. */
+  private boothExtras(base: PrimeView, character: string, host: boolean, round: PeopleRound, hide: ReadonlySet<string>): Partial<PrimeView> {
     const sim = this.sim;
     if (sim === null) return {};
     const out: Partial<PrimeView> = {
-      guests: base.guests.map((g) => ({ ...g, lastSeen: this.lastSeen.get(g.id) ?? null })),
+      guests: seenRows(base.guests, hide).map((g) => ({ ...g, online: round.guests.has(g.id), lastSeen: this.lastSeen.get(g.id) ?? null })),
     };
     if (base.objectives?.some((o) => o.target !== undefined)) {
       out.objectives = base.objectives.map((o) => {
@@ -1695,7 +1751,10 @@ export class EventRuntime {
         return avatar !== null ? { ...o, target: { ...o.target, avatar } } : o;
       });
     }
-    if (sim.model.wanted !== null && (host || huntsFor(sim, character))) out.wanted = this.wantedBoard();
+    if (hide.size > 0 && base.objectives?.some((o) => o.pick?.some((id) => hide.has(id)))) {
+      out.objectives = (out.objectives ?? base.objectives)!.map((o) => (o.pick === undefined ? o : { ...o, pick: o.pick.filter((id) => !hide.has(id)) }));
+    }
+    if (sim.model.wanted !== null && (host || huntsFor(sim, character))) out.wanted = seenRows(this.wantedBoard(), hide);
     // A booth never reads a director's name: parts by name, else "Director".
     if (base.calls !== undefined) out.calls = seenCues({ ...base.calls, caller: this.cueCaller() }, sim.model);
     return out;
@@ -1812,7 +1871,7 @@ export class EventRuntime {
    *  `HOST_VIEW_MS` (the hosts poll every 3 s; a build is the whole mod view)
    *  unless a cue was pressed or the run changed phase since — then at once,
    *  so a host never reads NEXT from before their own press. */
-  private hostViewNow(): HostView {
+  private hostViewNow(director = false): HostView {
     const now = Date.now();
     const sim = this.sim;
     const len = sim?.log.len() ?? -1;
@@ -1821,7 +1880,7 @@ export class EventRuntime {
     // Reused only inside the window, whether or not the log moved: a quiet
     // log still moves the clocks the panel shows (a terminal's silence, an
     // agent's oldest wait, who was seen when).
-    if (hit !== null && hit.phase === this.phase && hit.presses === presses && hit.writes === this.hostWrites && now - hit.at < this.hostViewMs) return this.hostSeen(this.withCaller(this.withShowClock(hit.view)));
+    if (hit !== null && hit.phase === this.phase && hit.presses === presses && hit.writes === this.hostWrites && now - hit.at < this.hostViewMs) return this.hostSeen(this.withCaller(this.withShowClock(hit.view)), director);
     const waiting = new Map<string, Array<{ guest: string; name: string; since: number; text: string }>>();
     // Wave 42: fresh bodies — a guest's newest line, not the one that
     // opened a request still waiting for a windowed worker's slot.
@@ -1860,13 +1919,15 @@ export class EventRuntime {
       now,
     });
     this.hostViewCache = { len, phase: this.phase, presses, writes: this.hostWrites, at: now, view };
-    return this.hostSeen(this.withCaller(this.withShowClock(view)));
+    return this.hostSeen(this.withCaller(this.withShowClock(view)), director);
   }
 
   /** A host booth's panel as a host reads it: every director's name is
-   *  "Director" (`unseen-directors.ts`). Run reads `/api/state?role=mod`. */
-  private hostSeen(view: HostView): HostView {
-    return hostSeen(view, this.sim?.model ?? this.declaredModel);
+   *  "Director" and no Run persona in its lists (`unseen-directors.ts`),
+   *  but for a director's own pane of a host part. Run reads
+   *  `/api/state?role=mod`. */
+  private hostSeen(view: HostView, director = false): HostView {
+    return hostSeen(view, this.sim?.model ?? this.declaredModel, director ? NO_ONE : directorIds(this.sim, this.personaOwners));
   }
 
   /** A cached host view with the show clock read now (wave 13 K2): the
@@ -1928,11 +1989,14 @@ export class EventRuntime {
     // Who's online and the picture map are the same for everyone: once a round.
     let online: Set<string> | null = null;
     let avatars: Record<string, string> | null = null;
+    let round: PeopleRound | null = null;
     for (const c of this.clients) {
       if ((c.role !== "guest" && c.role !== "prime") || c.lean === true) continue;
       online ??= new Set(this.agents.onlineCharacters());
       avatars ??= this.avatarMap();
-      sseSend(c.res, "snapshot", c.role === "guest" ? this.guestViewFor(c.id, online, avatars) : this.primeViewFor(c.id, online, avatars, c.host === true || c.admin === true));
+      round ??= this.peopleRound();
+      const director = c.pane === true;
+      sseSend(c.res, "snapshot", c.role === "guest" ? this.guestViewFor(c.id, online, avatars, round, director) : this.primeViewFor(c.id, online, avatars, c.host === true || c.admin === true, round, director));
     }
     if (online !== null) this.snapshotAt = Date.now();
   }
@@ -4989,6 +5053,7 @@ export class EventRuntime {
         /* client already gone */
       }
     }
+    this.boothSeen.delete(character);
     this.push.drop((owner) => owner === boothOwner(character));
     this.pushPresence();
   }
@@ -5344,6 +5409,7 @@ export class EventRuntime {
     }
     // A caught poster's minute is up: the booths' boards drop it (BN2-FC).
     if (this.marks.postersLapsed(this.sim.elapsed())) this.pushSnapshots();
+    this.checkPresence(ms);
     this.sweepEphemeral();
     this.sweepWallet();
     this.closeStaleTalk(); // wave 32 (C4): before the sweep, so no hold note for it
@@ -5751,6 +5817,7 @@ export class EventRuntime {
       const imp = token ? this.impersonations.get(token) : undefined;
       if (imp !== undefined) {
         client.via = imp.by;
+        client.pane = imp.terminal !== true;
         client.token = token;
         client.admin = false;
         // A director's pane of a host part is a host booth (C4).
@@ -5785,8 +5852,10 @@ export class EventRuntime {
       }, 25000);
       req.on("close", () => {
         clearInterval(ping);
-        this.clients.delete(client);
+        // A part released or taken back (`endBooths`) left already: no grace.
+        const live = this.clients.delete(client);
         if (ownGuest) this.seen(id, true);
+        if (live && role === "prime") this.boothSeen.set(id, this.clock());
         this.pushPresence();
       });
       return true;
@@ -5930,7 +5999,7 @@ export class EventRuntime {
           sendJson(res, 401, { error: "not signed in — register first" });
           return true;
         }
-        sendJson(res, 200, this.guestViewFor(gid, new Set(this.agents.onlineCharacters())));
+        sendJson(res, 200, this.guestViewFor(gid, new Set(this.agents.onlineCharacters()), undefined, undefined, this.directorPane(token)));
         return true;
       }
       if (role === "prime") {
@@ -5939,7 +6008,7 @@ export class EventRuntime {
           sendJson(res, 403, { error: "no character — sign in" });
           return true;
         }
-        sendJson(res, 200, this.primeViewFor(character, new Set(this.agents.onlineCharacters()), undefined, this.canHostToken(token)));
+        sendJson(res, 200, this.primeViewFor(character, new Set(this.agents.onlineCharacters()), undefined, this.canHostToken(token), undefined, this.directorPane(token)));
         return true;
       }
       // `?host=1` (wave 13): a host booth's panel — the cue sheet, needs,
@@ -5950,7 +6019,7 @@ export class EventRuntime {
           return true;
         }
         res.setHeader("cache-control", "no-store");
-        sendJson(res, 200, this.hostViewNow());
+        sendJson(res, 200, this.hostViewNow(this.directorPane(token)));
         return true;
       }
       if (opts.moderator !== true && !this.sessions.canModerate(token)) {
@@ -8637,7 +8706,7 @@ export class EventRuntime {
         // C4: a booth pane of a host part (`admin: true`) is a host booth —
         // the NEXT bar and the host routes, journaled `by` this director.
         const host = role === "prime" && this.sim.model.characters.get(id)?.admin === true;
-        this.impersonations.set(token, { role, id, by: label !== "" ? label : by, ...(host ? { host: true } : {}) });
+        this.impersonations.set(token, { role, id, by: label !== "" ? label : by, ...(host ? { host: true } : {}), ...(label !== "" ? { terminal: true as const } : {}) });
         const name = role === "guest" ? (this.sim.persons.get(id)?.name ?? id) : id;
         // Wave 28: `seq`, the newest chat seq now: a room terminal whose stream
         // history comes late floors its visit here (only this visit's lines).

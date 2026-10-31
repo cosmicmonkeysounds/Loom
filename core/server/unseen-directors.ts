@@ -10,11 +10,23 @@
 //! `DIRECTOR`. Pure; the event runtime applies them to every booth and host
 //! view, booth chat lines and a guest's rejoin answer. The director phone
 //! and Run keep the real names (they are directors).
+//!
+//! Wave 59 (the user's note, 2026-10-31): nobody's People list shows a
+//! director. In the data a director among the people is a **Run persona**:
+//! Run's Start seats one named after you, and Players seats more (`<id>.persona`,
+//! an owner, a `p-…` id). They leave every list on its way out of the server
+//! (`seenPeople`, `seenRows`, `hostSeen`), so the name never reaches a phone.
+//! Only a director's own pane (`via`) still reads them, so a rehearsal from
+//! Run plays as it did. The same lists show who is online: `PeopleRound` says,
+//! and each row carries `online` for the phone to filter on, because a phone
+//! also reads these rows for a DM's name, a wallet's pick and a scanned card.
 
 import type { HostView } from "../src/host-board.ts";
 import { foldName } from "../src/parser/names.ts";
 import type { SimModel } from "../src/runtime/sim/model.ts";
+import type { Sim } from "../src/runtime/sim/index.ts";
 import type { ChatMessage } from "./chat.ts";
+import type { GuestView } from "./views.ts";
 
 /** What a non-director reads for any director. */
 export const DIRECTOR = "Director";
@@ -58,12 +70,63 @@ export function seenCues<T extends { caller?: { name: string; at: number } | nul
   return out;
 }
 
+/** Who a people list may show this round (the runtime's `peopleRound`). */
+export interface PeopleRound {
+  /** Guests online now, grace included (`ONLINE_GRACE_MS`). */
+  guests: ReadonlySet<string>;
+  /** Parts with a booth online now, grace included. */
+  booths: ReadonlySet<string>;
+  /** Every Run persona in the sim. */
+  directors: ReadonlySet<string>;
+}
+
+/** Nobody to hide: what a director's own pane passes. */
+export const NO_ONE: ReadonlySet<string> = new Set<string>();
+
+/** The Run personas among the sim's people: an owner, a `p-…` id (the same
+ *  test as the runtime's other `isPersona`), or the journaled `<id>.persona`. */
+export function directorIds(sim: Sim | null, owners: ReadonlyMap<string, string>): ReadonlySet<string> {
+  const out = new Set<string>();
+  if (sim === null) return out;
+  for (const id of sim.persons.keys()) {
+    if (owners.has(id) || id.startsWith("p-")) {
+      out.add(id);
+      continue;
+    }
+    const flag = sim.world.get(`${id}.persona`);
+    if (flag.kind === "bool" && flag.value) out.add(id);
+  }
+  return out;
+}
+
+/** `rows` without anyone in `hide` (the same array when nobody goes). */
+export function seenRows<T extends { id: string }>(rows: T[], hide: ReadonlySet<string>): T[] {
+  return hide.size === 0 ? rows : rows.filter((r) => !hide.has(r.id));
+}
+
+/** A guest's `people` and `roster` as that phone reads them: no director
+ *  (`hide`), each card saying whether they are online. A character is online
+ *  while a booth plays it, an agent while a worker answers it or its `hold:`
+ *  line would. */
+export function seenPeople(view: Pick<GuestView, "people" | "roster">, round: PeopleRound, hide: ReadonlySet<string>): Pick<GuestView, "people" | "roster"> {
+  return {
+    people: seenRows(view.people, hide).map((p) => ({
+      ...p,
+      online: p.kind === "guest" ? round.guests.has(p.id) : p.agent !== undefined ? p.agent.online || p.agent.hold === true : round.booths.has(p.id),
+    })),
+    roster: seenRows(view.roster, hide),
+  };
+}
+
 /** A host booth's panel (built on the directors' view) with every
  *  director's name read as "Director": the caller, LAST's presser, a Run
- *  persona's owner, who ruled a filing. */
-export function hostSeen(view: HostView, model: SimModel | null): HostView {
+ *  persona's owner, who ruled a filing. Wave 59: anyone in `hide` leaves
+ *  its people, roster and Wanted board. */
+export function hostSeen(view: HostView, model: SimModel | null, hide: ReadonlySet<string> = NO_ONE): HostView {
   const out: HostView = { ...view, cues: seenCues(view.cues, model) };
-  out.roster = view.roster.map((p) => (typeof p.owner === "string" ? { ...p, owner: DIRECTOR } : p));
+  out.people = seenRows(view.people, hide);
+  out.roster = seenRows(view.roster, hide).map((p) => (typeof p.owner === "string" ? { ...p, owner: DIRECTOR } : p));
+  if (view.wanted !== undefined) out.wanted = seenRows(view.wanted, hide);
   if (view.judging !== null) {
     const row = <R extends { by?: string | null; ruling?: { by: string } | null }>(r: R): R => ({
       ...r,

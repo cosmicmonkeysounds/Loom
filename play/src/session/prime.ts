@@ -8,7 +8,7 @@ import { shareErrorText } from "../codex.ts";
 import { usePlayHost } from "../host.ts";
 import { phoneAnnounce } from "../phone-voice.ts";
 import { BOOTH_SIGNED_OUT, SessionRole, eventGone, lifecycleDropsSession, lifecycleNotice, lifecycleStartsNewRun, performerSessionDead } from "../lifecycle.ts";
-import { locationOfRoom, occupantsByLocation, type Presence } from "../presence.ts";
+import { isOnline, locationOfRoom, occupantsByLocation, type Presence } from "../presence.ts";
 import { CODEX_ROOM, PINNED_SPACE, QUEST_LOG, STORY_SPACE, WALLET_ROOM } from "../rooms/spaces.ts";
 import { primeStreamUrl } from "../booth/model.ts";
 import { roomOrder } from "../rooms/order.ts";
@@ -93,7 +93,7 @@ export function buildPrimeChannels(messages: Map<number, ChatMessage>, view: Pri
   // The feed is the house's broadcast: never a DM thread (a host booth's
   // stream also carries guests' Trabolta threads, for answering as him).
   const feedMsgs = all.filter((m) => m.audience === "all" && !m.channel.startsWith("dm:")).sort((a, b) => a.seq - b.seq);
-  const everyone: Presence[] = (view?.guests ?? []).map((g) => ({ id: g.id, name: g.name, kind: "guest" as const, group: g.faction }));
+  const everyone: Presence[] = (view?.guests ?? []).filter(isOnline).map((g) => ({ id: g.id, name: g.name, kind: "guest" as const, group: g.faction }));
   const feed: Channel = {
     id: "__feed",
     kind: "lobby",

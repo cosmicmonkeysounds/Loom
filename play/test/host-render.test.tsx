@@ -66,11 +66,17 @@ describe("the tabs", () => {
     expect(refused).toContain("✕ 🍾 not taken — 🍾 waits for the results");
     expect(refused).toContain("Open # hosts");
   });
-  it("People: every guest with their state", () => {
+  it("People: every guest online with their state; the offline sit behind one switch, off (wave 59)", () => {
     const out = inDrawer(hostFixture(), createElement(PeopleTab));
-    expect(out).toContain("Find a guest (2)");
+    expect(out).toContain("Find a guest (1)");
     expect(out).toContain("🚻 bathroom");
-    expect(out).toContain("⛔ restricted");
+    expect(out).not.toContain("Bob");
+    expect(out).toMatch(/<input type="checkbox"\/> Offline \(1\)/u);
+    const everyone = hostFixture();
+    const both = inDrawer({ ...everyone, people: everyone.people.map((p) => ({ ...p, online: true })) }, createElement(PeopleTab));
+    expect(both).toContain("Find a guest (2)");
+    expect(both).toContain("⛔ restricted");
+    expect(both).not.toContain("Offline");
   });
   it("More: every section the event has, nothing it hasn't; no mod passcode anywhere", () => {
     // Wave 18 splits More in three (Night · House · Setup): a deep link opens

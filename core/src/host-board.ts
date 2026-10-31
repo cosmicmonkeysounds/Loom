@@ -453,6 +453,11 @@ export function isGateFlag(label: string): boolean {
 /** How long without a sign of a guest before Needs you asks about them. */
 export const UNSEEN_MS = 30 * 60_000;
 
+/** Wave 59: a phone that went quiet still counts as online this long, so a
+ *  locked phone or a quick app switch doesn't flicker on anyone's People
+ *  list. The one number to change. */
+export const ONLINE_GRACE_MS = 3 * 60_000;
+
 /** The director marked this guest as gone home (`<id>.gone` is true). */
 export function isGone(world: readonly WorldRow[] | ReadonlyMap<string, string>, id: string): boolean {
   return truthy(valueOf(world, `${id}.gone`));

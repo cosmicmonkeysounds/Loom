@@ -9,6 +9,7 @@ import {
   agentThread,
   awardsNear,
   filterPeople,
+  personOnline,
   hostStrip,
   needsCount,
   inBathroom,
@@ -122,6 +123,14 @@ describe("people", () => {
     expect(filterPeople(people, "ada").map((p) => p.id)).toEqual(["g1"]);
     expect(filterPeople(people, "tube").map((p) => p.id)).toEqual(["g2"]);
     expect(filterPeople(people, "  ").length).toBe(2);
+  });
+  it("wave 59: online is an open stream or the grace; nothing tracked counts as here", () => {
+    const now = 10_000_000;
+    expect(personOnline({ online: true, lastSeen: 0 }, now)).toBe(true);
+    expect(personOnline({ online: false, lastSeen: now - 60_000 }, now)).toBe(true);
+    expect(personOnline({ online: false, lastSeen: now - 3 * 60_000 }, now)).toBe(false);
+    expect(personOnline({ online: false, lastSeen: null }, now)).toBe(false);
+    expect(personOnline({}, now)).toBe(true);
   });
   it("Bathroom Mode reads the afk flag (or a label naming it)", () => {
     expect(isBathroomFlag({ label: "AFK", path: "Program.afk" })).toBe(true);
