@@ -83,7 +83,8 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   forced descent level (wave 49; a story reset forgets the last two), when
   Clippy's dream takes over and whether the TV has named the bug
   (`ScreenWatch` `dreamAt` / `dreamHeard`, wave 50: a restart replays the cue
-  as history and the dream is simply on), and
+  as history and the dream is simply on), the teleprompter's scene, position and
+  holds (wave 59: a restart forgets them and the rest of the lines play), and
   most hub timers live in memory and are lost on a process restart.
   Document a new one the same way.
 - **Server changes are additive.** Old clients (terminals on old
@@ -576,6 +577,23 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   every guest but a reader, and `fanout` pushes `aloudPush` to a hidden phone.
   How far a reader has read is their phone's. `L1227` catches an `aloud:` naming
   no signable part (`src/lsp/w55-lints.ts`). Tests: `test/w55-aloud.test.ts`.
+- **The shared teleprompter** (wave 59,
+  [`docs/loom-w59-prompter-contract.md`](../docs/loom-w59-prompter-contract.md)).
+  `server/prompter.ts` (`Prompters`, `sceneOf`; transport-free, memory only, never
+  journaled): `fanout` lands a scene from each commit's marked lines, one at a time.
+  `heldFrom(channel)` is the screen poll's `extras.voiceHeldFrom`, and `voiceLinesOf`
+  stops just before it, `head` included. The position is in words, owned here (`pos`,
+  `rate`, `stop`), moved by `POST /api/aloud` (a booth's or guest's token, not under
+  `/api/guest/`, refusals 409 `prompter: …`) and by `tick` (a 200 ms timer while a
+  scene is on, and every screen poll). Reaching a run of his lines moves the hold,
+  locks and scrolls; `roomVoiceOf` (`said`, `sp=`, the mute) ends it, or the time from
+  `spokenMs`. No reader on the prompter means no hold (`HOLD_WAIT_MS`, `HERE_TTL_MS`);
+  anyone else's open prompter counts only while they drive it (`DRIVE_TTL_MS`). `fanout`
+  calls `outrun` on a batch with no scene: a scripted line of his in the room (`beat`
+  present; a live `say` has none) lets the hold go, in order.
+  `POST /api/mod/aloud {action: release | done}` is on the host allowlist. Every
+  stream's first frames include a `prompter` (null with none). `pushLifecycle` clears
+  it. Tests: `test/w59-prompter.test.ts`, `test/w59-prompter-server.test.ts`.
 - **His voice** (wave 56, [`docs/loom-w56-contract.md`](../docs/loom-w56-contract.md)).
   `src/voice-fx.ts` (`@loom/core/voice-fx`, pure) decides how broken Trabolta
   sounds: `voiceLevel` (a curve over `Night.phase`, the Y2K clock, scaled by

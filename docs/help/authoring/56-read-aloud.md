@@ -52,6 +52,29 @@ Everyone else's phones are unchanged: the lines land in the room as usual.
 Only lines spoken in a room are marked. A line addressed to one program stays
 a private message.
 
+## Lines the TV says
+
+A beat with a reader's lines and an agent character's lines in it waits for the
+reader. The whole beat lands at once, with its cues and branches, but the TV holds
+his lines back until the teleprompter's arrow reaches them. Then he says them, the
+teleprompter locks and scrolls through them, and it frees when he has finished, or
+after the time the words take if the TV is dead or muted.
+
+Nothing here can hang the night. With no reader on their phone the beat plays as it
+would without the mark, and a host (**▶ Let him speak** on Show), a director (the same
+button on the director phone and at the top of Run's Director page) can let his lines
+go at any time. His next scripted line in that room lets them go too: the held ones
+play first, then it, so a later beat is never lost behind a reader who stopped.
+
+## Other people's lines
+
+Anyone else with a line in a marked beat, but not named in `aloud:`, gets a small
+card with their line, and can join the teleprompter from it. It never takes their
+phone over. Name a part in `aloud:` only if they should get the whole script.
+
+Everyone in the scene shares one place in the script: anyone can move it, and whoever
+is pressing it has it until they let go. Hosts can join from Show.
+
 ## Choosing what to mark
 
 Mark speeches and read-outs. The pop-up takes over the phone, so leave a quick

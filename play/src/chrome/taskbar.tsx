@@ -1,18 +1,18 @@
-//! The Win95 taskbar (wave 13): the bottom edge of every screen. ⊞ Start
-//! (the menu: who you are, settings, help, people, the story's own buttons,
-//! leave), the role's buttons (the guest's 🎟 Pass + 📷 Scan, the booth's
-//! big 📷 Scan), and the system tray at the right (the clock, the balance,
-//! missed moments) whose leading edge is the live dot.
-//!
-//! It is a flex item at the foot of `.app-frame`, never `position: fixed`
-//! (the host dock stacks above it with no measuring), and it owns the
-//! bottom safe-area inset. Width rule: below 400 px the buttons are
-//! icon-only (the label stays as `aria-label`) except the primary one, and
-//! the tray shows at most 3 items (`css/chrome.css`).
-//!
-//! A button the current objective names (`active`) asks for attention the
-//! way a Win95 window did: its taskbar button turns caption-blue (it blinks
-//! twice on arrival, still under reduced motion).
+// The Win95 taskbar (wave 13): the bottom edge of every screen. ⊞ Start
+// (the menu: who you are, settings, help, people, the story's own buttons,
+// leave), the role's buttons (the guest's 🎟 Pass + 📷 Scan, the booth's
+// big 📷 Scan), and the system tray at the right (the clock, the balance,
+// missed moments) whose leading edge is the live dot.
+//
+// It is a flex item at the foot of `.app-frame`, never `position: fixed`
+// (the host dock stacks above it with no measuring), and it owns the
+// bottom safe-area inset. Width rule: below 400 px the buttons are
+// icon-only (the label stays as `aria-label`) except the primary one, and
+// the tray shows at most 3 items (`css/chrome.css`).
+//
+// A button the current objective names (`active`) asks for attention the
+// way a Win95 window did: its taskbar button turns caption-blue (it blinks
+// twice on arrival, still under reduced motion).
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { eventRoot } from "./balloon.tsx";

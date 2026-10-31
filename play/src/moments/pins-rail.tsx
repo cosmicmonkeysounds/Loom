@@ -1,16 +1,16 @@
-//! The pinned rail (wave 13, the moments lane): the sticky notices still up
-//! (`pin "…"`), folded to one line — "📌 <text>" for one, "📌 3 · <text>"
-//! for several — that opens on a tap into the full list, newest last. The
-//! folded line reads the guest's own pin (one addressed to them: "GO TO THE
-//! INTERNET. You are marked…") when one is up, else the newest alert pin
-//! (`pin "!…"`) — the instruction a marked guest must follow is never
-//! behind a tap — else the newest pin; an alert pin turns the line yellow.
-//! The guest's own pin and an alert pin wrap rather than cut off.
-//!
-//! One strip above the room (recheck, finish review #1): while the guest's
-//! own pin is up, a sticky moment does not stack a second yellow bar over
-//! it — it folds into a "+n" on the pin (`MomentsAndPins`), and a tap on
-//! that shows it. Nothing to show → nothing.
+// The pinned rail (wave 13, the moments lane): the sticky notices still up
+// (`pin "…"`), folded to one line — "📌 <text>" for one, "📌 3 · <text>"
+// for several — that opens on a tap into the full list, newest last. The
+// folded line reads the guest's own pin (one addressed to them: "GO TO THE
+// INTERNET. You are marked…") when one is up, else the newest alert pin
+// (`pin "!…"`) — the instruction a marked guest must follow is never
+// behind a tap — else the newest pin; an alert pin turns the line yellow.
+// The guest's own pin and an alert pin wrap rather than cut off.
+//
+// One strip above the room (recheck, finish review #1): while the guest's
+// own pin is up, a sticky moment does not stack a second yellow bar over
+// it — it folds into a "+n" on the pin (`MomentsAndPins`), and a tap on
+// that shows it. Nothing to show → nothing.
 
 import { useEffect, useState } from "react";
 import { Icon } from "../chrome/icons.tsx";

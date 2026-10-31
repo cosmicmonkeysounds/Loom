@@ -1,15 +1,15 @@
-//! The show clock (wave 13 K5): the party's own time of day, "7:43 PM",
-//! that every phone, booth and host shows in its taskbar tray and the
-//! director phone in its strip. The story keeps it as two journaled world
-//! values (`Clock.set_to` show minutes after midnight, `Clock.set_at` story
-//! seconds); the server sends the time it works out as a view's `showClock`
-//! `{minutes, running}`. The client re-bases on every new view and ticks on
-//! from its own receive time while `running` (story time: it holds still
-//! while the show is paused). No `showClock` → no clock anywhere.
-//!
-//! The field is `showClock` because every view already has `clock` (the
-//! story clock in ms the countdowns tick from). `showClockOf` also accepts a
-//! `clock` that is an object of this shape, so either server spelling works.
+// The show clock (wave 13 K5): the party's own time of day, "7:43 PM",
+// that every phone, booth and host shows in its taskbar tray and the
+// director phone in its strip. The story keeps it as two journaled world
+// values (`Clock.set_to` show minutes after midnight, `Clock.set_at` story
+// seconds); the server sends the time it works out as a view's `showClock`
+// `{minutes, running}`. The client re-bases on every new view and ticks on
+// from its own receive time while `running` (story time: it holds still
+// while the show is paused). No `showClock` → no clock anywhere.
+//
+// The field is `showClock` because every view already has `clock` (the
+// story clock in ms the countdowns tick from). `showClockOf` also accepts a
+// `clock` that is an object of this shape, so either server spelling works.
 
 import { useEffect, useRef, useState } from "react";
 

@@ -241,7 +241,7 @@ export function GuestApp({ onLeave, badgeLink = null }: { onLeave: () => void; b
   // them live, and from ⊞ Start while they are set.
   const credits = useCredits(st?.night?.credits?.roll, st?.clock);
   // Wave 55: a program's script (the bobber's truth.txt): over every branch below.
-  const aloud = useAloud({ messages: s.messages, me: s.me?.id ?? null, token: s.me?.token ?? null, storage: host.storage, clock: st?.clock });
+  const aloud = useAloud({ messages: s.messages, me: s.me?.id ?? null, token: s.me?.token ?? null, storage: host.storage, clock: st?.clock, prompter: s.prompter, post: s.prompterPost });
 
   // --- the window, the room over it, and every exit's `go` ----------------
   const cards = useMemo(() => liveCardsOf(t.list, s.widgetAnswers), [t.list, s.widgetAnswers]);

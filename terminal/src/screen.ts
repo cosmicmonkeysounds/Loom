@@ -79,6 +79,8 @@ import { PollPacer, speechQuery, type SpeechReport } from "./speech/said.ts";
 export const SCREEN_POLL_MS = 2000;
 /** How often the TV polls (ms): a line must be heard within 3 s. */
 export const TV_POLL_MS = 1000;
+/** (wave 59) While his next line waits on the teleprompter, polled this often. */
+export const HELD_POLL_MS = 300;
 
 export type ScreenCueFamily = "screens" | "terminals" | "tv" | "tablet";
 
@@ -651,6 +653,8 @@ export interface ScreenVoice {
   muted: boolean;
   head: number;
   lines: VoiceLine[];
+  /** (wave 59) His next line waits on the teleprompter. */
+  held?: boolean;
 }
 
 /** The server's answer (a subset is all the terminal reads today). */
@@ -796,7 +800,7 @@ export function voiceOf(raw: unknown): ScreenVoice | null {
     if (typeof x["seq"] !== "number" || typeof x["from"] !== "string" || typeof x["text"] !== "string") continue;
     lines.push({ seq: x["seq"], from: x["from"], text: x["text"], beat: typeof x["beat"] === "string" ? x["beat"] : null });
   }
-  return { room: typeof r["room"] === "string" ? r["room"] : "", muted: r["muted"] === true, head: r["head"], lines };
+  return { room: typeof r["room"] === "string" ? r["room"] : "", muted: r["muted"] === true, head: r["head"], lines, ...(r["held"] === true ? { held: true } : {}) };
 }
 
 function shotOf(v: unknown): ScreenShot | null {
@@ -1068,7 +1072,9 @@ export function useScreenState(
         setEnded(true);
         return; // stop polling: setup asks for the next event's passcode
       }
-      timer = window.setTimeout(() => void tick(), pacer.done(Date.now()));
+      // Wave 59: his next line waits on the teleprompter: be there when it goes.
+      const delay = pacer.done(Date.now());
+      timer = window.setTimeout(() => void tick(), last?.voice?.held === true ? Math.min(delay, HELD_POLL_MS) : delay);
     };
     kickRef.current = () => {
       if (!alive) return;

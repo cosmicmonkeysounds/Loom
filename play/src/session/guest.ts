@@ -29,6 +29,7 @@ import { linkFromMessage, linkFromSearch, navFromSearch, withoutRoom } from "../
 import { lobbyHidden } from "../guest/wire.ts";
 import type { Nav } from "../moments/exits.ts";
 import { guestStreamHandlers } from "./stream-handlers.ts";
+import { PrompterStore, type PrompterPost } from "../aloud/shared.ts";
 import { badgeLinkOf, forgetBadge, letGo, storedBadge, type BadgeLink } from "../rejoin.ts";
 import type { AdoptedGuest } from "../resume.ts";
 
@@ -255,6 +256,9 @@ export function actFeedback(replies: readonly string[] | undefined, label?: stri
 const NONE_OPENED: ReadonlySet<string> = new Set();
 
 export interface GuestSession {
+  /** Wave 59: the shared teleprompter's store, and a phone's press on it. */
+  prompter?: PrompterStore;
+  prompterPost?: PrompterPost;
   me: GuestId | null;
   status: GuestView | null;
   /** Wave 26 (R1, C2): the phone is locked — the view says so, or a write
@@ -419,6 +423,7 @@ function useGuestLinks(signedIn: boolean, listed: readonly string[], lobbyHidden
 
 export function useGuestSession(): GuestSession {
   const host = usePlayHost();
+  const [prompter] = useState(() => new PrompterStore());
   const { load, save, drop } = host.storage;
   const crawl = host.crawl;
   const [me, setMe] = useState<GuestId | null>(() => {
@@ -466,6 +471,7 @@ export function useGuestSession(): GuestSession {
     onAgentWait,
     onWaitsReset,
     onAnnounce: (n) => phoneAnnounce(host, n),
+    onPrompter: (f) => prompter.set(f),
     // The crawl decides at arrival (wave 13: a no-op until the stream lane)
     // and the backlog sets its baseline (stream-handlers.ts).
     ...guestStreamHandlers(crawl, me, (list) => {
@@ -876,7 +882,10 @@ export function useGuestSession(): GuestSession {
   const landing = useLandingBrand();
   useTheme(me === null ? landing.theme : status?.theme);
 
+  const prompterPost = useCallback((body: Record<string, unknown>) => post("/api/aloud", body), [post]);
   return {
+    prompter,
+    prompterPost,
     me,
     status,
     locked: status?.locked === true || locked403,

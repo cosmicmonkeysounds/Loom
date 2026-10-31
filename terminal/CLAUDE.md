@@ -377,9 +377,9 @@ the tent laptop the mounted reinstall game adds its own
   the questions and his sign-off run after it under the plain face with
   `.tv-caption`, on no scene's clock: that is deliberate, so about three
   minutes of speech never holds a scene up. He plays it clean: nothing
-  stalls or tears. The TV says his lines back to back: it does not wait for
-  Clippy's. The `bingo_time` slide can still be up under it: the beat's
-  `cue tv_mirror` clears it. *Bottle Landed* adds `BOTTLE_HUNGER`
+  stalls or tears. The TV says his lines back to back: this beat has no line of
+  Clippy's, and a host's 🤖 starts it. The `bingo_time` slide can still be up
+  under it: the beat's `cue tv_mirror` clears it. *Bottle Landed* adds `BOTTLE_HUNGER`
   (`kit/tv1-time.ts`, two marks).
 - **The mirror before him (wave 58).** The TV keeps the screensaver until
   he is revealed, but Clippy's *"We can follow their progress!"* comes
@@ -417,6 +417,16 @@ window's words.
   effect, so it reaches the house from the TV, where effects are silent.
 - The house speakers get far more than this: the router tears up the sound itself
   (`stagehand/audio/voicefx.py`). The server room has only the plan.
+
+### He waits for the script (wave 59, `docs/loom-w59-prompter-contract.md`)
+
+In a beat with a reader's lines and his, the server's `voice` block stops just
+before his next line until the teleprompter reaches it (`head` too, so the cursor
+stays behind it), with `voice.held`. The terminal knows nothing else about it: it is
+told the line when it may say it. While `held` a TV polls every `HELD_POLL_MS` (300).
+`said=` and `sp=` tell the server when to free the prompter, so a TV that reports them
+ends his line's lock early. A hold moves a mixed beat's lines off any picture cued
+with the beat: `Ad Hijack`'s no longer play under the 8 s takeover.
 
 ### Speech done (wave 25)
 

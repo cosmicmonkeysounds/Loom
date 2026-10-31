@@ -25,6 +25,7 @@ import { hasPendingCard } from "./channels.ts";
 import { SAY_TIMEOUT_MS, sayRefusalText } from "./guest.ts";
 import { NO_ANSWERS, tokenDead, useLandingBrand, usePerSession, useRoomLinks, useTheme, type ResolvedCode } from "./shared.ts";
 import { primeStreamHandlers } from "./stream-handlers.ts";
+import { PrompterStore, type PrompterPost } from "../aloud/shared.ts";
 
 export interface PrimeAuth {
   token: string;
@@ -358,6 +359,9 @@ export interface PrimeSession {
    *  letter (`POST /api/prime/letter`), or take it off (`null`). Optional so
    *  a test's fake session needs none. */
   letter?: (email: string | null) => Promise<{ ok: true; email: string | null }>;
+  /** Wave 59: the shared teleprompter's store, and a phone's press on it. */
+  prompter?: PrompterStore;
+  prompterPost?: PrompterPost;
   /** Wave 48 (C2): the censor's ✂ on a flagged line (`POST
    *  /api/prime/censor {seq}`): 200 is the masked text; 403 / 404 / 409
    *  throw an `ApiError` with the server's reason. Optional so a test's
@@ -391,6 +395,7 @@ export function notePress(map: Map<string, string>, name: string, guest: string 
 
 export function usePrimeSession(): PrimeSession {
   const host = usePlayHost();
+  const [prompter] = useState(() => new PrompterStore());
   const { load, save, drop } = host.storage;
   const crawl = host.crawl;
   const [auth, setAuth] = useState<PrimeAuth | null>(() => {
@@ -429,6 +434,7 @@ export function usePrimeSession(): PrimeSession {
     onSnapshot: (v) => setView(v as PrimeView),
     onTyping,
     onAnnounce: (n) => phoneAnnounce(host, n),
+    onPrompter: (f) => prompter.set(f),
     // The crawl decides at arrival (wave 13: a no-op until the stream lane)
     // and the backlog sets its baseline (stream-handlers.ts).
     ...primeStreamHandlers(crawl, auth, (list) => {
@@ -674,6 +680,9 @@ export function usePrimeSession(): PrimeSession {
   // Wave 48 (C2): a hung POST must not leave ✂ on "…" for good.
   const censor = useCallback((seq: number) => withTimeout(post<CensorResult>("/api/prime/censor", { seq }, auth!.token), SAY_TIMEOUT_MS), [post, auth]);
   const filterLevel = useCallback((level: number) => withTimeout(post<FilterLevelResult>("/api/prime/filter", { level }, auth!.token), SAY_TIMEOUT_MS), [post, auth]);
+  // Not `post`: a phone saying it is on the script is no action of the booth's,
+  // and must not read as one to the readouts' banner (`lastActionAt`).
+  const prompterPost = useCallback((body: Record<string, unknown>) => api(`${base}/api/aloud`, body, auth!.token), [base, auth]);
   const leave = useCallback(() => {
     // Sign out frees the part on the server too, so the same performer can
     // sign in from another phone (the iPhone Home Screen icon) without a
@@ -709,5 +718,5 @@ export function usePrimeSession(): PrimeSession {
   useTheme(auth === null ? landing.theme : view?.theme);
   const arrive = useCallback(() => post("/api/prime/arrive", {}, auth!.token), [post, auth]);
   const choose = useCallback((index: number, menu: { id: number; text: string }) => post("/api/prime/choose", { index, choice: menu.id, text: menu.text }, auth!.token), [post, auth]);
-  return { auth, view, alert: alerts.alert, dismissAlert: alerts.dismiss, alerts, messages, connected, ready, notice, threads, login, adopt, scan, card, say, inviteToChannel, leaveChannel, becomeAdmin, act, lastPressedOn, cue, shareCodex, redeem, printed, walletApprove, walletDeny, moderate, setHidden, answerWidget, widgetAnswers, letter, censor, filterLevel, arrive, choose, leave, roomLinkPending };
+  return { prompter, prompterPost, auth, view, alert: alerts.alert, dismissAlert: alerts.dismiss, alerts, messages, connected, ready, notice, threads, login, adopt, scan, card, say, inviteToChannel, leaveChannel, becomeAdmin, act, lastPressedOn, cue, shareCodex, redeem, printed, walletApprove, walletDeny, moderate, setHidden, answerWidget, widgetAnswers, letter, censor, filterLevel, arrive, choose, leave, roomLinkPending };
 }

@@ -69,7 +69,8 @@ import { GUEST_LOGOUT_ROUTE, LOGOUT_ROUTE, Pairing, RESUME_ROUTE, SIGNED_OUT, re
 import { BADGES_ROUTE, BADGE_ROUTE, ENTER_ROUTE, REJOIN_CANCEL_ROUTE, REJOIN_DECIDE_ROUTE, REJOIN_NAMES_ROUTE, REJOIN_POLL_ROUTE, REJOIN_ROUTE, Rejoin, heldAnswer, partCode, partUrl, printedCode, reservedAnswer, type BoothGrant } from "./routes/rejoin.ts";
 import { HOMESCREEN_ROUTE } from "./routes/k31b.ts";
 import { PushRoutes } from "./routes/k31.ts";
-import { PushHub, aloudPush, boothOwner, guestOwner, messagePush, pushConfigFromEnv, readoutPush, webPushSender, type PushSender } from "./push.ts";
+import { Prompters, readPrompterOp, sceneOf, type PrompterFrame, type PrompterStatus } from "./prompter.ts";
+import { PushHub, aloudLinePush, aloudPush, boothOwner, guestOwner, messagePush, pushConfigFromEnv, readoutPush, webPushSender, type PushSender } from "./push.ts";
 import { printExtras } from "./routes/k12.ts";
 import { PRINTED_GUEST_ROUTE, PRINTED_PRIME_ROUTE, printedHit, type PrintedHit } from "./routes/printed.ts";
 import { buildCards } from "./routes/cards.ts";
@@ -99,7 +100,7 @@ import { LIGHTS_FILE, LightsHub, handleLightsGet, handleLightsPost, lightsProble
 import { GameLightsFeed, LightsEstimate, buildGameLights } from "./lights-shown.ts";
 import { DESK_BY, DESK_FILE, DeskHub, deskHouseOf, deskLightFixtures, deskProblems, deskRefsOf, deskSeen, handleDeskGet, handleDeskPost, lookMsOf, type DeskContext, type DeskTimers } from "./desk.ts";
 import { DESK_SPEECH_GRACE_MS } from "../src/house-desk.ts";
-import { ANNOUNCE_VERB, SPEECH_ONLINE_MS, ScreenWatch, announceTextOf, speechWatchOf, spokenAnnounce, handleScreenGet, handleScreenTerminalsGet, handleScreenVoicePost, screenKingOf, screenTerminals } from "./routes/screen.ts";
+import { ANNOUNCE_VERB, SPEECH_ONLINE_MS, ScreenWatch, announceTextOf, roomVoiceOf, speechWatchOf, spokenAnnounce, handleScreenGet, handleScreenTerminalsGet, handleScreenVoicePost, screenKingOf, screenTerminals } from "./routes/screen.ts";
 import { handleScreenIdentifyPost } from "./routes/screen.ts";
 import { CAM_BODY_LIMIT, CamStore, parseCamUpload } from "./spatial-cams.ts";
 import { DreamFeed } from "./dream-feed.ts";
@@ -189,6 +190,10 @@ import { TALK_AGENT, TALK_AS, TALK_ROOM, readTalkPost, talkScene, talkView, type
 import { TALK_SCENES } from "../src/talk-scenes.ts";
 import { agentRecentOn, answerMentions, buildRecent, HUNT_ANSWER_MARK, secretMentions, storyTag, storyTexts, worldString, type StoryTagContext } from "./agent-recent.ts";
 
+
+/** Wave 59: a reader's stream closed this recently still counts as a phone in
+ *  their hand: an iPhone's page sleeps and drops it within seconds. */
+const PROMPTER_STREAM_GRACE_MS = 45_000;
 
 /** A guest view is never rendered against a null sim — this stands in. */
 const EMPTY_SIM = Sim.fromSources("");
@@ -990,6 +995,12 @@ export class EventRuntime {
   private readonly pushRoutes: PushRoutes;
   // The wall terminals' poll (K-16): screen cues folded from the sim log + each terminal's last poll.
   readonly screens: ScreenWatch;
+  /** Wave 59: the shared teleprompter (`prompter.ts`). Memory only: a restart
+   *  forgets it, and the rest of a held beat's lines just play. */
+  private readonly prompters: Prompters;
+  private prompterTimer: ReturnType<typeof setInterval> | null = null;
+  /** When each reader's stream last closed (`@<Character>` or a guest id). */
+  private readonly streamLeft = new Map<string, number>();
   // Spatial stream subscribers (terminals, the map page) — never `clients`.
   private readonly spatialStreams = new Set<ServerResponse>();
   /** (wave 49) The footsteps' streams (the router's). */
@@ -1330,6 +1341,18 @@ export class EventRuntime {
     if (voiceMuted) process.stderr.write(`  🔇 event ${this.eventId}: the TV voice is muted (kept from before this start) — unmute it on Run → Terminals\n`);
     const voiceFx = this.store.loadVoiceFx();
     if (voiceFx !== "auto") process.stderr.write(`  🌀 event ${this.eventId}: Trabolta's voice is on ${voiceFx} (kept from before this start) — put it back on Run → Terminals\n`);
+    this.prompters = new Prompters({
+      now: () => (init.now !== undefined ? init.now() : Date.now()),
+      send: (frame, members) => this.prompterSend(frame, members),
+      voice: (channel) => roomVoiceOf(this.screens, this.sim?.model ?? null, channel),
+      // A phone that slept a moment ago is still the reader: it wakes to the pop-up.
+      online: (who) => [...this.clients].some((c) => EventRuntime.isPrompterId(c, who)) || Date.now() - (this.streamLeft.get(who) ?? -Infinity) < PROMPTER_STREAM_GRACE_MS,
+      name: (who) => this.prompterName(who),
+      changed: () => {
+        this.modViewLast = null;
+        this.pushSnapshots();
+      },
+    });
     this.screens = new ScreenWatch({
       ...(init.now !== undefined ? { now: init.now } : {}),
       muted: voiceMuted,
@@ -1924,6 +1947,7 @@ export class EventRuntime {
       ...(!this.entryPlayed ? { doorsClosed: true as const } : {}),
       ...this.showClockField(),
       talk: this.talkViewNow(), // wave 32 (C5)
+      prompter: this.prompters.status(), // wave 59
     };
     this.modViewLast = { len: this.sim?.log.len() ?? -1, phase: this.phase, at: Date.now(), view };
     return view;
@@ -2028,10 +2052,10 @@ export class EventRuntime {
    *  cache window (and the reused mod view) must not hold the clock back, and
    *  a host's own clock change shows on their next poll. */
   private withShowClock(view: HostView): HostView {
-    const { showClock: _old, rejoins: _asks, talk: _talk, ...rest } = view;
+    const { showClock: _old, rejoins: _asks, talk: _talk, prompter: _prompter, ...rest } = view;
     // Wave 23: the asks to get back in are read now too; wave 32 (C5): and
     // the talk panel (Trabolta's thinking moves between two polls).
-    return { ...rest, ...this.showClockField(), rejoins: this.rejoin.asks(), talk: this.talkViewNow() };
+    return { ...rest, ...this.showClockField(), rejoins: this.rejoin.asks(), talk: this.talkViewNow(), prompter: this.prompters.status() };
   }
 
   /** Message seqs of the widget cards `id` has answered. */
@@ -2241,6 +2265,8 @@ export class EventRuntime {
   private pushLifecycle(kind: LifecycleKind, extra: Record<string, unknown> = {}): void {
     this.costume.clear(); // wave 59: a new run owes the house no restore
     this.modPrev = null; // the next view after a transition is a keyframe
+    this.prompters.clear(); // wave 59: a new run has no scene, and nothing waits
+    this.prompterClock();
     for (const c of this.clients) sseSend(c.res, "lifecycle", { kind, at: Date.now(), ...extra });
   }
 
@@ -2405,6 +2431,64 @@ export class EventRuntime {
   /** Wave 53 (C5): the `announce` frame to every phone on a stream: words to
    *  say, or `stop`. Live only and never journaled: a phone that missed it
    *  never hears it, and the app says it only if its owner opted in. */
+  /** Does this stream belong to prompter member `who` (`@<Character>`, a guest id)? */
+  private static isPrompterId(c: Client, who: string): boolean {
+    return (c.role === "prime" && `@${c.id}` === who) || (c.role === "guest" && c.id === who);
+  }
+
+  /** Who a prompter frame reaches: the scene, every host, every director. */
+  private seesPrompter(c: Client, members: ReadonlySet<string>): boolean {
+    if (c.lean === true) return false;
+    if (c.role === "mod" || (c.role === "prime" && (c.host === true || c.admin === true))) return true;
+    return members.has(c.role === "prime" ? `@${c.id}` : c.id);
+  }
+
+  /** The whole script goes once to anyone who hasn't it: the first frame of a
+   *  scene, and each stream's first (`handleEvents`). */
+  private prompterSend(frame: PrompterFrame, members: ReadonlySet<string>): void {
+    for (const c of this.clients) if (this.seesPrompter(c, members)) sseSend(c.res, "prompter", frame);
+    this.prompterClock();
+  }
+
+  /** The hold's clock runs only while a scene is on. */
+  private prompterClock(): void {
+    if (!this.prompters.active) {
+      if (this.prompterTimer !== null) clearInterval(this.prompterTimer);
+      this.prompterTimer = null;
+    } else if (this.prompterTimer === null) {
+      this.prompterTimer = setInterval(() => {
+        this.prompters.tick();
+        this.prompterClock();
+      }, 200);
+      this.prompterTimer.unref?.();
+    }
+  }
+
+  private prompterName(who: string): string {
+    return who.startsWith("@") ? who.slice(1) : (this.sim?.persons.get(who)?.name ?? "A program");
+  }
+
+  /** Is a line of `from` a screen's to say, and who else says theirs? */
+  private prompterScene(appended: readonly ChatMessage[]): ReturnType<typeof sceneOf> {
+    const sim = this.sim;
+    if (sim === null) return null;
+    return sceneOf(appended, {
+      voiced: (from) => sim.model.characters.get(from)?.mind === "external",
+      ownerOf: (from) => {
+        for (const p of sim.persons.values()) if (p.name === from) return p.id;
+        return sim.model.characters.has(from) ? `@${from}` : null;
+      },
+    });
+  }
+
+  /** Who a phone is in a scene, from its token. */
+  private prompterCaller(token: string | undefined): { who: string; host: boolean } | null {
+    const character = this.characterOf(token);
+    if (character) return { who: `@${character}`, host: this.canHostToken(token) };
+    const guest = this.guestOf(token);
+    return guest !== null ? { who: guest, host: false } : null;
+  }
+
   private phoneAnnounce(frame: { text: string; at: number } | { stop: true }): void {
     for (const c of this.clients) if (c.role !== "mod") sseSend(c.res, "announce", frame);
   }
@@ -2479,6 +2563,15 @@ export class EventRuntime {
       const title = appended.find((m) => m.aloud?.reader === reader)?.beat ?? "Your script";
       this.push.notify(reader.startsWith("@") ? boothOwner(reader.slice(1)) : guestOwner(reader), aloudPush(title), false);
     }
+    // Wave 59: the beat's prompter goes live, and his lines wait for it. A
+    // line of someone who isn't reading is theirs: a card, and a push.
+    const scene = this.prompterScene(appended);
+    if (scene !== null) {
+      this.prompters.land(scene);
+      this.prompterClock();
+      const title = scene.sections[0]?.title ?? "Your line";
+      for (const who of scene.owners) this.push.notify(who.startsWith("@") ? boothOwner(who.slice(1)) : guestOwner(who), aloudLinePush(title), false);
+    } else this.prompters.outrun(appended, (from) => this.sim?.model.characters.get(from)?.mind === "external");
     // A commit whose events never reached a fanout: its lines go now.
     for (const crew of this.crewAfter.values()) post(crew);
     this.crewAfter.clear();
@@ -5873,6 +5966,8 @@ export class EventRuntime {
     clearInterval(this.lettersTimer);
     this.costume.clear();
     this.desk.dispose();
+    if (this.prompterTimer !== null) clearInterval(this.prompterTimer);
+    this.prompterTimer = null;
     if (this.modSnapshotTimer !== null) clearTimeout(this.modSnapshotTimer);
     this.modSnapshotTimer = null;
     if (this.modOwedTimer !== null) clearTimeout(this.modOwedTimer);
@@ -6136,6 +6231,9 @@ export class EventRuntime {
         sseSend(res, "history", this.historyFor(client));
         // Wave 42b (B2): a phone back from sleep learns its place in line.
         this.replayAgentWaits(client);
+        // Wave 59: and where the prompter is. A scene that has gone reads null.
+        const member = role === "guest" ? id : role === "prime" && client.host !== true && client.admin !== true ? `@${id}` : null;
+        sseSend(res, "prompter", this.prompters.frame(member));
       }
       if (!fullMod) this.pushPresence();
       const ping = setInterval(() => {
@@ -6148,6 +6246,7 @@ export class EventRuntime {
         const live = this.clients.delete(client);
         if (ownGuest) this.seen(id, true);
         if (live && role === "prime") this.boothSeen.set(id, this.clock());
+        if (role !== "mod") this.streamLeft.set(role === "prime" ? `@${id}` : id, Date.now());
         this.pushPresence();
       });
       return true;
@@ -6327,7 +6426,7 @@ export class EventRuntime {
       }
       // `?cues=1` (W-26): the director phone's lean read — just the cue sheet.
       if (url.searchParams.get("cues") === "1") {
-        sendJson(res, 200, { ...cueSheetView(this.modViewNow()), rejoins: this.rejoin.asks() });
+        sendJson(res, 200, { ...cueSheetView(this.modViewNow()), rejoins: this.rejoin.asks(), prompter: this.prompters.status() });
         return true;
       }
       sendJson(res, 200, this.modViewNow());
@@ -6385,8 +6484,12 @@ export class EventRuntime {
 
     // --- the wall terminals' lean screen state (K-16, routes/screen.ts) ---
     if (method === "GET" && path === "/api/screen/state") {
-      // Wave 25: a terminal's talk= / said= may end a desk speech step.
-      queueMicrotask(() => this.desk.poke());
+      // Wave 25: a terminal's talk= / said= may end a desk speech step; wave
+      // 59: or free the teleprompter.
+      queueMicrotask(() => {
+        this.desk.poke();
+        this.prompters.tick();
+      });
       return handleScreenGet(
         this.screens,
         this.sim,
@@ -6421,6 +6524,8 @@ export class EventRuntime {
           spotHere: (spot) => this.spatial.spotHere(spot),
           // Wave 48b (C12): the filter's book for the Language Report.
           language: () => ({ words: this.filter.wordCounts(), unsaid: this.filter.unsaid, level: this.filter.level, stars: this.filter.stars }),
+          // Wave 59: his lines wait for the teleprompter.
+          voiceHeldFrom: (channel) => this.prompters.heldFrom(channel),
         },
       );
     }
@@ -7336,6 +7441,29 @@ export class EventRuntime {
         this.answerPrinted(res, id, body);
         return true;
       }
+
+      case "/api/aloud": {
+        // Wave 59: a phone on the shared teleprompter. Never journaled: no
+        // story reads it, and a locked program's script still scrolls.
+        const caller = this.prompterCaller(tokenOf(req, body));
+        if (caller === null) {
+          sendJson(res, 401, { error: "not signed in" });
+          return true;
+        }
+        const op = readPrompterOp(body);
+        const scene = Number(body["scene"]);
+        if (op === null || !Number.isInteger(scene)) {
+          sendJson(res, 400, { error: "scene and op" });
+          return true;
+        }
+        const refused = this.prompters.op(scene, caller.who, caller.host, op);
+        this.prompterClock();
+        // Never a word a phone's session reads (`locked`, a 410): it reads the next frame.
+        if (refused !== null) sendJson(res, 409, { error: `prompter: ${refused}` });
+        else sendJson(res, 200, { ok: true });
+        return true;
+      }
+
       case "/api/guest/codex/redeem": {
         // A guest types (or scans) an unlock code — a QR on the wall, a
         // puzzle's answer. Journaled; a miss is a story event too.
@@ -8826,6 +8954,19 @@ export class EventRuntime {
         this.store.saveCostumeOff(!body["on"]);
         if (!body["on"]) this.costume.halt();
         sendJson(res, 200, { ok: true, on: body["on"] });
+        return true;
+      }
+      case "/api/mod/aloud": {
+        // Wave 59: a host's or a director's ▶ (every line of his left plays,
+        // the prompter carries on) or ✓ Done (the scene is over).
+        const action = str(body, "action");
+        if (action !== "release" && action !== "done") {
+          sendJson(res, 400, { error: "action is release or done" });
+          return true;
+        }
+        const took = action === "release" ? this.prompters.release() : this.prompters.done();
+        this.prompterClock();
+        sendJson(res, 200, { ok: true, took });
         return true;
       }
       case "/api/mod/talk": {

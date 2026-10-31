@@ -46,7 +46,10 @@ part and turned the headers of `moments/model.ts`, `moments/provider.tsx`,
 added `fullscreen.ts`, with a `//` header: 147.53 kB. Wave 59's one holder added
 about 0.7 kB (the owed release's loop is in the lazy `rejoin-calls.ts`) and turned
 the headers of `core/src/cue-sheet.ts`, `host.ts`, `moments/exits.ts` and `arm.ts`
-into `//`: 147.03 kB.
+into `//`: 147.03 kB. The shared teleprompter added
+`aloud/shared.ts` and turned the headers of `chrome/taskbar.tsx`,
+`chrome/icons.tsx`, `stream/card-tray.tsx`, `moments/pins-rail.tsx`,
+`moments/surfaces.tsx`, `show-clock.ts`, `claim.ts` and `back-gesture.ts` into `//`.
 
 ## How a session works
 
@@ -582,6 +585,48 @@ Contract `docs/loom-w55-contract.md`. Copy is `DRAFT w55`.
   scrolling was driven in Chromium, since play has no DOM in tests.
 - Help: `docs/help/play/07-performers.md` *Reading out loud*.
 
+### Wave 59: the shared teleprompter
+
+Contract `docs/loom-w59-prompter-contract.md`. Copy is `DRAFT w59`. The server owns a
+scene's one position, in words; his lines wait for it.
+
+- **The store** (`aloud/shared.ts`, eager, its header `//`). `PrompterStore`, one per
+  session (`GuestSession.prompter`, `PrimeSession.prompter`, never a module global,
+  since Run → Players mounts many phones in one page), fed by the stream's `prompter`
+  frame (`CHAT_FRAMES`, `onPrompter`). Read by subscription: `sceneId` is all the app
+  depends on, so five moves a second never re-render it. `pos(now)` adds `rate` from
+  the frame's arrival, up to `stop`. `nudge` follows this phone's own jump until the
+  server answers, `revert` gives it back. `ended` is the last scene to go, with its
+  `first` line and the line it had `reached`; only a `done` frame counts as read
+  (`superseded: false`); a `null` frame is a restart.
+- **`useAloud`** gains `shared` (`SharedScene`: the scene as this phone's script,
+  `role` reader / owner / host), `card` / `dropCard`. While `covering` on a visible
+  page it posts `here` every 4 s, or nothing waits for it. Posts go through the
+  session's `prompterPost` (`POST /api/aloud`). `done` posts `done` when a scene is on.
+  `behind` / `readBehind` are this reader's unread lines a newer scene took off the
+  phone (`linesBehind`, `model.ts`). The mark goes through `markPast`: ✓ Done only past
+  what the phone showed, and a scene taken over only as far as a prompter open here had
+  got, never past a line still behind it (contract C10).
+- **`Prompter`**: `script` is `a.shared?.script ?? a.script`, keyed on the scene.
+  With a scene it does not autoscroll itself: one rAF loop follows
+  `store.pos` (`FOLLOW` of the gap a frame, a snap past a screenful), or, with a finger
+  on the text, sends `move` every `MOVE_MS` and, resting, every `STILL_HERE_MS`.
+  `place` is a repaint, `moveTo` is a move someone asked for (it also jumps the
+  scene). `bitsKey` / `bitsOf` (`prompter-model.ts`) are what the controls need from a
+  frame, as a string, so only a change re-renders. Locked (someone else's finger, or
+  him): `.aloud-text.locked`, the controls and the rail stop, `.aloud-lock` says who.
+  `yOfPos` / `posOfY` turn words into pixels along this phone's lines. A host has no
+  last line to reach, so their ✓ Done always asks twice. *↑ n earlier lines* opens
+  `behind` on a sheet with its own scroll, outside `[data-line]`, so the position never
+  sees it.
+- **`AloudCard`** (the same lazy chunk): one line of yours in someone else's script,
+  never the whole phone. `AloudSlot` shows it when `a.card && !a.covering`.
+- **Host:** `host/prompter-strip.tsx` on Show (`HostView.prompter`, `prompterLine` in
+  `show-model.ts`), 📜 Join (`openPrompter`) and ▶ (`calls.aloud`, on the allowlist).
+  The director phone has the same line and ▶ while something waits.
+- Tests: `test/w59-prompter.test.tsx`; the scrolling is driven in Chromium by
+  `scripts/sim/prompter.spec.ts`.
+
 ### Host windows (wave 25; the contract is `docs/loom-house-desk.md` §6.2)
 
 A host booth (`isHostBooth` in `host/dock.tsx`, never a player) has three
@@ -711,7 +756,7 @@ src/
   session/               guest.ts / prime.ts sessions, channels, stream handlers
   sides/                 sides, crews, factions (lazy)
   credits/               the credits roll (wave 44): lazy.tsx eager, roll.tsx + its models lazy
-  aloud/                 the teleprompter (wave 55): model.ts + lazy.tsx eager, prompter.tsx + its model lazy
+  aloud/                 the teleprompter (wave 55): model.ts + lazy.tsx + shared.ts eager, prompter.tsx + its model lazy
   ui/                    primitives, Win95 windows, objective card, progress
   css/                   base, themes, w95 + one file per lane; styles.css imports them
   widgets.tsx · widgets-fact.tsx   show-card registry (captcha, image, poll, tutorial, pass, fact, answer, email: wave 41's optional inbox, `emailResult`)

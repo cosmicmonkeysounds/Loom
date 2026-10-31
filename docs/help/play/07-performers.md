@@ -160,6 +160,22 @@ landing while you read shows **＋ new lines**, and a line after ✓ Done pops u
 again. To read anything again: ⊞ Start → **📜 My script**. The screen stays on
 while the teleprompter is open.
 
+**Trabolta waits for you.** His lines are blue in your script. He says one when
+the yellow arrow reaches it, so read at your own pace and scroll to him when you
+are ready. While he speaks the words are locked and scroll by themselves, then they
+are yours again. Past his line the prompter won't go until he has said it.
+
+**The prompter is shared.** Everyone in the scene sees the same place: anyone with a
+line, and any host who joins. Anyone can move it, and whoever has a finger on the
+words has it until they let go: the others read **🔒 Clippy has it**.
+
+**One line of yours in someone else's script** comes as a small card, **📜 You have
+a line**. Say it when it comes, or press **📜 Join the teleprompter** to follow along.
+
+**A new scene can land while you're reading.** The prompter moves to it, and what you
+hadn't reached waits behind **↑ n earlier lines**: tap it to read them, then **✓ Read
+them**. Leave them and they come back after your next **✓ Done**.
+
 ## Pop-outs
 
 A pop-out is a small Win95 window docked over your rooms: its title (*🚨

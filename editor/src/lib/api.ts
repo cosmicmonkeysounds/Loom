@@ -338,6 +338,10 @@ export const modApi = {
   async caller(eventId: string, on: boolean): Promise<void> {
     await req('POST', `/e/${eventId}/api/mod/caller`, { on })
   },
+  /** Wave 59: ▶ every line of his left plays, or ✓ Done the scene is over. */
+  async aloud(eventId: string, action: 'release' | 'done'): Promise<void> {
+    await req('POST', `/e/${eventId}/api/mod/aloud`, { action })
+  },
   /** Scan a guest as a character — fires that character's scan reaction.
    *  Resolves to the character's `respond` readouts (the booth's responses). */
   async scanAs(eventId: string, as: string, target: string): Promise<string[]> {

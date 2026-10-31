@@ -30,6 +30,7 @@ import type {
   WalletModView,
 } from '@loom/core/views'
 import { applyModPatch, type ModPatchFrame } from '@loom/core/mod-patch'
+import type { PrompterStatus } from '@loom/core/host-board'
 import { ApiError, eventsApi, logApi, modApi, type EventInfo, type PlayAsSession } from '@/lib/api'
 import { fetchWholeLedger } from '@/lib/run-export'
 import { onCollabEvent, type CollabEventNotice } from '@/lib/collab'
@@ -107,6 +108,8 @@ interface ModSnapshot {
    *  `watch` absent when the story declares no `watch:` line. */
   watch?: WatchSummary[]
   countdowns?: CountdownSummary[]
+  /** Wave 59: the teleprompter's scene. */
+  prompter?: PrompterStatus | null
   /** Wave 18b, faction mode only. */
   race?: RaceView
   /** w18 crews: every live guest-founded crew (a founded faction in faction mode). */
@@ -192,6 +195,7 @@ const EMPTY_SNAPSHOT = {
   watch: [] as WatchSummary[],
   watchDeclared: false,
   countdowns: [] as CountdownSummary[],
+  prompter: null as PrompterStatus | null,
   ledgerLen: 0,
   world: [] as WorldEntry[],
   modsOnline: null as number | null,
@@ -450,6 +454,7 @@ export const useOperate = create<OperateState>((set, get) => {
         watch: snap.watch ?? [],
         watchDeclared: snap.watch !== undefined,
         countdowns: snap.countdowns ?? [],
+        prompter: snap.prompter ?? null,
         choices: snap.choices ?? {},
         ledgerLen: snap.ledgerLen ?? 0,
         world: snap.world ?? [],
@@ -847,6 +852,7 @@ export const useOperate = create<OperateState>((set, get) => {
       }
     },
     reveal: (faction) => withEvent((ev) => modApi.reveal(ev, faction)),
+    prompterRelease: () => void withEvent((ev) => modApi.aloud(ev, 'release')),
     claimCaller: async (on) => {
       const ev = get().event
       if (!ev) return false

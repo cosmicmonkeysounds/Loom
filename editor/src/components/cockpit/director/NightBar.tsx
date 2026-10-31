@@ -31,8 +31,23 @@ export function NightBar() {
   const phase = nightPhase(world)
   const steps = d.acts.filter((a) => a.state !== 'anytime')
   const stepper = steps.length >= 2
+  const prompter = useCockpit((s) => s.prompter)
+  const prompterRelease = useCockpit((s) => s.prompterRelease)
   return (
     <div className="flex flex-col gap-1" data-testid="director-night">
+      {prompter !== null && (
+        <div className="flex flex-wrap items-center gap-2 rounded bg-sky-500/10 px-2 py-0.5 text-xs text-sky-200" data-testid="director-prompter">
+          <span className="min-w-0 flex-1 truncate">
+            📜 {prompter.readers.join(', ')} · {prompter.title} · line {prompter.line} of {prompter.lines}
+            {prompter.speaking ? ' · 🔊 he is speaking' : prompter.holder !== null ? ` · 🔒 ${prompter.holder} has it` : prompter.held ? ' · ⏸ he waits for the script' : ''}
+          </span>
+          {prompter.held && (
+            <button className="rounded border border-sky-400/50 px-1.5 py-0.5 hover:bg-sky-500/20" onClick={prompterRelease} data-testid="director-prompter-release" title="Every line of his left in this beat plays, in order. The teleprompter carries on.">
+              ▶ Let him speak
+            </button>
+          )}
+        </div>
+      )}
       {paused && (
         <div className="rounded bg-amber-500/15 px-2 py-0.5 text-center text-xs font-semibold text-amber-300" data-testid="director-paused">
           PAUSED: story clock stopped

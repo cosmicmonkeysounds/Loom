@@ -990,6 +990,9 @@ footer {
 /* Wave 10: the pinned top — the strip (act · phase · soonest countdown ·
    up to 3 watched values) and the NEXT bar, which scrolls to its row. */
 /* Wave 23: guests asking to get back in, above the director phone's cues. */
+.dir-prompter { flex: 0 0 auto; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px; border-bottom: 1px solid var(--line); background: var(--code-bg); }
+.dir-prompter span { flex: 1 1 100%; overflow-wrap: anywhere; }
+.dir-prompter button { min-height: 44px; flex: 1 1 auto; }
 .dir-rejoins { flex: 0 0 auto; display: flex; flex-direction: column; gap: 6px; padding: 8px; border-bottom: 1px solid var(--line); background: var(--code-bg); }
 .dir-rejoin { display: flex; flex-direction: column; gap: 6px; }
 .dir-rejoin-acts { display: flex; gap: 8px; }
