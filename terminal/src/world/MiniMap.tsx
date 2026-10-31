@@ -12,7 +12,7 @@ export function MiniMap({ house, floor, players, spot, subject }: { house: House
   const spotHere = spot !== null && house.rooms.find((r) => r.id === spot.room)?.floor === view.floor;
   const here = players.filter((p) => p.floor === view.floor);
   return (
-    <figure className="minimap" aria-label={`map of the ${view.label}`}>
+    <figure className="minimap" aria-label="map of the house">
       <svg viewBox={view.viewBox} preserveAspectRatio="xMidYMid meet">
         {view.rooms.map((r) => (
           <path key={r.id} d={r.d} className={`mm-room${r.outdoor ? " outdoor" : ""}${spot?.room === r.id ? " mine" : ""}`} />
@@ -41,7 +41,6 @@ export function MiniMap({ house, floor, players, spot, subject }: { house: House
           );
         })}
       </svg>
-      <figcaption>{view.label.toUpperCase()}</figcaption>
     </figure>
   );
 }

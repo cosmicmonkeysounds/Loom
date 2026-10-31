@@ -8,7 +8,7 @@
 //! The plan maps straight onto the screen like the mini-map and the map
 //! editor: house `x` → right, house `z` → down (z is south), so north is up.
 
-import { kingProps, polyBounds, roomById, type DuckSpot, type HouseMap, type KingState, type Vec2, type WallSegment } from "@loom/house";
+import { kingProps, polyBounds, roomById, roomName, type DuckSpot, type HouseMap, type KingState, type Vec2, type WallSegment } from "@loom/house";
 import type { Celebration } from "../world/state.ts";
 
 /** A player as the plan needs it (a `WorldPlayer` fits). */
@@ -31,6 +31,13 @@ export function mainFloor(house: HouseMap): string {
   let best = house.floors[0]!;
   for (const f of house.floors) if (Math.abs(f.elevation) < Math.abs(best.elevation)) best = f;
   return best.id;
+}
+
+/** A room as a wall screen names it: the story's name, never the real room
+ *  (`roomName`, wave 59). */
+export function roomCaption(house: HouseMap, room: string | null): string {
+  const found = room !== null ? roomById(house, room) : undefined;
+  return found !== undefined ? roomName(found) : "somewhere in the house";
 }
 
 /** Players per floor, every floor listed (top floor first — the way a building's directory reads). */
@@ -114,7 +121,6 @@ export interface PlanRoom {
 
 export interface PlanFloor {
   floor: string;
-  label: string;
   bounds: Bounds;
   rooms: PlanRoom[];
   /** Wall lines standing on this floor (lintels over doors left out, so doors read as gaps). */
@@ -179,7 +185,6 @@ export function planFloor(house: HouseMap, walls: readonly WallSegment[], floorI
   if (!Number.isFinite(b[0])) b = [-1, -1, 1, 1];
   return {
     floor: floor.id,
-    label: floor.label,
     bounds: b,
     rooms: rooms.map((r) => ({
       id: r.id,

@@ -24,10 +24,11 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { PerspectiveCamera, Scene, WebGLRenderer } from "three";
-import { roomById, type HouseMap } from "@loom/house";
+import type { HouseMap } from "@loom/house";
 import { buildHouseScene, createAvatar, createDuck, houseAtmosphere, type Avatar, type Duck } from "@loom/house/three";
 import { direct, insideHead, shotFloor, shotKey, type Director, type DirectorPlayer, type Shot } from "./director.ts";
 import { MiniMap } from "./MiniMap.tsx";
+import { roomCaption } from "../raycast/plan.ts";
 import { countsLine, windowCounts } from "./overlay.ts";
 import { avatarUrl, byActivity, celebrationLine, laysEgg, type WorldPlayer } from "./state.ts";
 import { useWorld, type WorldStore } from "./stream.ts";
@@ -48,10 +49,6 @@ export function shotTag(shot: Shot | null, players: ReadonlyMap<string, WorldPla
 function subjectOf(shot: Shot | null, players: readonly WorldPlayer[]): WorldPlayer | null {
   const id = shot?.kind === "mount" ? shot.subject : shot?.kind === "follow" ? shot.subject : null;
   return players.find((p) => p.session === id) ?? players[0] ?? null;
-}
-
-function roomLabel(house: HouseMap, room: string | null): string {
-  return (room !== null ? roomById(house, room)?.label : undefined) ?? "somewhere in the house";
 }
 
 export function WorldView({ store, spotId, size }: { store: WorldStore; spotId: string; size: "pane" | "full" }) {
@@ -227,7 +224,7 @@ export function WorldView({ store, spotId, size }: { store: WorldStore; spotId: 
       <div className="world-top">
         {info !== null && subject !== null && (
           <div className="world-banner">
-            REINSTALLATION IN PROGRESS · {subject.name.toUpperCase()} · {roomLabel(info.house, subject.room).toUpperCase()}
+            REINSTALLATION IN PROGRESS · {subject.name.toUpperCase()} · {roomCaption(info.house, subject.room).toUpperCase()}
             {ordered.length > 1 && <span className="world-more"> +{ordered.length - 1}</span>}
           </div>
         )}

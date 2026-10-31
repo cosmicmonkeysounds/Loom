@@ -25,7 +25,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { fnv1a32, roomById, type Vec3 } from "@loom/house";
 import { avatarUrl, type WorldPlayer } from "../world/state.ts";
 import { useWorld, type WorldStore } from "../world/stream.ts";
-import { celebrationHeadline, chooseFloor, fitTransform, guestColor, holdFloor, kingOnFloor, planFloor, rosterTellsToasts, rosterToasts, statusLine, toScreen, type FloorHold, type PlanFloor } from "./plan.ts";
+import { celebrationHeadline, chooseFloor, fitTransform, guestColor, holdFloor, kingOnFloor, planFloor, roomCaption, rosterTellsToasts, rosterToasts, statusLine, toScreen, type FloorHold, type PlanFloor } from "./plan.ts";
 import {
   castColumns,
   chaseCamera,
@@ -181,7 +181,7 @@ export function RaycastView({ store, spotId, size }: { store: WorldStore; spotId
       if (spot !== null) {
         target = spotCamera(house, spot);
         room = spot.room;
-        label = `WINDOW · ${(roomById(house, spot.room)?.label ?? spot.name).toUpperCase()}`;
+        label = `WINDOW · ${roomCaption(house, spot.room).toUpperCase()}`;
       } else {
         const p = followTarget(list, t);
         if (p !== null) {
@@ -483,9 +483,4 @@ function drawInset(
     ctx.arc(px, py, 3.5, 0, Math.PI * 2);
     ctx.fill();
   }
-  ctx.font = "11px VT323, monospace";
-  ctx.textAlign = "left";
-  ctx.textBaseline = "top";
-  ctx.fillStyle = "rgba(233,255,241,0.85)";
-  ctx.fillText(plan.label.toUpperCase(), x0 + 4, y0 + 3);
 }

@@ -67,6 +67,18 @@ export function roomById(house: HouseMap, id: string): Room | undefined {
   return house.rooms.find((r) => r.id === id);
 }
 
+/**
+ * A room as a player reads it: its story location, else its label without
+ * the crew's bracket. `label` is the real room (`Start Bar (kitchen)`), which
+ * only crew tools show (wave 59).
+ */
+export function roomName(room: Room): string {
+  const location = room.location?.trim();
+  if (location !== undefined && location !== "") return location;
+  const bare = room.label.replace(/\s*\([^()]*\)/gu, "").trim();
+  return bare === "" ? room.label : bare;
+}
+
 /** A room's floor elevation (0 for an unknown room / floor). */
 export function roomElevation(house: HouseMap, room: Room | string): number {
   const r = typeof room === "string" ? roomById(house, room) : room;
