@@ -451,6 +451,12 @@ def _codex_titles() -> set[str]:
     return out
 
 
+def test_the_printer_is_the_way_in_never_the_router():
+    world = (SHOW / "codex/1-world.loom").read_text()
+    entry = " ".join(world[world.index("CODEX The Halifax Computer") : world.index("CODEX The Optical Drive")].split())
+    assert "malfunctioning printer" in entry and "router" not in entry
+
+
 def test_no_tell_list_names_an_entry_that_is_gone():
     titles = _codex_titles()
     assert "The Grand Unified Theory" in titles
