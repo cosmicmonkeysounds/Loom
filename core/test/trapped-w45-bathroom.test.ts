@@ -54,7 +54,7 @@ class Night {
     this.press("back from the bathroom", id);
   }
   /** A Trabolta-hosted ceremony (the song ending), G1 pressed. */
-  ceremony(ending = "song"): ChatMessage[] {
+  ceremony(ending = "help"): ChatMessage[] {
     this.sim.setVar("Night.ending", ending);
     this.sim.setVar("Night.ended", "true");
     this.press("start_the_ceremony"); // wave 58: the first press only asks

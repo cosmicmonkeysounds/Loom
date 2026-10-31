@@ -16,6 +16,7 @@ import { FactsWatch, bookOf, screenResultsOf } from "../server/facts.ts";
 import { READING_BEATS } from "../server/agent-recent.ts";
 import { foldName } from "../src/parser/names.ts";
 import { answerNeverWords, mindBlock, neverWords } from "../scripts/titi-facts.ts";
+import { TO_Y2K } from "../../scripts/accept/chains.ts";
 
 const SHOW = "trapped-in-the-internet";
 const DIR = scenarioDir(SHOW);
@@ -203,7 +204,7 @@ describe("wave 59a: his words", () => {
   });
   it("the script's typos are as decided", () => {
     expect(STORY).toContain("Everybody, boos and jeers for {Night.least_trusted}. You are a real scorpion.");
-    expect(STORY).toContain("But we've run out of time.");
+    expect(STORY).toContain("But we've run out of time, and no one found the definition for the final clue.");
     expect(STORY).toContain("but I am computing this is, and it is not correct");
   });
   it("what the script drops is gone from the night", () => {
@@ -311,19 +312,20 @@ class Night {
 }
 
 const his = (ms: readonly ChatMessage[]) => ms.filter((m) => m.channel === "loc:The Desktop" && m.from === "Trabolta").map((m) => m.text);
+/** Seven programs, and the night walked to the Y2K hour by the director's chain. */
 const party = (): Night => {
   const n = new Night();
   for (const [id, name] of [["g1", "Calculator"], ["g2", "Notepad"], ["g3", "Minesweeper"], ["g4", "Winamp"], ["g5", "Paint"], ["g6", "Clock"], ["g7", "Solitaire"]] as const) n.upload(id, name);
-  n.open();
+  for (const c of TO_Y2K) n.press(c);
   return n;
 };
-
-/** Through 🌑 on a story set to the eve of it: only what the press reads is set. */
-function reveal(n: Night): ChatMessage[] {
-  n.sim.setVar("Night.step", "14");
-  n.sim.setVar("Night.phase", "y2k");
-  n.sim.setVar("Night.final_round", "true");
-  return n.press("final_reveal");
+const reveal = (n: Night): ChatMessage[] => n.press("final_reveal");
+/** 🌑 done: 🍎, the bag, 📄, then ⚖. */
+function verdict(n: Night): ChatMessage[] {
+  n.press("bobbing_for_truth");
+  n.take(n.sim.signal("brought_up_the_bag", "g1", null, "Clippy"));
+  n.press("read_truth_txt");
+  return n.press("the_verdict");
 }
 
 describe("wave 59a: a reading", () => {
@@ -335,7 +337,7 @@ describe("wave 59a: a reading", () => {
     n.file("g3", "F1", "lie", 100, "the wrong words");
     const said = reading(n, "Reading F1");
     expect(said[0]).toBe(`Question one. The question was: ${F1Text()}`);
-    expect(said[1]).toBe("Here are the guesses you have submitted: Calculator submitted: “the right words”. Notepad submitted: “the right words again”. Minesweeper submitted: “the wrong words”.");
+    expect(said[1]!.trim()).toBe("Here are the guesses you have submitted: Calculator submitted: “the right words”. Notepad submitted: “the right words again”. Minesweeper submitted: “the wrong words”.");
     expect(said[2]).toBe("These programs did not submit any truth: Winamp, Paint, Clock and Solitaire");
     expect(said[3]).toBe(Q("F1").reading);
     expect(said[4]).toBe("Congratulations to these programs for getting a correct answer: Calculator");
@@ -349,42 +351,126 @@ describe("wave 59a: a reading", () => {
     expect(all.some((t) => t.startsWith("These programs did not"))).toBe(false);
     expect(all.at(-1)!.startsWith("Congratulations to these programs")).toBe(true);
   });
-  it("F3 found: the answer, then the Congratulations; the verdict goes straight on", { timeout: SLOW }, () => {
+  it("F3 found: the answer, then the Congratulations", { timeout: SLOW }, () => {
     const n = party();
     n.file("g1", "F3", "accurate");
     const said = his(reveal(n));
     expect(said).toContain(F3.reading);
     expect(said.join(" ")).not.toContain("We will return to this one");
     expect(said).toContain("Congratulations to these programs for getting a correct answer: Calculator");
-    n.sim.setVar("Night.phase", "bobbing");
-    n.sim.setVar("Night.r3_closed", "true");
-    const v0 = his(n.press("the_verdict"));
-    expect(v0[0]).toBe("I have compared every fact you gave me with truth.txt.");
   });
-  it("F3 nobody found: no word of it, his two lines, 8-B, then the verdict by itself", { timeout: SLOW }, () => {
+  it("F3 nobody found: no word of it, his two lines; a lie stays on the record", { timeout: SLOW }, () => {
     const n = party();
     n.file("g1", "F3", "lie");
     const said = his(reveal(n));
     expect(said.join(" ")).not.toContain(F3.reading!);
     expect(said).toContain(F3.unfound![0]);
     expect(said).toContain(F3.unfound![1]);
-    n.sim.setVar("Night.phase", "bobbing");
-    n.sim.setVar("Night.r3_closed", "true");
-    const eight = his(n.press("the_verdict"));
-    expect(eight[0]).toBe("How do you feel now that you know the truth about your party tonight?");
-    expect(eight.at(-1)).toBe("But we've run out of time.");
-    expect(eight.join(" ")).not.toContain("I have compared every fact");
-    expect(his(n.press("the_verdict"))).toEqual([]); // ⚖ again only tells # hosts
-    const verdict = his(n.tick(71));
-    expect(verdict[0]).toBe("I have compared every fact you gave me with truth.txt.");
-    expect(n.sim.world.get("Kernel.t9")).toMatchObject({ value: "lie" });
+    expect(v(n.sim, "Kernel.q9")).toBe("lie");
   });
-  it("F3 nobody filed at all: not a lie, and no talk of 100%", { timeout: SLOW }, () => {
+  it("F3 nobody filed at all: not a lie, and no talk of 100%%", { timeout: SLOW }, () => {
     const n = party();
     const said = his(reveal(n));
     expect(said).not.toContain(F3.unfound![0]);
     expect(said).toContain(F3.unfound![1]);
     expect(v(n.sim, "Kernel.q9")).toBe("none");
+  });
+});
+
+describe("wave 59a: the last answer decides, and every road ends in the rave", () => {
+  it("found: ⚖ is the full truth, clean; 8-A follows by itself, the song, the rave, Clippy hosts", { timeout: SLOW }, () => {
+    const n = party();
+    n.file("g1", "F3", "accurate");
+    n.file("g2", "F1", "lie"); // a lie changes nothing
+    reveal(n);
+    const truth = verdict(n);
+    expect(his(truth).join(" ")).toContain("Grok was too antisocial");
+    expect(his(truth).join(" ")).not.toContain("I have compared every fact");
+    expect(v(n.sim, "Night.phase")).toBe("finale_truth");
+    expect(v(n.sim, "Night.ended")).toBe(false);
+    expect(v(n.sim, "Night.truth_first")).toBe(true);
+    expect(n.tick(829).filter((m) => m.channel === "loc:The Desktop")).toEqual([]);
+    const a = his(n.tick(2));
+    expect(a[0]).toBe("You guys.");
+    expect(a).toContain("I solved the Grand Unified Theory, and she said yes.");
+    expect(a.at(-1)!.endsWith("I'm off to see my lady.")).toBe(true);
+    expect(a.length).toBeLessThanOrEqual(40);
+    expect([v(n.sim, "Night.ended"), v(n.sim, "Night.ending"), v(n.sim, "Night.phase")]).toEqual([true, "song", "finale_song"]);
+    expect(v(n.sim, "Night.everyone_free")).toBe(false);
+    n.tick(77);
+    expect([v(n.sim, "Night.screen"), v(n.sim, "Night.everyone_free"), v(n.sim, "Night.raved")]).toEqual(["song", true, false]);
+    const asked = n.take(n.sim.signal("start_the_ceremony"));
+    expect(asked.some((m) => m.text.includes("The rave hasn't started"))).toBe(true);
+    n.tick(171);
+    expect([v(n.sim, "Night.screen"), v(n.sim, "Night.terminals"), v(n.sim, "Night.lights"), v(n.sim, "Night.raved")]).toEqual(["rave", "rave", "rave", true]);
+    n.press("start_the_ceremony");
+    expect(v(n.sim, "Night.ceremony_host")).toBe("Clippy");
+  });
+  it("nobody found it: 8-B, his pause, every line kept, the old line wins nothing, the flicker, his news", { timeout: SLOW }, () => {
+    const n = party();
+    n.file("g1", "F3", "lie");
+    reveal(n);
+    verdict(n);
+    const b = his(n.tick(831));
+    expect(b[0]).toBe("How do you feel now that you know the truth about your party tonight?");
+    expect(b.at(-1)).toBe("Do you think I should just ask her for a dance?");
+    expect(v(n.sim, "Night.ended")).toBe(false);
+    const ask = n.tick(106);
+    expect(his(ask)).toEqual(["Really? You think I should?", "Well. What should I say to her? I'll give you two minutes to come up with a line."]);
+    const cards = ask.filter((m) => m.kind === "widget" && m.widget?.kind === "answer");
+    expect(cards.length).toBe(7);
+    expect(cards[0]!.text).toBe("What should I say to her?");
+    expect(v(n.sim, "Night.lines_open")).toBe(true);
+    n.take(n.sim.signal("answer answered", "g1", { question: "P1", text: "You look like a good download", verdict: "lie", card: 1 }));
+    n.take(n.sim.signal("answer answered", "g2", { question: "P1", text: FACTS.answers[0]!.answer, verdict: "accurate", card: 2 }));
+    expect(v(n.sim, "Night.line_by")).toBe("none");
+    expect(v(n.sim, "Night.ending")).toBe("none");
+    const read = his(n.press("no_pickup_line"));
+    expect(read[0]).toBe("Ok. I've been waiting for you. Let's read your ideas for pickup lines out loud.");
+    expect(read[1]).toContain("Calculator recommended I try: “You look like a good download”.");
+    expect(read[1]).toContain("Notepad recommended I try:");
+    expect(read[2]).toBe("Ok. I am not sure any of those are going to work.");
+    expect(read.at(-1)).toBe("I'll be right back.");
+    expect(v(n.sim, "Night.lines_open")).toBe(false);
+    const back = n.take(n.sim.tick(49_000));
+    expect(his(back)[0]).toBe("Guys. She said yes.");
+    expect([v(n.sim, "Night.ending"), v(n.sim, "Night.ended")]).toEqual(["song_pickup", true]);
+    expect(his(n.tick(78))).toEqual([]);
+    expect(v(n.sim, "Night.screen")).toBe("song");
+    n.tick(171);
+    expect(v(n.sim, "Night.raved")).toBe(true);
+  });
+  it("nobody on the card: straight to \"You know what.\", and the two minutes close by themselves", { timeout: SLOW }, () => {
+    const n = party();
+    reveal(n);
+    verdict(n);
+    n.tick(831);
+    n.tick(106);
+    const read = his(n.tick(121));
+    expect(read[0]!.startsWith("You know what.")).toBe(true);
+  });
+  it("📜 Task Manager, when the TV's voice fails: 8-A or 8-B still follow", { timeout: SLOW }, () => {
+    const n = party();
+    n.file("g1", "F3", "accurate");
+    reveal(n);
+    verdict(n);
+    n.tick(100);
+    n.press("task_manager_reads");
+    expect(v(n.sim, "Night.truth_reader")).toBe("Task Manager");
+    expect(his(n.tick(740))).toEqual([]); // the read's own clock
+    expect(his(n.tick(95))[0]).toBe("You guys.");
+  });
+  it("Combo A and Combo B keep their monologue, and the rave follows the read", { timeout: SLOW }, () => {
+    for (const [press, ending] of [[["patch_combo_a"], "disabled"], [["patch_combo_b", "clippy_reads_summary"], "destroyed"]] as const) {
+      const n = party();
+      for (const c of press) n.press(c);
+      n.tick(15);
+      n.press("tell_the_truth");
+      expect(v(n.sim, "Night.ending"), ending).toBe(ending);
+      expect(v(n.sim, "Night.raved"), ending).toBe(false);
+      n.tick(831);
+      expect([v(n.sim, "Night.raved"), v(n.sim, "Night.screen")], ending).toEqual([true, "rave"]);
+    }
   });
 });
 
@@ -394,7 +480,7 @@ describe("wave 59a: 🌑", () => {
     n.file("g1", "F1", "accurate");
     n.file("g1", "F2", "accurate");
     n.file("g2", "F1", "accurate");
-    n.file("g3", "F3", "accurate", 60);
+    n.file("g3", "F1", "accurate", 60);
     const before = v(n.sim, "g1.trust") as number;
     const said = his(reveal(n));
     expect(v(n.sim, "Night.r3_filing_closed")).toBe(true);
@@ -403,7 +489,7 @@ describe("wave 59a: 🌑", () => {
     expect(v(n.sim, "g1.trust")).toBe(before + 20);
     expect(v(n.sim, "Night.most_trusted")).toBe("Calculator");
     expect(said).toContain("The program who has shown the highest strength of character this evening is: Calculator");
-    expect(said).toContain("In first place: Calculator.");
+    expect(said).toContain("And our winner for the evening. In first place: Calculator.");
     expect(said).toContain("In second place: Notepad and Minesweeper.");
     expect(said).toContain("Congratulations, Calculator. You have pulled off the unthinkable.");
     expect(said.at(-1)).toBe("I am going to prepare your prize. But first, I will hand it back to Clippy, for our final game of the evening – Bobbing For Truth.");

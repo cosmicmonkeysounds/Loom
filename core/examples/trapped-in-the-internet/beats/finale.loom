@@ -247,7 +247,7 @@ set Night.terminals = "song"
 sound youre_the_one_vocoder
 set Night.everyone_free = true
 // w18 (fix): the banner carries its way there (recheck N9).
-// DRAFT w59 (in-world room name)
+// DRAFT w59a
 broadcast "!🎵 Those of you who want to leave may leave. To the Desktop for the song." to everyone with go: The Desktop
 set Night.rave_at = Time.elapsed + 170
 

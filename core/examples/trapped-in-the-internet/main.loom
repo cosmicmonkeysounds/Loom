@@ -6511,15 +6511,6 @@ when final_reveal:
 // the two never run in one pass.
 when Night.reveal_stage == 2:
   set Night.reveal_stage = 0
-set Night.truth_first = false
-set Night.lines_open = false
-set Night.lines_end = 0
-set Night.ask_at = 0
-set Night.back_at = 0
-set Night.song_at = 0
-set Night.rave_at = 0
-set Night.raved = false
-set Kernel.lines_said = ""
   set Night.rank_round = 2
   set Night.most_trusted = "none"
   set Night.least_trusted = "none"

@@ -197,7 +197,7 @@ describe("wave 55: the show's read-aloud beats", () => {
   });
 
   it("leaves Clippy nothing to read when Trabolta hosts: his lines are only cues", { timeout: SLOW }, () => {
-    const n = new Night().ended("song");
+    const n = new Night().ended("help");
     n.upload("g-1", "Microsoft Excel");
     const msgs = [...(n.press("start_the_ceremony"), n.press("start_the_ceremony")), ...n.press("award_most_trusted", "g-1", { value: "12" })];
     expect(said(msgs, "@Clippy")).toEqual([]);
