@@ -8,7 +8,7 @@ import { describe, expect, it } from "vitest";
 import { splitRevealQuietly, statementToDirective } from "../src/parser/statements.ts";
 import { Sim } from "../src/runtime/sim/index.ts";
 import { composeGuestMessages } from "../server/chat.ts";
-import { guestView, primeView } from "../server/views.ts";
+import { guestView, modView, primeView } from "../server/views.ts";
 
 const SOURCE = `# Hidden House
 start: Boot
@@ -210,14 +210,61 @@ ROLE Guest
     expect(rooms(sim, "g1")).toContain("room:secrets");
   });
 
-  it("never hide anything from a performer or an operator", () => {
+  it("open for a booth once the story opened them to anyone (wave 59), and a director's Run keeps every place", () => {
     const sim = fresh();
     sim.createPerson("g1", "Ada");
-    const booth = primeView(sim, "Task Manager").channels.map((c) => c.id);
-    expect(booth).toContain("loc:Cellar");
-    expect(booth).toContain("loc:Attic");
-    expect(booth).toContain("room:task manager");
-    expect(sim.allChannelsFor("g1").map((c) => c.id)).toContain("loc:Attic");
+    const booth = () => primeView(sim, "Task Manager").channels.map((c) => c.id);
+    const run = () => modView(sim, "open", "x").channels.map((c) => c.id);
+    expect(booth()).not.toContain("loc:Cellar");
+    expect(booth()).not.toContain("loc:Attic");
+    expect(booth()).not.toContain("room:task manager");
+    expect(run()).not.toContain("room:task manager");
+    expect(run()).toContain("loc:Attic");
+    sim.reveal("task manager", "g1");
+    sim.reveal("Attic", "g1");
+    expect(booth()).toContain("room:task manager");
+    expect(booth()).toContain("loc:Attic");
+    expect(booth()).not.toContain("loc:Cellar");
+    expect(run()).toContain("room:task manager");
+  });
+
+  it("a hidden GROUP's room is closed to everyone, its early members too, until the GROUP is revealed", () => {
+    const sim = Sim.fromSources(`# Sides
+start: Boot
+
+GROUP Society
+  hidden: true
+
+GROUP Crew
+  joinable: false
+
+CHANNEL society
+  kind: faction
+  faction: Society
+  label: # society
+
+CHANNEL crew
+  kind: faction
+  faction: Crew
+  label: # crew
+
+CHARACTER Host
+  label: Host
+
+== Boot
+Hello.
+`);
+    sim.createPerson("g1", "Ada");
+    sim.createPerson("g2", "Bob");
+    const room = "room:society";
+    sim.join("g1", "Society");
+    const openTo = () => ({ member: sim.canSeeChannel("g1", room), other: sim.canSeeChannel("g2", room), listed: rooms(sim, "g1").includes(room), run: modView(sim, "open", "x").channels.map((c) => c.id).includes(room) });
+    expect(openTo()).toEqual({ member: false, other: false, listed: false, run: false });
+    expect(sim.channelOpened(room)).toBe(false);
+    expect(modView(sim, "open", "x").channels.map((c) => c.id)).toContain("room:crew");
+    sim.reveal("Society");
+    expect(openTo()).toEqual({ member: true, other: false, listed: true, run: true });
+    expect(modView(sim, "open", "x").channels.map((c) => c.id)).toContain("faction:Society");
   });
 
   it("`Sim.reveal` is the mod's twin: any target, optionally for one person", () => {

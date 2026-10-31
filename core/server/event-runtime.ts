@@ -3430,8 +3430,8 @@ export class EventRuntime {
       const group = channel.slice("faction:".length);
       const def = sim.model.factions.get(group);
       if (def === undefined) return none;
-      if (sim.factionMembers(group).includes(guestId)) return null;
-      return def.hidden && !sim.factionRevealed(def.id) ? none : { status: 403, error: "you can't post here" };
+      if (def.hidden && !sim.factionRevealed(def.id)) return none;
+      return sim.factionMembers(group).includes(guestId) ? null : { status: 403, error: "you can't post here" };
     }
     if (channel.startsWith("loc:") || isCrewRoom(channel)) return sim.canSeeChannel(guestId, channel) ? null : none; // w18 crews: + crew rooms
     if (sim.model.channels.has(channel)) return sim.canSeeChannel(guestId, channel) ? null : none;

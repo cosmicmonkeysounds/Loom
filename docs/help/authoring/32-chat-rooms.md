@@ -95,8 +95,11 @@ said in a room before it opened are delivered and appear with it. End
 the line with **`quietly`** to open it with no notice at all — `reveal
 The Cellar quietly`, `reveal The Cellar for guest quietly` (the room
 simply appears; a `when … revealed` rule still hears it).
-Performers and directors always see every room. A hidden `private` /
-`group` room still needs membership once revealed.
+A room opens on its beat for the crew too: a performer's booth lists a hidden
+room once the story has opened it to anyone, and a director's Run lists a hidden
+chat room the same way. Run keeps every place, because a beat can land in a room
+no phone lists. A hidden `private` / `group` room still needs membership once
+revealed.
 
 Any room — and a guest's own feed — can carry a **sticky notice**
 above its stream: `pin "🚨 Escort {program.name} to the Internet." in
@@ -113,7 +116,9 @@ Beyond authored channels, every event automatically has:
   everyone: the lobby is the one home of an announcement (one post, one
   push), and guests can type in it.
 - **Group rooms** — one per *public* `GROUP`, membership-gated. A
-  `hidden: true` group gets its room only once the story `reveal`s it.
+  `hidden: true` group gets its room only once the story `reveal`s it,
+  and so does any `kind: faction` CHANNEL of that group: a member the
+  story added early waits for the reveal like everyone else.
 - **Location rooms** — every `LOCATION` is a room; a beat whose
   `setting:` is that location speaks into it, heard by whoever is
   standing there. Typed guest chat in a location room is scoped to its

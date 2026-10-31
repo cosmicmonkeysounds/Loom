@@ -5,14 +5,15 @@
 // factions' rooms, and two invite-only rooms for scheming.
 //
 // `# hosts` and `# quarantine` are STAFF BACK-ROOMS, not secrets: every
-// performer booth sees and can post in every authored channel, and no
-// guest can (faction membership holds guest programs only). Never put
-// anything there meant for one faction's eyes.
+// performer booth sees and can post in every authored channel the story
+// has opened, and no guest can (faction membership holds guest programs
+// only). Never put anything there meant for one faction's eyes.
 // `# quarantine` is the Antivirus' back room. (Wave 18: no escort pins
 // there any more: the Wanted board lists the marked, and the Antivirus cue
 // is the Enforcer's WANTED readout in cast/kit.loom.)
 // `# unlimited-power` / `# the-way-out` are the guest factions' own rooms
-// (members only); the factions are hidden until the Y2K clock.
+// (members only). Their GROUPs are hidden until the Y2K clock, and the rooms
+// are closed until then to everyone: Excel and OpenOffice, a booth and Run.
 
 SPACE The Operating System
   label: The Operating System

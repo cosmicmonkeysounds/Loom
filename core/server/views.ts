@@ -1268,15 +1268,19 @@ function questSummaries(sim: Sim): QuestSummary[] {
 function operatorChannels(sim: Sim): ChannelSummary[] {
   const space = DEFAULT_SPACE_ID;
   const out: ChannelSummary[] = [{ id: "lobby", kind: "lobby", title: sim.lobbyTitle(), spaceId: space }];
+  // Wave 59: a side's room and an authored room open on their beat, here too.
   for (const f of sim.model.factions.values()) {
+    if (f.hidden && !sim.factionRevealed(f.id)) continue;
     out.push({ id: `faction:${f.id}`, kind: "faction", title: `#${f.id.toLowerCase()}`, spaceId: space });
   }
   // Every location's derived room — where a beat's setting routes its story.
+  // All of them, always: a director reads The Script, which no phone lists.
   for (const l of sim.model.locations.values()) {
     out.push({ id: `loc:${l.id}`, kind: "location", title: l.label ?? l.id, spaceId: space });
   }
   const staff = staffRoomIds(sim.model);
   for (const id of sim.model.channels.keys()) {
+    if (!sim.channelOpened(id)) continue;
     const h = sim.channelHead(id);
     out.push({ id: h.channel, kind: h.channelKind, title: h.title, spaceId: h.spaceId, ...(staff.has(roomFold(id)) ? { staff: true as const } : {}) });
   }
