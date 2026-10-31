@@ -25,7 +25,7 @@ or any codex code. `<mod>` below stands for the moderator passcode.
 
 | Machine | Runs | Setup runbook |
 |---|---|---|
-| **John's MacBook** (macOS, M3 Max, 48 GB) | **Trabolta**: stagehand `agents` (his voice and mind; `stagehand/laptop.yaml`, `mind_mode: new`, launchd) on Claude Haiku, with Ollama `gpt-oss:20b` as its standby (wave 52). `scripts/ops/predeploy.sh`, `ship.sh`, `pnpm sync-show`, `scripts/ops/showbackup.sh` (launchd, every 10 min 19:00–03:00). A director's Run console in Chrome. **Only as the fallback**: the sound router (`stagehand/trapped.macbook.yaml`). | [`scripts/house-macbook/trabolta.md`](../../../scripts/house-macbook/trabolta.md) (Trabolta); [`scripts/house-macbook/`](../../../scripts/house-macbook) (`audio.md`: the router fallback) |
+| **John's MacBook** (macOS, M3 Max, 48 GB) | **Trabolta**: stagehand `agents` (his voice and mind; `stagehand/laptop.yaml`, `mind_mode: new`, launchd) on Claude Haiku, with Ollama `gpt-oss:20b` as its standby (wave 52). `scripts/ops/predeploy.sh`, `ship.sh`, `pnpm sync-show`, `scripts/ops/showbackup.sh` (launchd, every 10 min 19:00–03:00). A director's Run console in Chrome. **Only as the fallbacks**: the sound router (`stagehand/trapped.macbook.yaml`), and `scripts/house-macbook/costume-relay.mjs` for the costume's iPad. | [`scripts/house-macbook/trabolta.md`](../../../scripts/house-macbook/trabolta.md) (Trabolta); [`scripts/house-macbook/`](../../../scripts/house-macbook) (`audio.md`: the router fallback) |
 | **John's Desktop** (Windows) | **Sound**: stagehand **`audio`**, the speaker router, on the **MOTU 828x**'s own outs (no ADAT expander; USB 2, ASIO, duplex; announcements in the SAPI voice): every story sound, the announcements, the house **soundtrack** (wave 38: the music per act from `stagehand/media/music/`, the SFX library in `media/library/`) and **Trabolta's TV voice on every speaker** (Chrome's output → VoiceMeeter Input → the router's `audio.tap` sums VoiceMeeter's output into the 828x's input 3, wave 46: the Desktop has no line out; the music ducks under him and under Clippy's mic). **Lights**: **Zigbee2MQTT** on the CC2652P stick (a COM port, `adapter: zstack`) with the **Philips Hue** and **ThirdReality ZL1** bulbs; the living room's **WLED** strip on its ESP32 controller (Wi-Fi, MQTT); stagehand **`lights`** (`lights.json`: every bulb, the strip, the story's `lights_*` and `heart_*` looks). stagehand **`show`** (Trabolta's room cuts and the flicker bulb by bulb, sensors back, and the `do announce` relay). **Mosquitto**, the house broker: anonymous on `127.0.0.1:1883`, password-only user `props` on the LAN at `:1884`. The living-room **TV** over HDMI (Chrome kiosk, spot `desktop-tv`). Each stagehand job is a Task Scheduler task (`stagehand/trapped.desktop.yaml`). | [`scripts/house-desktop/README.md`](../../../scripts/house-desktop/README.md) |
 | **Steph's laptop** (the server room) | Chrome kiosk on the server-room terminal: Trabolta's face, the heart talk, a USB webcam that scans passes and hears the program, an old 4:3 CRT over HDMI → component, and a GameCube controller (no mouse or keyboard), with whisper.cpp running locally for spoken answers. The **Grand Central M4** on USB, read over Web Serial: the door sensor and the patch bay. Nothing from stagehand runs here. | [`hardware/server-room-m4/README.md`](../../../hardware/server-room-m4/README.md); [`docs/trapped/kiosk.md`](../../../docs/trapped/kiosk.md) |
 | **John's old laptop** (the tent) | Chrome kiosk on spot `tent`: the terminal, the reinstallation wizard and the web game in one. Speaks house announcements itself (`&announce=1`); no voice link (`voice: false` on the map). Needs **WebGL2** for *Play here*; without it the tent can only send a program to a headset. | [`docs/trapped/kiosk.md`](../../../docs/trapped/kiosk.md) (the tent laptop) |
@@ -38,10 +38,11 @@ The event server itself runs on the VPS at `app.mapsandducks.com`
 
 | Device | What it does | Set up with |
 |---|---|---|
-| Wall tablets (Android, Fully Kiosk) | One per `auto` spot on the map: the idle show, a corner scan box, a direct line to Trabolta, the world / shadow view while someone reinstalls. Fully's *Enable Microphone Access* on (the voice link). | `/terminal/?code=<mod>&spot=<spot>`; Fully settings in `docs/trapped/kiosk.md` |
+| Wall tablets (Android, Fully Kiosk) | One per `auto` spot on the map: the idle show, a corner scan box, a direct line to Trabolta, the world / shadow view while someone reinstalls. Fully's *Enable Microphone Access* on (the voice link). The old Galaxy Tab A SM-T280s (Android 5.1.1, Mali-400, Chrome 95 sideloaded, GPU rasterization disabled) have no WebGL2, so they draw the raycaster: see *The tablets' camera feed*. | `/terminal/?code=<mod>&spot=<spot>`; Fully settings in `docs/trapped/kiosk.md` |
 | Server Door tablet | `view=chess` beside the real keypad: the King's chess game, awake all night. A checkmate gives the door code. | `/terminal/?code=<mod>&spot=server-room-door` |
 | Casino tablet | `view=casino` in the upstairs bedroom (spot `graphics-card`): Truthcoin bets, rolled by the server. | `/terminal/?code=<mod>&spot=graphics-card` |
 | Quest 3 headset(s) | The VR reinstallation in the tent, played seated with a spotter. Picks its program in the headset; asks for the microphone in the lobby. | `reinstall/vr/tools/quest.sh`, `reinstall/vr/README.md` |
+| **Task Manager's iPad 2** (iOS 9.3.5, the costume) | Strapped to his chest: three beige keys, CTRL, ALT and DELETE, and when all three are held a *Close Program* menu of LIGHTS, SOUNDS, MUSIC, AD STORM, GLITCH and POKE TRABOLTA, back to the keys after 5 s with no touch. A hand-written ES5 page the server serves at `/costume`, with its own narrow token, never the mod code. The server decides everything; the page says only *Done* or *Not Responding*. The menu is `costume.json`, read live. Run → Terminals → 🎭 holds the link and the kill switch. Its root store has no ISRG root, so `scripts/house-macbook/costume-root.mjs` serves ISRG Root X1 as a profile on the LAN. **If it can't reach the site:** `scripts/house-macbook/costume-relay.mjs` on the MacBook serves the page over plain http on the LAN and forwards to the live server, and the token stays on the MacBook. **Never tried on a real iPad.** | [`docs/trapped/costume.md`](../../../docs/trapped/costume.md) |
 | MOTU 828x (no ADAT expander) | The house speakers: every story `sound X`, every announcement, the soundtrack and the TV's sound. On the Desktop over USB 2 with MOTU's Windows driver (ASIO). Its own outs, in the ASIO driver's order (wave 46): Main L/R (1–2), Analog 1–8 (3–10), S/PDIF (11–12) and Phones L/R (13–14), not mirrored in CueMix; the router opens 10 in / 14 out. Since wave 38 the living room is Main L/R plus the sub on Analog 1 (out 3); Analog 2 (out 4) is spare. Inputs: Mic/Gtr 1 = Clippy's wireless (mixed in CueMix to the living room; the router meters it), input 3 (Analog In 1, nothing plugged in) = the TV, summed in from VoiceMeeter by `audio.tap` (routed by the router, in no CueMix mix). Both optical ports stay on ADAT with nothing plugged in, so it reports the 32 in / 30 out `audio.json` expects. | `scripts/house-desktop/README.md` §3; the map editor's 🔊 Audio tab. Fallback on the MacBook: `scripts/house-macbook/audio.md` |
 | House speakers | Placed on the map editor's 🔊 Audio tab. 6 are placed (wave 38): the living room L/R on 1–2 and its subwoofer on 3 (its own speaker `living-sub` and trim), the kitchen L/R on 5–6, the Optical Drive on 10; the rest of `audio.json`'s 14 outputs have no speaker yet. The Fan Closet's speaker is placed later (then its cell ticked on the TV row of the routes matrix). | Run → House → 🗺 Map → 🔊 |
 | Zigbee 3.0 USB dongle (TI CC2652P + CP2102N, 20 dBm, Z-Stack 3.x.0 preloaded) | The Zigbee coordinator, on a USB 2.0 extension cable on the Desktop. Touchlink-capable (resets Hue bulbs). | `scripts/house-desktop/README.md` §4 |
@@ -97,7 +98,8 @@ MacBook's router dials the Desktop's `:1884` like the WLED controller.)
   `setup-mosquitto.ps1` warns until it is done).
 - **USB:** the MOTU (USB 2) and the CC2652P to the Desktop (the MOTU to the
   MacBook over Thunderbolt in the fallback), the M4 to Steph's laptop.
-- **Wi-Fi:** the WLED controller, to the Desktop's broker.
+- **Wi-Fi:** the WLED controller, to the Desktop's broker. The costume's iPad,
+  to the VPS over HTTPS, or to the MacBook's relay over plain http.
 - **HDMI:** the Desktop to the living-room TV, the picture only. The TV
   page's sound (Trabolta's voice) goes from Chrome to VoiceMeeter Input
   (Windows' Volume mixer sets Chrome's output; the Desktop has no line out,
@@ -139,7 +141,10 @@ Wave 58 touched all four at once, and each path carries only its own part.
 | The server, the terminal and phone bundles | `scripts/ops/ship.sh`, first; then reload every screen and booth |
 | Trabolta's persona, his mind, the door code's never-list | The MacBook only: `git pull` and `launchd restart --job agents` together, then Run → Mind → Reset. They load at boot; a sync never touches them |
 | The keypad's code | By hand, before the 15:00 test |
-| Anything printed | After the sync: the print sheet prints what the event holds |
+| Anything printed | After the sync: the print sheet prints what the event holds. Then `titi:qr-lock`, and commit `qr-lock.json` |
+| A room's new name (wave 59) | `sync-show --replace-maps` once: the project's saved maps hold the old names. Download JSON any map edits first |
+| `costume.json`, `credits.json`, `descent.json` | Every `sync-show` replaces them, and the server reads them live |
+| The Quest's game | `reinstall/vr/tools/quest.sh build`, then `install`, after the ship. A new APK on an older server resets the player but not Gerald |
 
 ## The sound router: Desktop (default) or MacBook (fallback)
 
@@ -191,12 +196,74 @@ following it: avoid them.
 | Server room (Steph's laptop) | `…/terminal/?code=<mod>&spot=server-room&door=serial&camera=user&webcam=C310&pad=1&whisper=1&crt=1` (once, via `.\scripts\server-room\start-terminal.ps1 -Setup`) |
 | Server Door | `…/terminal/?code=<mod>&spot=server-room-door` |
 | Casino | `…/terminal/?code=<mod>&spot=graphics-card` |
+| The costume's iPad | `/costume?e=<event>&k=<token>`: copy it from Run → Terminals → 🎭, never post it |
 | Tent (old laptop) | `…/terminal/?code=<mod>&spot=tent&announce=1` (never add `&view=reinstall`) |
 
 Kiosk Chrome: launch each profile once **without** `--kiosk` to grant the
 camera (and in the server room, the serial port), then relaunch with
-`--kiosk --autoplay-policy=no-user-gesture-required`. ⚙ on a terminal needs a
-2-second hold. The full spot list is on `SHOW.html` → Terminal spots.
+`--kiosk --autoplay-policy=no-user-gesture-required`. ⚙ on a terminal is
+hidden: hold the top right corner 2 s (wave 59). `bleeps=0` or `bleeps=1` on a
+link sets its ad sounds and bleeps: off by default on `desktop-tv`, `tent` and
+`server-room`, on elsewhere, and a choice in ⚙ wins and survives the kiosk
+reopening its link. It never touches his speech, announcements or the players.
+The full spot list is on `SHOW.html` → Terminal spots.
+
+## The tablets' camera feed (wave 59)
+
+The user saw no video from the old tablets into the games, and little the other
+way. Nothing here has run on a real SM-T280, or on a GPU build of Chrome 95.
+
+- **The cause is a hypothesis, not a finding.** The feed's canvas was read only by
+  `toDataURL`, so it stayed on the GPU 2D path, the path that drew nothing on the
+  Mali-400 with GPU raster on. Chrome 95 ignores `willReadFrequently`, so
+  `terminal/src/software-canvas.ts` reads a pixel back after every size change to
+  push the feed and the raycaster to software. That this moves a canvas off the GPU
+  comes from Chrome 95's source, not a measurement.
+- **The ladder.** A feed with blank or missing frames tries `ImageCapture` off the
+  track, then 128 × 96 (its own low rung, not a GPU floor), then both. Once a route
+  has shown a picture, a blank frame is a dark room, sent with no error. Below the
+  top rung, one frame in every 60 good ones tries the top again.
+- **Load.** The feed takes at most 25% of the page, a slow capture drops a size,
+  jsQR waits as long as it took, the raycaster paces 20 down to 5 fps, and a
+  no-WebGL2 tablet opens its camera at 640 × 480. A touch re-asks a refused camera,
+  and one still opening after 20 s says so.
+- **The readout settles it.** ⚙ reads out frames sent, received and drawn and the
+  last error. Run → Terminals shows 📷, 🎞 and ⚠ on each row (heartbeat keys `cs cr
+  cd ce`) with the server's own `got` and `read` per spot. A rate above 0 next to
+  `blank` means it sends, but blank. By eye: the screensavers are plain 2D canvases
+  with no readback, so one showing means that GPU path does reach the screen.
+- A tablet set to `view=mirror` sends its camera but never its voice
+  (`terminal/src/voice/roles.ts`). Wall spots default to `auto`, which does both.
+
+## What wave 59 added to the server
+
+| Route | Who may call it | What it does |
+|---|---|---|
+| `POST /api/guest/printed`, `/api/prime/printed` `{code}` | A guest's or a booth's token | A typed code back to the link its QR carries, so it takes the scan's path |
+| `POST /api/resolve-code` | The join box | Now takes a badge's code too. A room's code or name never hands out the guest code |
+| `POST /api/guest/rejoin/cancel` | The waiting phone | Gives up an Ask a host |
+| `POST /api/mod/guest/release` | A director or a host | Signs a guest's phone out (`/api/mod/prime/release` for a part) |
+| `POST /api/aloud` | A booth's or guest's token, in the scene | Moves, presses and jumps the shared teleprompter |
+| `POST /api/mod/aloud` `{action: release \| done}` | A director or a host | ▶ Let him speak, or a scene's ✓ Done |
+| `POST /api/spatial/reset` | A game session | The run reset: back to the spawn, Gerald somewhere new. Journals nothing |
+| `GET /costume` | Anyone | The costume's page and its two static files |
+| `POST /api/costume/menu`, `/api/costume/fire` `{k, id}` | The costume's token, and nothing else opens them | Reads the menu, fires an item |
+| `GET`, `POST /api/mod/costume` | Directors only, never a host | The link and the 🎭 switch |
+
+The paths under `/api/` hang off `/e/<event>/`, but for `/api/resolve-code`.
+While a line of his waits for the prompter, the TV polls at 300 ms.
+
+**Limits.** `LOOM_RL_PRINTED` is typed codes that are no printed code, per guest or
+booth part (30/60). `LOOM_RL_QR` is `/api/qr` per IP (60/60). Since wave 59
+`docker-compose.yml` passes both, so the VPS's `.env` may set them. A wrong codex
+code is still `LOOM_RL_REDEEM_MISSES` (8/60, per guest).
+
+**The lockout.** The house is one IP, so `LOOM_RL_LOGIN_FAILURES` could shut every
+phone out at once. A wrong badge at `/api/guest/enter` or `rejoin` counts against
+nobody. The guest code with a real badge, a real part or claim, or a name passes a
+lockout, as does any poll or cancel, so Ask a host always works. A guessed part or
+claim, a wrong event code, and the performer and mod codes still count and stay
+locked out.
 
 ## The server room in detail
 
