@@ -1,9 +1,10 @@
 // The final reveal and every ending that is not the server room.
 //
-//   final_reveal / y2k_midnight → Final Reveal (Clippy; round 3 judged live and
-//                                 closed) → Final Answers → the generated
-//                                 `Reading F1` … → the ranking and the
-//                                 leaderboard → Final Trust
+//   final_reveal / y2k_midnight → Final Reveal (Clippy; round 3's filing closes
+//                                 and she takes spoken answers, judged live)
+//   her last line, her ✓ Done,  → round 3 settles → Final Answers → the
+//   or a second 🌑                generated `Reading F1` … → the ranking and
+//                                 the leaderboard → Final Trust
 //   bobbing_for_truth           → Bobbing For Truth
 //   brought_up_the_bag          → The Bag Of Truth → Final Assessment
 //   read_truth_txt              → Truth Txt (a short teaser, read aloud; the
@@ -44,7 +45,9 @@ Narrator: The programs speak, one at a time. Clippy nods at every one of them.
 Clippy: Thank you. Thank you. Every one of those was a very valuable contribution.
 Clippy: But there is only one version of the truth. Because truth is always in binary.
 
-// Wave 59a: TRABOLTA 7's opening. The three readings follow by the rule.
+// Wave 59a: TRABOLTA 7's opening, on 🌑's second half (main.loom): her scene never
+// holds a line of his, because none has landed. The three readings follow by the
+// rule.
 == Final Answers
   setting: The Desktop
   cast: Trabolta

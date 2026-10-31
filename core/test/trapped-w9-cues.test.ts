@@ -146,6 +146,9 @@ describe("Trapped in the Internet — wave 9 (the cue sheet)", () => {
     step("y2k_clock", null);
     advance(sim, 3600);
     expect(v(sim, "Night.phase")).toBe("final_reveal");
+    // Clippy has the room: 🌑 stays NEXT (no reader: the second press) until he reads.
+    expect(sheet(sim)).toEqual({ last: "final_reveal", next: "final_reveal" });
+    press(sim, "final_reveal");
     expect(sheet(sim)).toEqual({ last: "final_reveal", next: "bobbing_for_truth" });
   });
 

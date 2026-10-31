@@ -416,8 +416,12 @@ is on this sheet: they are in `facts.json`, the story and the generated files.
 - **The rows are the same 87.** Only what a press plays, and some labels and descriptions. `no_pickup_line`
   is now *💬 Close the pickup lines now (auto at 2 min)*.
 - 📋 ×3 reads round 1, 🧮 reads nothing, 📊 opens the chart, 🏆 names three from each end, 🫘 is his three
-  lines, 🤖 is his scenario, round 2's answers and the final questions, 🌑 is Clippy, the three final
-  answers, the trust leaderboard and the winner. **Round three closes and settles at 🌑.**
+  lines, 🤖 is his scenario, round 2's answers and the final questions. **🌑 is two halves:** filing
+  closes and Clippy asks the room, with ✅ and 😤 live on what's said; her arrow past her last line or her
+  ✓ Done (a second 🌑 with no reader; ten minutes with nobody at all) settles round three and he reads the
+  three final answers, the trust leaderboard and the winner. So a spoken answer is in the reading, the
+  leaderboard and the ranking. ✅ stays live until 🍎, as it always has, but one pressed after he starts only
+  pays: ⚖ goes by what Reading F3 said.
 - **⚖ is the full truth, then the last answer decides.** 8-A or 8-B follows by itself when the read is
   over. Then his last line, the song, and the rave in every ending. Lies stay on the record, for trust,
   the recap and the screens, and decide nothing. The spoken verdict and its TV pages are gone.
@@ -458,6 +462,9 @@ is on this sheet: they are in `facts.json`, the story and the generated files.
   reading 34 s plus 7 a line. A slow TV only queues; a fast one waits.
 - **His disappearing** is the screens' one-second flicker: the blackout overlay holds for 10 s.
 - **The lines are unjudged.** Every one is kept and read. The old pickup line wins nothing.
+- **The reveal's order:** the answers can't land while she asks for them, or they would be on every phone
+  in the chat, so 🌑 waits for her. A script that holds only the TV would have left them on the phones. If she
+  lets ▶ Scroll run through the room's turn, he starts: ⏸ while they speak (her pack says so).
 - **Clippy hosts every ceremony:** he has left. On her, the bathroom rule's lines from him (main.loom,
   *Disk Cleanup, at last* and the never-went line) don't play, and the second director's award lines still
   replace hers.
@@ -472,6 +479,9 @@ Crew only, but for the first two.
 - `// DRAFT w59a` banner: !🎵 Those of you who want to leave may leave. To the Desktop for the song.
 - `// DRAFT w59a` # hosts: ⚖ The full truth is being read; the ending follows by itself. Nothing happens.
 - `// DRAFT w59a` # hosts: 🏆 The rave hasn't started. Press G1 again within 30 seconds to start anyway.
+- `// DRAFT w59a` # hosts: 🌑 Clippy has the room. ✅ and 😤 judge what they say. Trabolta starts when her arrow passes her last line or she presses ✓ Done; with no reader, 🌑 again.
+- `// DRAFT w59a` # hosts: 🍎 Not yet: Trabolta hasn't read the final answers. 🌑 again when Clippy has finished. Nothing happens.
+- `// DRAFT w59a` # hosts, if a beat cuts her off: 🌑 A new beat cut Clippy off: press 🌑 on her last line
 - `// DRAFT w59a` # hosts: 📜 Trabolta reads the full truth on the TV, about 14 minutes, clean: leave 🌀 His voice on Auto or Clean, and no shots. If the TV has no voice: 📜 Task Manager reads it instead. The ending follows by itself when it is over.
 
 ### 8.5 What nothing has seen

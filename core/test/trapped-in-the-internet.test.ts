@@ -363,7 +363,7 @@ describe("Trapped in the Internet — compile", () => {
     // Wave 26 (B2): ⏰ may fire again after ↩ Not a Bingo.
     // Wave 32 (C2): ⚡ ad_burst, appended last, repeats in a talk scene.
     // Wave 59: 🎭 the costume's flicker, appended last, repeats.
-    expect(admin.filter((a) => m.interactions.get(a)!.repeat)).toEqual(["bingo_time", "read_the_results", "spin_the_bottle", "ad_burst", "costume_flicker"]);
+    expect(admin.filter((a) => m.interactions.get(a)!.repeat)).toEqual(["bingo_time", "read_the_results", "spin_the_bottle", "final_reveal", "ad_burst", "costume_flicker"]);
     expect(m.interactions.get("zip_everyone_out")!.sequence).toBe(false);
     for (const a of ["force_majority_stay", "force_majority_leave"]) expect(m.interactions.get(a)!.sequence, a).toBe(false);
     expect(m.interactions.get("close_the_filing")!.label).toBe("⏱ Close round-one filings now (auto at 2 min)");
@@ -2641,6 +2641,7 @@ function toBobbing(sim: Sim, opts: { lie?: boolean; skipF2?: boolean; skipF3?: b
   // Wave 59a: the answer he doesn't know. Found unless a test says otherwise, so
   // the verdict goes straight on (8-A is blank).
   if (opts.skipF3 !== true) fire(sim, "accurate_q3", "g3", null, "Clippy");
+  fire(sim, "final_reveal");
   fire(sim, "bobbing_for_truth");
   expect(v(sim, "Night.phase")).toBe("bobbing");
   fire(sim, "ask_for_advice");
@@ -2914,7 +2915,7 @@ describe("Trapped in the Internet — Trabolta's phase table (wave 12)", () => {
     advance(sim, 120);
     sim.choose("g2", 0);
     sim.choose("g3", 0);
-    step("five_minute_warning", "summons_closed", "truth_pong", "round_two_tally", "trust_chart", "show_the_rankings", "printer_opened", "trabolta_overshares", "y2k_clock", "majority_reached", "final_reveal", "bobbing_for_truth");
+    step("five_minute_warning", "summons_closed", "truth_pong", "round_two_tally", "trust_chart", "show_the_rankings", "printer_opened", "trabolta_overshares", "y2k_clock", "majority_reached", "final_reveal", "final_reveal", "bobbing_for_truth");
     expect([...seen.keys()]).toEqual(["arrivals", "desktop", "bingo", "bingo_results", "introduced", "hunt_1", "truth_1", "malware", "hunt_2", "summons", "truth_pong", "trust_chart", "beans", "overshare", "y2k", "majority", "final_reveal", "bobbing"]);
     for (const [phase, live] of seen) expect(table.get(phase)!.powers, phase).toEqual(live);
     // After the verdict and in every ending nothing is his to fire.
@@ -5902,7 +5903,7 @@ describe("Trapped in the Internet — wave 8 (story lane)", () => {
     const late = boot();
     toY2k(late);
     advance(late, 3600);
-    expect(sheet(late)).toEqual({ last: "final_reveal", next: "bobbing_for_truth" });
+    expect(sheet(late)).toEqual({ last: "final_reveal", next: "final_reveal" });
     fire(late, "patch_combo_a");
     advance(late, 10);
     expect(sheet(late).next).toBe("tell_the_truth");
@@ -6063,6 +6064,7 @@ describe("Trapped in the Internet — wave 8 (story lane)", () => {
   it("S2-15: Adobe's 🍎 readout says a failed bob marks, as it does", { timeout: SLOW }, () => {
     const sim = boot();
     toY2k(sim);
+    fire(sim, "final_reveal");
     fire(sim, "final_reveal");
     const b = fire(sim, "bobbing_for_truth");
     const adobe = replies(b).filter((r) => r.to === "Adobe Acrobat").map((r) => r.text);

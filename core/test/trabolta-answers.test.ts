@@ -392,6 +392,7 @@ describe("Trabolta never knows what he is asking for", () => {
     rt.tickOnce(3_600_000); // midnight: the final reveal
     expect(v("Night.phase")).toBe("final_reveal");
     await look("the final reveal");
+    await mod("final_reveal");
     await mod("bobbing_for_truth");
     expect(v("Night.phase")).toBe("bobbing");
     await look("the bob (before truth.txt is read)");

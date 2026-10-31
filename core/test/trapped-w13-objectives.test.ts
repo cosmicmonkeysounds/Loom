@@ -107,6 +107,7 @@ export function boot(): Night {
  *  truth.txt, ⚖ and the road to the rave. */
 export function toCeremony(n: Night): void {
   n.press("final_reveal");
+  n.press("final_reveal");
   n.press("bobbing_for_truth");
   n.signal("brought_up_the_bag", "g1", undefined, "Clippy");
   n.press("read_truth_txt");
@@ -194,6 +195,7 @@ describe("Trapped in the Internet — wave 13: the interrupt ladder", () => {
     expect(level()).toBe("dialog");
     n.press("final_reveal");
     expect(level()).toBe("bsod");
+    n.press("final_reveal");
     n.press("bobbing_for_truth");
     n.signal("brought_up_the_bag", "g1", undefined, "Clippy");
     n.press("read_truth_txt");
@@ -219,7 +221,7 @@ describe("Trapped in the Internet — wave 13: effect text", () => {
     const over = n.press("trabolta_overshares");
     for (const m of over.filter((x) => x.manner !== undefined)) expect(m.fx, m.text).toBe(true);
     // Delivery notes ride the line but are not effect text.
-    const bob = n.press("y2k_clock").concat(n.press("final_reveal"), n.press("bobbing_for_truth"));
+    const bob = n.press("y2k_clock").concat(n.press("final_reveal"), n.press("final_reveal"), n.press("bobbing_for_truth"));
     const dejected = bob.filter((m) => m.manner === "dejectedly");
     expect(dejected.length).toBeGreaterThan(0);
     for (const m of dejected) expect(m.fx).toBeUndefined();
@@ -291,7 +293,7 @@ describe("Trapped in the Internet — wave 13: the cards that ask", () => {
     const card = spin.find((m) => m.kind === "widget" && m.text.startsWith("🍾 The bottle landed on you"))!;
     expect(card).toMatchObject({ moment: "big", audience: [pick.id] });
     // The pickup line (after truth.txt, both branches).
-    for (const c of ["second_hunt_preview", "start_the_second_hunt", "five_minute_warning", "summons_closed", "truth_pong", "round_two_tally", "trust_chart", "show_the_rankings", "trabolta_overshares", "y2k_clock", "final_reveal", "bobbing_for_truth"]) {
+    for (const c of ["second_hunt_preview", "start_the_second_hunt", "five_minute_warning", "summons_closed", "truth_pong", "round_two_tally", "trust_chart", "show_the_rankings", "trabolta_overshares", "y2k_clock", "final_reveal", "final_reveal", "bobbing_for_truth"]) {
       if (v(n.sim, "Night.bottle_open") === true) n.signal("truth_answered", pick.id, undefined, "Clippy");
       n.press(c);
     }
@@ -335,10 +337,10 @@ describe("Trapped in the Internet — wave 13: every buried beat has a delivery 
     }],
     ["🗝 the door code by the majority (The Whole Truth)", /^🗝 THE WHOLE TRUTH:/u, () => { const n = Y2K(); n.take(n.sim.join("g1", "Unlimited Power")); return { n, out: n.press("force_majority_stay").concat(n.tick(1)) }; /* wave 18b: no plant gate, so one member short of a real majority */ }],
     ["⏰ you are late", /^⏰ You are late\./u, () => { const n = boot(); for (const c of [...TO_HOUR, "five_minute_warning"]) n.press(c); return { n, out: n.press("summons_closed") }; }],
-    ["🎵 the song ending (the verdict, every fact accurate)", /^🎵 Those of you who want to leave may leave\./u, () => { const n = Y2K(); for (const c of ["final_reveal", "bobbing_for_truth"]) n.press(c); n.signal("brought_up_the_bag", "g1", undefined, "Clippy"); n.press("read_truth_txt"); const out = n.press("the_verdict"); expect(v(n.sim, "Night.ending")).toBe("song_pickup"); return { n, out }; }],
-    ["💔 the verdict: Grok Prom", /^💔 THE VERDICT:/u, () => { const n = Y2K(); for (const c of ["final_reveal", "bobbing_for_truth"]) n.press(c); n.signal("brought_up_the_bag", "g1", undefined, "Clippy"); n.press("read_truth_txt"); return { n, out: n.take(n.sim.fireBeat("Grok Prom")) }; }],
-    ["💞 the advice helped", /^💞 You helped him\./u, () => { const n = Y2K(); for (const c of ["final_reveal", "bobbing_for_truth"]) n.press(c); n.signal("brought_up_the_bag", "g1", undefined, "Clippy"); n.press("read_truth_txt"); n.take(n.sim.fireBeat("Grok Prom")); n.press("ask_for_advice"); return { n, out: n.press("advice_tally") }; }],
-    ["🕺 the hand jive", /^🕺 THE HAND JIVE\./u, () => { const n = Y2K(); for (const c of ["final_reveal", "bobbing_for_truth"]) n.press(c); n.signal("brought_up_the_bag", "g1", undefined, "Clippy"); n.press("read_truth_txt"); n.take(n.sim.fireBeat("Grok Prom")); n.press("ask_for_advice"); n.signal("poll answered", "g1", { choice: "Thwart him", index: 1 }); n.press("advice_tally"); expect(v(n.sim, "Night.ending")).toBe("banished"); return { n, out: n.press("the_hand_jive") }; }],
+    ["🎵 the song ending (the verdict, every fact accurate)", /^🎵 Those of you who want to leave may leave\./u, () => { const n = Y2K(); for (const c of ["final_reveal", "final_reveal", "bobbing_for_truth"]) n.press(c); n.signal("brought_up_the_bag", "g1", undefined, "Clippy"); n.press("read_truth_txt"); const out = n.press("the_verdict"); expect(v(n.sim, "Night.ending")).toBe("song_pickup"); return { n, out }; }],
+    ["💔 the verdict: Grok Prom", /^💔 THE VERDICT:/u, () => { const n = Y2K(); for (const c of ["final_reveal", "final_reveal", "bobbing_for_truth"]) n.press(c); n.signal("brought_up_the_bag", "g1", undefined, "Clippy"); n.press("read_truth_txt"); return { n, out: n.take(n.sim.fireBeat("Grok Prom")) }; }],
+    ["💞 the advice helped", /^💞 You helped him\./u, () => { const n = Y2K(); for (const c of ["final_reveal", "final_reveal", "bobbing_for_truth"]) n.press(c); n.signal("brought_up_the_bag", "g1", undefined, "Clippy"); n.press("read_truth_txt"); n.take(n.sim.fireBeat("Grok Prom")); n.press("ask_for_advice"); return { n, out: n.press("advice_tally") }; }],
+    ["🕺 the hand jive", /^🕺 THE HAND JIVE\./u, () => { const n = Y2K(); for (const c of ["final_reveal", "final_reveal", "bobbing_for_truth"]) n.press(c); n.signal("brought_up_the_bag", "g1", undefined, "Clippy"); n.press("read_truth_txt"); n.take(n.sim.fireBeat("Grok Prom")); n.press("ask_for_advice"); n.signal("poll answered", "g1", { choice: "Thwart him", index: 1 }); n.press("advice_tally"); expect(v(n.sim, "Night.ending")).toBe("banished"); return { n, out: n.press("the_hand_jive") }; }],
     ["🏆 you won an award", /^🏆 You won Most Trusted!/u, () => { const n = Y2K(); toCeremony(n); return { n, out: n.press("award_most_trusted", "g1") }; }],
   ];
   for (const [label, text, run] of rows) {
@@ -546,6 +548,7 @@ function nightSteps(ending: "song" | "hand_jive"): Step[] {
     ["sides", (n) => { n.take(n.sim.join("g2", "Unlimited Power")); n.take(n.sim.join("g3", "The Way Out")); }],
     ["+30 min", (n) => { n.tick(1801); }],
     press("final_reveal"),
+    ["his readings", (n) => { n.press("final_reveal"); }],
     press("bobbing_for_truth"),
     by("brought_up_the_bag", "g1", "Adobe Acrobat"),
     press("read_truth_txt"),

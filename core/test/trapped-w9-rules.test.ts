@@ -130,6 +130,7 @@ function toBobbing(sim: Sim, opts: { lie?: boolean; retract?: boolean } = {}) {
   expect(v(sim, "Night.phase")).toBe("final_reveal");
   fire(sim, "accurate_q1", "g1", null, "Clippy");
   fire(sim, "accurate_q2", "g2", null, "Clippy");
+  fire(sim, "final_reveal");
   fire(sim, "bobbing_for_truth");
   fire(sim, "failed_the_bob", "g5", null, "Adobe Acrobat");
   fire(sim, "send to the internet", "g5", null, "Norton Anti-Virus");

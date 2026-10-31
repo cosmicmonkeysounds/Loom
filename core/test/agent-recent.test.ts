@@ -814,6 +814,7 @@ describe("on the show: recent and the history never carry a secret (C1.6)", () =
     rt.tickOnce(3_600_000); // midnight: the final reveal
     expect(sim().world.peek("Night.phase")).toMatchObject({ value: "final_reveal" });
     await askAll();
+    await mod("final_reveal");
     await mod("bobbing_for_truth");
     expect(sim().world.peek("Night.phase")).toMatchObject({ value: "bobbing" });
     await askAll(); // the bob: the verdict is not read yet

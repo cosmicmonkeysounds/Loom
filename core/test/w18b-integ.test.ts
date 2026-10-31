@@ -133,6 +133,7 @@ describe("wave 18b integration — the whole night on the merged show (C1)", () 
     // Midnight → the bob → truth.txt → ⚖: the ending waits for the TV's pages.
     n.tick(3601);
     expect(v(n.sim, "Night.phase")).toBe("final_reveal");
+    n.raw("final_reveal");
     n.raw("bobbing_for_truth");
     n.raw("brought_up_the_bag", "g5", undefined, "Clippy");
     n.raw("read_truth_txt");
@@ -352,6 +353,7 @@ describe("wave 18b integration — results, rulings and the verdict on the merge
     expect(judges()).toHaveLength(rulings);
     expect(JSON.stringify(judges())).not.toContain(FACTS.questions.find((q) => q.id === "F3")!.answer);
     rt.tickOnce(3_600_000); // midnight
+    await mod("final_reveal");
     await mod("bobbing_for_truth");
     await mod("brought_up_the_bag", { subject: pad.id, actor: "Clippy" });
     await mod("read_truth_txt");

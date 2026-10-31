@@ -3640,13 +3640,15 @@ INTERACTION final_reveal
   label: 🌑 Final Truth Scavenger Hunt reveal
   who: admin
   act: F · The final reveal and the endings
-  description: Clippy asks for the final facts, then Trabolta reads all three, the trust leaderboard and the winner, and hands to Bobbing for Truth. Round three closes and settles here. Midnight presses it itself.
-  while: Night.ended != true and Night.step >= 14 and Night.step < 16 and Night.final_round != true
+  // DRAFT w59a (the description)
+  description: Round three's filing closes and Clippy asks for the final facts on her teleprompter; ✅ and 😤 judge what is said out loud. When her arrow passes her last line, or she presses ✓ Done, Trabolta reads all three, the trust leaderboard and the winner, and hands to Bobbing for Truth. With no reader, press 🌑 again when she has finished (after ten minutes he starts by himself). Midnight presses it itself.
+  repeat: true
+  while: Night.ended != true and ((Night.step >= 14 and Night.step < 16 and Night.final_round != true) or Night.reveal_owed == true)
 
 INTERACTION bobbing_for_truth
   label: 🍎 Bobbing for Truth
   who: admin
-  while: Night.ended != true and Night.step == 16
+  while: Night.ended != true and Night.step == 16 and Night.reveal_owed != true
 
 INTERACTION read_truth_txt
   label: 📄 Read truth.txt
@@ -4143,7 +4145,7 @@ INTERACTION accurate_q3
   who: performer
   // Wave 21: Clippy runs this game too (a player, no longer in Hosts).
   by: Hosts, Clippy
-  while: Night.judging == true and Night.round != 3
+  while: Night.judging == true
 
 INTERACTION confident_q1
   label: 😤 Q1 of this round: wrong but confident, accepted
@@ -4164,7 +4166,7 @@ INTERACTION confident_q3
   who: performer
   // Wave 21: Clippy runs this game too (a player, no longer in Hosts).
   by: Hosts, Clippy
-  while: Night.judging == true and Night.round != 3
+  while: Night.judging == true
 
 INTERACTION fact_accurate
   label: 📝 Filed fact: accurate
@@ -6463,7 +6465,26 @@ when y2k_midnight:
 // combo entered before 📄 truth.txt still ends the night. From truth.txt
 // the verdict is in and the server room is quiet (E2).
 when final_reveal:
-  if Night.ended != true and Night.step < 16:
+  if Night.reveal_owed == true and Night.ended != true:
+    // Wave 59a: the second half. Her last line or her ✓ Done presses it
+    // (`sceneFinished`), or a second press with no reader, or the timer below.
+    // He reads round three here, so it settles here: what she took out loud (✅,
+    // 😤) is in. A ✅ after this pays, and changes nothing he has said: ⚖ goes by
+    // what Reading F3 saw. The ROLE settle watcher runs after this body;
+    // `Night.reveal_stage` then waits for it before the last ranking, which needs
+    // the settled trust.
+    set Night.reveal_owed = false
+    set Night.reveal_read_at = 0
+    set Night.settle_q = 0
+    set Night.settle_round = 3
+    set Night.settle_gen += 1
+    do fact_read F1 F2 F3
+    -> Final Answers
+    -> Reading F1
+    -> Reading F2
+    -> Reading F3
+    set Night.reveal_stage = 1
+  else if Night.ended != true and Night.step < 16:
     set Night.final_round = false
     set Night.phase = "final_reveal"
     set Night.step = 16
@@ -6485,25 +6506,27 @@ when final_reveal:
     cue screens_final_reveal
     set Night.screen = "final_reveal"
     set Night.terminals = "final_reveal"
-    // Wave 59a: he reads round three here, so it closes and settles here. The
-    // ROLE settle watcher runs after this body; `Night.reveal_stage` then waits
-    // for it before the last ranking, which needs the settled trust.
+    // Wave 59a: filing closes here, and she asks the room. Nothing of his lands
+    // yet: a reading in this drain would put the answers on every phone while
+    // she is asking for them.
     set Night.r3_filing_closed = true
     set Night.card_gen += 1
-    set Night.settle_q = 0
-    set Night.settle_round = 3
-    set Night.settle_gen += 1
-    do fact_read F1 F2 F3
     // DRAFT w59 (in-world room name)
     broadcast "!🌑 ALL PROGRAMS: to the Desktop for the final Truth Scavenger Hunt reveal." to everyone with go: The Desktop
     -> Final Reveal
-    -> Final Answers
-    -> Reading F1
-    -> Reading F2
-    -> Reading F3
-    set Night.reveal_stage = 1
+    set Night.reveal_owed = true
+    set Night.reveal_read_at = Time.elapsed + 600
+    // DRAFT w59a
+    broadcast "🌑 Clippy has the room. ✅ and 😤 judge what they say. Trabolta starts when her arrow passes her last line or she presses ✓ Done; with no reader, 🌑 again." to channel(hosts)
   else:
     broadcast "🌑 Not now: the final reveal has already played, or the night has ended. Nothing happens." to channel(hosts)
+
+// Wave 59a: nobody at the wheel (midnight's own press with no reader): he starts
+// by himself, so the night never hangs on a press.
+when Night.reveal_read_at > 0 and Time.elapsed >= Night.reveal_read_at:
+  set Night.reveal_read_at = 0
+  if Night.reveal_owed == true and Night.ended != true:
+    fire final_reveal
 
 // Wave 59a: stage 1 lets the settle land (the watchers fire it, it drains after
 // their pass), stage 2 asks for the last ranking and the leaderboard, and
@@ -6529,7 +6552,10 @@ when Night.reveal_stage == 1:
 
 // F2: Bobbing for Truth. Nothing proceeds until someone brings up the bag.
 when bobbing_for_truth:
-  if Night.ended != true and Night.step < 17:
+  if Night.reveal_owed == true:
+    // DRAFT w59a
+    broadcast "🍎 Not yet: Trabolta hasn't read the final answers. 🌑 again when Clippy has finished. Nothing happens." to channel(hosts)
+  else if Night.ended != true and Night.step < 17:
     set Night.judging = false
     set Night.phase = "bobbing"
     set Night.step = 17
@@ -6593,7 +6619,8 @@ when the_verdict:
 when Night.truth_first == true and Time.elapsed >= Night.truth_until:
   set Night.truth_first = false
   set Night.phase = "finale_truth"
-  if count([p for p in Persons where p.fact_v9 == "accurate" or (p.fact_v9 == "pending" and p.fact_j9 == "accurate") or (p.judged_q9 == true and p.hunt_lie_q9 != true)]) > 0:
+  // What Reading F3 said, so 8-A and 8-B can never contradict it.
+  if Kernel.res_found > 0:
     -> Truth Found
   else:
     -> Nobody Found It
@@ -7457,6 +7484,8 @@ set Night.award_lines = "template"
 set Night.prize_gen = 0
 set Night.count_gen = 0
 set Night.reveal_stage = 0
+set Night.reveal_owed = false
+set Night.reveal_read_at = 0
 set Night.truth_first = false
 set Night.lines_open = false
 set Night.lines_end = 0

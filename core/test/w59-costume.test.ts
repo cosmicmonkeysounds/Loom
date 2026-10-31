@@ -988,6 +988,7 @@ describe("w59 costume: the show's own ending", () => {
     await signal("final_reveal");
     expect(peek("Night.phase")).toBe("final_reveal");
     await refused("the final reveal");
+    await signal("final_reveal");
     await signal("bobbing_for_truth");
     expect(peek("Night.phase")).toBe("bobbing");
     await refused("the bobbing");

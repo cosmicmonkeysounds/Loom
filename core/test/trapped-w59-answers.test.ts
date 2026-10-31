@@ -319,7 +319,11 @@ const party = (): Night => {
   for (const c of TO_Y2K) n.press(c);
   return n;
 };
-const reveal = (n: Night): ChatMessage[] => n.press("final_reveal");
+/** 🌑, then what her last line presses: his readings. */
+const reveal = (n: Night): ChatMessage[] => {
+  n.press("final_reveal");
+  return n.press("final_reveal");
+};
 /** 🌑 done: 🍎, the bag, 📄, then ⚖. */
 function verdict(n: Night): ChatMessage[] {
   n.press("bobbing_for_truth");
@@ -475,7 +479,92 @@ describe("wave 59a: the last answer decides, and every road ends in the rave", (
 });
 
 describe("wave 59a: 🌑", () => {
-  it("closes round three, settles it, then ranks and reads the board on one press", { timeout: SLOW }, () => {
+  const n0 = Sim.fromSources(SRC);
+  it("Clippy first: filing closes, and no reading reaches anyone while she asks", { timeout: SLOW }, () => {
+    const n = party();
+    n.file("g1", "F1", "accurate");
+    n.file("g2", "F3", "lie");
+    const hers = n.press("final_reveal");
+    expect(his(hers)).toEqual([]);
+    expect(hers.some((m) => m.from === "Clippy" && m.text.includes("present it now"))).toBe(true);
+    for (const m of hers) expect(m.text).not.toContain("The question was:");
+    expect(v(n.sim, "Night.r3_filing_closed")).toBe(true);
+    expect(v(n.sim, "Night.reveal_owed")).toBe(true);
+    expect(v(n.sim, "Night.judging")).toBe(true);
+    expect(v(n.sim, "Night.rank_round")).toBe(1);
+    // Filing closed at the press; the settle waits for him.
+    expect(v(n.sim, "g1.fact_v7")).toBe("accurate");
+    expect(v(n.sim, "g2.truths_accepted")).toBe(0);
+  });
+  it("what she takes out loud is in the reading, the leaderboard, the ranking and ⚖", { timeout: SLOW }, () => {
+    const n = party();
+    n.file("g1", "F3", "lie");
+    n.press("final_reveal");
+    n.take(n.sim.signal("judging_q3", null, null, "Clippy"));
+    n.take(n.sim.signal("judge_accurate", "g4", null, "Clippy"));
+    expect(v(n.sim, "g4.judged_q9")).toBe(true);
+    const said = his(n.press("final_reveal"));
+    expect(said).not.toContain("This is bad. This is very bad. We will return to this one.");
+    expect(said.some((t) => t.startsWith("The answer appears to be:"))).toBe(true);
+    expect(said).toContain("Congratulations to these programs for getting a correct answer: Winamp");
+    expect(said.some((t) => t.startsWith("These programs did not submit any truth:") && !t.includes("Winamp") && !t.includes("Calculator"))).toBe(true);
+    expect(said).toContain("And our winner for the evening. In first place: Winamp.");
+    verdict(n);
+    expect(his(n.tick(831))[0]).toBe("You guys.");
+  });
+  it("once he has read it the reading is the record: a late ✅ only pays, and ⚖ follows what he said", { timeout: SLOW }, () => {
+    const n = party();
+    n.file("g1", "F3", "lie");
+    reveal(n);
+    n.take(n.sim.signal("judging_q3", null, null, "Clippy"));
+    n.take(n.sim.signal("judge_accurate", "g4", null, "Clippy"));
+    expect(v(n.sim, "g4.judged_q9")).toBe(true);
+    n.sim.signal("fact_accurate", "g1", { question: "F3" }, "Clippy");
+    expect(v(n.sim, "Kernel.res_found")).toBe(0);
+    verdict(n);
+    expect(his(n.tick(831))[0]).toBe("How do you feel now that you know the truth about your party tonight?");
+  });
+  it("🍎 waits for his readings; 🌑 is still NEXT on the sheet", { timeout: SLOW }, () => {
+    const n = party();
+    n.press("final_reveal");
+    const refused = n.press("bobbing_for_truth");
+    expect(refused.some((m) => m.channel === "room:hosts" && m.text.startsWith("🍎 Not yet:"))).toBe(true);
+    expect(v(n.sim, "Night.phase")).toBe("final_reveal");
+    n.press("final_reveal");
+    n.press("bobbing_for_truth");
+    expect(v(n.sim, "Night.phase")).toBe("bobbing");
+  });
+  it("nobody at the wheel: he starts by himself after ten minutes, once", { timeout: SLOW }, () => {
+    const n = party();
+    n.file("g1", "F3", "lie");
+    n.press("final_reveal");
+    expect(his(n.tick(599))).toEqual([]);
+    const said = his(n.tick(2));
+    expect(said[0]).toBe("Programs. It is time to urgently share your truths. Answers now.");
+    expect(v(n.sim, "Night.reveal_owed")).toBe(false);
+    expect(his(n.tick(10)).some((t) => t.startsWith("Programs. It is time"))).toBe(false);
+  });
+  it("midnight's own press goes the same way", { timeout: SLOW }, () => {
+    const n = party();
+    n.file("g1", "F3", "lie");
+    const hers = n.press("y2k_midnight");
+    expect(hers.some((m) => m.from === "Clippy" && m.text.includes("present it now"))).toBe(true);
+    expect(v(n.sim, "Night.reveal_owed")).toBe(true);
+    expect(his(hers).some((t) => t.startsWith("Programs. It is time"))).toBe(false);
+    expect(his(n.press("final_reveal"))[0]).toBe("Programs. It is time to urgently share your truths. Answers now.");
+  });
+  it("a server-room ending inside her window: no reading ever plays", { timeout: SLOW }, () => {
+    const n = party();
+    n.press("final_reveal");
+    n.press("patch_combo_a");
+    expect(v(n.sim, "Night.ending")).toBe("disabled");
+    expect(his(n.tick(601)).some((t) => t.startsWith("Programs. It is time"))).toBe(false);
+    expect(v(n.sim, "Night.reveal_read_at")).toBe(0);
+  });
+  it("question three has its own rows on a host's card, like the others", () => {
+    for (const row of ["accurate_q3", "confident_q3"]) expect(n0.model.interactions.get(row)!.while).toBe("Night.judging == true");
+  });
+  it("closes round three, settles it, then ranks and reads the board on her hand-over", { timeout: SLOW }, () => {
     const n = party();
     n.file("g1", "F1", "accurate");
     n.file("g1", "F2", "accurate");

@@ -349,13 +349,27 @@ export const SCAN_REPEAT_MS = 1500;
 const AGENT_HISTORY = 30;
 /** Wave 59: how far back a press looks for lines still being said. */
 const COSTUME_LOOKBACK_MS = 20 * 60_000;
-/** Wave 59: the beat that hands over to him, and the cue its end fires. */
-const HANDOVER_BEAT = "Clippy On Trabolta";
-const HANDOVER_CUE = "introduce_trabolta";
+/** Wave 59: the beats that hand over to him, the cue each one's end fires, and
+ *  the flag that says it is still due. */
+const HANDOVERS: ReadonlyArray<{ beat: string; cue: string; due: (peek: (path: string) => string | null) => boolean; cut: string }> = [
+  {
+    beat: "Clippy On Trabolta",
+    cue: "introduce_trabolta",
+    due: (peek) => peek("Night.trabolta_introduced") !== "true",
+    // A newer beat took the prompter from her paragraph. DRAFT w59
+    cut: "!🤖 A new beat cut Clippy off: press 🤖 on her last line",
+  },
+  {
+    // Wave 59a: his final answers wait for what she asks the room.
+    beat: "Final Reveal",
+    cue: "final_reveal",
+    due: (peek) => peek("Night.reveal_owed") === "true" && peek("Night.ended") !== "true",
+    // DRAFT w59a
+    cut: "!🌑 A new beat cut Clippy off: press 🌑 on her last line",
+  },
+];
 /** Who that press reads as, in the journal and the desk's activity. */
 const PROMPTER_BY = "📜 Teleprompter";
-/** A newer beat took the prompter from her paragraph. DRAFT w59 */
-const HANDOVER_CUT_NOTE = "!🤖 A new beat cut Clippy off: press 🤖 on her last line";
 
 /**
  * The guest POST routes a **locked** phone may still call (wave 26, C2): the
@@ -1008,9 +1022,9 @@ export class EventRuntime {
    *  forgets it, and the rest of a held beat's lines just play. */
   private readonly prompters: Prompters;
   /** Wave 59: her ✓ Done landed behind paused doors; he starts when they reopen. */
-  private handoverOwed = false;
+  private handoverOwed: (typeof HANDOVERS)[number] | null = null;
   /** Wave 59: a newer beat cut off her paragraph; `fanout` tells the hosts. */
-  private handoverCut = false;
+  private handoverCut: string | null = null;
   private prompterTimer: ReturnType<typeof setInterval> | null = null;
   /** When each reader's stream last closed (`@<Character>` or a guest id). */
   private readonly streamLeft = new Map<string, number>();
@@ -1368,7 +1382,7 @@ export class EventRuntime {
       },
       finished: (scene, closed) => this.sceneFinished(scene, closed),
       superseded: (scene) => {
-        this.handoverCut ||= this.handoverDue(scene);
+        this.handoverCut ??= this.handoverDue(scene)?.cut ?? null;
       },
     });
     this.screens = new ScreenWatch({
@@ -2284,8 +2298,8 @@ export class EventRuntime {
     this.costume.clear(); // wave 59: a new run owes the house no restore
     this.modPrev = null; // the next view after a transition is a keyframe
     this.prompters.clear(); // wave 59: a new run has no scene, and nothing waits
-    this.handoverOwed = false;
-    this.handoverCut = false;
+    this.handoverOwed = null;
+    this.handoverCut = null;
     this.prompterClock();
     for (const c of this.clients) sseSend(c.res, "lifecycle", { kind, at: Date.now(), ...extra });
   }
@@ -2484,9 +2498,12 @@ export class EventRuntime {
     }
   }
 
-  /** Is this the scene that hands over to him, with him still to come? */
-  private handoverDue(scene: SceneDraft): boolean {
-    return this.sim !== null && scene.sections.at(-1)?.title === HANDOVER_BEAT && worldString(this.sim.world.peek("Night.trabolta_introduced")) !== "true";
+  /** The hand-over this scene ends on, with him still to come, or null. */
+  private handoverDue(scene: SceneDraft): (typeof HANDOVERS)[number] | null {
+    const sim = this.sim;
+    if (sim === null) return null;
+    const title = scene.sections.at(-1)?.title;
+    return HANDOVERS.find((h) => h.beat === title && h.due((path) => worldString(sim.world.peek(path)))) ?? null;
   }
 
   /** Her last line is his cue: the arrow past it, or her ✓ Done, is 🤖, on the
@@ -2495,12 +2512,13 @@ export class EventRuntime {
    *  Paused doors hold it: false, so her next move asks again, and a ✓ Done
    *  that took the scene with it goes when they reopen (`openDoors`). */
   private sceneFinished(scene: SceneDraft, closed: boolean): boolean {
-    if (!this.handoverDue(scene)) return true;
+    const handover = this.handoverDue(scene);
+    if (handover === null) return true;
     if (this.phase !== "open") {
-      this.handoverOwed ||= closed;
+      if (closed) this.handoverOwed ??= handover;
       return false;
     }
-    this.deskFire(HANDOVER_CUE, PROMPTER_BY);
+    this.deskFire(handover.cue, PROMPTER_BY);
     return true;
   }
 
@@ -2632,9 +2650,10 @@ export class EventRuntime {
     this.runPicks(events);
     // Wave 59: only a person knows when she has said the last line from the
     // sheet, so the hosts hear, once this batch has gone.
-    if (this.handoverCut) {
-      this.handoverCut = false;
-      this.postHostsNote(HANDOVER_CUT_NOTE);
+    if (this.handoverCut !== null) {
+      const note = this.handoverCut;
+      this.handoverCut = null;
+      this.postHostsNote(note);
     }
     return appended;
   }
@@ -5925,8 +5944,9 @@ export class EventRuntime {
     this.pushSnapshots();
     // Wave 59: her ✓ Done behind paused doors was his cue, and the scene is gone.
     const owed = this.handoverOwed;
-    this.handoverOwed = false;
-    if (owed && this.sim !== null && worldString(this.sim.world.peek("Night.trabolta_introduced")) !== "true") this.deskFire(HANDOVER_CUE, PROMPTER_BY);
+    this.handoverOwed = null;
+    const sim = this.sim;
+    if (owed !== null && sim !== null && owed.due((path) => worldString(sim.world.peek(path)))) this.deskFire(owed.cue, PROMPTER_BY);
   }
 
   /** A new run on `source`: a fresh sim, an empty journal + chat, and the
