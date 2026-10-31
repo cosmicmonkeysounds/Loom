@@ -450,7 +450,9 @@ describe("the night", () => {
       await n.toHunt2();
       await n.run(ADS_GAP_MIN_MS / 1000 - 5);
       expect(n.rt.ads.aired).toBe(0);
-      await n.untilAired(1, ADS_GAP_MAX_MS / 1000);
+      // His whole script is pressed through in one instant here with no TV reporting, so the
+      // `speaking` hold runs on the lines' length until they have been said by.
+      await n.untilAired(1, ADS_GAP_MAX_MS / 1000 + 300);
       const air = n.rt.ads.air!;
       const playing = OPEN_WALLS.map(([v, s]) => n.wall(v, s));
       const on = (await Promise.all(playing)).filter((w) => w.ad !== null);
