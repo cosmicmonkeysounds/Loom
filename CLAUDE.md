@@ -494,6 +494,16 @@ and the Quest needs no new APK. The Desktop's `git pull` and `-Restart audio` is
 enough for VR; the tent's web game needs a release (`?only=tv`) and a reload.
 Runbook: `scripts/house-desktop/README.md` §3.8.
 
+**The door cuts him off at his heart** (wave 59, not shipped; no story change, no
+new show text). On the server-room terminal the door moving, open or shut, stops
+him mid-word and drops what he still owed; the story's lines for the new door play
+next. It's the terminal's own door: the sensor at once, a 🚪 press within a poll.
+Only the door: the player still can't interrupt him, and the TV, the walls and the
+house are untouched. Reload the server-room terminal. `heart/door-cut.ts`; proved in
+Chromium on a scratch server, with Chrome's real macOS voice muted; not on Steph's
+laptop, the M4, Windows' voices or the CRT itself. Help:
+`docs/help/authoring/38-server-room.md`.
+
 ### Release status
 
 The VPS runs **`w56`** (master `d8223795`, shipped 2026-10-30; rollback `w53b`):

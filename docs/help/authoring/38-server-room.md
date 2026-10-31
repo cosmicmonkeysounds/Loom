@@ -245,6 +245,14 @@ The story keeps the door's state itself (`Night.server_door`, *open* or
   seconds, however often it bounces, and *"Good."* when it shuts after
   that. During a talk `# hosts` hears it too (at most once every 20
   seconds).
+- **The door cuts him off.** On the server-room terminal the door moving,
+  open or shut, stops him mid-word, whatever he is saying, and drops the
+  lines he still owed: they never come back, and what the story says for
+  the new door plays next. A 🚪 press does the same at the terminal's next
+  poll, within about 2 seconds. Only the door does this: a player can't
+  interrupt him, and his lines elsewhere in the house aren't touched. An
+  opening inside the 20 seconds above leaves him quiet until he next asks,
+  up to 15 seconds, with *CLOSE THE DOOR* on the screen.
 - **Inside a 🔧 crew window** (below) an opening only tells `# hosts`.
 - **From 📄 truth.txt** (below) an opening only tells `# hosts`.
 

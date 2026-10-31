@@ -11,7 +11,7 @@ the show's device setup is [`../docs/trapped/kiosk.md`](../docs/trapped/kiosk.md
 ```bash
 pnpm --filter loom-terminal dev        # Vite :5175, proxies /api + /e to LOOM_SERVER (default http://localhost:7000)
 pnpm --filter loom-terminal build      # dist/ (base /terminal/)
-pnpm --filter loom-terminal test       # vitest run: 1505 tests, 104 files (test/**/*.test.ts)
+pnpm --filter loom-terminal test       # vitest run: 1536 tests, 105 files (test/**/*.test.ts)
 pnpm --filter loom-terminal typecheck  # tsc --noEmit
 pnpm --filter loom-terminal exec vitest run test/door-bridge.test.ts   # one file
 ```
@@ -57,7 +57,7 @@ play app's own `useChatStream` (imported as source) and narrows it to
 | `src/scanner.tsx`, `src/scan.ts`, `src/camera.ts` | QR scan (`BarcodeDetector`, else jsQR); what a code means; one shared ref-counted `MediaStream` |
 | `src/pilot.ts`, `src/chat.tsx`, `src/controls.tsx`, `src/idle.ts` | impersonate / say / end; `terminal opened` / `closed` (`VisitLatch`); a room terminal checks for a locked pass first (`refusesLockedPass`, `passLocked`); the thread + composer; the 2 s ⚙ hold; the leash (30 s, files 120 s, heart 180 s); wave 42b: the guest's place in his line (`pilotWait` over play's `useAgentWait`, `chat.tsx` `WaitLine` + `waitCells`: an amber system line with the phone's `DRAFT w42` words and a ten-block bar where the typing row goes, its estimate counting down; `answering` is the typing row; a queued line holds the leash; the waits are the piloted guest's only and clear on every `history` frame; `test/w42-wait.test.ts`) |
 | `src/files.ts`, `src/FilePanel.tsx` | 📎 GIVE HIM A FILE: share / redeem as the piloted guest |
-| `src/heart/` | `heart.ts` (the heart menu = newest `choices` entry on `dm:<character>` whose beat starts `heart `; tags; when the composer shows; wave 27: `panelGate` + `panelSince` (the panel waits on his voice and his scenes, and settles again after a skip), `panelPlace` (a ⟦BACK⟧ menu with no composer still draws its bar), `optionKey`, `layerOfCue` (scene timing only; wave 29: no header, card or test shows a layer number), `echoOf` (re-exported from core's `pick-echo.ts`), `composerBlocked` (also held at the heart until his first word, `heartWaitingFirstWord`), `threadFor`, `pilotEndWait`), `pending-pick.ts` (a pick shown at once until the server's line), `ChoicePanel.tsx`, `DoorOverlay.tsx`, `DoorSetup.tsx`, `PatchSetup.tsx` |
+| `src/heart/` | `heart.ts` (the heart menu = newest `choices` entry on `dm:<character>` whose beat starts `heart `; tags; when the composer shows; wave 27: `panelGate` + `panelSince` (the panel waits on his voice and his scenes, and settles again after a skip), `panelPlace` (a ⟦BACK⟧ menu with no composer still draws its bar), `optionKey`, `layerOfCue` (scene timing only; wave 29: no header, card or test shows a layer number), `echoOf` (re-exported from core's `pick-echo.ts`), `composerBlocked` (also held at the heart until his first word, `heartWaitingFirstWord`), `threadFor`, `pilotEndWait`), `door-cut.ts` (wave 59, pure: `DoorCut`, `wrongDoor`, `stopsAt`; "The door cuts him off" below), `pending-pick.ts` (a pick shown at once until the server's line), `ChoicePanel.tsx`, `DoorOverlay.tsx`, `DoorSetup.tsx`, `PatchSetup.tsx` |
 | `src/devices.ts` | wave 52: which camera and microphone a stream opens, by part of its name (`config.webcam`) |
 | `src/gamepad/` | wave 52: the GameCube controller: `pad.ts` (pure: `GC`, `frameOf`, `PadMachine`, `movedTo`), `PadNav.tsx` (the loop, over `data-pad` / `data-pad-aside` / `data-pad-skip` / `data-pad-back`), `RigSetup.tsx` (⚙) |
 | `src/crt/` | wave 52b: the server room's CRT: `CrtStage.tsx` (the 640 × 480 stage, the pipes), `Wave.tsx` (his voice, on the face's handle), `legend.ts` + `Legend.tsx` (the button guide), `cards.ts` (the heart's scenes as text, pinned to `scenes/heart.tsx`), `prompt.ts` (when it asks for a pass, the keyboard's keys), `Keyboard.tsx`, `crt.css` |
@@ -436,6 +436,41 @@ told the line when it may say it. While `held` a TV polls every `HELD_POLL_MS` (
 ends his line's lock early. A hold moves a mixed beat's lines off any picture cued
 with the beat: `Ad Hijack`'s no longer play under the 8 s takeover.
 
+### The door cuts him off (wave 59)
+
+On the heart terminal the door moving, either way, is the one thing that stops
+him. `DoorCut.step` runs in `Terminal`, in an effect ahead of the poll's, because a
+🚪 press's own answer carries the lines for the new door. It reads the terminal's
+own door: the sensor at once, `night.server_door` for a 🚪 press or with no sensor.
+Once per edge. The first door after a load, a fault, a stale sensor and 🚪 Trust
+hand over without firing, and a flicker never arrives: the firmware debounces
+`open`. Every other terminal has `doorOpen` null, so the TV and the walls never cut.
+
+- **The cut.** `roomPlayer.stop()` stops the queue and frees the waiters, and the
+  cursor is already past what he owed, so nothing comes back. `voiceBusy` falls,
+  which frees the panel, the composer, the leash and the mic's gate; a spoken
+  answer in progress keeps its step.
+- **Captions.** `cutOff` (seq → characters) is apart from `revealed`, which would
+  hold `voiceBusy` up: a cut line stays at the sentence he was on, `Typed`'s `halt`
+  freezes it where it had typed to, and a line he never started isn't drawn.
+  `roomCut` does the same for the room caption. On an attract CRT the prompt
+  replaces the caption as soon as he stops.
+- **A late frame.** An answer whose `night.server_door` is behind the sensor
+  (`behind`, for `DOOR_LATE_MS`) was written before the story heard the door: all
+  its lines go. An answer can also hold a nag and the reaction together, and a 🚪
+  press has no earlier moment to compare with, so `wrongDoor` judges his door
+  beats (`DOOR_OPEN_BEATS`, `DOOR_SHUT_BEATS`, pinned to the story by
+  `test/door-cut.test.ts`) against the door, on the stream's lines too. A rename
+  there needs a rename here. A line about something else, written in the second
+  before the story heard the door and delivered with its reaction, still plays.
+- **The settle.** `speak()` on the heels of `cancel()` is lost on some engines, and
+  one that never starts writes the voice off until the next gesture, which is the
+  rest of the night on a kiosk. So a line behind a stop that cut a chunk waits
+  `CANCEL_SETTLE_MS` (`SpeechQueue.settledAt`). A sentence paced with no engine
+  stops with the queue too.
+- Keep any new "wait until he finishes" on `voiceBusy`, or on the queue's `done`
+  and the player's `stop`. Don't add a door check of your own.
+
 ### Speech done (wave 25)
 
 The house desk's `speech` step waits on it (`docs/loom-house-desk.md` §5).
@@ -537,8 +572,8 @@ the line at *not yet* and *leave*.
   all the session logic above it is shared. `plainLayers` keeps the glitch,
   burst, flicker and dream off it, `cutscenes` is off (`cards.ts` instead) and
   effects are at volume 0. `hold` keeps the answers away while he speaks
-  (`panelGate`), and `busy` does the same for the spoken composer, so nothing
-  cuts him off. `Typed` types his lines to the end of the sentence he's on.
+  (`panelGate`), and `busy` does the same for the spoken composer, so only the
+  door cuts him off. `Typed` types his lines to the end of the sentence he's on.
   Door shut: the pipes, the scanner hidden behind them. Door open, or any
   controller press: `promptUp`, the camera shown (`.crt-scan.shown`), until a
   minute after it shuts. The story asks the first guest; `speaksPrompt` asks

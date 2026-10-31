@@ -1,7 +1,7 @@
 // The door cuts him off (wave 59): what counts as an edge, what a late frame is,
 // and the cut itself, through the real LinePlayer, SpeechQueue and RoomSpeech
-// wired as `app.tsx` wires them. Real Chromium was checked on a scratch server;
-// no M4, Steph's laptop or real voice has met this.
+// wired as `app.tsx` wires them. Real Chromium was checked on a scratch server,
+// and Chrome's macOS voice, muted. No M4, Steph's laptop or Windows voice has met it.
 
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
