@@ -87,8 +87,8 @@ Old links that also carry `name=`, `view=` or `room=` still work, but those
 values win over the map's and the device stops following the map. Avoid
 them; the tent laptop in particular must never carry `&view=reinstall`.
 
-On a running terminal, hold ⚙ for **2 s** (a bar fills under it) to reopen
-setup: change the passcode, forget the terminal, or tap a different spot.
+On a running terminal, hold the top right corner for **2 s** to reopen setup
+(the ⚙ there is invisible until it's held, then a bar fills under it): change the passcode, forget the terminal, or tap a different spot.
 The *advanced* section holds the character, the camera, the voice, the
 announcements, the voice link, the door sensor and a manual view or room.
 
@@ -246,7 +246,7 @@ page reads the board over **Web Serial** (desktop Chrome or Edge on https).
   in the Y2K hour (`night.step >= 14`), never after an ending, and never
   while a 🔌 / 💥 / ❌ press has put the bay on the buttons (until 🔌 *Trust
   the patch bay again*). The page never knows which combinations matter.
-- **Setup.** Hold ⚙ 2 s → *advanced* → *door sensor* → **Connect door
+- **Setup.** Hold the top right corner 2 s → *advanced* → *door sensor* → **Connect door
   sensor** → pick the board. Then **Calibrate: door shut** and **Calibrate:
   door open**. The *patch bay* section below it shows each input's reading,
   with **Learn** per source and **Save** / **Reset**.

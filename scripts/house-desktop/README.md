@@ -422,8 +422,8 @@ underruns, slips or xruns.
 4. **Chrome's output to VoiceMeeter Input.** Windows 11: Settings → System
    → Sound → **Volume mixer**; Windows 10: Settings → System → Sound →
    **App volume and device preferences**. Chrome shows there only while it
-   plays something: open the TV with `.\tv-kiosk.ps1 -Setup` and press ⚙ →
-   TEST VOICE. Set Chrome's **Output device** to **"VoiceMeeter Input
+   plays something: open the TV with `.\tv-kiosk.ps1 -Setup`, hold the top right corner 2 s (the
+   hidden ⚙) → TEST VOICE. Set Chrome's **Output device** to **"VoiceMeeter Input
    (VB-Audio VoiceMeeter VAIO)"**.
 5. **The router sees the tap.** `uv run stagehand check --config
    trapped.desktop.yaml --only audio` prints `audio tap: VoiceMeeter Output
@@ -1014,7 +1014,7 @@ $env:LOOM_MOD_CODE = '<the mod passcode>'   # this window only
 .\tv-kiosk.ps1 -Setup        # Chrome, no kiosk, opens /terminal/?code=<mod>&spot=desktop-tv
 ```
 
-In that window: check it took the TV spot; hold ⚙ for 2 s → device voice →
+In that window: check it took the TV spot; hold the top right corner for 2 s (the hidden ⚙) → device voice →
 **Microsoft David** (or Mark) for Trabolta → TEST VOICE (Edge's "Natural"
 voices are nicer but untested on `view=tv`). The ⚙ **pace** reads
 **0.92×** (wave 26: a TV set up before keeps its saved 1.00×; re-opening

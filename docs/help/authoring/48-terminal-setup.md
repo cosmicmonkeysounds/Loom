@@ -24,15 +24,17 @@ house terminal). A spot another tablet is using right now says *⚠ online
 now*. That's it: the name, the screen and the room come from the map,
 which the house map editor sets. A whole fleet: open
 `/terminal/?code=<mod passcode>&spot=<terminal id>` on each tablet. To
-re-point a running tablet, hold ⚙ for 2 seconds and tap another
-terminal.
+re-point a running tablet, press and hold its top right corner for 2
+seconds and tap another terminal. The ⚙ there is invisible (a wall tablet is
+in guests' hands) and shows only while it's held. A terminal's line or game
+in progress hides it: wait for the screen to go back to idle.
 
 ## The Server Room laptop and its door sensor
 
 The heart terminal (the Server Room, wave 20) bridges the room's door
 sensor:
 `/terminal/?code=<mod passcode>&spot=server-room&door=serial`. The first
-time, hold ⚙ 2 seconds → *advanced* → *door sensor* → **Connect door
+time, hold the top right corner 2 seconds → *advanced* → *door sensor* → **Connect door
 sensor** and pick the board in Chrome's list (once per browser profile),
 then **Calibrate: door shut**, open the door, **Calibrate: door open**.
 Calibrate the door again after every reflash of the board. After that it
