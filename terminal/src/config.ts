@@ -50,7 +50,8 @@
 //!
 //! Ad sounds and bleeps (wave 59, `bleepsOn`): the TV, the tent and the server
 //! room make none by default; `&bleeps=1` / `&bleeps=0` or ⚙'s
-//! `🔇 No ad sounds or bleeps` choose for one tablet, and the choice stays.
+//! `🔇 No ad sounds or bleeps` choose for one tablet, and the choice stays, through
+//! a reload and the terminal's own link opened again (`keepBleeps`).
 //!
 //! The voice link (wave 19, `voice/`): a placed terminal's microphone is
 //! heard in the reinstallation games at its screen, and the players near it
@@ -287,6 +288,13 @@ export const QUIET_SPOTS: readonly string[] = ["desktop-tv", "tent", "server-roo
 export function bleepsOn(c: Pick<TerminalConfig, "spot" | "view"> & { bleeps?: boolean; crt?: boolean }): boolean {
   if (typeof c.bleeps === "boolean") return c.bleeps;
   return !(QUIET_SPOTS.includes(c.spot.trim()) || c.view === "tv" || c.view === "reinstall" || c.crt === true);
+}
+
+/** A kiosk reopens its own link on every start: a link that says nothing about
+ *  bleeps leaves ⚙'s choice for this spot alone. A link that says wins. */
+export function keepBleeps(c: TerminalConfig, saved: TerminalConfig | null, hints: Pick<UrlHints, "bleeps">): TerminalConfig {
+  if (typeof hints.bleeps === "boolean" || typeof saved?.bleeps !== "boolean" || saved.spot !== c.spot) return c;
+  return { ...c, bleeps: saved.bleeps };
 }
 
 export function defaultConfig(partial: Partial<TerminalConfig> & Pick<TerminalConfig, "eventId" | "token">): TerminalConfig {

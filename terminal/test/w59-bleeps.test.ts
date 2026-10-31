@@ -5,7 +5,7 @@
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { CONFIG_KEY, QUIET_SPOTS, bleepsOn, defaultConfig, hintsFromSearch, loadConfig, saveConfig, withoutSecrets } from "../src/config.ts";
+import { CONFIG_KEY, QUIET_SPOTS, bleepsOn, defaultConfig, hintsFromSearch, keepBleeps, loadConfig, saveConfig, withoutSecrets } from "../src/config.ts";
 import { TV_ASKED_VOLUME, VIEW_VOLUME, effectsLevel, playChime, playNotes, setBleeps, setSoundContext, setSoundMuted, setSoundView, sfx, sfxGate, soundOutput, voiceNoise, voicesOut, type SoundContext } from "../src/sound/bus.ts";
 import { SFX_NAMES } from "../src/sound/library.ts";
 import { FakeAudioContext } from "./fake-audio.ts";
@@ -43,6 +43,26 @@ describe("which terminals make bleeps", () => {
     expect("bleeps" in loadConfig(s)!).toBe(false);
     s.setItem(CONFIG_KEY, JSON.stringify({ eventId: "e", token: "t", bleeps: "no" }));
     expect("bleeps" in loadConfig(s)!).toBe(false);
+  });
+  it("the terminal's own link opened again keeps ⚙'s choice", () => {
+    const link = defaultConfig({ eventId: "e", token: "t2", spot: "optical-drive" });
+    const saved = (bleeps?: boolean, spot = "optical-drive") => ({ ...defaultConfig({ eventId: "e", token: "t1", spot }), ...(bleeps === undefined ? {} : { bleeps }) });
+    expect(keepBleeps(link, saved(false), { bleeps: null }).bleeps).toBe(false);
+    expect(keepBleeps(link, saved(true), {}).bleeps).toBe(true);
+    // The rest is the link's: only the choice carries over.
+    expect(keepBleeps(link, saved(false), { bleeps: null }).token).toBe("t2");
+  });
+  it("a link that says wins, and nothing carries to another spot", () => {
+    const link = defaultConfig({ eventId: "e", token: "t", spot: "tent" });
+    const saved = { ...link, bleeps: false };
+    expect(keepBleeps({ ...link, bleeps: true }, saved, { bleeps: true }).bleeps).toBe(true);
+    expect("bleeps" in keepBleeps(link, { ...saved, spot: "start-bar" }, { bleeps: null })).toBe(false);
+    expect("bleeps" in keepBleeps(link, null, { bleeps: null })).toBe(false);
+    expect("bleeps" in keepBleeps(link, defaultConfig({ eventId: "e", token: "t", spot: "tent" }), { bleeps: null })).toBe(false);
+  });
+  it("is what the app's link goes through", () => {
+    const app = readFileSync(new URL("../src/app.tsx", import.meta.url), "utf8");
+    expect(app).toMatch(/keepBleeps\(linkConfig\(given, hints, house\), loadConfig\(\), hints\)/u);
   });
 });
 
