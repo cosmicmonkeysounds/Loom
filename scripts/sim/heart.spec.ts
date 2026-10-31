@@ -62,8 +62,8 @@ const PHONE = { width: 390, height: 844 } as const;
  *  last story before `3332e01e feat(story): branch the first meeting`), for
  *  this program's state: marked, an upload problem on record, no side, no
  *  proof yet, His Question Of Force + Omnipotence held (w26 had no use for
- *  them), Night.her not Sandy. Layer Four is the first entry. */
-const PRE_W27: Record<string, number> = { "Layer One": 6, "Layer Two": 5, "Layer Two (asked two)": 4, "Layer Three": 5, "Layer Four": 5 };
+ *  them), Night.her not Sandy. */
+const PRE_W27: Record<string, number> = { "Layer One": 6, "Layer Two": 5, "Layer Two (asked two)": 4, "Layer Three": 5 };
 
 interface Program {
   id: string;
@@ -565,12 +565,11 @@ test("the heart terminal: one visit, as a program", async ({ browser }) => {
       notes.push(`deed "${deed}"; the proof scene held the panel (LISTENING)`);
       await shots(page, 5, "proof-scene");
       await expect(page.locator(".thread .line.mine.act .text", { hasText: deed })).toHaveCount(1);
-      // On to Layer Four: one more point, then the ask.
+      // One more point opens the talk's natural end (wave 58).
       await pick(page, "⟦SHOW HIM⟧", "key");
       await pick(page, "⟦FORCE⟧", "key");
-      await pick(page, "Then let me finish.", "key");
-      await record(page, "Layer Four");
-      await shots(page, 5, "layer-four");
+      await expect(panel(page).locator(".heart-option", { hasText: "That's all I came to say." })).toHaveCount(1, { timeout: 10_000 });
+      await shots(page, 5, "the-end-offered");
     });
 
     // 4b: every layer menu offers more than the pre-w27 heart did (counts in results.json).

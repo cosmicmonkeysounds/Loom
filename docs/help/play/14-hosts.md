@@ -46,7 +46,8 @@ every phone, guests' included.
   messages (the number on it counts guests waiting on a reply).
 - **Desk** is the house desk: its cues, ■ STOP ALL, and the speaker and
   light checks (below).
-- **📷 Scan** opens the scanner, as in any booth. Every guest, with their
+- **📷 Scan** opens the scanner, as in any booth: passes, and codex QRs into
+  your own Codex (**⊞ Start → What … knows**). Every guest, with their
   card, is in Show's **People**.
 
 ## The Show window
@@ -107,6 +108,16 @@ director at Run) press the same moment, the server takes one: the other
 phone reads *Cues moved — tap again*, and nothing fires twice. Every
 press is logged as *Booth · your character*.
 
+**📜 The teleprompter (wave 59).** While someone is reading a script, Show has a
+line saying who, where they are, and whether Trabolta is waiting for them. **📜
+Join** puts the script on your phone at the same place: you can move it for them,
+and **✓ Done** there ends it for everyone. **▶ Let him speak** lets every line of
+his left in the scene play now, if the reader is stuck or their phone has died. If
+their phone goes quiet for 12 seconds his lines go on by themselves, and so do they
+if the story moves on to his next scripted line. Keeping him waiting for a dead phone
+takes moving the script: a joined phone that stops moving it holds him for 20 seconds
+at most.
+
 ## The NEXT bar
 
 While another window is open (Chats, the Desk, a room), a slim **NEXT
@@ -123,13 +134,28 @@ bar** sits just above the taskbar, so you can fire without going back:
 
 While you type, the bar steps aside with the taskbar.
 
+**The cues of the opening and the ending** (wave 58). Most of the opening's cues
+bring up Clippy's next words on her teleprompter, so give her time. **📺 Follow
+the reinstallation** is never NEXT: press it only if a program is walking. **🤖
+Trabolta comes online** fires itself when her arrow passes *"would you explain the
+rules?"* or she presses ✓ Done. The button is the backup: press it if she has no
+phone on the teleprompter, after a server restart, or on her last line when `# hosts`
+says *A new beat cut Clippy off* (a 🛡 lands the next beat over her paragraph, and her
+phone moves on to it). Pressed before or after, it does no harm. His speech runs about
+three minutes before the 🤖 Talk card is wanted. After an
+ending, **G0 📜 The full truth** is NEXT: press it once the ending has had its
+moment, with ■ Stop house sounds first if a dance track is up. **G1** asks first
+if the monologue hasn't finished. [How the house works](house-workings.md) has
+the rest.
+
 ## The sections
 
 
 - **Cue sheet** — a filter box and every cue by act, NEXT highlighted,
   fired cues dimmed: fire one out of order from here (same ARM → FIRE).
 - **Needs you (n)** — what is waiting on a host. At the very top, a guest
-  asking to get back in from a new phone: **🔁 WinZip wants back in**.
+  asking to get back in from a new phone: **🔁 WinZip wants back in**. While
+  one waits, a line above NEXT (**🔁 1 wants back in**) takes you here.
   Check it's really them (their face, their badge or pass), then tap
   **✅ Let them in** (their phone signs straight in as their program) or
   **✋ Not them** ([Getting back in](getting-back-in.md)). Then, while programs are
@@ -153,10 +179,12 @@ While you type, the bar steps aside with the taskbar.
   couldn't rule before 📋: one still waiting at the round's results
   keeps the house's proposal, and your verdict always wins over his.
 - **People** — **🗂 Every guest, with their cards** (the booth's Guests
-  list), or find a guest here, then **🗂 Open card**, **🚻 End Bathroom
-  Mode** (when it's on), **⛔ Restrict / Unrestrict**, **👋 Went home /
-  Back**, **🔁 Re-pair** (a single-use QR for a lost phone) and **📡 Scan
-  as…** (scan them as any part).
+  list, online or not), or find a guest here, then **🗂 Open card**, **🚻
+  End Bathroom Mode** (when it's on), **⛔ Restrict / Unrestrict**, **👋 Went
+  home / Back**, **🔁 Re-pair** (a single-use QR for a lost phone) and
+  **📡 Scan as…** (scan them as any part). This list shows who is online;
+  tick **Offline (n)** for the rest (a lost phone is offline). A row you
+  have open stays until you close it, even if that phone drops off.
 - **More** — the rest of the night, in three tabs: **Night** (the show,
   the clock, announce, the alert level), **House** (wallet, the King,
   terminals, Trabolta, crews) and **Setup** (codes and invitations, parts).

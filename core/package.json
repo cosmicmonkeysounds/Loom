@@ -24,7 +24,8 @@
     "./house-mixer": "./src/house-mixer.ts",
     "./talk-back": "./src/talk-back.ts",
     "./credits": "./src/credits.ts",
-    "./voice-fx": "./src/voice-fx.ts"
+    "./voice-fx": "./src/voice-fx.ts",
+    "./link-health": "./src/link-health.ts"
   },
   "scripts": {
     "test": "vitest run",
@@ -34,6 +35,7 @@
     "serve": "tsx server/server.ts",
     "loomcheck": "tsx scripts/loomcheck.ts",
     "titi:facts": "tsx scripts/titi-facts.ts",
+    "titi:qr-lock": "tsx scripts/titi-qr-lock.ts",
     "show:page": "tsx scripts/show-page.ts"
   },
   "devDependencies": {
@@ -42,6 +44,7 @@
     "@types/pg": "^8.20.0",
     "@types/qrcode": "^1.5.5",
     "@types/web-push": "^3.6.4",
+    "acorn": "8.17.0",
     "typescript": "~6.0.2",
     "vitest": "^2.1.0"
   },

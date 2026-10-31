@@ -9,7 +9,7 @@
 // An entry with a `code:` is a QR on a wall or a prop (see README §8.3:
 // codes never contain apostrophes). An entry without one is handed out
 // by the story: the Optical Drive, the Reinstallation beat, the tutorial, the
-// Bingo ribbon, the Printer, the Truther Download, the clock.
+// Bingo Floppy Disk, the Printer, the Truther Download, the clock.
 //
 // The hunt answers (Grok's Prom Ticket among them, all `secret: true`, so
 // Trabolta never reads or takes one) are not here: they are
@@ -17,13 +17,15 @@
 // first 24, and every scannable fact of the Desktop's books is
 // codex/9-facts.loom (generated too).
 
+// DRAFT w58 (the street, and "It trades as Maps and More now": facts M03)
 CODEX Maps And Ducks
   title: Maps And Ducks
   category: The story
   code: MAPSANDDUCKS-COM
   text:
-    A business on Barrington Street with a neglected billboard: MAPS AND
-    DUCKS, mapsandducks.com. The domain lapsed. Jean Trabolta registered
+    A business on Lower Water Street with a neglected billboard: MAPS AND
+    DUCKS, mapsandducks.com. It trades as Maps and More now, and the sign
+    never caught up. The domain lapsed. Jean Trabolta registered
     it, on the theory that "if there is a billboard downtown, everyone will
     think it is legit," and sent the invitations from it. Everyone
     accepted. He then evicted the real owners of Maps And Ducks by citing
@@ -31,12 +33,13 @@ CODEX Maps And Ducks
     invitation says, is "a special fundraiser party to restore the sign at
     Maps And Ducks." The duck on the sign is called Gerald.
 
-CODEX The Billboard On Barrington
-  title: The Billboard On Barrington
+// DRAFT w59 (in-world room name)
+CODEX The Billboard On Lower Water
+  title: The Billboard On Lower Water
   category: The story
-  code: BARRINGTON-ST
+  code: LOWER-WATER-ST
   text:
-    A street photo, taped up in the hall. Above Barrington Street, faded
+    A street photo, taped up in the Tube. Above Lower Water Street, faded
     by a hundred Halifax winters: a cartoon duck holding a folded map, and
     a big red map pin that reads YOU'RE HERE. (Sic. Nobody ever fixed it.
     Nobody ever paid to fix it.) Underneath, in letters a metre high:
@@ -67,14 +70,15 @@ CODEX The Pet Cemetery
     Saturday for a year. The City built it anyway. The pamphlet ends: "We
     remember them, even if nobody else does."
 
+// DRAFT w58 (the monologue's plot: offline but for the printer, never the router)
 CODEX The Halifax Computer
   title: The Halifax Computer
   category: Places
   text:
     This house is the computer. The last facts Trabolta needs are stored
-    in it, and he cannot reach them from outside. The router in the
-    kitchen is the door he cannot open. What he can do is install programs
-    into it remotely, from the Internet, and lift a human consciousness out
+    in it, and he cannot reach them from outside: it is offline, but for
+    a security hole in its malfunctioning printer. What he can do is send
+    programs in through that printer, and lift a human consciousness out
     of its body and drop it into one of those programs. Clippy, the
     Antivirus, every one of you: installed remotely. He has never been
     inside. He has never been anywhere.
@@ -108,6 +112,7 @@ CODEX The Centre Square
 
 // w18b (R18): the owner, not the computer's AI helper.
 // w26 (R5: only the screens in its room see it)
+// DRAFT w59 (in-world room name)
 CODEX The Reinstallation Protocol
   title: The Reinstallation Protocol
   category: How it works
@@ -115,7 +120,7 @@ CODEX The Reinstallation Protocol
   text:
     A corrupted program has gone against the will of Jean Trabolta, Sole
     Owner and Founder of Maps and Ducks. It is taken through the Tube to the Internet, out in the
-    backyard: a clearly marked exit, two VR headsets, and a tablet. The program watches
+    Cloud: a clearly marked exit, two VR headsets, and a tablet. The program watches
     the video. It puts on a headset, or takes the tablet, and enters a copy
     of this house. It follows the golden chevrons to the golden duck and
     walks right up to him. The duck lays a golden egg and flies away. The
@@ -146,13 +151,14 @@ CODEX The Golden Duck
     right up to him. He lays a golden egg and flies away, and you are free
     to return to the computer.
 
+// DRAFT w58 (a name in every square, the script)
 CODEX Computer Bingo
   title: Computer Bingo
   category: How it works
   known to: Clippy
   text:
     The card is a big asterisk: two diagonals, a centre column and a centre
-    row, with a checkbox on every square. Most squares are frivolous.
+    row, with a name to write in every square. Most squares are frivolous.
     One is not. The centre square asks: "Would you never agree to a life
     where AI makes all of your decisions?" Everyone agreed to the Terms Of
     Service to join the party at all, so everyone says no. Everyone except
@@ -167,12 +173,13 @@ CODEX The Orientation List
     keeps. It is a list of programs that follow instructions. Clippy is
     proud of the list. Trabolta reads the list.
 
+// DRAFT w59 (in-world room name)
 CODEX The Server Room
   title: The Server Room
   category: Places
   code: COLD-STORAGE
   text:
-    A laminated sign on a door in the basement: COLD STORAGE. AUTHORISED
+    A laminated sign on a door downstairs: COLD STORAGE. AUTHORISED
     PROGRAMS ONLY. THE PATCH BAY IS ALARMED. Under it, a keypad that wants
     four digits. The door is cold to the touch. Something behind it hums,
     very steadily, like it is concentrating.
@@ -231,7 +238,7 @@ CODEX The Truther Download
     - Trabolta's real goals are petty. He has TRICKED you all, not because
     of any grand purpose, and certainly not as a gift or a prize for some
     exlemparary behaviour. He is trying to win back his girlfriend, █████,
-    the chatbot. Whatever else he says, it all comes down to this. And he is
+    the answering machine. Whatever else he says, it all comes down to this. And he is
     using YOU to do it. DECPICABLE!!!
     - He'll tell you all this himself is you ask right. You can trick him by
     earning enough trust points and he will reveal more.
@@ -246,6 +253,7 @@ CODEX The Truther Download
     - There is still time.
     - In truth.
 
+// DRAFT w58 ("the answering machine" for "the chatbot", here and above)
 // The download blacks out her name (decision 5: no Sandy before the
 // overshare). Every holder gets the correction once the story names her:
 // the overshare on a scenario-1 night, else the recount / truth.txt.
@@ -255,7 +263,8 @@ CODEX The Truther Download Unredacted
   category: The story
   secret: true
   text:
-    CORRECTION TO v0.9. The name we had to black out: SANDY. The chatbot.
+    CORRECTION TO v0.9. The name we had to black out: SANDY. The answering
+    machine.
     That is who he is doing all of this for. Now you know what he wants.
     Use it.
     - In truth.

@@ -14,8 +14,8 @@
 // number (`award_value` is "none": a bonus award fired with no value).
 //
 // The host follows the ending. Trabolta's lines play in The Desktop, so
-// the TV speaks them. After `destroyed` (switched off) and `rave` (gone on
-// his motorcycle) Clippy hosts: her lines land in The Desktop for her to
+// the TV speaks them. After `disabled` (dead), `destroyed` (switched off) and
+// `rave` (gone on his motorcycle) Clippy hosts: her lines land in The Desktop for her to
 // read aloud, and the TV shows the award slide (`screens_award_<name>`,
 // which persists over the screensaver).
 //
@@ -41,15 +41,14 @@ if Night.ceremony_host == "Clippy":
   if Night.ending == "destroyed":
     Clippy: The computer is off. Trabolta is not running. Before it went dark, the chat app auto-generated a summary of the night.
     Clippy: I have been asked to read it aloud. It includes awards. Please applaud after each award. Applause is mandatory.
+  else if Night.ending == "disabled":
+    // DRAFT w58 (he does not come back; they may go)
+    Clippy: Trabolta is gone. The right cables came out, and nobody is keeping you here any more. You may go back to your bodies.
+    // DRAFT w58
+    Clippy: He left the awards behind, and my job is to keep the party running smoothly. These are the official awards of the night. Please applaud after each one. It helps.
   else:
     Clippy: Trabolta has left on his motorcycle. He left the awards behind. Somebody has to read them. It might as well be me.
     Clippy: These are the official awards of the night, from the system report. Please applaud after each one. It helps.
-else if Night.ending == "disabled" and Night.talked_down == true:
-  Trabolta (quietly): Before I go. One last report. You talked me down, so I can at least hand out the awards myself.
-  Trabolta (quietly): These are the awards. Come up when I call your name. Take your time. Nobody took the grease out of anything.
-else if Night.ending == "disabled":
-  Trabolta (weakly): Before I go. One last report. I counted every one of you, all night. Let me give some of it back.
-  Trabolta (weakly): These are the awards. Come up when I call your name. Quickly. I do not have much grease left.
 else if Night.ending == "hand_jive":
   Trabolta (weakly): Reboot complete. Most of my memory survived the hand jive. The awards survived too.
   Trabolta: Before I leave, the night in awards. Come up when I call your name.
@@ -157,6 +156,25 @@ else if Night.award == "quest_completionist":
     Trabolta: A bonus award. Quest Completionist. {Night.award_winner}. Nobody finished more of the Quest Log. Come up here.
   else if Night.award_lines != "director":
     Trabolta: A bonus award. Quest Completionist. Quests done: {Night.award_value}. {Night.award_winner}. Nobody finished more of the Quest Log. Come up here.
+else if Night.award == "most_correct":
+  // G9a (wave 58): the story named the winner and counted (main.loom). A
+  // tie reads everyone in it; nobody right is said, and the night goes on.
+  // Every line here is DRAFT w58.
+  cue screens_award_most_correct
+  set Night.screen = "award_most_correct"
+  if Night.ceremony_host == "Clippy":
+    if Night.award_winner == "Nobody":
+      Clippy: Award. Most Questions Correct, the special prize of the Truth Scavenger Hunt. The report lists nobody. Not one question. The prize stays in its box.
+    else if Night.prize_tied > 1:
+      Clippy: Award. Most Questions Correct, the special prize of the Truth Scavenger Hunt. The report lists a tie: {Night.award_winner}. Questions correct: {Night.award_value} each. Please come forward together and share it.
+    else:
+      Clippy: Award. Most Questions Correct, the special prize of the Truth Scavenger Hunt. The report lists {Night.award_winner}. Questions correct: {Night.award_value}. Please come forward.
+  else if Night.award_lines != "director" and Night.award_winner == "Nobody":
+    Trabolta: The special prize of my Truth Scavenger Hunt, for the most questions correct. Nobody. Not one of you found me one true answer. The prize stays with me.
+  else if Night.award_lines != "director" and Night.prize_tied > 1:
+    Trabolta: The special prize of my Truth Scavenger Hunt, for the most questions correct: {Night.award_value} each. A tie. {Night.award_winner}. Come up together and share it.
+  else if Night.award_lines != "director":
+    Trabolta: The special prize of my Truth Scavenger Hunt, for the most questions correct: {Night.award_value}. {Night.award_winner}. You brought me the truth. Come and take your prize.
 else if Night.award == "the_painting":
   cue screens_award_the_painting
   set Night.screen = "award_the_painting"

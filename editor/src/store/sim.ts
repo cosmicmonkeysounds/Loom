@@ -85,7 +85,7 @@ function empty(): Pick<
   SimState,
   | 'phase' | 'run' | 'connected' | 'roster' | 'factions' | 'locations' | 'cast' | 'channels' | 'spaces'
   | 'beats' | 'events' | 'interactions' | 'cues' | 'codex' | 'quests' | 'facts' | 'wallet' | 'storyClock' | 'race' | 'ledgerLen' | 'messages' | 'world' | 'personas' | 'log'
-  | 'watch' | 'watchDeclared' | 'countdowns'
+  | 'watch' | 'watchDeclared' | 'countdowns' | 'prompter'
   | 'choices' | 'selection' | 'perspective' | 'lens' | 'error' | 'entryBeat'
 > {
   return {
@@ -115,6 +115,7 @@ function empty(): Pick<
     watch: [],
     watchDeclared: false,
     countdowns: [],
+    prompter: null,
     ledgerLen: 0,
     messages: [],
     world: [],
@@ -517,6 +518,7 @@ export const useSim = create<SimState>((set, get) => {
     reveal: async (faction) => void run((s) => void s.reveal(faction)),
     // One director in the browser: nobody to claim the show from.
     claimCaller: async () => false,
+    prompterRelease: () => {},
     choose: async (person, index) => void run((s) => void s.choose(person, index)),
 
     addPersona: async (name) => {
@@ -553,6 +555,10 @@ export const useSim = create<SimState>((set, get) => {
       }
       run((s) => void s.setVar(`${id}.gone`, gone ? 'true' : 'false'))
       return true
+    },
+    releaseGuest: async () => {
+      set({ error: 'Phones sign in to an event server — there is nothing to release in an in-browser run.' })
+      return null
     },
     releasePart: async () => {
       set({ error: 'Performer booths sign in to an event server — there is nothing to release in an in-browser run.' })

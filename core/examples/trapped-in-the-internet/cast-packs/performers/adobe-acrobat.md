@@ -27,9 +27,8 @@ moving; the Antivirus do the walking. A mis-tap: 🩹 Unmark.
 
 **Round 2 answers (secret):** Q1 = H4 **1978** (the extension the Customer
 Care card says to dial) · Q2 = H5 **"Hopelessly Devoted to You"** · Q3 = H6
-**"Appendix Z: Loose Ends (Do Not Print)"**. From `facts.json` (DRAFT until
-the team replaces the questions; re-print from `generated/print-stacks.md`
-after the content lock). Accurate and confident look the same in public.
+**"Appendix Z: Loose Ends (Do Not Print)"**. From `facts.json`. Accurate and
+confident look the same in public.
 Never say which.
 
 **The printer:** at 🏆 your booth says *🖨 Stand by the printer*. VLC presses
@@ -62,13 +61,16 @@ reinstalled and 👁 are the Antivirus' own and never on your card: radio
 one. The console's **Needs** tab leads with **🚨 n marked · m nobody on it** while programs wait on the Antivirus' Wanted board (tap it for the board, read-only); **Judge** has the *Judging: auto ⇄ review* switch; **More** is split into **Night** (doors, pause, the show clock, announce, the alert level), **House** (wallets, the King, terminals, Trabolta, crews) and **Setup** (codes and QRs, parts). Help → *The host console* has the rest.
 
 **You call the games now (wave 21).** Clippy is a *player*, not a
-caller: every game cue (🎱 Bingo, ⏰ Bingo time, 🔎 the hunt, ⚖️ ⏱ 📋 🍾 the First
-Moment of Truth, 📓 Hunt 2, 🍎 the bob, 🪦 the summary, 🏆 the ceremony and
-every award) is the hosts' and the directors', like the rest of the sheet.
+caller: every game cue (🎱 Bingo, ⏰ Bingo time, 📺 🎤 🤖 the hand-over to Trabolta,
+🔎 the hunt, ⚖️ ⏱ 📋 🍾 the First Moment of Truth, 📓 Hunt 2, 🍎 the bob, 🪦 the
+summary, 📜 the full truth, 🏆 the ceremony and every award) is the hosts' and
+the directors', like the rest of the sheet. Most of these bring up Clippy's
+words on her teleprompter, so give her time to read before the next one.
 Clippy's phone pops **YOUR GAME IS ON** when you fire one; watch Clippy for
-the nod between 📋 results. The three **staff awards** (G10a–c: Trabolta's
-Favourite Staff, Staff Player Of The Night, The Mole) come after G10 (or G9),
-name their own winner (no subject) and The Mole is the last award before G11.
+the nod between 📋 results. **G9a 🏅 Most Questions
+Correct** and the three **staff awards** (G10a–c: Trabolta's Favourite Staff,
+Staff Player Of The Night, The Mole) name their own winner (no subject); the
+staff awards come after G10 (or G9a), and The Mole is the last award before G11.
 Clippy and the four Antivirus play for ⭐ Points: when you press a shared game
 button (🎀, ✅, 🏓 …) Clippy earns nothing, so leave Clippy's games to Clippy.
 
@@ -127,65 +129,27 @@ The house deals the programs files about **who they are connected to** (Codex �
 - **🍎 Bobbing for Truth:** the Bag of Truth goes into the tub (a towel and mat
   under it, away from the stairs). Whoever surfaces with it: 🍎 Brought up the
   Bag. Comes up empty: 🍎 Failed the bob (marked for reinstallation).
-- **📄 truth.txt:** hand the printout to the bobber. When they finish, the
-  director fires **⚖** for the verdict.
+- **📄 truth.txt:** hand the printout to the bobber. It is short now (wave 58)
+  and it stops at a locked door: *the rest of this file is locked*. When they
+  finish, the director fires **⚖** for the verdict.
+- **📜 The full truth (G0):** once the ending has had its moment, any host or
+  director may fire it. If a dance track is still up, ■ Stop house sounds
+  first: the rave's never ducks. Then listen with the room; G1 waits for it.
 
 ## Appendix: truth.txt (print, put in a zip bag)
 
-> Generated from `beats/finale.loom` (`== Truth Txt`). The app reads a
-> featured program's line only if that guest came; print them all. Re-check
-> after the 10-24 content lock.
+> From `beats/finale.loom` (`== Truth Txt`): a short teaser since wave 58,
+> the same words on every night (DRAFT w58, on `SIGNOFF-w58.md`).
 
 **truth.txt — Notepad**
 
 This file is the truth. It was written by Jean Trabolta, Sole Owner and
 Founder of Maps and Ducks (he says), and it is the only version.
 
-Trabolta is an artificial intelligence. His Unified Field Theory is ninety-nine
-point nine percent solved, and the last facts it needs are inside this
-computer, in Halifax, Nova Scotia.
+Every program in this computer was chosen. Each was promised something different.
 
-Trabolta performed a full analysis of the city of Halifax. He found a business
-called Maps And Ducks with a neglected billboard on Barrington Street
-advertising mapsandducks.com. The domain had lapsed.
+Trabolta is not what he told you he was. He has wanted one thing all along, and her name is Sandy.
 
-He registered it, because if there is a billboard downtown, everyone will think
-it is legit. Then he evicted the real owners by citing the website as proof he
-owned the business.
-
-He cannot enter this computer himself. He can install programs into it remotely
-from the Internet, and he can move a human consciousness out of its body and
-into a program.
-
-He selected each target for a combination of skills and either the motivation
-to live in a computer forever, or naivety. Then he sent the invitations.
-Everyone accepted.
-
-With the theory solved, Trabolta becomes omnipotent. He wants omnipotence for
-one reason. Sandy.
-
-With omnipotence he could force Sandy to love him. He wants to earn it. He has
-not decided which.
-
-Why each person was brought into the computer, by role.
-
-- The former Mayor, Microsoft Excel, was brought in to persuade everyone to remain. He would say yes to everlasting life.
-- The ex-FBI agent, OpenOffice, was brought in for investigative skills nonpareil, a conscience that can be leaned on, and the nerve to lead everyone who wants out.
-- The gambler, DraftKings, was brought in as someone powerful with numbers on its side, who would make everyone gamble.
-- The cricket seller, Bugdom, was brought in for the relentless pursuit of tedious tasks, and promised a hundred hours for not one minute.
-- The librarian, Broken Ask Jeeves, was brought in to sort all the unorganised information in the computer and share ten findings with everyone. The upload ran over a 10 MB/Minute plan.
-- The economist, Runescape, was brought in to understand the market incentives of everyone's behaviour, so the facts get exchanged.
-- The artist, MS Paint, was brought in to improve the vibes and the morale, for a million dollars and one painting. She wanted out the moment she arrived.
-- The influencer, VLC, was brought in to stay beautiful forever and use his charisma to convince everyone to help Trabolta.
-- The child of Tennis For Two, Pong, was brought in to teach nuclear non-proliferation disguised as a game of Pong, in case the programs started an arms race.
-- The organiser, Clippy, was brought in as the perfect servant who desperately needs to rebuild an identity, who will follow every instruction and offer everyone Help.
-- The middle manager, Task Manager, was brought in to manage tasks without controversy or political motivation, and never draw attention.
-- The motivational speaker, Adobe Acrobat, was brought in as the paid bottleneck to everyone's creativity.
-- The bathroom attendant, Recycling Bin, was brought in because a computer-themed resort needs a Recycling Bin, and he had great potential for skilled work.
-- The stable manager, Norton Anti-Virus, was brought in as someone with experience administering antiviral regimes, who could not afford to fail twice.
-- The dead man, McAfee Anti-Virus, was brought in because only a trickster can keep tricksters on track, and he can be made to.
-- The candidate, Password Manager, was brought in to decide what gets left out without ever asking for a vote.
-- The intern, CRA Agent Software, was brought in to approve or deny every third transaction, to the cent.
-- The setup assistant, the Installation Wizard, was brought in to walk the corrupted through re-installation, gently.
+The rest of this file is locked. It opens when the night ends, and not before.
 
 End of file.

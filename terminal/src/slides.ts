@@ -557,12 +557,13 @@ export interface SlideCopy {
   /** A slide that is just a dark screen. */
   dark?: boolean;
   /** Its copy names "Jean Trabolta" only in the third person, as the owner
-   *  who joins by video conference later (wave 18b, D19; only `OWNER_LINES`). */
+   *  who joins by digital conference later (wave 18b, D19; only `OWNER_LINES`). */
   owner?: boolean;
 }
 
 /** The owner's line on the bingo slide (D19: third person, before the introduction). */
-export const OWNER_LINE = "Jean Trabolta joins by video conference later tonight.";
+// DRAFT w58 (digital conference)
+export const OWNER_LINE = "Jean Trabolta joins by digital conference later tonight.";
 /** The only lines that may name him on a slide that can show before the introduction. */
 export const OWNER_LINES: readonly string[] = [OWNER_LINE];
 
@@ -584,9 +585,9 @@ export const SLIDE_COPY: Readonly<Record<string, SlideCopy>> = {
   trivia_1: {
     title: "TRABOLTA TRIVIA · ROUND 1",
     lines: [
-      "Q1. How many years did the Maps and Ducks billboard on Barrington Street go unpaid before mapsandducks.com expired?",
-      "Q2. What was the name of the first animal buried in the Halifax Explosion Memorial Pet Cemetery?",
-      "Q3. At what time was the ribbon-cutting at Halifax's first AI Data Centre scheduled?",
+      "Q1. According to Funk and Wagnalls, what is an example of fraud?",
+      "Q2. According to Forensics For Dummies, finish this sentence: “___ ___ ___ ___ ___ previously hypnotized witnesses.”",
+      "Q3. According to Macs for Dummies, finish this sentence: “A similar online _, called pharming, also involves the use of __ ___ __.”",
     ],
   },
   trivia_2: {
@@ -594,7 +595,7 @@ export const SLIDE_COPY: Readonly<Record<string, SlideCopy>> = {
     lines: [
       "Q1. What extension does the Customer Care card tell you to dial?",
       "Q2. Which song did Trabolta play 412 times the night before he registered mapsandducks.com?",
-      "Q3. What is the title of the last chapter of Trabolta's unfinished Unified Field Theory?",
+      "Q3. What is the title of the last chapter of Trabolta's unfinished Grand Unified Theory?",
     ],
   },
   return: { title: "RETURN TO THE DESKTOP", lines: ["Time is up."] },
@@ -604,7 +605,7 @@ export const SLIDE_COPY: Readonly<Record<string, SlideCopy>> = {
   ad_hijack: { title: "000. 000. 000.", lines: ["A special offer for you."] },
   truther: { title: "TRUTHER DOWNLOAD", lines: ["Downloading… do not turn off your computer."] },
   five_minutes: { title: "SECOND MOMENT OF TRUTH", lines: ["Five minutes. Return to the Desktop."] },
-  truth_pong: { title: "TRUTH PONG", lines: ["To the backyard."] },
+  truth_pong: { title: "TRUTH PONG", lines: ["To the Cloud."] }, // DRAFT w59
   trust_chart: { title: "THE TRUST CHART", lines: ["Who can be trusted?"] },
   print_certificate: { title: "Printing certificate.pdf …", lines: ["0% complete"] },
   beans: { title: "Printer error", lines: ["The printer is full of beans."] },
@@ -616,7 +617,8 @@ export const SLIDE_COPY: Readonly<Record<string, SlideCopy>> = {
   bobbing: { title: "BOBBING FOR TRUTH" },
   truth_txt: { title: "truth.txt — Notepad" },
   song: { title: "♪ You're the one that I want ♪" },
-  grok_prom: { title: "COMPUTER PROM 1999", lines: ["GROK + SANDY"] },
+  // DRAFT w58 (the year: prom is Halloween 2026, ENDING:35)
+  grok_prom: { title: "COMPUTER PROM 2026", lines: ["GROK + SANDY"] },
   advice: { title: "TRABOLTA.EXE", lines: ["Please. I need your advice."] },
   banish: { title: "EVERYONE TO THE INTERNET" },
   rave: { title: "♪ ♪ ♪" },

@@ -24,15 +24,12 @@ import { boothMissionOf } from "../src/booth/mission-model.ts";
 import { closeTo } from "../src/booth/model.ts";
 import { boothBackStep } from "../src/booth/app.tsx";
 import {
-  FILTER_BANDS,
   FILTER_COOL_MS,
   FILTER_COPY,
   FILTER_GAME_COPY,
   FILTER_LEVEL_COPY,
   FILTER_MULTS,
   UNSAID_WORD,
-  bandAt,
-  bandsAt,
   burstLine,
   burstQuip,
   censorDone,
@@ -54,12 +51,11 @@ import {
   payOf,
   restedInMs,
   snapLevel,
-  stepBand,
   tierRanges,
 } from "../src/booth/filter/model.ts";
 import { useFilter, type FilterApi, type FilterGame, type FilterSource } from "../src/booth/filter/use-filter.ts";
 import { FILTER_BURST_MS, FilterBurst, FilterMeter, FilterPay, filterGameNodes, useGameClock } from "../src/booth/filter/game.tsx";
-import { FilterLegend, FilterStrengthWindow } from "../src/booth/filter/strength.tsx";
+import { FilterStrengthWindow } from "../src/booth/filter/strength.tsx";
 import { FilterRow, FilterWindow, MarkedLine } from "../src/booth/filter/window.tsx";
 import type { CensorResult, FilterCombo, FilterLevelResult, FilterLine, FilterView, PrimeView } from "../src/types.ts";
 
@@ -98,37 +94,6 @@ describe("the bands and the dial (C7)", () => {
     expect(levelOf(null)).toBe(100);
   });
 
-  it("between two tiers a strength catches what the lower one does (40% = 25%)", () => {
-    expect(FILTER_BANDS.map((b) => b.tier)).toEqual([0, 10, 25, 50, 60, 75, 90, 100]);
-    expect(bandAt(40).tier).toBe(25);
-    expect(bandAt(0).catches).toBe("Slurs only");
-    expect(bandAt(5).tier).toBe(0);
-    expect(bandAt(100).key).toBe("paranoid");
-    expect(bandsAt(55).filter((b) => b.on).map((b) => b.band.tier)).toEqual([0, 10, 25, 50]);
-  });
-
-  it("the band copy, DRAFT w48b: 0 never lists a slur, each tier adds its words", () => {
-    expect(FILTER_BANDS.map((b) => b.catches)).toEqual([
-      "Slurs only",
-      "+ fuck, cunt",
-      "+ shit, asshole, bitch…",
-      "+ crap, balls, butt, ass…",
-      "+ hell, heck, darn, fart…",
-      "+ swears hiding inside words (Scunthorpe)",
-      "+ mild ones inside words (password, button)",
-      "+ everything (hello, check, Password Manager)",
-    ]);
-    expect(FILTER_BANDS.map((b) => b.points)).toEqual([12, 8, 5, 3, 2, 2, 1, 1]);
-  });
-
-  it("◀ Less / More ▶ jump a band and stay at the ends", () => {
-    expect(stepBand(100, -1)).toBe(90);
-    expect(stepBand(40, -1)).toBe(25);
-    expect(stepBand(40, 1)).toBe(50);
-    expect(stepBand(0, -1)).toBe(0);
-    expect(stepBand(100, 1)).toBe(100);
-  });
-
   it("a refused strength reads in plain words", () => {
     expect(levelRefusal(new ApiError("doors are closed", 409))).toBe("Not changed: the doors are closed.");
     expect(levelRefusal(new ApiError("not the censor", 403))).toBe("Not changed: this part isn't the censor tonight.");
@@ -136,7 +101,6 @@ describe("the bands and the dial (C7)", () => {
     expect(levelRefusal(Object.assign(new Error("slow"), { name: "RequestTimeout" }))).toBe("No answer.");
     expect(levelRefusal(new TypeError("Failed to fetch"))).toBe("No connection.");
     expect(levelRefusal(new ApiError("Not Found", 404))).toBe("Not changed: Not Found.");
-    expect(FILTER_LEVEL_COPY.stays("No connection.", 100)).toBe("No connection. Still 100%.");
   });
 });
 
@@ -581,31 +545,16 @@ describe("the list window, played", () => {
 describe("the strength window", () => {
   const strength = (over: Partial<FilterApi> = {}) => ({ level: 100, saving: false, levelError: null, setLevel: noop, ...over }) as FilterApi;
 
-  it("the big %, what it catches, the slider (step 5), ◀ ▶ at the ends, the legend in the bands' colours", () => {
+  it("only a slider (step 5): not a word beyond the title (the user's note, wave 59)", () => {
     const html = renderToStaticMarkup(<FilterStrengthWindow api={strength({ level: 40 })} onClose={noop} />);
-    expect(html).toContain("Filter strength");
-    expect(html).toContain(">40%<");
-    expect(html).toContain('<p class="filter-level-now filter-tier-25">+ shit, asshole, bitch…</p>');
     expect(html).toMatch(/<input type="range" class="filter-level-range" min="0" max="100" step="5" [^>]*value="40"/u);
-    expect(html).toContain('aria-valuetext="40%: + shit, asshole, bitch…"');
-    expect(html).toContain(FILTER_LEVEL_COPY.foot);
-    const zero = renderToStaticMarkup(<FilterStrengthWindow api={strength({ level: 0 })} onClose={noop} />);
-    expect(zero).toContain("Slurs only");
-    expect(zero).toMatch(/<button type="button" class="w95-btn filter-level-step" disabled="">◀ Less/u);
-    expect(renderToStaticMarkup(<FilterStrengthWindow api={strength({ level: 100 })} onClose={noop} />)).toMatch(/disabled="">More ▶/u);
+    expect(html).toContain('aria-valuetext="40%"');
+    const words = html.replace(/<[^>]*>/gu, " ").replace(/\s+/gu, " ").trim();
+    expect(words).toBe("🔑 Filter strength ×");
+    expect(html).not.toMatch(/filter-level-(big|now|step|catches)|filter-legend|booth-layer-foot/u);
   });
 
-  it("the legend: every band, on up to this strength, with its ⭐ a word; the slur row names none", () => {
-    const html = renderToStaticMarkup(<FilterLegend level={55} />);
-    expect(html.match(/filter-legend-row on/gu)?.length).toBe(4);
-    expect(html.match(/· off/gu)?.length).toBe(4);
-    expect(html).toContain('<span class="filter-swatch filter-tier-0" aria-hidden="true">[slur]</span>');
-    expect(html).toContain("Slurs (never shown)");
-    expect(html).toContain("12 ⭐");
-    for (const b of FILTER_BANDS) expect(html).toContain(`filter-tier-${b.tier}`);
-  });
-
-  it("posts on release, not on every move; ◀ ▶ post a band at once", () => {
+  it("posts on release, not on every move", () => {
     const set: number[] = [];
     const h = mountHooks(FilterStrengthWindow, { api: strength({ setLevel: (n) => void set.push(n) }), onClose: noop });
     const range = () => elements(h.output).find((e) => e.type === "input") as ReactElement<{ value: number; onChange: (e: unknown) => void; onPointerUp: () => void; onTouchEnd: () => void; onBlur: () => void }>;
@@ -620,18 +569,13 @@ describe("the strength window", () => {
       range().props.onBlur();
     });
     expect(set).toEqual([60]);
-    const steps = () => elements(h.output).filter((e) => e.type === "button") as Array<ReactElement<{ onClick: () => void }>>;
-    h.act(() => steps()[0]!.props.onClick());
-    expect(set).toEqual([60, 90]);
-    h.act(() => steps()[1]!.props.onClick());
-    expect(set).toEqual([60, 90, 100]);
   });
 
-  it("the status line: Saving…, or the refusal and where the dial stays", () => {
-    expect(renderToStaticMarkup(<FilterStrengthWindow api={strength({ saving: true })} onClose={noop} />)).toContain("Saving…");
+  it("a refusal shows as a red track; the reason is for a screen reader only", () => {
+    expect(renderToStaticMarkup(<FilterStrengthWindow api={strength()} onClose={noop} />)).not.toContain("refused");
     const html = renderToStaticMarkup(<FilterStrengthWindow api={strength({ levelError: "Not changed: the doors are closed." })} onClose={noop} />);
-    expect(html).toContain("Not changed: the doors are closed. Still 100%.");
-    expect(html).toContain("filter-level-refused");
+    expect(html).toContain('class="filter-level-range refused"');
+    expect(html).toContain('<div class="moments-visually-hidden" role="status">Not changed: the doors are closed.</div>');
   });
 });
 
@@ -639,21 +583,19 @@ describe("the palette and the copy", () => {
   const css = readBundledCss();
 
   it("one token and one class per band; the burst calms down under reduced motion", () => {
-    for (const b of FILTER_BANDS) {
-      expect(css, `--filter-tier-${b.tier}`).toMatch(new RegExp(`--filter-tier-${b.tier}: #[0-9a-f]{6};`, "u"));
-      expect(css).toContain(`.filter-tier-${b.tier} { background: var(--filter-tier-${b.tier});`);
+    for (const tier of [0, 10, 25, 50, 60, 75, 90, 100]) {
+      expect(css, `--filter-tier-${tier}`).toMatch(new RegExp(`--filter-tier-${tier}: #[0-9a-f]{6};`, "u"));
+      expect(css).toContain(`.filter-tier-${tier} { background: var(--filter-tier-${tier});`);
     }
     expect(css).toMatch(/@media \(prefers-reduced-motion: reduce\) \{\s*\.filter-burst \{ animation: filter-burst-fade/u);
     expect(css).toContain(".filter-level-range { display: block; width: 100%; height: var(--tap);");
-    expect(css).toContain(".filter-level-step { min-height: var(--tap);");
   });
 
   it("the new copy is marked DRAFT w48b where it lives", () => {
-    for (const f of ["model.ts", "game.tsx", "strength.tsx", "window.tsx"]) expect(readFileSync(new URL(`../src/booth/filter/${f}`, import.meta.url), "utf8"), f).toContain("DRAFT w48b");
+    for (const f of ["model.ts", "game.tsx", "window.tsx"]) expect(readFileSync(new URL(`../src/booth/filter/${f}`, import.meta.url), "utf8"), f).toContain("DRAFT w48b");
   });
 
   it("never a slur in the filter's code: the slur band is [slur] everywhere", () => {
     expect(UNSAID_WORD).toBe("[slur]");
-    expect(FILTER_BANDS[0]!.catches).toBe("Slurs only");
   });
 });

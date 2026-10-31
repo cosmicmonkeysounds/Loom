@@ -13,8 +13,8 @@
 //! last value always goes. The music commands are one-shot posts.
 
 import { create } from 'zustand'
-import { MIX_CHANGES_MAX, type AudioMix, type MixChange, type MixerView, type MixLevel, type MusicCommand } from '@loom/core/house-mixer'
-import { ApiError, audioApi } from '@/lib/api'
+import { DJ_LOCK_CUE, DJ_UNLOCK_CUE, MIX_CHANGES_MAX, type AudioMix, type MixChange, type MixerView, type MixLevel, type MusicCommand } from '@loom/core/house-mixer'
+import { ApiError, audioApi, modApi } from '@/lib/api'
 import { confirmAction } from '@/store/dialog'
 import { reconnectDelay } from '@/lib/stream-retry'
 import { levelChange, releasePending, shownLevels, type PendingMix } from '@/lib/house-mixer-view'
@@ -30,6 +30,8 @@ export interface MixerApiLike {
   get(eventId: string): Promise<MixerView>
   mix(eventId: string, changes: MixChange[], resetAll?: boolean): Promise<{ mix: AudioMix }>
   music(eventId: string, cmd: MusicCommand): Promise<{ seq: number; router: boolean }>
+  /** Fire one of the story's cues (Trabolta's lock, wave 58). */
+  signal(eventId: string, name: string): Promise<unknown>
 }
 
 export interface MixerDeps {
@@ -72,6 +74,8 @@ export interface HouseMixerState {
   /** The toolbar's Reset all (asks first). */
   resetAll: () => Promise<void>
   music: (cmd: MusicCommand, label?: string) => Promise<void>
+  /** Keep Trabolta off the music, or let him back (wave 58). */
+  lockDj: (locked: boolean) => Promise<void>
   tell: (text: string, tone?: MixerNoteTone) => void
 }
 
@@ -93,6 +97,16 @@ function musicText(cmd: MusicCommand): string {
       return '■ Music stopped'
     case 'story':
       return '🎵 Following the story again'
+    case 'previous':
+      return '⏮ Back a track'
+    case 'pause':
+      return '⏸ TIDAL paused'
+    case 'resume':
+      return '▶ TIDAL playing'
+    case 'playlist':
+      return `🎵 Playing ${cmd.playlist} by hand`
+    case 'tidal':
+      return `🎵 Playing ${cmd.title ?? 'that playlist'} by hand`
   }
 }
 
@@ -328,6 +342,21 @@ export function createHouseMixerStore(deps: MixerDeps) {
         }
       },
 
+      lockDj: async (locked) => {
+        const eventId = get().eventId
+        if (eventId === null || get().busy !== null) return
+        set({ busy: 'dj' })
+        try {
+          await api.signal(eventId, locked ? DJ_LOCK_CUE : DJ_UNLOCK_CUE)
+          tell(locked ? '🔒 Trabolta is off the music.' : '🔓 Trabolta can reach the music again.')
+          void get().refresh()
+        } catch (e) {
+          failed(e, 'reach the story')
+        } finally {
+          set({ busy: null })
+        }
+      },
+
       tell,
     }
   })
@@ -337,6 +366,7 @@ const realApi: MixerApiLike = {
   get: (id) => audioApi.getMixer(id),
   mix: (id, changes, resetAll) => audioApi.postMix(id, changes, resetAll),
   music: (id, cmd) => audioApi.postMusic(id, cmd),
+  signal: (id, name) => modApi.fireSignal(id, name),
 }
 
 export const useHouseMixer = createHouseMixerStore({

@@ -115,7 +115,8 @@ function TvStage({ bg = "#000", className, children, style }: { bg?: string; cla
 
 // --- B1 · call_desktop -------------------------------------------------------------------------
 
-const SWEEP: readonly string[] = ["An Antivirus is sweeping the halls.", "Programs found in the halls will be escorted.", "Proceed to the living room.", "Walk. You are a program, not a process.", "The Desktop is the living room."];
+// DRAFT w59 (the story's names, never the house's)
+const SWEEP: readonly string[] = ["An Antivirus is sweeping the Tube.", "Programs found in the Tube will be escorted.", "Proceed to the Desktop.", "Walk. You are a program, not a process.", "The Desktop is the room with the big screen."];
 
 /**
  *   0–700     the interrupt: black, a tear of static, the beacon starts turning
@@ -151,8 +152,9 @@ function CallDesktopTv({ t, sfx, reduced }: SceneProps) {
         </div>
       </Win98Window>
       {pop > 0 && <Win98Dialog title="Antivirus" kind="info" message={SWEEP[k % SWEEP.length]!} x={px} y={py} width="20em" open={pop} reduced={reduced} className="a1-cd-pop" />}
+      {/* DRAFT w59 */}
       <Marquee t={reduced ? 0 : t} speed={150} className="a1-ticker" style={{ opacity: progress(t, 2000, 600) }}>
-        ★ ALL PROGRAMS: REPORT TO THE DESKTOP ★ A GAME IS ABOUT TO BEGIN ★ THE DESKTOP IS THE LIVING ROOM ★
+        ★ ALL PROGRAMS: REPORT TO THE DESKTOP ★ A GAME IS ABOUT TO BEGIN ★ THE ROOM WITH THE BIG SCREEN ★
       </Marquee>
       {t < 900 && !reduced && <Noise t={t} alpha={0.5 * (1 - progress(t, 300, 600))} reduced={reduced} />}
     </TvStage>
@@ -171,7 +173,7 @@ function CallDesktopWall({ t, sfx, reduced }: SceneProps) {
       title={copy("call_desktop").title}
       lines={linesOf("call_desktop")}
       bg="radial-gradient(ellipse at 50% 55%, #0a6c70 0, #01262a 75%)"
-      footer="★ ALL PROGRAMS: REPORT TO THE DESKTOP ★ THE DESKTOP IS THE LIVING ROOM ★"
+      footer="★ ALL PROGRAMS: REPORT TO THE DESKTOP ★ THE ROOM WITH THE BIG SCREEN ★"
       art={
         <>
           <Chevrons t={t} reduced={reduced} rows={4} />
@@ -323,8 +325,9 @@ function BingoTv({ t, at, state, sfx, reduced }: SceneProps) {
           <Countdown ms={left} warn={300_000} label="TIME LEFT" reduced={reduced} />
         </div>
       )}
+      {/* DRAFT w58 (the name in the square, the marked lines) */}
       <Marquee t={reduced ? 0 : t} speed={120} className="a1-ticker gold a1-bingo-ticker" style={{ opacity: progress(t, B.card, 600) }}>
-        ★ MINGLE ★ FIND A PROGRAM FOR EVERY SQUARE ★ CHECK THE BOX YOURSELF ★ ONE LINE THROUGH THE CENTRE IS A BINGO ★
+        ★ MINGLE ★ FIND A PROGRAM FOR EVERY SQUARE ★ WRITE THEIR NAME IN THE SQUARE ★ A ROW, A COLUMN OR A DIAGONAL THROUGH THE CENTRE IS A BINGO ★
       </Marquee>
     </TvStage>
   );
@@ -488,7 +491,7 @@ export function carryAt(t: number): { x: number; y: number; k: number } {
  *               desktop breaks up, pixels spitting off it
  *   3000–7500   it is carried along a dotted path to the Internet's globe;
  *               REINSTALLING… lurches along under it
- *   7500–11200  a yellow help balloon: "Oh! Okay! Everyone, this is normal!" and the
+ *   7500–11200  a yellow help balloon: "Nothing to worry about, everyone!" and the
  *               lifecycle line typed out; the globe glows, the path's ants keep marching
  *   11200–12000 it fades back to whatever was on
  */
@@ -550,9 +553,9 @@ function CorruptedTv({ t, sfx, reduced }: SceneProps) {
         {t >= CC.calm && (
           <div className="a1-help" style={{ opacity: eased(t, CC.calm, 300, ease.linear), transform: `translate(-50%, 0) translate3d(0, ${((1 - eased(t, CC.calm, 500, ease.outBack)) * 2).toFixed(2)}em, 0)` }}>
             <div className="a1-help-who">Clippy</div>
-            <Typewriter text="Oh! Okay! Everyone, this is normal!" t={t} start={CC.calm + 300} cps={30} caret={false} />
+            <Typewriter text="Nothing to worry about, everyone!" t={t} start={CC.calm + 300} cps={30} caret={false} />
             <div className="a1-help-small">
-              <Typewriter text="Occasional corruption is a normal part of the lifecycle of a computer program." t={t} start={CC.calm + 1700} cps={42} />
+              <Typewriter text="Occasional corruption is a normal part of a computer program's lifecycle." t={t} start={CC.calm + 1700} cps={42} />
             </div>
           </div>
         )}

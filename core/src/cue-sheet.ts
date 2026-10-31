@@ -1,27 +1,27 @@
-//! The director's cue sheet (K-21), as pure data — shared by the editor's
-//! Run → Director page and the play app's phone cue page (W-26).
-//!
-//! The story declares its `who: admin` INTERACTIONs in running order, each
-//! label opening with the source cue code (`C1/V1 · 📣 Call everyone to the
-//! Desktop`). This module turns those into rows a director's screen renders
-//! as buttons: the code split off, the last cue marked, the next one (the
-//! first declaration after the last that hasn't fired and is on tonight's
-//! branch — `while:` holds — or the last itself while it is a `repeat: true`
-//! cue, pressed once per question / per trip; an `urgent: true` cue that is
-//! live and unfired comes first) suggested, a free-text filter, and the story's `Night.phase` read off
-//! the world.
-//!
-//! On top of the rows (wave 10, display only — never NEXT / LAST): the
-//! story's **acts** (an admin cue's `act:` opens a section later admin cues
-//! join; `cueActs` groups the rows and names the focus act, the one holding
-//! NEXT, else LAST), the cue after NEXT (`onDeck`), a title's parenthetical
-//! tags, countdowns off the story clock, and the **arm model** both screens
-//! fire through: a first tap arms, a second one ≥ `ARM_DEAD_MS` and
-//! < `ARM_MS` later fires, and an arm is dropped once the cue state moves.
-//!
-//! Dependency-free on purpose: the play app imports this file by path (it
-//! has no `@loom/core` dependency), so the shapes below are structural —
-//! the server's `InteractionSummary` / `CueState` / world rows fit them.
+// The director's cue sheet (K-21), as pure data — shared by the editor's
+// Run → Director page and the play app's phone cue page (W-26).
+//
+// The story declares its `who: admin` INTERACTIONs in running order, each
+// label opening with the source cue code (`C1/V1 · 📣 Call everyone to the
+// Desktop`). This module turns those into rows a director's screen renders
+// as buttons: the code split off, the last cue marked, the next one (the
+// first declaration after the last that hasn't fired and is on tonight's
+// branch — `while:` holds — or the last itself while it is a `repeat: true`
+// cue, pressed once per question / per trip; an `urgent: true` cue that is
+// live and unfired comes first) suggested, a free-text filter, and the story's `Night.phase` read off
+// the world.
+//
+// On top of the rows (wave 10, display only — never NEXT / LAST): the
+// story's **acts** (an admin cue's `act:` opens a section later admin cues
+// join; `cueActs` groups the rows and names the focus act, the one holding
+// NEXT, else LAST), the cue after NEXT (`onDeck`), a title's parenthetical
+// tags, countdowns off the story clock, and the **arm model** both screens
+// fire through: a first tap arms, a second one ≥ `ARM_DEAD_MS` and
+// < `ARM_MS` later fires, and an arm is dropped once the cue state moves.
+//
+// Dependency-free on purpose: the play app imports this file by path (it
+// has no `@loom/core` dependency), so the shapes below are structural —
+// the server's `InteractionSummary` / `CueState` / world rows fit them.
 
 import type { ShowClock } from "./show-clock.ts";
 
@@ -154,8 +154,8 @@ export function cueRows(interactions: readonly CueInteraction[], cues: CueMarks)
     return act;
   });
   const lastIdx = cues.last === null ? -1 : admin.findIndex((i) => i.id === cues.last);
-  // An urgent cue (live, unfired, in sequence) jumps the running order: a
-  // stand-down waiting on the director's 🕊 is NEXT wherever LAST is.
+  // An urgent cue (live, unfired, in sequence) jumps the running order: it is
+  // NEXT wherever LAST is. The show has none since wave 58 took 🕊.
   const urgentIdx = admin.findIndex((i) => i.urgent === true && i.sequence !== false && i.live !== false && !fired.has(i.id));
   const nextIdx =
     urgentIdx >= 0

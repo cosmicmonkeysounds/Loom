@@ -8,21 +8,23 @@
 //! drawer's own tabs (`tab-*.tsx`), unchanged, on the same console
 //! (`HostConsole` in `dock.tsx`): an arm made here fires from the slim bar.
 //! Wave 32: while a talk scene is on, the 🤖 Talk card (`talk.tsx`) sits
-//! between NEXT and the status line. The rules are `show-model.ts`.
+//! between NEXT and the status line. Wave 59: while an ask waits, one line
+//! above NEXT jumps to *Needs you*. The rules are `show-model.ts`.
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { CLOCK_HELD, NOTHING_TO_PRESS, STORY_RUNS, countdownText } from "../director.tsx";
 import { clockText, showClockOf, useShowClock } from "../show-clock.ts";
 import { useHostConsole, type HostConsoleState } from "./dock.tsx";
 import { HostContext, HostEmpty } from "./kit.tsx";
-import { cueThen } from "./model.ts";
-import { comingUp, nightStrip, sectionHead, sectionOpen, showClockChip, showSections, type ShowSectionId, type ShowSectionInfo } from "./show-model.ts";
+import { cueThen, onlineCount } from "./model.ts";
+import { asksLine, comingUp, nightStrip, sectionHead, sectionOpen, showClockChip, showSections, type ShowSectionId, type ShowSectionInfo } from "./show-model.ts";
 import { CueSheet, LastBox, NextBox, WhoIsCalling } from "./tab-cues.tsx";
 import { JudgeTab } from "./tab-judge.tsx";
 import { MoreTab } from "./tab-more.tsx";
 import { NeedsTab } from "./tab-needs.tsx";
 import { PeopleTab } from "./tab-people.tsx";
 import { TalkCard } from "./talk.tsx";
+import { PrompterStrip } from "./prompter-strip.tsx";
 import { talkOpen } from "./talk-model.ts";
 
 export interface HostShowProps {
@@ -32,6 +34,8 @@ export interface HostShowProps {
   jobCount?: number;
   /** The booth's 🗂 Guests list (People's head). */
   openGuests?: () => void;
+  /** Wave 59: join the teleprompter's scene. */
+  openPrompter?: () => void;
 }
 
 /** The Show window; nothing outside a host console. */
@@ -53,11 +57,11 @@ export function HostShowWindow(p: HostShowProps) {
   );
 }
 
-function ShowBody({ c, jobs, jobCount = 0, openGuests }: HostShowProps & { c: HostConsoleState }) {
+function ShowBody({ c, jobs, jobCount = 0, openGuests, openPrompter }: HostShowProps & { c: HostConsoleState }) {
   const view = c.view!;
   const clock = useShowClock(showClockOf(view));
   const night = nightStrip(c.strip, showClockChip(clock === null ? null : clockText(clock.minutes), clock?.running ?? true));
-  const sections = showSections({ jobs: jobCount, needs: c.needs, judging: view.judging != null ? { pending: view.judging.pending.length } : null, people: view.people.length });
+  const sections = showSections({ jobs: jobCount, needs: c.needs, judging: view.judging != null ? { pending: view.judging.pending.length } : null, people: onlineCount(view.people, c.ctx?.now ?? 0) });
   const [folds, setFolds] = useState<Partial<Record<ShowSectionId, boolean>>>({});
   const root = useRef<HTMLDivElement>(null);
   // A jump (a need's row, the caller chip, a refused press) opens its
@@ -79,6 +83,7 @@ function ShowBody({ c, jobs, jobCount = 0, openGuests }: HostShowProps & { c: Ho
   const bar = c.bar!;
   const line2 = c.line2!;
   const coming = comingUp(c.rows, c.layout, view.countdowns, c.nowMs);
+  const asks = asksLine(view.rejoins?.length ?? 0);
   const body = (id: ShowSectionId): ReactNode => {
     switch (id) {
       case "jobs":
@@ -118,6 +123,11 @@ function ShowBody({ c, jobs, jobCount = 0, openGuests }: HostShowProps & { c: Ho
           ))}
         </div>
         {c.ctx?.callers === true && <WhoIsCalling />}
+        {asks !== null && (
+          <button type="button" className="w95-btn host-show-asks" data-testid="host-show-asks" onClick={() => c.ctx?.go("needs")}>
+            {asks}
+          </button>
+        )}
         {bar.kind === "next" ? (
           <NextBox big row={bar.row} desk={c.desk} stale={c.stale} again={bar.again} then={cueThen(c.rows, view.cues)} />
         ) : (
@@ -128,6 +138,7 @@ function ShowBody({ c, jobs, jobCount = 0, openGuests }: HostShowProps & { c: Ho
             </p>
           </fieldset>
         )}
+        {view.prompter != null && <PrompterStrip status={view.prompter} calls={c.ctx?.calls ?? null} {...(openPrompter !== undefined ? { onJoin: openPrompter } : {})} />}
         {view.talk != null && <TalkCard c={c} talk={view.talk} open={talkOpen(c.ctx?.session.auth?.character, folds.talk)} onToggle={() => setFolds((f) => ({ ...f, talk: !talkOpen(c.ctx?.session.auth?.character, f.talk) }))} />}
         <p className={`host-show-status${line2.kind !== "strip" ? ` ${line2.kind}` : ""}`} role="status" aria-live="polite" data-testid="host-show-status">
           {line2.kind !== "strip" ? line2.text : ""}

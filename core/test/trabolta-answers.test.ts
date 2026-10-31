@@ -59,12 +59,18 @@ import { mentionsKey, nearTokens } from "../src/answer-match.ts";
 import { Sim } from "../src/runtime/sim/index.ts";
 import { foldCode } from "../src/runtime/sim/model.ts";
 import { TO_HUNT2 } from "../../scripts/accept/chains.ts";
+import { withTestKeys } from "./fixtures/hunt-keys.ts";
 
 const SHOW = "trapped-in-the-internet";
 const DIR = scenarioDir(SHOW);
 const SRC = scenarioSource(SHOW);
 const FACTS_TEXT = readFileSync(join(DIR, FACTS_FILE), "utf8");
 const FACTS = parseFactsText(FACTS_TEXT).facts!;
+/** What the runtime judges by here: H1–H3 on made-up keys, so the night's
+ *  filings land whether the show's keys are in or still owed. The scanner
+ *  looks for both. */
+const RUN_TEXT = withTestKeys(FACTS_TEXT);
+const RUN_FACTS = parseFactsText(RUN_TEXT).facts!;
 const CODES = { event: "EVT777", prime: "PRM777", mod: "MOD777" };
 const SLOW = 300_000;
 const tmp: string[] = [];
@@ -79,7 +85,10 @@ interface Key {
   forms: string[];
   topics: string[];
 }
-const HUNT_KEYS: Key[] = FACTS.questions.map((q) => ({ id: q.id, forms: [q.answer, ...q.accept], topics: q.topics ?? [] }));
+const HUNT_KEYS: Key[] = FACTS.questions.map((q, i) => {
+  const run = RUN_FACTS.questions[i]!;
+  return { id: q.id, forms: [...new Set([q.answer, ...q.accept, run.answer, ...run.accept])], topics: q.topics ?? [] };
+});
 /** The pickup line (P1): never read out, checked even after the verdict. */
 const LINE_KEYS: Key[] = FACTS.answers.map((a) => ({ id: a.id, forms: [a.answer, ...a.accept], topics: [] as string[] }));
 const KEYS: Key[] = [...HUNT_KEYS, ...LINE_KEYS];
@@ -228,7 +237,7 @@ interface Guest {
 async function night() {
   const dir = mkdtempSync(join(tmpdir(), "loom-answers-"));
   tmp.push(dir);
-  const rt = new EventRuntime({ eventId: "evt", store: new Store(dir), codes: CODES, scenarioName: SHOW, scenarioSource: SRC, facts: FACTS_TEXT, joinBase: () => "http://localhost" });
+  const rt = new EventRuntime({ eventId: "evt", store: new Store(dir), codes: CODES, scenarioName: SHOW, scenarioSource: SRC, facts: RUN_TEXT, joinBase: () => "http://localhost" });
   rt.openDoors();
   const mod = async (name: string, extra: Record<string, unknown> = {}) => {
     const r = await call(rt, "POST", "/api/mod/signal", { name, ...extra }, { moderator: true });
@@ -290,7 +299,7 @@ describe("the leak scanner (mentionsKey under the judge's rules)", () => {
     expect(answersIn("A ticket for Mr. Pickels")).toEqual(expect.arrayContaining(["H2: Mister Pickles"]));
     expect(answersIn("Grease, the film from nineteen seventy-eight")).toContain("H4: 1978");
     expect(answersIn("Sandy did not understand me again today.")).toContain("F1: did not understand");
-    expect(answersIn("The billboard went eleven years unpaid")).toEqual(expect.arrayContaining(["H1: Eleven years", "H1: eleven"]));
+    expect(answersIn("Funk and Wagnalls says eleven years")).toEqual(expect.arrayContaining(["H1: Eleven years", "H1: eleven"]));
     expect(answersIn("The system clock reads 11 p.m., 31 December 1999.")).toEqual([]);
     expect(answersIn("JEEVES.IDX — fragment 11")).toEqual([]);
     expect(answersIn("Groan. Grog. Gronk.")).toEqual([]);
@@ -323,7 +332,7 @@ describe("Trabolta never knows what he is asking for", () => {
       return reqs[0]!;
     };
 
-    for (const n of TO_HUNT2.slice(0, 4)) await mod(n); // → introduce_trabolta
+    for (const n of TO_HUNT2.slice(0, TO_HUNT2.indexOf("introduce_trabolta") + 1)) await mod(n); // → introduce_trabolta
     await look("introduced");
 
     await mod("start_the_hunt");
@@ -335,9 +344,10 @@ describe("Trabolta never knows what he is asking for", () => {
     // …and one confident lie goes on record: ⚖ will send the night to Grok Prom.
     expect((await file(rt, pad, "H2", "Mittens")).status).toBe(200);
     // …and tries to hand him one: he won't take a hunt answer.
-    const handed = await call(rt, "POST", "/api/guest/codex/share", { entry: "The Billboard Lease", to: "Trabolta" }, { token: calc.token });
+    const firstDoc = FACTS.questions[0]!.codex!.id;
+    const handed = await call(rt, "POST", "/api/guest/codex/share", { entry: firstDoc, to: "Trabolta" }, { token: calc.token });
     expect(handed.status).toBe(403);
-    expect(rt.liveSim!.holdsCodex("Trabolta", "The Billboard Lease")).toBe(false);
+    expect(rt.liveSim!.holdsCodex("Trabolta", firstDoc)).toBe(false);
     await look("hunt 1 (the answers found and filed)");
     await look("hunt 1, a filer's own thread", amp);
 
@@ -506,7 +516,7 @@ describe("Trabolta never knows what he is asking for", () => {
     const phases = [...table.matchAll(/^ {2}([a-z_0-9]+):(?: >-)?$/gmu)].map((m) => m[1]!).filter((p) => !p.startsWith("_"));
     expect(phases).toContain("arrivals");
     expect(phases).not.toContain("_stages");
-    expect(phases.filter((p) => AFTER_THE_VERDICT.test(p))).toEqual(["grok_prom", "advice", "finale_killed", "finale_shutdown", "finale_song", "finale_rave", "finale_help", "finale_banish", "finale_hand_jive"]);
+    expect(phases.filter((p) => AFTER_THE_VERDICT.test(p))).toEqual(["grok_prom", "advice", "finale_killed", "finale_shutdown", "finale_song", "finale_rave", "finale_help", "finale_banish", "finale_hand_jive", "finale_truth"]);
     expect(phases.indexOf("bobbing")).toBe(phases.indexOf("grok_prom") - 1);
   });
 
@@ -516,12 +526,12 @@ describe("Trabolta never knows what he is asking for", () => {
     for (const q of FACTS.questions) {
       const c = q.codex!;
       expect(sim.model.codexCodes.get(foldCode(c.code)), q.id).toBe(c.id);
-      expect(answersIn(sim.model.codex.get(c.id)!.text), q.id).toContain(`${q.id}: ${q.answer}`);
+      // A key still owed (facts.json `placeholder`) has no answer to find yet.
+      if (q.placeholder !== true) expect(answersIn(sim.model.codex.get(c.id)!.text), q.id).toContain(`${q.id}: ${q.answer}`);
     }
-    // The LiveJournal still points at The Rival ("says whatever anyone wants
+    // The LiveJournal still describes the rival ("says whatever anyone wants
     // to hear"), and The Rival names him.
     expect(sim.model.codex.get("The LiveJournal")!.text).toContain("says whatever anyone wants to hear");
-    expect(sim.model.codex.get("The Rival")!.text).toContain("Says whatever anyone wants to hear");
     expect(answersIn(sim.model.codex.get("The Rival")!.text)).toContain("F2: Grok");
   });
 });

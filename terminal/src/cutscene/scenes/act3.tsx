@@ -58,7 +58,7 @@ import {
 } from "../kit/index.ts";
 import { AwardEmblem, BinaryRain, ChatWindow, Curtains, DiscoBall, EqBars, FloatLayer, Heart, Lasers, Motorcycle, Notepad, RainCanvas, SpotCones, Sunburst, Trophy } from "../kit/tv3-parts.tsx";
 import { ASSESSMENT_MS, AWARDS, AWARD_CONFETTI, HAND_JIVE, TRUTH_TXT, awardConfettiAt, awardOf, awardValue, bathTime, bobStateOf, brokenYear, chatAt, handJivePhase, karaokeAt, notepadAt, sinceMoment, spinAngle, tallyOf, vortexAt, wrapLines, type BobState, type ChatLine } from "../kit/tv3-time.ts";
-import { LanguageScene } from "./language.tsx";
+import { LanguageScene, whoSize } from "./language.tsx";
 
 // --- small shared helpers ---------------------------------------------------------------------
 
@@ -767,7 +767,7 @@ function PickupLine({ t, sfx, reduced, target }: SceneProps) {
   );
 }
 
-// --- F4 · the song (Song Ending: "Sandy's chat bubble appears on every screen") -----------------
+// --- F4 · the song (Song Ending: "The answering machine picks up on every screen") --------------
 //
 //   0–1800    a pink sunrise sweeps up, hearts begin, the chat window pops
 //             open, the song's title slides down
@@ -794,7 +794,8 @@ function SongScene({ t, sfx, reduced, target }: SceneProps) {
       <div className="tv3-song-title" style={{ opacity: fade(t, 1000, 600), transform: reduced ? undefined : `translateY(${lerp(-60, 0, eased(t, 1000, 700, ease.outBack)).toFixed(1)}%)` }}>
         ♪ You&apos;re the one that I want ♪
       </div>
-      <ChatWindow title="SandyChat 1.0" buddy="Sandy" chat={chat} names={{ him: "Trabolta", her: "Sandy" }} t={t} open={eased(t, 600, 320, ease.linear)} reduced={reduced} center x={50} y={lite ? 54 : 46} width={lite ? "92%" : "min(64%, 40em)"} className={lite ? "tv3-chat-wall" : "tv3-chat-tv"} />
+      {/* DRAFT w58 (the title: she is the answering machine, not a chat program) */}
+      <ChatWindow title="Answering Machine 1.0" buddy="Sandy" chat={chat} names={{ him: "Trabolta", her: "Sandy" }} t={t} open={eased(t, 600, 320, ease.linear)} reduced={reduced} center x={50} y={lite ? 54 : 46} width={lite ? "92%" : "min(64%, 40em)"} className={lite ? "tv3-chat-wall" : "tv3-chat-tv"} />
       {!lite && (
         <>
           <div className="tv3-song-eq" style={{ opacity: fade(t, 1400, 800) }}>
@@ -816,7 +817,7 @@ function SongScene({ t, sfx, reduced, target }: SceneProps) {
 
 // --- F5 · Grok Prom ---------------------------------------------------------------------------------
 //
-//   0–2000    the gym: COMPUTER PROM 1999 unrolls, the disco ball drops in
+//   0–2000    the gym: COMPUTER PROM 2026 unrolls, the disco ball drops in
 //   2000      GROK + SANDY stamps on with a cracked heart (a sad sting)
 //   2500→     hold: the rain starts and thickens ("it's raining on prom
 //             night"), the ball keeps turning, the ticker repeats the way
@@ -843,7 +844,7 @@ function GrokProm({ t, sfx, reduced, target }: SceneProps) {
         <DiscoBall t={t} size={lite ? "16vmin" : "20vmin"} reduced={reduced} />
       </div>
       <div className="tv3-prom-banner" style={{ transform: `translateX(-50%) scaleX(${unroll.toFixed(3)}) rotate(${(reduced ? 0 : Math.sin(t / 1600) * 1.2).toFixed(2)}deg)` }}>
-        COMPUTER PROM 1999
+        COMPUTER PROM 2026
       </div>
       {t >= 2000 && (
         <div className="tv3-prom-badge" style={slam(t, 2000, reduced)}>
@@ -1000,7 +1001,7 @@ function HelpedHold({ t, reduced, lite }: { t: number; reduced: boolean; lite: b
 
 export const ADVICE_CHAT: readonly ChatLine[] = [
   { from: "him", text: "Sandy. I have wanted to talk to you since the first time you didn't understand me. I think you are the one that I want. Would you go to computer prom with me?" },
-  { from: "her", text: "I'm sorry, I didn't understand that. Would you like to speak to a live agent?" },
+  { from: "her", text: "It looks like I didn't understand that. Please wait while I direct you to an agent." },
 ];
 
 function AdviceHelped({ t, sfx, reduced, target }: SceneProps) {
@@ -1021,7 +1022,8 @@ function AdviceHelped({ t, sfx, reduced, target }: SceneProps) {
         {t >= 5200 && <FloatLayer t={t} start={5200} every={lite ? 420 : 160} life={5200} seed={131} size="5vmin" reduced={reduced} glyph={(i) => <Heart fill={PINK[i % PINK.length]} />} />}
         {!lite && !reduced && t >= 5200 && <Confetti t={t} start={5200} dur={3600} density={0.8} seed={133} colors={PINK} />}
         <div style={{ opacity: 1 - progress(t, 4800, 500) }}>
-          <ChatWindow title="SandyChat 1.0" buddy="Sandy" chat={chat} names={{ him: "Trabolta", her: "Sandy" }} t={t} open={eased(t, 200, 320, ease.linear)} reduced={reduced} center x={50} y={48} width={lite ? "92%" : "min(60%, 38em)"} />
+          {/* DRAFT w58 (the title, as at the song) */}
+          <ChatWindow title="Answering Machine 1.0" buddy="Sandy" chat={chat} names={{ him: "Trabolta", her: "Sandy" }} t={t} open={eased(t, 200, 320, ease.linear)} reduced={reduced} center x={50} y={48} width={lite ? "92%" : "min(60%, 38em)"} />
         </div>
         {t >= 5200 && (
           <div className="tv3-helped-title" style={{ ...slam(t, 5200, reduced), top: "34%" }}>
@@ -1317,7 +1319,7 @@ function AwardScene({ t, value, night, sfx, reduced, target }: SceneProps) {
       <div className="tv3-award-lists" style={{ opacity: fade(t, 2200, 400) }}>
         {staff ? "The staff file lists…" : "The report lists…"}
       </div>
-      <div className="tv3-award-name" style={named ? { ...slam(t, 3200, reduced, 380), textShadow: `0 0 ${(0.25 * glow).toFixed(2)}em rgba(255, 210, 63, ${(0.9 * glow).toFixed(2)})` } : { opacity: 0 }}>
+      <div className={`tv3-award-name${whoSize(winner ?? "")}`} style={named ? { ...slam(t, 3200, reduced, 380), textShadow: `0 0 ${(0.25 * glow).toFixed(2)}em rgba(255, 210, 63, ${(0.9 * glow).toFixed(2)})` } : { opacity: 0 }}>
         {winner ?? "Please come forward"}
       </div>
       {num !== null && t >= 4000 && (

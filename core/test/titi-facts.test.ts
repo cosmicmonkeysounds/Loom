@@ -10,7 +10,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { FACTS_FILE, POSITION_WORDS, parseFactsText } from "../src/facts.ts";
+import { FACTS_FILE, POSITION_WORDS, parseFactsText, placeholderQuestions } from "../src/facts.ts";
 import type { FactsFile } from "../src/facts.ts";
 import { scenarioDir } from "../examples/load.ts";
 import { parse } from "../src/parser/index.ts";
@@ -26,6 +26,7 @@ import {
   MIND_BEGIN,
   MIND_END,
   OUTPUTS,
+  OWED,
   SHOW_SHAPE,
   TitiFactsError,
   cardString,
@@ -198,7 +199,7 @@ describe("titi-facts — helpers", () => {
     expect(yamlScalar("412")).toBe('"412"');
     expect(yamlScalar("9:00")).toBe('"9:00"');
     expect(yamlScalar("no")).toBe('"no"');
-    expect(yamlScalar("i'm sorry, i didn't understand that")).toBe("\"i'm sorry, i didn't understand that\"");
+    expect(yamlScalar("i'm sure, you didn't say that")).toBe("\"i'm sure, you didn't say that\"");
   });
   it("replaceBlock keeps the markers and refuses a missing or doubled one", () => {
     expect(replaceBlock("a\nBEGIN\nold\nEND\nz", "BEGIN", "END", "new", "f")).toBe("a\nBEGIN\nnew\nEND\nz");
@@ -224,7 +225,10 @@ describe("titi-facts — the run", () => {
     expect(read(OUTPUTS.codex).startsWith(LOOM_BANNER)).toBe(true);
     expect(read(OUTPUTS.stacks).startsWith(MD_BANNER)).toBe(true);
     expect(logs.filter((l) => l.startsWith("wrote "))).toHaveLength(5);
-    expect(logs.filter((l) => l.startsWith("WARN"))).toEqual([]);
+    // The one warning a sound run prints: the keys still owed, by name.
+    const owed = placeholderQuestions(facts).map((q) => q.id);
+    expect(logs.filter((l) => l.startsWith("WARN") && !owed.some((id) => l.startsWith(`WARN  question ${id}: the answer key is still a placeholder`)))).toEqual([]);
+    expect(logs.filter((l) => l.startsWith("WARN"))).toHaveLength(owed.length);
   });
   it("is idempotent: generate() is pure and a second run changes nothing", () => {
     const current = { mind: read(OUTPUTS.mind), design: read(OUTPUTS.design), combos: comboSeeds([read("main.loom")]) };
@@ -360,7 +364,7 @@ describe("titi-facts — generated/questions.loom", () => {
       const evs = sim.fireBeat(shape.beat);
       const said = lines(evs, SHOW_SHAPE.reader);
       const qs = facts.questions.filter((q) => q.round === r);
-      expect(said.slice(0, qs.length)).toEqual(qs.map((q, i) => `${shape.read(i + 1)} ${q.text}`));
+      expect(said.slice(0, qs.length)).toEqual(qs.map((q, i) => `${shape.read(i + 1)} ${q.spoken ?? q.text}`));
       expect(said.at(-1)).toBe("Go."); // the hand-written tail ran
       const entered = evs.filter((e) => e.type === "beatEntered").map((e: any) => (e.beat ?? e.name) as string);
       expect(entered).toContain(shape.next);
@@ -505,9 +509,9 @@ describe("titi-facts — the Facts Bundle (The Whole Truth's main + Trabolta fac
     expect(sim.signal("the whole truth", "g1").filter((e) => e.type === "diagnostic")).toEqual([]);
     for (const id of unlocks) expect(sim.holdsCodex("g1", id), id).toBe(true);
   });
-  it("--check fails when a facts.json edit changes the bundle (an existing fact moved out of main)", () => {
+  it("--check fails when a facts.json edit changes the bundle (an existing fact moved out of the bundle's categories)", () => {
     const moved = JSON.parse(SHOW_FACTS) as FactsFile;
-    const x = moved.facts.find((y) => y.category === "main" && y.existing !== undefined && moved.facts.filter((z) => z.existing === y.existing).length === 1)!;
+    const x = moved.facts.find((y) => y.category === "trabolta" && y.existing !== undefined && moved.facts.filter((z) => z.existing === y.existing).length === 1)!;
     x.category = "character";
     writeFileSync(join(dir, FACTS_FILE), JSON.stringify(moved, null, 2));
     try {
@@ -534,7 +538,7 @@ describe("titi-facts — generated/print-stacks.md", () => {
     for (const q of facts.questions) {
       expect(text).toContain(`| ${q.id}${q.draft ? " · DRAFT" : ""} | gold | \`${q.codex!.code}\` | ${q.codex!.title} | ${q.where}`);
       expect(text).toContain(q.hint ?? "");
-      expect(text).toContain(`→ A: ${q.answer}`);
+      expect(text).toContain(q.text);
     }
     // The tiers' summary: the counts fall, commonest first, and the digit
     // notes count as very rare.
@@ -597,7 +601,8 @@ describe("titi-facts — the trabolta.mind.md secrets block", () => {
     const match = block.slice(block.indexOf("  match:"), block.indexOf("  lore:")).split("\n").filter((l) => l.startsWith("    - ")).map((l) => unquote(l.slice(6).trim()));
     for (const q of facts.questions) {
       for (const t of q.topics!) expect(topics).toContain(t.toLowerCase());
-      for (const a of [q.answer, ...q.accept]) expect(match).toContain(a.toLowerCase());
+      if (q.placeholder === true) for (const a of [q.answer, ...q.accept]) expect(match).not.toContain(a.toLowerCase());
+      else for (const a of [q.answer, ...q.accept]) expect(match).toContain(a.toLowerCase());
       expect(block).toContain(`# ${q.id}`);
     }
     expect(new Set(topics).size).toBe(topics.length);
@@ -614,7 +619,7 @@ describe("titi-facts — the trabolta.mind.md secrets block", () => {
     // Numbers and times are quoted so YAML keeps them strings.
     expect(block).toContain('    - "412"');
     expect(block).toContain('    - "1978"');
-    expect(block).toContain('    - "9:00"');
+    expect(yamlScalar("9:00")).toBe('"9:00"');
   });
 });
 
@@ -675,24 +680,35 @@ describe("titi-facts — secrets.never", () => {
 });
 
 describe("titi-facts — the DESIGN.md questions block", () => {
-  it("replaces only the block with the H1–F2 table stagehand's test_secrets parses", () => {
+  it("replaces only the block with the H1–F2 table, its keys left in facts.json", () => {
     const design = read(OUTPUTS.design);
     expect(design.startsWith("# Design\n\n### 2.11 Hunt questions\n\nIntro paragraph that stays.\n\n")).toBe(true);
     expect(design.endsWith("\n\n### 2.12 After\n\nTrailing text that stays.\n")).toBe(true);
     expect(design).not.toContain("| H1 | 1 | old | stale |");
     expect(design).toContain("retired 2026-10-16 (U9)");
-    // stagehand/tests/test_secrets.py `_hunt_rows`
     const rows = [...design.matchAll(/^\| (H[1-6]|F[12]) \| [^|]+ \| ([^|]+) \| ([^|]+) \|/gmu)];
     expect(rows.map((r) => r[1])).toEqual(facts.questions.map((q) => q.id));
     for (const q of facts.questions) {
       const row = rows.find((r) => r[1] === q.id)!;
       expect(row[2]!.trim()).toBe(q.text);
-      expect(row[3]!.trim()).toBe(q.answer);
-      expect(design).toContain(`${q.codex!.id} (\`${q.codex!.code}\`)`);
-      expect(design).toContain(q.where!);
-      for (const a of q.accept) expect(design).toContain(a);
+      expect(row[3]!.trim()).toBe(q.placeholder === true ? OWED : "in `facts.json`");
     }
-    expect(design).toContain("| # | Round | Question (exact, as shown on the TV and in the quest log) | Answer | Accept | CODEX (code) | Found in |");
+    expect(design).toContain("| # | Round | Question (exact, as shown on the TV and in the quest log) | Key |");
+  });
+
+  it("neither generated doc states a key: no answer or accepted form in DESIGN, and no `Q → A` in the stacks", () => {
+    const block = read(OUTPUTS.design);
+    const stacks = read(OUTPUTS.stacks);
+    expect(stacks).not.toContain("→ A:");
+    for (const q of facts.questions) {
+      for (const a of q.placeholder === true ? [] : [q.answer, ...q.accept]) {
+        expect(block, `${q.id} in DESIGN`).not.toContain(a);
+        // A very short key can sit inside a code or a card's own title, which are the stack's job.
+        if (a.length >= 12) expect(stacks, `${q.id} in the stacks`).not.toContain(a);
+      }
+      expect(block).not.toContain(q.codex!.code);
+      expect(block).not.toContain(q.where!);
+    }
   });
 });
 

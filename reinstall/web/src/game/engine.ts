@@ -64,7 +64,7 @@ import { visitOf, buildWalls, clampDescent, heartProps, propModel, hiddenFloors,
 import type { Assignment, DuckSpot, GameLights, HouseMap, KingState, PlayerPose, PlayerState, Prop, Spawn, SpatialFrame, Vec3 } from "@loom/house";
 import { applySpace, buildHouseScene, createAvatar, createDuck, createTrail, GAME_TERMINAL_SCALE, houseAtmosphere, PoseBuffer, spaceGroup } from "@loom/house/three";
 import type { Avatar, Duck, HouseScene, King, Trail } from "@loom/house/three";
-import { fetchDescent, fetchHouse, postEnd, postFound, postKingHit, postMoment, postPose, postReady, postTold, streamProbe, streamUrl, type FoundAnswer, type MomentLine, type MomentReply } from "../api.ts";
+import { fetchDescent, fetchHouse, postEnd, postFound, postKingHit, postMoment, postPose, postReady, postReset, postTold, streamProbe, streamUrl, type FoundAnswer, type MomentLine, type MomentReply } from "../api.ts";
 import { CamFeeds } from "./cams.ts";
 import { createVoiceSink, earsFor, micSourceOf, stopStream, VoiceLink, type VoiceHudState } from "./voice.ts";
 import { applyFrame, avatarUrl, duckToAdopt, houseVersionOf, kingOf, openSpatialStream, type SpatialStreamHandle } from "../spatial.ts";
@@ -89,6 +89,7 @@ import {
 } from "./hud.ts";
 import { combineInput, isActive, keyDown, keyUp, lockedMouseDrag, type StickVector } from "./input.ts";
 import { advance, skipTutorial, startTutorial, tutorialHud, type Tutorial, type TutorialHud } from "./tutorial.ts";
+import { HoldMeter, keyTarget, movedOverReset, RESET_DONE, RESET_KEY, typingIn } from "./reset.ts";
 import { IdleLeash } from "./leash.ts";
 import { deviceSpeaker, LinePlayer } from "./lines.ts";
 import type { DeviceSpeaker } from "./lines.ts";
@@ -171,6 +172,8 @@ export interface HudState {
   hallway: boolean;
   /** (wave 49) What Gerald said at the find, null when he said nothing. */
   foundLine: string | null;
+  /** (wave 59) Holding R: the run reset's bar, 0 to 1; null when it isn't held. */
+  reset: number | null;
 }
 
 export interface QualityHud {
@@ -403,6 +406,9 @@ export class Game {
   /** The line a prop is on: it stays up under the answers. */
   private talkLine: string | null = null;
   private saidAtFind: string | null = null;
+  /** (wave 59) The run reset's hold, and its bar now. */
+  private readonly resetHold = new HoldMeter();
+  private resetBar = 0;
 
   constructor(opts: GameOptions) {
     this.o = opts;
@@ -903,10 +909,7 @@ export class Game {
   // --- input ---------------------------------------------------------------
 
   private listen(): void {
-    const typing = (e: Event): boolean => {
-      const t = e.target as HTMLElement | null;
-      return t !== null && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable);
-    };
+    const typing = (e: Event): boolean => typingIn(keyTarget(e));
     const down = (e: KeyboardEvent): void => {
       if (typing(e)) return;
       if (this.held) return;
@@ -1088,6 +1091,7 @@ export class Game {
       if (this.tutorial.over) this.finishTutorial(now);
     }
     if (this.phase === "found") this.watchDuck(dt);
+    if (playing) this.tickReset(now);
 
     if (playing) {
       this.pump.set(this.pose());
@@ -1245,6 +1249,7 @@ export class Game {
       talk: this.talkHud(),
       hallway: !!this.pocket,
       foundLine: this.saidAtFind,
+      reset: this.resetBar > 0 ? this.resetBar : null,
     });
   }
 
@@ -1512,6 +1517,50 @@ export class Game {
     this.leash.touch(performance.now());
     this.pump.set(this.pose());
     void this.pump.tick();
+  }
+
+  // --- the run reset (wave 59, `reset.ts`) ---------------------------------
+
+  /** One frame of the hold. The keys held say it (a blur, ⌘, a held walk and
+   *  a lost mouse let go of everything): a void's scare finishes first, and
+   *  anything else the player is stuck in gives way to it. */
+  private tickReset(now: number): void {
+    const fill = this.resetHold.update(this.keys.has(RESET_KEY), now);
+    if (fill !== this.resetBar) {
+      this.resetBar = fill;
+      this.lastHudAt = Number.NEGATIVE_INFINITY;
+    }
+    if (fill > 0) this.leash.touch(now);
+    if (fill < 1 || this.escaping) return;
+    this.resetHold.spend();
+    this.resetBar = 0;
+    this.runReset();
+  }
+
+  /**
+   * Back at the spawn, at once and whatever the server says, with Gerald
+   * dealt somewhere new (the server judges a find, so a new spot is its
+   * word). The tutorial, the clock, the path reveal, the level and the
+   * visit's hit all stay as they were.
+   */
+  private runReset(): void {
+    this.leaveHallway(true);
+    this.director?.interrupt();
+    this.hitQueued = false;
+    this.foundRefusals = 0;
+    this.foundCooldownUntil = 0;
+    this.teleport(this.map.spawn);
+    this.sightRoom = null;
+    this.say(RESET_DONE, 3000);
+    void this.resetOnServer();
+  }
+
+  private async resetOnServer(): Promise<void> {
+    await this.pump.flush();
+    const reply = await postReset(this.o.base, this.o.assignment.token);
+    if (this.phase === "ended") return;
+    if (reply.kind === "reset") this.adoptDuck(reply.duck);
+    else if (reply.kind === "over") this.end({ kind: "over", reason: "This session is over." });
   }
 
   /** In Trabolta's heart's room, once the King has fallen (or the map has none): ask once per entry (R6). */
@@ -1797,7 +1846,7 @@ export class Game {
     this.perchedSaid = false;
     this.foundRefusals = 0;
     this.foundCooldownUntil = 0;
-    this.say(duckMovedNotice(this.pathRevealed), 3500);
+    this.say(movedOverReset(this.notice?.text ?? null, duckMovedNotice(this.pathRevealed)), 3500);
   }
 
   private say(text: string, ms: number): void {

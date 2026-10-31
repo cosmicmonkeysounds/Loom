@@ -8,8 +8,8 @@
 //
 //   end <ending>             rehearsal shortcut: Night.ended = true, Night.ending = <ending>,
 //                            Night.ceremony = false (so G1 can run again for another host)
-//                            (song · song_pickup · help · hand_jive · disabled → Trabolta hosts;
-//                             destroyed · rave → Clippy hosts)
+//                            (song · song_pickup · help · hand_jive → Trabolta hosts;
+//                             disabled · destroyed · rave → Clippy hosts)
 //   start                    fire start_the_ceremony
 //   award <name> <who> [v]   fire award_<name> for <who> (a guest's name or id), value v optional
 //                            names: most_trusted least_trusted frequent_flyer lore_hoarder
@@ -83,6 +83,7 @@ if (cmd === "end") {
   await post(`${ev}/api/mod/var`, { path: "Night.ending", value: ending }, token);
   await post(`${ev}/api/mod/var`, { path: "Night.ended", value: "true" }, token);
   await post(`${ev}/api/mod/var`, { path: "Night.ceremony", value: "false" }, token);
+  await post(`${ev}/api/mod/var`, { path: "Night.truth_told", value: "true" }, token); // G1 waits for 📜 (wave 58)
   console.log(`  ${await status()}`);
 } else if (cmd === "start") {
   await post(`${ev}/api/mod/signal`, { name: "start_the_ceremony" }, token);

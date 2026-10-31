@@ -3,7 +3,7 @@
 //! a moment ago), how long have I been in here, which way is north, and am
 //! I there yet.
 
-import { DUCK_MAX_RISE, floorOf, locate, PATH_REVEAL_MS, roomById, wrapYaw } from "@loom/house";
+import { DUCK_MAX_RISE, floorOf, locate, PATH_REVEAL_MS, roomById, roomName, wrapYaw } from "@loom/house";
 import type { DuckSpot, HouseMap, Vec3 } from "@loom/house";
 
 /** Plan distance at which the duck counts as reached (and `found` is sent). */
@@ -125,7 +125,7 @@ export function roomTitle(house: HouseMap, feet: Vec3): { room: string; location
   const at = locate(house, feet);
   const room = at.room !== null ? roomById(house, at.room) : undefined;
   if (room === undefined) return { room: "Somewhere between rooms", location: null };
-  return { room: room.label, location: room.location ?? null };
+  return { room: roomName(room), location: null };
 }
 
 export type Heat = "found" | "burning" | "hot" | "warmer" | "colder" | "cold" | "steady";

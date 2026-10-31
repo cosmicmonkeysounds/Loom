@@ -209,7 +209,7 @@ describe("Trapped in the Internet's room signs", () => {
   it("every check-in point the story's if-chain handles has a sign slug, and the gates hold", async () => {
     const { scenarioSource } = await import("../examples/load.ts");
     const sim = Sim.fromSources(scenarioSource("trapped-in-the-internet"));
-    const points = ["The Desktop", "The Start Bar", "The CPU", "The Steam Room", "The Tube", "Disk Cleanup", "The Cloud", "The RAM", "The Fan Closet", "The Graphics Card", "The Hard Drive"];
+    const points = ["The Desktop", "The Start Bar", "The CPU", "The Power Supply", "Disk Cleanup", "The Cloud", "The RAM", "The Fan Closet", "The Casino", "The Hard Drive"];
     for (const p of points) expect(checkinTarget(sim, p.toLowerCase().replace(/ /gu, "-")), p).toBe(p);
     // The Internet is the prison; the Optical Drive is the login cutscene.
     expect(checkinRefusal(sim, "nobody", "The Internet")).not.toBeNull();

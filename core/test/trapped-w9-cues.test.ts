@@ -97,7 +97,8 @@ describe("Trapped in the Internet — wave 9 (the cue sheet)", () => {
     expect(sheet(sim)).toEqual({ last: null, next: "call_to_the_desktop" });
     step("call_to_the_desktop", "start_the_bingo");
     step("start_the_bingo", "bingo_time");
-    step("bingo_time", "introduce_trabolta");
+    step("bingo_time", "clippy_on_trabolta");
+    step("clippy_on_trabolta", "introduce_trabolta");
     step("introduce_trabolta", "start_the_hunt");
     // Hunt 1: fifteen minutes on the clock, nothing to suggest.
     step("start_the_hunt", null);
@@ -338,12 +339,14 @@ describe("Trapped in the Internet — wave 9 (the cue sheet)", () => {
       expect(press(sim, n).refused, n).toBe(false);
     }
   }
-  /** Combo A → the dance → 🏍 → G1 → G2–G9 on Calculator. */
+  /** Combo A → the dance → 📜 → the reading → G1 → G2–G9 on Calculator. */
   function throughG9(sim: Sim) {
     toY2k(sim);
     press(sim, "patch_combo_a");
     advance(sim, 11);
-    for (const n of ["trabolta_recounts", "start_the_ceremony"]) expect(press(sim, n).refused, n).toBe(false);
+    expect(press(sim, "tell_the_truth").refused).toBe(false);
+    advance(sim, 830);
+    expect(press(sim, "start_the_ceremony").refused).toBe(false);
     for (const n of ["award_most_trusted", "award_least_trusted", "award_frequent_flyer", "award_lore_hoarder", "award_truthcoin_tycoon", "award_best_liar", "award_duck_speedrun", "award_quest_completionist"]) {
       expect(press(sim, n, "g1").refused, n).toBe(false);
     }
@@ -352,12 +355,14 @@ describe("Trapped in the Internet — wave 9 (the cue sheet)", () => {
 
   // Wave 21: the three staff awards (G10a–c, appended to the sheet) come
   // before G11, and G11's `while:` waits for The Mole.
-  it("T5-crew-cards-08 / R2-diff-clients-04: with no MS Paint at the party NEXT after G9 is the staff awards, then G11, never G10", { timeout: SLOW }, () => {
+  it("T5-crew-cards-08 / R2-diff-clients-04: with no MS Paint at the party NEXT after G9 is G9a, then the staff awards, then G11, never G10", { timeout: SLOW }, () => {
     const sim = boot(PROGRAMS.filter(([id]) => id !== "g4"));
     throughG9(sim);
     expect(v(sim, "Night.painting")).toBe(false);
     expect(live(sim, "award_the_painting")).toBe(false);
-    expect(sheet(sim)).toEqual({ last: "award_quest_completionist", next: "award_staff_trusted" });
+    expect(sheet(sim)).toEqual({ last: "award_quest_completionist", next: "award_most_correct" });
+    expect(press(sim, "award_most_correct").refused).toBe(false);
+    expect(sheet(sim)).toEqual({ last: "award_most_correct", next: "award_staff_trusted" });
     for (const a of ["award_staff_trusted", "award_staff_points", "award_staff_mole"]) expect(press(sim, a).refused, a).toBe(false);
     expect(sheet(sim)).toEqual({ last: "award_staff_mole", next: "resurrection" });
     expect(press(sim, "resurrection").refused).toBe(false);
@@ -365,11 +370,13 @@ describe("Trapped in the Internet — wave 9 (the cue sheet)", () => {
     expect(sheet(sim)).toEqual({ last: "resurrection", next: null });
   });
 
-  it("T5-crew-cards-08 / R2-diff-clients-04: with MS Paint cleared NEXT after G9 is G10, then the staff awards, then G11", { timeout: SLOW }, () => {
+  it("T5-crew-cards-08 / R2-diff-clients-04: with MS Paint cleared NEXT after G9 is G9a, then G10, then the staff awards, then G11", { timeout: SLOW }, () => {
     const sim = boot();
     throughG9(sim);
     expect(v(sim, "Night.painting")).toBe(true);
-    expect(sheet(sim)).toEqual({ last: "award_quest_completionist", next: "award_the_painting" });
+    expect(sheet(sim)).toEqual({ last: "award_quest_completionist", next: "award_most_correct" });
+    expect(press(sim, "award_most_correct").refused).toBe(false);
+    expect(sheet(sim)).toEqual({ last: "award_most_correct", next: "award_the_painting" });
     expect(press(sim, "award_the_painting", "g4").refused).toBe(false);
     expect(v(sim, "Night.ceremony_done")).toBe(false);
     expect(sheet(sim)).toEqual({ last: "award_the_painting", next: "award_staff_trusted" });
@@ -385,7 +392,8 @@ describe("Trapped in the Internet — wave 9 (the cue sheet)", () => {
     toY2k(sim);
     press(sim, "patch_combo_a");
     advance(sim, 11);
-    press(sim, "trabolta_recounts");
+    press(sim, "tell_the_truth");
+    advance(sim, 830);
     press(sim, "start_the_ceremony");
     press(sim, "award_most_trusted", "g1");
     const ask = sim.signal("resurrection");
@@ -419,9 +427,10 @@ describe("Trapped in the Internet — wave 9 (the cue sheet)", () => {
   it("T5-crew-cards-07 (D4): ✍ makes the director's own award lines replace Trabolta's template line; the fanfare and the slide stay", { timeout: SLOW }, () => {
     const sim = boot();
     toY2k(sim);
-    press(sim, "patch_combo_a");
-    advance(sim, 11);
-    press(sim, "trabolta_recounts");
+    // Trabolta hosts on the verdict's roads (Combo A: Clippy, wave 58).
+    sim.fireBeat("Song Ending");
+    press(sim, "tell_the_truth");
+    advance(sim, 830);
     press(sim, "start_the_ceremony");
     expect(v(sim, "Night.ceremony_host")).toBe("Trabolta");
     expect(v(sim, "Night.award_lines")).toBe("template");
@@ -452,6 +461,8 @@ describe("Trapped in the Internet — wave 9 (the cue sheet)", () => {
     press(sim, "patch_combo_b");
     advance(sim, 11);
     press(sim, "clippy_reads_summary");
+    press(sim, "tell_the_truth");
+    advance(sim, 830);
     press(sim, "start_the_ceremony");
     expect(v(sim, "Night.ceremony_host")).toBe("Clippy");
     press(sim, "own_award_lines");
@@ -576,7 +587,9 @@ describe("wave 9 — G11's first press reaches the phone as refused (O1-open-iss
       for (const n of TO_Y2K) expect((await signal(n)).json, n).toEqual({ ok: true });
       expect((await signal("patch_combo_a")).json).toEqual({ ok: true });
       for (let i = 0; i < 11; i++) rt.tickOnce(1000);
-      for (const n of ["trabolta_recounts", "start_the_ceremony"]) expect((await signal(n)).json, n).toEqual({ ok: true });
+      expect((await signal("tell_the_truth")).json).toEqual({ ok: true });
+      for (let i = 0; i < 830; i++) rt.tickOnce(1000);
+      expect((await signal("start_the_ceremony")).json).toEqual({ ok: true });
       expect((await signal("award_most_trusted", String(guest["id"]))).json).toEqual({ ok: true });
       const ask = await signal("resurrection");
       expect(ask.status).toBe(200);

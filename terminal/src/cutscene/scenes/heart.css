@@ -131,27 +131,6 @@
 .ht-leave { background: #00000099; }
 .ht-leave-msg { font-size: clamp(1.4rem, 4.8vmin, 2.6rem); letter-spacing: 0.08em; }
 
-/* --- heart_shutdown --- */
-.ht-shutdown { display: grid; place-items: center; align-content: center; gap: 4vmin; color: #cfd8dc; }
-.ht-shutdown-face { width: 40vmin; height: 40vmin; transition: none; }
-.ht-shutdown-face .a1-face { width: 100%; height: 100%; }
-.ht-bay { width: min(80vw, 110vmin); height: auto; }
-.ht-shutdown-save { display: grid; gap: 1vmin; justify-items: center; font-size: clamp(1.2rem, 4vmin, 2.4rem); }
-.ht-shutdown-bar { width: 40vmin; height: 2vmin; border: 2px inset #888; background: #111; }
-.ht-shutdown-bar > i { display: block; height: 100%; background: repeating-linear-gradient(90deg, #000080 0 1.4vmin, transparent 1.4vmin 1.7vmin); }
-.ht-safe {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  padding: 0 8vw;
-  text-align: center;
-  font-family: "Tahoma", "Verdana", sans-serif;
-  font-size: clamp(1.6rem, 6vmin, 4rem);
-  color: #ff9a2e;
-  background: #000;
-}
-
 @media (prefers-reduced-motion: reduce) {
   .ht-face-wrap { transition: none; }
 }

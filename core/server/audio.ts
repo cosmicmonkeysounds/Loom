@@ -112,11 +112,17 @@ import {
   mixerRooms,
   mixerSources,
   musicCommandOf,
+  MUSIC_LIBRARY_MAX,
+  MUSIC_PALS_MAX,
+  TIDAL_ID_RE,
   type AudioMix,
   type MixChange,
   type MixerMeters,
   type MixerMusic,
   type MixerMusicBed,
+  type MixerTidal,
+  type MixerTidalPlaylist,
+  type MusicDj,
   type MixerView,
   type MusicCommand,
   type MusicCommandEntry,
@@ -248,6 +254,8 @@ export type AudioMusicBed = MixerMusicBed;
 export type AudioMusicHealth = MixerMusic;
 /** At most this many sounds in a health report's `sounds`. */
 export const AUDIO_HEALTH_SOUNDS_MAX = 1000;
+/** (wave 59) A router's report this soon after a hand command may not have seen it. */
+const MUSIC_HAND_SETTLE_MS = 2000;
 /** (wave 38) At most this many beds, speakers per bed, metered inputs and sources. */
 export const AUDIO_HEALTH_BEDS_MAX = 32;
 export const AUDIO_HEALTH_SPEAKERS_MAX = 64;
@@ -256,6 +264,17 @@ export const AUDIO_HEALTH_SOURCES_MAX = 32;
 /** (wave 38) An input peak is clamped to this range (dBFS); silence reads the floor. */
 export const AUDIO_PEAK_FLOOR_DB = -120;
 export const AUDIO_PEAK_CEIL_DB = 24;
+/** (wave 59) The last word on who holds the soundtrack: a command's `by` and
+ *  when. `pause`: a held ⏸, and `under` the hand it sat on. `stop`: Stop house
+ *  sounds. */
+interface MusicHandCommand {
+  by: string | null;
+  at: number;
+  pause?: true;
+  stop?: true;
+  under?: MusicHandCommand | null;
+}
+
 /** (wave 40) At most this many scenes and playlists in a music report. */
 export const AUDIO_MUSIC_SCENES_MAX = 64;
 export const AUDIO_MUSIC_PLAYLISTS_MAX = 64;
@@ -413,6 +432,7 @@ export function audioMusicOf(m: unknown): AudioMusicHealth | null {
       const bed: AudioMusicBed = { playlist, speakers, track, posS: secs(b["posS"] ?? b["pos_s"]) ?? 0 };
       const dur = secs(b["durS"] ?? b["dur_s"]);
       if (dur !== null) bed.durS = dur;
+      if (b["live"] === true) bed.live = true;
       beds.push(bed);
     }
   const out: AudioMusicHealth = { scene, beds, missing: names(m["missing"], AUDIO_HEALTH_BEDS_MAX) };
@@ -428,7 +448,29 @@ export function audioMusicOf(m: unknown): AudioMusicHealth | null {
       out.playlists.push({ name: pname, tracks: clampNum(Math.round(tracks), 0, 100_000), loop: p["loop"] === true });
     }
   }
+  const tidal = audioTidalOf(m["tidal"]);
+  if (tidal !== null) out.tidal = tidal;
+  if (m["loan"] === true) out.loan = true;
   return out;
+}
+
+/** (wave 58) The TIDAL app in a music report, or null when it isn't sound. A
+ *  malformed library entry is skipped. */
+function audioTidalOf(t: unknown): MixerTidal | null {
+  if (!isRecord(t) || typeof t["online"] !== "boolean") return null;
+  const text = (v: unknown, max: number): string | null => (typeof v === "string" && v.trim() !== "" ? v.slice(0, max) : null);
+  const library: MixerTidalPlaylist[] = [];
+  if (Array.isArray(t["library"]))
+    for (const p of t["library"].slice(0, MUSIC_LIBRARY_MAX)) {
+      if (!isRecord(p)) continue;
+      const id = typeof p["id"] === "string" && TIDAL_ID_RE.test(p["id"]) ? p["id"] : null;
+      const title = text(p["title"], 80);
+      if (id === null || title === null) continue;
+      const items = p["items"];
+      library.push({ id, title, ...(typeof items === "number" && Number.isFinite(items) ? { items: clampNum(Math.round(items), 0, 100_000) } : {}) });
+    }
+  const playlist = typeof t["playlist"] === "string" && TIDAL_ID_RE.test(t["playlist"]) ? t["playlist"] : null;
+  return { online: t["online"], playing: t["playing"] === true, paused: t["paused"] === true, track: text(t["track"], 128), problem: text(t["problem"], 200), playlist, library };
 }
 
 /**
@@ -627,6 +669,9 @@ export class AudioHub {
    *  (`music=`), memory only like the desk's plays. */
   private musicLog: MusicCommandEntry[] = [];
   private musicSeq = 0;
+  /** (wave 59) The last command that moved the hand: `by` null is a `story`, or
+   *  a `resume` of a held `pause`. Memory only. */
+  private handCommand: MusicHandCommand | null = null;
   /** (wave 40) The router's last meters packet (memory only) and the last
    *  sound `music` a packet carried, with when it arrived. */
   private lastMeters: MixerMeters | null = null;
@@ -681,8 +726,57 @@ export class AudioHub {
     const entry: MusicCommandEntry = { ...cmd, seq: ++this.musicSeq, at: this.now(), by: by.slice(0, 64) };
     this.musicLog.push(entry);
     if (this.musicLog.length > MUSIC_COMMANDS) this.musicLog.shift();
+    this.moveHand(cmd, entry.by, entry.at);
     this.wake();
     return entry;
+  }
+
+  /** (wave 59) What a command does to the hand. A track forward or back is
+   *  nobody's. A playlist picked by hand is one, like a scene. A pause holds
+   *  until told (the Music manager's C0), so it is one until its `resume`,
+   *  which gives back the hand it sat on. */
+  private moveHand(cmd: MusicCommand, by: string, at: number): void {
+    const h = this.handCommand;
+    switch (cmd.action) {
+      case "next":
+      case "previous":
+        return;
+      case "resume":
+        if (h?.pause === true) this.handCommand = { ...(h.under ?? { by: null }), at };
+        return;
+      case "story":
+        this.handCommand = { by: null, at };
+        return;
+      case "pause":
+        this.handCommand = { by, at, pause: true, under: (h?.pause === true ? h.under : h) ?? null };
+        return;
+      default:
+        this.handCommand = { by, at };
+    }
+  }
+
+  /** (wave 59) Whose hand is on the soundtrack: the `by` of the last scene,
+   *  stop, playlist, held pause or Stop house sounds until a `story` lets go
+   *  of it, null for nobody, "" for a hand the router reports that no command
+   *  here explains (this server restarted, or it came over MQTT). A report
+   *  just after a command says nothing of it; a later one wins, because the
+   *  router lets go by itself on a story restart. A Stop holds while nothing
+   *  plays: a scene reported after it is a live cue's or Follow the story's.
+   *  Trabolta's loan is no hand: the router reports one for it, it ends by
+   *  itself, and any hand ends it first. */
+  musicHand(): string | null {
+    const report = this.musicReport();
+    const cmd = this.handCommand;
+    if (cmd?.stop === true && (report === null || report.at <= cmd.at + MUSIC_HAND_SETTLE_MS || report.music.scene === null)) return cmd.by;
+    if (report?.music.hand === undefined || (cmd !== null && report.at <= cmd.at + MUSIC_HAND_SETTLE_MS)) return cmd?.by ?? null;
+    if (report.music.loan === true) return null;
+    return report.music.hand || report.music.tidal?.paused === true ? (cmd?.by ?? "") : null;
+  }
+
+  /** (wave 59) A held ⏸ sits on `by`'s hand, so its ⏵ gives it back. */
+  pausedOver(by: string): boolean {
+    const h = this.handCommand;
+    return h?.pause === true && h.under?.by === by && this.musicHand() !== null;
   }
 
   /** (wave 40) The recent music commands (≤ `MUSIC_COMMANDS`, ≤
@@ -713,12 +807,17 @@ export class AudioHub {
   /** (wave 40) The soundtrack now: the freshest of the meters' music and
    *  the last health's, null with neither. */
   nowPlaying(): AudioMusicHealth | null {
+    return this.musicReport()?.music ?? null;
+  }
+
+  /** The freshest report of the soundtrack, with when it arrived. */
+  private musicReport(): { at: number; music: AudioMusicHealth } | null {
     const h = this.lastHealth;
     const fromHealth = h?.music !== undefined ? { at: h.at, music: h.music } : null;
     const m = this.metersMusic;
-    if (m === null) return fromHealth?.music ?? null;
-    if (fromHealth === null) return m.music;
-    return m.at >= fromHealth.at ? m.music : fromHealth.music;
+    if (m === null) return fromHealth;
+    if (fromHealth === null) return m;
+    return m.at >= fromHealth.at ? m : fromHealth;
   }
 
   /** (wave 40) A mixer panel looked (each mixer GET): the router keeps its
@@ -903,6 +1002,7 @@ export class AudioHub {
     const s: AudioStop = { seq: ++this.stopSeq, at: this.now(), by: by.slice(0, 64), announce: o.announce === true };
     this.stopLog.push(s);
     if (this.stopLog.length > AUDIO_STOPS) this.stopLog.shift();
+    this.handCommand = { by: s.by, at: s.at, stop: true };
     this.wake();
     return s;
   }
@@ -1076,6 +1176,27 @@ export interface AudioContext {
   house: () => HouseMap | null;
   /** The story's model (its sound names and LOCATIONs). */
   model: () => SimModel | null;
+  /** (wave 58) Trabolta at the stereo, for the mixer's view. */
+  dj?: () => MusicDj | null;
+}
+
+/** (wave 58) The music card off the story's world: `Night.dj_locked`,
+ *  `Night.dj_bar`, `Night.dj_last`, `Night.dj_for` and each guest's `chummy`.
+ *  Null for a story that has none of it. */
+export function musicDjOf(world: ReadonlyArray<{ path: string; value: unknown }>, guests: ReadonlyArray<{ id: string; name: string }>): MusicDj | null {
+  const vars = new Map(world.map((w) => [w.path, w.value]));
+  if (!vars.has("Night.dj_locked")) return null;
+  const bar = Number(vars.get("Night.dj_bar") ?? 3);
+  const pals = guests
+    .map((g) => ({ name: g.name, chummy: Number(vars.get(`${g.id}.chummy`) ?? 0) }))
+    .filter((g) => Number.isFinite(g.chummy) && g.chummy >= bar)
+    .sort((a, b) => b.chummy - a.chummy || a.name.localeCompare(b.name))
+    .slice(0, MUSIC_PALS_MAX);
+  const named = (v: unknown): string | null => (typeof v === "string" && v !== "" && v !== "none" ? v : null);
+  const what = named(vars.get("Night.dj_last"));
+  const who = named(vars.get("Night.dj_for"));
+  const locked = vars.get("Night.dj_locked");
+  return { locked: locked === true || locked === "true", bar, pals, last: what !== null ? { what, who: who ?? "" } : null };
 }
 
 /** The GET answer. */
@@ -1193,7 +1314,7 @@ export function mixerView(hub: AudioHub, ctx: AudioContext): MixerView {
     const label = house?.rooms.find((r) => r.id === id)?.label;
     return label !== undefined && label.trim() !== "" ? label : null;
   };
-  return { mix: hub.mix(), sources: mixerSources(audio), rooms: mixerRooms(audio, roomName), meters: hub.liveMeters(), music: hub.nowPlaying(), router: hub.router(), now: hub.clock() };
+  return { mix: hub.mix(), sources: mixerSources(audio), rooms: mixerRooms(audio, roomName), meters: hub.liveMeters(), music: hub.nowPlaying(), dj: ctx.dj?.() ?? null, router: hub.router(), now: hub.clock() };
 }
 
 /**
@@ -1231,6 +1352,16 @@ function musicCommandText(c: MusicCommand): string {
       return "stopped the soundtrack";
     case "story":
       return "let the story's music cues back in";
+    case "previous":
+      return "went back a track";
+    case "pause":
+      return "paused the app";
+    case "resume":
+      return "played the app again";
+    case "playlist":
+      return `played the ${c.playlist} playlist by hand`;
+    case "tidal":
+      return `played ${c.title ?? c.id} from the app by hand`;
   }
 }
 

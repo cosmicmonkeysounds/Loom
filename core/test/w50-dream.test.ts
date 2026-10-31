@@ -7,7 +7,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { IncomingMessage, ServerResponse } from "node:http";
 
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it, vi } from "vitest";
 
 import { dreamFrameIndex, dreamFrameName, dreamOffsetS } from "@loom/house";
 import { DREAM_CHECK_MS, DREAM_SPURT_MAX_MS, DREAM_SPURT_MIN_MS, DreamFeed, dreamSpurting } from "../server/dream-feed.ts";
@@ -388,8 +388,9 @@ describe("the camera routes while the dream runs", () => {
     rt.openDoors();
     for (const spot of ["hall", "ram"]) writeFileSync(join(media, "dream", "frames", dreamFrameName(dreamFrameIndex(spot, clock.t))), JPEG);
     writeFileSync(join(media, "dream", "frames", dreamFrameName(1)), JPEG);
-    rt.dreamFeed.ready();
-    await new Promise((r) => setTimeout(r, 30));
+    // `ready()` answers from its last look and starts the next: wait for that
+    // look to land, not a fixed time (a full run's load outlasted 30 ms).
+    await vi.waitFor(() => expect(rt.dreamFeed.ready()).toBe(true));
     return { rt, clock, media };
   }
 

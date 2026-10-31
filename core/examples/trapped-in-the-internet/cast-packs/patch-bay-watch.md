@@ -24,7 +24,7 @@ is not finished.
 
 | Name | The four cables | What it does | Call |
 |---|---|---|---|
-| **Combo A** "Shut-Down" | **B2→A7 · B4→A5 · B7→A6 · B8→A4** | disables Trabolta (blackout, dance, he recounts) | **"A"** |
+| **Combo A** "Shut-Down" | **B2→A7 · B4→A5 · B7→A6 · B8→A4** | kills Trabolta (blackout, dance, he does not come back) | **"A"** |
 | **Combo B** "Self-destruct" | **B2→A5 · B4→A7 · B7→A4 · B8→A6** | destroys the computer (blackout, dance, purgatory) | **"B"** |
 | anything else, once all four cables are in | | wrong combination | **"WRONG"** |
 
@@ -100,12 +100,12 @@ keypad, never on the radio).
   code or a combo by them**, and step away from them to radio.
 - **The server-room terminal** (wave 20: a monitor, a mouse, a keyboard and a
   webcam under the screen). With the door shut a guest holds their pass to
-  the webcam and talks to Trabolta in **four layers** they click through
-  (WHO ARE YOU, WHAT I AM, THE ARGUMENT, THE ASK), or picks *Forget the
+  the webcam and talks to Trabolta in **three layers** they click through
+  (WHO ARE YOU, WHAT I AM, THE ARGUMENT), or picks *Forget the
   questions. Talk to me.* and types to him at the keyboard. One at a time:
-  keep the queue polite and the door shut. If they convince him (at any
-  hour), his screen shuts down and the night ends when the director
-  presses 🕊 (`# hosts` says so; it no longer ends by itself). If he throws
+  keep the queue polite and the door shut. The talk never ends the night:
+  when they have said their piece the terminal is free for the next
+  program. <!-- DRAFT w58 --> If he throws
   someone out (a blue screen), they are barred from his heart and **marked
   for reinstallation** (wave 20b): their poster lands on the Wanted board,
   but your job stays the bay. You do nothing but keep the queue polite.

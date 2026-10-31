@@ -28,7 +28,8 @@ export function hostTaskbarButtons(o: HostTaskbarInput): TaskbarButton[] {
     { id: "show", label: "Show", icon: <Icon name="mission" size={20} />, onClick: () => o.open("show"), stacked: true, tour: "show", title: "The night: NEXT, your jobs, what needs you", pressed: o.pressed === "show" },
     { id: "chats", label: "Chats", icon: <Icon name="reply" size={20} />, onClick: () => o.open("chats"), stacked: true, tour: "chats", title: "Staff rooms, readouts, guests' messages", pressed: o.pressed === "chats", ...(o.chatsBadge > 0 ? { badge: o.chatsBadge } : {}) },
     { id: "desk", label: "Desk", icon: <BoothIcon name="desk" size={20} />, onClick: () => o.open("desk"), stacked: true, tour: "desk", title: "The house desk: GO, stop, test the speakers and lights", pressed: o.pressed === "desk" },
-    { id: "scan", label: "Scan", icon: <Icon name="scan" size={20} />, onClick: o.scan, primary: true, stacked: true, tour: "scan", title: "Scan a guest's pass", active: o.scanOpen },
+    // The title: DRAFT w58.
+    { id: "scan", label: "Scan", icon: <Icon name="scan" size={20} />, onClick: o.scan, primary: true, stacked: true, tour: "scan", title: "Scan a pass or a codex QR", active: o.scanOpen },
   ];
 }
 

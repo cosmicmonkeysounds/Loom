@@ -101,11 +101,10 @@ describe("a pick in the thread (B4)", () => {
 
 describe("the composer and the line's end (B6, B7)", () => {
   const since = 1_000;
-  it("is held back through a proof or the shutdown, for the rest of a thrown line, and once the heart is done", () => {
+  it("is held back through a proof, for the rest of a thrown line, and once the heart is done", () => {
     const at = (value: string, now: number) => composerBlocked({ cue: { value, at: 2_000 }, since, now, stage: "talk", heart: true });
     expect(at("room_heart_proof", 3_000)).toBe(true);
     expect(at("room_heart_proof", 9_000)).toBe(false);
-    expect(at("room_heart_shutdown", 20_000)).toBe(true);
     expect(at("room_heart_eject", 600_000)).toBe(true);
     expect(at("room_heart_layer_2", 2_100)).toBe(false);
     // An eject from before this line opened is not this line's (past the first-word hold).
@@ -186,7 +185,7 @@ describe("the panel as drawn", () => {
   });
 
   it("never names a layer or counts the questions in its header (wave 29)", () => {
-    for (const beat of ["Heart Layer One", "Heart Layer Two", "Heart Layer Three", "Heart Layer Four", "Heart Evidence"]) {
+    for (const beat of ["Heart Layer One", "Heart Layer Two", "Heart Layer Three", "Heart Evidence"]) {
       const html = renderToStaticMarkup(createElement(ChoicePanel, { menu: { ...big, beat }, doorOpen: false, onPick: async () => {}, numberKeys: true, onActivity: () => {} }));
       const head = /<div class="heart-head">(.*?)<\/div>/su.exec(html)?.[1] ?? "";
       expect(head).toContain("YOUR ANSWER");

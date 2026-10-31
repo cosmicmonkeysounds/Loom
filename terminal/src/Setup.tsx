@@ -12,8 +12,9 @@
 //! room) sits under a folded *advanced*.
 
 import { useEffect, useMemo, useState } from "react";
-import { DEFAULT_TV_ROOM, VIEWS, VIEW_INFO, announceChoiceValue, announceFromChoice, baseOf, connect, defaultConfig, pickCharacter, roomChoices, savedCharacter, TV_SPEED, withViewDefaults, type DoorConfig, type TerminalConfig, type TerminalView } from "./config.ts";
+import { DEFAULT_TV_ROOM, VIEWS, VIEW_INFO, announceChoiceValue, announceFromChoice, baseOf, bleepsOn, connect, defaultConfig, pickCharacter, roomChoices, savedCharacter, TV_SPEED, withViewDefaults, type DoorConfig, type TerminalConfig, type TerminalView } from "./config.ts";
 import { feedStatusText, feedWanted, useFeedStatus } from "./camfeed.ts";
+import { linkReadout, linkStats, linkTroubled } from "./link-stats.ts";
 import { micBox, voiceRoles } from "./voice/roles.ts";
 import { DoorSetup } from "./heart/DoorSetup.tsx";
 import { RigSetup } from "./gamepad/RigSetup.tsx";
@@ -53,6 +54,24 @@ interface Access {
   eventId: string;
   token: string;
   title: string;
+}
+
+/** (wave 59) The link to the games, live: frames each way and the last error.
+ *  The games' half stops with the screen behind ⚙, so it reads as ⚙ found it. */
+function LinkReadout() {
+  const [seen] = useState(() => linkStats.snapshot(Date.now()));
+  const [now, setNow] = useState(() => linkStats.snapshot(Date.now()));
+  useEffect(() => {
+    const t = window.setInterval(() => setNow(linkStats.snapshot(Date.now())), 1000);
+    return () => window.clearInterval(t);
+  }, []);
+  return (
+    <div className={`link-readout small ${linkTroubled(now) ? "warn" : "muted"}`} data-link-readout="">
+      {linkReadout(now, seen).map((line) => (
+        <div key={line.slice(0, 12)}>{line}</div>
+      ))}
+    </div>
+  );
 }
 
 /** The heartbeats (`GET /api/mod/screen/terminals`), every 5 s while open. */
@@ -125,6 +144,8 @@ export function Setup({
   // The voice link's microphone: undefined = the view's default (the TV's is off).
   const [mic, setMic] = useState<boolean | undefined>(current?.mic);
   const [voicesOn, setVoicesOn] = useState(current?.voices ?? true);
+  // Wave 59: undefined = this spot's default (`bleepsOn`); a tick here is kept.
+  const [bleeps, setBleeps] = useState<boolean | undefined>(current?.bleeps);
   const [fullscreen, setFullscreen] = useState(current?.fullscreen ?? true);
   const [door, setDoor] = useState<DoorConfig>(current?.door ?? "off");
   const [doorTouched, setDoorTouched] = useState(false);
@@ -220,6 +241,8 @@ export function Setup({
       const voiceFields = mic === undefined ? { voices: voicesOn } : { voices: voicesOn, mic };
       const picked = applyPick({ ...base, character: kept, camera, engine, announce, camFeed, ...voiceFields, fullscreen, door, keys, bay, webcam: webcam.trim(), pad, whisper, crt, serverVoice: serverVoice.trim(), browserVoice, speed, pause }, pick);
       if (mic === undefined) delete picked.mic;
+      if (bleeps === undefined) delete picked.bleeps;
+      else picked.bleeps = bleeps;
       const next = picked;
       const own = manualTouched || (current !== null && current.spot === pick.spot);
       const done = own ? withManual(next, pick, { view: viewOverride, room: roomOverride }) : next;
@@ -314,6 +337,7 @@ export function Setup({
             <p className="muted">
               {access?.title ? `${access.title} — ` : ""}tap the spot this tablet hangs on. The list is the event's house map (set up in the house map editor).
             </p>
+            {current !== null && current.spot !== "" && <LinkReadout />}
             {mapFailed && <div className="warn small">Couldn't read the event's house map — showing the show's own terminals.</div>}
             {map === null && !mapFailed && <div className="muted">reading the house map…</div>}
             {groups.map((g) => (
@@ -445,6 +469,10 @@ export function Setup({
               <label className="check">
                 <input type="checkbox" checked={voicesOn} onChange={(e) => setVoicesOn(e.target.checked)} />
                 play the players near this screen <span className="muted">(their headset voices)</span>
+              </label>
+              <label className="check">
+                <input type="checkbox" checked={!bleepsOn({ spot: current?.spot ?? "", view: viewOverride || current?.view || "auto", crt, ...(bleeps === undefined ? {} : { bleeps }) })} onChange={(e) => setBleeps(!e.target.checked)} />
+                🔇 No ad sounds or bleeps <span className="muted">(on by itself on the TV, the tent and the server room; never his voice, announcements or the players)</span>
               </label>
               <label className="check">
                 <input type="checkbox" checked={fullscreen} onChange={(e) => setFullscreen(e.target.checked)} />

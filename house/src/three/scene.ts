@@ -45,8 +45,8 @@ import {
 } from "three";
 import type { Camera, Material, Object3D, Scene, Texture } from "three";
 import { forward } from "../frames.ts";
-import { breakpoints, buildFloors, buildRamps, buildWalls, doorGap, pointInPolyStrict, roomById, roomElevation, roomHeight, stairWells, styleOf } from "../geometry.ts";
-import type { FloorPlane, HouseMap, Ramp, TerminalSpot, Vec2, WallKind, WallSegment } from "../types.ts";
+import { breakpoints, buildFloors, buildRamps, buildWalls, doorGap, pointInPolyStrict, roomById, roomElevation, roomHeight, roomName, stairWells, styleOf } from "../geometry.ts";
+import type { FloorPlane, HouseMap, Ramp, Room, TerminalSpot, Vec2, WallKind, WallSegment } from "../types.ts";
 import { Bin, DEG, merge, paint, projectUvs } from "./dispose.ts";
 import { outsideGround } from "../escape.ts";
 import {
@@ -97,6 +97,9 @@ import {
 export interface HouseSceneOptions {
   /** Room name labels + sign props (default: when a DOM exists — they need a canvas). */
   labels?: boolean;
+  /** The title bars show the crew's `label` over the story location, real room
+   *  and all, instead of the name a player reads (`roomName`). Only a crew tool. */
+  crewLabels?: boolean;
   /** Procedural textures (default: when a DOM exists; else plain colours). */
   textures?: boolean;
   /** A hemisphere + a directional light inside `root` (default true). */
@@ -198,6 +201,13 @@ const SCREEN_W = 0.3;
 const SCREEN_H = 0.21;
 /** Room labels are hidden nearer than [0] metres, fully shown beyond [1]. */
 const LABEL_FADE = [1.2, 2.6] as const;
+
+/** What a room's title bar says: a player's name for it, or for a crew tool the
+ *  real room over its story location. */
+export function roomTitle(room: Room, crew: boolean): { title: string; subtitle?: string } {
+  if (!crew) return { title: roomName(room) };
+  return room.location && room.location !== room.label ? { title: room.label, subtitle: room.location } : { title: room.label };
+}
 /** A terminal's camera window (4:3), and the canvas its frames are drawn on. */
 export const FEED_W = 0.48;
 export const FEED_H = 0.36;
@@ -700,14 +710,15 @@ export function buildHouseScene(house: HouseMap, opts: HouseSceneOptions = {}): 
   if (useLabels) {
     for (const room of house.rooms) {
       const group = floorGroup(room.floor);
-      const made = titleBarTexture(room.label, room.location && room.location !== room.label ? room.location : undefined);
+      const { title, subtitle } = roomTitle(room, opts.crewLabels === true);
+      const made = titleBarTexture(title, subtitle);
       if (!group || !made) continue;
       bin.add(made.texture);
       const sprite = new Sprite(bin.add(new SpriteMaterial({ map: made.texture, transparent: true, depthWrite: false })));
       const [x, z] = labelPoint(room.poly);
       // Under the ceiling, clear of a standing head (eye height 1.6).
       const top = room.outdoor ? 2.4 : roomHeight(house, room);
-      const height = room.location && room.location !== room.label ? 0.36 : 0.22;
+      const height = subtitle !== undefined ? 0.36 : 0.22;
       sprite.scale.set(height * made.aspect, height, 1);
       sprite.position.set(x, roomElevation(house, room) + Math.min(Math.max(top - 0.08, 1.85 + height) - height / 2, top - 0.01 - height / 2), z);
       sprite.name = `label:${room.id}`;

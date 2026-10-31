@@ -11,6 +11,8 @@ var candidate_requests := 0
 var king_hits := 0
 ## [method mark_ready] calls.
 var readies := 0
+## [method reset_run] calls.
+var run_resets := 0
 
 
 func begin(guest: String) -> void:
@@ -40,6 +42,10 @@ func hit_king() -> void:
 
 func mark_ready() -> void:
 	readies += 1
+
+
+func reset_run() -> void:
+	run_resets += 1
 
 
 ## `[kind, prop]` per [method moment]; answer with [method answer_moment].

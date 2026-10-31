@@ -401,9 +401,10 @@ when door_sensor_closed:
     const full = await call(rt, "GET", "/api/state?role=mod", {}, token);
     const lean = await call(rt, "GET", "/api/state?role=mod&cues=1", {}, token);
     expect(lean.status).toBe(200);
-    expect(Object.keys(lean.json).sort()).toEqual(["clock", "cues", "interactions", "rejoins", "roster", "theme", "title", "world"]);
-    // Wave 23: plus the guests asking to get back in (none here).
-    expect(lean.json).toEqual({ ...cueSheetView(full.json as unknown as ModView), rejoins: [] });
+    expect(Object.keys(lean.json).sort()).toEqual(["clock", "cues", "interactions", "prompter", "rejoins", "roster", "theme", "title", "world"]);
+    // Wave 23: plus the guests asking to get back in (none here); wave 59: and
+    // the teleprompter's line (none on).
+    expect(lean.json).toEqual({ ...cueSheetView(full.json as unknown as ModView), rejoins: [], prompter: null });
     const v = lean.json as unknown as ReturnType<typeof cueSheetView>;
     expect(v.interactions.map((i) => i.id)).toEqual(["ring_the_bell", "hunt_time_up"]);
     expect(v.world).toEqual([{ path: "Night.phase", value: expect.stringContaining("desktop") }]);
@@ -638,7 +639,7 @@ describe("acts on the cue sheet (wave 10: display only)", () => {
     // turn, must give the same cue state and the same row marks.
     const openers: Record<string, string> = {
       call_to_the_desktop: "B · Act I: the Desktop, Bingo and the first truth",
-      second_hunt_preview: "C · The malware, the hour, the Truther Download",
+      second_hunt_preview: "C · Act II: the ad hijack, Hunt 2, the Truther Download, the summons",
       truth_pong: "D · Act II: Truth Pong, the Trust Chart, the beans",
       y2k_clock: "E · Act III: the Y2K hour and the server room",
       restore_the_lights: "Anytime",
@@ -669,7 +670,7 @@ describe("acts on the cue sheet (wave 10: display only)", () => {
       return { cues: v.cues, rows };
     };
     const tagRows = cueRows(modView(acted, "open", "x").interactions ?? [], { last: null, fired: [] });
-    expect(cueActs(tagRows).map((a) => `${a.code ?? a.title} ${a.rows.length}`)).toEqual(["B 10", "C 5", "D 8", "E 17", "Anytime 12", "F 12", "G 18"]); // wave 53: ⏭ in Anytime; wave 48: 🔑 G14 in G; wave 45: 🚻 G13 in G; wave 44: 🎬 G12 in G; wave 18b: −☎️ −🪅; wave 20: +3 in E; wave 21: +3 staff awards in G; wave 22: 🔌 Trust the patch bay in E; wave 26: +3 game moments in Anytime; wave 32: ⚡ ad_burst in Anytime
+    expect(cueActs(tagRows).map((a) => `${a.code ?? a.title} ${a.rows.length}`)).toEqual(["B 12", "C 5", "D 8", "E 15", "Anytime 15", "F 11", "G 21"]); // wave 58 music: 🔒 🔓 in Anytime; wave 59: 🎭 in Anytime; wave 58: 🏅 G9a in G; wave 53: ⏭ in Anytime; wave 48: 🔑 G14 in G; wave 45: 🚻 G13 in G; wave 44: 🎬 G12 in G; wave 18b: −☎️ −🪅; wave 20: +3 in E; wave 21: +3 staff awards in G; wave 22: 🔌 Trust the patch bay in E; wave 26: +3 game moments in Anytime; wave 32: ⚡ ad_burst in Anytime
     expect(marks(acted)).toEqual(marks(plain));
     const admin = [...plain.model.interactions.values()].filter((i) => i.who === "admin").map((i) => i.id);
     for (const id of admin.slice(0, 30)) {
@@ -837,14 +838,14 @@ describe("an `urgent: true` cue jumps the running order (w20b: 🕊 while a stan
   const next = (sheet: Ix[], last: string | null, fired: string[]) => cueRows(sheet, { last, fired }).find((r) => r.next)?.id ?? null;
 
   it("is NEXT while live and unfired, wherever LAST is; otherwise the sheet runs as before", () => {
-    const sheet = [ix("bingo"), ix("hunt"), ix("y2k"), ix("talked_down", { urgent: true }), ix("reveal"), ix("bobbing")];
-    expect(next(sheet, "bingo", ["bingo"])).toBe("talked_down"); // LAST before it
-    expect(next(sheet, "reveal", ["bingo", "hunt", "y2k", "reveal"])).toBe("talked_down"); // LAST after it
+    const sheet = [ix("bingo"), ix("hunt"), ix("y2k"), ix("urgent_cue", { urgent: true }), ix("reveal"), ix("bobbing")];
+    expect(next(sheet, "bingo", ["bingo"])).toBe("urgent_cue"); // LAST before it
+    expect(next(sheet, "reveal", ["bingo", "hunt", "y2k", "reveal"])).toBe("urgent_cue"); // LAST after it
     expect(cueRows(sheet, { last: "bingo", fired: ["bingo"] }).filter((r) => r.next)).toHaveLength(1);
-    const idle = sheet.map((i) => (i.id === "talked_down" ? ix("talked_down", { urgent: true, live: false }) : i));
+    const idle = sheet.map((i) => (i.id === "urgent_cue" ? ix("urgent_cue", { urgent: true, live: false }) : i));
     expect(next(idle, "bingo", ["bingo"])).toBe("hunt");
-    expect(next(sheet, "talked_down", ["bingo", "talked_down"])).toBe("reveal"); // fired: back to the order
-    const aside = sheet.map((i) => (i.id === "talked_down" ? ix("talked_down", { urgent: true, sequence: false }) : i));
+    expect(next(sheet, "urgent_cue", ["bingo", "urgent_cue"])).toBe("reveal"); // fired: back to the order
+    const aside = sheet.map((i) => (i.id === "urgent_cue" ? ix("urgent_cue", { urgent: true, sequence: false }) : i));
     expect(next(aside, "bingo", ["bingo"])).toBe("hunt"); // an aside is never NEXT
   });
 

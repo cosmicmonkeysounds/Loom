@@ -17,9 +17,9 @@ QUEST Hunt One
     There are files scattered around the computer that I need your help to
     interpret. The facts are obscure. They are in the books in the Desktop.
     Fifteen minutes.
-    - Q1. How many years did the Maps and Ducks billboard on Barrington Street go unpaid before mapsandducks.com expired?
-    - Q2. What was the name of the first animal buried in the Halifax Explosion Memorial Pet Cemetery?
-    - Q3. At what time was the ribbon-cutting at Halifax's first AI Data Centre scheduled?
+    - Q1. According to Funk and Wagnalls, what is an example of fraud?
+    - Q2. According to Forensics For Dummies, finish this sentence: “___ ___ ___ ___ ___ previously hypnotized witnesses.”
+    - Q3. According to Macs for Dummies, finish this sentence: “A similar online _, called pharming, also involves the use of __ ___ __.”
 
 QUEST Hunt Two
   title: The Truth Scavenger Hunt · Round 2
@@ -30,7 +30,7 @@ QUEST Hunt Two
     Moment of Truth.
     - Q1. What extension does the Customer Care card tell you to dial?
     - Q2. Which song did Trabolta play 412 times the night before he registered mapsandducks.com?
-    - Q3. What is the title of the last chapter of Trabolta's unfinished Unified Field Theory?
+    - Q3. What is the title of the last chapter of Trabolta's unfinished Grand Unified Theory?
 
 QUEST The Final Facts
   title: The Final Fact-Finding Round
@@ -44,9 +44,9 @@ QUEST The Final Facts
   setting: The Desktop
   cast: Trabolta
 
-Trabolta: Question one. How many years did the Maps and Ducks billboard on Barrington Street go unpaid before mapsandducks.com expired?
-Trabolta: Question two. What was the name of the first animal buried in the Halifax Explosion Memorial Pet Cemetery?
-Trabolta: Question three. At what time was the ribbon-cutting at Halifax's first AI Data Centre scheduled?
+Trabolta: Question one. According to Funk and Wagnalls, what is an example of fraud?
+Trabolta: Question two. According to Forensics For Dummies, finish this sentence: blank, blank, blank, blank, blank, previously hypnotized witnesses.
+Trabolta: Question three. According to Macs for Dummies, finish this sentence: A similar online blank, called pharming, also involves the use of blank, blank, blank.
 -> Hunt One Go
 
 == Hunt Two Questions
@@ -55,7 +55,7 @@ Trabolta: Question three. At what time was the ribbon-cutting at Halifax's first
 
 Trabolta: Round two, question one. What extension does the Customer Care card tell you to dial?
 Trabolta: Round two, question two. Which song did Trabolta play 412 times the night before he registered mapsandducks.com?
-Trabolta: Round two, question three. What is the title of the last chapter of Trabolta's unfinished Unified Field Theory?
+Trabolta: Round two, question three. What is the title of the last chapter of Trabolta's unfinished Grand Unified Theory?
 -> Hunt Two Go
 
 == Final Questions
@@ -66,20 +66,28 @@ Trabolta: Final fact one. What is the only thing Sandy has ever said?
 Trabolta: Final fact two. Who is taking Sandy to computer prom?
 -> Overshare Go
 
-// The 📝 card lines (main.loom `when deal_fact_card`), the truth count and the door code.
+// The 📝 card lines (main.loom `when deal_fact_card`), which keys are still owed (G9a skips them), the truth count and the door code.
 == Facts Seed
   setting: The Desktop
 
-set Night.q_h1 = "H1: Round 1 Q1. How many years did the Maps and Ducks billboard on Barrington Street go unpaid before mapsandducks.com expired?"
-set Night.q_h2 = "H2: Round 1 Q2. What was the name of the first animal buried in the Halifax Explosion Memorial Pet Cemetery?"
-set Night.q_h3 = "H3: Round 1 Q3. At what time was the ribbon-cutting at Halifax's first AI Data Centre scheduled?"
+set Night.q_h1 = "H1: Round 1 Q1. According to Funk and Wagnalls, what is an example of fraud?"
+set Night.q_h2 = "H2: Round 1 Q2. According to Forensics For Dummies, finish this sentence: “___ ___ ___ ___ ___ previously hypnotized witnesses.”"
+set Night.q_h3 = "H3: Round 1 Q3. According to Macs for Dummies, finish this sentence: “A similar online _, called pharming, also involves the use of __ ___ __.”"
 set Night.q_h4 = "H4: Round 2 Q1. What extension does the Customer Care card tell you to dial?"
 set Night.q_h5 = "H5: Round 2 Q2. Which song did Trabolta play 412 times the night before he registered mapsandducks.com?"
-set Night.q_h6 = "H6: Round 2 Q3. What is the title of the last chapter of Trabolta's unfinished Unified Field Theory?"
+set Night.q_h6 = "H6: Round 2 Q3. What is the title of the last chapter of Trabolta's unfinished Grand Unified Theory?"
 set Night.q_f1 = "F1: Final Q1. What is the only thing Sandy has ever said?"
 set Night.q_f2 = "F2: Final Q2. Who is taking Sandy to computer prom?"
+set Night.owed_h1 = true
+set Night.owed_h2 = true
+set Night.owed_h3 = true
+set Night.owed_h4 = false
+set Night.owed_h5 = false
+set Night.owed_h6 = false
+set Night.owed_f1 = false
+set Night.owed_f2 = false
 set Night.truth_count = 17
-set Kernel.door_code = "4826"
+set Kernel.door_code = "7639"
 
 // Truth or Dare: the bottle lane sets Night.truth_n and fires this beat;
 // the arm with that number is the question (match has no fallback arm,
@@ -134,43 +142,36 @@ else:
 
 // H1 · the hunt answer · gold
 // DRAFT — awaiting sign-off in facts.json
-CODEX The Billboard Lease
-  title: The Billboard Lease
+CODEX Funk And Wagnalls
+  title: Funk and Wagnalls
   category: Facts
-  code: BILLBOARD-LEASE-11
+  code: WAGNALLS-FRAUD
   secret: true
   text:
-    A lease invoice, yellowed, by the fireplace. OUTDOOR ADVERTISING LEASE,
-    BARRINGTON STREET. Advertiser: Maps And Ducks. FINAL NOTICE.
-    Rent outstanding: eleven years. The billboard went eleven years unpaid before
-    mapsandducks.com expired, and nobody took the duck down.
+    PLACEHOLDER. A page of Funk and Wagnalls goes here. Its words are owed.
     ▒ HUNT ANSWER H1 ▒
 
 // H2 · the hunt answer · gold
 // DRAFT — awaiting sign-off in facts.json
-CODEX The First Pet
-  title: The First Pet
+CODEX Forensics For Dummies
+  title: Forensics For Dummies
   category: Facts
-  code: MISTER-PICKLES
+  code: DUMMIES-FORENSICS
   secret: true
   text:
-    A charcoal rubbing of a small stone plaque. HALIFAX EXPLOSION MEMORIAL
-    PET CEMETERY. PLOT 1. MISTER PICKLES, A HARBOUR TABBY. 1918. THE FIRST
-    OF THEM LAID TO REST HERE. Mister Pickles was the first animal buried in
-    the cemetery. ▒ HUNT ANSWER H2 ▒
+    PLACEHOLDER. A page of Forensics For Dummies goes here. Its words are
+    owed. ▒ HUNT ANSWER H2 ▒
 
 // H3 · the hunt answer · gold
 // DRAFT — awaiting sign-off in facts.json
-CODEX The Ribbon Cutting
-  title: The Ribbon Cutting
+CODEX Macs For Dummies
+  title: Macs for Dummies
   category: Facts
-  code: RIBBON-9AM
+  code: DUMMIES-MACS
   secret: true
   text:
-    An opening-day programme, glossy: HALIFAX AI DATA CENTRE, GRAND OPENING.
-    Ribbon-cutting with Mayor Randy Barkmore Jr. at 9:00 a.m. sharp. Coffee
-    and muffins to follow. Someone has written in the margin: "he got here
-    at 4." The ribbon-cutting was scheduled for 9:00 a.m. ▒ HUNT ANSWER H3 ▒
+    PLACEHOLDER. A page of Macs for Dummies goes here. Its words are owed.
+    ▒ HUNT ANSWER H3 ▒
 
 // H4 · the hunt answer · gold
 // DRAFT — awaiting sign-off in facts.json
@@ -205,7 +206,7 @@ CODEX The Final Chapter
   code: APPENDIX-Z
   secret: true
   text:
-    The table of contents of the Unified Field Theory binder. Chapter after
+    The table of contents of the Grand Unified Theory binder. Chapter after
     chapter of gravity and light, and then the last chapter, "Appendix Z:
     Loose Ends (Do Not Print)". The page it points to is blank.
     ▒ HUNT ANSWER H6 ▒
@@ -215,14 +216,15 @@ CODEX The Final Chapter
 CODEX What Sandy Says
   title: What Sandy Says
   category: Facts
-  code: LIVE-AGENT
+  code: CALL-LOG-S
   secret: true
   text:
-    A chat transcript, forty pages, printed double-sided. The user
-    writes paragraphs: poems, apologies, equations, a question about prom. Each
-    answer is the same, word for word, and it is the only thing Sandy has
-    ever said: "I'm sorry, I didn't understand that. Would you like to speak
-    to a live agent?" ▒ HUNT ANSWER F1 ▒
+    A call log from the Northumberland Ferries phone line, forty pages,
+    printed double-sided. The caller says paragraphs: poems, apologies,
+    equations, a question about prom. Each answer is the same, word for
+    word, and it is the only thing Sandy has ever said: "It looks like I
+    didn't understand that. Please wait while I direct you to an agent."
+    ▒ HUNT ANSWER F1 ▒
 
 // F2 · the hunt answer · gold
 // DRAFT — awaiting sign-off in facts.json
@@ -232,6 +234,7 @@ CODEX The Prom Ticket
   code: COMPUTER-PROM
   secret: true
   text:
-    A ticket, a little crumpled, pink and silver: COMPUTER PROM 1999.
-    ADMIT TWO: GROK + SANDY. On the back, in a confident hand: "she said yes. of
-    course she said yes. everyone says yes to me." ▒ HUNT ANSWER F2 ▒
+    A ticket, a little crumpled, pink and silver: COMPUTER PROM, HALLOWEEN
+    2026. ADMIT TWO: GROK + SANDY. On the back, in a confident hand: "she
+    said yes. of course she said yes. everyone says yes to me."
+    ▒ HUNT ANSWER F2 ▒

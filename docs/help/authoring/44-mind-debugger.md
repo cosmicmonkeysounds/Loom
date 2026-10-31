@@ -434,9 +434,10 @@ gate, so a `secret:` slot never reaches one.
 
 **Since wave 20 the talk at his heart is the story's, not the model's.**
 The old *standing down* situation and Trabolta's `stand_down` power are
-gone: a conversation never decides an ending. The story docks four layers
+gone: a conversation never decides an ending. The story docks three layers
 of choices on the server-room terminal (options that show only while a
-check holds: see [choices](choices.md)), and only its last one stops him.
+check holds: see [choices](choices.md)), and since wave 58 even the last ends
+nothing.
 His voice fills the gaps, through two more situations:
 
 - **a choice is open** (`them.heart_menu`): one short line pointing the
@@ -474,8 +475,7 @@ withheld like a `never` word (the act dropped, the line swapped for a
 list: *Trapped in the Internet* leaves out a bare *John* (John McAfee is
 in it) and *party* (his invitation is to one). `stagehand check` warns
 when an `outside:` word appears in the persona's own in-world text. See
-[the server room](server-room.md) for the talk itself and what a director
-does when he stands down.
+[the server room](server-room.md) for the talk itself.
 
 The mind file's `secrets:` keep the hunt's answers from him, and its
 `never` list (written by `titi:facts` from `facts.json` and the story's

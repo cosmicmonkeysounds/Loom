@@ -19,7 +19,7 @@ else you were doing. It looks like a Windows 98 Setup Wizard: a big emoji, a
 headline, and a progress bar that fills for about a second. Then its button
 wakes up:
 
-- **★ ACHIEVEMENT UNLOCKED** (*You won the Bingo Ribbon.*) → **Collect ✓**.
+- **★ ACHIEVEMENT UNLOCKED** (*You won the Bingo.*) → **Collect ✓**.
 - **⚠ VIRUS DETECTED** (an Antivirus found you) → **🎟 Show my pass** or
   **🚻 Bathroom Mode**, and no OK.
 - **⛔ QUARANTINED** (sent to the Internet) → **🎟 Show my pass** or **🚻
@@ -28,7 +28,7 @@ wakes up:
 - **⚡ YOUR MOVE**: a card is inside it (the bottle's *Truth or dare?*, a
   poll, a line to type). Answer it right there; the window closes by itself
   once you have. *It's also in Trabolta's chat*, if you'd rather answer later.
-- **📣 HOUSE NEWS**: news for everyone (*Encarta won the Bingo Ribbon! Cheer
+- **📣 HOUSE NEWS**: news for everyone (*Encarta won the Bingo! Cheer
   for them at the Desktop.*) with **Cheer! (6)** counting down; it closes by
   itself.
 

@@ -312,6 +312,9 @@
 .tv3-award-title { top: 29%; font-size: min(8.4vmin, 8vw); color: #ffe066; text-shadow: 0.05em 0.05em 0 #5a3a00; }
 .tv3-award-lists { top: 44%; font-size: 4vmin; color: #b8c4ff; }
 .tv3-award-name { top: 51%; font-size: min(14vmin, 12vw); color: #fff; overflow-wrap: break-word; }
+/* A tie names everyone in it (wave 58, G9a): it steps down to stay above the number. */
+.tv3-award-name.long { font-size: min(7vmin, 5.2vw); }
+.tv3-award-name.longer { font-size: min(4.6vmin, 4vw); }
 .tv3-award-value { top: 72%; display: flex; flex-direction: column; align-items: center; color: #ffe8c0; }
 .tv3-award-label { font-size: 3.6vmin; letter-spacing: 0.12em; text-transform: uppercase; opacity: 0.85; }
 .tv3-award-num { font-family: var(--mono); font-size: min(10vmin, 10vw); color: #ffd23f; line-height: 1; text-shadow: 0 0 0.2em rgba(255, 210, 63, 0.6); }
@@ -339,6 +342,8 @@
 /* A portrait wall tablet: the words carry more of the height. */
 @media (orientation: portrait) {
   .tv3-award-name { font-size: 16vw; }
+  .tv3-award-name.long { font-size: 6vw; }
+  .tv3-award-name.longer { font-size: 4.4vw; }
   .tv3-award-title, .tv3-cer-title, .tv3-bob-title, .tv3-bag-title { font-size: 11vw; }
   .tv3-award-num { font-size: 13vw; }
   .tv3-award-kind, .tv3-award-lists, .tv3-award-label { font-size: 4.6vw; }

@@ -509,6 +509,23 @@ export async function postReady(base: string, token: string, fetcher: typeof fet
   }
 }
 
+/** (wave 59) How `POST /api/spatial/reset` answered. `off`: nothing changed on
+ *  the server (an older server, or no answer), and the walk goes on as it was. */
+export type ResetReply = { kind: "reset"; duck: DuckSpot } | { kind: "over" } | { kind: "off" };
+
+/** The run reset: the server re-seats this walk at the spawn and deals Gerald a new spot. */
+export async function postReset(base: string, token: string, fetcher: typeof fetch = fetch): Promise<ResetReply> {
+  try {
+    const res = await fetcher(`${base}/api/spatial/reset`, { method: "POST", headers: { "content-type": "application/json", "x-loom-token": token }, body: "{}" });
+    if (res.status === 401 || res.status === 410) return { kind: "over" };
+    if (!res.ok) return { kind: "off" };
+    const duck = ((await res.json()) as { duck?: unknown }).duck;
+    return isDuckSpot(duck) ? { kind: "reset", duck } : { kind: "off" };
+  } catch {
+    return { kind: "off" };
+  }
+}
+
 export async function postEnd(base: string, token: string): Promise<void> {
   try {
     await fetch(`${base}/api/spatial/end`, { method: "POST", headers: { "content-type": "application/json", "x-loom-token": token }, body: "{}", keepalive: true });

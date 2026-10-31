@@ -79,7 +79,7 @@ export const BEAT_FILES: ReadonlyArray<{ path: string; part: string }> = [
   { path: "beats/desktop.loom", part: "B · Act I: the Desktop and Bingo" },
   { path: "beats/hunt.loom", part: "B · Act I: hunt 1, the results, the bottle" },
   { path: "beats/internet.loom", part: "Any time · the reinstallation (the tent)" },
-  { path: "beats/malware.loom", part: "C · The malware, the hour, the Truther Download" },
+  { path: "beats/malware.loom", part: "C · Act II: the ad hijack, the hour, the Truther Download" },
   { path: "beats/pong.loom", part: "D · Act II: summons, Truth Pong, Trust Chart, printer" },
   { path: "beats/overshare.loom", part: "D–E · The overshare and the Y2K clock" },
   { path: "beats/server-room.loom", part: "E · Act III: the majority, The Heart, the patch bay" },
@@ -233,7 +233,7 @@ export function showSecrets(show: Show): string[] {
 /**
  * The folded unlock codes the page may still spell: a public (not `secret:
  * true`) codex entry whose code is its own title's words (*The Trust Chart*
- * → `TRUST-CHART`, *The Unified Field Theory* → `UNIFIED-FIELD`). Its title
+ * → `TRUST-CHART`, *Target Selection* → `TARGET-SELECTION`). Its title
  * is the show's name for the thing, so no page could avoid it; the code
  * unlocks only what the title already says. A secret entry, or a code that
  * is not in its title (*The Prom Ticket* → `COMPUTER-PROM`), stays blanked.

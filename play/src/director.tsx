@@ -15,7 +15,8 @@
 //! the editor's Director page. Lifecycle, chat and the World editor stay on
 //! the laptop.
 
-import type { RejoinAsk } from "../../core/src/host-board.ts";
+import type { PrompterStatus, RejoinAsk } from "../../core/src/host-board.ts";
+import { prompterLine } from "./host/show-model.ts";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ARM_DEAD_MS,
@@ -78,6 +79,8 @@ export interface DirectorView {
   title?: string;
   /** Wave 23: guests asking to get back in (absent from an older server). */
   rejoins?: RejoinAsk[];
+  /** Wave 59: the teleprompter's scene. */
+  prompter?: PrompterStatus | null;
   /** The story's `theme:` — carried before the doors too, so the skin never
    *  switches when they open. */
   theme?: string;
@@ -714,6 +717,16 @@ function useDirectorSession() {
     [auth, base, drop, latch],
   );
 
+  /** Wave 59: ▶ every line of his left plays (`POST /api/mod/aloud`). */
+  const aloud = useCallback(
+    async (action: "release" | "done"): Promise<void> => {
+      if (auth === null) return;
+      await fetch(`${base}/api/mod/aloud`, { method: "POST", headers: { "content-type": "application/json", "x-loom-token": auth.token }, body: JSON.stringify({ action }) }).catch(() => {});
+      poll.current?.now();
+    },
+    [auth, base],
+  );
+
   /** 📣 I'll call / Stop calling (`POST /api/mod/caller {on}`). Rejects
    *  with the server's refusal (an older server: 404). */
   const claim = useCallback(
@@ -764,7 +777,7 @@ function useDirectorSession() {
     [auth, base],
   );
 
-  return { auth, view, receivedAt, connected, notice, login, fire, claim, stopSounds, rejoin, leave: () => drop(null) };
+  return { auth, view, receivedAt, connected, notice, login, fire, claim, stopSounds, rejoin, aloud, leave: () => drop(null) };
 }
 
 // --- the screens -----------------------------------------------------------------
@@ -785,7 +798,7 @@ function RejoinAsks({ asks, onAnswer }: { asks: readonly RejoinAsk[]; onAnswer: 
       {asks.map((a) => (
         <div key={a.request} className="dir-rejoin">
           <div className="dir-rejoin-text">
-            🔁 <strong>{a.name}</strong> wants back in from a new phone. Check it's them first.
+            🔁 <strong>{a.name}</strong> wants back in from a new phone. Check it's them first.{a.held === true ? " That signs out the phone they're on now." : ""}
           </div>
           <div className="dir-rejoin-acts">
             <button type="button" className="choice primary" disabled={busy !== null} onClick={() => answer(a.request, true)}>
@@ -1355,6 +1368,15 @@ export function DirectorApp({ onLeave, brandTheme = null }: { onLeave: () => voi
           </div>
         </header>
         {(s.view?.rejoins ?? []).length > 0 && <RejoinAsks asks={s.view?.rejoins ?? []} onAnswer={s.rejoin} />}
+        {s.view?.prompter != null && s.view.prompter.held && (
+          <div className="dir-prompter" role="status" data-testid="dir-prompter">
+            <span>{prompterLine(s.view.prompter)}</span>
+            {/* DRAFT w59 */}
+            <button type="button" className="w95-btn" onClick={() => void s.aloud("release")}>
+              ▶ Let him speak
+            </button>
+          </div>
+        )}
         {s.view !== null && rows.length > 0 && (
           <div className="cue-pinned">
             {strip.length > 0 && (

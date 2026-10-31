@@ -4,20 +4,46 @@
 // `prompter.tsx` (the pop-up and the view). A chunk that won't load is the
 // same script as a plain list: a reader is never left with nothing.
 
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { maxSeqOf } from "../alerts.ts";
 import type { StartItem } from "../chrome/start-menu.tsx";
 import type { SessionStorage } from "../host.ts";
 import { ChunkBoundary, retryableLazy } from "../lazy-chunk.tsx";
 import type { ChatMessage } from "../types.ts";
-import { lastSeq, markFloor, scriptOf, unreadLines, type ScriptSection } from "./model.ts";
+import { lastSeq, linesBehind, markFloor, markPast, scriptOf, unreadLines, type ScriptSection } from "./model.ts";
 import type { PrompterProps } from "./prompter.tsx";
+import { PrompterStore, sceneRole, sceneScript, type PrompterPost } from "./shared.ts";
 
 const loadSurface = () => import("./prompter.tsx").then((m) => ({ default: m.AloudSurface }));
 const Surface = retryableLazy<PrompterProps>(loadSurface);
+/** How often a phone on the script says so (the server's `HERE_EVERY_MS`). */
+const HERE_MS = 4_000;
+/** Wave 59: no session gave a store (a test, an older caller). */
+const NO_STORE = new PrompterStore();
+
+/** Wave 59: the scene on the server, while one is on. */
+export interface SharedScene {
+  id: number;
+  store: PrompterStore;
+  me: string;
+  post: PrompterPost;
+  /** What this phone is to it. */
+  role: "reader" | "owner" | "host";
+  /** The scene's own lines: what the prompter shows while it is on. */
+  script: ScriptSection[];
+}
 
 export interface Aloud {
   script: ScriptSection[];
+  /** Wave 59: the shared scene, or null (the phone's own script, as in wave 55). */
+  shared: SharedScene | null;
+  /** Wave 59: someone else's script has a line of yours: a small card, not the phone. */
+  card: boolean;
+  dropCard: () => void;
+  /** Wave 59: this reader's lines a newer scene took off the phone, unread. */
+  behind: ScriptSection[];
+  /** They read those. */
+  readBehind: () => void;
   /** The last line read. */
   mark: number;
   /** This reader's lines past the mark. */
@@ -31,8 +57,10 @@ export interface Aloud {
   covering: boolean;
 }
 
-export function useAloud(o: { messages: ReadonlyMap<number, ChatMessage>; me: string | null; token: string | null; storage: SessionStorage; clock: number | undefined; prefetch?: boolean }): Aloud {
+export function useAloud(o: { messages: ReadonlyMap<number, ChatMessage>; me: string | null; token: string | null; storage: SessionStorage; clock: number | undefined; prefetch?: boolean; prompter?: PrompterStore | undefined; post?: PrompterPost | undefined }): Aloud {
   const { messages, me, storage } = o;
+  const store = o.prompter ?? NO_STORE;
+  const sceneId = useSyncExternalStore(store.subscribe, store.sceneId, store.sceneId);
   const key = `loom.aloud.${o.token ?? ""}`;
   const [saved, setSaved] = useState<{ key: string; mark: number | null }>(() => ({ key, mark: storage.load<number>(key) }));
   const [open, setOpen] = useState(false);
@@ -58,17 +86,60 @@ export function useAloud(o: { messages: ReadonlyMap<number, ChatMessage>; me: st
     return () => window.clearTimeout(t);
   }, [o.prefetch]);
   const unread = unreadLines(script, mark).length;
+  const role = sceneId !== 0 ? sceneRole(store.script, me) : null;
+  const shared = useMemo<SharedScene | null>(() => {
+    const sc = store.script;
+    return role !== null && sc !== null && me !== null && o.post !== undefined ? { id: sceneId, store, me, post: o.post, role, script: sceneScript(sc, me) } : null;
+  }, [sceneId, role, me, o.post, store]);
+  const covering = open || unread > 0;
+  const sceneFirst = shared?.script[0]?.lines[0]?.seq ?? 0;
+  const behind = shared !== null ? linesBehind(script, mark, sceneFirst) : [];
+  // Wave 59: a phone showing the script says so, or his lines don't wait for it.
+  const post = useRef(o.post);
+  post.current = o.post;
+  useEffect(() => {
+    if (sceneId === 0 || !covering) return;
+    const beat = () => {
+      if (document.visibilityState === "visible") void post.current?.({ scene: sceneId, op: "here", open })?.catch(() => {});
+    };
+    beat();
+    const t = window.setInterval(beat, HERE_MS);
+    document.addEventListener("visibilitychange", beat);
+    return () => {
+      window.clearInterval(t);
+      document.removeEventListener("visibilitychange", beat);
+    };
+  }, [sceneId, covering, open]);
+  // A scene someone ended is read: its pop-up goes on every phone in it. One a
+  // newer scene took over is read as far as a prompter open here had got to.
+  const [cardGone, setCardGone] = useState(0);
+  const lastEnded = useRef<number | null>(null);
+  useEffect(() => {
+    const e = store.ended;
+    if (e === null || lastEnded.current === e.id) return;
+    lastEnded.current = e.id;
+    if (script.length > 0 && (!e.superseded || open)) keep(markPast(script, mark, e.first, e.superseded ? e.reached : last));
+    // Forgotten by a restart, a reader carries on with their own script.
+    if (sceneId === 0 && (!e.superseded || script.length === 0)) setOpen(false);
+  }, [sceneId]);
   return {
     script,
+    shared,
+    card: shared?.role === "owner" && cardGone !== sceneId,
+    dropCard: () => setCardGone(sceneId),
+    behind,
+    readBehind: () => keep(lastSeq(behind)),
     mark,
     unread,
     open,
     setOpen,
     done: () => {
-      keep(last);
+      if (script.length > 0) keep(markPast(script, mark, sceneFirst, last));
       setOpen(false);
+      setCardGone(sceneId);
+      if (shared !== null) void shared.post({ scene: shared.id, op: "done" }).catch(() => {});
     },
-    covering: open || unread > 0,
+    covering,
   };
 }
 
@@ -99,7 +170,7 @@ function AloudPlain({ a }: { a: Aloud }) {
 
 export function AloudSlot({ a, sound, storage }: PrompterProps) {
   const S = Surface.current();
-  if (!a.covering) return null;
+  if (!a.covering && !a.card) return null;
   return (
     <ChunkBoundary fallback={() => <AloudPlain a={a} />}>
       <Suspense fallback={<div className="aloud-prompter" />}>

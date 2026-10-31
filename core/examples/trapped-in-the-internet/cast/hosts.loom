@@ -47,7 +47,8 @@ CHARACTER Clippy is Greeter, Player
   // ── Booth cues ────────────────────────────────────────────────────
   when call_to_the_desktop:
     if Night.step < 1:
-      reply 📋 Instructions 1/X are in your Codex. Welcome everyone, introduce the hosts; a host starts Bingo.
+      // DRAFT w58 (the teleprompter)
+      reply 📋 Instructions 1/X are in your Codex. A host starts Bingo: your words pop up on your teleprompter.
 
   // Wave 21: Clippy calls no cue. Each game a host or a director starts
   // pops out on Clippy's booth: YOUR GAME IS ON (a big readout). Character
@@ -63,11 +64,13 @@ CHARACTER Clippy is Greeter, Player
   // Wave 26 (B2): once, even after a ↩ Not a Bingo (`bingo_briefed`).
   when bingo_time:
     if Night.step < 3 and Night.bingo_briefed != true:
-      reply !!🎱 YOUR GAME IS ON · The Bingo results. 2/X is in your Codex. 🎱 each winner, 🎀 the ribbon, 🎯 the program they name. Demand applause.
+      // DRAFT w58 (the Bingo Floppy Disk)
+      reply !!🎱 YOUR GAME IS ON · The Bingo results. 2/X is in your Codex. 🎱 each winner, 🎀 the Bingo Floppy Disk, 🎯 the program they name. Demand applause.
 
   when start_the_hunt:
     if Night.step < 5:
-      reply !!🔎 YOUR GAME IS ON · The Truth Scavenger Hunt, 15 minutes. Trabolta explains the rules; keep the programs hunting.
+      // DRAFT w58 (he has explained them by now)
+      reply !!🔎 YOUR GAME IS ON · The Truth Scavenger Hunt, 15 minutes. Trabolta has explained the rules; keep the programs hunting.
 
   when first_moment_of_truth:
     if Night.step >= 5 and Night.step < 7 and Night.judging != true:
@@ -82,7 +85,8 @@ CHARACTER Clippy is Greeter, Player
       reply !!🍎 YOUR GAME IS ON · Bobbing for Truth, with Adobe. ⭐ +15 for the program who brings up the Bag.
 
   when start_the_ceremony:
-    if Night.ended == true and Night.ceremony != true:
+    // Wave 58: only the press the story takes (main.loom), never G1's ask.
+    if Night.ended == true and Night.ceremony != true and ((Night.truth_told == true and Time.elapsed >= Night.truth_until) or (Night._ceremony_ask_at > 0 and Time.elapsed <= Night._ceremony_ask_at + 30)):
       reply !!🏆 YOUR GAME IS ON · The awards ceremony. Lead the applause; the staff awards come last, and one of them might be yours.
 
   // Character hooks run before the story rule, so step is still 3 on the
@@ -90,8 +94,8 @@ CHARACTER Clippy is Greeter, Player
   // (step < 3) or a re-press later in the night gets no readout.
   when introduce_trabolta:
     if Night.step >= 3 and Night.trabolta_introduced != true:
-      // DRAFT w32 (the talk scene)
-      reply 🤖 Trabolta is online. Talk with him first, out loud: Task Manager types what you say and he answers on the TV. Then announce the Truth Scavenger Hunt; he explains the rules.
+      // DRAFT w58 (his speech, then the talk scene)
+      reply 🤖 Trabolta is online. Let him speak: his speech, the questions, his sign-off. Then talk with him, out loud, for a minute or so: Task Manager types what you say and he answers on the TV. A host starts 🔎.
 
   when hunt_time_up:
     if Night.phase == "hunt_1":
@@ -206,6 +210,7 @@ CHARACTER Clippy is Greeter, Player
     if Night.truther_sent == true and Night.judging == true and program.slid != Night.round and program.cleared == true:
       set program.slid = Night.round
       set program.truths_accepted += 1
+      set program.chummy += 1
       set program.score += 100
       set self.covert += 1
       Self (whispering): That was a guess. I wrote down "accepted". It looks like you owe me one!
@@ -235,7 +240,8 @@ CHARACTER Task Manager is Host
 
   when bingo_time:
     if Night.step < 3 and Night.bingo_briefed != true:
-      reply 🃏 If nobody has a Bingo: hand Clippy the pre-filled card for {Kernel.anti_ai}, then press 🃏 on their card.
+      // DRAFT w58 (it's the press that brings up her lines)
+      reply 🃏 If nobody has a Bingo: press 🃏 on {Kernel.anti_ai}'s card and hand Clippy the pre-filled card. Her words come up with the press.
 
   when truther_download:
     if Night.truther_sent != true and Night.step >= 8 and Night.ended != true:

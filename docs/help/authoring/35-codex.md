@@ -39,7 +39,10 @@ CODEX The LiveJournal
    or types the code into their **Codex room** — a pinned room whose
    message box takes codes; every entry they hold is one folded line in
    it, grouped by category, marked NEW until they open it. Misses
-   fire the named event `wrong code` for them.
+   fire the named event `wrong code` for them. A performer's booth scans
+   codes too (📷 Scan), with no doors but its own: a miss costs it nothing
+   and fires nothing, and `program learns` hooks stay the Persons'. `secret:`
+   never limits a scan. It only hides an entry from anything with a mind.
 2. **The story:** `unlock The LiveJournal for guest` in any beat or hook.
 3. **A person:** a guest shares from their Codex; a performer shares
    their character's entries from a guest's thread. One recipient at a
@@ -154,6 +157,11 @@ Guests see a **People** list: every guest, plus every character marked
 each name is *exactly* the lore about them the viewer holds — limited
 info unless more is shared. By default the guest list is the acquaintance
 roster; `directory: everyone` in the header lists the whole room.
+
+A People list shows only who is online: a guest whose phone was heard from
+in the last 3 minutes, a character while a booth plays it (or, voiced by an
+agent, while a worker or its `hold:` line answers). A Run persona is never
+on any phone's list, only in Run and in a director's own Players panes.
 
 From the list a guest can **message** a person privately: a guest ↔ guest
 thread (`pm:`), or a DM with a listed character, answered by whoever

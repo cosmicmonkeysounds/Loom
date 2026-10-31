@@ -36,10 +36,10 @@ anytime.
 | K-08 | `K-08.sh [nightly\|show]` | The MacBook over ssh to the VPS: a show-night copy, a restore drill into a scratch `loom-drill` project, rollback timing (asks first, restarts the live site twice), the 10-minute backup job |
 | K-10 | `k10.sh before` → End + relaunch → `k10.sh after` | The codes survive End → relaunch. Then scan an old QR on cellular |
 | K-11 | `K-11.md` + `K-11.ts redeem\|rush [n]` | Wrong-codex throttle (8 × 200, then 429). A door rush from one IP passes with the night's `LOOM_RL_*` |
-| K-12 | `K-12.md` | Run → 🖨 Print sheet: join poster, codex posters, room signs (no typed code on a sign). Print one and scan it |
+| K-12 | `K-12.md` | Run → 🖨 Print sheet: join poster, codex posters, room signs, each with its text code. Print one, scan it, and type its code |
 | K-13 | `k13.sh` | iPhone camera scans room-sign QRs: refused while on rails, then checked in after a booth clears the guest |
 | K-14 | `K-14.sh [--no-build]` | Builds terminal + reinstall for `chrome87`/`safari14` and scans the bundles. Then the oldest tablet loads both |
-| K-15 | `K-15.md` | Fully Kiosk tablet stays awake 2 h on the charger. A short tap on ⚙ does nothing (hold 2 s) |
+| K-15 | `K-15.md` | Fully Kiosk tablet stays awake 2 h on the charger. A short tap on the hidden ⚙ does nothing (hold the top right corner 2 s) |
 | K-16 | `K-16.sh [--watch]` | `/api/screen/state` says attract. Time the flip to the face after `introduce_trabolta` (≤ 2 s) |
 | K-17 + N-03 | `K-17.sh [--watch\|--fire <event>…]` | Fire cues and watch the TV and terminals layer overlays, slides and the ⏱ corner in the right precedence |
 | K-18 + N-04b | `K-18.sh [--watch\|--say\|--beat\|--fire\|--mute]` | TV (`view=tv`) speaks Trabolta's Desktop lines, captions the song beats, honours the mute |

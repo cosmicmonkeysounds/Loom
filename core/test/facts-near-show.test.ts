@@ -21,10 +21,11 @@ import { EventRuntime } from "../server/event-runtime.ts";
 import { judgeFiling, parseFactsBook } from "../server/facts.ts";
 import { Store } from "../server/store.ts";
 import type { FactsView } from "../server/views.ts";
+import { withTestKeys } from "./fixtures/hunt-keys.ts";
 
 const SHOW = "trapped-in-the-internet";
 const SRC = scenarioSource(SHOW);
-const FACTS = readFileSync(join(import.meta.dirname, "..", "examples", SHOW, "facts.json"), "utf8");
+const FACTS = withTestKeys(readFileSync(join(import.meta.dirname, "..", "examples", SHOW, "facts.json"), "utf8"));
 const CODES = { event: "EVT556", prime: "PRM556", mod: "MOD556" };
 const SLOW = 120_000;
 

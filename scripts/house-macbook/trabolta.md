@@ -16,7 +16,10 @@ How the worker thinks (the persona, the mind file, the kill-switch ladder,
 the judge): [`stagehand/docs/agents.md`](../../stagehand/docs/agents.md).
 The persona and mind file are in the show folder:
 `core/examples/trapped-in-the-internet/trabolta.persona.md` and
-`trabolta.mind.md`.
+`trabolta.mind.md`. They load when the worker boots, and `sync-show` never
+reaches them: after any change, here `git pull`, `uv run stagehand launchd
+restart --job agents`, then Run → Mind → Reset. Pull and restart together: an
+older worker refuses a persona with a key it does not know (`cover:`, wave 58).
 
 ```
 VPS event server ◄── HTTPS (SSE GET /api/agent/stream + POSTs) ── stagehand agents (launchd) ── http://127.0.0.1:11434 ── Ollama gpt-oss:20b

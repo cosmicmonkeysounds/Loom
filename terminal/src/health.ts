@@ -11,7 +11,9 @@
 //! `dft=` a blocking fault, `dwn=` a warning; `serial/door-status.ts`).
 //!
 //! The poll is the heartbeat: a throw here would stop it and turn the tablet
-//! red, so every read is guarded and `deviceHealth()` never throws. Chrome 87
+//! red, so every read is guarded and `deviceHealth()` never throws. Wave 59
+//! adds the link to the games (`cs cr cd ce`, `link-stats.ts`).
+//! Chrome 87
 //! has `navigator.getBattery`; iOS / Safari don't (no `bat=` is sent).
 
 import { fullscreenFlag } from "./fullscreen.ts";
@@ -19,6 +21,7 @@ import { audioUnlocked } from "./speech/engine.ts";
 import type { MicReport } from "./voice/roles.ts";
 import { micHeartbeat } from "./voice/status.ts";
 import { doorHeartbeat } from "./serial/door-status.ts";
+import { linkQuery, linkStats } from "./link-stats.ts";
 
 declare const __BUILD__: string | undefined;
 
@@ -43,6 +46,9 @@ export interface DeviceHealth {
    *  on the same board (wave 22): `pb` / `pbc` / `pbx` / `pft`, absent when
    *  the board has none. Counts only, never the pairs. */
   door?: Record<string, string>;
+  /** (wave 59) The link to the games: `cs` `cr` `cd` frames per second, `ce`
+   *  the last error (`link-stats.ts`). Absent keys: not on this page. */
+  link?: Record<string, string>;
 }
 
 /** The poll's query fields: `audio=1|0`, `vis=v|h`, `bat=<0-100>[c]`, `fs=1|0`, `ann=1|0`, `mic=<state>`, `ver=<build>`. */
@@ -54,6 +60,7 @@ export function deviceQuery(h: DeviceHealth): Record<string, string> {
   if (h.announce !== undefined && h.announce !== null) q["ann"] = h.announce ? "1" : "0";
   if (h.mic !== undefined && h.mic !== null) q["mic"] = h.mic;
   if (h.door !== undefined) for (const k of ["door", "dlv", "dft", "dwn", "pb", "pbc", "pbx", "pft"]) if (h.door[k] !== undefined) q[k] = h.door[k]!;
+  if (h.link !== undefined) for (const k of ["cs", "cr", "cd", "ce"]) if (h.link[k] !== undefined) q[k] = h.link[k]!;
   if (h.battery !== null && Number.isFinite(h.battery)) q["bat"] = `${Math.max(0, Math.min(100, Math.round(h.battery)))}${h.charging === true ? "c" : ""}`;
   return q;
 }
@@ -122,5 +129,6 @@ export function deviceHealth(announce: boolean | null = null): DeviceHealth {
     announce,
     mic: safe(() => micHeartbeat(), null),
     door: safe(() => doorHeartbeat(), {}),
+    link: safe(() => linkQuery(linkStats.snapshot(Date.now())), {}),
   };
 }

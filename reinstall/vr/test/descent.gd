@@ -45,6 +45,7 @@ func _run() -> void:
 	await _test_hallway()
 	await _test_hallway_timeout()
 	await _test_hallway_session_end()
+	await _test_reset_inside()
 	await _test_hallway_remap()
 	await _test_hallway_walked()
 	await _test_autopilot()
@@ -883,6 +884,29 @@ func _only_talker(game: Game, house: Dictionary, id: String) -> Dictionary:
 
 
 ## Aim the pointer at row `i` of the open panel, press `down`.
+## Wave 59: everything of the panel draws over the house, whatever stands in
+## the way, under the captions and the HUD, and the beam stays over it.
+func _talk_on_top(game: Game) -> void:
+	var panel := game.talk
+	var quads: Array = panel.find_children("Bg", "MeshInstance3D", true, false)
+	quads.append(panel.get_node("Backdrop"))
+	_check(quads.size() == HouseDescent.TALK_OPTIONS_MAX + 1, "talk: every box is looked at (%d)" % quads.size())
+	for q: MeshInstance3D in quads:
+		var m := q.material_override as StandardMaterial3D
+		_check(m.no_depth_test and m.render_priority < 50, "talk: %s draws through walls, under the HUD" % q.get_path())
+	var labels: Array = panel.find_children("Label", "Label3D", true, false)
+	_check(labels.size() == HouseDescent.TALK_OPTIONS_MAX, "talk: every row's text is looked at (%d)" % labels.size())
+	for l: Label3D in labels:
+		_check(l.no_depth_test and l.render_priority > TalkPanel.DRAW_ROW and l.render_priority < 50, "talk: the row's text draws over its box and through walls")
+	var beam := game.pointer.get_node("Beam") as MeshInstance3D
+	var dot := game.pointer.get_node("Dot") as MeshInstance3D
+	for b: MeshInstance3D in [beam, dot]:
+		var m := b.material_override as StandardMaterial3D
+		_check(m.no_depth_test and m.render_priority > TalkPanel.DRAW_TEXT, "talk: the %s stays over the panel" % b.name)
+	var cap := game.speech.get_node("PropCaption") as Label3D
+	_check(cap.no_depth_test and cap.render_priority > TalkPanel.DRAW_TEXT, "talk: a line over a prop draws through walls, over the panel")
+
+
 func _aim_row(game: Game, i: int, down := false) -> void:
 	var eye := game.player.camera.global_position
 	game.pointer.inject(eye, game.talk.row_world(i) - eye, down)
@@ -934,7 +958,8 @@ func _test_talk() -> void:
 	game.player.xr_active = false
 	_check(game.pointer.beam_visible() and game.talk.hovered() == 1 and d.trigger_taken(), "talk: the beam shows, the row under it lights up")
 	var bg := game.talk.get_node("Row_1/Bg") as MeshInstance3D
-	_check(bg.material_override == HouseLook.screen(Lobby.BG_HOVER), "talk: highlighted")
+	_check((bg.material_override as StandardMaterial3D).albedo_color == Color(Lobby.BG_HOVER), "talk: highlighted")
+	_talk_on_top(game)
 	# Off the rows: nothing to pick.
 	game.pointer.inject(game.player.camera.global_position, Vector3.UP, false)
 	game._process(DT)
@@ -1309,6 +1334,33 @@ func _test_hallway_session_end() -> void:
 	var again := _assignment(house, "h-5")
 	link.assignment_received.emit(again)
 	_check(game.descent.level == 0 and game.descent.visible and not game.hallway.active(), "session end: the next walk starts clean")
+	link.session_over.emit("test")
+	await _end(main)
+
+
+## Wave 59: the run reset reaches the Hallway, a talk and a vision too.
+func _test_reset_inside() -> void:
+	var got: Array = await _game()
+	var main: Node = got[0]
+	var game: Game = got[1]
+	var link: LinkBase = got[2]
+	var house: Dictionary = got[3]
+	var spawn := HouseFrames.vec(house["spawn"]["pos"])
+	game.player.read_input = false
+	var at: Array = _at_the_door(game, house, "h-r")
+	_go_through(game, at[1])
+	_check(game.hallway.active(), "reset: inside the Hallway")
+	game._process(DT)
+	var level: int = game.descent.level
+	game.player.reset_chord = true
+	game._process(HoldMeter.RESET_HOLD + 0.1)
+	game._process(DT)
+	_check(link.get("run_resets") == 1, "reset: the hold reaches the Hallway")
+	_check(not game.hallway.active() and game.builder.visible and game.ghosts.visible and game.lamps.visible and game.trail.visible, "reset: out of the Hallway, the house back")
+	_check(_near(game.player.feet().x, spawn.x) and _near(game.player.feet().z, spawn.z), "reset: at the spawn (%s)" % game.player.feet())
+	_check(game.descent.level == level and game.descent.running, "reset: the descent's level stands, and it goes on")
+	game.player.reset_chord = false
+	game._process(DT)
 	link.session_over.emit("test")
 	await _end(main)
 

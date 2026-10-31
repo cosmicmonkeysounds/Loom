@@ -53,8 +53,10 @@ services:
       LOOM_RL_REGISTER: ${LOOM_RL_REGISTER:-}
       LOOM_RL_LOGIN_FAILURES: ${LOOM_RL_LOGIN_FAILURES:-}
       LOOM_RL_REDEEM_MISSES: ${LOOM_RL_REDEEM_MISSES:-}
+      LOOM_RL_PRINTED: ${LOOM_RL_PRINTED:-}
       LOOM_RL_WIDGETS: ${LOOM_RL_WIDGETS:-}
       LOOM_RL_WALLET: ${LOOM_RL_WALLET:-}
+      LOOM_RL_QR: ${LOOM_RL_QR:-}
       # Coalesce phone + booth snapshots (ms; blank/0 = off — the K-32 contingency).
       LOOM_SNAPSHOT_MS: ${LOOM_SNAPSHOT_MS:-}
       # Trabolta's request extras (wave 12): `off` sends the wave 11b request

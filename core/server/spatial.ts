@@ -306,6 +306,8 @@ interface Session {
   /** (wave 49) When a pose last changed: a game sends none while its player
    *  stands still, so this is how a stop is told from a slow window. */
   movedAt: number;
+  /** (wave 59) Run resets this walk: each deals from a seed of its own. */
+  resets: number;
 }
 
 interface Station {
@@ -329,6 +331,9 @@ export interface BeginInput {
 }
 
 export type PoseOutcome = "ok" | "unknown" | "over";
+
+/** (wave 59) How a run reset went: `ok` with where the player and Gerald are now. */
+export type RunResetOutcome = { kind: "ok"; spawn: Spawn; duck: DuckSpot } | { kind: "found" } | { kind: "unknown" | "over" };
 
 /** (wave 40) What `resume` answers: the dead token's state, or the walk to
  *  pick up — its assignment, the pose to respawn at, and whether its intro
@@ -945,6 +950,7 @@ export class SpatialHub {
       speed: 0,
       stride: { p: [...spawn.pos], at: now },
       movedAt: now,
+      resets: 0,
     };
     s.avatar = this.avatarFor(s);
     this.sessions.set(id, s);
@@ -1063,6 +1069,44 @@ export class SpatialHub {
     s.held = false;
     s.activeAt = this.now();
     return { kind: "ok", assignment: this.assignmentOf(s), pose: s.pose, ready: s.ready };
+  }
+
+  /**
+   * (wave 59) The run reset: a player stuck on geometry asked to start over.
+   * They go back to the spawn and Gerald goes somewhere new, never the spot
+   * he was in. That is all it is: no clock, level, hit, disk or score moves,
+   * and nothing is journaled, so it works with the doors closed. The stream
+   * hears the new duck at once and the jump on the next flush. A find already
+   * made stands (`found`); a dead token answers `unknown` / `over`.
+   */
+  runReset(token: string | undefined): RunResetOutcome {
+    const s = this.byTokenLive(token);
+    if (s === null) return { kind: this.tokenState(token) };
+    if (s.found) return { kind: "found" };
+    const house = this.map?.house;
+    if (house === undefined) return { kind: "unknown" };
+    s.activeAt = this.now();
+    s.held = false;
+    s.resets += 1;
+    const seed = `${s.id}:reset:${s.resets}`;
+    const last = this.lastFound.get(s.guest);
+    let duck = pickDuckSpot(house, seed, last !== undefined ? [s.duck.id, last] : [s.duck.id]);
+    // Both spots ruled out leaves nothing on a small map: only his own counts.
+    if (duck.id === s.duck.id) duck = pickDuckSpot(house, seed, [s.duck.id]);
+    const moved = !sameSpot(s.duck, duck);
+    s.duck = duck;
+    const spawn = s.spawn;
+    s.pose = { p: [...spawn.pos], yaw: spawn.yaw, pitch: 0 };
+    this.standStill(s); // a teleport is no walk
+    const at = locate(house, spawn.pos);
+    s.room = at.room;
+    s.floor = at.floor;
+    s.presence = presenceRoom(house, spawn.pos, null);
+    if (s.joined) {
+      s.dirty = true;
+      if (moved) this.broadcast("duck", { session: s.id, duck });
+    }
+    return { kind: "ok", spawn, duck };
   }
 
   /** Save the program's game settings (merged over what it had); a dead

@@ -234,7 +234,8 @@ domain's MX points (e.g. ImprovMX → your Gmail) — Resend only sends.
   `LOOM_RL_REGISTER` (guest registrations per IP, 20/60),
   `LOOM_RL_LOGIN_FAILURES` (wrong passcodes per IP before the lockout,
   10/300), `LOOM_RL_REDEEM_MISSES` (wrong codex codes per guest, then 429
-  and nothing journaled, 8/60), `LOOM_RL_WIDGETS` (widget answers per
+  and nothing journaled, 8/60), `LOOM_RL_PRINTED` (typed codes that are no
+  printed code, per guest or booth part, 30/60), `LOOM_RL_WIDGETS` (widget answers per
   guest, 20/60), `LOOM_RL_WALLET` (wallet calls per guest — sends,
   requests, offers, the stimulus — 30/60, the only brake on a phone
   flooding the approver's queue), `LOOM_RL_QR` (`/api/qr` per IP, 60/60:
@@ -243,8 +244,10 @@ domain's MX points (e.g. ImprovMX → your Gmail) — Resend only sends.
   VPS from **one** public IP, so the night's `.env` raises the per-IP ones:
   `LOOM_RL_RESOLVE=600`, `LOOM_RL_REGISTER=400`,
   `LOOM_RL_LOGIN_FAILURES=100/300`. A locked-out IP still lets the right
-  **guest** event code through (a house full of phones shares the IP);
-  wrong codes and the performer and mod codes stay locked out.
+  **guest** event code through (a house full of phones shares the IP),
+  with a badge, a real staff or invited badge, or Ask a host on any of them,
+  and a wrong badge counts against nobody; wrong codes, wrong parts, wrong
+  claims and the performer and mod codes stay locked out.
 - **Check them**: `deploy/release.sh --check-env` (on the VPS, in the
   checkout) warns about any of those three below the night's value, a
   blank VAPID key and a `LOOM_BASE_URL` that isn't `https://`, and ends

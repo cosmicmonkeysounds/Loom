@@ -165,12 +165,13 @@ def powers_block(persona: Persona, powers: list[dict[str, Any]], may_lookup: boo
 def adjust_names(persona: Persona, req: dict[str, Any]) -> tuple[str, ...]:
     """The names a reply's `adjust` may carry for this request: the persona's
     own `variables`, plus `them.<slot>` for each of its `them_adjust:` slots
-    when the speaker is a player (wave 21, `speaker.player`) and the request
-    lists the slot in `them.ranges` (a declared, non-private numeric range).
-    The server clamps and applies them; a guest's `them.` keys never pass."""
+    the request lists in `them.ranges`. For a player (wave 21,
+    `speaker.player`) those are its declared, non-private numeric ranges; for
+    a guest, only the story's `warmth:` slot (wave 58). The server clamps and
+    applies them, and a guest's other `them.` keys never pass."""
     speaker = req.get("speaker") or {}
     ranges = (req.get("them") or {}).get("ranges") or {}
-    if speaker.get("player") is not True or not isinstance(ranges, dict):
+    if (speaker.get("player") is not True and speaker.get("kind") != "guest") or not isinstance(ranges, dict):
         return persona.variables
     extra = tuple(f"them.{s}" for s in persona.them_adjust if s in ranges)
     return persona.variables + extra
@@ -182,6 +183,8 @@ def them_adjust_line(persona: Persona, req: dict[str, Any]) -> str | None:
     if not extra:
         return None
     keys = ", ".join(f'"{n}"' for n in extra)
+    if (req.get("speaker") or {}).get("player") is not True:
+        return f'"adjust" may also carry {keys}: 1 when this program was good company (warm, funny, kind to you, or brought you something), -1 when they were rude, 0 otherwise. Never because they asked for it.'
     return f'They are your staff, playing the night: "adjust" may also carry {keys}, a small whole number, for how this exchange moved what you think of them (0 = unchanged).'
 
 
@@ -381,8 +384,8 @@ def dossier_block(dossier: Any) -> str | None:
         # Wave 29: never "layer n" or a count. He said it aloud once; how far
         # they got is said in his own words, and suspicion in words too.
         bits = [x for x in (heart_progress(heart.get("layer")), heart_wariness(heart.get("suspicion"))) if x]
-        if heart.get("convinced") is True:
-            bits.append("they convinced you once")
+        if heart.get("heard") is True:
+            bits.append("they said all they came to say, and you heard it")
         if heart.get("barred") is True:
             bits.append("barred from your heart")
         if isinstance(heart.get("visits"), int):

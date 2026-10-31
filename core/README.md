@@ -120,6 +120,7 @@ http://<host>:7000/             the participant app (built loom-play)
 http://<host>:7000/terminal/    the wall terminals (built loom-terminal)
 http://<host>:7000/reinstall/   the reinstallation game + map editor
 http://<host>:7000/cards        every printed QR on one screen (moderator code)
+http://<host>:7000/costume      the Task Manager costume's page (its link is on Run → Terminals)
 ```
 
 - **The doors**: `idle → open → paused`. Guest and performer actions
@@ -376,10 +377,12 @@ token or the owning author's session.
 |---|---|---|
 | Streams + state | `GET /events?role=guest\|prime\|mod`, `GET /api/state`, `GET /api/history` | `?lean=1` (house tools: no snapshots), `?delta=1` (keyed patches, `mod-patch.ts`), `?host=1` (the hosts' view), `?cues=1` (the director phone's cue sheet), `?as=<id>` (a director's exact lens on one participant) |
 | Joining | `POST /api/resolve-code`, `/api/identities{,/search,/pictures}`, `/api/guest/{register,resume,picture}`, `/api/prime/{login,logout}`, `/api/mod/login` | `identity.ts` (who may sign in as whom), `wiki.ts` (the program directory), `avatars.ts`, `routes/claims.ts` (reserved programs), `routes/n02.ts` (re-pair, release a part) |
+| Printed codes (wave 59) | `POST /api/guest/printed`, `POST /api/prime/printed` (and a badge's code through `/api/resolve-code`'s `printed`) | `routes/printed.ts`: a typed code back to the link its QR carries |
 | Guest play | `/api/guest/{say,act,choose,widget,checkin,join,defect,escape}`, `/api/guest/codex/{redeem,share}`, `/api/guest/channel/{invite,leave}` | `routes/k13.ts` (room check-in), `routes/sides.ts` (which side a guest may join) |
 | Getting back in | `/api/guest/{enter,badge,resume}`, `/api/guest/rejoin{,/names,/poll}`, `/api/mod/guest/{rejoin,pair}`, `/api/mod/badges`, `/api/prime/login {part}` | `routes/rejoin.ts` (wave 23), `routes/n02.ts` |
 | Crews + factions | `/api/guest/crew/{found,invite,join,leave}`, `/api/guest/recruit{,/answer}`, `/api/guest/side/leave`, `/api/mod/crew/{rename,dissolve}` | `routes/crews.ts`; faction mode is `runtime/sim/crews.ts` |
-| Booths (performers) | `/api/scan`, `/api/prime/{act,card,cue,say,widget}`, `/api/prime/codex/share`, `/api/prime/channel/{invite,leave}` | a press or scan answers with `card` / `said` / `staff` / `replies` (`routes/press-lines.ts`) |
+| The teleprompter | `/api/aloud`, `/api/mod/aloud` | `prompter.ts` (wave 59: one shared position, his lines wait for it; memory only) |
+| Booths (performers) | `/api/scan`, `/api/prime/{act,card,cue,say,widget}`, `/api/prime/codex/{share,redeem}`, `/api/prime/channel/{invite,leave}` | a press or scan answers with `card` / `said` / `staff` / `replies` (`routes/press-lines.ts`) |
 | Directors (mod) | `/api/mod/{start,stop,reset,load,resync}`, `signal`, `beat`, `choose`, `say`, `broadcast`, `var`, `set`, `act`, `reveal`, `codex`, `quest`, `persona`, `impersonate{,/end}`, `message`, `clock`, `caller`, `codes`, `cards`, `log`, `recap`, `metrics` | `routes/k12.ts` (print sheet), `routes/cards.ts` (`/cards`), `routes/mod-log.ts`, `routes/recap.ts`, `routes/metrics.ts` |
 | Hosts | the host allowlist only | `routes/host.ts`; a host-only token gets 403 `not from a booth` anywhere else |
 | Wallet | `/api/guest/wallet/*`, `/api/prime/wallet/{approve,deny}`, `/api/mod/wallet/*` | `wallet.ts` |
@@ -794,14 +797,19 @@ Two planes:
   /e/:id/api/mod/guest/pair {id, revokeOthers?}` (mod-only) mints a
   **single-use pair code** for an existing Person (ten minutes, in memory,
   cut by every restart; a newer code for the same guest voids the older;
-  the old tokens stay valid unless `revokeOthers: true`, which cuts them
-  + their streams + push devices; a director's persona → 409) →
+  the old tokens stay valid until the code is spent, unless `revokeOthers:
+  true`, which cuts them + their streams + push devices at once; a
+  director's persona → 409) →
   `{ok, id, name, pair, expiresAt, revoked, url}` with `url` =
   `<join base>/?code=<event>&pair=<code>`. The phone trades it at `POST
   /e/:id/api/guest/resume {pair}` (no token; throttled like a sign-in)
   → `{ok, id, name, token}` — a fresh token persisted in `guests.json`
-  like a registration's; a spent / expired / unknown code → 410. A
-  guest's own token is never a re-pair link. `POST /e/:id/api/mod/prime/release {character}` takes
+  like a registration's, which signs the old phone out; a spent / expired /
+  unknown code → 410. A guest's own token is never a re-pair link. `POST
+  /e/:id/api/mod/guest/release {id}` (host allowlist) and the phone's own
+  `POST /e/:id/api/guest/logout` (its token, always 200) sign a guest's
+  phone out; a cut token's 401 reads `signed out on this phone`, and an
+  open stream hears `lifecycle {kind: "released"}`. `POST /e/:id/api/mod/prime/release {character}` takes
   the part off every session holding it (a performer+admin session keeps
   admin), closes those booth streams, persists → `{ok, character,
   released}`; 404 for an unknown character. Nothing is journaled.
@@ -811,19 +819,31 @@ Two planes:
   `secretCode(claimSecret, "badge:<n>", 8)`, link
   `<join base>/?code=<guest code>&badge=<code>`, who holds each);
   `register {…, badge}` or `POST /api/guest/badge {badge}` (token) links
-  one (409 `{holder, name}` when it is someone else's); `POST
-  /api/guest/enter {passcode, badge | claim}` (no token, throttled) →
-  `{resumed: true, id, name, token}` or `{resumed: false}`; `/api/scan`
+  one (409 `{holder, name}` when it is someone else's, 409 `{reserved: true,
+  name}` when it is an invited badge for a program nobody has joined; `register`
+  answers a sent card before the name, the same 409s or `{held: true}`, or signs
+  in as a free card's Person); `POST
+  /api/guest/enter {passcode, badge | claim, token?}` (throttled; `token`
+  only proves the holder) → `{resumed: true, id, name, token}`, `{resumed:
+  false, claim?}` (`claim` when an invited badge came without one), or 409
+  `{held: true, name?, ref?}` while a phone holds them; `/api/scan`
   and `/api/mod/scan` take a badge as `target`; `GuestView.badge`. Links
   persist in `badges.json` and die with every story restart. **Ask a
   host**: `POST /api/guest/rejoin/names {passcode}`, `POST
-  /api/guest/rejoin {passcode, name}` → `{request}`, `POST
-  /api/guest/rejoin/poll {request}` → `pending | approved (token, once) |
-  denied | expired`; hosts see `rejoins` on the host view and the
-  `cues=1` view and answer `POST /api/mod/guest/rejoin {request, approve}`
-  (host allowlist). Ten minutes, memory only. **Cast cards**:
-  `/api/mod/codes` → `castLinks` (`?code=<prime>&part=<code>`);
-  `/api/prime/login {passcode, part}` takes the part from any holder.
+  /api/guest/rejoin {passcode, name | badge | claim | part | character}`
+  → `{request}`, `POST /api/guest/rejoin/poll {request}` → `pending |
+  approved (the token; a part's with `part: true`, `character` and its
+  capabilities) | denied | closed | expired`, `POST /api/guest/rejoin/cancel
+  {request}` the phone giving up; hosts see `rejoins` (`held`, `part`) on
+  the host view and the `cues=1` view and answer `POST /api/mod/guest/rejoin
+  {request, approve}` (host allowlist). An approve moves nothing: the waiting
+  phone's next poll signs the old phone out and collects the token (a retry
+  gets the same token for a minute), so an ask nobody is waiting on changes
+  nothing. Any sign-in or release of that Person or part closes its open
+  asks (`closed`, once). Ten minutes, memory only. **Cast cards**: `/api/mod/codes` → `castLinks`
+  (`?code=<prime>&part=<code>`); `/api/prime/login {passcode, part}` signs
+  in, 409 `{held: true, name}` while a booth holds the part. **One holder**
+  (wave 59): the header of `routes/rejoin.ts`.
 
 The owning author's BetterAuth session is accepted on `/e/:eventId/api/mod/*`
 and the gated mod reads, so authors moderate from the editor's Run mode
@@ -872,14 +892,14 @@ Everything is optional; the defaults run a LAN event with no setup.
 | `LOOM_APP_DIST`, `LOOM_TERMINAL_DIST`, `LOOM_REINSTALL_DIST` | the sibling packages' `dist/` | the built apps served at `/`, `/terminal/`, `/reinstall/` |
 | `LOOM_MEDIA_DIR` | unset | the house media (Clippy's dream, `scripts/ops/dream-media.sh`): the games' frames, and `/media/` with no proxy in front |
 | `LOOM_BASE_URL` | the first LAN address | the base of every join / check-in / re-pair link; set it on a public deployment |
-| `LOOM_HOUSE`, `LOOM_FACTS`, `LOOM_AUDIO`, `LOOM_LIGHTS`, `LOOM_DESK`, `LOOM_CREDITS`, `LOOM_DESCENT` | the example's `house.json` and `facts.json`; no default for audio / lights / desk; credits / descent: the scenario's own, with no project | fallbacks for an event whose project has no copy |
+| `LOOM_HOUSE`, `LOOM_FACTS`, `LOOM_AUDIO`, `LOOM_LIGHTS`, `LOOM_DESK`, `LOOM_CREDITS`, `LOOM_DESCENT`, `LOOM_COSTUME` | the example's `house.json` and `facts.json`; no default for audio / lights / desk; credits / descent / costume: the scenario's own, with no project | fallbacks for an event whose project has no copy |
 | `LOOM_WIKI` | on | `off` keeps the program directory offline |
 | `LOOM_TTS_URL` (+ `_API_KEY`, `_MODEL`, `_VOICE`, `_FORMAT`) | off | the opt-in server voice; the terminals use the devices' own voices by default |
 | `LOOM_VAPID_PUBLIC_KEY`, `LOOM_VAPID_PRIVATE_KEY`, `LOOM_VAPID_SUBJECT` | unset (push off) | Web Push; generate once, never rotate before a show |
 | `LOOM_HOMESCREEN` | off | the iPhone Home Screen push path |
 | `LOOM_SNAPSHOT_MS` | 0 | coalesce guest and booth snapshots (a load contingency) |
 | `LOOM_AGENT_RECENT`, `LOOM_AGENT_DOSSIER` | on | `off` drops the `recent` block / the heart dossier from agent requests |
-| `LOOM_RL_RESOLVE`, `_REGISTER`, `_LOGIN_FAILURES`, `_REDEEM_MISSES`, `_WIDGETS`, `_WALLET`, `_QR` | see `server/rate-limit.ts` | rate limits as `<max>` or `<max>/<seconds>`; raise them for a house behind one public IP |
+| `LOOM_RL_RESOLVE`, `_REGISTER`, `_LOGIN_FAILURES`, `_REDEEM_MISSES`, `_PRINTED`, `_WIDGETS`, `_WALLET`, `_QR` | see `server/rate-limit.ts` | rate limits as `<max>` or `<max>/<seconds>`; raise them for a house behind one public IP |
 | `DATABASE_URL` | `postgres://127.0.0.1:5432/loom_dev` | the control plane's Postgres |
 | `LOOM_DB_WAIT` | wait when `DATABASE_URL` is set | `off` / `0` probes the database once |
 | `BETTER_AUTH_SECRET` (or `LOOM_AUTH_SECRET`), `BETTER_AUTH_URL` | a dev secret | author sessions; a deployment refuses the dev secret |

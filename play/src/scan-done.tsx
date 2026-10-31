@@ -12,7 +12,7 @@
 
 import { useEffect, useRef } from "react";
 import { useVisible } from "./alerts.ts";
-import { REDEEM_THROTTLED } from "./codex.ts";
+import { REDEEM_THROTTLED, TYPED_UNKNOWN } from "./codex.ts";
 
 /** `/api/guest/codex/redeem`'s answer (the wave 18b fields are absent on an old server). */
 export interface RedeemAnswer {
@@ -24,6 +24,8 @@ export interface RedeemAnswer {
   already?: string;
   /** The code unlocks nothing. */
   missed?: true;
+  /** Spaced text that was no code (wave 59): no miss, nothing fired. */
+  words?: true;
 }
 
 /** `/api/guest/checkin`'s answer (`room` / `replies` are wave 18b's). */
@@ -80,7 +82,7 @@ export function redeemOutcome(r: RedeemAnswer): ScanOutcome {
     const body = r.title ? `You already have ${quoted(r.title)}. Here it is.` : "You already have that one. Here it is.";
     return { done: { title: SCAN_DONE_ALREADY, body, go: { to: "codex", entry: r.already } } };
   }
-  return { note: SCAN_MISSED };
+  return { note: r.words === true ? TYPED_UNKNOWN : SCAN_MISSED };
 }
 
 /** The story's reply lines, trimmed, the empty ones dropped. */

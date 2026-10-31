@@ -42,6 +42,18 @@ export function showsNameplate(state: Pick<ScreenState, "character"> | null): bo
   return state !== null && state.character !== null && state.character.hidden === false;
 }
 
+/**
+ * (wave 58) May the TV show the mirror through attract? The TV keeps the
+ * screensaver until he is introduced, but Clippy's "We can follow their
+ * progress!" comes before that: the host's 📺 sets `Night.screen` to the mirror,
+ * and a walker linked to this room then shows, full screen. Only before he is
+ * revealed (a later attract, an ending's, keeps the screensaver), and never his
+ * face: a hidden character is never drawn.
+ */
+export function mirrorBeforeHim(state: Pick<ScreenState, "character" | "night"> | null, attract: boolean, linked: boolean): boolean {
+  return attract && linked && state?.night?.screen === "mirror" && state.character?.hidden === true;
+}
+
 export type TvLineMode = "speak" | "song" | "muted" | "text";
 
 export interface TvLine extends VoiceLine {

@@ -3,6 +3,7 @@
 // how tall the words came out at this size on this phone.
 
 import type { ScriptLine, ScriptSection } from "./model.ts";
+import type { PrompterFrame } from "./shared.ts";
 
 /** The speed a line is timed at, words a minute. */
 export const BASE_WPM = 130;
@@ -90,6 +91,54 @@ export function sectionLine(lines: readonly FlatLine[], section: number): number
 export function pastLastLine(lines: readonly FlatLine[], at: number): boolean {
   for (let i = lines.length - 1; i > at; i--) if (lines[i]!.mine) return false;
   return true;
+}
+
+/** Wave 59: where each line starts, in words; one past the end is the total. */
+export function wordOffsets(lines: readonly FlatLine[]): number[] {
+  const out = [0];
+  for (const l of lines) out.push(out[out.length - 1]! + l.words);
+  return out;
+}
+
+/** Wave 59: a shared position, in words, as a height in this phone's text.
+ *  `bottom` is where the last line ends. */
+export function yOfPos(pos: number, offs: readonly number[], tops: readonly number[], bottom: number): number {
+  if (tops.length === 0) return 0;
+  const i = Math.min(tops.length - 1, lineAt(offs, pos));
+  const span = offs[i + 1]! - offs[i]!;
+  const next = tops[i + 1] ?? bottom;
+  return tops[i]! + (span > 0 ? Math.min(1, Math.max(0, (pos - offs[i]!) / span)) : 0) * (next - tops[i]!);
+}
+
+/** Wave 59: the height in this phone's text as a shared position. */
+export function posOfY(y: number, offs: readonly number[], tops: readonly number[], bottom: number): number {
+  if (tops.length === 0) return 0;
+  const i = lineAt(tops, y);
+  const next = tops[i + 1] ?? bottom;
+  const f = next > tops[i]! ? Math.min(1, Math.max(0, (y - tops[i]!) / (next - tops[i]!))) : 0;
+  return offs[i]! + f * (offs[i + 1]! - offs[i]!);
+}
+
+export interface PrompterBits {
+  /** Someone else has it, or he is speaking. */
+  locked: boolean;
+  speaking: boolean;
+  /** Who has it. */
+  name: string;
+  playing: boolean;
+}
+
+/** What the controls need from a frame, as a key: only a change re-renders. */
+export function bitsKey(f: PrompterFrame | null, me: string): string {
+  if (f === null) return "|0";
+  const who = f.speaking !== null ? `s${f.speaking.name}` : f.holder !== null && f.holder.who !== me ? `h${f.holder.name}` : "";
+  return `${who}|${f.playing ? 1 : 0}`;
+}
+
+export function bitsOf(key: string): PrompterBits {
+  const cut = key.lastIndexOf("|");
+  const who = key.slice(0, cut);
+  return { locked: who !== "", speaking: who.startsWith("s"), name: who.slice(1), playing: key.slice(cut + 1) === "1" };
 }
 
 export function clip(text: string, max = 90): string {

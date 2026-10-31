@@ -547,6 +547,13 @@ export class Store {
   saveVoiceFx(fx: VoiceFxMode): void {
     writeFileSync(this.path(SCREEN_VOICE), JSON.stringify({ ...this.screenVoice(), fx }));
   }
+  /** (wave 59) The costume's kill switch, kept beside the mute: on by default. */
+  loadCostumeOff(): boolean {
+    return this.screenVoice()["costumeOff"] === true;
+  }
+  saveCostumeOff(off: boolean): void {
+    writeFileSync(this.path(SCREEN_VOICE), JSON.stringify({ ...this.screenVoice(), costumeOff: off }));
+  }
   private screenVoice(): Record<string, unknown> {
     return readJson<Record<string, unknown>>(this.path(SCREEN_VOICE)) ?? {};
   }

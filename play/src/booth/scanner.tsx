@@ -11,7 +11,13 @@
 //! restart; passes it reads while a card is up are dropped, and the pass
 //! that was just closed is ignored for a moment (`closedGate`, kept by the
 //! booth across scanner openings), so closing a card never re-opens it.
-//! While it is open the pop-outs are quiet (`PopOutQuiet`, C4).
+//! While it is open the pop-outs are quiet (`PopOutQuiet`, C4). Wave 58: a
+//! codex QR (or its code, typed) lands in the character's own Codex with a
+//! line under the camera, which stays on for the next one; a held QR counts
+//! once (`lastCode`), so it never eats the wrong-code limit. Everything in
+//! here that says so is `DRAFT w58`. Wave 59: a typed code asks the server what
+//! it is first (`session.printed`): a printed badge, room or sign comes back as
+//! its QR's link and reads like that QR under the camera.
 
 import { showClockOf } from "../show-clock.ts";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -20,7 +26,7 @@ import { BADGE_NOT_LINKED, cameraProblem, parseScan, scanProblem, typedTarget, t
 import { CameraScanner } from "../scanner.tsx";
 import { CardTitle, GuestCardBody, type CardSeed } from "./card.tsx";
 import { BoothLayer } from "./layer.tsx";
-import { cameraOn, closedGate, passAccepted, scanError, scanTitle } from "./model.ts";
+import { BOOTH_TYPED_NOTHING, cameraOn, closedGate, passAccepted, redeemHeld, redeemNote, scanError, scanTitle } from "./model.ts";
 import { Icon } from "../chrome/icons.tsx";
 import { ConfrontScreen } from "./confront.tsx";
 import { unmarkIdOf } from "./card.tsx";
@@ -55,7 +61,7 @@ export function Scanner({ onScan, busy = false }: { onScan: (id: string) => Prom
       }}
     >
       <label className="booth-typed-label" htmlFor="booth-typed-id">
-        Or type the id on their pass
+        Or type a pass id or a codex code
       </label>
       <div className="booth-typed-row">
         <input
@@ -80,7 +86,7 @@ export function Scanner({ onScan, busy = false }: { onScan: (id: string) => Prom
 /** The live camera's hint. Only door work (`queue`) has a next guest
  *  waiting (C3); anyone else's × leaves after each card. */
 export function scanHint(queue: boolean): string {
-  return queue ? "Hold a pass up to the camera. It stays on for the next guest." : "Hold a pass up to the camera.";
+  return queue ? "Hold a pass or a codex QR up to the camera. It stays on for the next guest." : "Hold a pass or a codex QR up to the camera.";
 }
 
 /** The booth's just-closed-pass gate (`closedGate`); `PerformerApp` keeps
@@ -103,6 +109,7 @@ export function ScannerScreen({
   onBoard,
   queue = false,
   onPress,
+  onOpenCodex,
 }: {
   session: PrimeSession;
   admin: boolean;
@@ -121,12 +128,19 @@ export function ScannerScreen({
   queue?: boolean;
   /** Wave 37 (C14): a face button on the scanned card is about to be pressed. */
   onPress?: (id: string) => void;
+  /** Wave 58: leave the scanner for the character's Codex. */
+  onOpenCodex?: () => void;
 }) {
   const [cam, setCam] = useState<CameraState>("off");
   const [note, setNote] = useState("");
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
   const [card, setCard] = useState<{ id: string; seed: CardSeed; confront?: Confront; said?: string[] } | null>(null);
+  // Wave 58: an entry just landed, so 📓 Open my Codex shows.
+  const [landed, setLanded] = useState(false);
+  // The code last answered: the camera reports a held QR again every few
+  // seconds, and a held wrong code would burn the limiter.
+  const lastCode = useRef<string | null>(null);
   const ownGate = useMemo(() => closedGate(CLOSED_PASS_MS), []);
   const gate = sharedGate ?? ownGate;
   const problem = cameraProblem(cam);
@@ -152,9 +166,32 @@ export function ScannerScreen({
     else el.removeAttribute("inert");
   }, [card]);
 
-  const doScan = (id: string, badge = false): Promise<boolean> => {
+  const doRedeem = (code: string, missed?: string): Promise<boolean> => {
+    setErr("");
+    setLanded(false);
+    setNote("🔓 Unlocking…");
+    setBusy(true);
+    return session.redeem(code).then(
+      (r) => {
+        setBusy(false);
+        lastCode.current = code;
+        setNote(redeemNote(r, missed));
+        setLanded(redeemHeld(r));
+        return redeemHeld(r);
+      },
+      (e) => {
+        setBusy(false);
+        setNote("");
+        setErr(scanError(e, session.view));
+        return false;
+      },
+    );
+  };
+  // `typed`: not known to be a pass, so `unknown guest` means try it as a code.
+  const doScan = (id: string, badge = false, typed = false): Promise<boolean> => {
     if (!id || busy) return Promise.resolve(false);
     setErr("");
+    setLanded(false);
     setNote(badge ? "Scanning the badge…" : `Scanning ${id}…`);
     setBusy(true);
     if (!badge) onCardGuest?.(id);
@@ -173,17 +210,47 @@ export function ScannerScreen({
         return true;
       },
       (e) => {
+        const nobody = /unknown guest/iu.test(e instanceof Error ? e.message : "");
+        if (typed && nobody) return doRedeem(id, BOOTH_TYPED_NOTHING);
         setBusy(false);
         setNote("");
         // Wave 23: a blank badge resolves to nobody yet.
-        setErr(badge && /unknown guest/iu.test(e instanceof Error ? e.message : "") ? BADGE_NOT_LINKED : scanError(e, session.view));
+        setErr(badge && nobody ? BADGE_NOT_LINKED : scanError(e, session.view));
         return false;
       },
     );
   };
+  // The typed box: an id goes to `/api/scan` alone, a whole link reads as it
+  // would scanned. Anything else may be printed on something, which the
+  // server knows; else it may be a pass or a codex code, and a real code can
+  // have a badge's shape, so it tries the pass first and falls through.
+  const doTyped = async (text: string): Promise<boolean> => {
+    const hit = parseScan(text);
+    if (hit.kind === "wall" && hit.unlock !== null) return busy ? false : doRedeem(hit.unlock, BOOTH_TYPED_NOTHING);
+    if (hit.kind === "guest") return doScan(text);
+    if (busy) return false;
+    let link: string | null;
+    try {
+      link = await session.printed(text);
+    } catch (e) {
+      setErr(scanError(e, session.view));
+      return false;
+    }
+    if (link === null) return doScan(text, false, true);
+    const read = parseScan(link);
+    if (read.kind === "guest") return doScan(read.id, read.badge === true);
+    if (read.kind === "wall" && read.unlock !== null) return doRedeem(read.unlock, BOOTH_TYPED_NOTHING);
+    setErr("");
+    setNote(scanProblem(read) ?? "");
+    return true;
+  };
   const onCode = (raw: string) => {
     if (card !== null) return; // the camera runs on under the card; its reads wait
     const hit = parseScan(raw);
+    if (hit.kind === "wall" && hit.unlock !== null) {
+      if (!busy && hit.unlock !== lastCode.current) void doRedeem(hit.unlock);
+      return;
+    }
     if (hit.kind !== "guest") {
       setNote(scanProblem(hit) ?? "");
       return;
@@ -228,12 +295,19 @@ export function ScannerScreen({
         <p className="booth-scan-hint" role="status" aria-live="polite">
           {note !== "" ? note : cam === "live" ? scanHint(queue) : " "}
         </p>
+        {landed && onOpenCodex !== undefined && (
+          <div className="booth-utils">
+            <button type="button" className="w95-btn booth-util" onClick={onOpenCodex}>
+              📓 Open my Codex
+            </button>
+          </div>
+        )}
         {err && (
           <div className="booth-err" role="alert">
             {err}
           </div>
         )}
-        <Scanner onScan={doScan} busy={busy} />
+        <Scanner onScan={doTyped} busy={busy} />
       </div>
       {card !== null && card.confront !== undefined && (
         <div className="booth-card">

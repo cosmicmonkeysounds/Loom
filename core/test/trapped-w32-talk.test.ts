@@ -175,21 +175,15 @@ describe("wave 32 — the talk scenes along a scripted night (C1, C2)", () => {
     expect(hosts(early.out)).toEqual(["⚡ No talk scene is on (🤖 Talk): nothing glitches."]);
     expect(count(early.out, "screens_")).toBe(0);
 
-    // 🤖 → intro. ⚡ is a flicker only (no ad before the ad hijack).
+    // 🤖 → intro. Wave 58: he plays it clean: ⚡ is refused and no timer runs.
     accept(sim, "introduce_trabolta");
     expect(v(sim, "Night.talk")).toBe("intro");
     const flick = press(sim, "ad_burst");
-    expect(flick.refused).toBe(false);
-    expect(count(flick.out, "screens_flicker")).toBe(1);
-    expect(count(flick.out, "screens_glitch")).toBe(0);
-    expect([v(sim, "Night.glitch_at"), v(sim, "Night.glitch_kind"), v(sim, "Night.burst_n")]).toEqual([0, "none", 0]);
-    // Two seconds apart at least.
-    const soon = press(sim, "ad_burst");
-    expect(soon.refused).toBe(true);
-    expect(hosts(soon.out)).toEqual(["⚡ Too soon: two seconds between glitches. Nothing happens."]);
-    // The scene flickers on its own: twice, about 45 s apart, then no more.
+    expect(flick.refused).toBe(true);
+    expect(hosts(flick.out)).toEqual(["⚡ Not during his introduction: he stays clean until the results. Nothing happens."]);
+    expect(count(flick.out, "screens_")).toBe(0);
     const quiet = advance(sim, 300);
-    expect(count(quiet, "screens_flicker")).toBe(2);
+    expect(count(quiet, "screens_flicker")).toBe(0);
     expect(count(quiet, "screens_glitch")).toBe(0);
 
     // 🔎 closes it: the scene flows into the hunt; no timer runs on.
@@ -267,7 +261,7 @@ describe("wave 32 — the talk scenes along a scripted night (C1, C2)", () => {
     expect(v(sim, "Night.talk")).toBe("none");
 
     // The rest of the night: no scene opens again, and none is left at the end.
-    accept(sim, "trabolta_overshares", "y2k_clock", "talked_down");
+    accept(sim, "trabolta_overshares", "y2k_clock", "patch_combo_a");
     expect(v(sim, "Night.ended")).toBe(true);
     expect(v(sim, "Night.talk")).toBe("none");
     expect(press(sim, "ad_burst").refused).toBe(true);
@@ -341,7 +335,7 @@ describe("wave 32 — the talk scenes along a scripted night (C1, C2)", () => {
 describe("wave 32 — the ⚡ cue on the sheet", () => {
   it("is appended admin, Anytime, never NEXT, repeatable, live only while a scene is on, with no by:", () => {
     const i = Sim.fromSources(SRC).model.interactions.get("ad_burst")!;
-    expect(i).toMatchObject({ who: "admin", sequence: false, repeat: true, while: 'Night.talk != "none"' });
+    expect(i).toMatchObject({ who: "admin", sequence: false, repeat: true, while: 'Night.talk != "none" and Night.talk != "intro"' });
     expect(i.by ?? []).toEqual([]);
     expect(MAIN).toMatch(/\/\/ DRAFT w32[^\n]*\nINTERACTION ad_burst\n/u);
     expect(MAIN).toMatch(/\/\/ DRAFT w32 \(the burst lines[^\n]*\n\s*if Night\.burst_i == 1:/u);
@@ -370,7 +364,8 @@ describe("wave 32 — the canned lines (talk-scenes.ts, C8, C9)", () => {
     for (const [id, s] of Object.entries(TALK_SCENES)) {
       expect(s.id).toBe(id);
       expect(talkScene(id)).toBe(s);
-      expect(s.glitch).toBe("ad_burst");
+      // Wave 58: none in the introduction: his first public crack is the first guess at the results.
+      expect(s.glitch).toBe(id === "intro" ? undefined : "ad_burst");
       expect(s.title.length).toBeGreaterThan(0);
       expect(s.hint.length).toBeGreaterThan(0);
     }
@@ -429,11 +424,12 @@ describe("wave 32 — the canned lines (talk-scenes.ts, C8, C9)", () => {
     expect(story).toContain(norm(BURST_TEXTS[0]!));
   });
 
-  it("nothing hurts him at the introduction: the manners crack, the pain starts with a guess (C7)", () => {
+  it("nothing hurts him at the introduction: he is clean, and the pain starts with a guess (C7, wave 58)", () => {
     const desk = readFileSync(join(SHOW, "beats/desktop.loom"), "utf8");
-    const intro = desk.slice(desk.indexOf("== Trabolta Introduction"), desk.indexOf("\n== ", desk.indexOf("== Trabolta Introduction") + 5));
+    const intro = desk.slice(desk.indexOf("== Trabolta Introduction"), desk.indexOf("// ── Prop beats"));
     const lines = [...intro.matchAll(/^\s*Trabolta(?:\s*\([^)]*\))?:\s*(.+)$/gmu)].map((m) => m[1]!);
-    expect(lines.length).toBeGreaterThan(4);
+    expect(lines.length).toBeGreaterThan(9);
+    for (const t of lines) expect(t, t).not.toMatch(/\bAI\b|—|\b[A-Z]{4,}\b/u); // no AI line, no stammer, no ALL CAPS word
     const mind = readFileSync(join(SHOW, "trabolta.mind.md"), "utf8");
     const introduced = mind.slice(mind.indexOf("  introduced:"), mind.indexOf("  hunt_1:"));
     for (const t of [...lines, ...TALK_SCENES.intro!.trabolta.map((c) => c.text), introduced]) expect(t, t).not.toMatch(/\b(stings?|stung|hurts?|pain|ow)\b/iu);
@@ -461,7 +457,7 @@ describe("wave 32 — the canned lines (talk-scenes.ts, C8, C9)", () => {
       // Task Manager reads the hint: "he" is Trabolta, so Clippy is named, never a pronoun.
       expect(s.hint, s.id).not.toMatch(/\b(she|her|hers)\b/iu);
     }
-    expect(TALK_SCENES.intro!.hint).toBe("Type what Clippy says to Trabolta for a minute or two. He is formal; his manners keep cracking. When the room is warm, hand off to the Truth Scavenger Hunt (🔎 is NEXT).");
+    expect(TALK_SCENES.intro!.hint).toBe("Wait for his sign-off (\"it's electrifying.\"). Then type what Clippy says to Trabolta for a minute or so. He is formal and word perfect. When the room is warm, 🔎 is NEXT.");
     expect(TALK_SCENES.beans!.hint).toBe("He overshares, then takes it back; Clippy comforts and pries. ⚡ for adverts. When everyone is back: ➡ They're back, then 🗜 (closes this card; the overshare 🤖 follows). 🤖 first? ➡ Share hands on.");
   });
 
@@ -485,7 +481,8 @@ describe("wave 32 — the canned lines (talk-scenes.ts, C8, C9)", () => {
   });
 
   it("every scene is marked DRAFT w32 until signed off", () => {
-    for (const id of Object.keys(TALK_SCENES)) expect(TALK_SRC, id).toMatch(new RegExp(`// DRAFT w32[^\\n]*\\n {2}${id}: \\{`, "u"));
+    for (const id of Object.keys(TALK_SCENES).filter((x) => x !== "intro")) expect(TALK_SRC, id).toMatch(new RegExp(`// DRAFT w32[^\\n]*\\n {2}${id}: \\{`, "u"));
+    expect(TALK_SRC).toMatch(/\/\/ DRAFT w58[^\n]*\n(?: *\/\/[^\n]*\n)* {2}intro: \{/u); // rewritten for wave 58
     const objectives = readFileSync(join(SHOW, "objectives.loom"), "utf8");
     for (const id of ["Talk With Trabolta", "Relay Clippy To Trabolta"]) expect(objectives).toMatch(new RegExp(`// DRAFT w32[^\\n]*\\nOBJECTIVE ${id}\\n`, "u"));
   });

@@ -14,7 +14,7 @@ gets out of the Internet — prove you can follow instructions, and you are
 
 When the Antivirus quarantine a corrupted program ([Your
 pass](your-pass.md)), they walk it through the Tube to the Internet: the
-**tent in the backyard, at the end of the tunnel**. Your phone is locked
+**tent in the Cloud, at the end of the tunnel**. Your phone is locked
 until you are reinstalled, and it shows the **Installation Wizard**'s
 instructions: why you are there, the headset or the laptop, Bathroom
 Mode, and where the exit is (it is clearly marked; it is for safety).
@@ -75,7 +75,7 @@ each step finishes when you do it.
 Been reinstalled before? **Skip training ▶** jumps straight in.
 
 While you walk on the laptop, a notice from the story (a blackout, an
-alarm, *go to the living room*) covers the game and **pauses** it: you
+alarm, *go to the Desktop*) covers the game and **pauses** it: you
 can't move and nobody is timed out. Your walk carries on when it clears.
 
 ## Moving around
@@ -89,13 +89,20 @@ headset, your microphone.
 | Turn | **right stick** — left or right (gently: a small push turns slowly), or turn your body | **right** on-screen stick (push up/down to look up/down) |
 | Look | turn your head | drag on the screen |
 | Hit the King | **trigger** (either hand), or **A / X** | **⚔ HIT** |
-| Mute your mic | **B / Y** | **🎤** (or **M**), when the tablet has a voice link |
+| Mute your mic | You can't: a headset's mic stays on | **🎤** (or **M**), when the tablet has a voice link |
 | Pick your program (lobby) | point + **trigger**, or stick + hold **right** 1 s | scan your pass |
+| Stuck on something | hold **both triggers + A** for 5 seconds | hold **R** for 5 seconds, on a keyboard |
 
 On the laptop (or a tablet with a keyboard): **W A S D** or the arrows
 walk, **Q / E** turn, **Shift** runs, **Space** hits the King. Click the
 picture and the **mouse** turns your head; **Esc** gives it back (to
 click **✕** or **Finish**).
+
+**Stuck on something?** Keep holding and a bar fills; let go and nothing
+happens. At the top you are back at the start, Gerald hides somewhere new,
+and your walk carries on: no video, no training, and the clock keeps
+running. With one controller, "both triggers" means the index and the
+grip of that hand.
 
 The walls are where the real walls are, the stairs go where the real
 stairs go. If moving in VR makes you queasy, stop pushing the stick and
@@ -121,7 +128,7 @@ pass again (a duck you already found still counts).
 
 ## The King
 
-Down in the basement a tall golden chess piece stands in a doorway:
+Downstairs a tall golden chess piece stands in a doorway:
 **the King**. Walk up close and face him, then press **⚔ HIT** on the
 tablet (or Space), or pull the **trigger** in a headset. *⚔ You hit the
 King!* Too far, or looking away? It says *Get closer to the King.* or
@@ -149,8 +156,7 @@ room with a terminal and you **hear the people standing by it in the real
 room**, coming from where its screen hangs; talk, and they hear you on
 the terminal. Other players in the simulation can't hear you.
 
-- In a **headset**, your mic is on. **B** or **Y** mutes it (and unmutes
-  it), and the HUD says whether it is on or muted and what to press. In
+- In a **headset**, your mic is on, and it stays on: nothing mutes it. In
   the lobby, **TEST MIC** shows whether it hears you, and **ASK AGAIN**
   asks for the microphone again if it wasn't allowed.
 - The **tent laptop** has no voice link: the tent is its own room. A

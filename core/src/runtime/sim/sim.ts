@@ -25,7 +25,7 @@ import {
   type Value,
 } from "../expr.ts";
 import { SimLog, type QuestAction, type QuestStatus, type SimEvent } from "./event.ts";
-import { CODEX_IN, DEFAULT_SPACE_ID, channelId, compileModel, foldCode, type ChannelDef, type CodexDef, type Hook, type QuestDef, type SimModel } from "./model.ts";
+import { CODEX_IN, DEFAULT_SPACE_ID, channelId, compileModel, foldCode, inWorldLabel, type ChannelDef, type CodexDef, type Hook, type QuestDef, type SimModel } from "./model.ts";
 import { routesCue } from "./channel-types.ts";
 import { parseSet, splitDirective, splitKeyword } from "./effects.ts";
 import { Bundle, type LoomFileEntry } from "../bundle.ts";
@@ -1126,7 +1126,7 @@ export class Sim {
       const l = id.slice("loc:".length);
       const def = this.model.locations.get(l);
       if (def !== undefined) {
-        return { channel: id, channelKind: "location", title: def.label ?? l, spaceId: DEFAULT_SPACE_ID };
+        return { channel: id, channelKind: "location", title: inWorldLabel(def.label ?? l), spaceId: DEFAULT_SPACE_ID };
       }
     }
     return { channel: id, channelKind: "lobby", title: this.lobbyTitle(), spaceId: DEFAULT_SPACE_ID };
@@ -1173,8 +1173,37 @@ export class Sim {
     if (def === undefined) return false;
     if (def.hidden && !this.isRevealedTo(id, person)) return false;
     if (def.kind === "open") return true;
-    if (def.kind === "faction") return def.faction !== null && this.factionMembers(def.faction).includes(person);
+    if (def.kind === "faction") return def.faction !== null && !this.factionUnrevealed(def.faction) && this.factionMembers(def.faction).includes(person);
     return this.isChannelMember(person, id);
+  }
+
+  /** A `hidden: true` GROUP the story hasn't unmasked: its room is closed to
+   *  everyone, its own early members included (wave 59). */
+  private factionUnrevealed(group: string): boolean {
+    return (this.model.factions.get(group)?.hidden ?? false) && !this.revealed.has(group);
+  }
+
+  /** Has the story opened an authored room to anyone yet? What a booth and
+   *  Run list (wave 59): a room opens on its beat for the crew too. */
+  channelOpened(id: string): boolean {
+    const def = this.model.channels.get(id);
+    if (def === undefined) return false;
+    if (def.kind === "faction" && def.faction !== null && this.factionUnrevealed(def.faction)) return false;
+    return !def.hidden || this.revealedToAnyone(id);
+  }
+
+  /** Is a place open to anyone yet: not hidden, revealed, or someone has
+   *  stood there? */
+  private locationOpened(id: string): boolean {
+    if (!(this.model.locations.get(id)?.hidden ?? false) || this.revealedToAnyone(id)) return true;
+    for (const places of this.visited.values()) if (places.has(id)) return true;
+    return false;
+  }
+
+  private revealedToAnyone(target: string): boolean {
+    if (this.revealed.has(target)) return true;
+    for (const targets of this.revealedFor.values()) if (targets.has(target)) return true;
+    return false;
   }
 
   /** Channel-behaviour queries driven by the resolved rules bundle. */
@@ -1251,7 +1280,7 @@ export class Sim {
       return {
         id: Sim.locationChannel(l.id),
         kind: "location",
-        title: l.label ?? l.id,
+        title: operator ? (l.label ?? l.id) : inWorldLabel(l.label ?? l.id),
         spaceId: DEFAULT_SPACE_ID,
         member: present,
         canPost: operator || present,
@@ -1286,12 +1315,17 @@ export class Sim {
     return [...places, ...out, ...this.crews.rooms(person)]; // w18 crews: + their crew room
   }
 
-  /** Every authored + location channel (operator/performer view — they run
-   *  every room, so they may post everywhere regardless of post policy). */
+  /** Every room the story has opened to anyone, plus where `person` stands
+   *  (the booth view: they run every open room, so they may post there
+   *  regardless of post policy). A room still to come isn't listed (wave 59). */
   allChannelsFor(person: string): ChannelView[] {
+    const here = this.locationOf(person);
     return [
-      ...this.locationSnapshots(person, true),
-      ...[...this.model.channels.values()].map((def) => this.snapshot(person, def, true)),
+      ...this.locationSnapshots(person, true).filter((s) => {
+        const l = s.id.slice("loc:".length);
+        return l === here || this.locationOpened(l);
+      }),
+      ...[...this.model.channels.values()].filter((def) => this.channelOpened(def.id)).map((def) => this.snapshot(person, def, true)),
     ];
   }
 

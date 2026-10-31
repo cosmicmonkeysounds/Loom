@@ -143,24 +143,33 @@ describe("wave 55: the show's read-aloud beats", () => {
     const marked = [...sim.model.beats.values()].filter((b) => b.contract.has("aloud"));
     expect(marked.map((b) => b.name).sort()).toEqual(
       [
-        "Ad Hijack", "Bathroom Report", "Bingo Time", "Bobbing For Truth", "Computer Bingo", "Corrupted Code",
-        "Final Reveal", "First Moment Of Truth", "Five Minute Warning", "Full Of Beans", "Hunt Two Go",
-        "Language Report", "Present Award", "Purgatory", "Second Hunt", "The Ceremony", "The Goals Report",
-        "The Night In Review", "The Report On Everyone", "The Rest Of The Report", "Trabolta Introduction",
-        "Truth Pong", "Truth Scavenger Hunt One", "Truth Txt", "What We Did",
+        "Ad Hijack", "Bathroom Report", "Bingo Prize", "Bingo Time", "Bobbing For Truth", "Clippy On Trabolta", "Computer Bingo", "Corrupted Code",
+        "Filing Closed", "Final Reveal", "First Moment Of Truth", "Five Minute Warning", "Following The Reinstallation", "Full Of Beans", "Hunt Two Go",
+        "Language Report", "No Bingos", "Present Award", "Purgatory", "Second Hunt", "Shy Winner", "The Ceremony", "The Full Truth Read", "The Goals Report",
+        "The Night In Review", "The Report On Everyone", "The Rest Of The Report",
+        "Truth Pong", "Truth Txt", "What We Did", "Winning Line",
       ].sort(),
     );
     for (const b of marked.filter((m) => m.name !== "Truth Txt")) expect(aloudReaders(sim, b.name).length, b.name).toBeGreaterThan(0);
   });
 
-  it("gives each host their own line of the opening, with the others' as cues", { timeout: SLOW }, () => {
+  it("gives Clippy the whole opening, every line hers, the hosts none (wave 58)", { timeout: SLOW }, () => {
     const n = new Night();
     const msgs = n.take(n.sim.fireBeat("Computer Bingo"));
     expect(said(msgs, "@Clippy").length).toBeGreaterThan(8);
-    expect(said(msgs, "@Task Manager").map((m) => m.text)).toEqual(["Hello. Per the agenda: hello. I will be keeping things running."]);
-    expect(said(msgs, "@Adobe Acrobat")).toHaveLength(1);
-    expect(said(msgs, "@Recycling Bin")).toHaveLength(1);
-    expect(msgs.every((m) => m.aloud === undefined || m.aloud.readers.length === 4)).toBe(true);
+    for (const host of ["@Task Manager", "@Adobe Acrobat", "@Recycling Bin"]) expect(said(msgs, host), host).toEqual([]);
+    expect(msgs.every((m) => m.aloud === undefined || m.aloud.readers.join() === "@Clippy")).toBe(true);
+    // Each branch is its own section, read by her alone, and in the room.
+    for (const beat of ["Winning Line", "Bingo Prize", "Shy Winner", "Following The Reinstallation", "Clippy On Trabolta", "First Moment Of Truth", "Filing Closed"]) {
+      const hers = said(n.take(n.sim.fireBeat(beat)), "@Clippy");
+      expect(hers.length, beat).toBeGreaterThan(0);
+      expect(hers.every((m) => m.audience === "all" && m.channel === "loc:The Desktop"), beat).toBe(true);
+    }
+  });
+
+  it("his speech is the TV's: no teleprompter on it (wave 58)", { timeout: SLOW }, () => {
+    const n = new Night();
+    for (const beat of ["Trabolta Introduction", "Trabolta Greeting", "Hunt One Go", "Truth Scavenger Hunt One"]) expect(n.sim.model.beats.get(beat)?.contract.has("aloud"), beat).toBe(false);
   });
 
   it("reads the whole of Purgatory to Clippy, shared beats and all", { timeout: SLOW }, () => {
@@ -168,7 +177,7 @@ describe("wave 55: the show's read-aloud beats", () => {
     n.upload("g-1", "Microsoft Excel");
     const msgs = n.take(n.sim.fireBeat("Purgatory"));
     const hers = said(msgs, "@Clippy");
-    expect(new Set(hers.map((m) => m.beat))).toEqual(new Set(["Purgatory", "What We Did", "The Report On Everyone", "The Goals Report"]));
+    expect(new Set(hers.map((m) => m.beat))).toEqual(new Set(["Purgatory", "What We Did", "The Goals Report"]));
     expect(hers[0]!.text).toMatch(/^This summary was auto-generated/u);
     expect(hers.at(-1)!.text).toBe("It looks like you're trying to leave. I can't help you with that anymore.");
     expect(hers.every((m) => m.audience === "all" && m.channel === "loc:The Desktop")).toBe(true);
@@ -178,7 +187,7 @@ describe("wave 55: the show's read-aloud beats", () => {
   it("gives Clippy the ceremony when she hosts, an award at a time, in the room", { timeout: SLOW }, () => {
     const n = new Night().ended("destroyed");
     n.upload("g-1", "Microsoft Excel");
-    const open = n.press("start_the_ceremony");
+    const open = (n.press("start_the_ceremony"), n.press("start_the_ceremony"));
     expect(said(open, "@Clippy").some((m) => m.beat === "The Ceremony")).toBe(true);
     const award = n.press("award_most_trusted", "g-1", { value: "12" });
     const hers = said(award, "@Clippy");
@@ -190,7 +199,7 @@ describe("wave 55: the show's read-aloud beats", () => {
   it("leaves Clippy nothing to read when Trabolta hosts: his lines are only cues", { timeout: SLOW }, () => {
     const n = new Night().ended("song");
     n.upload("g-1", "Microsoft Excel");
-    const msgs = [...n.press("start_the_ceremony"), ...n.press("award_most_trusted", "g-1", { value: "12" })];
+    const msgs = [...(n.press("start_the_ceremony"), n.press("start_the_ceremony")), ...n.press("award_most_trusted", "g-1", { value: "12" })];
     expect(said(msgs, "@Clippy")).toEqual([]);
     expect(msgs.some((m) => m.from === "Trabolta" && m.aloud?.readers[0] === "@Clippy")).toBe(true);
   });
@@ -205,13 +214,13 @@ describe("wave 55: the show's read-aloud beats", () => {
     const lines = said(msgs, "g-2");
     expect(lines[0]!.text).toBe("📄 truth.txt — Notepad");
     expect(lines.at(-1)!.text).toBe("End of file.");
-    expect(lines.some((m) => m.text.includes("Microsoft Excel"))).toBe(true);
+    expect(lines.some((m) => m.text.includes("her name is Sandy"))).toBe(true);
     expect(said(msgs, "g-1")).toEqual([]);
   });
 
   it("leaves the quick reactions out, so a mid-game phone is never blocked", { timeout: SLOW }, () => {
     const n = new Night();
-    for (const beat of ["Filing Closed", "Hunt One Go", "Summons Closed", "Trust Chart", "Praise The Top"]) {
+    for (const beat of ["Hunt One Go", "Summons Closed", "Trust Chart", "Praise The Top"]) {
       expect(n.sim.model.beats.get(beat)?.contract.has("aloud"), beat).toBe(false);
     }
   });

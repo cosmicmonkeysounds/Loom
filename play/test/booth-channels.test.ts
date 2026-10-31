@@ -7,8 +7,8 @@
 // admin or host.
 import { describe, expect, it } from "vitest";
 
-import { boothSidebar, guestsWaiting, primeStreamUrl } from "../src/booth/model.ts";
-import { INBOX, STAFF_SPACE, buildPrimeChannels } from "../src/session/prime.ts";
+import { boothSidebar, guestAwaitsReply, guestsWaiting, primeStreamUrl } from "../src/booth/model.ts";
+import { DIRECTOR, INBOX, STAFF_SPACE, buildPrimeChannels } from "../src/session/prime.ts";
 import { groupBySpace } from "../src/rooms/spaces.ts";
 import { roomOrder } from "../src/rooms/order.ts";
 import { unreadOf } from "../src/stream/badges.ts";
@@ -41,6 +41,29 @@ function view(over: Partial<PrimeView> = {}): PrimeView {
 }
 const store = (list: ChatMessage[]) => new Map(list.map((m) => [m.seq, m]));
 const sorted = (list: ReturnType<typeof buildPrimeChannels>) => [...list].sort(roomOrder);
+
+describe("a Run persona's DM (wave 59)", () => {
+  const me = "Norton Anti-Virus";
+  const dm = (seq: number, audience: ChatMessage["audience"], from = DIRECTOR) => msg(`dm:${me}`, audience, { seq, from, text: `line ${seq}` });
+  it("has a thread of its own under no name, the booth's answer in it, and waits on a reply", () => {
+    const chans = buildPrimeChannels(store([dm(1, ["p-1"]), msg(`dm:${me}`, ["p-1"], { seq: 2, from: me, text: "Yes?" })]), view());
+    const thread = chans.find((c) => c.id === "guest:p-1")!;
+    expect(thread).toMatchObject({ kind: "guest", title: DIRECTOR, people: [{ id: "p-1", name: DIRECTOR }] });
+    expect(thread.messages.map((m) => m.text)).toEqual(["line 1", "Yes?"]);
+    expect(guestAwaitsReply({ ...thread, messages: thread.messages.slice(0, 1), unread: 1 }, me)).toBe(true);
+    expect(chans.filter((c) => c.kind === "guest").map((c) => c.id)).toEqual(["guest:g-1", "guest:p-1"]);
+  });
+  it("two personas, two threads; a line it only received, or a guest's, opens none", () => {
+    const two = buildPrimeChannels(store([dm(1, ["p-1"]), dm(2, ["p-2"])]), view());
+    expect(two.filter((c) => c.title === DIRECTOR).map((c) => c.id)).toEqual(["guest:p-1", "guest:p-2"]);
+    const none = buildPrimeChannels(store([dm(1, ["p-1"], me), dm(2, ["g-1"], "Ada"), dm(3, [`@${me}`]), dm(4, "all")]), view());
+    expect(none.filter((c) => c.kind === "guest").map((c) => c.id)).toEqual(["guest:g-1"]);
+  });
+  it("a director's own pane has the row, so it opens no second thread", () => {
+    const chans = buildPrimeChannels(store([dm(1, ["g-1"])]), view());
+    expect(chans.filter((c) => c.kind === "guest").map((c) => c.id)).toEqual(["guest:g-1"]);
+  });
+});
 
 describe("the booth sidebar", () => {
   it("pins the staff rooms just under the pinned rooms, marked staff", () => {

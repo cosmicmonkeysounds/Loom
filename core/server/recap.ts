@@ -18,8 +18,14 @@
 //!   fall (a host corrects a mis-tapped lie) comes off the same way (B11).
 //!   A round-3 DM lie (`lie_q7` / `lie_q8`) counts only once 📄 truth.txt
 //!   settles it (`Night.r3_closed`): in auto mode the counter rises at
-//!   filing, but a server-room ending (Combo A / B, 🕊) never settles round
+//!   filing, but a server-room ending (Combo A / B) never settles round
 //!   3, so that bluff was never accepted and stays out of both lists.
+//! - **questionsRight** (wave 58) — the questions a program got right, live:
+//!   G9a's count (main.loom, ROLE Program), which the story writes only when
+//!   G9a is pressed. Once a question: a filing standing accurate (or pending
+//!   on an accurate proposal) or a spoken answer accepted ✅ and no 😤 took
+//!   back. Never `truths_accepted`. A key still owed (`Night.owed_*`) counts
+//!   for nobody.
 //! - **internetVisits** — the `internet_visits` var, else the count of
 //!   `captured` events.
 //! - **codex** — entries held. **quests** — quests done. **truthcoin** —
@@ -106,7 +112,7 @@ export interface RecapFaction {
   members: Array<{ id: string; name: string }>;
 }
 
-export const RECAP_LISTS = ["trust", "truths", "lies", "internetVisits", "codex", "quests", "truthcoin", "shares", "chess", "bathroom", "bathroomMinutes", "bathroomSwitches"] as const;
+export const RECAP_LISTS = ["trust", "truths", "lies", "questionsRight", "internetVisits", "codex", "quests", "truthcoin", "shares", "chess", "bathroom", "bathroomMinutes", "bathroomSwitches"] as const;
 export type RecapList = (typeof RECAP_LISTS)[number];
 
 export interface Recap {
@@ -142,6 +148,8 @@ const LIST_TITLES: Record<RecapList, string> = {
   trust: "Most trusted (trust)",
   truths: "Truths accepted",
   lies: "Confident lies accepted",
+  // Wave 58. DRAFT w58
+  questionsRight: "Questions correct (G9a, the special prize)",
   internetVisits: "Trips to the Internet",
   codex: "Codex entries held",
   quests: "Quests completed",
@@ -155,6 +163,21 @@ const LIST_TITLES: Record<RecapList, string> = {
 
 function num(sim: Sim, path: string): number | null {
   return asNumber(sim.world.get(path));
+}
+
+/** The eight questions, as the story numbers them (`fact_v1` is H1's). */
+const QUESTION_SLOTS = ["h1", "h2", "h3", "h4", "h5", "h6", "f1", "f2"] as const;
+
+/** (wave 58) G9a's count, read live: main.loom's `questions_right` rule, once
+ *  a question. `trapped-w58-prize.test.ts` holds the two to the same number. */
+function questionsRight(sim: Sim, person: string): number {
+  const read = (k: string) => display(sim.world.get(`${person}.${k}`));
+  return QUESTION_SLOTS.filter((id, i) => {
+    if (display(sim.world.get(`Night.owed_${id}`)) === "true") return false;
+    const n = i + 1;
+    const filed = read(`fact_v${n}`);
+    return filed === "accurate" || (filed === "pending" && read(`fact_j${n}`) === "accurate") || (read(`judged_q${n}`) === "true" && read(`hunt_lie_q${n}`) !== "true");
+  }).length;
 }
 
 /** Accepted lies per person, credited off the event log (see the header). */
@@ -241,6 +264,9 @@ export interface RecapOptions {
   title?: string;
   /** Persona ids (mod-spawned rehearsal guests) — flagged, still listed. */
   personas?: ReadonlySet<string> | ReadonlyMap<string, unknown>;
+  /** Wave 59: ids left out altogether, a host's read: a persona's name never
+   *  reaches a phone (`unseen-directors.ts`). Run's read leaves it unset. */
+  hide?: ReadonlySet<string>;
   /** Every duck found this story (`SpatialHub.runs()`). */
   duckRuns?: readonly DuckRun[];
 }
@@ -303,7 +329,9 @@ export function computeRecap(sim: Sim, opts: RecapOptions = {}): Recap {
   const bathroomNever: Recap["bathroomNever"] = [];
   const elapsed = num(sim, "Time.elapsed") ?? 0;
   let bathSeconds = 0;
-  for (const p of sim.persons.values()) {
+  const hide = opts.hide ?? new Set<string>();
+  const shown = [...sim.persons.values()].filter((p) => !hide.has(p.id));
+  for (const p of shown) {
     const base = { id: p.id, name: p.name, persona: personas.has(p.id) };
     const lied = Math.max(0, (lies.get(p.id) ?? 0) - unsettledLies(sim, p.id));
     const accepted = num(sim, `${p.id}.truths_accepted`) ?? 0;
@@ -313,6 +341,7 @@ export function computeRecap(sim: Sim, opts: RecapOptions = {}): Recap {
     lists.trust.push({ ...base, value: num(sim, `${p.id}.trust`) ?? 0 });
     lists.truths.push({ ...base, value: Math.max(0, accepted - lied) });
     lists.lies.push({ ...base, value: lied });
+    lists.questionsRight.push({ ...base, value: questionsRight(sim, p.id) });
     lists.internetVisits.push({ ...base, value: visits });
     lists.codex.push({ ...base, value: codex });
     lists.quests.push({ ...base, value: quests });
@@ -349,7 +378,7 @@ export function computeRecap(sim: Sim, opts: RecapOptions = {}): Recap {
       id: f.id,
       members: sim
         .factionMembers(f.id)
-        .filter((id) => sim.persons.has(id))
+        .filter((id) => sim.persons.has(id) && !hide.has(id))
         .map((id) => ({ id, name: sim.persons.get(id)!.name })),
     }))
     .sort((a, b) => b.members.length - a.members.length || a.id.localeCompare(b.id));
@@ -359,11 +388,11 @@ export function computeRecap(sim: Sim, opts: RecapOptions = {}): Recap {
   const recap: Omit<Recap, "text"> = {
     title: opts.title ?? sim.lobbyTitle(),
     ending: ending === "" || ending === "none" ? null : ending,
-    programs: sim.persons.size,
+    programs: shown.length,
     totals,
     lists: ranked,
     chessGames: chessGames.sort((a, b) => b.won - a.won || a.lost - b.lost || b.drawn - a.drawn || a.name.localeCompare(b.name)),
-    duck: duckBoard(sim, opts.duckRuns ?? [], personas),
+    duck: duckBoard(sim, (opts.duckRuns ?? []).filter((r) => !hide.has(r.guest)), personas),
     factions,
     bathroomNever,
   };

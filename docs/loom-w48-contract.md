@@ -354,10 +354,11 @@ interface ScreenLanguage {
 ## C13 The booth (play)
 
 - **⊞ Start → 🔑 Filter strength**, on the censor's Start menu only: a
-  window with the slider (0–100, step 5) and what this strength catches
-  (the band's examples; at 0 *Slurs only*, never listing one). It posts
-  on release. Nothing else points at it (the pop-out, the tile and the
-  tray never mention it): she has to find it.
+  window with only the slider (0–100, step 5): no number, legend or
+  explanation, not a word beyond the title (wave 59, the user's note). It
+  posts on release; a refused pick rolls the thumb back and reddens the
+  track. Nothing else points at it (the pop-out, the tile and the tray
+  never mention it): she has to find it.
 - **Tiers on the line**: each highlight takes its band's colour; a slur is
   a `[slur]` chip over its stars.
 - **The game**: the pop-out and the list show the line's worth and the

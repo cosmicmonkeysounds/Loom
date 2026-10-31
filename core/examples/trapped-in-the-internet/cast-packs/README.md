@@ -17,8 +17,8 @@ addresses, codes, where things are kept).
 | [`patch-bay-watch.md`](./patch-bay-watch.md) | the Antivirus stationed in the server room (Tier 0 only) | 10-25, kept face-down |
 | [`history.md`](./history.md) | nobody: the old running list of what the packs assumed, wave by wave (not instructions) | never |
 | **Performers** (one pack each; the card on page 1 is the laminated one) | | read-through **10-25** |
-| [`performers/clippy.md`](./performers/clippy.md) | Clippy (Brooke), incl. CI 1–9 cards, the answer key, the Bingo card, the bottle's truth questions | |
-| [`performers/task-manager.md`](./performers/task-manager.md) | Task Manager (John) | |
+| [`performers/clippy.md`](./performers/clippy.md) | Clippy (Brooke), incl. CI 1–9 cards, the answer key, the Bingo card, the bottle's truth questions, her opening word for word | |
+| [`performers/task-manager.md`](./performers/task-manager.md) | Task Manager (John), incl. the monologue, printed | |
 | [`performers/adobe-acrobat.md`](./performers/adobe-acrobat.md) | Adobe Acrobat (Stephanie), incl. the truth.txt printout | |
 | [`performers/recycling-bin.md`](./performers/recycling-bin.md) | Recycling Bin (Jesse), incl. the porch card | |
 | [`performers/norton.md`](./performers/norton.md) | Norton Anti-Virus (Julie) | |
@@ -38,14 +38,23 @@ addresses, codes, where things are kept).
 
 ## What the packs assume (master at wave 22, 2026-10-24)
 
-The packs are written to **master**, which holds every wave up to 22. The VPS
-still runs the release **`w18b-1021`**: waves 18b (Stage B), 19, 20, 20b, 21
-and 22 are merged but **not shipped**. The user signed off the show text of
+The packs are written to **wave 58's branch**. The VPS runs the release
+**`w56`**, so what the packs say about wave 58 is **not shipped** yet. The user signed off the show text of
 waves 13 through 28 on 2026-10-27, and the packs follow it. Wave 22's
 patch-bay lines (`// DRAFT w22` in the story) have no sheet of their own.
 Wave 32's talk scenes (`// DRAFT w32`, [`SIGNOFF-w32.md`](../SIGNOFF-w32.md))
 ship as written before their sign-off: the Task Manager, Clippy and director
 packs and the Mind card carry them (reprint those four).
+**Wave 58, the Oct 30 story** ([`SIGNOFF-w58.md`](../SIGNOFF-w58.md), not
+shipped): the opening is the delivered script, the monologue follows every
+ending, every part scans codex QRs, the talk-down is gone, and H1–H3 are the
+script's three questions with their answers still owed. Print nothing until
+those answers are in and the story is synced. Reprint: `clippy` (with its new
+printed script), `task-manager` (with the monologue), `norton`, `mcafee`,
+`password-manager`, `cra-agent`, `adobe-acrobat`, `recycling-bin`,
+`installation-wizard`, `crew/director`, `crew/second-director`,
+`crew/tech-operator`, `crew/house-manager`, `crew/trabolta-mind`, `all-crew`,
+`patch-bay-watch`, and Clippy's CI cards.
 The old wave-by-wave list is in [`history.md`](./history.md).
 
 **The house and its computers**
@@ -125,9 +134,9 @@ The old wave-by-wave list is in [`history.md`](./history.md).
 - **The Heart.** The door sensor is a light across the frame, read by the
   M4. The first opening once Trabolta is awake plays The Heart, and he wants
   the door shut before anything goes on (press **🔧** before the crew go
-  through). A pass at his screen starts a four-layer talk (mouse) or a heart
-  to heart (keyboard). A talk-down works at any hour, and the night ends
-  only on the director's 🕊. A program he throws out is marked.
+  through). A pass at his screen starts a three-layer talk (mouse) or a heart
+  to heart (keyboard). The talk ends nothing: he hears them out and the
+  night goes on. A program he throws out is marked.
 - **The patch bay judges itself** (wave 22): the same M4 reads its 16 jacks (8 live),
   and in the Y2K hour the story judges every complete patch about 5 s after
   the fourth cable. The Antivirus watch inside presses 🔌 / 💥 / ❌ only when
@@ -186,7 +195,7 @@ game just like the "guests" are."*
   claimed mark, tip a marked program off, let a guess slide, slip a program
   50 Truthcoin): private, never told to Trabolta; every third one he
   notices (−20 trust, a private warning, never removal).
-- **Staff awards** after G10 / G9: 🛡 Trabolta's Favourite Staff, ⭐ Staff
+- **Staff awards** after G10 / G9a: 🛡 Trabolta's Favourite Staff, ⭐ Staff
   Player Of The Night, 🤫 The Mole (the last award; G11 waits for it).
 - ✅ / 😤 judge one question at a time (🔢 picks it), so a card's three
   buttons cover every question.
@@ -214,6 +223,8 @@ game just like the "guests" are."*
   (gold = the hunt answers, green, blue, red), each hidden where its row says.
 - Adobe's truth.txt: print, then put it in a zip bag (it goes in the Bag of
   Truth, which goes in the bobbing tub).
+- Task Manager's monologue: the appendix of his pack, printed, in his pocket
+  for the night (the fallback if his phone goes down mid-read).
 - If the story changes after 10-24 12:00 (content lock for batch 2), re-check
-  the answer key against `facts.json` (`generated/print-stacks.md` is the
-  printable table) and truth.txt against `beats/finale.loom`.
+  the answer key against `facts.json` and truth.txt against
+  `beats/finale.loom`.

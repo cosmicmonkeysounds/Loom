@@ -1,15 +1,12 @@
 //! The Desk window's 🎚 Mixer (wave 40, docs/loom-w40-contract.md C5): the
-//! house's live balance and the soundtrack's transport, laid out for a
-//! phone. Part of the Desk's lazy chunk (`desk.tsx` imports it), so a guest
+//! house's live balance, laid out for a phone (Now Playing moved to the
+//! 🎵 Music section in wave 58, `music.tsx`, which shares this poll and posts). Part of the Desk's lazy chunk (`desk.tsx` imports it), so a guest
 //! never downloads it.
 //!
 //! - Folded by default; open, it polls `GET /api/mod/audio/mixer` every
 //!   second while the page is visible (`startPoll` parks it while hidden),
 //!   and nothing at all while folded.
 //! - The router banner when no router listens (the mix is kept).
-//! - Now playing: the scene picker, the by-hand note with *Follow the
-//!   story*, each bed with its track, progress and ⏭, *⏭ Skip all*,
-//!   *■ Stop music* (asks once), the empty playlists as warnings.
 //! - The scope chips (Everywhere + each room) and that scope's strips: a
 //!   horizontal fader −60 … +10 dB, its dB, a mute, a thin meter, "plays at
 //!   X" when the levels around it move it; meter-only strips say why; Reset.
@@ -23,14 +20,12 @@ import { MIX_DB_MAX, MIX_DB_MIN, MIX_DB_STEP, formatMixDb, mixerScopes, scopeStr
 import { startPoll } from "../director.tsx";
 import type { HostCalls } from "./api.ts";
 import { browserPollDeps, eventBase, type HostAuth } from "./client.ts";
-import { ActButton, ConfirmButton, HostEmpty, failText } from "./kit.tsx";
+import { ActButton, failText } from "./kit.tsx";
 import {
-  HAND_NOTE,
   MIXER_PATH,
   MIXER_POLL_MS,
   MIXER_TIMEOUT_MS,
   NO_PENDING,
-  NO_SOUNDTRACK,
   answered,
   answeredMix,
   faderChange,
@@ -38,10 +33,8 @@ import {
   mergeMixerView,
   mixerPollOutcome,
   movedCount,
-  musicCalls,
   musicDone,
   muteChange,
-  nowPlaying,
   offerChange,
   pickedScope,
   releaseSeen,
@@ -128,16 +121,14 @@ export function MixerSection({ auth, calls }: { auth: HostAuth; calls: HostCalls
   );
 }
 
-/** The open panel: the poll, the optimistic layer, the throttled posts. */
-function MixerPanel({ auth, calls }: { auth: HostAuth; calls: HostCalls }) {
-  const client = useMixerView(auth);
+/** The poll's posts: the optimistic layer, the throttle, a music command. */
+export function useMixPosts(client: MixerClient, calls: HostCalls) {
   const pending = useRef<MixPending>(NO_PENDING);
   const [, setTick] = useState(0);
   const bump = useCallback(() => setTick((t) => t + 1), []);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const alive = useRef(true);
   const [note, setNote] = useState<string | null>(null);
-  const [scopeId, setScopeId] = useState("all");
   const { setMix } = client;
 
   const flush = useCallback(() => {
@@ -197,9 +188,8 @@ function MixerPanel({ auth, calls }: { auth: HostAuth; calls: HostCalls }) {
     return () => clearTimeout(t);
   }, [note]);
 
-  if (view === null) return <p className="host-empty">{client.error ?? "Loading the mixer…"}</p>;
-
   const change = (c: MixChange) => {
+    if (view === null) return;
     pending.current = offerChange(pending.current, view.mix.levels, c);
     bump();
     flush();
@@ -213,18 +203,17 @@ function MixerPanel({ auth, calls }: { auth: HostAuth; calls: HostCalls }) {
       client.refresh();
     }
   };
-  return (
-    <MixerBody
-      view={view}
-      levels={layeredLevels(view.mix.levels, pending.current)}
-      scopeId={scopeId}
-      onScope={setScopeId}
-      onChange={change}
-      onMusic={music}
-      note={note}
-      error={client.connected ? null : client.error}
-    />
-  );
+  return { levels: view !== null ? layeredLevels(view.mix.levels, pending.current) : {}, change, music, note, setNote };
+}
+
+/** The open panel. */
+function MixerPanel({ auth, calls }: { auth: HostAuth; calls: HostCalls }) {
+  const client = useMixerView(auth);
+  const posts = useMixPosts(client, calls);
+  const [scopeId, setScopeId] = useState("all");
+  const view = client.view;
+  if (view === null) return <p className="host-empty">{client.error ?? "Loading the mixer…"}</p>;
+  return <MixerBody view={view} levels={posts.levels} scopeId={scopeId} onScope={setScopeId} onChange={posts.change} note={posts.note} error={client.connected ? null : client.error} />;
 }
 
 export interface MixerBodyProps {
@@ -234,13 +223,12 @@ export interface MixerBodyProps {
   scopeId: string;
   onScope: (id: string) => void;
   onChange: (c: MixChange) => void;
-  onMusic: (cmd: MusicCommand) => Promise<void> | void;
   note: string | null;
   error: string | null;
 }
 
 /** The panel over one view (the tests render it with a fixture). */
-export function MixerBody({ view, levels, scopeId, onScope, onChange, onMusic, note, error }: MixerBodyProps) {
+export function MixerBody({ view, levels, scopeId, onScope, onChange, note, error }: MixerBodyProps) {
   const banner = routerBanner(view);
   const scopes = mixerScopes(view);
   const picked = pickedScope(scopes, scopeId);
@@ -258,7 +246,6 @@ export function MixerBody({ view, levels, scopeId, onScope, onChange, onMusic, n
       <p className="host-desk-note" role="status" aria-live="polite">
         {note ?? ""}
       </p>
-      <NowPlayingBox view={view} onMusic={onMusic} />
       <div className="host-mix-scopes" role="group" aria-label="Where">
         {scopes.map((s) => (
           <button key={s.id} type="button" className="w95-btn host-mix-scope" aria-pressed={s.id === picked.id} onClick={() => onScope(s.id)}>
@@ -279,7 +266,7 @@ export function MixerBody({ view, levels, scopeId, onScope, onChange, onMusic, n
 }
 
 /** One strip: the label and its dB / hint, the fader and mute, the meter. */
-function StripLine({ row, onChange }: { row: StripRow; onChange: (c: MixChange) => void }) {
+export function StripLine({ row, onChange }: { row: StripRow; onChange: (c: MixChange) => void }) {
   const key = row.key;
   return (
     <li className={`host-mix-strip ${row.kind}${row.muted ? " muted" : ""}`}>
@@ -312,70 +299,5 @@ function StripLine({ row, onChange }: { row: StripRow; onChange: (c: MixChange) 
       </div>
       {row.hint !== null && <p className="host-mix-hint">{row.hint}</p>}
     </li>
-  );
-}
-
-/** Now playing: the scene, the beds and the transport. */
-function NowPlayingBox({ view, onMusic }: { view: MixerView; onMusic: (cmd: MusicCommand) => Promise<void> | void }) {
-  const np = nowPlaying(view.music);
-  return (
-    <fieldset className="host-box host-mix-now" data-testid="host-mix-now">
-      <legend>NOW PLAYING</legend>
-      {np === null ? (
-        <HostEmpty>{NO_SOUNDTRACK}</HostEmpty>
-      ) : (
-        <>
-          <label className="host-mix-scene">
-            <span className="host-mix-scene-label">Scene</span>
-            {np.scenes.length > 0 ? (
-              <select className="host-mix-scene-pick" value={np.scene ?? ""} onChange={(e) => e.target.value !== "" && void onMusic(musicCalls.scene(e.target.value))}>
-                {np.scene === null && <option value="">—</option>}
-                {np.scenes.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
-            ) : (
-              <span className="host-mix-scene-name">{np.scene ?? "—"}</span>
-            )}
-          </label>
-          {np.hand && (
-            <div className="host-mix-hand" data-testid="host-mix-hand">
-              <p className="host-mix-hand-note">✋ {HAND_NOTE}</p>
-              <ActButton className="host-mix-story" label="↺ Follow the story" onClick={() => onMusic(musicCalls.story())} />
-            </div>
-          )}
-          {np.beds.length > 0 && (
-            <ul className="host-mix-beds">
-              {np.beds.map((b) => (
-                <li key={b.playlist} className="host-mix-bed">
-                  <div className="host-mix-bed-head">
-                    <span className="host-mix-bed-name">
-                      <span className="host-mix-bed-list">{b.playlist}</span>
-                      <span className="host-mix-bed-track">{b.track}</span>
-                    </span>
-                    <ActButton className="host-mix-skip" label="⏭" title={`Skip ${b.playlist}`} onClick={() => onMusic(musicCalls.next(b.playlist))} />
-                  </div>
-                  <div className="host-mix-progress" aria-hidden="true">
-                    <span className="host-mix-progress-fill" style={{ width: `${Math.round((b.progress ?? 0) * 100)}%` }} />
-                  </div>
-                  <p className="host-mix-time">{b.time}</p>
-                </li>
-              ))}
-            </ul>
-          )}
-          {np.warnings.map((w, k) => (
-            <p key={k} className="host-note alarm">
-              ⚠ {w}
-            </p>
-          ))}
-          <div className="host-mix-transport">
-            {np.beds.length > 0 && <ActButton className="host-mix-skipall" label="⏭ Skip all" onClick={() => onMusic(musicCalls.next())} />}
-            <ConfirmButton className="host-mix-stop" label="■ Stop music" ask="Stop the music?" yes="■ Stop" danger onConfirm={() => onMusic(musicCalls.stop())} />
-          </div>
-        </>
-      )}
-    </fieldset>
   );
 }

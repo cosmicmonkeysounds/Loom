@@ -80,6 +80,9 @@ export interface FactsKey {
   spelled: Set<string>;
   /** The answer then every alias, as written (the near-miss look). */
   forms: string[];
+  /** The key isn't in yet (`Question.placeholder`): nothing is judged on it,
+   *  and no screen shows `answer`. */
+  placeholder: boolean;
 }
 
 export interface FactsBook {
@@ -101,7 +104,7 @@ export interface ParsedFactsBook {
 
 /** A validated file as a book. */
 export function bookOf(facts: FactsFile): FactsBook {
-  const key = (id: string, round: number | null, text: string, answer: string, accept: readonly string[]): FactsKey => ({
+  const key = (id: string, round: number | null, text: string, answer: string, accept: readonly string[], placeholder = false): FactsKey => ({
     id,
     round,
     text,
@@ -109,12 +112,13 @@ export function bookOf(facts: FactsFile): FactsBook {
     folded: new Set([answer, ...accept].map(foldAnswer).filter((s) => s !== "")),
     spelled: new Set([answer, ...accept].map((f) => spellOut(foldAnswer(f))).filter((s) => s !== "")),
     forms: [answer, ...accept],
+    placeholder,
   });
   return {
     version: 1,
     modeVar: facts.judge?.mode_var ?? DEFAULT_MODE_VAR,
     confirm: { ...DEFAULT_CONFIRM, ...(facts.judge?.confirm ?? {}) },
-    questions: facts.questions.map((q) => key(q.id, q.round, q.text, q.answer, q.accept)),
+    questions: facts.questions.map((q) => key(q.id, q.round, q.text, q.answer, q.accept, q.placeholder === true)),
     answers: facts.answers.map((a) => key(a.id, null, a.text, a.answer, a.accept)),
     raw: facts,
   };
@@ -138,6 +142,14 @@ export function readFactsFile(path: string): ParsedFactsBook {
 /** The key with this id among questions ∪ answers, or null. */
 export function factsKey(book: FactsBook, keyId: string): FactsKey | null {
   return book.questions.find((k) => k.id === keyId) ?? book.answers.find((k) => k.id === keyId) ?? null;
+}
+
+/** Is this key still a stand-in (`Question.placeholder`)? The runtime judges
+ *  nothing on it: a filing reaches the story with no verdict, the story's own
+ *  "could not be judged" path answers, and nothing is recorded, marked or
+ *  credited. A confident answer on a stand-in would otherwise read as a lie. */
+export function isPlaceholderKey(book: FactsBook, keyId: string): boolean {
+  return factsKey(book, keyId)?.placeholder === true;
 }
 
 // ───────────────────────── the verdict ─────────────────────────
@@ -642,7 +654,7 @@ export function screenResultsOf(view: FactsView, book: FactsBook, ids: readonly 
     }
     const consensus = tallyFilings(filings).consensus;
     if (o.kind === "verdict") {
-      const q: ScreenResultQuestion = { id, n, round: key.round, ...counts, consensus, answer: o.tv ? key.answer : null };
+      const q: ScreenResultQuestion = { id, n, round: key.round, ...counts, consensus, answer: o.tv && !key.placeholder ? key.answer : null };
       const truth = o.truths?.get(id);
       if (truth !== undefined) q.truth = truth;
       if (o.tv) {
@@ -655,7 +667,7 @@ export function screenResultsOf(view: FactsView, book: FactsBook, ids: readonly 
       out.push(q);
       continue;
     }
-    const q: ScreenResultQuestion = { id, n, round: key.round, text: clipText(key.text, 140), ...counts, consensus, answer: consensus ? key.answer : null };
+    const q: ScreenResultQuestion = { id, n, round: key.round, text: clipText(key.text, 140), ...counts, consensus, answer: consensus && !key.placeholder ? key.answer : null };
     if (o.tv) {
       q.rows = filings.slice(0, MAX_RESULT_ROWS).map((f) => [clipText(f.name, 24), clipText(f.answer, 40), f.confidence >= CONFIDENCE_MAX ? 1 : 0, screenOutcome(f), screenRuled(f)]);
       if (filings.length > MAX_RESULT_ROWS) q.more = filings.length - MAX_RESULT_ROWS;

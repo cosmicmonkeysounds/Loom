@@ -11,7 +11,8 @@ GENERATOR ScreensaverHum
   tier: ambient
   every 4m
   while Night.ended != true
-  yield bark from The screensaver changes. Pipes now. | A fan spins up somewhere in the walls. | Downstairs, the Fan Closet starts a spin cycle nobody started. | An LED that was green is amber. Nobody saw it change. | Upstairs, the Graphics Card renders a frame nobody asked for. | The encyclopaedias smell like a basement in 1994. | Somebody has been through the encyclopaedias. Volume N is where volume B should be.
+  // DRAFT w59 (the Casino, was the Graphics Card, in the bark below)
+  yield bark from The screensaver changes. Pipes now. | A fan spins up somewhere in the walls. | Downstairs, the Fan Closet starts a spin cycle nobody started. | An LED that was green is amber. Nobody saw it change. | Upstairs, the Casino pays out to an empty room. | The encyclopaedias smell like a basement in 1994. | Somebody has been through the encyclopaedias. Volume N is where volume B should be.
 
 GENERATOR DialUp
   tier: ambient

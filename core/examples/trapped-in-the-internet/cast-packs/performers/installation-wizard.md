@@ -77,7 +77,7 @@ helping them, say so on the radio.
    a game: a find made while paused waits and lands when the run resumes.
 
 **Hold the first program** at the wizard until **INTRO** comes over the radio
-(OP-05), so Clippy's *"Look! That's…!"* lands on the live TV mirror.
+(OP-05), so a host can press 📺 and Clippy's *"Oh, look! We can follow their progress!"* lands on the live TV mirror.
 
 **Queue:** informal, in capture order. **More than 6 waiting → radio a host
 or the director** (whoever is calling may fire 🗜 early). At **🗜 Zip everyone out**, the Antivirus

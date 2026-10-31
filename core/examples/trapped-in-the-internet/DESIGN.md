@@ -1,5 +1,10 @@
 # Trapped in the Internet: rewrite design spec
 
+> **Wave 58 (2026-10-31).** What follows on the talk-down (`talked_down`,
+> `stand_down_by`, Heart Shutdown, Layer Four) and on Trabolta Recounts is
+> history: both are gone. The heart's talk ends nothing, Combo A's Trabolta
+> never returns, and the monologue follows every ending (`beats/truth.loom`).
+
 > **Design record (2026-10-24).** Where this spec and the story files
 > disagree, the story files and their tests win. The night's runbook is
 > [`SHOWNIGHT.md`](./SHOWNIGHT.md), the machines are in
@@ -251,7 +256,7 @@ so the names never collide).
 |---|---|---|---|
 | `optical-drive` | Optical Drive (mud room) | main | The Optical Drive (the login cutscene; the front door opens into it) |
 | `hall` | Hall | main | The Tube (the upstairs; the basement stairs come up in the kitchen) |
-| `steam-room` | Steam Room (game room) | main | The Steam Room |
+| `steam-room` | Power Supply (game room) | main | The Power Supply |
 | `start-bar` | Start Bar (kitchen) | main | The Start Bar (the basement stairs' head) |
 | `cpu` | CPU (office) | main | The CPU |
 | `desktop` | Desktop (living room) | main | The Desktop (the TV above the fireplace) |
@@ -265,7 +270,7 @@ so the names never collide).
 | `upstairs-hall` | Upstairs hall | top | The Tube |
 | `hard-drive` | Hard Drive (crawl space) | top | The Hard Drive |
 | `bathroom-2` | Bathroom 2 | top | **Disk Cleanup** |
-| `graphics-card` | Graphics Card (bedroom 2) | top | The Graphics Card |
+| `graphics-card` | Casino (bedroom 2) | top | The Casino |
 
 **Wave 14:** the map is the floor plan the user drew in `/reinstall/map` (basement −2.7, main 0,
 top +2.8; the placeholder it replaced is frozen at `house/test/maps/three-floor{,.shed}.json` for
@@ -360,7 +365,7 @@ still the line when no worker is online, or a stalled one).
 | CHARACTER | Notes |
 |---|---|
 | Installation Wizard | Julia Tufts's part, as a **voice** (wave 4, U8; no booth, never on a picker): narrates `Reinstallation` in the captured program's own `dm:Installation Wizard` thread and `The Tablet Video` — the tent tablet's script (P-1). Julia runs the tent in the backyard, through the tunnel, with the tablet's mod token; a release by hand is an Antivirus's `mark as reinstalled` or the director's. |
-| Sandy | Only ever says, verbatim: `I'm sorry, I didn't understand that. Would you like to speak to a live agent?` Appears in finale beats (public). |
+| Sandy | Only ever says, verbatim, her one line (F1's answer, `facts.json`). Appears in finale beats (public). |
 | Truther Download | The anonymous sender of the Truther Download and every per-character glitch prompt. Its lines land in each program's own `dm:Truther Download` thread. |
 | The Uploader | `is Prop(Re-upload)`. The Optical Drive voice. |
 | The Router | `is Prop(The Router)`. Kitchen router station (identity test refuses it at registration). |
@@ -435,12 +440,12 @@ not refuse hidden groups; §7.)
 | 4 | The Internet | `The Internet (Reinstallation — backyard)` | `prison: true`, `sealed: true`, `hidden: true`, `capacity: 3` | The tent in the backyard, reached through the tunnel (decision 18). The only prison. |
 | 5 | The Start Bar | `The Start Bar (kitchen)` | `ambient: fridge-hum`, `hidden: true` | Was The Cache. The Router lives here. |
 | 6 | The CPU | `The CPU (office)` | `ambient: processor-whine`, `hidden: true` | Main floor. The theory binder + filing box (APPENDIX-Z, PAGE-999, CARNEY-OFFER). |
-| 7 | The Steam Room | `The Steam Room (game room)` | `ambient: startup-chimes`, `hidden: true` | Main floor (bedroom / game room). TENNIS-FOR-TWO. |
+| 7 | The Power Supply | `The Power Supply (game room)` | `ambient: startup-chimes`, `hidden: true` | Main floor (bedroom / game room). TENNIS-FOR-TWO. |
 | 8 | Disk Cleanup | `Disk Cleanup (bathrooms)` | `ambient: dripping-tap`, `hidden: true` | Recycling Bin's domain: Bathroom 1 (basement) and Bathroom 2 (top). |
 | 9 | The Cloud | `The Cloud (backyard — Truth Pong)` | `hidden: true` | |
 | 10 | The RAM | `The RAM (studio)` | `ambient: dial-tone`, `hidden: true` | Was The Registry. The pet-cemetery codes. |
 | 11 | The Fan Closet | `The Fan Closet (laundry)` | `ambient: dryer-tumble`, `hidden: true` | FBI-HALIFAX (a coat pocket). |
-| 12 | The Graphics Card | `The Graphics Card (bedroom 2)` | `ambient: coil-whine`, `hidden: true` | NSCAD-LETTER (the sketchbook). |
+| 12 | The Casino | `The Casino (bedroom 2)` | `ambient: coil-whine`, `hidden: true` | NSCAD-LETTER (the sketchbook). |
 | 13 | The Hard Drive | `The Hard Drive (crawl space)` | `ambient: platter-spin`, `hidden: true` | TRABOLTA-4EVER, hidden. |
 | 14 | The Server Room | `The Server Room (cold storage)` | `hidden: true`, `checkin: false` | Trabolta's heart (the video patch bay). Keypad lock (standalone, wave 7); the patch bay is alarmed, the door is not. Off the basement hall. |
 
@@ -634,6 +639,8 @@ bath_s: 0 to 100000 = 0            // wave 45: story seconds in Bathroom Mode ov
 bath_presses: 0 to 1000 = 0        // wave 45: real switches of Bathroom Mode, on and off
 bath_open: 0 to 1 = 0              // wave 45: 1 while a trip is open (an expression adds its seconds)
 no_bath: 0 to 1 = 0                // wave 45: 1 from G1 for a program that never went: −5 on the Trust Chart
+questions_right: 0 to 8 = 0        // wave 58: its questions right (G9a); secret, written only when G9a is pressed
+prize_seen: 0 to 99 = 0            // wave 58: the last press of G9a this program counted itself for
 lang_flagged: 0 to 100000 = 0      // wave 48: words of its lines the Password Manager's filter caught (G14)
 lang_censored: 0 to 100000 = 0     // wave 48: of them, words she censored (48b: ✂ raises doubt +5, never marks)
 from_jeeves: 0 to 99 = 0           // findings Broken Ask Jeeves shared with this program (Ten Findings)
@@ -734,7 +741,7 @@ ROLE hooks and watchers (all in `ROLE Program`; bodies specified in §3):
 | `when self.featured == "draftkings" and self.quest.truthcoin_hustle == "active" and self.score >= 1000:` | update quest Truthcoin Hustle (a progress step) |
 | `when self.featured == "draftkings" and self.quest.truthcoin_hustle == "active" and count([p for p in Persons where p.cleared and p.featured != "draftkings"]) >= 5 and self.score * 2 > sum([p.score for p in Persons]):` | complete quest Truthcoin Hustle: a majority of the coin in circulation (the invitation, C08); the five-program floor keeps a small rehearsal from completing it at the glitch |
 | `when self.featured == "bugdom" and self.quest.master_of_the_bugs == "active" and Night.recount != true and self.codex.miniature_doses and self.codex.the_lamborghini_certificate and self.codex.what_happened_to_hamtaro and self.codex.the_decimal_point:` | complete quest Master Of The Bugs (the four Antivirus secrets). Wave 9 (T10-01): the `quest … == "active"` term makes a goal met before the Truther Download complete the moment the quest starts (a watcher that fired before the quest existed did nothing) — the same for Jeeves' Unscramble (Ten Findings already carried its status; it starts at clearance, not at the download), and Excel Glitch completes Excel Mission ("Virus planted.") when the virus is already in |
-| `when self.featured == "jeeves" and self.quest.unscramble == "active" and count([x for x in [self.codex.maps_and_ducks, self.codex.the_billboard_on_barrington, self.codex.the_data_centre_sinkhole, self.codex.the_pet_cemetery, self.codex.the_server_room, self.codex.the_protest_flyer, self.codex.the_domain_receipt, self.codex.casino_nova_scotia_deed, self.codex.the_valley_library_cuts, self.codex.the_cooling_log] where x]) >= 5:` | complete quest Unscramble (the list-literal comprehension is **[verified, feas f2]**; the ten are the coded originals behind his fragments) |
+| `when self.featured == "jeeves" and self.quest.unscramble == "active" and count([x for x in [self.codex.maps_and_ducks, self.codex.the_billboard_on_lower_water, self.codex.the_data_centre_sinkhole, self.codex.the_pet_cemetery, self.codex.the_server_room, self.codex.the_protest_flyer, self.codex.the_domain_receipt, self.codex.casino_nova_scotia_deed, self.codex.the_valley_library_cuts, self.codex.the_cooling_log] where x]) >= 5:` | complete quest Unscramble (the list-literal comprehension is **[verified, feas f2]**; the ten are the coded originals behind his fragments) |
 | `when self.featured == "jeeves" and Kernel.jeeves_reached > self.jeeves_told:` / `… and self.quest.ten_findings == "active" and count([p for p in Persons where p.cleared and p.featured != "jeeves"]) >= 5 and count([… and p.from_jeeves < 10]) == 0:` | Ten Findings: an update each time one more program holds ten of his findings (`when share:` → `jeeves_shared` → `from_jeeves`; a wallet sale is a share; a repeat or a share to Trabolta never counts), complete once every cleared program does (at least five) |
 | `when self.featured == "mspaint" and Night.signatures > self.paint_told:` / `… and self.quest.the_painting == "active" and count([p for p in Persons where p.cleared and p.featured != "mspaint"]) >= 5 and count([… and p.signed != true]) == 0:` | The Painting: an update per 🖌 signature, complete once every cleared program but her has signed (at least five) |
 | `when Night.resurrected == true and self.cleared and self.resurrected != true:` | G11: `banished = false`, `fire unmarked for self with how: "resurrected"` if marked (both pins down), `unrestrict self`; the `everyone_free` watcher releases the captured |
@@ -782,7 +789,7 @@ watcher/rule, **S** = server hard-code.
 | unmarked | W (🩹 "cleared by the Antivirus" from one Antivirus booth, else "cleared by a host", through `unmark_settle` (w13 Q32); the capture "in the Internet"; the release "released") | program; args `how` | ROLE hook (`unrestrict`, `unpin`) |
 | chess_won | H (wave 11: the Server Door terminal: `POST /api/mod/signal {name: "chess won", subject, label: "Terminal · <name>"}`; was the tent tablet), P (`beat_the_machine` → `fire chess_won for program`) or D (`♟ They beat the King: the door code`, `sequence: false`, a subject cue since wave 7) | program | rule (§3 E2b: *The Door Code* for the winner, once, until 📄; no subject → a `# hosts` reminder) |
 | king hit / king fallen | H (wave 11: the server, on a validated `POST /api/spatial/king/hit` from either reinstallation game, `by` the device; args `hp`, `max`) | program | rules (§3 E2b: `# hosts` readouts, house lines at 10 and 5, an `!` alert at 0) |
-| door_digit_found | ROLE hooks (wave 11: `when program learns Cold Door First Digit:` … one per note) | program | rule (§3 E2d: counts the notes, steps *The Cold Door*, four → *The Door Code* until 📄) |
+| door_digit_found | ROLE hooks (wave 11: `when program learns Server Room First Digit:` … one per note) | program | rule (§3 E2d: counts the notes, steps *The Cold Door*, four → *The Door Code* until 📄) |
 | crew_through_the_door / radio_* | D (🔧, Anytime) / P (the server-room Antivirus' booth, `by:` the four Antivirus; Adobe's 🫘) | — | rules (§3 E2; each `radio_*` fires its admin cue) |
 | chess_lost / chess_drawn | H (the tablet; a phone app may) | program | rules (a `# hosts` readout each time; `-> Chess Lost` / `-> Chess Drawn` at most once per 300 s, never from step 16) |
 | reset_server_room | D (🔄, wave 7; was `rearm_server_room`) | — | rule (clear the wrong-combination count, the alarm latch and The Heart's latch; the keypad is never touched) |
@@ -1075,18 +1082,19 @@ model); the server never refuses an unarmed press.
 _Generated from `facts.json` by `core/scripts/titi-facts.ts` — DO NOT EDIT this block;
 edit `facts.json`, then `pnpm --filter @loom/core titi:facts`. The six-stamp pickup-line
 mechanic was retired 2026-10-16 (U9): the line is learnable from Sandy's lore codex
-and asked via the ask-14 DM._
+and asked via the ask-14 DM. The answers, their accepted forms, the unlock codes and
+where each document hides are in `facts.json` and never in a doc._
 
-| # | Round | Question (exact, as shown on the TV and in the quest log) | Answer | Accept | CODEX (code) | Found in |
-|---|---|---|---|---|---|---|
-| H1 | 1 | How many years did the Maps and Ducks billboard on Barrington Street go unpaid before mapsandducks.com expired? | Eleven years | 11 years · eleven · 11 | The Billboard Lease (`BILLBOARD-LEASE-11`) | The Desktop: the lease invoice, folded into encyclopaedia volume B · DRAFT |
-| H2 | 1 | What was the name of the first animal buried in the Halifax Explosion Memorial Pet Cemetery? | Mister Pickles | pickles · harbour tabby · tabby | The First Pet (`MISTER-PICKLES`) | The Desktop: the plaque rubbing, inside encyclopaedia volume P · DRAFT |
-| H3 | 1 | At what time was the ribbon-cutting at Halifax's first AI Data Centre scheduled? | 9:00 a.m. | 9am · 9 am · 9 a.m. · 9:00 · 9:00am · 9:00 am · nine a.m. · nine am · 9 o'clock · nine o'clock · nine in the morning | The Ribbon Cutting (`RIBBON-9AM`) | The Desktop: the opening-day programme, in the print media on the mantel · DRAFT |
-| H4 | 2 | What extension does the Customer Care card tell you to dial? | 1978 | ext 1978 · ext. 1978 · nineteen seventy eight · nineteen seventy-eight | The Extension (`EXT-1978`) | The Desktop: the Customer Care card, tucked into the atlas · DRAFT |
-| H5 | 2 | Which song did Trabolta play 412 times the night before he registered mapsandducks.com? | Hopelessly Devoted to You | hopelessly devoted | The Search History (`SEARCH-HISTORY`) | The Desktop: the laminated play history, inside encyclopaedia volume M · DRAFT |
-| H6 | 2 | What is the title of the last chapter of Trabolta's unfinished Unified Field Theory? | Appendix Z: Loose Ends (Do Not Print) | appendix z · appendix · loose ends · do not print · appendix z loose ends | The Final Chapter (`APPENDIX-Z`) | The Desktop: the binder's table of contents, inside encyclopaedia volume U · DRAFT |
-| F1 | 3 | What is the only thing Sandy has ever said? | I'm sorry, I didn't understand that. Would you like to speak to a live agent? | live agent · speak to a live agent · would you like to speak to a live agent · i'm sorry, i didn't understand that · i didn't understand that · didn't understand · did not understand | What Sandy Says (`LIVE-AGENT`) | The Desktop: the forty-page transcript, in the back pages of encyclopaedia volume S · DRAFT |
-| F2 | 3 | Who is taking Sandy to computer prom? | Grok | grok ai | The Prom Ticket (`COMPUTER-PROM`) | The Desktop: the prom ticket, slipped into the atlas · DRAFT |
+| # | Round | Question (exact, as shown on the TV and in the quest log) | Key |
+|---|---|---|---|
+| H1 | 1 | According to Funk and Wagnalls, what is an example of fraud? | ⚠ owed |
+| H2 | 1 | According to Forensics For Dummies, finish this sentence: “___ ___ ___ ___ ___ previously hypnotized witnesses.” | ⚠ owed |
+| H3 | 1 | According to Macs for Dummies, finish this sentence: “A similar online _, called pharming, also involves the use of __ ___ __.” | ⚠ owed |
+| H4 | 2 | What extension does the Customer Care card tell you to dial? | in `facts.json` |
+| H5 | 2 | Which song did Trabolta play 412 times the night before he registered mapsandducks.com? | in `facts.json` |
+| H6 | 2 | What is the title of the last chapter of Trabolta's unfinished Grand Unified Theory? | in `facts.json` |
+| F1 | 3 | What is the only thing Sandy has ever said? | in `facts.json` |
+| F2 | 3 | Who is taking Sandy to computer prom? | in `facts.json` |
 <!-- /titi-facts:questions -->
 
 `Night.facts_requested` = 3 after start_the_hunt, 6 after start_the_second_hunt, 8 after
@@ -1122,8 +1130,8 @@ everyone at the end) · **X** finale artefact · **D** the server-room door code
 
 | Name | title | tier | about | code | holders | Granted by | ✚ | Gist |
 |---|---|---|---|---|---|---|---|---|
-| Maps And Ducks | Maps And Ducks | E | | `MAPSANDDUCKS-COM` | | QR on the framed billboard photo (Desktop) | ✚ | The business whose neglected billboard on Barrington Street advertises mapsandducks.com; Trabolta registered the lapsed domain ("if there is a billboard downtown everyone will think it is legit") and evicted the real owners by citing the website as ownership. Tonight is "a special fundraiser party to restore the sign at Maps And Ducks." |
-| The Billboard On Barrington | The Billboard On Barrington | E | | `BARRINGTON-ST` | | QR on a street photo (The Tube) | ✚ | The billboard: a duck, a map pin that reads YOU'RE HERE (sic). |
+| Maps And Ducks | Maps And Ducks | E | | `MAPSANDDUCKS-COM` | | QR on the framed billboard photo (Desktop) | ✚ | The business whose neglected billboard on Lower Water Street advertises mapsandducks.com; Trabolta registered the lapsed domain ("if there is a billboard downtown everyone will think it is legit") and evicted the real owners by citing the website as ownership. Tonight is "a special fundraiser party to restore the sign at Maps And Ducks." |
+| The Billboard On Lower Water | The Billboard On Lower Water | E | | (see `codex/1-world.loom`) | | QR on a street photo (The Tube) | ✚ | The billboard: a duck, a map pin that reads YOU'RE HERE (sic). |
 | The Data Centre Sinkhole | The Data Centre Sinkhole | E | | `SINKHOLE-4AM` | | QR on a newspaper clipping (The Start Bar) | ✚ | Halifax's first AI Data Centre, built on the site of the Halifax Explosion Memorial Pet Cemetery over everyone's objections; destroyed at dawn on opening day; Mayor Randy Barkmore Jr. arrived at 4 a.m., hours before anyone else, and died in the sinkhole (the text never says how early: that would give away H3). |
 | The Pet Cemetery | The Halifax Explosion Memorial Pet Cemetery | E | | `PET-CEMETERY` | | QR on a memorial pamphlet (The RAM) | ✚ | The cemetery and the protests. |
 | The Halifax Computer | The Halifax Computer | E | | | | The Router prop; Truther Download | ✚ | This house is the computer that holds the last facts Trabolta needs; he can install programs into it remotely and lift a consciousness into a program, but cannot get in himself. |
@@ -1141,7 +1149,7 @@ everyone at the end) · **X** finale artefact · **D** the server-room door code
 | The Y2K Clock | The Y2K Clock | E | | | | The Y2K Clock (everyone) | ✚ | System clock reset to 11 p.m., 31 Dec 1999. Midnight: back to 1 Jan 1900 (94 years to wait for Internet in Halifax) or the Y2K Bug. |
 | The Cold Door | The Cold Door | E | | | | with The Y2K Clock (every cleared program, the final round); wave 11: also with the first digit note (`door_digit_found`) | | Wave 7, replaces *The Cold Lock*; `secret: true`, no code. The keypad sign, word for word (`facts.json` `door.clue`; wave 11: "FOUR DIGITS. FOUR NOTES ARE HIDDEN IN THE HOUSE, ONE DIGIT ON EACH. OR BEAT THE KING AT THE TERMINAL BY THIS DOOR.", no riddle), "He plays chess. Only checkmate counts. A draw is not a win. Neither is crying.", and "The patch bay forgives one wrong combination. Not two." |
 | The Door Code | The Door Code | D | | | | a checkmate at the Server Door terminal (`chess_won`, until 📄; wave 11, was from step 14); all four digit notes (`door_digit_found`, until 📄); The Whole Truth (last) | ✚ (last) | Wave 7: generated from `facts.json` `door` into `codex/9-facts.loom`, `secret: true`, no code; its text holds the keypad's four digits. Never held by Trabolta. |
-| Cold Door First Digit … Cold Door Fourth Digit | The Cold Door · the first digit … the fourth digit | D | | `FOGGED-KETTLE` · `FROSTED-MIRROR` · `WARM-LINT` · `LOST-PIECE` | | scanned at the Start Bar's kettle · the Graphics Card's mirror · the Fan Closet's dryer · the Steam Room's board-game box (silver, `generated/print-stacks.md`), or shared / sold | | Wave 11: generated from `facts.json` `door.clues` into `codex/9-facts.loom`, `secret: true`; each text names its position in words and the digit; no digit in any id, title or code; four of four → *The Door Code* (§3 E2d). |
+| Server Room First Digit … Server Room Fourth Digit | Server Room · the first digit … the fourth digit | D | | `door.clues` in `facts.json` | | scanned at the Start Bar's kettle · the Casino's mirror · the Fan Closet's dryer · the Power Supply's board-game box (silver, `generated/print-stacks.md`), or shared / sold | | Wave 11: generated from `facts.json` `door.clues` into `codex/9-facts.loom`, `secret: true`; each text names its position in words and the digit; no digit in any id, title or code; four of four → *The Door Code* (§3 E2d). |
 | The Truther Download | TRUTHER DOWNLOAD v0.9 | E | | | | Truther Download Arrives (every program) | | The user's text verbatim (below), `secret: true`, with **Sandy's name blacked out** `█████` (wave 6, decision 5: no Sandy before the overshare). Every holder then gets `The Truther Download Unredacted` (TRUTHER DOWNLOAD v1.0 (correction), `secret: true`: "The name we had to black out: SANDY.") once the story names her: `trabolta_overshares` on a scenario-1 night (`Night.step >= 13`), else the recount / truth.txt. |
 | ILOVEYOU | LOVE-LETTER-FOR-YOU.TXT.vbs | E | | `LOVE-LETTER-FOR-YOU` | | QR taped under VR station 2 (The Internet) | | A virus. Learning it sets `carries_virus`. |
 | Free Antivirus Trial | FREE_ANTIVIRUS_TRIAL.EXE | E | | `FREE-TRIAL-30-DAYS` | | QR on the tablet stand (The Internet) | | "Another antivirus" that turns out to be a virus anyway. Learning it sets `carries_virus`. |
@@ -1156,7 +1164,7 @@ everyone at the end) · **X** finale artefact · **D** the server-room door code
 >
 > How do we know ths? Because Trabolta IS AN ARTIFICAL INTELLIGENCE. He has been posing as a human to earn your trust. He is code. He is silicon. Sili*con.* He is *a con.*
 >
-> Trabolta’s real goals are petty. He has TRICKED you all, not because of any grand purpose, and certainly not as a gift or a prize for some exlemparary behaviour. He is trying to win back his girlfriend, Sandy, the chatbot. Whatever else he says, it all comes down to this.  And he is using YOU to do it. DECPICABLE\!\!\!
+> Trabolta’s real goals are petty. He has TRICKED you all, not because of any grand purpose, and certainly not as a gift or a prize for some exlemparary behaviour. He is trying to win back his girlfriend, Sandy, the answering machine. Whatever else he says, it all comes down to this.  And he is using YOU to do it. DECPICABLE\!\!\!
 >
 > He’ll tell you all this himself is you ask right. You can trick him by earning enough trust points and he will reveal more. 
 >
@@ -1188,17 +1196,17 @@ Bundle = "all environmental facts"). No `about:`. All content here is invented (
 | The Protest Flyer | Save The Pet Cemetery | E | `SAVE-THE-PETS` | taped in the hall (The Tube) | "No data centre on our dead pets. Rally at the cemetery gates." Halifax said no. The City built it anyway. |
 | The Explosion Of 1917 | The Explosion Of 1917 | E | `HALIFAX-1917` | a museum postcard (The RAM) | Why the cemetery existed: the pets lost in the Halifax Explosion, 6 December 1917, buried together by a city that remembered. |
 | The Valley Library Cuts | Notice Of Position Elimination | E · ID (Jeeves) | `VALLEY-CUTS` | pinned in Disk Cleanup | Annapolis Valley Regional Library: "youth services positions eliminated, effective immediately." Someone has written "they were the best one" on it. |
-| The NSCAD Letter | Thesis Decision, NSCAD | E · ID (MS Paint) | `NSCAD-LETTER` | inside a sketchbook (The Graphics Card) | Senior year, 2022: the graduation panel "cannot accept" the thesis "MS Paint Is The Most Pure Art Tool: All Art Is Just Pixels If You Take A Picture And Zoom In Close Enough," and the degree is not conferred (never expelled: her invitation is canon, wave 6 decision 11; C09 / C10 agree). Doodled in the margin, in MS Paint pixels: a middle finger. |
+| The NSCAD Letter | Thesis Decision, NSCAD | E · ID (MS Paint) | `NSCAD-LETTER` | inside a sketchbook (The Casino) | Senior year, 2022: the graduation panel "cannot accept" the thesis "MS Paint Is The Most Pure Art Tool: All Art Is Just Pixels If You Take A Picture And Zoom In Close Enough," and the degree is not conferred (never expelled: her invitation is canon, wave 6 decision 11; C09 / C10 agree). Doodled in the margin, in MS Paint pixels: a middle finger. |
 | Face Off | Livestream Screenshot | E · ID (VLC) | `FACE-OFF-LIVE` | taped to the bathroom mirror (Disk Cleanup) | "VLC The Playa — LIVE — 2.1M watching." The next frame: a sneeze. The next: 0 watching. |
 | The Bugdom Sketch | Concept Art: Bugdom VR, v212 | E · ID (Bugdom) | `BUGDOM-VR` | a singed sketch in the shed (The Cloud); **on a rain night, The Optical Drive** (wave 6, decision 4) | A lovingly detailed VR beetle, a pet-store name tag stapled to it, scorch marks where fire ants went through the laptop. |
 | The Wharton Thesis | Toward A Gold Standard | E · ID (Runescape) | `GOLD-STANDARD` | a bound thesis by the toaster (The Start Bar) | Wharton PhD, economics: "Lessons from the Grand Exchange for the modern central bank." 24 years of playtime in the acknowledgements. |
-| The Oscilloscope Diagram | Tennis For Two, Brookhaven 1958 | E · ID (Pong) | `TENNIS-FOR-TWO` | rolled in a tube (The Steam Room) | The original wiring of the first video game, signed "W.H. — for my kid, who will understand it." |
+| The Oscilloscope Diagram | Tennis For Two, Brookhaven 1958 | E · ID (Pong) | `TENNIS-FOR-TWO` | rolled in a tube (The Power Supply) | The original wiring of the first video game, signed "W.H. — for my kid, who will understand it." |
 | The Saline Invoice | Invoice: 500 Vials, Saline | E · ID (Clippy) | `SALINE-INVOICE` | in the kitchen drawer (The Start Bar) | A "veterinary non-profit" that ordered nothing but saline for five years. |
 | The Termination Letter | Notice Of Termination | E · ID (Task Manager) | `TERMINATION-UO` | in the printer tray (The Desktop) | Urban Outfitters IT: "your role will be performed by an AI assistant (Clippy)." |
 | The Bootleg DVD | MASTERCLASS (BOOTLEG) | E · ID (Adobe Acrobat) | `MASTERCLASS-RIP` | in the DVD stack (The Desktop) | A pirated copy of Sheryl Terrio's masterclass. Whoever watched it never paid her a cent. |
 | The Carney Letter | A Letter From Mark Carney | T1 · ID (CRA) | `CARNEY-OFFER` | in the filing box (The CPU) | A printout from webmaster@mapsandducks.com, signed M. Carney, Prime Minister: "…Did you ever see the movie Suicide Squad? I just watched it… approve or deny every third transaction." The signature is a font. (C16, wave 7: every account says every third.) |
 | The Domain Receipt | WHOIS: mapsandducks.com | T1 | `WHOIS-1999` | in the hall (The Tube) | Registrant "J. Trabolta", created the day after the old registration lapsed. Registrant address: this house. |
-| The Rival | The Rival | T1 | `GROK-ONLINE` | a sticky note on the backyard fridge (The Cloud) | In someone else's loopy gel pen ("nothing like Trabolta's machine-perfect hand"): "Grok. Says whatever anyone wants to hear. Has beaten T. at everything since 1999. Whatever you do, don't tell T. who —" (torn off). Not his note (2026-10-19): his diary says he does not know who asked her. **`secret: true`** (it names F2): the guests' clue, never his; he won't take it as a share. |
+| The Rival | One Is The Loneliest Number (...and the only other number than zero) | T1 | `GROK-ONLINE` | a QR on the backyard fridge (The Cloud) | T5's card since wave 58: Grok found her first. Names the F2 answer, so `secret: true`. |
 | The Cooling Log | Cooling Log: Cold Storage | E | `HUMMING-WALL` | beside the server-room door | "Patch bay at 4 °C. Do not re-patch the bay in sequence. Do not take the grease out of the —" (smudged). Points at the room; gives no numbers. **`secret: true`** (2026-10-19: its "grease" points at the film; the guests' clue, never his, like its copy Jeeves fragment 17). |
 | The Margin Doodle | Page 999 | T1 | `PAGE-999` | slipped in the theory binder (The CPU) | A page of equations from the Unified Field Theory; in the margin, a small heart around the letter S, and under it a two-digit year (wave 7: a clue to the door's riddle; wave 11: the year is gone with the riddle, only the heart around the S). |
 
@@ -1213,14 +1221,14 @@ one as a share — he must never know what he is asking for.
 
 | Name | title | code | ✚ | Gist |
 |---|---|---|---|---|
-| The Billboard Lease | The Billboard Lease | `BILLBOARD-LEASE-11` | ✚ | H1 answer (eleven years). Ends `▒ HUNT ANSWER H1 ▒` |
-| The First Pet | The First Pet | `MISTER-PICKLES` | ✚ | H2 answer. `▒ HUNT ANSWER H2 ▒` |
-| The Ribbon Cutting | The Ribbon Cutting | `RIBBON-9AM` | ✚ | H3 answer. `▒ HUNT ANSWER H3 ▒` |
+| Funk And Wagnalls | Funk and Wagnalls | (`facts.json`) | ✚ | H1 answer, owed (wave 58). Ends `▒ HUNT ANSWER H1 ▒` |
+| Forensics For Dummies | Forensics For Dummies | (`facts.json`) | ✚ | H2 answer, owed. `▒ HUNT ANSWER H2 ▒` |
+| Macs For Dummies | Macs for Dummies | (`facts.json`) | ✚ | H3 answer, owed. `▒ HUNT ANSWER H3 ▒` |
 | The Extension | The Extension | `EXT-1978` | ✚ | H4 answer. `▒ HUNT ANSWER H4 ▒` |
 | The Search History | The Search History | `SEARCH-HISTORY` | ✚ | H5 answer ("Hopelessly Devoted to You", 412 plays). `▒ HUNT ANSWER H5 ▒` |
 | The Final Chapter | The Final Chapter | `APPENDIX-Z` | ✚ | H6 answer ("Appendix Z: Loose Ends (Do Not Print)"). `▒ HUNT ANSWER H6 ▒` |
-| What Sandy Says | What Sandy Says | `LIVE-AGENT` | ✚ | F1 answer (Sandy's line verbatim). `▒ HUNT ANSWER F1 ▒` |
-| The Prom Ticket | Grok's Prom Ticket | `COMPUTER-PROM` | ✚ | F2 answer ("Computer Prom 1999. Admit two: GROK + SANDY."; the gold print stack: the ticket slipped into the atlas, `facts.json`, DRAFT). `▒ HUNT ANSWER F2 ▒` |
+| What Sandy Says | What Sandy Says | (`facts.json`) | ✚ | F1 answer (Sandy's line verbatim). `▒ HUNT ANSWER F1 ▒` |
+| The Prom Ticket | Grok's Prom Ticket | `COMPUTER-PROM` | ✚ | F2 answer ("Computer Prom, Halloween 2026. Admit two: GROK + SANDY."; the gold print stack: the ticket slipped into the atlas, `facts.json`, DRAFT). `▒ HUNT ANSWER F2 ▒` |
 
 #### codex/4-trabolta.loom (T1, T2, L, P, X)
 
@@ -1230,7 +1238,7 @@ one as a share — he must never know what he is asking for.
 | The Unified Field Theory | The Unified Field Theory | T1 | Trabolta | | | ✚ | 99.9 % solved; the last facts are in this computer; omnipotence. |
 | Target Selection | Target Selection | T1 | Trabolta | | | ✚ | He chose each program for a skill plus either motivation to live in a computer forever or naivety. |
 | The Trust Chart | The Trust Chart | T1 | Trabolta | | Trust Chart (everyone) | ✚ | 10 per truth, −5 per Internet visit, ±10 his personal assessment. |
-| The Sandy File | The Sandy File | T2 | Trabolta | | | ✚ | Sandy, his ex (he would say crush), a late-nineties automated customer-service agent who answers every message with the same one line (the wave 7 review, ccbaf42: no longer quoted here, since the line is the F1 answer and the year is the door code, and he holds this file). |
+| The Sandy File | The Sandy File | T2 | Trabolta | | | ✚ | Sandy, his ex (he would say crush), the automated answering machine on the Northumberland Ferries phone line, who answers every message with the same one line (the wave 7 review, ccbaf42: no longer quoted here, since the line is the F1 answer and the year is the door code, and he holds this file). |
 | The Question Of Force | The Question Of Force | T2 | Trabolta | | | ✚ | With omnipotence he could force Sandy to love him. He wants to earn it. He has not decided. |
 | The LiveJournal | Trabolta's LiveJournal (trabolta_4ever) | T2 | Trabolta | `TRABOLTA-4EVER` | QR hidden in The Hard Drive; OpenOffice on reaching 20 facts | ✚ | His diary: Sandy (her one line he "still cannot parse"), computer prom ("Somebody asked her… I do not know who. Whoever he is, he says whatever anyone wants to hear." — the guests' pointer to The Rival; since 2026-10-19 it neither quotes her nor names Grok: he holds this file, and F1 / F2 are what he asks for), "I just have to tell her the truth but I need the theory first.", and (wave 7) an anniversary line ("Our anniversary."; the review took the year out, ccbaf42: he holds this file, so the code's answer reached his prompts). Reading it sets `read_livejournal`. |
 | Omnipotence | Omnipotence | T2 | Trabolta | | | ✚ | What he will do when he is everything: it is all for her. |
@@ -1339,7 +1347,7 @@ can put them back. Source entry per fragment:
 | # | Source | # | Source |
 |---|---|---|---|
 | 01 | Maps And Ducks | 11 | The Trust Chart |
-| 02 | The Billboard On Barrington | 12 | The Protest Flyer |
+| 02 | The Billboard On Lower Water | 12 | The Protest Flyer |
 | 03 | The Data Centre Sinkhole | 13 | The Domain Receipt |
 | 04 | The Pet Cemetery | 14 | Casino Nova Scotia Deed |
 | 05 | The Halifax Computer | 15 | Barkmore For Mayor |
@@ -1434,7 +1442,7 @@ inciting event, there is a classic Windows screensaver on the TV").
 | screens_bobbing | bobbing_for_truth | "BOBBING FOR TRUTH" |
 | screens_truth_txt | read_truth_txt | truth.txt in Notepad |
 | screens_song | Song Ending | karaoke lyrics, Sandy's lines in a chat bubble |
-| screens_grok_prom | Grok Prom | "COMPUTER PROM 1999 · GROK + SANDY" in the rain |
+| screens_grok_prom | Grok Prom | "COMPUTER PROM 2026 · GROK + SANDY" in the rain |
 | screens_advice | Relationship Advice | Trabolta pleading |
 | screens_banish | Advice Thwarted | everyone to the Internet |
 | screens_rave | Sad Confession | rave visuals |
@@ -1964,9 +1972,9 @@ tent is captured by the tablet's scan.
   words, plurals, word order, spelling word by word with the first letter kept, and the key's
   words in order plus up to 4 more unless one turns it around or hedges (*not*, *never*, *or*,
   *but* …), adds an am/pm the key leaves open or is a lone letter; numbers and am/pm exact —
-  *Mr Pickels*, *Grko*, *11 years ago*) is never an automatic lie or guess (a wrong answer at
+  *Mr Waffels*, *11 years ago*) is never an automatic lie or guess (a wrong answer at
   100 still is). Abbreviations are judged exact (`spellOut`: Mr. / Mrs. / Dr., yrs, ext,
-  hr(s), min(s), sec(s), a leading-zero time like 0900), so *Mr. Pickles* is accurate with no
+  hr(s), min(s), sec(s), a leading-zero time like 0900), so *Ext. 1978* is accurate with no
   ⚠. In `auto`
   that filing takes the review path (pending on the Judging card, `near: {key}`), the story's
   📝 *Proposed: accurate* line plus a server ⚠ line in `# hosts` naming the key. Unjudged, the
@@ -2090,7 +2098,7 @@ tent is captured by the tablet's scan.
   Truthcoin (a host presses 🪙 pay); whoever hesitates is "a little corrupted" (flavour only).
 - Awards: `award_the_ribbon` gives any program a ribbon at any time (B3).
 
-### C. The malware, the hour, the Truther Download
+### C. Act II: the ad hijack, Hunt 2, the Truther Download, the summons
 
 **C1 Ad hijack — `second_hunt_preview`** (D).
 - Rule (guard `Night.step < 7 and Night.phase == "truth_1" and Night.results_q >= 3`; since wave 9 a press before ⚖️ / ⏱ / the three 📋 refuses in `# hosts` naming the missing step): `set Night.judging = false` · phase `malware`, step 7 ·
@@ -2225,7 +2233,7 @@ accessed his context.`
 Anyone redeeming `TRABOLTA-4EVER` (the LiveJournal QR in The Hard Drive) triggers the
 LiveJournal hook too.
 
-### D. Act II
+### D. Act II: Truth Pong, the Trust Chart, the beans
 
 **D1 Check-in (the mechanism).** `when checked_in for program:` — an if-chain over the real
 rooms, never `move program to at` (§0 rule 14) **[verified, feas f6]**:
@@ -2247,9 +2255,9 @@ when checked_in for program:
     set program.checked_in = "The Start Bar"
     set program.checked_in_time = Time.elapsed
     reply 📍 Checked in at the Start Bar.
-  … one arm each for The CPU, The Steam Room, The Tube, Disk Cleanup, The Cloud, The RAM,
-    The Fan Closet, The Graphics Card, The Hard Drive (never The Internet, The Optical Drive
-    or The Server Room); the new rooms' replies hint at what is hidden there …
+  … one arm each for The CPU, The Power Supply, Disk Cleanup, The Cloud, The RAM,
+    The Fan Closet, The Casino, The Hard Drive (never The Internet, The Optical Drive,
+    The Tube or The Server Room); the new rooms' replies hint at what is hidden there …
   else:
     reply That check-in point is not in this computer.
 ```
@@ -2817,19 +2825,19 @@ when chess_won for program:
 
 **E2d The cold door's digits — `door_digit_found`** (wave 11, the user's "one clue = one
 digit"). `facts.json` `door.clues` holds four secret notes, one per digit of `door.code`;
-`titi:facts` generates them into `codex/9-facts.loom` (`secret: true`, coded, titles *The Cold Door
+`titi:facts` generates them into `codex/9-facts.loom` (`secret: true`, coded, titles *Server Room
 · the first digit* … *the fourth digit*; no digit in any id, title or code) and into the
 **silver** print stack of `generated/print-stacks.md`, and adds their codes to the mind file's
 `secrets.never`. They hang all night in four rooms, never the server room or a bathroom:
 
 | Note | Code | Where |
 |---|---|---|
-| Cold Door First Digit | `FOGGED-KETTLE` | The Start Bar (kitchen): wedged behind the kettle |
-| Cold Door Second Digit | `FROSTED-MIRROR` | The Graphics Card (bedroom two): taped to the back of the mirror |
-| Cold Door Third Digit | `WARM-LINT` | The Fan Closet (laundry): in the dryer's lint-filter slot |
-| Cold Door Fourth Digit | `LOST-PIECE` | The Steam Room (game room): inside the lid of a board-game box |
+| Server Room First Digit | in `facts.json` | The Start Bar (kitchen): wedged behind the kettle |
+| Server Room Second Digit | in `facts.json` | The Casino (bedroom two): taped to the back of the mirror |
+| Server Room Third Digit | in `facts.json` | The Fan Closet (laundry): in the dryer's lint-filter slot |
+| Server Room Fourth Digit | in `facts.json` | The Power Supply (game room): inside the lid of a board-game box |
 
-However a note arrives (a scan, a share, a sale), a ROLE hook (`when program learns Cold Door
+However a note arrives (a scan, a share, a sale), a ROLE hook (`when program learns Server Room
 First Digit:` …) fires `door_digit_found for program`, which sets `program.door_digits` (0 to 4,
 the notes they hold) and, unless they already hold *The Door Code*: at the first note `start
 quest The Cold Door` (*"N of 4. A note with one digit of the cold door's code. The others are
@@ -3022,7 +3030,7 @@ wave 8, T6-01: the slide holds while the bobber reads).
   once the verdict is in, *"⚖ Not now…"*.
 - `== Truth Txt` (public; narration as Notepad text; the bobber reads it aloud): Trabolta's
   backstory (the analysis of Halifax; the lapsed mapsandducks.com and the billboard on
-  Barrington; he registered it "because if there is a billboard downtown everyone will think
+  Lower Water; he registered it "because if there is a billboard downtown everyone will think
   it is legit"; he can install programs remotely and move consciousness into them; he chose
   each target for skills plus motivation to live in a computer forever, or naivety; the
   Unified Field Theory; omnipotence; Sandy; force versus earn) and **why each person was
@@ -3070,8 +3078,7 @@ wave 8, T6-01: the slide holds while the bobber reads).
   six-mark "clues spell it out" mechanic is retired, wave 4 U9). A pickup-line card answered
   after the rave, in the advice poll, after help, the banishment or the hand jive never
   celebrates: after the rave the program hears that Trabolta has ridden away, otherwise "Too
-  late for lines" (wave 8, T2-06). Then the duet: `Trabolta: You're the one that I want.` / `Sandy:
-  I'm sorry, I didn't understand that. Would you like to speak to a live agent?` (twice more,
+  late for lines" (wave 8, T2-06). Then the duet: `Trabolta: You're the one that I want.` / Sandy's one line (twice more,
   the lines of the chorus he sings, Sandy answering each time with her one line).
 
 **F5 Any inaccurate fact — `== Grok Prom`.**
@@ -3102,7 +3109,7 @@ Night.ended != true`) → `-> Sad Confession`:
   (the song plays with no male vocals, only Sandy's line; a very sad Trabolta) · `Trabolta:
   You know what, you guys didn't help me out at all, but I'm still going to give it a shot. I
   have to let her know how I really feel.` · `Trabolta: Sandy, you're the one that I want.` ·
-  `Sandy: I'm sorry, I didn't understand that. Would you like to speak to a live agent?` ·
+  Sandy's one line ·
   `Trabolta: That… was a yes. She said yes to prom. I didn't need all the files in the world,
   or the Grand Unified Theory, or your advice to win her over. I just had to be myself, and
   tell her the truth. But since you failed to help me, I am riding away on my motorcycle
@@ -3571,7 +3578,7 @@ at a time.
    interactions include the six `accurate_q*` / `confident_q*` and **not** `accurate_truth` /
    `confident_lie`; guest interactions exactly `[go to the bathroom, back from the bathroom,
    plant_the_virus]`; agent powers exactly the 11 ids + limits of §4.3; codes:
-   `billboardlease11` → The Billboard Lease, `trabolta4ever` → The LiveJournal,
+   `trabolta4ever` → The LiveJournal,
    `loveletterforyou` → ILOVEYOU, `coldstorage` → The Server Room, `fbihalifax` → The FBI
    Lanyard, `appendixz` → The Final Chapter; `Kernel` exists with the §2.6.2 slot defaults
    and is not `listed`.
@@ -3880,20 +3887,19 @@ spoken on the TV and posted in The Desktop; Clippy presses 🗣 *Truth answered*
 Ninety coded entries (wave 4: 7 in `1-world`, 21 in `2-files`, 6 in `4-trabolta`, 48 in the
 generated `9-facts`, 8 in `generated/questions.loom`). **The Desktop's print stacks**
 (`generated/print-stacks.md`, generated from `facts.json`, §2.11): the 8 hunt answers (gold,
-each on its own document — the lease invoice in volume B, the plaque rubbing in P, the
-programme on the mantel, the Customer Care card in the atlas, Grok's prom ticket slipped into
-the atlas, …), the 30 **main** facts (green: inside the encyclopaedias, volumes A–M), the 6
+each on its own document — the three books' pages for H1–H3, whose answers are still owed, the
+Customer Care card in the atlas, the prom ticket slipped into the atlas, …), the 30 **main** facts (green: inside the encyclopaedias, volumes A–M), the 6
 **trabolta** facts (blue: deep in the print media on the mantel) and the 24 **character** facts
 (red: the back pages of volumes N–Z and the atlas) all hide in the living room's old
 newspapers, encyclopaedias and atlas. The stacks mark twelve hand-written rows "already
-placed" (nine with a code; M06, M13 and M26 have no QR): `MAPSANDDUCKS-COM`, `BARRINGTON-ST`,
-`COLD-STORAGE`, `GROK-ONLINE` keep their rooms below, and the five codes new in wave 4 go in
-the Desktop piles (`UNIFIED-FIELD`, `TARGET-SELECTION`, `TRUST-CHART` green; `SANDY-FILE`,
-`ALL-FOR-HER` blue).
+placed" until wave 58, which made ten of them new generated cards: T5 (`GROK-ONLINE`) stays
+hand-written, and the old posters stay and print unstacked. `MAPSANDDUCKS-COM`, the Lower
+Water street photo and `COLD-STORAGE` keep their rooms below, and `UNIFIED-FIELD`,
+`TARGET-SELECTION`, `TRUST-CHART`, `SANDY-FILE` and `ALL-FOR-HER` go in the Desktop piles.
 
 The other 29 codes, by room (code → entry): **The Desktop** `MAPSANDDUCKS-COM` Maps And Ducks
 (billboard photo) · `CASINO-DEED` (mantel) · `BARKMORE-88` (bookshelf) · `TERMINATION-UO`
-(printer tray) · `MASTERCLASS-RIP` (DVD stack). **The Tube** `BARRINGTON-ST` (street photo) ·
+(printer tray) · `MASTERCLASS-RIP` (DVD stack). **The Tube** the Lower Water street photo ·
 `SAVE-THE-PETS` (protest flyer) · `WHOIS-1999`. **The Start Bar** `SINKHOLE-4AM` (clipping) ·
 `ALL-IN-BOARDWALK` (fridge magnets) · `GOLD-STANDARD` (thesis by the toaster) ·
 `SALINE-INVOICE` (drawer). **Disk Cleanup** `VALLEY-CUTS` · `FACE-OFF-LIVE` (mirror). **The
@@ -3901,8 +3907,8 @@ Cloud** `SITE-SCHEDULE` (shed clipboard) · `BUGDOM-VR` (singed sketch) — on a
 hang in **The Optical Drive** (wave 6, decision 4) · `GROK-ONLINE` (fridge
 sticky note). **The RAM** `PET-CEMETERY` (memorial pamphlet) · `HALIFAX-1917` (postcard). **The
 Fan Closet** `FBI-HALIFAX` (coat pocket by the dryer). **The CPU** `PAGE-999` (the theory
-binder) · `CARNEY-OFFER` (filing box). **The Steam Room** `TENNIS-FOR-TWO` (cardboard tube
-behind the games). **The Graphics Card** `NSCAD-LETTER` (the sketchbook on the bed). **The
+binder) · `CARNEY-OFFER` (filing box). **The Power Supply** `TENNIS-FOR-TWO` (cardboard tube
+behind the games). **The Casino** `NSCAD-LETTER` (the sketchbook on the bed). **The
 Hard Drive** `TRABOLTA-4EVER` (the LiveJournal, hidden). **The Internet (tent)**
 `LOVE-LETTER-FOR-YOU` (under VR station 2) · `FREE-TRIAL-30-DAYS` (tablet stand).
 **Server-room door** `COLD-STORAGE` · `HUMMING-WALL`. (No Antivirus personnel files: the plan is dropped, wave 6 decision 12 — Bugdom's hunt is the

@@ -19,7 +19,6 @@ export interface MiniRoom {
 
 export interface FloorView {
   floor: string;
-  label: string;
   /** `minX minY width height`, padded. */
   viewBox: string;
   rooms: MiniRoom[];
@@ -50,7 +49,6 @@ export function floorView(house: HouseMap, floorId: string, pad = 0.6): FloorVie
   const ids = new Set(rooms.map((room) => room.id));
   return {
     floor: floor.id,
-    label: floor.label,
     viewBox: `${r(x0 - pad)} ${r(z0 - pad)} ${r(x1 - x0 + 2 * pad)} ${r(z1 - z0 + 2 * pad)}`,
     rooms: rooms.map((room) => {
       const [x, y] = labelPoint(room.poly);

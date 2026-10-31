@@ -45,9 +45,9 @@ const CEREMONY = readFileSync(join(SHOW, "beats/ceremony.loom"), "utf8");
 // --- the pure timelines -----------------------------------------------------------------
 
 describe("tv3 timelines — the awards", () => {
-  it("knows all nine of the programs' awards, the Bathroom Report (wave 45) and the Language Report (wave 48), each with a slide in the story", () => {
+  it("knows all ten of the programs' awards, the Bathroom Report (wave 45) and the Language Report (wave 48), each with a slide in the story", () => {
     const programs = AWARDS.filter((a) => a.kind !== "Staff award");
-    expect(programs.map((a) => a.id)).toEqual(["most_trusted", "least_trusted", "frequent_flyer", "lore_hoarder", "truthcoin_tycoon", "best_liar", "duck_speedrun", "quest_completionist", "the_painting", "bathroom", "language"]);
+    expect(programs.map((a) => a.id)).toEqual(["most_trusted", "least_trusted", "frequent_flyer", "lore_hoarder", "truthcoin_tycoon", "best_liar", "duck_speedrun", "quest_completionist", "most_correct", "the_painting", "bathroom", "language"]);
     for (const a of programs) {
       const cue = `cue screens_award_${a.id}`;
       expect(CEREMONY, a.id).toContain(cue);
@@ -79,6 +79,11 @@ describe("tv3 timelines — the awards", () => {
 
   it("names the Language Report (wave 48; its breach is `lang-breach.test.ts`)", () => {
     expect(awardOf("award_language")).toMatchObject({ title: "The Language Report", kind: "Bonus award", emblem: "key" });
+  });
+
+  it("names the special prize (wave 58, G9a): an award of its own, never the secrets prize", () => {
+    expect(awardOf("award_most_correct")).toMatchObject({ title: "Most Questions Correct", kind: "Award", emblem: "trophy", label: "Questions correct" });
+    expect(awardOf("award_lore_hoarder")).toMatchObject({ title: "Lore Hoarder", label: "Codex entries held" });
   });
 
   it("reads an award off its slide value, and makes one up for a value it doesn't know", () => {
@@ -146,12 +151,11 @@ describe("tv3 timelines — the bob", () => {
 });
 
 describe("tv3 timelines — truth.txt", () => {
-  it("types only what Truth Txt narrates, every night's lines (the featured ones need who came)", () => {
-    // Wave 18b §4.3: the first line is the contract's fixed text. Until the
-    // `show` lane's text is merged the story still has the wave 18 line.
+  it("types only what Truth Txt narrates, a short teaser (wave 58)", () => {
+    // Wave 18b §4.3: the first line is the contract's fixed text.
     expect(TRUTH_TXT[0]).toBe("This file is the truth. It was written by Jean Trabolta, Sole Owner and Founder of Maps and Ducks (he says), and it is the only version.");
-    const pre18b = FINALE.includes("It was written by Jean Trabolta, the computer's AI helper");
-    for (const line of pre18b ? TRUTH_TXT.slice(1) : TRUTH_TXT) expect(FINALE, line).toContain(`Narrator: ${line}`);
+    for (const line of TRUTH_TXT) expect(FINALE, line).toContain(`Narrator: ${line}`);
+    expect(TRUTH_TXT.join(" ").split(/\s+/u).length).toBeLessThan(90);
     expect(TRUTH_TXT[TRUTH_TXT.length - 1]).toBe("End of file.");
     expect(TRUTH_TXT.some((l) => /Microsoft Excel|DraftKings|OpenOffice/u.test(l))).toBe(false);
   });
@@ -166,7 +170,7 @@ describe("tv3 timelines — truth.txt", () => {
   it("Notepad types from the start, follows the caret, then reads the file again forever", () => {
     const lines = wrapLines(TRUTH_TXT, 40);
     expect(notepadAt(lines, 0, { rows: 10, start: 500 }).rows.join("")).toBe("");
-    const mid = notepadAt(lines, 30_000, { rows: 10, start: 500 });
+    const mid = notepadAt(lines, 12_000, { rows: 10, start: 500 });
     expect(mid.done).toBe(false);
     expect(mid.line - mid.top).toBeLessThan(10);
     expect(mid.rows.length).toBeLessThanOrEqual(10);

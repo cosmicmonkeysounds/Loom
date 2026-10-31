@@ -99,6 +99,7 @@ export function playerTaskbarButtons(o: PlayerTaskbarInput): TaskbarButton[] {
   return [
     { id: "mission", label: "Mission", icon: <Icon name="mission" size={20} />, onClick: o.mission, stacked: true, tour: "mission", title: "What to do now", pressed: o.pressed === "mission" },
     { id: "chats", label: "Chats", icon: <Icon name="reply" size={20} />, onClick: o.chats, stacked: true, tour: "chats", title: "Notes, messages and rooms", pressed: o.pressed === "chats", dot: o.chatsDot },
-    { id: "scan", label: "Scan", icon: <Icon name="scan" size={20} />, onClick: o.scan, primary: true, stacked: true, tour: "scan", title: "Scan a program's pass", active: o.scanOpen },
+    // The title: DRAFT w58.
+    { id: "scan", label: "Scan", icon: <Icon name="scan" size={20} />, onClick: o.scan, primary: true, stacked: true, tour: "scan", title: "Scan a pass or a codex QR", active: o.scanOpen },
   ];
 }

@@ -6,7 +6,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import type { ScreenVoice, VoiceLine } from "../src/screen.ts";
-import { LinePlayer, TV_SILENT_BEATS, showsNameplate, TV_STALE_MS, cursorAfterGap, cursorWhileAsleep, isSilentBeat, planVoice, postVoiceMute, readingMs, type TvLine } from "../src/tv.ts";
+import { LinePlayer, TV_SILENT_BEATS, mirrorBeforeHim, showsNameplate, TV_STALE_MS, cursorAfterGap, cursorWhileAsleep, isSilentBeat, planVoice, postVoiceMute, readingMs, type TvLine } from "../src/tv.ts";
 
 const line = (seq: number, from = "Trabolta", beat: string | null = "Trabolta Introduction", text = `line ${seq}`): VoiceLine => ({ seq, from, text, beat });
 const voice = (head: number, lines: VoiceLine[], muted = false): ScreenVoice => ({ room: "loc:The Desktop", muted, head, lines });
@@ -87,12 +87,12 @@ describe("LinePlayer", () => {
 
   it("plays strictly in order: speech waits, a text line waits its reading time", async () => {
     const { log, speaking, sleeping, player, tick } = rig();
-    player.push([tv(1, "speak"), tv(2, "text", "I'm sorry, I didn't understand that."), tv(3, "speak")]);
+    player.push([tv(1, "speak"), tv(2, "text", "Nobody is home, sorry."), tv(3, "speak")]);
     await tick();
     expect(log).toEqual(["caption 1", "speak 1"]);
     speaking.shift()!();
     await tick();
-    expect(log.slice(2)).toEqual(["caption 2", `sleep ${readingMs("I'm sorry, I didn't understand that.")}`]);
+    expect(log.slice(2)).toEqual(["caption 2", `sleep ${readingMs("Nobody is home, sorry.")}`]);
     sleeping.shift()!();
     await tick();
     expect(log.slice(4)).toEqual(["caption 3", "speak 3"]);
@@ -244,6 +244,20 @@ describe("showsNameplate (livetv-2)", () => {
     expect(showsNameplate({ character: null })).toBe(false); // before the doors
     expect(showsNameplate({ character: { id: "Trabolta", hidden: true, awake: false, online: false } as never })).toBe(false);
     expect(showsNameplate({ character: { id: "Trabolta", hidden: false, awake: true, online: true } as never })).toBe(true);
+  });
+});
+
+describe("the mirror before he is online (wave 58, the host's 📺)", () => {
+  const at = (screen: string | null, hidden: boolean | null) => ({ night: { screen } as never, character: hidden === null ? null : ({ id: "Trabolta", hidden, awake: false, online: false, hold: false } as never) });
+  it("shows through attract only on the cue, only while a walker is linked, only before he is revealed", () => {
+    expect(mirrorBeforeHim(at("mirror", true), true, true)).toBe(true);
+    expect(mirrorBeforeHim(at("bingo_time", true), true, true)).toBe(false);
+    expect(mirrorBeforeHim(at("mirror", true), true, false)).toBe(false);
+    // Revealed: the face and the world beside it, the old way; an ending's attract keeps the screensaver.
+    expect(mirrorBeforeHim(at("mirror", false), true, true)).toBe(false);
+    expect(mirrorBeforeHim(at("mirror", true), false, true)).toBe(false);
+    expect(mirrorBeforeHim(at("mirror", null), true, true)).toBe(false);
+    expect(mirrorBeforeHim(null, true, true)).toBe(false);
   });
 });
 

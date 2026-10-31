@@ -687,8 +687,8 @@ describe("the problem list", () => {
     const h = SHOW();
     expect(locationProblems(h, null)).toEqual([]);
     const locs = [
-      "The Desktop", "The Optical Drive", "The Tube", "The Internet", "The Start Bar", "The CPU", "The Steam Room", "Disk Cleanup",
-      "The Cloud", "The RAM", "The Fan Closet", "The Graphics Card", "The Hard Drive", "The Server Room",
+      "The Desktop", "The Optical Drive", "The Tube", "The Internet", "The Start Bar", "The CPU", "The Power Supply", "Disk Cleanup",
+      "The Cloud", "The RAM", "The Fan Closet", "The Casino", "The Hard Drive", "The Server Room",
     ].map((id) => ({ id, label: null }));
     // The show map has a room for every LOCATION (the real house's names since wave 3)…
     expect(locationProblems(h, locs)).toEqual([]);

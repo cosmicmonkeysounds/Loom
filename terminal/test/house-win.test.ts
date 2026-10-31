@@ -105,10 +105,10 @@ describe("the story's wins lead with a win glyph", () => {
     .map((f) => readFileSync(f, "utf8"))
     .join("\n");
 
-  it("the Bingo Ribbon's house line", () => {
+  it("the Bingo Floppy Disk's house line", () => {
     // Wave 18: the house cheer is a story rule's big broadcast that closes itself
-    // (`broadcast "!!🎀 … won the Bingo Ribbon …" to everyone with close: 6s`).
-    const ribbon = [...story.matchAll(/broadcast "(!![^"]*(?:won|wins) (?:the|a) Bingo Ribbon[^"]*)" to everyone with close: 6s/gu)].map((m) => bigLineOf(m[1]!));
+    // (`broadcast "!!🎀 … won the Bingo Floppy Disk …" to everyone with close: 6s`).
+    const ribbon = [...story.matchAll(/broadcast "(!![^"]*(?:won|wins) (?:the|a) Bingo Floppy Disk[^"]*)" to everyone with close: 6s/gu)].map((m) => bigLineOf(m[1]!));
     expect(ribbon.length).toBeGreaterThan(0);
     for (const line of ribbon) expect(isWinLine(line), line).toBe(true);
   });

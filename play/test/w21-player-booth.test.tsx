@@ -217,6 +217,29 @@ describe("the player's Start menu and People (P4)", () => {
   });
 });
 
+describe("People shows who is online (wave 59)", () => {
+  const offline = guest("g3", "Napster", { online: false, location: null });
+  const held = guest("g4", "ICQ", { online: false, captured: true });
+  const wanted = guest("g5", "Winzip", { online: false });
+  const v = view({ guests: [guest("g1", "Winamp", { online: true }), offline, held, wanted], wanted: [{ id: "g5", name: "Winzip", reason: null, location: null, lastSeen: null, markedAt: 0, claimedBy: null, captured: false }] } as never);
+  it("a player's list and count leave out a phone that's away", () => {
+    const html = renderToStaticMarkup(<PeopleSheet view={v} claimer={false} onPick={() => {}} onClose={() => {}} />);
+    expect(html).toContain("Winamp");
+    expect(html).toContain("People (1)");
+    for (const name of ["Napster", "ICQ", "Winzip"]) expect(html).not.toContain(name);
+  });
+  it("an Antivirus keeps the programs it hunts or holds, phone or no phone", () => {
+    const html = renderToStaticMarkup(<PeopleSheet view={v} claimer onPick={() => {}} onClose={() => {}} />);
+    expect(html).toContain("People (3)");
+    expect(html).toContain("IN THE INTERNET");
+    expect(html).toContain("MARKED");
+    expect(html).not.toContain("Napster");
+  });
+  it("nobody online says so", () => {
+    expect(renderToStaticMarkup(<PeopleSheet view={view({ guests: [offline] })} claimer={false} onPick={() => {}} onClose={() => {}} />)).toContain("Nobody online.");
+  });
+});
+
 describe("the NEW MISSION pop-out (P5)", () => {
   const a = obj("a", "🎱 Bingo", { brief: "Pick the winner." });
   const b = obj("b", "🍾 The bottle");

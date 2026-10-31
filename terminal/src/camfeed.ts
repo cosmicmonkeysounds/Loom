@@ -4,9 +4,9 @@
 //! the wall where this tablet hangs — a window from the virtual house into
 //! the real room.
 //!
-//! ~3 frames a second at 320 × 240 (a 4:3 centre crop of the camera, JPEG
-//! quality 0.5 — ~10–20 KB each; wave 33b doubled it from 160 × 120 for the
-//! games' 3× terminals), drawn off the page's one camera stream
+//! ~3 frames a second at up to 320 × 240 (a 4:3 centre crop of the camera,
+//! JPEG quality 0.5 — ~10–20 KB each; wave 33b doubled it from 160 × 120 for
+//! the games' 3× terminals), drawn off the page's one camera stream
 //! (`camera.ts`, the scanner's), never while the page is hidden, never more
 //! than one upload in flight. A failure backs off (1 s doubling to 30 s); a
 //! 404 (`no such spot` — the map has no terminal by this id) stops the feed
@@ -21,11 +21,28 @@
 //! sends its camera: every walk starts in its room, and it is never linked.
 //!
 //! Old tablets (Chrome 87 / Safari 14): a plain `<canvas>` + `toDataURL`, no
-//! `OffscreenCanvas`, no `createImageBitmap`.
+//! `OffscreenCanvas`.
+//!
+//! Wave 59 (the SM-T280s: Mali-400, Chrome 95, GPU rasterization off). A 2D
+//! canvas read only by `toDataURL` stays on the GPU, while the scanner's, which
+//! calls `getImageData`, had been pushed to software all along. The leading
+//! hypothesis for no video is that the GPU path reads back blank on that chip
+//! (no tablet has confirmed it: ⚙'s `blank` or `no_frames` would). So the canvas
+//! here is kept off the GPU (`sizeCanvas`). A frame that comes back blank, or
+//! never comes, walks `FeedTuner`'s ladder: the frame straight off the track
+//! (`ImageCapture`, no `<video>`), then the smallest size. A route that has shown
+//! a picture is proved, and a blank frame on it is a dark room, sent as it is;
+//! on a lesser route the top is tried again now and then, so a transient never
+//! costs the night. The feed also spends at most `FEED_SHARE` of the page: a
+//! slow capture stretches the gap, then drops a size. `link-stats.ts` counts
+//! what happens.
 
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { baseOf, type TerminalConfig } from "./config.ts";
 import { camera as pageCamera, type CameraHub, type CameraState } from "./camera.ts";
+import { linkStats } from "./link-stats.ts";
+import { sizeCanvas } from "./software-canvas.ts";
+import type { LinkError } from "../../core/src/link-health.ts";
 
 export const FEED_W = 320;
 export const FEED_H = 240;
@@ -40,6 +57,138 @@ export const FEED_MAX_BYTES = 96 * 1024;
 
 /** Time before the feed asks for a camera that failed to open again. */
 export const FEED_CAMERA_RETRY_MS = 15_000;
+/** A camera still opening after this long (ms) is usually a prompt nobody has answered. */
+export const FEED_CAMERA_WAIT_MS = 20_000;
+
+/** The sizes, largest first. */
+export const FEED_SIZES: ReadonlyArray<readonly [number, number]> = [[FEED_W, FEED_H], [160, 120], [128, 96]];
+/** The feed spends at most this share of the page's time. */
+export const FEED_SHARE = 0.25;
+/** A capture this slow (ms)… */
+export const FEED_SLOW_MS = 120;
+/** …this many times running drops a size. */
+export const FEED_SLOW_RUN = 5;
+/** This many looks with no frame in a row (≈ 4 s) tries the next route. */
+export const FEED_MISS_RUN = 12;
+/** This many blank frames in a row tries the next route. */
+export const FEED_BLANK_RUN = 6;
+/** A JPEG within this share of an empty canvas's is a blank frame. */
+export const FEED_BLANK_MARGIN = 1.1;
+/** A frame off the track this late is a miss (ms). */
+export const FEED_GRAB_MS = 3000;
+/** This many good frames on a lesser route (≈ 20 s) tries the top again. */
+export const FEED_RETRY_RUN = 60;
+
+/** Is this JPEG (base64 length) no bigger than the empty canvas's? A dark room
+ *  still has noise in it, and that costs bytes. */
+export function looksBlank(length: number, emptyLength: number): boolean {
+  return emptyLength > 0 && length <= emptyLength * FEED_BLANK_MARGIN;
+}
+
+/**
+ * How this terminal gets a picture and what it costs (pure): which size, the
+ * `<video>` or the track, and how long to wait. What's wrong is only ever found
+ * out by trying, so a frame that doesn't come walks down: the track, then the
+ * smallest size, then both. A blank run only walks a route that has never shown
+ * a picture: on a `proved` one it's a dark room. Below the top, every
+ * `FEED_RETRY_RUN` good frames one frame tries the top again: a good one stays
+ * there, and anything else goes straight back, at the cost of that one frame.
+ */
+export class FeedTuner {
+  size = 0;
+  /** Grab frames off the track, not the `<video>`. */
+  track = false;
+  /** What a capture costs (ms, smoothed). */
+  costMs = 0;
+  /** This route has shown a picture, so a blank frame on it is the room's. */
+  proved = false;
+  private slow = 0;
+  private misses = 0;
+  private blanks = 0;
+  private rung = 0;
+  private sinceTop = 0;
+  /** Where to go back to while a frame tries the top. */
+  private trying: { track: boolean; size: number; rung: number } | null = null;
+
+  constructor(private readonly canTrack: boolean) {}
+
+  /** The ladder has nothing left: a blank frame goes out after all, since a dim
+   *  room would otherwise never send anything. */
+  get spent(): boolean {
+    return this.rung >= (this.canTrack ? 3 : 1);
+  }
+
+  /** A capture took `ms`. */
+  took(ms: number): void {
+    if (ms >= FEED_SLOW_MS && this.backFromTop()) return;
+    this.costMs = this.costMs === 0 ? ms : this.costMs * 0.7 + ms * 0.3;
+    this.slow = ms >= FEED_SLOW_MS ? this.slow + 1 : 0;
+    if (this.slow >= FEED_SLOW_RUN && this.size < FEED_SIZES.length - 1) {
+      this.size++;
+      this.slow = 0;
+    }
+  }
+
+  good(): void {
+    this.misses = 0;
+    this.blanks = 0;
+    this.proved = true;
+    if (this.trying !== null) {
+      this.trying = null;
+      this.rung = 0;
+      return;
+    }
+    if ((this.size === 0 && !this.track) || ++this.sinceTop < FEED_RETRY_RUN) return;
+    this.sinceTop = 0;
+    this.trying = { track: this.track, size: this.size, rung: this.rung };
+    this.track = false;
+    this.size = 0;
+    this.proved = false;
+  }
+
+  /** No frame: true once that's a failure worth calling one. */
+  missed(): boolean {
+    if (this.backFromTop() || ++this.misses < FEED_MISS_RUN) return false;
+    this.misses = 0;
+    this.walk();
+    return true;
+  }
+
+  /** A blank frame on an unproved route: true once that's a failure worth calling one. */
+  blank(): boolean {
+    if (this.backFromTop() || ++this.blanks < FEED_BLANK_RUN) return false;
+    this.blanks = 0;
+    this.walk();
+    return true;
+  }
+
+  /** A try of the top that didn't take: back to the route that works. */
+  private backFromTop(): boolean {
+    if (this.trying === null) return false;
+    ({ track: this.track, size: this.size, rung: this.rung } = this.trying);
+    this.trying = null;
+    this.proved = true;
+    return true;
+  }
+
+  private walk(): void {
+    const last = FEED_SIZES.length - 1;
+    const rungs: Array<{ track: boolean; size: number }> = this.canTrack
+      ? [{ track: true, size: this.size }, { track: false, size: last }, { track: true, size: last }]
+      : [{ track: false, size: last }];
+    const next = rungs[Math.min(this.rung, rungs.length - 1)]!;
+    this.rung++;
+    this.track = next.track;
+    this.size = next.size;
+    this.proved = false;
+    this.sinceTop = 0;
+  }
+
+  /** The wait after a frame: `base`, or longer to keep to `FEED_SHARE`. */
+  gap(base: number): number {
+    return Math.max(base, Math.round(this.costMs / FEED_SHARE));
+  }
+}
 
 /** Is a camera that failed to open worth asking for again? A busy or
  *  glitched camera (`error`: NotReadableError and the like) is; no secure
@@ -107,6 +256,20 @@ export function feedOutcome(status: number | null): "ok" | "stop" | "retry" {
   return "retry";
 }
 
+/** One upload's failure as the readout's code. */
+export function feedError(status: number | null): LinkError {
+  if (status === null) return "offline";
+  if (status === 404) return "no_spot";
+  if (status === 401 || status === 403) return "refused";
+  if (status === 413) return "too_big";
+  return "http";
+}
+
+/** Why the camera didn't open, as the readout's code. */
+export function cameraError(state: CameraState): LinkError {
+  return state === "denied" ? "cam_denied" : state === "insecure" ? "cam_insecure" : state === "none" ? "cam_none" : "cam_error";
+}
+
 export function feedProblem(status: number | null): string {
   if (status === null) return "the server can't be reached";
   if (status === 404) return "no such spot in the event's house map — pick this terminal's spot in ⚙";
@@ -142,7 +305,7 @@ export interface FeedFrame {
 
 export interface FeedDeps {
   /** A frame of the camera now, or null (no frame yet). */
-  capture: () => FeedFrame | null;
+  capture: () => FeedFrame | null | Promise<FeedFrame | null>;
   /** Send it; the HTTP status (null when the server couldn't be reached) and the reply's `watched`. */
   post: (frame: FeedFrame) => Promise<FeedReply>;
   hidden: () => boolean;
@@ -150,6 +313,8 @@ export interface FeedDeps {
   setTimer: (fn: () => void, ms: number) => unknown;
   clearTimer: (t: unknown) => void;
   onStatus: (s: FeedStatus) => void;
+  /** Stretch a wait (wave 59, `FeedTuner.gap`). */
+  pace?: (ms: number) => number;
 }
 
 /**
@@ -169,7 +334,7 @@ export function runFeed(deps: FeedDeps): () => void {
     deps.onStatus(s);
   };
   const next = (ms: number) => {
-    if (alive) timer = deps.setTimer(() => void tick(), ms);
+    if (alive) timer = deps.setTimer(() => void tick(), deps.pace?.(ms) ?? ms);
   };
   const tick = async () => {
     timer = null;
@@ -179,7 +344,8 @@ export function runFeed(deps: FeedDeps): () => void {
       next(FEED_EVERY_MS * 3);
       return;
     }
-    const frame = deps.capture();
+    const frame = await deps.capture();
+    if (!alive) return;
     if (frame === null) {
       status({ kind: "waiting" });
       next(FEED_EVERY_MS);
@@ -234,21 +400,94 @@ export function useFeedStatus(): FeedStatus {
   return useSyncExternalStore(feedStatus.subscribe, () => feedStatus.snapshot);
 }
 
-/** Draws frames of a video into a FEED_W × FEED_H canvas. */
-function videoCapture(video: HTMLVideoElement): () => FeedFrame | null {
+interface Picture {
+  image: CanvasImageSource;
+  w: number;
+  h: number;
+  done?: () => void;
+}
+
+/** The `<video>`'s current frame, or null. */
+function videoPicture(video: HTMLVideoElement): Picture | null {
+  return video.readyState < 2 || video.videoWidth === 0 ? null : { image: video, w: video.videoWidth, h: video.videoHeight };
+}
+
+interface ImageCaptureLike {
+  grabFrame(): Promise<ImageBitmap>;
+}
+type ImageCaptureCtor = new (track: MediaStreamTrack) => ImageCaptureLike;
+
+function imageCaptureCtor(): ImageCaptureCtor | null {
+  return (window as unknown as { ImageCapture?: ImageCaptureCtor }).ImageCapture ?? null;
+}
+
+/** The next frame straight off the track (no `<video>`), or null. */
+async function trackPicture(stream: MediaStream | null): Promise<Picture | null> {
+  const Ctor = imageCaptureCtor();
+  const track = stream?.getVideoTracks()[0];
+  if (Ctor === null || track === undefined) return null;
+  let late = 0;
+  try {
+    const bmp = await Promise.race([
+      new Ctor(track).grabFrame(),
+      new Promise<null>((resolve) => {
+        late = window.setTimeout(() => resolve(null), FEED_GRAB_MS);
+      }),
+    ]);
+    return bmp === null ? null : { image: bmp, w: bmp.width, h: bmp.height, done: () => bmp.close() };
+  } catch {
+    return null;
+  } finally {
+    window.clearTimeout(late);
+  }
+}
+
+/** Frames of the camera, as the tuner says, each cropped into a JPEG. */
+function frameGrabber(video: HTMLVideoElement, stream: () => MediaStream | null, tuner: FeedTuner): () => Promise<FeedFrame | null> {
   const canvas = document.createElement("canvas");
-  canvas.width = FEED_W;
-  canvas.height = FEED_H;
-  const ctx = canvas.getContext("2d");
-  return () => {
-    if (ctx === null || video.readyState < 2 || video.videoWidth === 0) return null;
-    const r = cropRect(video.videoWidth, video.videoHeight);
+  const ctx = canvas.getContext("2d", { alpha: false, willReadFrequently: true });
+  let size = -1;
+  let emptyLength = 0;
+  const jpeg = () => jpegBase64(canvas.toDataURL("image/jpeg", FEED_QUALITY));
+  const fit = (c: CanvasRenderingContext2D) => {
+    if (size === tuner.size) return;
+    size = tuner.size;
+    const [w, h] = FEED_SIZES[size]!;
+    sizeCanvas(canvas, c, w, h);
+    c.fillStyle = "#000";
+    c.fillRect(0, 0, w, h);
+    emptyLength = jpeg()?.length ?? 0;
+  };
+  const miss = (code: LinkError) => {
+    if (tuner.missed()) linkStats.error(Date.now(), code);
+    return null;
+  };
+  return async () => {
+    if (ctx === null) return miss("no_frames");
+    fit(ctx);
+    const pic = tuner.track ? await trackPicture(stream()) : videoPicture(video);
+    if (pic === null) return miss("no_frames");
+    // What this costs the page: waiting for the track's next frame costs it nothing.
+    const started = performance.now();
     try {
-      ctx.drawImage(video, r.sx, r.sy, r.sw, r.sh, 0, 0, FEED_W, FEED_H);
-      const jpeg = jpegBase64(canvas.toDataURL("image/jpeg", FEED_QUALITY));
-      return jpeg === null ? null : { jpeg, w: FEED_W, h: FEED_H };
+      const r = cropRect(pic.w, pic.h);
+      ctx.drawImage(pic.image, r.sx, r.sy, r.sw, r.sh, 0, 0, canvas.width, canvas.height);
+      const out = jpeg();
+      const ms = performance.now() - started;
+      tuner.took(ms);
+      linkStats.captureCost(ms);
+      if (out === null) return miss("no_frames");
+      const frame = { jpeg: out, w: canvas.width, h: canvas.height };
+      if (!tuner.proved && looksBlank(out.length, emptyLength)) {
+        if (tuner.blank()) linkStats.error(Date.now(), "blank");
+        return tuner.spent ? frame : null;
+      }
+      tuner.good();
+      return frame;
     } catch {
-      return null;
+      return miss("no_frames");
+    } finally {
+      pic.done?.();
     }
   };
 }
@@ -263,6 +502,7 @@ export function useCamFeed(config: TerminalConfig | null, hub: CameraHub = pageC
   const token = config?.token ?? "";
   const spot = config?.spot.trim() ?? "";
   const facing = config?.camera ?? "user";
+  const view = config?.view ?? "auto";
   const [attempt, setAttempt] = useState(0);
   useEffect(() => {
     if (!on) {
@@ -273,6 +513,8 @@ export function useCamFeed(config: TerminalConfig | null, hub: CameraHub = pageC
     let stop: (() => void) | null = null;
     let retry = 0;
     let unfollow: (() => void) | null = null;
+    let touchAgain: (() => void) | null = null;
+    const tuner = new FeedTuner(imageCaptureCtor() !== null);
     const video = document.createElement("video");
     video.muted = true;
     video.playsInline = true;
@@ -282,14 +524,28 @@ export function useCamFeed(config: TerminalConfig | null, hub: CameraHub = pageC
     video.style.cssText = "position:fixed;left:0;top:0;width:2px;height:2px;opacity:0;pointer-events:none;";
     document.body.appendChild(video);
     feedStatus.set({ kind: "waiting" });
+    linkStats.setFeeding(true);
+    const waiting = window.setTimeout(() => linkStats.hold("cam_waiting"), FEED_CAMERA_WAIT_MS);
     void hub.acquire(facing).then((stream) => {
+      window.clearTimeout(waiting);
       if (!alive) return;
+      linkStats.hold(null);
       if (stream === null) {
         const state = hub.snapshot.state;
+        // The TV's Desktop has no camera, and that's no fault of the TV's.
+        if (view === "tv" && state === "none") linkStats.setFeeding(false);
+        else linkStats.hold(cameraError(state));
         if (cameraRetryable(state)) {
           feedStatus.set({ kind: "retrying", problem: `the camera failed to open (${state})` });
           retry = window.setTimeout(() => setAttempt((n) => n + 1), FEED_CAMERA_RETRY_MS);
-        } else feedStatus.set({ kind: "stopped", problem: `no camera (${state})` });
+        } else {
+          feedStatus.set({ kind: "stopped", problem: `no camera (${state})` });
+          // A prompt nobody answered reads as refused: a touch asks again.
+          if (state === "denied") {
+            touchAgain = () => setAttempt((n) => n + 1);
+            window.addEventListener("pointerdown", touchAgain, { once: true });
+          }
+        }
         return;
       }
       video.srcObject = stream;
@@ -303,12 +559,21 @@ export function useCamFeed(config: TerminalConfig | null, hub: CameraHub = pageC
       });
       const url = `${baseOf({ eventId })}/api/mod/spatial/cam`;
       stop = runFeed({
-        capture: videoCapture(video),
+        capture: frameGrabber(video, () => hub.snapshot.stream, tuner),
         post: (f) =>
           fetch(url, { method: "POST", headers: { "content-type": "application/json", "x-loom-token": token }, body: JSON.stringify({ spot, jpeg: f.jpeg, w: f.w, h: f.h }) }).then(
-            async (r): Promise<FeedReply> => ({ status: r.status, watched: r.ok ? watchedOf(await r.json().catch(() => null)) : undefined }),
-            (): FeedReply => ({ status: null }),
+            async (r): Promise<FeedReply> => {
+              if (r.ok) linkStats.sent(Date.now(), { w: f.w, h: f.h, bytes: base64Bytes(f.jpeg) });
+              else if (feedOutcome(r.status) === "stop") linkStats.hold(feedError(r.status));
+              else linkStats.error(Date.now(), feedError(r.status));
+              return { status: r.status, watched: r.ok ? watchedOf(await r.json().catch(() => null)) : undefined };
+            },
+            (): FeedReply => {
+              linkStats.error(Date.now(), feedError(null));
+              return { status: null };
+            },
           ),
+        pace: (ms) => tuner.gap(ms),
         hidden: () => document.hidden,
         now: () => Date.now(),
         setTimer: (fn, ms) => window.setTimeout(fn, ms),
@@ -318,13 +583,17 @@ export function useCamFeed(config: TerminalConfig | null, hub: CameraHub = pageC
     });
     return () => {
       alive = false;
+      window.clearTimeout(waiting);
       window.clearTimeout(retry);
+      if (touchAgain !== null) window.removeEventListener("pointerdown", touchAgain);
       unfollow?.();
       stop?.();
       video.srcObject = null;
       video.remove();
       hub.release();
       feedStatus.set({ kind: "off" });
+      linkStats.setFeeding(false);
+      linkStats.hold(null);
     };
-  }, [on, eventId, token, spot, facing, hub, attempt]);
+  }, [on, eventId, token, spot, facing, view, hub, attempt]);
 }

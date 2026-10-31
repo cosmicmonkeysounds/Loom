@@ -2,16 +2,20 @@
 //! `/api/mod/badges` into what a director prints on Letter paper.
 //!
 //! **Badges** (3 × 2 in, 10 to a sheet) are one QR per person: a staff badge
-//! per performer part (`castLinks`: signs in as it and takes it back from a
-//! lost phone, no typed code: the part code is a credential), an invited
-//! badge per reserved program (`claims`: the claim and a badge in one link)
-//! and the numbered blank badges (`B001`…, for everyone else, with a write-in
-//! Program line). **Location cards** (3 × 2 in) are a check-in card per room
-//! (QR + room name, no typed code) and the signs the story's `qr:` lines ask
-//! for (the show: 🚻 Bathroom Mode, one per bathroom). **Fact cards** (four
-//! to a row, 20 to a sheet) are the codex entries by fact stack, banded in the
-//! stack's colour; a digit clue prints its title + QR only. The **join
-//! poster** and the iPhone **door sign** stay posters.
+//! per performer part (`castLinks`: signs in as it; a new phone is refused and
+//! asks a host), an invited badge per reserved program (`claims`: the claim and
+//! a badge in one link) and the numbered blank badges (`B001`…, for everyone
+//! else, with a write-in Program line). **Location cards** (3 × 2 in) are a
+//! check-in card per room and the signs the story's `qr:` lines ask for (the
+//! show: 🚻 Bathroom Mode, one per bathroom). **Fact cards** (four to a row, 20
+//! to a sheet) are the codex entries by fact stack, banded in the stack's
+//! colour. The **join poster** and the iPhone **door sign** stay posters.
+//!
+//! Wave 59: every card carries a text code, so nobody needs a camera to
+//! "scan": typing it in the app does what the QR does (the server's
+//! `routes/printed.ts`). The printed words are in-world: a room's real name is
+//! a screen-only note, and a digit clue prints its code too (the schema keeps a
+//! digit out of it). The hints are `DRAFT w59`.
 //!
 //! QRs are drawn here, in the browser (`qrcode` → inline SVG): `/api/qr`
 //! allows 60/min per IP and a full run needs over 200. Pure, unit-tested in
@@ -29,9 +33,9 @@ export interface PrintCodes {
   joinLink?: string
   codex: Array<{ id: string; title: string; about: string | null; code: string; url: string }>
   /** Room check-in signs (K-12 → K-13's `?checkin=`). */
-  checkin?: Array<{ id: string; label: string; slug: string; url: string; hidden: boolean }>
+  checkin?: Array<{ id: string; label: string; slug: string; url: string; hidden: boolean; code?: string; place?: string | null }>
   /** Signs that press a guest's button (wave 54: the story's `qr:`). */
-  actions?: Array<{ name: string; label: string; line: string; url: string }>
+  actions?: Array<{ name: string; label: string; line: string; url: string; code?: string }>
   /** Codex id → its fact stack (`facts.json`). Absent → posters unsorted. */
   stacks?: Record<string, PrintStack>
   /** Each reserved program's invited badge (`?code=<guest code>&claim=
@@ -39,7 +43,7 @@ export interface PrintCodes {
   claims?: Array<{ character: string; claim: string; url: string; ref: string; code: string }>
   /** Each part's staff badge (`?code=<guest code>&part=<code>`, wave 54):
    *  signs in as that part, taking it from a lost phone. */
-  castLinks?: Array<{ character: string; part: string; url: string }>
+  castLinks?: Array<{ character: string; part: string; url: string; code?: string }>
 }
 
 /** One printable badge (`POST /e/:id/api/mod/badges`, wave 23). */
@@ -105,9 +109,7 @@ export interface PrintItem {
   title: string
   /** The line under the title (what to do with it). */
   hint: string
-  /** The speakable fallback, printed big under the QR — empty for a room
-   *  sign: a slug looks like a codex code, and typed into the Codex it
-   *  fires `wrong code` (doubt + a spent miss). */
+  /** The text code, printed under the QR: typing it does what the QR does. */
   code: string
   /** What the QR encodes. */
   url: string
@@ -125,6 +127,9 @@ export interface PrintItem {
 export const BADGE_KINDS: readonly PrintKind[] = [PrintKind.Cast, PrintKind.Invite, PrintKind.Badge]
 /** The location sheet's kinds, in print order. */
 export const LOCATION_KINDS: readonly PrintKind[] = [PrintKind.Room, PrintKind.Sign]
+/** The last line of every badge. One holder (wave 59): the card alone is
+ *  refused on a new phone, and a host moves it. `DRAFT w59` */
+export const LOST_PHONE = 'Lost your phone? Do it again, and a host can move you.'
 /** A 3 × 2 in card sheet: two across, five down. */
 export const SHEET_3X2 = 10
 /** A fact card sheet: four across, five down. */
@@ -185,9 +190,9 @@ export function doorWording(homescreen: boolean): { title: string; hint: string;
 export const STACK_ORDER = ['gold', 'green', 'blue', 'purple', 'silver', 'black'] as const
 
 /** The stack the door code's digit clues print in (wave 11: one clue = one
- *  digit, `facts.json` → `codexStacks`). Their posters print the title and
- *  the QR only — never a typed code, and never a digit in the pile line —
- *  so nothing printed gives a digit away. */
+ *  digit, `facts.json` → `codexStacks`). Their pile line never holds a digit,
+ *  and neither does their code (`core/src/facts.ts`), so nothing printed
+ *  gives a digit away. */
 export const DIGIT_CLUE_STACK = 'silver'
 
 /** A poster on the digit-clue stack. */
@@ -246,16 +251,14 @@ export function buildPrintItems(codes: PrintCodes, opts: PrintOptions = {}): Pri
   const codex = [...codes.codex].sort((a, b) => stackRank(stackOf(a.id)) - stackRank(stackOf(b.id)))
   codex.forEach((e, i) => {
     const stack = stackOf(e.id)
-    const clue = isDigitClue(stack)
     items.push({
       ref: `C${pad(i + 1)}`,
       kind: PrintKind.Codex,
       title: e.title,
       hint: '',
-      // A digit clue prints its title + QR only (`DIGIT_CLUE_STACK`).
-      code: clue ? '' : e.code,
+      code: e.code,
       url: e.url,
-      note: clue ? 'a digit clue — title + QR only' : e.about ? `about ${e.about}` : null,
+      note: isDigitClue(stack) ? 'a digit clue' : e.about ? `about ${e.about}` : null,
       stack,
     })
   })
@@ -264,10 +267,10 @@ export function buildPrintItems(codes: PrintCodes, opts: PrintOptions = {}): Pri
       ref: `R${pad(i + 1)}`,
       kind: PrintKind.Room,
       title: r.label,
-      hint: "Scan to enter this room's chat.",
-      code: '',
+      hint: 'Scan to enter this room. No camera? Type the code in 📷 Scan.',
+      code: r.code ?? '',
       url: r.url,
-      note: r.hidden ? 'hidden until the story opens it' : null,
+      note: [r.place, r.hidden ? 'hidden until the story opens it' : null].filter((n): n is string => typeof n === 'string' && n !== '').join(' · ') || null,
     }),
   )
   // A sign presses a guest's button. The story's `qr:` line is its hint.
@@ -279,35 +282,34 @@ export function buildPrintItems(codes: PrintCodes, opts: PrintOptions = {}): Pri
         kind: PrintKind.Sign,
         title: a.label,
         hint: a.line,
-        code: '',
+        code: a.code ?? '',
         url: a.url,
         note: null,
       })
     }
   })
-  // A staff badge is its performer's only: the QR signs in as that part and
-  // takes it back from a lost phone, and it carries the guest code, so new
-  // performer + moderator codes leave it good. No typed code: the part code
-  // is a credential.
+  // A staff badge is its performer's only: the QR or its code signs in as that
+  // part (a lost phone's is refused and asks a host: one holder, wave 59), and
+  // it carries the guest code, so new performer + moderator codes leave it good.
   ;(codes.castLinks ?? []).forEach((c, i) =>
     items.push({
       ref: `P${pad(i + 1)}`,
       kind: PrintKind.Cast,
       title: c.character,
-      hint: 'Scan to sign in. Lost your phone? Scan it again.',
-      code: '',
+      hint: `Scan to sign in, or type the code on the join screen. ${LOST_PHONE}`,
+      code: c.code ?? '',
       url: c.url,
       note: `signs in as ${c.character} — this performer's only`,
     }),
   )
   // An invited badge opens one reserved program and links at join. The code
-  // under it is the badge's own: the claim stays in the QR.
+  // under it is the badge's own, and typed it finds the same program.
   ;(codes.claims ?? []).forEach((c) =>
     items.push({
       ref: c.ref,
       kind: PrintKind.Invite,
       title: c.character,
-      hint: 'Scan to start. Lost your phone? Scan it again.',
+      hint: `Scan to start, or type the code on the join screen. ${LOST_PHONE}`,
       code: c.code,
       url: c.url,
       note: `invited badge — the QR claims ${c.character}`,
@@ -337,7 +339,7 @@ export function buildBadgeItems(badges: PrintBadge[]): PrintItem[] {
     ref: b.ref,
     kind: PrintKind.Badge,
     title: 'Program',
-    hint: 'Scan to start. Lost your phone? Scan it again.',
+    hint: `Scan to start, or type the code on the join screen. ${LOST_PHONE}`,
     code: b.code,
     url: b.url,
     note: b.holder !== null ? `linked to ${b.name ?? b.holder}` : null,
@@ -390,11 +392,14 @@ export function limitFacts(items: readonly PrintItem[], counts: Readonly<Record<
   })
 }
 
+/** What sits in brackets is the crew's: the real room, on nothing printed. */
+const inWorld = (text: string): string => text.replace(/\s*\([^()]*\)/gu, '')
+
 /** The small line on a fact card: the colour, and the card's own hiding
- *  place when it has one. As on a poster, a digit clue keeps nothing that
- *  holds a digit. */
+ *  place when it has one, in-world. As on a poster, a digit clue keeps
+ *  nothing that holds a digit. */
 export function factLine(stack: PrintStack): string {
-  const parts = [stack.colour.toUpperCase(), stack.where].filter((s): s is string => s !== null && s !== '')
+  const parts = [stack.colour.toUpperCase(), stack.where === null ? null : inWorld(stack.where)].filter((s): s is string => s !== null && s !== '')
   return (isDigitClue(stack) ? parts.filter((p) => !/\d/u.test(p)) : parts).join(' · ')
 }
 

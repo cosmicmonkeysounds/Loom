@@ -16,6 +16,7 @@ from stagehand.audio.routing import parse_audio
 from stagehand.audio.soundtrack import LIVE_SWITCH_S, SILENT_S, Director, parse_soundtrack
 from stagehand.audio.tidal import (
     DEVICE_JS,
+    LIBRARY_JS,
     LOAD_JS,
     REPEAT_JS,
     STATE_JS,
@@ -154,8 +155,13 @@ class FakePage:
         self.load_answer: dict = {"ok": True, "title": "TITI - Act 1"}
         self.device = {"ok": True, "moved": False, "on": "VoiceMeeter Aux Input"}
         self.closed = False
+        self.library: object = []
 
     def eval(self, js: str):
+        if js == LIBRARY_JS:
+            if isinstance(self.library, Exception):
+                raise self.library
+            return json.dumps(self.library)
         if js == STATE_JS:
             return json.dumps({"url": self.url, "footer": self.footer, "title": self.title, "artist": "Band", "time": "1:02", "duration": "3:46", "playing": self.playing})
         if LOAD_JS in js:
@@ -381,6 +387,8 @@ class FakeLive:
     def __init__(self) -> None:
         self.wants: list = []
         self.skips = 0
+        self.backs = 0
+        self.holds: list[bool] = []
         self.opened: list[int] = []
         self.quiet = 0.0
         self.error: str | None = None
@@ -398,6 +406,15 @@ class FakeLive:
 
     def next(self):
         self.skips += 1
+
+    def previous(self):
+        self.backs += 1
+
+    def pause(self, on):
+        self.holds.append(on)
+
+    def report(self):
+        return {"online": not self.down, "playing": True, "paused": bool(self.holds and self.holds[-1]), "track": self.track["track"], "problem": self.error, "playlist": None, "library": []}
 
     def reachable(self):
         return not self.down

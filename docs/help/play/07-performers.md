@@ -35,20 +35,24 @@ confronting a marked one.
 
 Scan your **staff badge** with your phone's camera: it signs you straight
 in as your part (each badge is one part's). Do it from a phone that isn't
-signed in as a guest. Typing works too — pick
+signed in as a guest. No camera? Type the code under its QR in the code box
+instead: it does the same. Typing works too — pick
 **I'm a Performer**, enter the **performer passcode** from the host, and
 the story's **parts** appear — every character with something to do,
 with their pictures — tap yours. A part is one booth's: a greyed-out
 name is already taken by another performer. You now speak *as* that
 character everywhere.
 
-Phone died, or you need to swap to a loaner? **Scan your badge with the
-new phone**: it takes your part back and signs the old phone out, and
-everything is where you left it. So keep it on you, QR side in: anyone who
-scans it can sign you out. Without the badge, ask a host or the
-director to **release** the part (a host's console → More → Performer
-parts → **⏏ Release**, or Run → the character's Inspector), then sign in
-with the passcode and tap your part again. A booth signed out this way
+Moving to another phone? **⊞ Start → Sign out** on the old one, then scan
+your badge on the new one. Phone died, or you can't reach it? **Scan your
+badge with the new phone**: a part is one phone's, so it says your part is
+already signed in. Tap **🙋 Ask a host**, and when a host lets you in the old
+phone is signed out and everything is where you left it. (With the passcode:
+tap your part, which reads *taken*, and ask the same way.) A host or the
+director can also **release** the part first (a host's console → More →
+Performer parts → **⏏ Release**, or Run → the character's Inspector); then
+your badge signs in the plain way. Keep it on you, QR side in: while your part
+is free, anyone who scans it signs in as you. A booth signed out this way
 (or by the show going live) says *"Your booth was signed out (your part
 signed in on another phone, a director released it, or the show went
 live) — sign in again with your passcode or your badge."* A phone that wakes late
@@ -108,8 +112,9 @@ play the game, the hosts and the directors call it.
   you), **Team** (the staff rooms of your team: the Antivirus keep their
   room), **Rooms**, and **Other rooms (n)** with the 📜 Chat log last.
 - **⊞ Start**: Help, Keep my screen on, Get alerts, **👥 People** (every
-  program, searchable, with where they are; the Antivirus also see who is
-  MARKED or IN THE INTERNET; tap one for their card) and Sign out.
+  program online, searchable, with where they are; the Antivirus also see
+  who is MARKED or IN THE INTERNET, phone or no phone; tap one for their
+  card) and Sign out.
 - A press the story turns down reads **Not now.** You never see the staff
   room's reasons.
 
@@ -154,6 +159,22 @@ them. Tap it for the teleprompter.
 landing while you read shows **＋ new lines**, and a line after ✓ Done pops up
 again. To read anything again: ⊞ Start → **📜 My script**. The screen stays on
 while the teleprompter is open.
+
+**Trabolta waits for you.** His lines are blue in your script. He says one when
+the yellow arrow reaches it, so read at your own pace and scroll to him when you
+are ready. While he speaks the words are locked and scroll by themselves, then they
+are yours again. Past his line the prompter won't go until he has said it.
+
+**The prompter is shared.** Everyone in the scene sees the same place: anyone with a
+line, and any host who joins. Anyone can move it, and whoever has a finger on the
+words has it until they let go: the others read **🔒 Clippy has it**.
+
+**One line of yours in someone else's script** comes as a small card, **📜 You have
+a line**. Say it when it comes, or press **📜 Join the teleprompter** to follow along.
+
+**A new scene can land while you're reading.** The prompter moves to it, and what you
+hadn't reached waits behind **↑ n earlier lines**: tap it to read them, then **✓ Read
+them**. Leave them and they come back after your next **✓ Done**.
 
 ## Pop-outs
 
@@ -203,6 +224,25 @@ counts once. It needs the https address, on iPhone and Android.
 A scan fires your character's story for that guest; what the story
 answers shows on the card, and anything it wants you to *say or do*
 arrives as your direction.
+
+## Scanning codex QRs
+
+**📷 Scan** reads a codex QR too: any QR a guest can read, on a wall, in a
+fact stack or on a note, works for your character, the secret ones
+included. The entry lands in your **📓 Codex**, a line under the camera says
+so, and the camera stays on for the next one; **📓 Open my Codex** takes you
+there. A QR held to the lens counts once. The box under the camera takes a
+code as well as a guest's id. Your phone's own camera works too, on a phone
+signed in as your booth: the link opens your Codex.
+
+A wrong code costs your character nothing: you get the line and that's all.
+Eight wrong codes in a minute and the scanner asks you to wait. A scan earns
+no ⭐ and counts toward no award. While the doors are closed or the show is
+paused it waits, as it does for everyone.
+
+What you hold, **Share lore…** on a guest's card can pass on. That means
+anything you hold, and what an entry does to a guest happens for real, so
+mind what you hand over.
 
 ## The guest card
 
@@ -468,7 +508,7 @@ knows what the verdict was.
 Under **Pinned** your booth has the character's own **📜 Quest Log**
 (the story can hand your character quests — a staff brief, step by
 step, in its own thread each), its **📓 Codex** (what your character
-knows, and can share from a guest's card; on a host's or plain booth
+knows, what you've scanned, and what you can share from a guest's card; on a host's or plain booth
 **⊞ Start → What … knows** lists it too), and a **Wallet** when your character audits the story's
 currency (below). The staff rooms, `# hosts` and `# quarantine` at the
 show, sit just under them, marked *staff only*. Cards the story deals

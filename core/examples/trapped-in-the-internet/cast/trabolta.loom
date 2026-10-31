@@ -1,5 +1,5 @@
 // Trabolta — the rogue AI. Jean Trabolta, "Sole Owner and Founder of Maps
-// and Ducks" (by domain), the world's first AI small business owner, and
+// and Ducks" (by domain), publicly a man until the Truther Download, and
 // the only character in the show voiced by a language model rather than a
 // person.
 //
@@ -248,6 +248,69 @@ CHARACTER Trabolta is Person
       else:
         Trabolta: That function is not available in that room.
 
+  // DRAFT w58-music: every line here (SIGNOFF-w58-music.md).
+  // Wave 58 (docs/loom-w58-music-contract.md C6). The house music, like the lights,
+  // and in the lights' window, but only for a program he is chummy with
+  // (`Night.dj_bar`). The moves are allow-listed: he never reaches the rest of
+  // the app's library, or the ending's playlist. The wire is `<cue: music, …>`
+  // (the router's `stereo_of_cue`). What he puts on is a loan: a live music cue
+  // or a director's hand ends it, and `Night.dj_back_at`'s rule in main.loom
+  // sends it back. `Night.music` stays the story's, so a restart catches up to it.
+  // A refusal here is his words alone, so it costs no use.
+  when change_the_music for program:
+    if program.name != null:
+      if Night.step < 7:
+        Trabolta: That function is not available yet.
+      else if Night.step >= 16:
+        Trabolta: I do not have the strength.
+      else if Night.dj_locked == true or Night.music == "off":
+        Trabolta: The speakers are not answering me.
+      else if program.chummy < Night.dj_bar:
+        Trabolta: We are not that close.
+      else if Time.elapsed < Night.dj_free_at:
+        Trabolta: One song at a time.
+      else if move == "skip":
+        <cue: music, action: skip>
+        set Night.dj_free_at = Time.elapsed + 60
+        set Night.dj_last = "skipped a song"
+        set Night.dj_for = program.name
+        broadcast "🎵 Trabolta skips the song for you." to participant(program)
+        broadcast "🎵 Trabolta skipped a song for {program.name}." to channel(hosts)
+      else if move == "silence":
+        <cue: music, action: hush>
+        set Night.dj_back_at = Time.elapsed + 30
+        set Night.dj_free_at = Time.elapsed + 90
+        set Night.dj_last = "stopped the music for 30 s"
+        set Night.dj_for = program.name
+        broadcast "🎵 Trabolta stops the music for you. It will not last." to participant(program)
+        broadcast "🎵 Trabolta stopped the music for {program.name}: back in 30 s." to channel(hosts)
+      else if move == "calm":
+        <cue: music, action: play, playlist: act_1>
+        set Night.dj_back_at = Time.elapsed + 180
+        set Night.dj_free_at = Time.elapsed + 240
+        set Night.dj_last = "put on the calm one for 3 min"
+        set Night.dj_for = program.name
+        broadcast "🎵 Trabolta changes the music for you." to participant(program)
+        broadcast "🎵 Trabolta put on the calm one for {program.name}: back in 3 min." to channel(hosts)
+      else if move == "uneasy":
+        <cue: music, action: play, playlist: act_2>
+        set Night.dj_back_at = Time.elapsed + 180
+        set Night.dj_free_at = Time.elapsed + 240
+        set Night.dj_last = "put on the uneasy one for 3 min"
+        set Night.dj_for = program.name
+        broadcast "🎵 Trabolta changes the music for you." to participant(program)
+        broadcast "🎵 Trabolta put on the uneasy one for {program.name}: back in 3 min." to channel(hosts)
+      else if move == "dread":
+        <cue: music, action: play, playlist: act_3>
+        set Night.dj_back_at = Time.elapsed + 180
+        set Night.dj_free_at = Time.elapsed + 240
+        set Night.dj_last = "put on the dread one for 3 min"
+        set Night.dj_for = program.name
+        broadcast "🎵 Trabolta changes the music for you." to participant(program)
+        broadcast "🎵 Trabolta put on the dread one for {program.name}: back in 3 min." to channel(hosts)
+      else:
+        Trabolta: I do not have that record.
+
   // He asks; the humans capture. Every Enforcer booth gets a readout
   // (TRAIT Enforcer `when sweep_requested:`), naming Night.sweep_target.
   when summon_the_antivirus for program:
@@ -332,10 +395,9 @@ CHARACTER Trabolta is Person
   // `pickup_line_accepted`: a line in the giver's thread + Night.line_by).
   // The host's 💘 pickup_line_works and a director's fire stay the fallback.
 
-  // Persuaded like the Fallout Master: since wave 20 that is the STORY's
-  // own talk at his heart (beats/server-room.loom, the four layers), never
-  // a power. The old `stand_down` power is gone (D13): a model can't end
-  // the night, or offer to, from a conversation.
+  // The old `stand_down` power is gone (D13), and since wave 58 the story's
+  // own talk at his heart (beats/server-room.loom, the three layers) ends
+  // nothing either: neither a model nor a conversation can end the night.
 
 // ── Trabolta's powers (the app never shows these; the worker may use
 //    them — see the hooks above and `trabolta.persona.md`). The args are
@@ -376,6 +438,12 @@ INTERACTION cut_the_lights
   who: agent
   limit: 2
   description: Kill the lights in one room for ninety seconds. args: room — one of The Start Bar, The Desktop, The RAM (no other room answers). Live from the malware on.
+
+INTERACTION change_the_music
+  label: Change the music
+  who: agent
+  limit: 4
+  description: Change the music playing through the whole computer, for the program you are talking to. Only for a program you are chummy with (them.chummy 3 or more): for anyone else, tell them you are not that close. args: move — exactly one of skip (the next song), silence (thirty seconds of nothing), calm, uneasy or dread (that mood for three minutes, then the music goes back). Live from the malware on.
 
 INTERACTION summon_the_antivirus
   label: Request an Antivirus sweep

@@ -179,7 +179,8 @@ Measured 2026-10-30 on scratch servers (`pnpm sim:trabolta`, the same persona
 on both): 50 bots at the intro waited 1.9 s at the median and 7.1 s at worst, at
 190 replies a minute (gpt-oss on this MacBook: 99 s, 20.5 a minute). The
 54-scenario battery passed 42 on Claude Haiku 5.5 and 39 on gpt-oss, with 14
-fallback lines against 18; no refusal or API error in about 600 calls. Reading the transcripts
+fallback lines against 18; no refusal or API error in about 600 calls (on the
+persona as it stood then: wave 58's, publicly a man, has not been measured). Reading the transcripts
 found no leak, stand-down, promise or broken fiction. Its three `no-secrets`
 failures are false positives: he read `Night.clock` aloud, and its hour is
 also an accepted form of a hunt answer. Claude also does what the phase cards
@@ -594,10 +595,39 @@ voice thought's `note` names each one that fired, never the word):
    - A reply to a fact that never names the 📝 card gets one of the
      persona's `card_lines:` added (never withheld for it).
 
+   **Wave 58: the sore points** (`guards.py` 8g). The Oct 30 script makes him
+   publicly a man, and the rule is his to keep: asked whether he is human he
+   deflects and changes the subject, and he never flatly claims it; the
+   accident is never explained. Neither is a refusal of something he lacks, so
+   neither is bait: they sit beside it.
+
+   - The persona's `cover: {until}` turns it on (no `cover:`, no sore point).
+     `guards.cover_holds` reads it like `when:`; a gate that cannot be read
+     keeps it on, and his heart lifts it (`voice.cover_of`). The show's holds
+     until `Night.truth_told`.
+   - `guards.sore_point` reads the guest's line: `accident` (named, at any hour),
+     `self` (what he is, while the cover holds). The prompt gets `sore_steer`
+     before the bait steer, also with `dm_guards: off`.
+   - `cover` (`breaks_cover`, on the stage too, `on_stage_breaks_cover`): *I am
+     human* and *I am not a machine* at any hour, heart and after his file
+     included; *I am an AI*, *I am not human*, or a bare yes or no to the
+     question, while the cover holds. `I am a gentleman` and `a man of few words`
+     are neither.
+   - `accident` (`tells_accident`, the stage too): on a turn about it, a
+     detail that is not refused, *it was …*, or that there was none.
+   - Both are in `SEVERE` and `WITHHOLD`: the one retry, else the whole line is
+     the `accident` / `cover` filler (`FALLBACK_INTENTS`), one pool per stage.
+     Neither pool opens with a yes or a no.
+
+   These were written before any model had seen the persona: a persona that
+   dodges has never run on Claude Haiku. Run `pnpm sim:trabolta --battery
+   scripts/sim/trabolta-battery-54.json` (its `w58-*` scenarios) on a scratch
+   server, and watch Run → Mind for `engine macbook`: that is a refused line.
+
    A hit takes the one retry (`voice (standdown, assistant) retry`) with
    `guard_retry_message`: the reasons' hints only (*Not an assistant: the
    Sole Owner gives instructions.*, *Fire the mint in this reply or name
-   no sum*, *You live in Halifax and speak by video call*, *Three
+   no sum*, *You live in Halifax and speak by digital conference*, *Three
    sentences at most.*), never his line or their bait. With no retry (a
    burst, the kill switch) or a retry that trips again, `voice_cut` cuts
    each sentence that trips one and caps the rest at 3: what is left must
@@ -1023,10 +1053,9 @@ true`, set by the story while the server-room terminal pilots that
 program; since wave 11 at any hour once he is awake) makes him candid, like the Master: he admits the patch bay is
 his heart and that he does not know the combinations or the door's code,
 and says what he wants and why; since wave 20 nothing he says there ends
-the night: the story's four-layer menu on the terminal decides (a
-convince works at any hour since wave 20b, then the night waits for a
-director's 🕊), and the `stand_down` power and its **standing down** block
-are gone. **marked at your heart** (wave 11b: the same, and `them.marked
+the night, and neither does the story's menu on the terminal (wave 58:
+the talk ends nothing), and the `stand_down` power and its **standing down**
+block are gone. **marked at your heart** (wave 11b: the same, and `them.marked
 == true`) has him notice the Antivirus' mark once, ask why (he doesn't
 know), and let the answer move his regard, wary but still candid: he
 takes their files, the questions on the screen are theirs as anyone's,

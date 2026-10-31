@@ -99,7 +99,7 @@ Path alias `@/*` → `src/*`. Keep components small and put logic in pure
 | `terminals.ts` | Run → Terminals heartbeat list, chimes, the house map for the setup builder |
 | `house-audio.ts` | The router status and *Stop house sounds* |
 | `cue-designer.ts` | Run → House → Cue designer (wave 30): reads `/api/mod/lights` + the map every 15 s while not editing, the lights draft (`base`, 409 `stale` → ask), selection, save / save to project, ▶ Test (save first when dirty), ▶ Try a step, auditions; every test asks first while live. `createCueDesignerStore(deps)` takes fakes in tests |
-| `house-view.ts` | Run → House's view (Desk / Cue designer / Setup / Mixer / Map), the Desk's right column, and the Map's two flags (`mapEvent`: the run it was opened for; `mapShown`: on screen now) |
+| `house-view.ts` | Run → House's view (Desk / Cue designer / Setup / Music / Mixer / Map), the Desk's right column, and the Map's two flags (`mapEvent`: the run it was opened for; `mapShown`: on screen now) |
 | `house-mixer.ts` | Run → House → 🎚 Mixer (wave 40): `GET /api/mod/audio/mixer` every 1 s only while the view is shown (`watch`) and the tab visible (404 / 403 stop it), optimistic faders held per key until a GET's `mix.seq` reaches the post's answer, posts ≤ 10 / s per fader with the trailing value sent, column Reset / Reset all (asks), the music commands. `createHouseMixerStore(deps)` takes fakes in tests |
 | `house-desk.ts` | Run → House: the long poll on `GET /api/mod/desk` (`rev`, `stream-retry` backoff), the draft desk (`base`, 409 `stale` → ask), selection, GO with the playhead shown (409 `moved` → a note), stop / panic, the checks' tests (live: confirm first), marks, Zigbee pairing. `createHouseDeskStore(deps)` takes the api, sleep and clock (tests pass fakes) |
 | `dialog.ts` | Promise-based `promptText` / `confirmAction` / `confirmTyped` / `notify` |
@@ -170,7 +170,8 @@ World, Director, Mind and House close under a lens.
   count per stack; the join poster and door sign off until ticked. Sheets are
   cut in `sheetsOf`, so a page holds exactly its cards, and a skipped card moves
   to a screen-only tray; `printBaseProblem` goes red on a local address; QRs
-  drawn in the browser, keyed by link),
+  drawn in the browser, keyed by link; wave 59: every card has its text code, the
+  printed words are in-world, a room's real name is the screen-only `note`),
   **✉ Letters** (`LettersCard`, wave 41), **🎥 Video consent**
   (`VideoConsentCard` + pure `video-consent.ts`, wave 44: `GET
   /api/mod/video` every 10 s, the opted-out first with their pictures,
@@ -245,6 +246,11 @@ World, Director, Mind and House close under a lens.
   Follow the story, each bed with ⏭ Skip, Skip all, Stop music) and the
   console, one column per scope (`mixerScopes` / `scopeStrips`). Contract
   `docs/loom-w40-contract.md` C4; Help `51-house-mixer.md`.
+  Wave 58 adds **🎵 Music** (`house/MusicPanel.tsx`, the same store; `lockDj`
+  fires the story's cue): it took Now Playing from the Mixer and adds TIDAL's
+  transport, Play now and Trabolta's card. The words are core's
+  (`musicSource`, `djLines`). Contract `docs/loom-w58-music-contract.md`; Help
+  `57-music-manager.md`.
   Wave 49 adds the **🗺 Map** (`house/HouseMapPanel.tsx`,
   `house/HouseMapHost.tsx`; pure `lib/house-map-view.ts`; contract
   `docs/loom-w49-contract.md` C7; Help `39-house-map.md`): the real map

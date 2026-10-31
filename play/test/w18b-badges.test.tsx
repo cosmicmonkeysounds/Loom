@@ -9,7 +9,7 @@ import { describe, expect, it } from "vitest";
 import { BoothBadgesProvider, GuestBadges, boothBadgeMap } from "../src/booth/badges.tsx";
 import { DoorWindow } from "../src/booth/door.tsx";
 import { GuestTiles } from "../src/booth/pick/tiles.tsx";
-import { PersonRow } from "../src/guest/sheets.tsx";
+import { PeopleSheet, PersonRow } from "../src/guest/sheets.tsx";
 import { bathroomTag, inBathroom } from "../src/host/model.ts";
 import { threadPersonId } from "../src/rooms/chats.ts";
 import { ChannelRow } from "../src/rooms/list.tsx";
@@ -41,6 +41,17 @@ describe("the guest's lists", () => {
   it("a picker row (Share…, the wallet's people) wears them too", () => {
     const html = renderToStaticMarkup(<PickerSheet title="Send" items={[{ id: "g2", label: "Winamp", avatar: true, badges: [AFK] }]} onPick={noop} onClose={noop} />);
     expect(html).toMatch(/pick-label">Winamp<span class="name-badge"/u);
+  });
+});
+
+describe("the guest's People (wave 59)", () => {
+  it("lists who is online, and says so when nobody else is", () => {
+    const card = (id: string, kind: "guest" | "character", online?: boolean) => ({ id, name: id, kind, faction: null, known: [], location: null, ...(online !== undefined ? { online } : {}) });
+    const sheet = (people: unknown[]) => renderToStaticMarkup(<PeopleSheet session={{ status: { people } } as never} onClose={() => {}} />);
+    const html = sheet([card("Ada", "guest", true), card("Napster", "guest", false), card("Clippy", "character", true), card("Norton", "character", false), card("Old", "guest")]);
+    for (const name of ["Ada", "Clippy", "Old"]) expect(html).toContain(name);
+    for (const name of ["Napster", "Norton"]) expect(html).not.toContain(name);
+    expect(sheet([card("Napster", "guest", false)])).toContain("Nobody else is here yet.");
   });
 });
 

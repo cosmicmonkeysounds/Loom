@@ -19,6 +19,7 @@ only the spot.
 | The tent (The Internet) | John's old laptop + its webcam | `tent` | `/terminal/?code=<mod>&spot=tent&announce=1` | Chrome `--kiosk`; needs WebGL2 |
 | The Server Door (the King's chess) | a tablet on the basement hall wall by the keypad | `server-room-door` | `/terminal/?code=<mod>&spot=server-room-door` | Fully Kiosk (Android) |
 | The casino (upstairs bedroom) | a tablet | `graphics-card` | `/terminal/?code=<mod>&spot=graphics-card` | Fully Kiosk (Android) |
+| The Task Manager costume | an iPad 2 on his chest | none | from Run → Terminals, 🎭 Costume ([`costume.md`](./costume.md)) | Safari on iOS 9, Add to Home Screen, Guided Access |
 | Wall terminals | tablets | `optical-drive`, `hall`, `steam-room`, `cpu`, `start-bar`, `backyard`, `bathroom-1-door`, `ram`, `upstairs-hall` | `/terminal/?code=<mod>&spot=<id>` | Fully Kiosk (Android), or an iPad |
 
 Rules for every link:
@@ -48,8 +49,17 @@ The app's half is `terminal/src/kiosk.ts` and `fullscreen.ts`:
   TOUCH TO WAKE tap, and whenever the page comes back into view (Chrome
   84+). The state is on `<html data-wake-lock="held|off|unsupported">`. On
   an older tablet Fully Kiosk's *Keep Screen On* does the job alone.
-- **⚙ needs a 2 s hold.** A short tap on the gear does nothing; a bar
-  fills while held. This keeps a curious guest out of setup.
+- **⚙ is hidden and needs a 2 s hold** (wave 59). Nothing shows in the top
+  right corner, but press and hold there: the ⚙ appears, a bar fills, and setup
+  opens at 2 s. A short tap does nothing. This keeps a curious guest out of
+  setup.
+- **No ad sounds or bleeps on the TV, the tent and the server room** (wave 59).
+  ⚙ → advanced → *🔇 No ad sounds or bleeps*, or `&bleeps=0` / `&bleeps=1`, sets
+  it for one tablet. The choice stays, through a restart that opens the
+  terminal's link again, unless that link has its own `bleeps=`.
+- **Is the picture getting through?** ⚙ and Run → Terminals read out the camera
+  frames sent, the simulation frames received and the last error
+  (`docs/help/authoring/48-terminal-setup.md`).
 - **Full screen by default.** Every gesture while not full screen asks the
   browser again (a text box tap is left alone for the keyboard). Fully
   Kiosk's JavaScript Interface hides its bars. Chrome `--kiosk`, F11 and a
@@ -94,7 +104,7 @@ reports what the device does now (`ann=1|0`).
 ### The voice
 
 **Every device speaks with its own voice**; no server voice is needed.
-Hold ⚙ 2 s: setup says what this device can do (*this device has N
+Hold the top right corner 2 s: setup says what this device can do (*this device has N
 voices*, *Fully Kiosk's text-to-speech will speak*, or *text only*), and
 **TEST VOICE** says a line through exactly the voice it will use. Leave
 *voice* on **this device's own voice**; pick **Fully Kiosk's voice** on a
@@ -210,7 +220,7 @@ $env:LOOM_MOD_CODE = '<mod>'     # this window only; never written to disk
 .\tv-kiosk.ps1 -Setup            # Chrome without --kiosk, opens /terminal/?code=<mod>&spot=desktop-tv
 ```
 
-In that window: check it took the TV spot; hold ⚙ 2 s → *device voice* →
+In that window: check it took the TV spot; hold the top right corner 2 s → *device voice* →
 **Microsoft David** (or Mark) → TEST VOICE; close it. Then:
 
 ```powershell
@@ -358,7 +368,7 @@ REACHING HIM*.
 1. Allow the camera, the microphone and, when Chrome asks, access to apps on
    this device (that's whisper; ⚙'s *no mouse or keyboard* section asks, and
    reads *whisper is listening* once it's allowed).
-2. Hold ⚙ 2 s → *advanced* → *door sensor* → **Connect door sensor** →
+2. Hold the top right corner 2 s → *advanced* → *door sensor* → **Connect door sensor** →
    click the Grand Central's row in Chrome's list, then that list's own
    **Connect**, which stays grey until a row is picked. A terminal that shows
    no door after this was saved with the sensor off: check the select says
@@ -421,12 +431,11 @@ powershell -ExecutionPolicy Bypass -File scripts\server-room\start-terminal.ps1 
   reports the door on its heartbeat (Run → Terminals: 🚪 *shut* / *open*
   with the level, red *fault*). The first opening once Trabolta is awake
   plays **The Heart**: he asks for the door shut, the program scans their
-  pass with the door shut, and the four layers of the conversation (wave 27:
+  pass with the door shut, and the three layers of the conversation (wave 27:
   Layer Three's ⟦SHOW HIM⟧ / ⟦TELL HIM⟧ open short sub-menus) dock as
   a choice panel (click, or `1`–`9`), greyed under *CLOSE THE DOOR* while
-  the door is open. ⟦SPEAK FREELY⟧ opens the keyboard for a free talk. A
-  convince ends in Heart Shutdown at any hour, and the night ends when a
-  director presses 🕊 `talked_down`. Help → *Running the server room*
+  the door is open. ⟦SPEAK FREELY⟧ opens the keyboard for a free talk. The
+  talk ends nothing (wave 58). Help → *Running the server room*
   (`docs/help/authoring/38-server-room.md`) is the director's side.
 - **The patch bay.** In the Y2K hour the page posts `patch_changed
   {combo}` when four cables settle into a new set, and the story judges it.
@@ -505,7 +514,7 @@ before the doors.**
 
 ## The casino tablet
 
-A tablet in the upstairs bedroom (The Graphics Card). Provision with
+A tablet in the upstairs bedroom (The Casino). Provision with
 `/terminal/?code=<mod>&spot=graphics-card` (the map says `view:
 "casino"`). Awake all night: a program scans a pass and bets 1–50
 Truthcoin on the coin, the dice or the slots. The server rolls every bet;
@@ -588,20 +597,21 @@ of the 3D world.
 
 - a wall terminal shows *ONLINE*, the scanner or a pilot **before**
   `introduce_trabolta`;
-- a terminal loops, crashes, or its camera keeps failing, and a Fully
+- a terminal loops, crashes, or its camera keeps failing (⚙ and Run →
+  Terminals read out frames each way and the last error), and a Fully
   restart didn't fix it;
 - the TV's `view=tv` misbehaves (a voice that loops or talks over a song, a
   frozen face) and the mute isn't enough.
 
 **How** (≈ 1 min, nothing restarts):
 
-1. Hold ⚙ 2 s → *advanced* → *screen* **mirror** → tap this terminal in the
+1. Hold the top right corner 2 s → *advanced* → *screen* **mirror** → tap this terminal in the
    list (it keeps its spot). Or open
    `/terminal/?code=<mod>&name=<its name>&spot=<its spot>&view=mirror`.
 2. Check Run → Terminals (green within 4 s) and by eye.
 3. Say it on the radio: guests at that wall use their phones; on the TV
    Trabolta's lines are gone until it is back on `view=tv`.
-4. **Going back:** hold ⚙ → *screen* `auto` (a wall terminal) or `tv` (the
+4. **Going back:** hold the corner → *screen* `auto` (a wall terminal) or `tv` (the
    TV), or tap the spot again so it follows the map. A screen whose trouble
    wasn't fixed stays on the mirror all night.
 

@@ -110,7 +110,9 @@ button.link {
   letter-spacing: 0.06em;
 }
 button.link:active { background: var(--phosphor-faint); color: var(--white); }
-button.gear { border-color: transparent; opacity: 0.55; font-size: 1.3em; padding: 0 0.3em; }
+/* Wave 59: the ⚙ is hidden on every terminal and still there: same corner, same
+   2 s hold, same name to a screen reader. It shows only while it's held. */
+button.gear { border-color: transparent; opacity: 0; font-size: 1.3em; padding: 0 0.3em; }
 
 /* --- stage -------------------------------------------------------------- */
 
@@ -561,7 +563,6 @@ button.gear { border-color: transparent; opacity: 0.55; font-size: 1.3em; paddin
   border-radius: 4px;
 }
 .minimap svg { display: block; width: 100%; height: auto; max-height: min(28vh, 170px); }
-.minimap figcaption { font-size: 0.45em; letter-spacing: 0.2em; color: var(--phosphor-dim); text-align: center; }
 .mm-room { fill: rgba(40, 255, 140, 0.06); stroke: var(--phosphor-dim); stroke-width: 0.06; }
 .mm-room.outdoor { fill: none; stroke-dasharray: 0.2 0.15; }
 .mm-room.mine { fill: rgba(40, 255, 140, 0.16); }
@@ -689,6 +690,9 @@ button.gear { border-color: transparent; opacity: 0.55; font-size: 1.3em; paddin
 .tv-face .face { width: min(100%, 86vh); }
 .terminal.tv.with-world .tv-face { right: 62%; }
 .tv-world { position: absolute; top: 0; bottom: 0; right: 0; left: 38%; border-left: 2px solid var(--phosphor-faint); }
+/* Wave 58: the mirror before he is online, the world alone (his face stays hidden). */
+.terminal.tv.mirror-first .tv-face { display: none; }
+.terminal.tv.mirror-first .tv-world { left: 0; border-left: 0; }
 .tv-caption {
   position: absolute;
   left: 50%;
@@ -779,6 +783,8 @@ button.gear::after {
   width: 0;
   background: currentColor;
 }
+/* Nobody can aim at what they can't see: a corner's worth of finger. */
+button.gear::before { content: ""; position: absolute; top: -14px; right: -28px; bottom: -14px; left: -14px; }
 button.gear.holding { opacity: 1; }
 button.gear.holding::after { width: 100%; transition: width var(--hold-ms, 2000ms) linear; }
 
@@ -938,7 +944,7 @@ button.gear.holding::after { width: 100%; transition: width var(--hold-ms, 2000m
   0% { opacity: 0; } 10% { opacity: 0.7; } 25% { opacity: 0; }
   55% { opacity: 0.6; } 70% { opacity: 0; } 100% { opacity: 0; }
 }
-.screen-gear { position: fixed; top: 0; right: 0; z-index: 40; opacity: 0.25; }
+.screen-gear { position: fixed; top: 0; right: 0; z-index: 40; }
 /* Reduced motion (a kiosk with the system's animations off reports it) keeps
    the house's cue: one soft dim over the second, no stutter, never nothing. */
 @keyframes screen-flicker-soft { 0% { opacity: 0; } 50% { opacity: 0.35; } 100% { opacity: 0; } }

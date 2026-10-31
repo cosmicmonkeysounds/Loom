@@ -11,7 +11,7 @@ import { ApiError, RequestTimeout, api, useChatStream, withTimeout } from "../cl
 import { pmChannelId, shareErrorText, unlockFromSearch, withoutUnlock } from "../codex.ts";
 import { usePlayHost } from "../host.ts";
 import { phoneAnnounce } from "../phone-voice.ts";
-import { SessionRole, eventGone, guestSessionDead, lifecycleDropsSession, lifecycleNotice, performerSessionDead } from "../lifecycle.ts";
+import { SessionRole, deadTokenKind, eventGone, guestSessionDead, lifecycleDropsSession, lifecycleNotice, performerSessionDead } from "../lifecycle.ts";
 import { CODEX_ROOM, channelHead } from "../rooms/spaces.ts";
 import { roomOrder } from "../rooms/order.ts";
 import { useThreads, type Threads } from "../rooms/threads-state.ts";
@@ -29,7 +29,8 @@ import { linkFromMessage, linkFromSearch, navFromSearch, withoutRoom } from "../
 import { lobbyHidden } from "../guest/wire.ts";
 import type { Nav } from "../moments/exits.ts";
 import { guestStreamHandlers } from "./stream-handlers.ts";
-import { badgeLinkOf, forgetBadge, storedBadge, type BadgeLink } from "../rejoin.ts";
+import { PrompterStore, type PrompterPost } from "../aloud/shared.ts";
+import { badgeLinkOf, forgetBadge, letGo, storedBadge, type BadgeLink } from "../rejoin.ts";
 import type { AdoptedGuest } from "../resume.ts";
 
 interface GuestId {
@@ -255,6 +256,9 @@ export function actFeedback(replies: readonly string[] | undefined, label?: stri
 const NONE_OPENED: ReadonlySet<string> = new Set();
 
 export interface GuestSession {
+  /** Wave 59: the shared teleprompter's store, and a phone's press on it. */
+  prompter?: PrompterStore;
+  prompterPost?: PrompterPost;
   me: GuestId | null;
   status: GuestView | null;
   /** Wave 26 (R1, C2): the phone is locked — the view says so, or a write
@@ -288,8 +292,11 @@ export interface GuestSession {
   /** Leave a membership-gated channel. */
   leaveChannel: (channel: string) => Promise<unknown>;
   /** Codex: type (or scan) an unlock code. Resolves to the server's answer
-   *  (a hit, a code already held, a miss); rejects with the refusal. */
-  redeem: (code: string) => Promise<RedeemAnswer>;
+   *  (a hit, a code already held, a miss); rejects with the refusal.
+   *  `spaced`: the Scan sheet's typed text, which may only be words (wave 59). */
+  redeem: (code: string, spaced?: boolean) => Promise<RedeemAnswer>;
+  /** The link of the printed code a typed one is, or null (wave 59). */
+  printed: (code: string) => Promise<string | null>;
   /** Check in at a room's sign (its slug, K-13). Resolves to the server's
    *  answer (the story may still keep the guest out: `moved: false`);
    *  rejects with the refusal (captured, on rails, a room not open yet) —
@@ -416,6 +423,7 @@ function useGuestLinks(signedIn: boolean, listed: readonly string[], lobbyHidden
 
 export function useGuestSession(): GuestSession {
   const host = usePlayHost();
+  const [prompter] = useState(() => new PrompterStore());
   const { load, save, drop } = host.storage;
   const crawl = host.crawl;
   const [me, setMe] = useState<GuestId | null>(() => {
@@ -463,6 +471,7 @@ export function useGuestSession(): GuestSession {
     onAgentWait,
     onWaitsReset,
     onAnnounce: (n) => phoneAnnounce(host, n),
+    onPrompter: (f) => prompter.set(f),
     // The crawl decides at arrival (wave 13: a no-op until the stream lane)
     // and the backlog sets its baseline (stream-handlers.ts).
     ...guestStreamHandlers(crawl, me, (list) => {
@@ -506,7 +515,7 @@ export function useGuestSession(): GuestSession {
         if (lockedRefusal(e)) setLocked403(true);
         if (e instanceof ApiError && me !== null) {
           if (eventGone(e.status, e.message)) dropSession(lifecycleNotice("ended", SessionRole.Guest));
-          else if (guestSessionDead(e.status, e.message)) dropSession(lifecycleNotice("reset", SessionRole.Guest));
+          else if (guestSessionDead(e.status, e.message)) dropSession(lifecycleNotice(deadTokenKind(e.message), SessionRole.Guest));
         }
         throw e;
       }
@@ -616,13 +625,16 @@ export function useGuestSession(): GuestSession {
   const pictures = useCallback(() => post<PictureChoices>("/api/guest/picture", {}), [post]);
   const setPicture = useCallback((picture: string) => post<PictureChoices>("/api/guest/picture", { picture }), [post]);
   const leave = useCallback(() => {
+    // Leaving frees the Person on the server too (wave 59), so their badge
+    // signs in again on any phone. Never waits; with no signal it stays owed.
+    letGo(host.storage, me, "guest");
     drop(GK);
     setMe(null);
     setStatus(null);
     setReady(false);
     setNotice(null);
     host.onEnded("guest", null);
-  }, [drop, host]);
+  }, [drop, host, me]);
 
   const adopt = useCallback(
     (guest: AdoptedGuest) => {
@@ -656,7 +668,8 @@ export function useGuestSession(): GuestSession {
   const leaveChannel = useCallback((channel: string) => post("/api/guest/channel/leave", { channel }), [post]);
 
   // --- codex + people ---
-  const redeem = useCallback((code: string) => post<RedeemAnswer>("/api/guest/codex/redeem", { code }), [post]);
+  const redeem = useCallback((code: string, spaced?: boolean) => post<RedeemAnswer>("/api/guest/codex/redeem", spaced === true ? { code, spaced } : { code }), [post]);
+  const printed = useCallback((code: string) => post<{ hit: { url: string } | null }>("/api/guest/printed", { code }).then((r) => r.hit?.url ?? null), [post]);
   // The "scan done" dialog: one at a time, the newest wins.
   const [scanDone, setScanDone] = useState<ScanDone | null>(null);
   const scanIds = useRef(0);
@@ -869,7 +882,10 @@ export function useGuestSession(): GuestSession {
   const landing = useLandingBrand();
   useTheme(me === null ? landing.theme : status?.theme);
 
+  const prompterPost = useCallback((body: Record<string, unknown>) => post("/api/aloud", body), [post]);
   return {
+    prompter,
+    prompterPost,
     me,
     status,
     locked: status?.locked === true || locked403,
@@ -889,6 +905,7 @@ export function useGuestSession(): GuestSession {
     inviteToChannel,
     leaveChannel,
     redeem,
+    printed,
     checkin,
     scanDone,
     showScan,

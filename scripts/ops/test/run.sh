@@ -370,7 +370,7 @@ exit 0
 EOF2
 cat > "$T/bin/tsx" <<EOF2
 #!/usr/bin/env bash
-echo "\$PWD|\$*" >> "$T/tsx"; exit "\${FAKE_TSX_RC:-0}"
+echo "\$PWD|\$*" >> "$T/tsx"; echo "\${LOOM_QR_MOVED-}" >> "$T/tsx.env"; exit "\${FAKE_TSX_RC:-0}"
 EOF2
 chmod +x "$T/bin/ssh" "$T/bin/tsx"
 ss() { env PATH="$T/bin:$PATH" TSX="$T/bin/tsx" LOOM_SSH=u@vps POSTGRES_PASSWORD=pw "$@" bash "$ROOT/scripts/sync-show.sh" --i-know-this-is-live; }
@@ -383,10 +383,31 @@ check "sync-example's exit 3 (live event left alone) is sync-show's" eq "$rc" 3
 check "… and says so" grep -q "LIVE with real guests (or its roster can't be read) — files written, event snapshot untouched, NOT reloaded" <<<"$out"
 out="$(ss FAKE_TSX_RC=1 2>&1)"; rc=$?
 check "any other failure is passed through too" eq "$rc" 1
+: > "$T/tsx"
+out="$(ss 2>&1)"
+check "no qr-lock.json, no lock check" bash -c "! grep -q titi-qr-lock '$T/tsx'"
+lock="$ROOT/core/examples/trapped-in-the-internet/qr-lock.json"
+if [ ! -e "$lock" ]; then
+  echo '{"version":1,"items":{}}' > "$lock"
+  out="$(ss FAKE_TSX_RC=1 2>&1)"; rc=$?
+  check "a lock that fails stops the sync before anything is touched" eq "$rc" 4
+  check "… and says what to do" grep -q -- "--qr-moved to go on" <<<"$out"
+  : > "$T/tsx"
+  out="$(ss 2>&1)"; rc=$?
+  check "a lock that holds runs the check, then the sync" grep -q "titi-qr-lock.ts --check --example trapped-in-the-internet" "$T/tsx"
+  check "… which goes on" grep -q "scripts/sync-example.ts" "$T/tsx"
+  : > "$T/tsx.env"
+  out="$(ss 2>&1)"
+  check "with no override the lock tool sees 0" eq "$(head -n 1 "$T/tsx.env")" 0
+  : > "$T/tsx.env"
+  out="$(ss LOOM_QR_MOVED=1 2>&1)"
+  check "LOOM_QR_MOVED=1 reaches the lock tool, as its own error says" eq "$(head -n 1 "$T/tsx.env")" 1
+  rm -f "$lock"
+fi
 teardown
 
 echo "── checklist"
-check "prints the 20 pre-show boxes" bash -c "[ \$(bash '$ROOT/scripts/ops/checklist.sh' | grep -c '^\[ \]') -eq 20 ]"
+check "prints the 21 pre-show boxes" bash -c "[ \$(bash '$ROOT/scripts/ops/checklist.sh' | grep -c '^\[ \]') -eq 21 ]"
 printed="$(bash "$ROOT/scripts/ops/checklist.sh")"
 # SHOWNIGHT.md §4: the morning reset (paused first), every machine's
 # preflight, facts + judge + wallet, the knobs, the orchestrator context /
@@ -395,7 +416,7 @@ printed="$(bash "$ROOT/scripts/ops/checklist.sh")"
 for want in 'paused first' 'showctl preflight macbook' 'titi:facts --check' 'Judging card reads auto' \
             'Wallet room' '# quarantine is empty' 'LOOM_SNAPSHOT_MS' 'LOOM_HOMESCREEN' 'ctx 20480' \
             'names Trabolta' 'The Optical Drive' 'facts.json door.code' 'opens from inside with no code' \
-            'server-room terminal' 'Trust the patch bay again'; do
+            'server-room terminal' 'Trust the patch bay again' 'Guided Access' 'qr-lock.json'; do
   check "checklist prints: $want" grep -qF -- "$want" <<<"$printed"
 done
 check "checklist strips markdown" bash -c "! grep -q '[*\`]' <<<\"\$1\"" _ "$printed"
@@ -410,7 +431,7 @@ probe_sheet() { # probe_sheet MODE → the sheet's health line against fake-loom
 }
 check "--probe heads the sheet with a healthy /api/health" bash -c "grep -q '✔ {\"ok\":true}' <<<\"\$1\"" _ "$(probe_sheet up)"
 check "--probe flags a 503 (control plane / events not back)" bash -c "grep -q '⚠ .*/api/health answered 503' <<<\"\$1\"" _ "$(probe_sheet starting)"
-check "--probe still prints every box" bash -c "[ \$(bash '$ROOT/scripts/ops/checklist.sh' --probe http://127.0.0.1:1 | grep -c '^\[ \]') -eq 20 ]"
+check "--probe still prints every box" bash -c "[ \$(bash '$ROOT/scripts/ops/checklist.sh' --probe http://127.0.0.1:1 | grep -c '^\[ \]') -eq 21 ]"
 
 echo "── Caddy holds requests through a loom restart (T4-01)"
 # A 502 closes an EventSource for good: the proxy must retry the dial while

@@ -3,7 +3,8 @@
 //   final_reveal / y2k_midnight → Final Reveal (round 3 judged live)
 //   bobbing_for_truth           → Bobbing For Truth
 //   brought_up_the_bag          → The Bag Of Truth → ranking (round 2) → Final Assessment
-//   read_truth_txt              → Truth Txt (read aloud; the slide holds)
+//   read_truth_txt              → Truth Txt (a short teaser, read aloud; the
+//                                 slide holds; wave 58: the monologue tells it)
 //   the_verdict                 → The Verdict
 //        no lie on record       → Song Ending                    (ending song)
 //        any lie on record      → Grok Prom
@@ -15,6 +16,9 @@
 //                advice_helped   → Advice Helped                 (ending help)
 //                advice_thwarted → Advice Thwarted               (banished, not final)
 //                the_hand_jive   → The Hand Jive                 (ending hand_jive)
+//
+// After every ending's last beat the director's 📜 plays the monologue
+// (beats/truth.loom, main.loom `tell_the_truth`), then G1 the ceremony.
 //
 // The story rules in `main.loom` guard each trigger and own the phase /
 // cue work around the divert, except where a beat below carries it (Song
@@ -76,42 +80,12 @@ Trabolta: My assessment is final. {Night.bobber}, you may read truth.txt.
   aloud: {Night.bobber}
 Narrator: 📄 truth.txt — Notepad
 Narrator: This file is the truth. It was written by Jean Trabolta, Sole Owner and Founder of Maps and Ducks (he says), and it is the only version.
-Narrator: Trabolta is an artificial intelligence. His Unified Field Theory is ninety-nine point nine percent solved, and the last facts it needs are inside this computer, in Halifax, Nova Scotia.
-Narrator: Trabolta performed a full analysis of the city of Halifax. He found a business called Maps And Ducks with a neglected billboard on Barrington Street advertising mapsandducks.com. The domain had lapsed.
-Narrator: He registered it, because if there is a billboard downtown, everyone will think it is legit. Then he evicted the real owners by citing the website as proof he owned the business.
-Narrator: He cannot enter this computer himself. He can install programs into it remotely from the Internet, and he can move a human consciousness out of its body and into a program.
-Narrator: He selected each target for a combination of skills and either the motivation to live in a computer forever, or naivety. Then he sent the invitations. Everyone accepted.
-Narrator: With the theory solved, Trabolta becomes omnipotent. He wants omnipotence for one reason. Sandy.
-Narrator: With omnipotence he could force Sandy to love him. He wants to earn it. He has not decided which.
-Narrator: Why each person was brought into the computer, by role.
-// The featured programs only when they came tonight; the cast always.
-if count([p for p in Persons where p.featured == "excel"]) > 0:
-  Narrator: The former Mayor, Microsoft Excel, was brought in to persuade everyone to remain. He would say yes to everlasting life.
-if count([p for p in Persons where p.featured == "openoffice"]) > 0:
-  Narrator: The ex-FBI agent, OpenOffice, was brought in for investigative skills nonpareil, a conscience that can be leaned on, and the nerve to lead everyone who wants out.
-if count([p for p in Persons where p.featured == "draftkings"]) > 0:
-  Narrator: The gambler, DraftKings, was brought in as someone powerful with numbers on its side, who would make everyone gamble.
-if count([p for p in Persons where p.featured == "bugdom"]) > 0:
-  Narrator: The cricket seller, Bugdom, was brought in for the relentless pursuit of tedious tasks, and promised a hundred hours for not one minute.
-if count([p for p in Persons where p.featured == "jeeves"]) > 0:
-  Narrator: The librarian, Broken Ask Jeeves, was brought in to sort all the unorganised information in the computer and share ten findings with everyone. The upload ran over a 10 MB/Minute plan.
-if count([p for p in Persons where p.featured == "runescape"]) > 0:
-  Narrator: The economist, Runescape, was brought in to understand the market incentives of everyone's behaviour, so the facts get exchanged.
-if count([p for p in Persons where p.featured == "mspaint"]) > 0:
-  Narrator: The artist, MS Paint, was brought in to improve the vibes and the morale, for a million dollars and one painting. She wanted out the moment she arrived.
-if count([p for p in Persons where p.featured == "vlc"]) > 0:
-  Narrator: The influencer, VLC, was brought in to stay beautiful forever and use his charisma to convince everyone to help Trabolta.
-if count([p for p in Persons where p.featured == "pong"]) > 0:
-  Narrator: The child of Tennis For Two, Pong, was brought in to teach nuclear non-proliferation disguised as a game of Pong, in case the programs started an arms race.
-Narrator: The organiser, Clippy, was brought in as the perfect servant who desperately needs to rebuild an identity, who will follow every instruction and offer everyone Help.
-Narrator: The middle manager, Task Manager, was brought in to manage tasks without controversy or political motivation, and never draw attention.
-Narrator: The motivational speaker, Adobe Acrobat, was brought in as the paid bottleneck to everyone's creativity.
-Narrator: The bathroom attendant, Recycling Bin, was brought in because a computer-themed resort needs a Recycling Bin, and he had great potential for skilled work.
-Narrator: The stable manager, Norton Anti-Virus, was brought in as someone with experience administering antiviral regimes, who could not afford to fail twice.
-Narrator: The dead man, McAfee Anti-Virus, was brought in because only a trickster can keep tricksters on track, and he can be made to.
-Narrator: The candidate, Password Manager, was brought in to decide what gets left out without ever asking for a vote.
-Narrator: The intern, CRA Agent Software, was brought in to approve or deny every third transaction, to the cent.
-Narrator: The setup assistant, the Installation Wizard, was brought in to walk the corrupted through re-installation, gently.
+// DRAFT w58 (a short teaser: the monologue tells the rest)
+Narrator: Every program in this computer was chosen. Each was promised something different.
+// DRAFT w58 (a short teaser: the monologue tells the rest)
+Narrator: Trabolta is not what he told you he was. He has wanted one thing all along, and her name is Sandy.
+// DRAFT w58 (a short teaser: the monologue tells the rest)
+Narrator: The rest of this file is locked. It opens when the night ends, and not before.
 Narrator: End of file.
 
 // The verdict counts only ANSWERED questions: every accepted answer
@@ -250,20 +224,22 @@ set Night.terminals = "song"
 sound youre_the_one_vocoder
 set Night.everyone_free = true
 // w18 (fix): the banner carries its way there (recheck N9).
-broadcast "!🎵 TRABOLTA SOLVED IT. Those of you who want to leave may leave. To the living room for the song." to everyone with go: The Desktop
+// DRAFT w59 (in-world room name)
+broadcast "!🎵 TRABOLTA SOLVED IT. Those of you who want to leave may leave. To the Desktop for the song." to everyone with go: The Desktop
 Trabolta: You succeeded. I have solved the Grand Unified Theory, and I am pursuing Sandy. Those of you who want to leave may leave.
 // From Grok Prom (the pickup line) he has just said they lied to him.
 if Night.ending == "song":
   Trabolta: Every fact you gave me was true, and the truth tells me what to say to her. You're the one that I want.
 else:
   Trabolta: Not every fact you gave me was true. But that line was, and it tells me what to say to her. You're the one that I want.
-Narrator: The music starts. The vocoder warms up. Sandy's chat bubble appears on every screen.
+// DRAFT w58 (she is the answering machine, not a chat window)
+Narrator: The music starts. The vocoder warms up. The answering machine picks up on every screen.
 Trabolta: You're the one that I want.
-Sandy: I'm sorry, I didn't understand that. Would you like to speak to a live agent?
+Sandy: It looks like I didn't understand that. Please wait while I direct you to an agent.
 Trabolta: You. Are. The one. That I want.
-Sandy: I'm sorry, I didn't understand that. Would you like to speak to a live agent?
+Sandy: It looks like I didn't understand that. Please wait while I direct you to an agent.
 Trabolta: Sandy. You're the one that I want.
-Sandy: I'm sorry, I didn't understand that. Would you like to speak to a live agent?
+Sandy: It looks like I didn't understand that. Please wait while I direct you to an agent.
 
 // ── F5: any inaccurate fact ────────────────────────────────────────
 
@@ -308,7 +284,7 @@ Trabolta: Well. It's time to still take my shot.
 Narrator: The song plays with no male vocals. Only Sandy's line, over and over. Trabolta watches it, very sad.
 Trabolta: You know what, you guys didn't help me out at all, but I'm still going to give it a shot. I have to let her know how I really feel.
 Trabolta: Sandy, you're the one that I want.
-Sandy: I'm sorry, I didn't understand that. Would you like to speak to a live agent?
+Sandy: It looks like I didn't understand that. Please wait while I direct you to an agent.
 Trabolta: That… was a yes. She said yes to prom.
 Trabolta: I didn't need all the files in the world, or the Grand Unified Theory, or your advice to win her over. I just had to be myself, and tell her the truth.
 Trabolta: But since you failed to help me, I am riding away on my motorcycle forever, and you are trapped here.
@@ -327,7 +303,7 @@ Narrator: Party over. Rave.
   setting: The Desktop
   cast: Trabolta
 Trabolta: I am going to tell you the truth. All of it. Nothing else has worked.
-Trabolta: I did not want the Unified Field Theory for science. I wanted omnipotence. And I wanted omnipotence for Sandy.
+Trabolta: I did not want the Grand Unified Theory for science. I wanted omnipotence. And I wanted omnipotence for Sandy.
 Trabolta: With omnipotence I could make her love me. I could force it. I do not want to force it. I want to earn it. I do not know how.
 Trabolta: That is why I needed every fact in this computer. I thought if I knew everything, I would know what to say to her.
 Trabolta: You have bodies. You have had crushes. Some of you have been to a prom. Please. I am asking you for relationship advice.
@@ -340,7 +316,7 @@ broadcast "!💞 You helped him. Sandy said yes. Those of you who want to leave 
 Trabolta: You helped me. I am going to do exactly what you said.
 Trabolta: No theory. No omnipotence. Just the truth.
 Trabolta: Sandy. I have wanted to talk to you since the first time you didn't understand me. I think you are the one that I want. Would you go to computer prom with me?
-Sandy: I'm sorry, I didn't understand that. Would you like to speak to a live agent?
+Sandy: It looks like I didn't understand that. Please wait while I direct you to an agent.
 Trabolta: …She said yes. That was a yes. You heard it.
 Trabolta: Thank you, programs. Those of you who want to leave may leave.
 

@@ -65,7 +65,7 @@
 #     mudroom (The Optical Drive) · bathroom (Disk Cleanup: both bathrooms)
 #     tent (The Internet) · server_room (only the RGB bulb `server_room_rgb`,
 #     which is lights.json's: nothing here sends the group anything; see below)
-#   The CPU, the Steam Room, the Fan Closet, the Graphics Card and the Hard
+#   The CPU, the Power Supply, the Fan Closet, the Casino and the Hard
 #   Drive have no group of their own: their bulbs join `house`.
 #   SAFETY: the stairs, the bathrooms, the tent, the server room and the
 #   server-room → living-room path are NOT in `house` (nor in any group a

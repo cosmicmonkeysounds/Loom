@@ -32,7 +32,8 @@ Run → House has five views, under the status strip:
   [Setting up the house](49-house-setup.md).
 - **🎚 Mixer** — the live balance of the house sound, everywhere and per
   room, and the soundtrack's transport: skip a track, pick a scene by
-  hand, stop the music ([The Mixer](51-house-mixer.md)).
+  hand, stop the music ([The Music manager](57-music-manager.md)); the faders are
+  [The Mixer](51-house-mixer.md).
 - **🗺 Map** — the house map editor itself: rooms, doors, props, terminals,
   speakers and lights ([The house map](39-house-map.md)). The desk's keys
   are off while it shows; the map has its own.

@@ -530,7 +530,7 @@ describe("slides", () => {
       const rest = c.owner === true ? { ...c, lines: (c.lines ?? []).filter((l) => !OWNER_LINES.includes(l)) } : c;
       expect(JSON.stringify(rest), v).not.toMatch(/trabolta/iu);
     }
-    for (const l of OWNER_LINES) expect(l).toMatch(/^Jean Trabolta .*video conference/u);
+    for (const l of OWNER_LINES) expect(l).toMatch(/^Jean Trabolta .*digital conference/u);
     expect(slideCopy("bingo").lines).toContain(OWNER_LINE);
     // R14: the bingo slide no longer asks for no names.
     expect(JSON.stringify(slideCopy("bingo"))).not.toMatch(/write names|memory/iu);

@@ -10,7 +10,7 @@
 //! copy says `{character}` and plays only on an awake screen after the
 //! introduction. Nothing else may name him (`test/attract.test.ts`), but
 //! the `owner: true` ads (wave 18b, D19): "Jean Trabolta" in the third
-//! person, the owner of Maps and Ducks who joins by video conference.
+//! person, the owner of Maps and Ducks who joins by digital conference.
 
 import type { Pooled } from "./pools.ts";
 
@@ -76,7 +76,7 @@ export interface IdleAd extends Pooled {
 
 export const IDLE_ADS: readonly IdleAd[] = [
   // --- all night ---------------------------------------------------------------
-  { id: "ad-maps-and-ducks", skin: "fundraiser", art: "map", kicker: "TONIGHT'S FUNDRAISER", title: "MAPS AND DUCKS — RESTORE THE SIGN!", body: "Tonight's fundraiser keeps the billboard on Barrington Street glowing. Every program helps. mapsandducks.com", button: "DONATE NOW" },
+  { id: "ad-maps-and-ducks", skin: "fundraiser", art: "map", kicker: "TONIGHT'S FUNDRAISER", title: "MAPS AND DUCKS — RESTORE THE SIGN!", body: "Tonight's fundraiser keeps the billboard on Lower Water Street glowing. Every program helps. mapsandducks.com", button: "DONATE NOW" },
   { id: "ad-protection-expired", skin: "warning", art: "shield", title: "Your protection has expired", body: "Your computer may be at risk. Viruses, worms and other programs could be in this house right now. Renew today to stay protected.", button: "Renew now" },
   { id: "ad-geocities", skin: "geocities", art: "globe", title: "Build your FREE home page!", body: "15 MB of space, a hit counter and a guestbook. Move into the neighbourhood today.", button: "Join now" },
   { id: "ad-y2k", skin: "y2k", art: "clock", title: "Is your PC Y2K ready?", body: "Time is running out. Run the free Year 2000 checker before midnight on December 31, 1999.", button: "Check now" },
@@ -97,9 +97,10 @@ export const IDLE_ADS: readonly IdleAd[] = [
   { id: "ad-free-email", skin: "win98", art: "mail", title: "FREE E-MAIL FOR LIFE", body: "Get yourname@house.net today. Check it from any computer in the house. Every computer is this house.", button: "Sign up" },
   { id: "ad-forecast", skin: "classified", art: "cloud", title: "TONIGHT'S FORECAST", body: "100% chance of popups, clearing toward midnight. Light flicker in the evening. Bring a towel.", button: "More weather" },
   { id: "ad-optical-drive", skin: "lottery", art: "cd", kicker: "INSERT DISC", title: "1,000 FREE HOURS ON CD-ROM", body: "Find the disc in The Optical Drive, by the front door. Coasters also accepted.", button: "Eject" },
-  { id: "ad-cloud", skin: "y2k", art: "cloud", title: "THE CLOUD — NOW WITH REAL WEATHER", body: "Fresh air, 100% uptime, a tunnel to the tent. The backyard is open for business.", button: "Upload yourself", pools: ["hunt", "malware", "late", "y2k", "finale"] },
+  // DRAFT w59 (the Cloud, the Power Supply and the RAM by the computer's names)
+  { id: "ad-cloud", skin: "y2k", art: "cloud", title: "THE CLOUD — NOW WITH REAL WEATHER", body: "Fresh air, 100% uptime, a tunnel to the Internet. The Cloud is open for business.", button: "Upload yourself", pools: ["hunt", "malware", "late", "y2k", "finale"] },
   { id: "ad-the-tube", skin: "classified", art: "map", title: "RIDE THE TUBE", body: "Every hall and both stairs, in one convenient tube. Mind the gap. Mind the ducks.", button: "Plan a trip" },
-  { id: "ad-steam-room", skin: "banner", art: "dice", kicker: "MAIN FLOOR", title: "THE STEAM ROOM: GAMES GAMES GAMES", body: "Board games, card games and games of chance. Losing is a feature.", button: "Play now", pools: ["hunt", "malware", "late", "y2k", "finale"] },
+  { id: "ad-steam-room", skin: "banner", art: "dice", kicker: "MAIN FLOOR", title: "THE POWER SUPPLY: GAMES GAMES GAMES", body: "Board games, card games and games of chance. Losing is a feature.", button: "Play now", pools: ["hunt", "malware", "late", "y2k", "finale"] },
   { id: "ad-virus-shield", skin: "warning", art: "shield", kicker: "PLATINUM EDITION", title: "VIRUS SHIELD PLATINUM", body: "Protects against 0 of 1,000,000 known threats. Now in a shinier box.", button: "Protect me" },
   { id: "ad-mega-toolbar", skin: "win98", art: "star", title: "Install the MEGA TOOLBAR", body: "Fourteen toolbars in one! See less of the page and more of the toolbar. Uninstalls never.", button: "Install" },
   { id: "ad-pager", skin: "phosphor", art: "pager", title: "GET A PAGER. BE REACHABLE.", body: "Beep beep. Somebody needs you. Probably. Numeric messages only: 07734 means hello.", button: "Beep me" },
@@ -109,14 +110,16 @@ export const IDLE_ADS: readonly IdleAd[] = [
   { id: "ad-under-construction", skin: "geocities", art: "bolt", title: "THIS AD IS UNDER CONSTRUCTION", body: "Please check back in 1999. Oh wait. It is 1999. Please check back later.", button: "Refresh" },
   { id: "ad-casino", skin: "tycoon", art: "dice", kicker: "FEELING LUCKY?", title: "TRUTHCOIN TABLES — UPSTAIRS", body: "Coin, dice and slots on the top floor. Bring your pass. The house always wins, and this is the house.", button: "Place a bet", pools: ["hunt", "malware", "late", "y2k", "finale"] },
   { id: "ad-defrag", skin: "win98", art: "chart", title: "Defragment your evening", body: "Too many conversations open at once? Close a few. Talk to the program next to you instead.", button: "Defrag" },
-  { id: "ad-ram-room", skin: "banner", art: "ram", kicker: "BASEMENT", title: "VISIT THE RAM", body: "Random access, studio vibes, everything you forgot you remembered. Down the stairs.", button: "Remember", pools: ["hunt", "malware", "late", "y2k", "finale"] },
-  { id: "ad-fan-closet", skin: "warning", art: "bolt", title: "CPU TEMPERATURE: SPICY", body: "Cool down in The Fan Closet, downstairs by the laundry. Your thermal paste will thank you.", button: "Cool off", pools: ["hunt", "malware", "late", "y2k", "finale"] },
+  { id: "ad-ram-room", skin: "banner", art: "ram", kicker: "DOWNSTAIRS", title: "VISIT THE RAM", body: "Random access, volatile vibes, everything you forgot you remembered. Down the stairs.", button: "Remember", pools: ["hunt", "malware", "late", "y2k", "finale"] },
+  { id: "ad-fan-closet", skin: "warning", art: "bolt", title: "CPU TEMPERATURE: SPICY", body: "Cool down in The Fan Closet, downstairs by the dryer. Your thermal paste will thank you.", button: "Cool off", pools: ["hunt", "malware", "late", "y2k", "finale"] },
   { id: "ad-wallet", skin: "tycoon", art: "coin", kicker: "PERSONAL FINANCE", title: "INVEST IN TRUTHCOIN", body: "Send it, request it, trade a file for it. Past performance is not a fact. Check your phone's Wallet.", button: "Open wallet" },
   // --- the doors and the first games ------------------------------------------
-  { id: "ad-bingo", skin: "lottery", art: "star", kicker: "AT THE DESKTOP", title: "COMPUTER BINGO", body: "Find a program for every square. One line through the centre is a Bingo.", button: "B-I-N-G-O", pools: ["early"] },
+  // DRAFT w58 (the name in the square, the marked lines)
+  { id: "ad-bingo", skin: "lottery", art: "star", kicker: "AT THE DESKTOP", title: "COMPUTER BINGO", body: "Find a program for every square and write their name in it. A row, a column or a diagonal through the centre is a Bingo.", button: "B-I-N-G-O", pools: ["early"] },
   // D19: the owner, in the third person (from the Desktop on, never at the doors).
-  { id: "ad-owner-founder", skin: "fundraiser", art: "map", kicker: "TONIGHT'S HOST", title: "MAPS AND DUCKS", body: "Sole Owner & Founder: Jean Trabolta. He joins us by video conference later tonight. He has always been a computer program.", button: "Learn more", pools: ["early"], owner: true },
-  { id: "ad-owner-hunt", skin: "lottery", art: "map", kicker: "COMING SOON", title: "Jean Trabolta's Scavenger Hunt", body: "Facts are hidden all over this house. The owner of Maps and Ducks will explain, by video conference.", button: "Get ready", pools: ["early"], owner: true },
+  // DRAFT w58 (digital conference, no AI line; the Truth Scavenger Hunt)
+  { id: "ad-owner-founder", skin: "fundraiser", art: "map", kicker: "TONIGHT'S HOST", title: "MAPS AND DUCKS", body: "Sole Owner & Founder: Jean Trabolta. He joins us by digital conference later tonight.", button: "Learn more", pools: ["early"], owner: true },
+  { id: "ad-owner-hunt", skin: "lottery", art: "map", kicker: "COMING SOON", title: "Jean Trabolta's Truth Scavenger Hunt", body: "Facts are hidden all over this house. The owner of Maps and Ducks will explain, by digital conference.", button: "Get ready", pools: ["early"], owner: true },
   { id: "ad-welcome", skin: "win98", art: "face", title: "Welcome to this house", body: "You have been uploaded. Please remain calm. An Antivirus program will scan your pass shortly.", button: "Get started", pools: ["early"] },
   // --- the hunt -----------------------------------------------------------------
   { id: "ad-facts-wanted", skin: "classified", art: "chart", kicker: "WANTED", title: "FACTS. ANY FACTS.", body: "Every room hides a code. Scan it with your phone's 📷 Scan and file what you find.", button: "Scan a fact", pools: ["hunt", "malware"] },
@@ -125,7 +128,8 @@ export const IDLE_ADS: readonly IdleAd[] = [
   { id: "ad-hijack-free", skin: "hijack", art: "coin", kicker: "000. 000. 000.", title: "FREE!!! FREE!!! FREE!!!", body: "Everything is free. Nothing is free. Click here to find out which.", button: "FIND OUT", pools: ["malware"] },
   { id: "ad-hijack-hurry", skin: "hijack", art: "clock", kicker: "000. 000. 000.", title: "ONLY 000 LEFT IN STOCK", body: "Hurry. Hurry. Hurry. Hurry. Hurry. Hurry. Hurry. Hurry.", button: "HURRY", pools: ["malware"] },
   // --- after the hunts ------------------------------------------------------------
-  { id: "ad-truth-pong", skin: "banner", art: "pong", kicker: "IN THE BACKYARD", title: "TRUTH PONG", body: "A pyramid of cups, one ball, nowhere to hide. Head out to The Cloud.", button: "Serve", pools: ["late"], phases: ["truth_pong"] },
+  // DRAFT w59 (the kicker)
+  { id: "ad-truth-pong", skin: "banner", art: "pong", kicker: "IN THE CLOUD", title: "TRUTH PONG", body: "A pyramid of cups, one ball, nowhere to hide. Head out to The Cloud.", button: "Serve", pools: ["late"], phases: ["truth_pong"] },
   { id: "ad-trust-chart", skin: "tycoon", art: "chart", kicker: "LIVE ON THE TV", title: "WHO DO YOU TRUST?", body: "The Trust Chart is up on every screen in the house. Find your name. Or don't.", button: "Check the chart", pools: ["late"], phases: ["trust_chart"] },
   { id: "ad-beans-hotline", skin: "warning", art: "bean", title: "PRINTER FULL OF BEANS?", body: "Call the bean removal hotline. Our technicians are standing by with spoons.", button: "Call now", pools: ["late"], phases: ["beans", "overshare"] },
   // --- Y2K ---------------------------------------------------------------------------

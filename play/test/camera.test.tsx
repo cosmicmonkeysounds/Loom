@@ -34,6 +34,7 @@ describe("the camera's life", () => {
       auth: { token: "t", character: "Norton", admin: false, eventId: "default" },
       view: null,
       scan: (id: string) => Promise.resolve({ guest: { id, name: "Ada" }, card: { guest: { id, name: "Ada", faction: null, captured: false, location: null }, live: [], guestScoped: [], readouts: [] }, responses: ["✅ Cleared Ada."] }),
+      printed: () => Promise.resolve(null),
     } as unknown as PrimeSession;
     let closed = 0;
     const gate = closedGate(CLOSED_PASS_MS);
@@ -79,8 +80,8 @@ describe("the camera's life", () => {
     const session = { auth: { token: "t", character: "Norton", admin: false, eventId: "default" }, view: null } as unknown as PrimeSession;
     const html = renderToStaticMarkup(<ScannerScreen session={session} admin={false} onClose={() => {}} onOpenThread={() => {}} />);
     expect(html).toContain("<video");
-    expect(html).toContain("Or type the id on their pass");
-    expect(html).toContain("Scan a pass");
+    expect(html).toContain("Or type a pass id or a codex code");
+    expect(html).toContain("Scan a pass or a codex QR");
     expect(html).toContain("ico-scan");
     expect(html).not.toContain("behind");
   });

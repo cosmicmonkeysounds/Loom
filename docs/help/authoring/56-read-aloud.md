@@ -52,6 +52,51 @@ Everyone else's phones are unchanged: the lines land in the room as usual.
 Only lines spoken in a room are marked. A line addressed to one program stays
 a private message.
 
+## Lines the TV says
+
+A beat with a reader's lines and an agent character's lines in it waits for the
+reader. The whole beat lands at once, with its cues and branches, but the TV holds
+his lines back until the teleprompter's arrow reaches them. Then he says them, the
+teleprompter locks and scrolls through them, and it frees when he has finished, or
+after the time the words take if the TV is dead or muted.
+
+Nothing here can hang the night. With no reader on their phone the beat plays as it
+would without the mark, and a host (**▶ Let him speak** on Show), a director (the same
+button on the director phone and at the top of Run's Director page) can let his lines
+go at any time. His next scripted line in that room lets them go too: the held ones
+play first, then it, so a later beat is never lost behind a reader who stopped.
+
+A beat can hand over by itself: in *Trapped in the Internet*, Clippy's paragraph
+about Trabolta fires his entrance when her arrow passes her last line, or she
+presses **✓ Done**. The cue's button stays as the backup.
+
+## Other people's lines
+
+Anyone else with a line in a marked beat, but not named in `aloud:`, gets a small
+card with their line, and can join the teleprompter from it. It never takes their
+phone over. Name a part in `aloud:` only if they should get the whole script.
+
+Everyone in the scene shares one place in the script: anyone can move it, and whoever
+is pressing it has it until they let go. Hosts can join from Show.
+
+## A long read, and keeping it off the other phones
+
+*Trapped in the Internet*'s monologue is 14 minutes at the teleprompter, read by
+a part after the night's bad endings (`beats/truth.loom`). What makes that work:
+
+- **Give the lines to the part**, `Task Manager: …`, under `aloud: Task Manager`.
+  Narration under a part's `aloud:` reaches nobody.
+- **Put the beat in a hidden room with no check-in**, `hidden: true` and
+  `checkin: false`, so guests' Chats don't list it and the print sheet makes no
+  sign for it. Their phones still receive the lines; the room just never shows.
+- **Nothing waits for a reader.** A beat is instantaneous, so gate what comes next
+  on a director's cue: set a time when the read should be over and let the cue
+  ask first until then.
+- **A phone reloaded late** shows what landed in the last 20 story-minutes
+  (`ALOUD_WINDOW_MS`), which outlasts this read. Older lines are in ≡ Jump.
+- **Nothing warns you if nobody holds the part.** Keep a printed copy and a way to
+  hand the read to someone else.
+
 ## Choosing what to mark
 
 Mark speeches and read-outs. The pop-up takes over the phone, so leave a quick

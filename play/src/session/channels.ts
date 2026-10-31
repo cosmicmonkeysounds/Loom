@@ -4,7 +4,7 @@
 
 import type { AgentWait } from "../agent-wait.ts";
 import { pmOtherParty } from "../codex.ts";
-import { locationOfRoom, occupantsByLocation, type Presence } from "../presence.ts";
+import { isOnline, locationOfRoom, occupantsByLocation, type Presence } from "../presence.ts";
 import { CODEX_ROOM, PINNED_SPACE, QUEST_LOG, STORY_SPACE, WALLET_ROOM, channelHead, prettyName } from "../rooms/spaces.ts";
 import { CHAT_LOG_SUB, CHAT_LOG_TITLE } from "../rooms/chats.ts";
 import { groupByChannel, questSummary } from "../stream/runs.ts";
@@ -69,7 +69,7 @@ export function buildGuestChannels(
   const everyone: Presence[] = view
     ? [
         { id: view.id, name: view.name, kind: "guest", group: view.faction },
-        ...(view.people ?? []).filter((p) => p.kind === "guest").map((p) => ({ id: p.id, name: p.name, kind: "guest" as const, group: p.faction })),
+        ...(view.people ?? []).filter((p) => p.kind === "guest" && isOnline(p)).map((p) => ({ id: p.id, name: p.name, kind: "guest" as const, group: p.faction })),
       ]
     : [];
   const presenceOf = (id: string): { here?: boolean; people?: Presence[] } => {

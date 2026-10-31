@@ -1,22 +1,24 @@
 //! Wave 14 — the **scan-from-the-screen cards** (`GET /api/mod/cards`, the
 //! `/cards` page): every QR a director would otherwise print — room check-in
-//! signs, codex fact posters, the join poster and the reserved programs'
-//! invitations — with its QR drawn here as an SVG, so a laptop or the TV
-//! can show it full screen for a phone to scan.
+//! signs, codex fact posters, the join poster, the reserved programs'
+//! invitations and the staff badges — with its QR drawn here as an SVG, so a
+//! laptop or the TV can show it full screen for a phone to scan. Wave 59:
+//! each carries its text code, and only in-world names.
 //!
 //! It builds nothing new: the links are exactly `/api/mod/codes`' (the
 //! codex `?unlock=` links, the claims) plus `printExtras` (the join link,
 //! the check-in signs, the fact stacks). Pure apart from the QR drawing.
 
 import QRCode from "qrcode";
-import { CLUE_STACK, type CodexStack, type PrintExtras } from "./k12.ts";
+import { inWorldLabel } from "../../src/runtime/sim/model.ts";
+import type { CodexStack, PrintExtras } from "./k12.ts";
 
 export interface CardItem {
   /** Stable per card (`room:<slug>`, `fact:<id>`, …) — the page keys its ✓ on it. */
   ref: string;
   title: string;
   sub?: string;
-  /** The code a guest could type instead (absent for a digit note: title + QR only). */
+  /** The code to type instead of scanning (`routes/printed.ts`). */
   code?: string;
   url: string;
   svg: string;
@@ -30,7 +32,7 @@ export interface CardItem {
 }
 
 export interface CardSection {
-  kind: "rooms" | "facts" | "join" | "signs" | "invitations";
+  kind: "rooms" | "facts" | "join" | "signs" | "invitations" | "staff";
   label: string;
   items: CardItem[];
 }
@@ -55,7 +57,8 @@ export interface CardsInput {
   eventPass: string;
   codex: CardCodex[];
   extras: PrintExtras;
-  claims: { character: string; url: string }[];
+  claims: { character: string; code: string; url: string }[];
+  staff: { character: string; code: string; url: string }[];
 }
 
 /** The print sheet's pile order: gold (the hunt) → the tiers, commonest
@@ -91,6 +94,7 @@ export async function buildCards(input: CardsInput): Promise<CardsResponse> {
       ref: `room:${r.slug}`,
       title: r.label,
       sub: r.hidden ? "check in · opens later in the story" : "check in",
+      code: r.code,
       url: r.url,
       svg: await qrSvg(r.url),
       ...(r.hidden ? { hidden: true } : {}),
@@ -102,13 +106,12 @@ export async function buildCards(input: CardsInput): Promise<CardsResponse> {
   const facts: CardItem[] = await Promise.all(
     codex.map(async (e) => {
       const stack = stackOf(e.id);
-      const digit = stack?.stack === CLUE_STACK;
-      const sub = [stack?.stack, stack?.where, e.about !== null ? `about ${e.about}` : null].filter((s): s is string => typeof s === "string" && s !== "").join(" · ");
+      const sub = [stack?.stack, stack?.where === null || stack?.where === undefined ? null : inWorldLabel(stack.where), e.about !== null ? `about ${e.about}` : null].filter((s): s is string => typeof s === "string" && s !== "").join(" · ");
       return {
         ref: `fact:${e.id}`,
         title: e.title,
         ...(sub !== "" ? { sub } : {}),
-        ...(digit || e.code === null ? {} : { code: e.code }),
+        ...(e.code === null ? {} : { code: e.code }),
         url: e.url,
         svg: await qrSvg(e.url),
         ...(stack !== null ? { stack: stack.stack, colour: stack.colour } : {}),
@@ -119,11 +122,13 @@ export async function buildCards(input: CardsInput): Promise<CardsResponse> {
 
   const join: CardItem[] = [{ ref: "join", title: "Scan to join", sub: "pick who you are", code: input.eventPass, url: extras.joinLink, svg: await qrSvg(extras.joinLink) }];
 
-  const signs: CardItem[] = await Promise.all(extras.actions.map(async (a) => ({ ref: `sign:${a.name}`, title: a.label, sub: a.line, url: a.url, svg: await qrSvg(a.url) })));
+  const signs: CardItem[] = await Promise.all(extras.actions.map(async (a) => ({ ref: `sign:${a.name}`, title: a.label, sub: a.line, code: a.code, url: a.url, svg: await qrSvg(a.url) })));
 
   const invitations: CardItem[] = await Promise.all(
-    input.claims.map(async (c) => ({ ref: `claim:${c.character}`, title: c.character, sub: "invited badge · reserved program", url: c.url, svg: await qrSvg(c.url) })),
+    input.claims.map(async (c) => ({ ref: `claim:${c.character}`, title: c.character, sub: "invited badge · reserved program", code: c.code, url: c.url, svg: await qrSvg(c.url) })),
   );
+
+  const staff: CardItem[] = await Promise.all(input.staff.map(async (c) => ({ ref: `staff:${c.character}`, title: c.character, sub: "staff badge · this performer's only", code: c.code, url: c.url, svg: await qrSvg(c.url) })));
 
   const sections: CardSection[] = [
     { kind: "rooms", label: "Rooms", items: rooms },
@@ -132,5 +137,6 @@ export async function buildCards(input: CardsInput): Promise<CardsResponse> {
   ];
   if (signs.length > 0) sections.push({ kind: "signs", label: "Signs", items: signs });
   if (invitations.length > 0) sections.push({ kind: "invitations", label: "Invitations", items: invitations });
+  if (staff.length > 0) sections.push({ kind: "staff", label: "Staff badges", items: staff });
   return { title: input.title, eventPass: input.eventPass, sections };
 }

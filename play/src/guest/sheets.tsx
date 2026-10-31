@@ -6,6 +6,7 @@ import { Icon, IconTitle } from "../chrome/icons.tsx";
 import { useState } from "react";
 import { GroupPill, NameBadges, PersonAvatar, Sheet } from "../ui/primitives.tsx";
 import { badgesOf } from "./wire.ts";
+import { isOnline } from "../presence.ts";
 import type { GuestSession } from "../session/guest.ts";
 import type { PersonCard } from "../types.ts";
 
@@ -48,10 +49,10 @@ export function PersonRow({ card, onMessage }: { card: PersonCard; onMessage: ()
   );
 }
 
-/** The People directory — everyone here, by name, with limited info unless
- *  more has been shared with you. Message anyone privately. */
+/** The People directory — everyone online here, by name, with limited info
+ *  unless more has been shared with you. Message anyone privately. */
 export function PeopleSheet({ session, only, onClose }: { session: GuestSession; only?: ReadonlySet<string>; onClose: () => void }) {
-  const all = session.status?.people ?? [];
+  const all = (session.status?.people ?? []).filter(isOnline);
   const people = only ? all.filter((p) => only.has(p.id)) : all;
   const guests = people.filter((p) => p.kind === "guest");
   const cast = people.filter((p) => p.kind === "character");

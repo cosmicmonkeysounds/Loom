@@ -28,6 +28,10 @@
 ##   a first-timer knows why they stopped.
 ## - **Hit** ([member hit_button]): either trigger, or A / X — the King's
 ##   hit (the game takes the press, not the hold).
+## - **The run reset** (wave 59, [member reset_chord]): both triggers + A,
+##   held. "Both triggers" is any two of the index and grip triggers, because
+##   the show's headsets have only the right controller: its own two count,
+##   and so do one of each hand's (X counts as A, as it does for the hit).
 ##
 ## - **Small / big** (wave 49, [method set_eye_scale]): the eye height only;
 ##   the body's capsule, the poses and the reach stay the real ones.
@@ -79,6 +83,9 @@ var right_stick := Vector2.ZERO
 ## The hit button held (a trigger, A / X; Space / F on the desktop rig),
 ## refreshed with the sticks.
 var hit_button := false
+## The run reset's chord held (both triggers + A; R on the desktop rig),
+## refreshed with the sticks.
+var reset_chord := false
 ## Read the devices each tick (off in tests that drive the sticks).
 var read_input := true
 ## Desktop rig: a click captures the mouse for looking around (off in the
@@ -322,15 +329,30 @@ func _read_sticks() -> void:
 		if left_stick == Vector2.ZERO:
 			left_stick = Vector2(0.0, right_stick.y)
 		hit_button = false
+		var pulled := 0
+		var a := false
 		for hand: XRController3D in [right_hand, left_hand]:
 			if hand.is_button_pressed("trigger_click") or hand.is_button_pressed("ax_button") or hand.get_float("trigger") > 0.8:
 				hit_button = true
+			if hand.is_button_pressed("trigger_click") or hand.get_float("trigger") > 0.8:
+				pulled += 1
+			if hand.is_button_pressed("grip_click") or hand.get_float("grip") > 0.8:
+				pulled += 1
+			a = a or hand.is_button_pressed("ax_button")
+		reset_chord = chord(pulled, a)
 		return
 	var k := func(a: Key, b: Key) -> float:
 		return 1.0 if Input.is_physical_key_pressed(a) or Input.is_physical_key_pressed(b) else 0.0
 	left_stick = Vector2(k.call(KEY_D, KEY_NONE) - k.call(KEY_A, KEY_NONE), k.call(KEY_W, KEY_UP) - k.call(KEY_S, KEY_DOWN)).limit_length(1.0)
 	right_stick = Vector2(k.call(KEY_E, KEY_RIGHT) - k.call(KEY_Q, KEY_LEFT), 0.0)
 	hit_button = k.call(KEY_SPACE, KEY_F) > 0.0
+	reset_chord = k.call(KEY_R, KEY_NONE) > 0.0
+
+
+## Whether `pulled` triggers (index and grip, of either hand) and A / X make
+## the run reset's chord.
+static func chord(pulled: int, a: bool) -> bool:
+	return a and pulled >= 2
 
 
 ## Room scale (each frame): move the body under the head with a slide of its own (floor

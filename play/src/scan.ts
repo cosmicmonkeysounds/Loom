@@ -4,7 +4,9 @@
 //! join QR (`…/?code=<event>`), the codex QRs (`…&unlock=<code>`) and the
 //! room check-in signs (`…&checkin=<room>`, K-13); a
 //! booth recognises those so the performer hears "that's a wall code"
-//! instead of a bare 404. Mirrors `terminal/src/scan.ts`.
+//! instead of a bare 404. Wave 58: a codex QR is a booth's to read, so its
+//! entry lands in the character's Codex (`booth/scanner.tsx`). Mirrors
+//! `terminal/src/scan.ts`, whose terminals still read only passes.
 //!
 //! A guest's printed **badge** (wave 23, `…&badge=<code>`) is their pass
 //! too: its code goes to `/api/scan`, which resolves it. An invited badge
@@ -40,7 +42,7 @@ export function parseScan(raw: string): ScanHit {
     if (url.searchParams.has("code")) {
       if (url.searchParams.has("act")) return { kind: "wall", unlock: null, sign: true };
       const checkin = url.searchParams.get("checkin");
-      return checkin !== null ? { kind: "wall", unlock: null, checkin } : { kind: "wall", unlock: url.searchParams.get("unlock") };
+      return checkin !== null ? { kind: "wall", unlock: null, checkin } : { kind: "wall", unlock: url.searchParams.get("unlock")?.trim() || null };
     }
     const id = url.searchParams.get("pass") ?? url.searchParams.get("guest");
     if (id !== null && GUEST_ID.test(id)) return { kind: "guest", id: id.toLowerCase() };
@@ -66,7 +68,8 @@ export const BADGE_NOT_LINKED = "That badge isn't linked to a guest yet — they
 /** A performer's badge held up at a booth (wave 54). */
 export const STAFF_BADGE = "That's a staff badge. Staff use the staff door: nobody scans them in.";
 
-/** The words a performer sees for a scan that wasn't a pass. */
+/** The words a performer sees for a scan a booth can't use; null for a pass
+ *  or a codex QR, which it can (wave 58). The `unknown` line is DRAFT w58. */
 export function scanProblem(hit: ScanHit): string | null {
   switch (hit.kind) {
     case "guest":
@@ -76,9 +79,9 @@ export function scanProblem(hit: ScanHit): string | null {
     case "wall":
       if (hit.sign === true) return "That's a sign for a guest's own phone — scan the guest's pass.";
       if (hit.checkin !== undefined) return "That's a room sign — scan the guest's pass.";
-      return hit.unlock !== null ? "That's a codex code from the wall — scan the guest's pass." : "That's the join code — scan the guest's pass.";
+      return hit.unlock !== null ? null : "That's the join code — scan the guest's pass.";
     case "unknown":
-      return "That QR isn't a guest pass.";
+      return "That QR isn't a guest's pass or a codex code.";
   }
 }
 

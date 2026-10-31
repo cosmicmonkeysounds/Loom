@@ -21,15 +21,15 @@ The show, *Trapped in the Internet* (Oct 31 2026), is the Loom project in
 | `src/runtime/sim/` (rest) | `crews.ts` (crews, faction mode), `board.ts` (watch / countdown), `badges.ts`, `stats.ts`, `channel-types.ts`, `effects.ts`, `DESIGN.md` |
 | `src/lsp/` | `Workspace` (completion, hover, definition, references, symbols, diagnostics), `graph.ts` (the story graph), `rename.ts`, `w18-lints.ts` … `w55-lints.ts` (workspace lints L12xx) |
 | `src/*.ts` | browser-safe shared modules: `house-desk.ts` (wave 25, `@loom/core/house-desk`), `talk-back.ts` (wave 32, `@loom/core/talk-back`: `TalkView`, `readTalkPost`, `talkView`) + `talk-scenes.ts` (the show's canned talk lines, `DRAFT w32`), `cue-sheet.ts`, `pick-echo.ts` (wave 28), `voice-fx.ts` (wave 56), `host-board.ts`, `delivery.ts`, `facts.ts` + `answer-match.ts`, `casino.ts`, `go.ts`, `show-clock.ts`, `identity-kind.ts` |
-| `server/server.ts` | process boot, static apps (`/`, `/terminal/`, `/reinstall/`, `/cards`, `/webmaster/`), `/api/health`, `/api/resolve-code`, control-plane routing |
+| `server/server.ts` | process boot, static apps (`/`, `/terminal/`, `/reinstall/`, `/cards`, `/costume`, `/webmaster/`), `/api/health`, `/api/resolve-code`, control-plane routing |
 | `server/event-runtime.ts` | one live event (`EventRuntime`, ~7,000 lines): every `/e/:id/api/*` handler, the journal commit + `fanout`, restarts, the ticker |
 | `server/registry.ts` | `EventRegistry`: one `EventRuntime` per event, rehydrated at boot |
 | `server/views.ts`, `chat.ts` | pure projections: `GuestView` / `PrimeView` / `ModView`, and SimEvent → channel messages. The editor imports both (`@loom/core/views`, `@loom/core/chat`) |
-| `server/routes/` | route modules split out of the runtime: `host.ts` (the host allowlist), `screen.ts` (the terminals' screen state + heartbeat), `claims.ts`, `crews.ts`, `sides.ts`, `cards.ts`, `recap.ts`, `mod-log.ts`, `metrics.ts`, `press-lines.ts`, and the OCT31 item files `k12.ts` (print sheet, wave 54's `actions` signs), `k13.ts` (check-in), `k31.ts` / `k31b.ts` (push), `n02.ts` (re-pair, release), `rejoin.ts` (wave 23: badges, invitations re-entering, ask a host, per-part staff badges; wave 54: invited badges) |
+| `server/routes/` | route modules split out of the runtime: `host.ts` (the host allowlist), `screen.ts` (the terminals' screen state + heartbeat), `claims.ts`, `crews.ts`, `sides.ts`, `cards.ts`, `recap.ts`, `mod-log.ts`, `metrics.ts`, `press-lines.ts`, and the OCT31 item files `k12.ts` (print sheet, wave 54's `actions` signs), `k13.ts` (check-in), `k31.ts` / `k31b.ts` (push), `n02.ts` (re-pair, release), `rejoin.ts` (wave 23: badges, invitations re-entering, ask a host, per-part staff badges; wave 54: invited badges), `printed.ts` (wave 59: a typed code back to its QR's link) |
 | `server/` hubs | transport-free, clock-injected classes: `agents.ts` (`AgentHub`), `spatial.ts` (`SpatialHub`), `spatial-voice.ts`, `spatial-cams.ts`, `wallet.ts` (`WalletBook`), `facts.ts` (`FactsBook`), `push.ts` (`PushHub`), `audio.ts`, `lights.ts`, `lights-shown.ts` (wave 39: the lights estimate + the games' `lights` frame feed), `desk.ts` (`DeskHub`, wave 25: the house desk's runs, playhead, check marks; pure model `src/house-desk.ts`), `collab.ts` (`CollabHub`, Yjs), `live-file.ts` (`LiveFileSource`: a project file read live; `credits.ts`, `descent.ts`) |
 | `server/` control plane | `config.ts` (env), `boot.ts`, `db/` (`queries.ts`: access is `getProjectFor` / `listProjectsFor`), `auth-server.ts` (BetterAuth), `projects.ts`, `events-api.ts`, `collab-api.ts`, `mail.ts`, `migrate.ts` |
 | `server/store.ts` | the per-event state dir: journal, codes, sessions, meta (scenario source + phase), project snapshots |
-| `scripts/` | `titi-facts.ts`, `loomcheck.ts`, `show-page.ts`, `sync-example.ts`, `live-guard.ts` |
+| `scripts/` | `titi-facts.ts`, `titi-qr-lock.ts`, `loomcheck.ts`, `show-page.ts`, `sync-example.ts`, `live-guard.ts` |
 | `examples/load.ts` | the project loader (`scenarioSource`, `main.loom` first, like `db/queries.ts` `projectSource`) |
 | `test/` | vitest, ~160 files; show suites are `trapped-*.test.ts`; fixtures in `test/fixtures/` |
 
@@ -43,6 +43,7 @@ pnpm --filter @loom/core serve                           # event server on :7000
 pnpm --filter @loom/core migrate                         # control-plane tables
 pnpm --filter @loom/core loomcheck examples/trapped-in-the-internet --smoke
 pnpm --filter @loom/core titi:facts --check              # the show's generated files are current
+pnpm --filter @loom/core titi:qr-lock [--check]          # hold the story to what was printed (once printed)
 pnpm --filter @loom/core show:page --check               # SHOW.html is current
 pnpm sync-example "<project>" [example]                  # from the repo root: push an example + reload
 pnpm dev                                                 # from the repo root: the whole dev stack
@@ -82,7 +83,8 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   forced descent level (wave 49; a story reset forgets the last two), when
   Clippy's dream takes over and whether the TV has named the bug
   (`ScreenWatch` `dreamAt` / `dreamHeard`, wave 50: a restart replays the cue
-  as history and the dream is simply on), and
+  as history and the dream is simply on), the teleprompter's scene, position and
+  holds (wave 59: a restart forgets them and the rest of the lines play), and
   most hub timers live in memory and are lost on a process restart.
   Document a new one the same way.
 - **Server changes are additive.** Old clients (terminals on old
@@ -101,11 +103,38 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   codes, or a live event's passcodes. `show-page.test.ts` fails if the
   generated `SHOW.html` names any secret it reads from `facts.json` or
   the story.
+- **A hunt key still owed** (wave 58, the contract's C1, `facts.ts`
+  `Question.placeholder`). A
+  question may ship before its answer: a stand-in `answer` carrying
+  `PLACEHOLDER_MARK`, flagged `placeholder: true` (`showFactsProblems` refuses
+  one without the other). `judgeWidget` passes a filing on it with no verdict,
+  so the story's own "could not be judged" path answers and nothing is
+  recorded, credited or marked; `screenResultsOf` and the generated tables
+  never show it; `titi:facts`, `loomcheck` and predeploy WARN by id. Tests that
+  need H1–H3 judged run on `test/fixtures/hunt-keys.ts`. A question's optional
+  `spoken` is what the reader says instead of `text` (a blank, which the voice
+  strips); the card, the Quest Log and the slide keep `text`.
 - **Directors stay unseen.** No phone but a director's own (Run, the
   director phone) reads a director's name: guests see the hosts, booths
   (hosts included) read parts by name and every director as "Director".
   Anything that carries a journal `by` (an author's display name) into a
   booth, host or guest view goes through `server/unseen-directors.ts`.
+  Wave 59: a Run persona (Run's Start seats one named after you) leaves
+  every phone's lists there too: `people`, `roster`, `guests`, a `pick:`,
+  the Wanted board, a host's `people` and `roster`. Only Run and a
+  director's own Players pane (`Client.pane`, never a wall terminal's
+  pilot) keep them. A persona that acts reads "Director" on every other
+  phone: its chat lines (`forGuest`, `forBooth`, by name, so a real guest
+  who shares it keeps it), a crew or side it founds (`seenCrews`), and a
+  host's `/api/mod/recap` leaves it out (`RecapOptions.hide`). The one thing
+  left is a story line that prints the name in its own text, such as the
+  `# hosts` note when a persona founds a faction.
+- **Who is online** (wave 59, `peopleRound`): an open stream as `presence()`
+  counts it, or a phone or booth heard from inside `ONLINE_GRACE_MS`
+  (`host-board.ts`, 3 minutes). `PersonCard.online` and `PrimeGuest.online`
+  say so per row and the phone filters: those rows also name DMs, wallet
+  picks and scanned cards. The open night checks every 15 s and sends a
+  round if it moved (`checkPresence`).
 - **A locked phone writes nothing** (wave 26, C2). While the story's
   `lock:` header holds for a guest (`views.ts` `isLocked`), every
   `/api/guest/*` POST answers `403 {"error": "locked"}` from one check at
@@ -167,7 +196,9 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   The story's `Night.talk` names one (`intro`, `bottle`, `ad`, `beans`;
   `"none"` otherwise) and `src/talk-scenes.ts` `TALK_SCENES` holds each
   one's title, hint and canned chips (`EventRuntimeInit.talkScenes`
-  injects a fixture's). `POST /api/mod/talk {as: "Clippy" | "Trabolta",
+  injects a fixture's). Since wave 58 `intro` opens on 🤖 for after his
+  sign-off and has no ⚡ (its `glitch` is absent; `ad_burst` refuses it).
+  `POST /api/mod/talk {as: "Clippy" | "Trabolta",
   text, direction?}` (mod auth, on the host allowlist; never named
   `/api/mod/agent…`) commits a `say` in `loc:The Desktop` with audience
   `"all"` `by` the host (400 `as|empty|too_long|direction`, 409
@@ -203,7 +234,9 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   /api/spatial/prefs` saves `{turn}` to `spatial-prefs.json` in the state
   dir (kept across restarts and story resets). Neither commits to the
   story. Since wave 33b no client posts `prefs` (VR's snap turn is gone);
-  the route stays (additive).
+  the route stays (additive). `POST /api/spatial/reset` (wave 59,
+  `SpatialHub.runReset`) puts a stuck walk back at its spawn and deals Gerald a
+  new spot; it commits nothing and moves no clock, level or hit.
 - **The house soundtrack** (wave 38,
   [`docs/loom-w38-contract.md`](../docs/loom-w38-contract.md) C3/C5).
   The story cues `cue music_<scene>` at each act change and mirrors it in
@@ -451,6 +484,101 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   `->` does not end the hook, so a guard must be one `if` chain, and `super`
   only splices at hook level. Tests: `test/server-rejoin.test.ts`,
   `test/trapped-w54-door.test.ts`.
+- **One holder** (wave 59, `routes/rejoin.ts` header; overrules wave 23's
+  take-over and wave 54's "old tokens stay good"). A part or a Person is one
+  phone's. `/api/guest/enter` and `/api/prime/login` are where the rule lives,
+  so anything that reaches them inherits it, a typed code too: a held card
+  answers 409 `{held: true, name?, ref?}` (`heldAnswer`: only what is printed
+  on that card, so a blank badge names no program). A live token on the same
+  call proves the holder: nothing new is minted. Held means a live token or
+  session; offline is no release. Releases: `/api/guest/logout`,
+  `/api/prime/logout`, `/api/mod/guest/release`, `/api/mod/prime/release`
+  (both on the host allowlist), a collected ask (`Rejoin.handOver`), a spent
+  N-02 code, a story restart for a guest, Go live for a part (a booth survives
+  a plain restart). A release sends the guest's stream `lifecycle {kind:
+  "released"}` and keeps the token in `releasedTokens` (memory only) so a phone
+  that slept through it reads `SIGNED_OUT`. An Approve moves nothing: the waiting
+  phone's poll runs `handOver` (so an ask nobody is waiting on changes nothing)
+  and a retried poll gets the same token for `REJOIN_RETRY_MS`. `POST
+  /api/guest/rejoin/cancel` is the phone giving up, and any sign-in or release
+  closes the open asks on that Person or part (`Rejoin.closeAsks`; every guest
+  release goes through `Pairing.cut`, which voids the Home Screen codes too), so
+  the poll answers `closed` once. `register` asks `Rejoin.joinCard` before the
+  name and again after the picture's await, so it keeps `enter`'s rule and two
+  phones can't become one program. An invited badge's number names its program
+  (`Claims.programOfBadge`, the print order: reordering the reserved CHARACTERs
+  moves every invited badge), so a missing claim behaves as a present one, and it
+  never links to another Person (409 `{reserved: true, name}`). `/api/scan` and
+  `/api/mod/scan` only read a badge. A director's play-as holds nothing and is refused nothing.
+  A Home Screen nonce (K-31b, off by default) is the one sign-in that adds a
+  token: the same phone. The house is one IP, so a wrong badge at `enter` or
+  `rejoin` counts against nobody, and `Rejoin.passesLockout` lets the guest code
+  with a badge, a name, or a real part or claim (a staff or invited badge; 50
+  bits, so right and wrong may read apart), and any poll or cancel, past a
+  lockout; a wrong part or claim still counts and stays behind it
+  (`routes/rejoin.ts` header). Tests: `test/w59-claims.test.ts`.
+- **Text codes and in-world names** (wave 59, `routes/printed.ts`, `routes/k12.ts`).
+  Every printed QR has a text code: the guest code, a badge's, a staff badge's
+  (the part code, printed: wave 54's "no typed code" is overruled), `R-` + four
+  for a room and `S-` + four for a sign (`roomCode`, `signCode`: the claim secret
+  and the folded name), a codex entry's own (`CodexDef.printed`, as written;
+  `code` stays folded and the QR's link keeps it), the digit notes' too.
+  `printedHit` turns what was typed back into **the link the QR carries**, so
+  a typed code takes the scan's path. `POST /api/guest/printed` and
+  `/api/prime/printed` `{code}` → `{hit: {kind, url} | null}` come first in both
+  Scan sheets; a codex code answers null, like a miss, so this is no oracle and
+  the redeem routes keep the miss rules. `/api/guest/codex/redeem` asks
+  `printedHit` too, for whatever skips that question (a terminal's TYPE A CODE):
+  a printed code answers `printed: <kind>`, no miss. `{spaced: true}` is the Scan
+  sheet's typed text: spaced text no entry holds answers `words: true` with no
+  story event, and counts against `redeemMisses`; a real code typed with spaces
+  unlocks. Without the flag spaced text is still a miss (the Codex's box).
+  `/api/resolve-code` takes a badge's
+  code only (`printed`: the path): a room's short code or name must not hand out
+  the guest code. Misses are limited per guest or part (`printedAsks`,
+  `LOOM_RL_PRINTED`). `inWorldLabel` (`src/in-world.ts`, no imports, so a phone can
+  use it) is a `label:`
+  as a player reads it: brackets and a ` — ` tail are the crew's. Every
+  guest-facing title goes through it (`Sim.channelHead`, `locationSnapshots`
+  unless `operator`, check-in, capture, the reveal shot, `/cards`, the signs, a
+  Go button, the booth's upload stage), and so do Trabolta's facts and dossier,
+  which reach his prompt. `operatorChannels` and `ModView.locations` keep the
+  whole label. `pnpm --filter @loom/core titi:qr-lock` writes `qr-lock.json` (hashes
+  only; `printedIdentities` is the list of what a story can move), `--check`
+  fails naming what moved, `predeploy.sh` and `sync-show.sh` run it once the file
+  exists, `LOOM_QR_MOVED=1` / `--qr-moved` goes past it. A hidden room's identity
+  includes whether a `reveal` line opens it (`storyReveals`), so losing the last
+  one fails `--check` though the link and code are unchanged; writing the lock
+  refuses while a printed room has none (`deadRooms`; the override locks it, and
+  it stays a warning). It can't see behind a reveal: one in a beat the night never
+  reaches, or a sign's button edited to do nothing. Tests:
+  `test/w59-printed.test.ts`, `test/w59-qr-lock.test.ts`.
+- **A booth scans codex QRs** (wave 58,
+  [`docs/loom-w58-contract.md`](../docs/loom-w58-contract.md) C4). `POST /api/prime/codex/redeem {code}`
+  (a booth's token, a host's too: it is off the host allowlist's surface)
+  answers `/api/guest/codex/redeem`'s shape (`{ok, unlocked, title?, already?,
+  missed?}`, no `codex`). A part is no Person, so `Sim.redeem` would do nothing:
+  a hit is the journaled `unlock` (`via: "story"`, so its card reads *Learned
+  tonight*), and a miss is no story event (no `codexMissed`, no `wrong code`, no
+  doubt), only `redeemMisses`, keyed by the part. 409 with the doors closed; 403
+  without a character (a guest, a locked guest, a director); `agentRefusal` for
+  an operator playing an agent-voiced part. `secret` never limits a scan: it
+  only hides an entry from agents, and `agentVarsOf` and the holdings filters
+  keep a part's secret entries out of every request. `isLocked` reads Persons
+  only, so no part is ever locked. Holdings are Persons-only where it counts:
+  `codex_in`, awards, the recap, the letters; `program learns` hooks run only
+  for Persons, so a part assembles no Door Code. `/api/prime/codex/share` stays
+  unfiltered: a part can pass on anything it holds. Tests:
+  `test/w58-booth-scan.test.ts` (all 8 parts over every coded entry of the show,
+  every code read from the compiled model).
+- **A room opens on its beat, for the crew too** (wave 59). A `hidden: true` GROUP's
+  `kind: faction` channel is closed to everyone until `reveal`, the members a beat
+  added early included (`canSeeChannel`, `factionUnrevealed`). `Sim.allChannelsFor`,
+  what a booth lists and may post into, now holds only what the story has opened to
+  anyone (`channelOpened`, `locationOpened`: revealed, or someone has stood there), plus
+  where that booth stands. `operatorChannels` uses `channelOpened` for chat rooms and
+  sides, and keeps every LOCATION: a beat can land in a room no phone lists (The
+  Script). Tests: `test/w59-rooms-open.test.ts`, `test/sim-reveal.test.ts`.
 - **The teleprompter** (wave 55, [`docs/loom-w55-contract.md`](../docs/loom-w55-contract.md)).
   A beat's contract line `aloud:` names who reads it: parts
   (`aloud: Clippy, Task Manager`, `@<Character>`) or a program (`aloud:
@@ -464,15 +592,112 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   every guest but a reader, and `fanout` pushes `aloudPush` to a hidden phone.
   How far a reader has read is their phone's. `L1227` catches an `aloud:` naming
   no signable part (`src/lsp/w55-lints.ts`). Tests: `test/w55-aloud.test.ts`.
+- **The shared teleprompter** (wave 59,
+  [`docs/loom-w59-prompter-contract.md`](../docs/loom-w59-prompter-contract.md)).
+  `server/prompter.ts` (`Prompters`, `sceneOf`; transport-free, memory only, never
+  journaled): `fanout` lands a scene from each commit's marked lines, one at a time.
+  `heldFrom(channel)` is the screen poll's `extras.voiceHeldFrom`, and `voiceLinesOf`
+  stops just before it, `head` included. The position is in words, owned here (`pos`,
+  `rate`, `stop`), moved by `POST /api/aloud` (a booth's or guest's token, not under
+  `/api/guest/`, refusals 409 `prompter: …`) and by `tick` (a 200 ms timer while a
+  scene is on, and every screen poll). Reaching a run of his lines moves the hold,
+  locks and scrolls; `roomVoiceOf` (`said`, `sp=`, the mute) ends it, or the time from
+  `spokenMs`. No reader on the prompter means no hold (`HOLD_WAIT_MS`, `HERE_TTL_MS`);
+  anyone else's open prompter counts only while they drive it (`DRIVE_TTL_MS`). `fanout`
+  calls `outrun` on a batch with no scene: a scripted line of his in the room (`beat`
+  present; a live `say` has none) lets the hold go, in order.
+  `POST /api/mod/aloud {action: release | done}` is on the host allowlist. Every
+  stream's first frames include a `prompter` (null with none). `pushLifecycle` clears
+  it. `finished` (the position reached `total`, or a reader's ✓ Done, once a scene) is
+  `sceneFinished`: the end of `Clippy On Trabolta` fires `introduce_trabolta` through
+  `deskFire` unless he is already in (the contract's C11). Paused doors answer false, so
+  nothing is used up, and a ✓ Done behind them goes in `openDoors`. A newer scene over
+  hers is `superseded`: one alert in `# hosts`, and 🤖 from there. `inUse`, not `status()`,
+  is what must not cut across a read asks: a scene nobody opened, or one whose
+  reader's phone died, stays up but nobody is on it.
+  Tests: `test/w59-prompter.test.ts`, `test/w59-prompter-server.test.ts`.
 - **His voice** (wave 56, [`docs/loom-w56-contract.md`](../docs/loom-w56-contract.md)).
   `src/voice-fx.ts` (`@loom/core/voice-fx`, pure) decides how broken Trabolta
   sounds: `voiceLevel` (a curve over `Night.phase`, the Y2K clock, scaled by
-  `Trabolta.composure`; healed by `Night.talked_down`), `voiceSpikeOf` (the
+  `Trabolta.composure`; clean at `finale_help` and `finale_truth`), `voiceSpikeOf` (the
   glitch, burst, flicker and dream shots, a director's shot) and the mode
   (`auto | clean | broken`). `ScreenWatch` puts `voiceFx` on every answer. The
   mode lives beside the mute (`Store.loadVoiceFx`, in the state dir); the shot
   is memory only. `POST /api/mod/screen/voice {fx?, shot?}` is on the host
   allowlist. Tests: `test/voice-fx.test.ts`, `test/trapped-w56-voice.test.ts`.
+- **The full truth** (wave 58, [`docs/loom-w58-contract.md`](../docs/loom-w58-contract.md)
+  C2, `examples/.../beats/truth.loom`, story only but for three small reads). The monologue plays on the director's 📜
+  `tell_the_truth`, after an ending's last beat: `The Full Truth` (Trabolta, 18
+  merged lines, `MAX_VOICE_LINES` keeps a poll's newest 40; phase `finale_truth`,
+  level 0) or `The Full Truth Read` (`Task Manager:` lines under `aloud:` in the
+  hidden, no-check-in room `The Script`: narration under a part's `aloud:` reaches
+  nobody, and a guest's line of it is delivered but never listed). G1's `while:`
+  waits for `Night.truth_until`, and its rule asks first (as G11's does; a host
+  hook on G1 must not fire on the ask). `READING_BEATS` keeps his lines out of the
+  worker's `recent`, `PERSISTENT_SLIDES` holds `recount` and `purgatory`, and
+  `ALOUD_WINDOW_MS` outlasts the 14-minute read. Both versions and Task Manager's
+  printed copy are held to the delivered file by `test/trapped-monologue.test.ts`.
+- **The Task Manager costume** (wave 59, [`docs/trapped/costume.md`](../docs/trapped/costume.md)).
+  An iPad 2 on iOS 9, so `server/costume-page.ts` is a hand-written ES5 page with
+  its script and stylesheet as their own files (`test/w59-costume-page.test.ts`
+  parses it with acorn: keep it ES5, no grid, no `gap`). `costume.json` (schema,
+  refusals and cooldowns in `src/costume.ts`) is read live like the credits,
+  `sync-show` always replaces it, `loomcheck` lints it, and code holds the same
+  menu as a default. `secretCode(claimSecret, "costume")` opens `POST
+  /api/costume/menu` and `/fire {k, id}` and nothing else: it is no session.
+  Refusals are `momentRefusal` + `actionRefusal`, judged before anything is
+  committed, so the story's own `ad_burst` refusals never reach `# hosts`. The
+  night's end is `Night.step` 16 on (the reveal, the bobbing, the prom and the
+  advice poll all play with `Night.ended` false; `step` is what a story edit must
+  keep). A press is refused while anyone is on the shared prompter
+  (`Prompters.inUse`: a phone showing the scene, a finger on it, his lines waiting
+  or going), never by the scene alone: a beat nobody opened, or one whose reader's
+  phone died, stays live until a ✓ Done, a newer scene or a restart.
+  MUSIC is refused while anyone else's hand is on the soundtrack
+  (`AudioHub.musicHand`: the last scene, stop, hand playlist, held pause or Stop
+  house sounds' `by`, memory only, corrected by the router's `hand`; a Stop holds
+  until a scene is reported again, and ⏵ gives back the hand its ⏸ sat on;
+  Trabolta's loan is no hand, so AFTER PARTY or BACK TO NORMAL ends it and NEXT
+  TRACK only moves the track), and AFTER PARTY's timed return stands down then
+  too, or waits out a host's ⏸ on it (`pausedOver`). Every
+  action uses the house's own path (`lights.test`, `audio.play`, `audio.music`,
+  `deskFire(cue, COSTUME_BY)`, the canned `say`). A light item never reaches a
+  safety fixture (`costumeFixtures`), and the show's stay on `living`, which every
+  story look covers, so re-firing `Night.lights` gives it all back; if he puts a
+  room out during the 6 s hold, only what the press moved goes back
+  (`costumeRoomOutRestore`), and nothing in the dark room. A fire journals
+  `costume_pressed` (no hook hears it) with the label as its subject: that is the
+  mod log's line. `GET` / `POST /api/mod/costume` is the link and the kill switch
+  (directors only, never on the host allowlist; `costumeOff` beside the TV mute in
+  the state dir). The cooldowns, a restore that is due and the rest of an ad storm
+  are memory only. Tests: `test/w59-costume.test.ts`.
+  He does not return from Combo A or B: a reply written while `awake` read true
+  and landing after it went false is dropped (410, `asleepSinceAsked`) and the
+  thread is asked again, because the worker's gate answers through the same
+  `/api/agent/reply` (the `unavailable` and distress lines). Never gate that route
+  on `awake` alone. Tests: `test/w58-agent-late-reply.test.ts`,
+  `test/trapped-w58-gone.test.ts`.
+- **The special prize** (wave 58, the contract's C5, G9a `award_most_correct`). `questions_right`
+  is written per program only when G9a is pressed (a role watcher on
+  `Night.prize_gen`; a watcher pass runs the programs' before the story's, so
+  the story watcher reads the new numbers) and sits on the role's `secret:`
+  list: a live count beside `truths_accepted` would tell the worker who lied.
+  `recap.ts` `questionsRight` reads the same rule live, and
+  `test/trapped-w58-prize.test.ts` holds the two together. `titi:facts` writes
+  `Night.owed_<id>` (`owedVar`) from `Question.placeholder`.
+- **The music manager** (wave 58, landed with wave 59,
+  [`docs/loom-w58-music-contract.md`](../docs/loom-w58-music-contract.md)). `MusicCommand`
+  gains `previous`, `pause`, `resume`, `playlist`, `tidal`; `MixerMusic` gains
+  `tidal` and `loan`, a bed `live`, each optional (`audioMusicOf`). The words both
+  panels draw are in `src/house-mixer.ts` (`musicSource`, `djLines`, …).
+  `MixerView.dj` is `musicDjOf` over the sim's world, null for a story without
+  `Night.dj_locked`; a host's read leaves a Run persona off its pals
+  (`audioContext(hide)`). `applyAgentActs` refuses `change_the_music` while
+  `musicHand()` is anyone's, so no use is spent and nothing is told. The header `warmth: <slot> <min> to <max>` (`model.warmth`,
+  ROLE slots keep no range) names the one guest slot an agent's `adjust` may move,
+  `them.<slot>`, by `Math.sign` whatever was asked; `them.ranges` offers it to a
+  guest's request. Every other guest `them.` key is still ignored. Tests:
+  `test/w58-music.test.ts`, `test/trapped-w58-music.test.ts`.
 - **Hub files have one owner at a time.** `event-runtime.ts`,
   `views.ts`, `chat.ts` and `sim.ts` are touched by almost every
   feature; when several agents work in parallel, give each of these to

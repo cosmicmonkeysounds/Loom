@@ -175,7 +175,7 @@ describe("a voiced scene on the TV (wave 26, V1)", () => {
     expect(voiceCaption(s("verdict"), v)).toBe("I am Jean Trabolta.");
     expect(voiceCaption(s("trabolta_introduction"), v)).toBeNull(); // the intro types it itself
     expect(voiceCaption(s("bottle_landed"), v)).toBeNull(); // the bottle draws "<pick>." and "Truth or dare?"
-    // advice_helped: SandyChat types the proposal (its `drawn`), the rest is captioned.
+    // advice_helped: her window types the proposal (its `drawn`), the rest is captioned.
     expect(voiceCaption(s("advice_helped"), { ...v, mark: 6 })).toBeNull();
     expect(voiceCaption(s("advice_helped"), { ...v, mark: 0 })).toBe("I am Jean Trabolta.");
     expect(voiceCaption(s("verdict"), { ...v, spoken: null })).toBeNull();

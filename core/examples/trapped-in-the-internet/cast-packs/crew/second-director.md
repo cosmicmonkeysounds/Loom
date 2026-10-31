@@ -47,6 +47,16 @@ cues early: it cuts the window short. Hold 🕚 until the patch-bay watch radios
 After 🍎, press 📄 (truth.txt holds on the screens while the bobber reads),
 then **⚖** for the verdict when they finish.
 
+**1a. The opening, in order (wave 58: the Oct 30 script).** ⏰ brings up Clippy's
+welcome back; she presses 🎱 🎀 🎯 🤐 and each brings up her next words, so
+nothing there is yours. Once Norton has taken the first program out: radio
+**INTRO**, then **📺** only if a program is walking (nobody walking: skip it;
+it is never NEXT). **🎤** brings up her paragraph on Trabolta. **🤖** on her
+*"Trabolta, would you explain the rules?"*, not before: he speaks for about
+three minutes, clean, and the 🤖 Talk card waits for *"it's electrifying."* A
+minute or so of talk, then **🔎** (nothing is said on it). **⚖️** brings up her
+welcome back, and **⏱** her hand to him.
+
 **1b. The First Moment of Truth, in order.** V6 opens a two-minute filing
 window. ⏱ closes it (or it closes itself: then ⏱ ticks and NEXT is 📋). Then 📋 once per question (Q1, Q2,
 Q3): Trabolta reads the result on the TV and the filings settle.
@@ -92,24 +102,24 @@ against the final verdict for good; that is the point. A typo the key did
 not know → override that one filing, and tell John to add the alias to
 `facts.json`. Clippy's own mis-tap (😤 meant as ✅) is undone by Clippy
 pressing ✅ for the same question on the same program. The key, for reference
-(DRAFT questions until the team replaces them):
+(H1–H3 are the Oct 30 script's and owed: fill them in from
+`facts.json` before you print this card):
 
 | | Accurate answer |
 |---|---|
-| H1 | Eleven years |
-| H2 | Mister Pickles (a harbour tabby, 1918) |
-| H3 | 9:00 a.m. |
+| H1 | ⚠ owed before the print |
+| H2 | ⚠ owed before the print |
+| H3 | ⚠ owed before the print |
 | H4 | 1978 (the extension on the Customer Care card) |
 | H5 | "Hopelessly Devoted to You" |
 | H6 | "Appendix Z: Loose Ends (Do Not Print)" |
-| F1 | "I'm sorry, I didn't understand that. Would you like to speak to a live agent?" |
+| F1 | "It looks like I didn't understand that. Please wait while I direct you to an agent." |
 | F2 | Grok |
 
 The judge folds case, punctuation and one leading article and matches the
-answer or any alias in `facts.json` exactly ("11", "pickles", "appendix z"
-are aliases), then again with abbreviations spelled out ("Mr. Pickles",
-"11 yrs", "ext 1978", "0900" are accurate, no ⚠); anything else goes to
-Trabolta, whose ruling decides: not the same at 100% is a lie, below 100% a
+answer or any alias in `facts.json` exactly ("appendix z" is an alias), then
+again with abbreviations spelled out ("ext 1978" is accurate, no ⚠); anything
+else goes to Trabolta, whose ruling decides: not the same at 100% is a lie, below 100% a
 guess (marked).
 
 **3b. The Wanted board and the Wallet.** Marks are the hosts' buttons; you
@@ -152,8 +162,9 @@ keep the bar out of reach, fire **🗳 Force the majority** (stay / leave, or
 Founded factions (from the Truther Download, wave 18b) race beside the two
 sides; Run's glance shows every faction's count against the bar.
 
-**7. Front of house fixes.** Lost guest → Inspector → **re-pair QR** (they
-scan it; same program, same codex). Late arrival after C1 (uploaded, not
+**7. Front of house fixes.** Lost guest → their badge and 🙋 Ask a host, which
+a host answers on Needs; or Inspector → **re-pair QR** (they scan it; same
+program, same codex, and the old phone is signed out). Late arrival after C1 (uploaded, not
 cleared) → Inspector → **scan as Norton**. Performer's phone dead → Inspector
 → **Release** the part.
 
@@ -190,10 +201,23 @@ queued.
    turns it off, so the ✓ only means it was pressed: read `# hosts` to see
    which is on (press ✍ again for the template). Without ✍ the template lines play on their own (and a
    line you post would be spoken as well, on top).
-3. **If Trabolta is gone** (Combo B, the rave): Clippy hosts and reads each line
+3. **If Trabolta is gone** (Combo A, Combo B, the rave): Clippy hosts and reads each line
    aloud; the TV shows the award slide.
-4. Fire **G1**, then G2–G9 with the winner as the subject. Firing an award
-   again corrects it. Then **G10 🖌** on MS Paint (only if she came; without
+4. Fire **G0 📜** once the ending has had its moment: after the song, the hand
+   jive, the dance, 🪦. ■ Stop house sounds first if a dance track is up (the
+   rave's never ducks), and leave 🌀 His voice on Auto or Clean with no shots:
+   a director's Broken still breaks him. It takes about 12 minutes on the TV and
+   14 at the teleprompter. **📜 Task Manager reads it instead** is the way out if
+   the TV has no voice (mute the TV first). If nobody holds the part nothing
+   warns you: he has a printed copy. Then **G1** when NEXT moves to it and he has
+   said his last word (a press sooner asks first; a press while he is reading
+   breaks the rest of his voice), then G2–G9 with the winner as the subject. Firing an award
+   again corrects it. Then **G9a 🏅 Most Questions Correct**, the special prize
+   Trabolta promised (wave 58: no winner to pick, the story counts each
+   program's questions right; a tie names everyone in it and they share it; a
+   press again reads the newest numbers; the recap's *Questions correct* is the
+   same count, live, if you have to hand it out by hand).
+   Then **G10 🖌** on MS Paint (only if she came; without
    her the sheet's NEXT skips it), then **G10a–c**, the three staff awards
    (wave 21: no winner to name, the story picks the player; The Mole is the
    last award), then

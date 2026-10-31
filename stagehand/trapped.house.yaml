@@ -66,7 +66,7 @@
 #   Bulbs (Philips Hue + ThirdReality ZL1 on the CC2652P; Zigbee2MQTT
 #   friendly names = lights.json `device`):
 #     living_1..3 (The Desktop) · kitchen_1..3 (The Start Bar) · casino
-#     (The Graphics Card) · fan_closet_1..2 · ram_1..3 (The RAM, the studio)
+#     (The Casino) · fan_closet_1..2 · ram_1..3 (The RAM, the studio)
 #     SAFETY (never off, never below 60 / 254; power_on_behavior: on):
 #     hall_main · hall_up · hall_basement · bath_down · bath_up
 #     server_room_rgb: the server room's only light, Trabolta's heart_* looks

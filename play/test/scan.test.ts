@@ -16,10 +16,14 @@ describe("booth scan parsing", () => {
     expect(parseScan("https://x.test/?pass=g-00ff11")).toEqual({ kind: "guest", id: "g-00ff11" });
   });
   it("names what a non-pass is", () => {
-    expect(scanProblem(parseScan("hello"))).toMatch(/isn't a guest pass/);
+    expect(scanProblem(parseScan("hello"))).toMatch(/isn't a guest's pass or a codex code/);
     expect(scanProblem(parseScan("https://x.test/?code=A"))).toMatch(/join code/);
-    expect(scanProblem(parseScan("https://x.test/?code=A&unlock=b"))).toMatch(/codex/);
     expect(scanProblem(parseScan("g-123456"))).toBeNull();
+  });
+  it("wave 58: a codex QR is no problem for a booth, and a blank one is just the join QR", () => {
+    expect(scanProblem(parseScan("https://x.test/?code=A&unlock=b"))).toBeNull();
+    expect(parseScan("https://x.test/?code=A&unlock=%20b%20")).toEqual({ kind: "wall", unlock: "b" });
+    expect(parseScan("https://x.test/?code=A&unlock=")).toEqual({ kind: "wall", unlock: null });
   });
   it("normalises a typed id a phone keyboard capitalised", () => {
     expect(typedTarget(" G-1A2B3C ")).toBe("g-1a2b3c");

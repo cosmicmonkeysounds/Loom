@@ -351,6 +351,22 @@ describe("the judge hop — /api/guest/widget with a facts.json", () => {
     rt.dispose();
   });
 
+  it("a key still owed (`placeholder`) judges nobody: however sure, even in the stand-in's own words, the filing reaches the story with no verdict; the other questions judge as ever", async () => {
+    const owed = JSON.stringify({ ...FILE, questions: [{ id: "Q1", round: 1, text: "How many years?", answer: "PLACEHOLDER Q1 ANSWER OWED", accept: [], placeholder: true }, FILE.questions[1]] });
+    const { rt, d } = fresh({ facts: owed });
+    const [ada, ben, cy, di] = [await guest(rt, "Ada"), await guest(rt, "Ben"), await guest(rt, "Cy"), await guest(rt, "Di")];
+    expect((await answer(rt, ada, cardSeq(rt, ada, "fact"), { question: "Q1", answer: "Eleven years", confidence: 100 })).status).toBe(200);
+    expect((await answer(rt, ben, cardSeq(rt, ben, "fact"), { question: "Q1", answer: "a guess", confidence: 40 })).status).toBe(200);
+    expect((await answer(rt, cy, cardSeq(rt, cy, "fact"), { question: "Q1", answer: "PLACEHOLDER Q1 ANSWER OWED", confidence: 100 })).status).toBe(200);
+    for (const g of [ada, ben, cy]) {
+      expect(journaled(d, "fact", g.id)[0], g.id).not.toHaveProperty("verdict");
+      expect(journaled(d, "fact", g.id)[0], g.id).not.toHaveProperty("key_answer");
+    }
+    expect((await answer(rt, di, cardSeq(rt, di, "fact"), { question: "Q2", answer: "nobody", confidence: 100 })).status).toBe(200);
+    expect(journaled(d, "fact", di.id)[0]).toMatchObject({ verdict: "lie" });
+    rt.dispose();
+  });
+
   it("a story without a facts.json gets no verdict and no ModView.facts (back-compat): any question passes", async () => {
     const { rt, d } = fresh({ facts: null });
     const ada = await guest(rt, "Ada");

@@ -171,7 +171,7 @@ describe("useAloud: it cannot go away", () => {
   });
 });
 
-const ALOUD = (o: Partial<Aloud> = {}): Aloud => ({ script: scriptOf(OPENING, CLIPPY), mark: 0, unread: 2, open: false, setOpen: noop, done: noop, covering: true, ...o });
+const ALOUD = (o: Partial<Aloud> = {}): Aloud => ({ script: scriptOf(OPENING, CLIPPY), mark: 0, unread: 2, open: false, setOpen: noop, done: noop, covering: true, behind: [], readBehind: noop, ...o });
 
 describe("AloudSlot", () => {
   it("draws the pop-up with no way to close it", () => {

@@ -164,7 +164,7 @@ describe("wave 44: the credits at the very end (C3)", () => {
     expect(v(n.sim, "Night.credits_roll")).toBe(0);
     expect(nightView(n.sim).credits).toBeUndefined();
     n.press("computer_destroyed");
-    n.press("start_the_ceremony");
+    (n.press("start_the_ceremony"), n.press("start_the_ceremony"));
     n.press("award_staff_mole");
     n.advance(5);
     n.press("resurrection");

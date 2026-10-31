@@ -21,7 +21,7 @@ import { ESCAPE_COOLDOWN_MS, VOICE_MAX_BYTES, kingSignal, lightStateDoes, lightS
 
 import { asNumber, truthy } from "../src/runtime/expr.ts";
 import { Sim, type SimEvent } from "../src/runtime/sim/index.ts";
-import { foldCode, namedEvents, type SimModel } from "../src/runtime/sim/model.ts";
+import { foldCode, inWorldLabel, namedEvents, type SimModel } from "../src/runtime/sim/model.ts";
 import { allSnapshotFlags, arrivalDue, awardOnly, boothChannels, callsCue, captureFor, playerHiddenRooms, cueState, guestCardView, interactionActors, interactionSubjectOnly, isCaller, guestFlags, guestView, isLocked, modView, staffRoomChannels, notePress, pressMovedArm, pressRefusal, pressRefused, primeView, scanRefused, rosterRow, staffRoomIds, themeOf, titleOf, type AgentMindSummary, type GuestView, type ModPresence, type ModView, type PrimeView, type RuntimePhase } from "./views.ts";
 import { passOk, type Passcodes } from "./auth.ts";
 import { SessionStore } from "./session.ts";
@@ -53,6 +53,7 @@ import {
   normalizeCode,
   performerPickable,
   performerRefusal,
+  secretCode,
   takenNames,
   type IdentityRow,
   type PictureChoice,
@@ -60,16 +61,18 @@ import {
 import { foldName } from "../src/parser/names.ts";
 import { cueSheetView } from "../src/cue-sheet.ts";
 import { showClock, clockChange, CLOCK_SET_TO, CLOCK_SET_AT, type ShowClock } from "../src/show-clock.ts";
-import { hostView, type HostView } from "../src/host-board.ts";
+import { ONLINE_GRACE_MS, hostView, type HostView } from "../src/host-board.ts";
 import { StoryMarks, huntsFor } from "./wanted.ts";
 import { canonicalPlaceArgs } from "./place-args.ts";
 import { CHECKIN_ROUTE, GuestCheckin } from "./routes/k13.ts";
-import { LOGOUT_ROUTE, Pairing, RESUME_ROUTE, releasePart } from "./routes/n02.ts";
-import { BADGES_ROUTE, BADGE_ROUTE, ENTER_ROUTE, REJOIN_DECIDE_ROUTE, REJOIN_NAMES_ROUTE, REJOIN_POLL_ROUTE, REJOIN_ROUTE, Rejoin, partCode, partUrl } from "./routes/rejoin.ts";
+import { GUEST_LOGOUT_ROUTE, LOGOUT_ROUTE, Pairing, RESUME_ROUTE, SIGNED_OUT, releasePart } from "./routes/n02.ts";
+import { BADGES_ROUTE, BADGE_ROUTE, ENTER_ROUTE, REJOIN_CANCEL_ROUTE, REJOIN_DECIDE_ROUTE, REJOIN_NAMES_ROUTE, REJOIN_POLL_ROUTE, REJOIN_ROUTE, Rejoin, heldAnswer, partCode, partUrl, printedCode, reservedAnswer, type BoothGrant } from "./routes/rejoin.ts";
 import { HOMESCREEN_ROUTE } from "./routes/k31b.ts";
 import { PushRoutes } from "./routes/k31.ts";
-import { PushHub, aloudPush, boothOwner, guestOwner, messagePush, pushConfigFromEnv, readoutPush, webPushSender, type PushSender } from "./push.ts";
+import { Prompters, readPrompterOp, sceneOf, type PrompterFrame, type PrompterStatus, type SceneDraft } from "./prompter.ts";
+import { PushHub, aloudLinePush, aloudPush, boothOwner, guestOwner, messagePush, pushConfigFromEnv, readoutPush, webPushSender, type PushSender } from "./push.ts";
 import { printExtras } from "./routes/k12.ts";
+import { PRINTED_GUEST_ROUTE, PRINTED_PRIME_ROUTE, printedHit, type PrintedHit } from "./routes/printed.ts";
 import { buildCards } from "./routes/cards.ts";
 import { CLAIM_UNLOCK_ROUTE, Claims, mintClaimSecret } from "./routes/claims.ts";
 import { modPatch, modViewJson } from "./mod-patch.ts";
@@ -83,19 +86,21 @@ import { CreditsSource } from "./credits.ts"; // w44
 import { CREDITS_ROUTE, creditsAnswer, sendCredits } from "./routes/credits.ts"; // w44
 import { VIDEO_ROUTE, sendVideoConsent, videoConsentView } from "./routes/video.ts"; // w44
 import { CREDITS_FILE } from "../src/credits.ts"; // w44
+import { COSTUME_FIRE_ROUTE, COSTUME_MENU_ROUTE, COSTUME_MOD_ROUTE, CostumeDesk, CostumeSource, costumeFixtures, costumeLookSafe, costumeMoved, costumeRoomOutRestore, sendCostumeFire, sendCostumeMenu, type CostumeTimers } from "./costume.ts"; // w59
+import { COSTUME_BY, COSTUME_FILE, COSTUME_SIGNAL, COSTUME_TOKEN_LABEL, STAGE_CHARS_PER_S, costumeCue, hijackPlaying, saidBy, type CostumeAction, type CostumeFacts, type CostumeFile, type CostumeItem } from "../src/costume.ts"; // w59
 import { DESCENT_FILE, DescentSource } from "./descent.ts"; // w49
 import { SWEAR_CENSORED, SWEAR_FILTER, SWEAR_FLAGGED, decodeHits, encodeHits, filterHits, hitList, isFilterLevel, maskText, maskUnsaid, type FilterHit } from "../src/language-filter.ts"; // w48, w48b
 import { FilterBook, type FilterView } from "./language-filter.ts"; // w48
-import { forBooth, hostSeen, seenCues, seenName } from "./unseen-directors.ts";
+import { NO_ONE, directorIds, directorNames, forBooth, hostSeen, seenCrews, seenCues, seenFrom, seenName, seenPeople, seenRows, type PeopleRound } from "./unseen-directors.ts";
 import { guestSide } from "./routes/sides.ts";
 import { CrewRoutes, answeredInviteCards, crewDrafts } from "./routes/crews.ts"; // w18 crews
 import { isCrewId, isCrewRoom } from "../src/runtime/sim/crews.ts"; // w18 crews
-import { AUDIO_FILE, AudioHub, audioProblems, handleAudioGet, handleAudioPost, handleMixerGet, type AudioContext } from "./audio.ts";
+import { AUDIO_FILE, AudioHub, audioPlayOf, audioProblems, handleAudioGet, handleAudioPost, handleMixerGet, musicDjOf, type AudioContext } from "./audio.ts";
 import { LIGHTS_FILE, LightsHub, handleLightsGet, handleLightsPost, lightsProblems, type LightTest, type LightsContext } from "./lights.ts";
 import { GameLightsFeed, LightsEstimate, buildGameLights } from "./lights-shown.ts";
 import { DESK_BY, DESK_FILE, DeskHub, deskHouseOf, deskLightFixtures, deskProblems, deskRefsOf, deskSeen, handleDeskGet, handleDeskPost, lookMsOf, type DeskContext, type DeskTimers } from "./desk.ts";
 import { DESK_SPEECH_GRACE_MS } from "../src/house-desk.ts";
-import { ANNOUNCE_VERB, ScreenWatch, announceTextOf, speechWatchOf, spokenAnnounce, handleScreenGet, handleScreenTerminalsGet, handleScreenVoicePost, screenKingOf, screenTerminals } from "./routes/screen.ts";
+import { ANNOUNCE_VERB, SPEECH_ONLINE_MS, ScreenWatch, announceTextOf, roomVoiceOf, speechWatchOf, spokenAnnounce, handleScreenGet, handleScreenTerminalsGet, handleScreenVoicePost, screenKingOf, screenTerminals } from "./routes/screen.ts";
 import { handleScreenIdentifyPost } from "./routes/screen.ts";
 import { CAM_BODY_LIMIT, CamStore, parseCamUpload } from "./spatial-cams.ts";
 import { DreamFeed } from "./dream-feed.ts";
@@ -144,6 +149,7 @@ import {
   factsProblems,
   judgeAnswer,
   isExact,
+  isPlaceholderKey,
   judgeFiling,
   judgeMode,
   parseFactsBook,
@@ -185,6 +191,10 @@ import { TALK_SCENES } from "../src/talk-scenes.ts";
 import { agentRecentOn, answerMentions, buildRecent, HUNT_ANSWER_MARK, secretMentions, storyTag, storyTexts, worldString, type StoryTagContext } from "./agent-recent.ts";
 
 
+/** Wave 59: a reader's stream closed this recently still counts as a phone in
+ *  their hand: an iPhone's page sleeps and drops it within seconds. */
+const PROMPTER_STREAM_GRACE_MS = 45_000;
+
 /** A guest view is never rendered against a null sim — this stands in. */
 const EMPTY_SIM = Sim.fromSources("");
 
@@ -204,6 +214,9 @@ interface Client {
    *  the session closes the stream). */
   via?: string;
   token?: string;
+  /** Wave 59: that session is a director's own pane (not a wall terminal
+   *  piloting a guest): the one phone view that keeps Run personas. */
+  pane?: boolean;
   /** A house tool on the mod feed (`?lean=1` — stagehand): every `sim` /
    *  `message` / `lifecycle` frame, but never a `snapshot` or `history`
    *  (a `ModView` is ≈ 200 KB at a full house). */
@@ -234,6 +247,8 @@ export interface Impersonation {
    *  holds the host capability (the NEXT bar, the host routes), still
    *  journaled `by` the director. */
   host?: boolean;
+  /** A wall terminal's session (it labelled itself), not a director's pane. */
+  terminal?: true;
 }
 
 /**
@@ -332,6 +347,15 @@ export const SCAN_REPEAT_MS = 1500;
 
 /** How many thread lines an agent request carries. */
 const AGENT_HISTORY = 30;
+/** Wave 59: how far back a press looks for lines still being said. */
+const COSTUME_LOOKBACK_MS = 20 * 60_000;
+/** Wave 59: the beat that hands over to him, and the cue its end fires. */
+const HANDOVER_BEAT = "Clippy On Trabolta";
+const HANDOVER_CUE = "introduce_trabolta";
+/** Who that press reads as, in the journal and the desk's activity. */
+const PROMPTER_BY = "📜 Teleprompter";
+/** A newer beat took the prompter from her paragraph. DRAFT w59 */
+const HANDOVER_CUT_NOTE = "!🤖 A new beat cut Clippy off: press 🤖 on her last line";
 
 /**
  * The guest POST routes a **locked** phone may still call (wave 26, C2): the
@@ -350,9 +374,11 @@ export const LOCKED_OPEN: readonly string[] = [
   REJOIN_ROUTE,
   REJOIN_NAMES_ROUTE,
   REJOIN_POLL_ROUTE,
+  REJOIN_CANCEL_ROUTE,
   BADGE_ROUTE,
   HOMESCREEN_ROUTE,
   LOGOUT_ROUTE,
+  GUEST_LOGOUT_ROUTE,
   "/api/push/subscribe",
   "/api/push/unsubscribe",
   "/api/push/visible",
@@ -380,10 +406,11 @@ function agentAdjustments(raw: unknown): Array<[string, number]> {
 export type LifecycleKind = "reset" | "reload" | "golive" | "ended";
 
 /** A message as a guest client may see it: never the director attribution
- *  a mod `say`-as-a-participant carries. */
-export function forGuest(m: ChatMessage, sim: Sim | null = null, viewer: string | null = null): ChatMessage {
+ *  a mod `say`-as-a-participant carries, and a Run persona's name (`hide`)
+ *  as "Director". */
+export function forGuest(m: ChatMessage, sim: Sim | null = null, viewer: string | null = null, hide: ReadonlySet<string> = NO_ONE): ChatMessage {
   // Wave 18 (C2): a guest gets only the exits to rooms they can see.
-  const seen = viewer !== null ? goForViewer(m, sim, viewer) : m;
+  const seen = seenFrom(viewer !== null ? goForViewer(m, sim, viewer) : m, hide);
   // Wave 55: another reader's script is only a line in the room.
   const notTheirs = seen.aloud !== undefined && (viewer === null || !seen.aloud.readers.includes(viewer));
   if (seen.via === undefined && !notTheirs) return seen;
@@ -458,6 +485,8 @@ const showHouseWarned = new Map<string, string>();
  *  (`agent:<Character>`): a replay counts these against the power's
  *  `limit:`, never a director's fire of the same interaction. */
 const AGENT_BY = "agent:";
+/** Trabolta's power at the stereo (the story's `cast/trabolta.loom`). */
+const MUSIC_POWER = "change_the_music";
 /** The journal's `by` on the judging-mode flip around a near-miss filing
  *  (`commitUnderReview`): the facts judge, not a director. */
 const JUDGE_BY = "Judge";
@@ -630,6 +659,10 @@ export interface EventRuntimeInit {
   creditsFile?: string | null;
   /** Wave 49 (C3.2): the descent's fallback file (`LOOM_DESCENT`; null = none). */
   descentFile?: string | null;
+  /** Wave 59: the costume menu's fallback file (`LOOM_COSTUME`; null = none). */
+  costumeFile?: string | null;
+  /** Wave 59: the costume's timers (tests inject; default `setTimeout`). */
+  costumeTimers?: CostumeTimers;
   /** Wave 50: the house media folder (`LOOM_MEDIA_DIR`; null = none). */
   mediaDir?: string | null;
   /** The desk's timers (tests inject; default `setTimeout`). */
@@ -786,6 +819,9 @@ export class EventRuntime {
   // broadcast in rosters, so it is NOT a credential — this opaque token,
   // minted at registration, is what authorizes acting as that guest.
   private readonly guestTokens = new Map<string, string>();
+  /** Wave 59: tokens a release cut, so a phone that slept through it reads
+   *  why (`SIGNED_OUT`), not "the story restarted". Memory only. */
+  private readonly releasedTokens = new Set<string>();
   // Operator play-as sessions (token → who is played, by whom), minted by
   // `/api/mod/impersonate` for the editor's embedded play app.
   private readonly impersonations = new Map<string, Impersonation>();
@@ -803,6 +839,7 @@ export class EventRuntime {
   private readonly loginFailures: RateLimiter;
   private readonly registrations: RateLimiter;
   private readonly redeemMisses: RateLimiter;
+  private readonly printedAsks: RateLimiter;
   private readonly widgetAnswers: RateLimiter;
   // Wallet calls per guest (`/api/guest/wallet/*`, `LOOM_RL_WALLET`).
   private readonly walletCalls: RateLimiter;
@@ -830,6 +867,9 @@ export class EventRuntime {
   // stream opened or closed, a request on their own token. In memory only
   // (a restart re-learns it from the reconnects).
   private readonly lastSeen = new Map<string, number>();
+  // Wave 59: a part's booth stream closed at (the guests' `lastSeen` for a
+  // booth: a locked booth phone keeps its grace on a guest's People).
+  private readonly boothSeen = new Map<string, number>();
   // persona id → the director (display name) who spawned it via
   // `/api/mod/persona`. Persisted in meta, cleared by every restart (the
   // personas die with the journal), surfaced as `RosterRow.owner`.
@@ -900,6 +940,11 @@ export class EventRuntime {
   private readonly factsFile: string;
   /** Wave 44 (C5): the credits, read live (`credits.ts`). */
   private readonly credits: CreditsSource;
+  /** Wave 59: the costume's menu, read live, and its desk (`costume.ts`). */
+  private readonly costumeSource: CostumeSource;
+  private readonly costume: CostumeDesk;
+  /** Wave 59: which of his poke lines is next (memory only). */
+  private costumePokes = 0;
   /** Wave 49 (C3.2): the descent's words, read live (`descent.ts`). */
   private readonly descent: DescentSource;
   private factsMemo: { text: string; book: FactsBook | null } | null = null;
@@ -959,6 +1004,16 @@ export class EventRuntime {
   private readonly pushRoutes: PushRoutes;
   // The wall terminals' poll (K-16): screen cues folded from the sim log + each terminal's last poll.
   readonly screens: ScreenWatch;
+  /** Wave 59: the shared teleprompter (`prompter.ts`). Memory only: a restart
+   *  forgets it, and the rest of a held beat's lines just play. */
+  private readonly prompters: Prompters;
+  /** Wave 59: her ✓ Done landed behind paused doors; he starts when they reopen. */
+  private handoverOwed = false;
+  /** Wave 59: a newer beat cut off her paragraph; `fanout` tells the hosts. */
+  private handoverCut = false;
+  private prompterTimer: ReturnType<typeof setInterval> | null = null;
+  /** When each reader's stream last closed (`@<Character>` or a guest id). */
+  private readonly streamLeft = new Map<string, number>();
   // Spatial stream subscribers (terminals, the map page) — never `clients`.
   private readonly spatialStreams = new Set<ServerResponse>();
   /** (wave 49) The footsteps' streams (the router's). */
@@ -1068,6 +1123,26 @@ export class EventRuntime {
       envFile: descentEnv,
       scenarioFile: join(dirname(this.houseFile), DESCENT_FILE),
       ...(init.now !== undefined ? { now: init.now } : {}),
+    });
+    // Wave 59: the costume's menu, found the same way, and its desk.
+    const costumeEnv = init.costumeFile !== undefined ? init.costumeFile : (process.env.LOOM_COSTUME ?? null);
+    this.costumeSource = new CostumeSource({
+      project: readProject !== undefined && this.project !== null ? () => readProject.call(this.project, COSTUME_FILE) : null,
+      envFile: costumeEnv,
+      scenarioFile: join(dirname(this.houseFile), COSTUME_FILE),
+      ...(init.now !== undefined ? { now: init.now } : {}),
+    });
+    this.costume = new CostumeDesk({
+      now: () => this.clock(),
+      timers: init.costumeTimers ?? { set: (fn, ms) => setTimeout(fn, ms).unref(), clear: (h) => clearTimeout(h as ReturnType<typeof setTimeout>) },
+      facts: () => this.costumeFacts(),
+      perform: (a, file) => this.costumePerform(a, file),
+      note: (item) => this.costumeNote(item),
+      restoreLights: (a) => this.costumeRestoreLights(a),
+      musicStory: () => {
+        if (this.audio.musicHand() === COSTUME_BY) this.audio.music({ action: "story" }, COSTUME_BY);
+        return this.audio.pausedOver(COSTUME_BY);
+      },
     });
     this.projectFacts = init.facts !== undefined ? init.facts : this.store.loadFacts();
     if (init.facts !== undefined) this.store.saveFacts(init.facts);
@@ -1228,6 +1303,7 @@ export class EventRuntime {
       sessions: this.sessions,
       persistSessions: () => this.persistSessions(),
       endBooths: (character) => this.endBooths(character),
+      closeAsks: (id) => this.rejoin.closeAsks(id),
       joinBase: () => this.joinBase(),
       eventCode: () => this.codes.event,
       now: () => this.clock(),
@@ -1236,12 +1312,26 @@ export class EventRuntime {
       sim: () => this.sim,
       secret: () => this.claimSecret,
       guestCode: (passcode) => passOk(passcode, this.codes.event),
+      primeCode: (passcode) => passOk(passcode, this.codes.prime),
       addGuestToken: (token, id) => {
         this.guestTokens.set(token, id);
         this.persistGuests();
       },
+      guestHeld: (id) => this.guestHeld(id),
+      tokenGuest: (token) => this.phoneGuest(token) ?? null,
+      revokeGuest: (id) => this.pairing.cut(id),
       isPersona: (id) => this.personaOwners.has(id) || id.startsWith("p-"),
       claimed: (claim) => this.claims.characterOf(this.sim?.model ?? this.declaredModel, claim),
+      invitedProgram: (n) => this.claims.programOfBadge(this.sim?.model ?? this.declaredModel, n),
+      claimFor: (character) => this.claims.tokenFor(character),
+      partOfCode: (code) => this.partOfCode(code),
+      partNamed: (name) => (this.declaredModel !== null && performerRefusal(this.declaredModel, name, new Set()) === null ? name : null),
+      partHeld: (character) => heldCharacters(this.sessions.entries()).has(foldName(character)),
+      releasePart: (character) => {
+        if (releasePart(this.sessions, character) > 0) this.persistSessions();
+        this.endBooths(character);
+      },
+      signInPart: (token, character) => this.signInPart(token, character, this.declaredModel),
       saveBadges: (entries) => this.store.saveBadges(entries),
       linked: () => this.pushClientSnapshots(),
       changed: () => {
@@ -1255,6 +1345,7 @@ export class EventRuntime {
     this.loginFailures = limiterFor(limits.loginFailures);
     this.registrations = limiterFor(limits.register);
     this.redeemMisses = limiterFor(limits.redeemMisses);
+    this.printedAsks = limiterFor(limits.printedAsks);
     this.widgetAnswers = limiterFor(limits.widgets);
     this.walletCalls = limiterFor(limits.wallet);
     // The TV-voice mute outlives restarts and Go live (an ALL STOP must
@@ -1264,6 +1355,22 @@ export class EventRuntime {
     if (voiceMuted) process.stderr.write(`  🔇 event ${this.eventId}: the TV voice is muted (kept from before this start) — unmute it on Run → Terminals\n`);
     const voiceFx = this.store.loadVoiceFx();
     if (voiceFx !== "auto") process.stderr.write(`  🌀 event ${this.eventId}: Trabolta's voice is on ${voiceFx} (kept from before this start) — put it back on Run → Terminals\n`);
+    this.prompters = new Prompters({
+      now: () => (init.now !== undefined ? init.now() : Date.now()),
+      send: (frame, members) => this.prompterSend(frame, members),
+      voice: (channel) => roomVoiceOf(this.screens, this.sim?.model ?? null, channel),
+      // A phone that slept a moment ago is still the reader: it wakes to the pop-up.
+      online: (who) => [...this.clients].some((c) => EventRuntime.isPrompterId(c, who)) || Date.now() - (this.streamLeft.get(who) ?? -Infinity) < PROMPTER_STREAM_GRACE_MS,
+      name: (who) => this.prompterName(who),
+      changed: () => {
+        this.modViewLast = null;
+        this.pushSnapshots();
+      },
+      finished: (scene, closed) => this.sceneFinished(scene, closed),
+      superseded: (scene) => {
+        this.handoverCut ||= this.handoverDue(scene);
+      },
+    });
     this.screens = new ScreenWatch({
       ...(init.now !== undefined ? { now: init.now } : {}),
       muted: voiceMuted,
@@ -1336,6 +1443,33 @@ export class EventRuntime {
   get performerParts(): string[] {
     const model = this.declaredModel;
     return model === null ? [] : identityDefs(model).filter(performerPickable).map((d) => d.name);
+  }
+
+  /** Wave 59: the printed text code `code` is, as the link its QR carries
+   *  (`routes/printed.ts`), or null. */
+  printedHit(code: string): PrintedHit | null {
+    const model = this.declaredModel;
+    return printedHit(code, {
+      secret: this.claimSecret,
+      base: this.joinBase(),
+      guestCode: this.codes.event,
+      model,
+      parts: this.performerParts,
+      badgeNumber: (c) => this.rejoin.badges.numberOf(c),
+      invited: () => this.claims.links(model, this.joinBase(), this.codes.event),
+    });
+  }
+
+  /** The Scan sheets' question: does this typed code go anywhere but the
+   *  Codex? `who` keys the limiter, like the redeem routes' misses; a miss
+   *  costs nothing here, the redeem that follows is what counts. */
+  private answerPrinted(res: ServerResponse, who: string, body: Record<string, unknown>): void {
+    const code = str(body, "code");
+    if (code.length > MAX_CODE_LENGTH) return void sendJson(res, 200, { hit: null });
+    if (!this.printedAsks.allowed(who)) return void sendJson(res, 429, { error: "too many wrong codes — wait a minute" });
+    const hit = this.printedHit(code);
+    if (hit === null) this.printedAsks.record(who);
+    sendJson(res, 200, { hit });
   }
 
   /** The story's model, doors open or not: the live sim's when there is one,
@@ -1466,17 +1600,73 @@ export class EventRuntime {
     };
   }
 
+  /** Wave 59: who the people lists may show now, the same for everyone in a
+   *  round. Online is an open stream as `presence()` counts it, or a phone
+   *  or booth heard from inside `ONLINE_GRACE_MS`. */
+  private peopleRound(): PeopleRound {
+    const guests = new Set<string>();
+    const booths = new Set<string>();
+    for (const c of this.clients) {
+      if (c.via !== undefined && c.role === "guest" && !c.id.startsWith("p")) continue;
+      if (c.role === "guest") guests.add(c.id);
+      else if (c.role === "prime") booths.add(c.id);
+    }
+    const since = this.clock() - ONLINE_GRACE_MS;
+    for (const [id, at] of this.lastSeen) if (at > since) guests.add(id);
+    for (const [character, at] of this.boothSeen) if (at > since) booths.add(character);
+    return { guests, booths, directors: directorIds(this.sim, this.personaOwners) };
+  }
+
+  /** Wave 59: the names a phone's chat lines and crews read as "Director". */
+  private personaNames(): ReadonlySet<string> {
+    return directorNames(this.sim, this.personaOwners);
+  }
+
+  /** The same for one stream or token: a director's own pane hides nobody. */
+  private namesHiddenFrom(pane: boolean): ReadonlySet<string> {
+    return pane ? NO_ONE : this.personaNames();
+  }
+
+  /** Is `token` a director's own pane (Run → Players)? */
+  private directorPane(token: string | undefined): boolean {
+    const imp = this.impersonations.get(token ?? "");
+    return imp !== undefined && imp.terminal !== true;
+  }
+
+  /** How often the open night checks whether anyone came or went, and
+   *  sends the phones a round if so. */
+  static readonly PRESENCE_CHECK_MS = 15_000;
+  private presenceCheckMs = 0;
+  private presenceKey = "";
+
+  /** Wave 59: a People list is only as fresh as its phone's last snapshot,
+   *  and nothing else sends one for a phone that just left or a quiet room. */
+  private checkPresence(ms: number): void {
+    this.presenceCheckMs += ms;
+    if (this.presenceCheckMs < EventRuntime.PRESENCE_CHECK_MS) return;
+    this.presenceCheckMs = 0;
+    const round = this.peopleRound();
+    const key = `${[...round.guests].sort().join(",")}|${[...round.booths].sort().join(",")}`;
+    if (key === this.presenceKey) return;
+    this.presenceKey = key;
+    this.pushClientSnapshots();
+  }
+
   private snapshotFor(client: Client): unknown {
     const online = new Set(this.agents.onlineCharacters());
-    if (client.role === "guest") return this.guestViewFor(client.id, online);
-    if (client.role === "prime") return this.primeViewFor(client.id, online, undefined, client.host === true || client.admin === true);
+    if (client.role === "guest") return this.guestViewFor(client.id, online, undefined, undefined, client.pane === true);
+    if (client.role === "prime") return this.primeViewFor(client.id, online, undefined, client.host === true || client.admin === true, undefined, client.pane === true);
     return this.modViewNow();
   }
 
-  /** A guest's snapshot, plus the cards they have already answered. */
-  private guestViewFor(id: string, online: ReadonlySet<string>, avatars = this.avatarMap()): GuestView {
+  /** A guest's snapshot, plus the cards they have already answered. Wave
+   *  59: `director` is a director's own pane, the one view that keeps Run
+   *  personas in its lists. */
+  private guestViewFor(id: string, online: ReadonlySet<string>, avatars = this.avatarMap(), round = this.peopleRound(), director = false): GuestView {
+    const base = guestView(this.reqSim(), id, this.decisionChannels.get(id) ?? null, online, this.menuChannels);
     return {
-      ...guestView(this.reqSim(), id, this.decisionChannels.get(id) ?? null, online, this.menuChannels),
+      ...seenCrews(base, director ? NO_ONE : this.personaNames()),
+      ...seenPeople(base, round, director ? NO_ONE : round.directors),
       answered: this.answeredFor(id),
       avatars,
       ...(this.wallet !== null ? { wallet: this.wallet.viewFor(id) } : {}),
@@ -1544,12 +1734,12 @@ export class EventRuntime {
 
   /** A performer's snapshot, plus the cards their character has already
    *  answered, with everyone's profile pictures. */
-  private primeViewFor(character: string, online: ReadonlySet<string>, avatars = this.avatarMap(), host = false): PrimeView {
+  private primeViewFor(character: string, online: ReadonlySet<string>, avatars = this.avatarMap(), host = false, round = this.peopleRound(), director = false): PrimeView {
     const queue = this.wallet?.queueFor(character) ?? null;
     const base = primeView(this.sim, character, online, { host });
     return {
       ...base,
-      ...this.boothExtras(base, character, host),
+      ...this.boothExtras(base, character, host, round, director ? NO_ONE : round.directors),
       // C4: on every path, `false` too — play takes the latest view's host
       // (`view.host ?? auth.host`), so a reload that takes the part's
       // `admin: true` away must say so, not leave it out.
@@ -1668,9 +1858,9 @@ export class EventRuntime {
     if (m === null || !live) return m;
     for (const c of this.clients) {
       if (c.role === "guest") {
-        if (!m.hidden && visibleTo(m, c.id)) sseSend(c.res, "messageModerated", forGuest(m, this.sim, c.id));
+        if (!m.hidden && visibleTo(m, c.id)) sseSend(c.res, "messageModerated", forGuest(m, this.sim, c.id, this.namesHiddenFrom(c.pane === true)));
       } else if (c.role === "prime") {
-        if (visibleToPrime(m, c, this.agentVoiced, this.sim?.model)) sseSend(c.res, "messageModerated", forBooth(m));
+        if (visibleToPrime(m, c, this.agentVoiced, this.sim?.model)) sseSend(c.res, "messageModerated", forBooth(m, this.namesHiddenFrom(c.pane === true)));
       } else {
         sseSend(c.res, "messageModerated", m);
       }
@@ -1680,12 +1870,14 @@ export class EventRuntime {
 
   /** Wave 18 additions to a booth's view the bare sim cannot know: each
    *  guest's `lastSeen` (A1), a `target:`'s picture (C5), the Wanted board
-   *  for a hunting booth or a host (C6), the caller claim on `calls` (C8). */
-  private boothExtras(base: PrimeView, character: string, host: boolean): Partial<PrimeView> {
+   *  for a hunting booth or a host (C6), the caller claim on `calls` (C8).
+   *  Wave 59: who is online, and no one in `hide` (Run's personas) in the
+   *  guests, a `pick:` or the Wanted board. */
+  private boothExtras(base: PrimeView, character: string, host: boolean, round: PeopleRound, hide: ReadonlySet<string>): Partial<PrimeView> {
     const sim = this.sim;
     if (sim === null) return {};
     const out: Partial<PrimeView> = {
-      guests: base.guests.map((g) => ({ ...g, lastSeen: this.lastSeen.get(g.id) ?? null })),
+      guests: seenRows(base.guests, hide).map((g) => ({ ...g, online: round.guests.has(g.id), lastSeen: this.lastSeen.get(g.id) ?? null })),
     };
     if (base.objectives?.some((o) => o.target !== undefined)) {
       out.objectives = base.objectives.map((o) => {
@@ -1694,7 +1886,10 @@ export class EventRuntime {
         return avatar !== null ? { ...o, target: { ...o.target, avatar } } : o;
       });
     }
-    if (sim.model.wanted !== null && (host || huntsFor(sim, character))) out.wanted = this.wantedBoard();
+    if (hide.size > 0 && base.objectives?.some((o) => o.pick?.some((id) => hide.has(id)))) {
+      out.objectives = (out.objectives ?? base.objectives)!.map((o) => (o.pick === undefined ? o : { ...o, pick: o.pick.filter((id) => !hide.has(id)) }));
+    }
+    if (sim.model.wanted !== null && (host || huntsFor(sim, character))) out.wanted = seenRows(this.wantedBoard(), hide);
     // A booth never reads a director's name: parts by name, else "Director".
     if (base.calls !== undefined) out.calls = seenCues({ ...base.calls, caller: this.cueCaller() }, sim.model);
     return out;
@@ -1770,6 +1965,7 @@ export class EventRuntime {
       ...(!this.entryPlayed ? { doorsClosed: true as const } : {}),
       ...this.showClockField(),
       talk: this.talkViewNow(), // wave 32 (C5)
+      prompter: this.prompters.status(), // wave 59
     };
     this.modViewLast = { len: this.sim?.log.len() ?? -1, phase: this.phase, at: Date.now(), view };
     return view;
@@ -1811,7 +2007,7 @@ export class EventRuntime {
    *  `HOST_VIEW_MS` (the hosts poll every 3 s; a build is the whole mod view)
    *  unless a cue was pressed or the run changed phase since — then at once,
    *  so a host never reads NEXT from before their own press. */
-  private hostViewNow(): HostView {
+  private hostViewNow(director = false): HostView {
     const now = Date.now();
     const sim = this.sim;
     const len = sim?.log.len() ?? -1;
@@ -1820,7 +2016,7 @@ export class EventRuntime {
     // Reused only inside the window, whether or not the log moved: a quiet
     // log still moves the clocks the panel shows (a terminal's silence, an
     // agent's oldest wait, who was seen when).
-    if (hit !== null && hit.phase === this.phase && hit.presses === presses && hit.writes === this.hostWrites && now - hit.at < this.hostViewMs) return this.hostSeen(this.withCaller(this.withShowClock(hit.view)));
+    if (hit !== null && hit.phase === this.phase && hit.presses === presses && hit.writes === this.hostWrites && now - hit.at < this.hostViewMs) return this.hostSeen(this.withCaller(this.withShowClock(hit.view)), director);
     const waiting = new Map<string, Array<{ guest: string; name: string; since: number; text: string }>>();
     // Wave 42: fresh bodies — a guest's newest line, not the one that
     // opened a request still waiting for a windowed worker's slot.
@@ -1859,23 +2055,25 @@ export class EventRuntime {
       now,
     });
     this.hostViewCache = { len, phase: this.phase, presses, writes: this.hostWrites, at: now, view };
-    return this.hostSeen(this.withCaller(this.withShowClock(view)));
+    return this.hostSeen(this.withCaller(this.withShowClock(view)), director);
   }
 
   /** A host booth's panel as a host reads it: every director's name is
-   *  "Director" (`unseen-directors.ts`). Run reads `/api/state?role=mod`. */
-  private hostSeen(view: HostView): HostView {
-    return hostSeen(view, this.sim?.model ?? this.declaredModel);
+   *  "Director" and no Run persona in its lists (`unseen-directors.ts`),
+   *  but for a director's own pane of a host part. Run reads
+   *  `/api/state?role=mod`. */
+  private hostSeen(view: HostView, director = false): HostView {
+    return hostSeen(view, this.sim?.model ?? this.declaredModel, director ? NO_ONE : directorIds(this.sim, this.personaOwners));
   }
 
   /** A cached host view with the show clock read now (wave 13 K2): the
    *  cache window (and the reused mod view) must not hold the clock back, and
    *  a host's own clock change shows on their next poll. */
   private withShowClock(view: HostView): HostView {
-    const { showClock: _old, rejoins: _asks, talk: _talk, ...rest } = view;
+    const { showClock: _old, rejoins: _asks, talk: _talk, prompter: _prompter, ...rest } = view;
     // Wave 23: the asks to get back in are read now too; wave 32 (C5): and
     // the talk panel (Trabolta's thinking moves between two polls).
-    return { ...rest, ...this.showClockField(), rejoins: this.rejoin.desk.pending(), talk: this.talkViewNow() };
+    return { ...rest, ...this.showClockField(), rejoins: this.rejoin.asks(), talk: this.talkViewNow(), prompter: this.prompters.status() };
   }
 
   /** Message seqs of the widget cards `id` has answered. */
@@ -1927,11 +2125,14 @@ export class EventRuntime {
     // Who's online and the picture map are the same for everyone: once a round.
     let online: Set<string> | null = null;
     let avatars: Record<string, string> | null = null;
+    let round: PeopleRound | null = null;
     for (const c of this.clients) {
       if ((c.role !== "guest" && c.role !== "prime") || c.lean === true) continue;
       online ??= new Set(this.agents.onlineCharacters());
       avatars ??= this.avatarMap();
-      sseSend(c.res, "snapshot", c.role === "guest" ? this.guestViewFor(c.id, online, avatars) : this.primeViewFor(c.id, online, avatars, c.host === true || c.admin === true));
+      round ??= this.peopleRound();
+      const director = c.pane === true;
+      sseSend(c.res, "snapshot", c.role === "guest" ? this.guestViewFor(c.id, online, avatars, round, director) : this.primeViewFor(c.id, online, avatars, c.host === true || c.admin === true, round, director));
     }
     if (online !== null) this.snapshotAt = Date.now();
   }
@@ -2065,21 +2266,27 @@ export class EventRuntime {
    *  and a booth's are capped (`capHistory`: the recent stream, plus their
    *  pinned rooms, pins, alerts, cards, own threads and thread roots). */
   private historyFor(c: Client): ChatMessage[] {
+    const hide = this.namesHiddenFrom(c.pane === true);
     return c.role === "guest"
-      ? capHistory(this.chat.historyFor(c.id, false), HISTORY_LIMIT, guestOwnRow(c.id)).map((m) => forGuest(m, this.sim, c.id))
+      ? capHistory(this.chat.historyFor(c.id, false), HISTORY_LIMIT, guestOwnRow(c.id)).map((m) => forGuest(m, this.sim, c.id, hide))
       : c.role === "mod"
         ? [...this.chat.all()]
         : capHistory(
             this.chat.all().filter((m) => !m.hidden && visibleToPrime(m, c, this.agentVoiced, this.sim?.model)),
             HISTORY_LIMIT,
             boothOwnRow(c.id),
-          ).map(forBooth);
+          ).map((m) => forBooth(m, hide));
   }
 
   /** A lifecycle transition every connected client should react to
    *  (`reset` / `reload` → drop local state; `ended` → the event is gone). */
   private pushLifecycle(kind: LifecycleKind, extra: Record<string, unknown> = {}): void {
+    this.costume.clear(); // wave 59: a new run owes the house no restore
     this.modPrev = null; // the next view after a transition is a keyframe
+    this.prompters.clear(); // wave 59: a new run has no scene, and nothing waits
+    this.handoverOwed = false;
+    this.handoverCut = false;
+    this.prompterClock();
     for (const c of this.clients) sseSend(c.res, "lifecycle", { kind, at: Date.now(), ...extra });
   }
 
@@ -2092,6 +2299,7 @@ export class EventRuntime {
     for (const [token, guest] of [...this.guestTokens]) {
       if (guest !== id) continue;
       this.guestTokens.delete(token);
+      this.releasedTokens.add(token);
       n++;
     }
     if (n > 0) this.persistGuests();
@@ -2099,6 +2307,9 @@ export class EventRuntime {
       if (c.role !== "guest" || c.id !== id || c.via !== undefined) continue;
       this.clients.delete(c);
       try {
+        // The phone says why (wave 59); one that slept through it hears it
+        // from its next call (`signedOut`).
+        sseSend(c.res, "lifecycle", { kind: "released", at: Date.now() });
         c.res.end();
       } catch {
         /* client already gone */
@@ -2107,6 +2318,37 @@ export class EventRuntime {
     this.push.drop((owner) => owner === guestOwner(id));
     this.pushPresence();
     return n;
+  }
+
+  /** Does a phone hold guest `id`? Any live token: offline is no release. */
+  private guestHeld(id: string): boolean {
+    for (const guest of this.guestTokens.values()) if (guest === id) return true;
+    return false;
+  }
+
+  /** The guest a phone's own token stands for; never a play-as session. */
+  private phoneGuest(token: string | undefined): string | undefined {
+    return token === undefined || this.impersonations.has(token) ? undefined : this.guestTokens.get(token);
+  }
+
+  /** The part a staff badge's code signs in as, or null. */
+  private partOfCode(part: string): string | null {
+    if (this.declaredModel === null) return null;
+    return identityDefs(this.declaredModel).find((d) => codeEquals(part, partCode(this.claimSecret, d.name)))?.name ?? null;
+  }
+
+  /** `token`'s capabilities as `character`: a new session unless it has one
+   *  to switch. D1: a part the story marks `admin: true` makes its booth a
+   *  host; switching to any other part takes host away (admin is kept).
+   *  C8: a part some admin cue's `by:` names calls those cues. */
+  private signInPart(token: string, character: string, model: SimModel | null): BoothGrant {
+    if (!this.sessions.grant(token, { character })) this.sessions.set(token, { character, admin: false, host: false });
+    if (model?.characters.get(character)?.admin === true) this.sessions.grant(token, { host: true });
+    else this.sessions.revokeHost(token);
+    if (model !== null && isCaller(model, character)) this.sessions.grant(token, { caller: true });
+    else this.sessions.revokeCaller(token);
+    this.persistSessions();
+    return { admin: this.sessions.canModerate(token), host: this.sessions.canHost(token), caller: this.sessions.canCall(token) };
   }
 
   private endClients(role: Client["role"]): void {
@@ -2131,11 +2373,13 @@ export class EventRuntime {
    * performer/mod console (the full feed, so admins can moderate live).
    */
   private deliverMessage(m: ChatMessage): void {
+    const names = this.personaNames();
     for (const c of this.clients) {
+      const hide = c.pane === true ? NO_ONE : names;
       if (c.role === "guest") {
-        if (!m.hidden && visibleTo(m, c.id)) sseSend(c.res, "message", forGuest(m, this.sim, c.id));
+        if (!m.hidden && visibleTo(m, c.id)) sseSend(c.res, "message", forGuest(m, this.sim, c.id, hide));
       } else if (c.role === "prime") {
-        if (visibleToPrime(m, c, this.agentVoiced, this.sim?.model)) sseSend(c.res, "message", forBooth(m));
+        if (visibleToPrime(m, c, this.agentVoiced, this.sim?.model)) sseSend(c.res, "message", forBooth(m, hide));
       } else {
         sseSend(c.res, "message", m);
       }
@@ -2207,6 +2451,84 @@ export class EventRuntime {
   /** Wave 53 (C5): the `announce` frame to every phone on a stream: words to
    *  say, or `stop`. Live only and never journaled: a phone that missed it
    *  never hears it, and the app says it only if its owner opted in. */
+  /** Does this stream belong to prompter member `who` (`@<Character>`, a guest id)? */
+  private static isPrompterId(c: Client, who: string): boolean {
+    return (c.role === "prime" && `@${c.id}` === who) || (c.role === "guest" && c.id === who);
+  }
+
+  /** Who a prompter frame reaches: the scene, every host, every director. */
+  private seesPrompter(c: Client, members: ReadonlySet<string>): boolean {
+    if (c.lean === true) return false;
+    if (c.role === "mod" || (c.role === "prime" && (c.host === true || c.admin === true))) return true;
+    return members.has(c.role === "prime" ? `@${c.id}` : c.id);
+  }
+
+  /** The whole script goes once to anyone who hasn't it: the first frame of a
+   *  scene, and each stream's first (`handleEvents`). */
+  private prompterSend(frame: PrompterFrame, members: ReadonlySet<string>): void {
+    for (const c of this.clients) if (this.seesPrompter(c, members)) sseSend(c.res, "prompter", frame);
+    this.prompterClock();
+  }
+
+  /** The hold's clock runs only while a scene is on. */
+  private prompterClock(): void {
+    if (!this.prompters.active) {
+      if (this.prompterTimer !== null) clearInterval(this.prompterTimer);
+      this.prompterTimer = null;
+    } else if (this.prompterTimer === null) {
+      this.prompterTimer = setInterval(() => {
+        this.prompters.tick();
+        this.prompterClock();
+      }, 200);
+      this.prompterTimer.unref?.();
+    }
+  }
+
+  /** Is this the scene that hands over to him, with him still to come? */
+  private handoverDue(scene: SceneDraft): boolean {
+    return this.sim !== null && scene.sections.at(-1)?.title === HANDOVER_BEAT && worldString(this.sim.world.peek("Night.trabolta_introduced")) !== "true";
+  }
+
+  /** Her last line is his cue: the arrow past it, or her ✓ Done, is 🤖, on the
+   *  path a host's press takes. Once: a press of 🤖 first leaves nothing to do
+   *  and nothing said, and 🤖 after it reads *already online*, which is true.
+   *  Paused doors hold it: false, so her next move asks again, and a ✓ Done
+   *  that took the scene with it goes when they reopen (`openDoors`). */
+  private sceneFinished(scene: SceneDraft, closed: boolean): boolean {
+    if (!this.handoverDue(scene)) return true;
+    if (this.phase !== "open") {
+      this.handoverOwed ||= closed;
+      return false;
+    }
+    this.deskFire(HANDOVER_CUE, PROMPTER_BY);
+    return true;
+  }
+
+  private prompterName(who: string): string {
+    return who.startsWith("@") ? who.slice(1) : (this.sim?.persons.get(who)?.name ?? "A program");
+  }
+
+  /** Is a line of `from` a screen's to say, and who else says theirs? */
+  private prompterScene(appended: readonly ChatMessage[]): ReturnType<typeof sceneOf> {
+    const sim = this.sim;
+    if (sim === null) return null;
+    return sceneOf(appended, {
+      voiced: (from) => sim.model.characters.get(from)?.mind === "external",
+      ownerOf: (from) => {
+        for (const p of sim.persons.values()) if (p.name === from) return p.id;
+        return sim.model.characters.has(from) ? `@${from}` : null;
+      },
+    });
+  }
+
+  /** Who a phone is in a scene, from its token. */
+  private prompterCaller(token: string | undefined): { who: string; host: boolean } | null {
+    const character = this.characterOf(token);
+    if (character) return { who: `@${character}`, host: this.canHostToken(token) };
+    const guest = this.guestOf(token);
+    return guest !== null ? { who: guest, host: false } : null;
+  }
+
   private phoneAnnounce(frame: { text: string; at: number } | { stop: true }): void {
     for (const c of this.clients) if (c.role !== "mod") sseSend(c.res, "announce", frame);
   }
@@ -2281,6 +2603,15 @@ export class EventRuntime {
       const title = appended.find((m) => m.aloud?.reader === reader)?.beat ?? "Your script";
       this.push.notify(reader.startsWith("@") ? boothOwner(reader.slice(1)) : guestOwner(reader), aloudPush(title), false);
     }
+    // Wave 59: the beat's prompter goes live, and his lines wait for it. A
+    // line of someone who isn't reading is theirs: a card, and a push.
+    const scene = this.prompterScene(appended);
+    if (scene !== null) {
+      this.prompters.land(scene);
+      this.prompterClock();
+      const title = scene.sections[0]?.title ?? "Your line";
+      for (const who of scene.owners) this.push.notify(who.startsWith("@") ? boothOwner(who.slice(1)) : guestOwner(who), aloudLinePush(title), false);
+    } else this.prompters.outrun(appended, (from) => this.sim?.model.characters.get(from)?.mind === "external");
     // A commit whose events never reached a fanout: its lines go now.
     for (const crew of this.crewAfter.values()) post(crew);
     this.crewAfter.clear();
@@ -2299,6 +2630,12 @@ export class EventRuntime {
     this.deskCues(events);
     this.lightCues(events);
     this.runPicks(events);
+    // Wave 59: only a person knows when she has said the last line from the
+    // sheet, so the hosts hear, once this batch has gone.
+    if (this.handoverCut) {
+      this.handoverCut = false;
+      this.postHostsNote(HANDOVER_CUT_NOTE);
+    }
     return appended;
   }
 
@@ -2417,9 +2754,14 @@ export class EventRuntime {
     this.audio.setProjectText(text);
   }
 
-  /** What the audio routes read off this event (`audio.ts`). */
-  private audioContext(): AudioContext {
-    return { house: () => this.spatialHouse(), model: () => this.sim?.model ?? this.declaredModel };
+  /** What the audio routes read off this event (`audio.ts`). `hide`: who a
+   *  host's 🎵 Music leaves off its pals (wave 59: a Run persona). */
+  private audioContext(hide: ReadonlySet<string> = NO_ONE): AudioContext {
+    return {
+      house: () => this.spatialHouse(),
+      model: () => this.sim?.model ?? this.declaredModel,
+      dj: () => (this.sim !== null ? musicDjOf(this.sim.worldEntries(), [...this.sim.persons.values()].filter((p) => !hide.has(p.id))) : null),
+    };
   }
 
   /** A reload's fresh snapshot of the project's `lights.json` (`events-api.ts`,
@@ -2493,10 +2835,10 @@ export class EventRuntime {
    * the same story from the journal. A replay never reaches here: only a
    * live run fires. `refused`: an INTERACTION the story turned down.
    */
-  private deskFire(event: string): "fired" | "refused" | "no story" {
+  private deskFire(event: string, by: string = DESK_BY): "fired" | "refused" | "no story" {
     if (this.sim === null) return "no story";
     const actingBy = this.actingBy;
-    this.actingBy = DESK_BY;
+    this.actingBy = by;
     try {
       const out = this.commit("signal", event, undefined, null, null);
       const name = foldName(event);
@@ -2588,6 +2930,9 @@ export class EventRuntime {
       const a = args["answer"];
       const c = args["confidence"];
       if (typeof q !== "string" || typeof a !== "string" || a.trim() === "" || typeof c !== "number" || !Number.isInteger(c) || c < 1 || c > 100) return "refused";
+      // A key still owed judges nobody (wave 58): no verdict, so the story
+      // says it could not be judged and records nothing.
+      if (isPlaceholderKey(book, q)) return null;
       // A near miss (`Mr Pickels`) is proposed accurate, never a lie or a
       // guess by itself: a director decides it (wave 11, C6).
       const judged = judgeFiling(book, q, a, c);
@@ -2860,6 +3205,13 @@ export class EventRuntime {
     return v !== null && (v.kind === "bool" ? v.value : v.kind === "string" && v.value.trim() === "true");
   }
 
+  /** Awake in the body the worker answered, asleep now (wave 58). Never "asleep
+   *  now" alone: a worker's closed gate answers through the same route with the
+   *  `unavailable` and distress lines, and a character with no `awake` has no gate. */
+  private asleepSinceAsked(req: AgentRequest): boolean {
+    return req.self.vars["awake"] === "true" && !this.talkAwake(req.character);
+  }
+
   /** The public talk thread (C4): Trabolta answering Clippy aloud in the Desktop. */
   private talkThread(): AgentThread {
     return { character: TALK_AGENT, channel: `loc:${TALK_ROOM}`, audience: [`@${TALK_AS}`], public: true };
@@ -2903,6 +3255,143 @@ export class EventRuntime {
     const room = sim === null ? null : hostsRoomOf(sim.model);
     if (room === null) return;
     this.fanout(this.commit("broadcast", `channel(${room})`, text));
+  }
+
+  // -- wave 59: the Task Manager costume (`costume.ts`, `src/costume.ts`) ----
+
+  /** The costume's one credential. Never logged, never in a view but Run's. */
+  private costumeToken(): string {
+    return secretCode(this.claimSecret, COSTUME_TOKEN_LABEL);
+  }
+
+  /** What the night is doing, for a press. Read now, never cached. */
+  private costumeFacts(): CostumeFacts {
+    const sim = this.sim;
+    const word = (path: string): string | null => {
+      const v = sim === null ? null : worldString(sim.world.peek(path));
+      const t = v === null ? "" : v.replace(/^"(.*)"$/su, "$1").trim();
+      return t === "" || t === "none" ? null : t;
+    };
+    const num = (path: string): number | null => {
+      const n = Number(word(path));
+      return word(path) === null || !Number.isFinite(n) ? null : n;
+    };
+    const storyMs = sim?.elapsed() ?? 0;
+    const nowS = storyMs / 1000;
+    const recent = this.chat.all().filter((m) => !m.hidden && storyMs - m.ts < COSTUME_LOOKBACK_MS);
+    const tvTalking = this.screens.seen().some((p) => p.view === "tv" && p.talk === true && this.screens.clock() - p.at <= SPEECH_ONLINE_MS);
+    const burst = num("Night.burst_last");
+    return {
+      doors: sim !== null && this.phase === "open" && this.entryPlayed,
+      ended: word("Night.ended") === "true",
+      ceremony: word("Night.ceremony") === "true",
+      step: num("Night.step"),
+      speaking: tvTalking || saidBy(recent.filter((m) => m.channel === `loc:${TALK_ROOM}` && m.kind === "line" && typeof m.beat === "string"), STAGE_CHARS_PER_S) > storyMs,
+      prompter: this.prompters.inUse,
+      lights: word("Night.lights"),
+      alarm: word("Night.alarm_on") === "true",
+      roomOut: (num("Night.lights_back_at") ?? 0) > 0,
+      darkRoom: word("Night.dark_room"),
+      lightsOnline: this.lights.module()?.online === true,
+      routerOnline: this.audio.router().online,
+      musicHand: this.audio.musicHand(),
+      talk: this.talkNight(),
+      hijackPlaying: hijackPlaying(word("Night.glitch_kind"), num("Night.glitch_at"), nowS),
+      sinceBurstS: burst !== null && burst > 0 ? nowS - burst : null,
+      awake: this.talkAwake(),
+      owed: this.agents.openOn(this.talkThread()) !== null,
+    };
+  }
+
+  /** One action, through the path the house already has for it. */
+  private costumePerform(a: CostumeAction, file: CostumeFile): boolean {
+    const lights = this.lights.current().lights;
+    switch (a.kind) {
+      case "look":
+        if (!costumeLookSafe(lights, this.spatialHouse(), a.look)) return false;
+        this.lights.test({ look: a.look }, COSTUME_BY);
+        return true;
+      case "light": {
+        const fixtures = costumeFixtures(lights, this.spatialHouse(), a.to);
+        if (fixtures.length === 0 || lightStateProblems("set", a.set).length > 0 || !lightStateDoes(a.set as LightState)) return false;
+        for (const fixture of fixtures) this.lights.test({ fixture, set: a.set as LightState }, COSTUME_BY);
+        return true;
+      }
+      case "sound": {
+        const play = audioPlayOf({ sound: a.sound, ...(a.to !== undefined ? { to: a.to } : {}) });
+        if (typeof play === "string") return false;
+        this.audio.play(play, COSTUME_BY);
+        return true;
+      }
+      case "music":
+        this.audio.music(a.command, COSTUME_BY);
+        return true;
+      case "cue":
+        return this.deskFire(costumeCue(a.cue, this.costumeFacts()), COSTUME_BY) === "fired";
+      case "poke": {
+        // The canned Trabolta line's path (`modTalk`): nothing is owed here,
+        // the press was refused if it was.
+        const line = file.poke[this.costumePokes++ % file.poke.length]!;
+        const actingBy = this.actingBy;
+        this.actingBy = COSTUME_BY;
+        try {
+          this.fanout(this.commit("say", TALK_AGENT, `loc:${TALK_ROOM}`, line, null, "all", null));
+        } finally {
+          this.actingBy = actingBy;
+        }
+        return true;
+      }
+    }
+  }
+
+  /** The mod log's line: a journaled signal no story hook hears, so a fire is
+   *  on the ledger whatever it did, and never in `# hosts`. */
+  private costumeNote(item: CostumeItem): void {
+    process.stdout.write(`  🎭 costume: ${item.label}\n`);
+    const actingBy = this.actingBy;
+    this.actingBy = COSTUME_BY;
+    try {
+      this.fanout(this.commit("signal", COSTUME_SIGNAL, item.label, null, null));
+    } finally {
+      this.actingBy = actingBy;
+    }
+  }
+
+  /** The story's look again (the lights module's catch-up names it the same
+   *  way), or the plain house when the story has none to give back. If he
+   *  put a room out during the hold, only what the press moved goes back. */
+  private costumeRestoreLights(a: Extract<CostumeAction, { kind: "look" | "light" }>): void {
+    const lights = this.lights.current().lights;
+    const looks = lights.looks ?? {};
+    const facts = this.costumeFacts();
+    const look = facts.lights === "server_open" ? "lights_y2k" : `lights_${facts.lights ?? "restore"}`;
+    const usable = Object.prototype.hasOwnProperty.call(looks, look) && looks[look]?.then !== "restore";
+    const back = usable ? look : "lights_restore";
+    if (!facts.roomOut) {
+      this.lights.test({ look: back }, COSTUME_BY);
+      return;
+    }
+    const house = this.spatialHouse();
+    for (const t of costumeRoomOutRestore(lights, house, back, costumeMoved(lights, house, a), facts.darkRoom)) this.lights.test(t, COSTUME_BY);
+  }
+
+  /** The link Run hands the crew. It holds the token: only Run reads it. */
+  private costumeLink(): string {
+    return `${this.joinBase()}/costume?e=${encodeURIComponent(this.eventId)}&k=${this.costumeToken()}`;
+  }
+
+  /** The two routes the token opens. Nothing else accepts it. */
+  private async handleCostume(req: IncomingMessage, res: ServerResponse, path: string, body: Record<string, unknown>): Promise<boolean> {
+    if (!codeEquals(normalizeCode(str(body, "k")), this.costumeToken())) {
+      if (this.throttled(req, res)) return true;
+      this.loginFailures.record(ipOf(req));
+      sendJson(res, 401, { ok: false, why: "token" });
+      return true;
+    }
+    const on = !this.store.loadCostumeOff();
+    if (path === COSTUME_MENU_ROUTE) await sendCostumeMenu(res, this.costumeSource, on);
+    else await sendCostumeFire(res, this.costumeSource, this.costume, on, str(body, "id"));
+    return true;
   }
 
   /**
@@ -2992,8 +3481,8 @@ export class EventRuntime {
       const group = channel.slice("faction:".length);
       const def = sim.model.factions.get(group);
       if (def === undefined) return none;
-      if (sim.factionMembers(group).includes(guestId)) return null;
-      return def.hidden && !sim.factionRevealed(def.id) ? none : { status: 403, error: "you can't post here" };
+      if (def.hidden && !sim.factionRevealed(def.id)) return none;
+      return sim.factionMembers(group).includes(guestId) ? null : { status: 403, error: "you can't post here" };
     }
     if (channel.startsWith("loc:") || isCrewRoom(channel)) return sim.canSeeChannel(guestId, channel) ? null : none; // w18 crews: + crew rooms
     if (sim.model.channels.has(channel)) return sim.canSeeChannel(guestId, channel) ? null : none;
@@ -3360,6 +3849,8 @@ export class EventRuntime {
         codex: codex(speakerId, !recentOn),
         location: performer === null ? sim.locationOf(who) : null,
         ...(speakerDef?.player === true ? { ranges: Object.fromEntries([...speakerDef.ranges].filter(([k]) => !isPrivateSlot(speakerDef, k))) } : {}),
+        // Wave 58 (the music contract's C5): a guest's one slot the voice may move, when the story names one.
+        ...(performer === null && sim.model.warmth !== null ? { ranges: { [sim.model.warmth.slot]: [sim.model.warmth.min, sim.model.warmth.max] as [number, number] } } : {}),
       },
       world: globals,
       powers: this.agentPowers(),
@@ -3416,7 +3907,7 @@ export class EventRuntime {
       quests: sim.questsFor(id).map((q) => ({ id: q.def.id, title: q.def.title, status: q.status })),
       location: (loc) => {
         const l = sim.model.locations.get(loc);
-        return l === undefined ? null : (l.label ?? l.id);
+        return l === undefined ? null : inWorldLabel(l.label ?? l.id);
       },
       filings,
       currencySlot: sim.model.currency?.slot ?? null,
@@ -3639,9 +4130,10 @@ export class EventRuntime {
         vars: varsOf(c.id),
         codex: sim.codexFor(c.id).filter((e) => !e.secret).map((e) => e.title),
       })),
+      // Trabolta's prompt: a label's crew note is the real house (wave 59).
       locations: [...sim.model.locations.values()].map((l) => ({
         id: l.id,
-        label: l.label ?? l.id,
+        label: inWorldLabel(l.label ?? l.id),
         occupants: programs.filter((p) => p.location === l.id).map((p) => p.name),
       })),
       codex: [...sim.model.codex.values()].filter((e) => !e.secret).map((e) => ({
@@ -3700,6 +4192,13 @@ export class EventRuntime {
         const used = this.agentPowerUses.get(def.id) ?? 0;
         if (def.limit !== null && used >= def.limit) {
           out.push({ kind: "fire", ok: false, what: def.id, error: "power exhausted for this run" });
+          continue;
+        }
+        // The story can't see a hand on the soundtrack, and the router ignores
+        // his move under one (the music contract's C4): nothing happened, so
+        // nothing is told and no use is spent.
+        if (def.id === MUSIC_POWER && this.audio.musicHand() !== null) {
+          out.push({ kind: "fire", ok: false, what: def.id, error: "the music is in someone's hand" });
           continue;
         }
         const subject = act.subject ?? (sim.persons.has(counterpart) ? counterpart : undefined);
@@ -3868,6 +4367,16 @@ export class EventRuntime {
       sendJson(res, 410, { error: "the talk scene closed" });
       return;
     }
+    if (this.asleepSinceAsked(req)) {
+      // Wave 58: he died with this reply in flight, and "his DMs stop". Nothing
+      // lands (no line, no adjust, no act). The thread is asked again, because
+      // the worker answers a closed gate itself: the new body reads him asleep,
+      // so the guest gets the unavailable line, or the distress line if that is
+      // what they sent.
+      this.agents.line(req.thread);
+      sendJson(res, 410, { error: "he went to sleep" });
+      return;
+    }
     if (text !== "") {
       // Wave 32 (C4): a public answer goes to the whole room (a `loc:`
       // channel's default audience is only its occupants).
@@ -3877,25 +4386,36 @@ export class EventRuntime {
     // clamped to them. The story's watchers decide what the numbers mean.
     const ranges = sim.model.characters.get(req.character)?.ranges ?? new Map<string, [number, number]>();
     // Wave 21 (C7): `them.<slot>` moves a player speaker's own declared
-    // range (never a `private:` one); a guest's `them.` keys are ignored.
+    // range (never a `private:` one); a guest's `them.` keys are ignored,
+    // but for the story's `warmth:` slot (wave 58, the music contract's C5), ±1 whatever was asked.
     const who = req.thread.audience[0] ?? "";
     const them = who.startsWith("@") ? sim.model.characters.get(who.slice(1)) : undefined;
     const applied: Record<string, number> = {};
     for (const [name, delta] of agentAdjustments(body["adjust"])) {
       let range: [number, number] | undefined;
       let path: string;
+      let step = delta;
+      let start: number | undefined;
       if (name.startsWith("them.")) {
         const slot = name.slice("them.".length);
-        if (them === undefined || !them.player || isPrivateSlot(them, slot)) continue;
-        range = them.ranges.get(slot);
-        path = `${them.id}.${slot}`;
+        const warmth = sim.model.warmth;
+        if (them === undefined && warmth !== null && slot === warmth.slot && sim.persons.has(who)) {
+          range = [warmth.min, warmth.max];
+          path = `${who}.${slot}`;
+          step = Math.sign(delta);
+          start = 0;
+        } else {
+          if (them === undefined || !them.player || isPrivateSlot(them, slot)) continue;
+          range = them.ranges.get(slot);
+          path = `${them.id}.${slot}`;
+        }
       } else {
         range = ranges.get(name);
         path = `${req.character}.${name}`;
       }
       if (range === undefined) continue;
-      const current = Number(sim.worldEntries().find((w) => w.path === path)?.value ?? range[0]);
-      const next = Math.max(range[0], Math.min(range[1], (Number.isFinite(current) ? current : range[0]) + delta));
+      const current = Number(sim.worldEntries().find((w) => w.path === path)?.value ?? start ?? range[0]);
+      const next = Math.max(range[0], Math.min(range[1], (Number.isFinite(current) ? current : (start ?? range[0])) + step));
       applied[name] = next;
       this.fanout(this.commit("setVar", path, String(next)));
     }
@@ -4421,6 +4941,7 @@ export class EventRuntime {
       const allowed = seen === null || seen.has(spot);
       const frame = allowed ? this.cams.get(spot) : null;
       const send = (jpeg: Buffer, at: number): void => {
+        if (seen !== null) this.cams.noteRead(spot);
         res.writeHead(200, { "content-type": "image/jpeg", "content-length": String(jpeg.length), "cache-control": "no-store", "x-cam-at": String(at) });
         res.end(jpeg);
       };
@@ -4639,6 +5160,15 @@ export class EventRuntime {
         const out = this.spatial.ready(token);
         if (out !== "ok") refuse(out);
         else sendJson(res, 200, { ok: true });
+        return true;
+      }
+      case "/api/spatial/reset": {
+        // (wave 59) The run reset: back to the spawn, Gerald somewhere new.
+        // Commits nothing, so it is open while the doors are closed.
+        const out = this.spatial.runReset(token);
+        if (out.kind === "ok") sendJson(res, 200, { ok: true, spawn: out.spawn, duck: out.duck });
+        else if (out.kind === "found") sendJson(res, 409, { error: "already found" });
+        else refuse(out.kind);
         return true;
       }
       case "/api/spatial/suspend": {
@@ -4980,11 +5510,14 @@ export class EventRuntime {
       if (c.role !== "prime" || c.id !== character || c.via !== undefined) continue;
       this.clients.delete(c);
       try {
+        // Told at once: a reconnect's 401 takes the phone seconds (wave 59).
+        sseSend(c.res, "lifecycle", { kind: "released", at: Date.now() });
         c.res.end();
       } catch {
         /* client already gone */
       }
     }
+    this.boothSeen.delete(character);
     this.push.drop((owner) => owner === boothOwner(character));
     this.pushPresence();
   }
@@ -5060,12 +5593,18 @@ export class EventRuntime {
   }
 
   private requireGuest(req: IncomingMessage, body: Record<string, unknown>, res: ServerResponse): string | null {
-    const id = this.guestOf(tokenOf(req, body));
+    const token = tokenOf(req, body);
+    const id = this.guestOf(token);
     if (id === null) {
-      sendJson(res, 401, { error: "not signed in — register first" });
+      sendJson(res, 401, { error: this.notSignedIn(token) });
       return null;
     }
     return id;
+  }
+
+  /** A dead guest token's 401: a released phone is told so. */
+  private notSignedIn(token: string | undefined): string {
+    return token !== undefined && this.releasedTokens.has(token) ? SIGNED_OUT : "not signed in — register first";
   }
 
   /** Count a failed passcode attempt; true when this IP is over the limit.
@@ -5340,6 +5879,7 @@ export class EventRuntime {
     }
     // A caught poster's minute is up: the booths' boards drop it (BN2-FC).
     if (this.marks.postersLapsed(this.sim.elapsed())) this.pushSnapshots();
+    this.checkPresence(ms);
     this.sweepEphemeral();
     this.sweepWallet();
     this.closeStaleTalk(); // wave 32 (C4): before the sweep, so no hold note for it
@@ -5380,6 +5920,10 @@ export class EventRuntime {
     // still knows it.
     this.persistMeta();
     this.pushSnapshots();
+    // Wave 59: her ✓ Done behind paused doors was his cue, and the scene is gone.
+    const owed = this.handoverOwed;
+    this.handoverOwed = false;
+    if (owed && this.sim !== null && worldString(this.sim.world.peek("Night.trabolta_introduced")) !== "true") this.deskFire(HANDOVER_CUE, PROMPTER_BY);
   }
 
   /** A new run on `source`: a fresh sim, an empty journal + chat, and the
@@ -5427,6 +5971,7 @@ export class EventRuntime {
     // Going live additionally signs every performer out of their character
     // — rehearsal booths must not carry into the show.
     this.guestTokens.clear();
+    this.releasedTokens.clear();
     this.persistGuests();
     this.pairing.clear();
     this.rejoin.clear();
@@ -5510,7 +6055,10 @@ export class EventRuntime {
     this.flushClock();
     this.stopTicker();
     clearInterval(this.lettersTimer);
+    this.costume.clear();
     this.desk.dispose();
+    if (this.prompterTimer !== null) clearInterval(this.prompterTimer);
+    this.prompterTimer = null;
     if (this.modSnapshotTimer !== null) clearTimeout(this.modSnapshotTimer);
     this.modSnapshotTimer = null;
     if (this.modOwedTimer !== null) clearTimeout(this.modOwedTimer);
@@ -5721,7 +6269,7 @@ export class EventRuntime {
       } else {
         const gid = this.guestOf(token);
         if (gid === null) {
-          sendJson(res, 401, { error: "not signed in — register first" });
+          sendJson(res, 401, { error: this.notSignedIn(token) });
           return true;
         }
         id = gid;
@@ -5747,6 +6295,7 @@ export class EventRuntime {
       const imp = token ? this.impersonations.get(token) : undefined;
       if (imp !== undefined) {
         client.via = imp.by;
+        client.pane = imp.terminal !== true;
         client.token = token;
         client.admin = false;
         // A director's pane of a host part is a host booth (C4).
@@ -5773,6 +6322,9 @@ export class EventRuntime {
         sseSend(res, "history", this.historyFor(client));
         // Wave 42b (B2): a phone back from sleep learns its place in line.
         this.replayAgentWaits(client);
+        // Wave 59: and where the prompter is. A scene that has gone reads null.
+        const member = role === "guest" ? id : role === "prime" && client.host !== true && client.admin !== true ? `@${id}` : null;
+        sseSend(res, "prompter", this.prompters.frame(member));
       }
       if (!fullMod) this.pushPresence();
       const ping = setInterval(() => {
@@ -5781,8 +6333,11 @@ export class EventRuntime {
       }, 25000);
       req.on("close", () => {
         clearInterval(ping);
-        this.clients.delete(client);
+        // A part released or taken back (`endBooths`) left already: no grace.
+        const live = this.clients.delete(client);
         if (ownGuest) this.seen(id, true);
+        if (live && role === "prime") this.boothSeen.set(id, this.clock());
+        if (role !== "mod") this.streamLeft.set(role === "prime" ? `@${id}` : id, Date.now());
         this.pushPresence();
       });
       return true;
@@ -5800,8 +6355,15 @@ export class EventRuntime {
 
     // --- K-26: the ceremony's recap numbers (directors only) ---
     if (method === "GET" && path === "/api/mod/recap") {
-      if (opts.moderator !== true && !this.canHostToken(queryTokenOf(req, url))) sendJson(res, 403, { error: "moderators only" });
-      else sendRecap(res, url, this.sim, { title: this.title, personas: this.personaOwners, duckRuns: this.spatial.runs() });
+      const token = queryTokenOf(req, url);
+      if (opts.moderator !== true && !this.canHostToken(token)) {
+        sendJson(res, 403, { error: "moderators only" });
+        return true;
+      }
+      // Wave 59: a host's phone never receives a persona's row; Run does, and
+      // a director's own phone or pane of a host part.
+      const director = opts.moderator === true || this.sessions.canModerate(token) || this.directorPane(token);
+      sendRecap(res, url, this.sim, { title: this.title, personas: this.personaOwners, duckRuns: this.spatial.runs(), ...(director ? {} : { hide: directorIds(this.sim, this.personaOwners) }) });
       return true;
     }
     // --- wave 41 (C5): Trabolta's letters (directors only, never a host booth) ---
@@ -5923,10 +6485,10 @@ export class EventRuntime {
       if (role === "guest") {
         const gid = this.guestOf(token);
         if (gid === null) {
-          sendJson(res, 401, { error: "not signed in — register first" });
+          sendJson(res, 401, { error: this.notSignedIn(token) });
           return true;
         }
-        sendJson(res, 200, this.guestViewFor(gid, new Set(this.agents.onlineCharacters())));
+        sendJson(res, 200, this.guestViewFor(gid, new Set(this.agents.onlineCharacters()), undefined, undefined, this.directorPane(token)));
         return true;
       }
       if (role === "prime") {
@@ -5935,7 +6497,7 @@ export class EventRuntime {
           sendJson(res, 403, { error: "no character — sign in" });
           return true;
         }
-        sendJson(res, 200, this.primeViewFor(character, new Set(this.agents.onlineCharacters()), undefined, this.canHostToken(token)));
+        sendJson(res, 200, this.primeViewFor(character, new Set(this.agents.onlineCharacters()), undefined, this.canHostToken(token), undefined, this.directorPane(token)));
         return true;
       }
       // `?host=1` (wave 13): a host booth's panel — the cue sheet, needs,
@@ -5946,7 +6508,7 @@ export class EventRuntime {
           return true;
         }
         res.setHeader("cache-control", "no-store");
-        sendJson(res, 200, this.hostViewNow());
+        sendJson(res, 200, this.hostViewNow(this.directorPane(token)));
         return true;
       }
       if (opts.moderator !== true && !this.sessions.canModerate(token)) {
@@ -5955,7 +6517,7 @@ export class EventRuntime {
       }
       // `?cues=1` (W-26): the director phone's lean read — just the cue sheet.
       if (url.searchParams.get("cues") === "1") {
-        sendJson(res, 200, { ...cueSheetView(this.modViewNow()), rejoins: this.rejoin.desk.pending() });
+        sendJson(res, 200, { ...cueSheetView(this.modViewNow()), rejoins: this.rejoin.asks(), prompter: this.prompters.status() });
         return true;
       }
       sendJson(res, 200, this.modViewNow());
@@ -5975,7 +6537,7 @@ export class EventRuntime {
       } else {
         const gid = this.guestOf(token);
         if (gid === null) {
-          sendJson(res, 401, { error: "not signed in — register first" });
+          sendJson(res, 401, { error: this.notSignedIn(token) });
           return true;
         }
         id = gid;
@@ -5983,7 +6545,8 @@ export class EventRuntime {
       const messages = this.chat.historyFor(id, admin).filter((m) => !this.isExpired(m));
       // A host booth moderates too, but reads no director's `via`.
       const booth = admin && opts.moderator !== true && this.characterOf(token) !== null;
-      sendJson(res, 200, { messages: admin ? (booth ? messages.map(forBooth) : messages) : messages.map((m) => forGuest(m, this.sim, id)) });
+      const hide = this.namesHiddenFrom(opts.moderator === true || this.directorPane(token));
+      sendJson(res, 200, { messages: admin ? (booth ? messages.map((m) => forBooth(m, hide)) : messages) : messages.map((m) => forGuest(m, this.sim, id, hide)) });
       return true;
     }
 
@@ -6012,8 +6575,12 @@ export class EventRuntime {
 
     // --- the wall terminals' lean screen state (K-16, routes/screen.ts) ---
     if (method === "GET" && path === "/api/screen/state") {
-      // Wave 25: a terminal's talk= / said= may end a desk speech step.
-      queueMicrotask(() => this.desk.poke());
+      // Wave 25: a terminal's talk= / said= may end a desk speech step; wave
+      // 59: or free the teleprompter.
+      queueMicrotask(() => {
+        this.desk.poke();
+        this.prompters.tick();
+      });
       return handleScreenGet(
         this.screens,
         this.sim,
@@ -6048,12 +6615,18 @@ export class EventRuntime {
           spotHere: (spot) => this.spatial.spotHere(spot),
           // Wave 48b (C12): the filter's book for the Language Report.
           language: () => ({ words: this.filter.wordCounts(), unsaid: this.filter.unsaid, level: this.filter.level, stars: this.filter.stars }),
+          // Wave 59: his lines wait for the teleprompter.
+          voiceHeldFrom: (channel) => this.prompters.heldFrom(channel),
         },
       );
     }
     // --- the house speakers (wave 17, audio.ts): the config + stagehand's long poll ---
     // --- the house mixer (wave 40): a director's or a host's panel ---
-    if (method === "GET" && path === "/api/mod/audio/mixer") return handleMixerGet(this.audio, this.audioContext(), req, res, url, (t) => opts.moderator === true || this.canHostToken(t));
+    if (method === "GET" && path === "/api/mod/audio/mixer") {
+      const token = queryTokenOf(req, url);
+      const director = opts.moderator === true || this.sessions.canModerate(token) || this.directorPane(token);
+      return handleMixerGet(this.audio, this.audioContext(director ? NO_ONE : directorIds(this.sim, this.personaOwners)), req, res, url, (t) => opts.moderator === true || this.canHostToken(t));
+    }
     if (method === "GET" && path === "/api/mod/audio") return handleAudioGet(this.audio, this.audioContext(), req, res, url, (t) => opts.moderator === true || this.sessions.canModerate(t));
     // --- the footsteps (wave 49, C3.1): the router's stream, a director's alone ---
     if (method === "GET" && path === "/api/mod/audio/walkers") {
@@ -6074,7 +6647,13 @@ export class EventRuntime {
     }
     // --- the house lights (wave 20, lights.ts): the config + the lights module's long poll ---
     if (method === "GET" && path === "/api/mod/lights") return handleLightsGet(this.lights, this.lightsContext(), req, res, url, (t) => opts.moderator === true || this.sessions.canModerate(t));
-    if (method === "GET" && path === "/api/mod/screen/terminals") return handleScreenTerminalsGet(this.screens, req, res, url, (t) => opts.moderator === true || this.sessions.canModerate(t));
+    // Wave 59: the costume's switch and link (a director's; never on the host allowlist).
+    if (method === "GET" && path === COSTUME_MOD_ROUTE) {
+      if (opts.moderator !== true && !this.sessions.canModerate(queryTokenOf(req, url))) sendJson(res, 403, { error: "moderators only" });
+      else sendJson(res, 200, { on: !this.store.loadCostumeOff(), url: this.costumeLink() });
+      return true;
+    }
+    if (method === "GET" && path === "/api/mod/screen/terminals") return handleScreenTerminalsGet(this.screens, req, res, url, (t) => opts.moderator === true || this.sessions.canModerate(t), (spot) => this.cams.rate(spot));
     // A host booth may mute the TV and identify a terminal (§2.7). Both are
     // host-visible writes handled before the generic body parse, so they
     // drop the host panel's cached build themselves (recheck item 8: the
@@ -6115,6 +6694,9 @@ export class EventRuntime {
 
     const body = await readBody(req);
 
+    // Wave 59: the costume's token opens these two and nothing else.
+    if (path === COSTUME_MENU_ROUTE || path === COSTUME_FIRE_ROUTE) return this.handleCostume(req, res, path, body);
+
     // The host allowlist for POSTs (the same rule as the GETs above).
     if (opts.moderator !== true && this.hostOnly(tokenOf(req, body)) && isModSurface(method, path, body) && !isHostRoute(method, path, body, this.hostRouteContext())) {
       sendJson(res, 403, { error: NOT_FROM_A_BOOTH });
@@ -6134,8 +6716,8 @@ export class EventRuntime {
       // Wave 23: enter by badge / invitation, ask a host (routes/rejoin.ts).
       // The cheap check first: only a rejoin path is throttled here.
       if (path.startsWith("/api/guest/enter") || path.startsWith("/api/guest/rejoin")) {
-        if (this.throttled(req, res)) return true;
-        const r = this.rejoin.handlePublic(path, res, body);
+        if (this.throttled(req, res, this.rejoin.passesLockout(path, body))) return true;
+        const r = this.rejoin.handlePublic(path, res, body, tokenOf(req, body));
         if (r.handled) {
           if (r.failed) this.loginFailures.record(ipOf(req));
           return true;
@@ -6144,14 +6726,15 @@ export class EventRuntime {
     }
     if (path === BADGE_ROUTE) {
       const t = tokenOf(req, body);
-      this.rejoin.linkFor(res, t === undefined || this.impersonations.has(t) ? null : (this.guestTokens.get(t) ?? null), body);
+      this.rejoin.linkFor(res, this.phoneGuest(t) ?? null, body);
       return true;
     }
     if (path === HOMESCREEN_ROUTE) {
       const t = tokenOf(req, body);
-      return this.pairing.homescreen(res, t === undefined || this.impersonations.has(t) ? undefined : this.guestTokens.get(t));
+      return this.pairing.homescreen(res, this.phoneGuest(t));
     }
     if (path === LOGOUT_ROUTE) return this.pairing.logout(res, tokenOf(req, body));
+    if (path === GUEST_LOGOUT_ROUTE) return this.pairing.guestLogout(res, this.phoneGuest(tokenOf(req, body)));
 
     if (path === "/api/agent/reply") {
       if (opts.moderator !== true && !this.sessions.canModerate(tokenOf(req, body))) {
@@ -6399,7 +6982,7 @@ export class EventRuntime {
         id: e.id,
         title: e.title,
         about: e.about,
-        code: e.code!,
+        code: e.printed ?? e.code!,
         url: `${base}/?code=${encodeURIComponent(this.codes.event)}&unlock=${encodeURIComponent(e.code!)}`,
         secret: e.secret,
       }));
@@ -6418,8 +7001,12 @@ export class EventRuntime {
         title: this.title,
         eventPass: this.codes.event,
         codex: this.codexLinks(base, model),
-        extras: printExtras(model, base, this.codes.event, this.factsBook()?.raw ?? null),
+        extras: printExtras(model, base, this.codes.event, this.claimSecret, this.factsBook()?.raw ?? null),
         claims: this.claims.links(model, base, this.codes.event),
+        staff: this.performerParts.map((character) => {
+          const part = partCode(this.claimSecret, character);
+          return { character, code: printedCode(part), url: partUrl(base, this.codes.event, part) };
+        }),
       }),
     );
   }
@@ -6572,12 +7159,31 @@ export class EventRuntime {
         }
         // A reserved (featured) program needs its invitation's claim, or a
         // director's open window (`/api/mod/claim/unlock`) — 409 `reserved`.
-        const claim = str(body, "claim").trim() || null;
-        const refusal = guestNameRefusal(this.sim!.model, name, takenNames(this.sim!.persons.values()), (c) => this.claims.mayClaim(c, claim));
-        if (refusal !== null) {
-          sendJson(res, 409, { error: refusal });
-          return true;
-        }
+        // An invited badge carries its own invitation (wave 59).
+        const rawBadge = str(body, "badge").trim();
+        const claim = str(body, "claim").trim() || this.rejoin.claimOn(rawBadge);
+        // Wave 59: a sent card speaks first (`Rejoin.joinCard`), so the loser
+        // of a race reads the refused screen, then the name. Null once it has
+        // answered. Asked again after every await below, or two phones could
+        // both pass and become one program.
+        const mayJoin = (): { badge: number | null } | null => {
+          const card = this.rejoin.joinCard(rawBadge, claim, name);
+          if (card.kind === "person") {
+            this.rejoin.resume(res, card, undefined);
+            return null;
+          }
+          if (card.kind === "reserved") {
+            sendJson(res, 409, reservedAnswer(card.name));
+            return null;
+          }
+          const refusal = guestNameRefusal(this.sim!.model, name, takenNames(this.sim!.persons.values()), (c) => this.claims.mayClaim(c, claim));
+          if (refusal !== null) {
+            sendJson(res, 409, { error: refusal });
+            return null;
+          }
+          return card;
+        };
+        if (mayJoin() === null) return true;
         // Typed in another case (`bugdom`): the guest is the story's own
         // `Bugdom`, so its `program.name ==` checks (the featured parts) hear them.
         name = canonicalGuestName(this.sim!.model, name);
@@ -6590,6 +7196,8 @@ export class EventRuntime {
           }
           chosen = this.avatars.urlFor(chosenKey);
         }
+        const joining = mayJoin();
+        if (joining === null) return true;
         const id = `g-${randomUUID().slice(0, 6)}`;
         const token = randomUUID();
         this.guestTokens.set(token, id);
@@ -6605,9 +7213,8 @@ export class EventRuntime {
         }
         this.fanout(this.commit("createPerson", id, name));
         this.seen(id, true);
-        // Wave 23: the badge they scanned on the way in is theirs now (a
-        // badge someone else holds, or no badge at all, is just ignored).
-        const badge = str(body, "badge").trim() === "" ? null : this.rejoin.freeBadge(str(body, "badge"));
+        // Wave 23: the badge they scanned on the way in is theirs now.
+        const { badge } = joining;
         if (badge !== null) this.rejoin.link(badge, id);
         sendJson(res, 200, { id, name, token, avatar: this.avatars.keyFor(name), ...(badge !== null ? { badge } : {}) });
         return true;
@@ -6923,6 +7530,35 @@ export class EventRuntime {
         return true;
       }
 
+      case PRINTED_GUEST_ROUTE: {
+        const id = this.requireGuest(req, body, res);
+        if (id === null) return true;
+        this.answerPrinted(res, id, body);
+        return true;
+      }
+
+      case "/api/aloud": {
+        // Wave 59: a phone on the shared teleprompter. Never journaled: no
+        // story reads it, and a locked program's script still scrolls.
+        const caller = this.prompterCaller(tokenOf(req, body));
+        if (caller === null) {
+          sendJson(res, 401, { error: "not signed in" });
+          return true;
+        }
+        const op = readPrompterOp(body);
+        const scene = Number(body["scene"]);
+        if (op === null || !Number.isInteger(scene)) {
+          sendJson(res, 400, { error: "scene and op" });
+          return true;
+        }
+        const refused = this.prompters.op(scene, caller.who, caller.host, op);
+        this.prompterClock();
+        // Never a word a phone's session reads (`locked`, a 410): it reads the next frame.
+        if (refused !== null) sendJson(res, 409, { error: `prompter: ${refused}` });
+        else sendJson(res, 200, { ok: true });
+        return true;
+      }
+
       case "/api/guest/codex/redeem": {
         // A guest types (or scans) an unlock code — a QR on the wall, a
         // puzzle's answer. Journaled; a miss is a story event too.
@@ -6947,6 +7583,24 @@ export class EventRuntime {
         // just goes on unjournaled), and nothing reaches the journal.
         if (!this.redeemMisses.allowed(id)) {
           sendJson(res, 429, { error: "too many wrong codes — wait a minute" });
+          return true;
+        }
+        // Wave 59: a badge's, a room's or a sign's printed code is no wrong
+        // code, whichever box it came through: the Scan sheets ask first
+        // (`/api/guest/printed`), a terminal's TYPE A CODE doesn't.
+        const printed = this.printedHit(code);
+        if (printed !== null) {
+          sendJson(res, 200, { ok: true, unlocked: null, printed: printed.kind, codex: guestView(this.sim!, id).codex });
+          return true;
+        }
+        // Wave 59: the Scan sheet's box takes a code with spaces in it and
+        // offers a room's name, so a phrase from it (`spaced`) that opens
+        // nothing was never a guess at a code: a plain answer and no story
+        // event. It still counts against the throttle, or a space would buy
+        // free guesses.
+        if (body["spaced"] === true && /\s/u.test(code) && !this.sim!.model.codexCodes.has(foldCode(code))) {
+          this.redeemMisses.record(id);
+          sendJson(res, 200, { ok: true, unlocked: null, words: true, codex: guestView(this.sim!, id).codex });
           return true;
         }
         const events = this.commit("redeem", id, code);
@@ -7090,10 +7744,73 @@ export class EventRuntime {
         sendJson(res, 200, { ok: true, shared: events.some((e) => e.type === "codexUnlocked") });
         return true;
       }
+      case PRINTED_PRIME_ROUTE: {
+        const character = this.characterOf(tokenOf(req, body));
+        if (!character) {
+          sendJson(res, 403, { error: "no character — sign in" });
+          return true;
+        }
+        this.answerPrinted(res, character, body);
+        return true;
+      }
+      case "/api/prime/codex/redeem": {
+        // Wave 58: a booth reads a codex QR (or types its code), so every
+        // coded entry is everyone's to scan, `secret: true` ones too: `secret`
+        // only hides an entry from an agent. Answers `/api/guest/codex/redeem`'s
+        // shape, but a part is no Person: `Sim.redeem` would do nothing, so a
+        // hit is the journaled `unlock` the mod route writes, and a miss is no
+        // story event at all (no `codexMissed`, no `wrong code`, no doubt).
+        // Only the limiter counts it. No ⭐, no award: those read Persons.
+        const character = this.characterOf(tokenOf(req, body));
+        if (!character) {
+          sendJson(res, 403, { error: "no character — sign in" });
+          return true;
+        }
+        if (!open) {
+          sendJson(res, 409, { error: "doors are closed" });
+          return true;
+        }
+        const code = str(body, "code").trim();
+        if (code === "") {
+          sendJson(res, 400, { error: "empty code" });
+          return true;
+        }
+        if (code.length > MAX_CODE_LENGTH) {
+          sendJson(res, 400, { error: "not a code" });
+          return true;
+        }
+        if (!this.redeemMisses.allowed(character)) {
+          sendJson(res, 429, { error: "too many wrong codes — wait a minute" });
+          return true;
+        }
+        const sim = this.sim!;
+        const entry = sim.model.codexCodes.get(foldCode(code));
+        if (entry === undefined) {
+          this.redeemMisses.record(character);
+          sendJson(res, 200, { ok: true, unlocked: null, missed: true });
+          return true;
+        }
+        // An operator playing an agent-voiced part (Run → Players) must not
+        // launder lore into its prompt: the share routes' refusal holds here.
+        const refusal = sim.agentRefusal(character, entry);
+        if (refusal !== null) {
+          sendJson(res, 403, { error: agentRefusalText(refusal) });
+          return true;
+        }
+        const title = sim.model.codex.get(entry)?.title ?? null;
+        if (sim.holdsCodex(character, entry)) {
+          sendJson(res, 200, { ok: true, unlocked: null, already: entry, ...(title !== null ? { title } : {}) });
+          return true;
+        }
+        this.fanout(this.commit("unlock", character, entry));
+        sendJson(res, 200, { ok: true, unlocked: entry, ...(title !== null ? { title } : {}) });
+        return true;
+      }
 
       // --- performer (prime) login: grants the `character` capability ---
       case "/api/prime/login": {
-        if (this.throttled(req, res)) return true;
+        // A staff badge at a lockout is a printed card, not a guess (routes/rejoin.ts).
+        if (this.throttled(req, res, normalizeCode(str(body, "part")) !== "" && this.rejoin.passesLockout(path, body))) return true;
         let character = str(body, "character");
         // Wave 54: a printed staff badge carries the guest code (the performer
         // code can rotate), which is good only beside a valid `part` below.
@@ -7112,42 +7829,36 @@ export class EventRuntime {
           sendJson(res, 409, { error: "doors are closed" });
           return true;
         }
-        // Wave 23: a cast card's `part` code signs in as its part and takes
-        // it from whichever booth held it (signed out, as by ⏏ Release).
+        // Wave 23: a cast card's `part` code signs in as its part. Wave 59:
+        // never by taking it: a held part refuses the card as it does the picker.
         if (part !== "") {
-          const def = identityDefs(model).find((d) => codeEquals(part, partCode(this.claimSecret, d.name)));
-          if (def === undefined) {
+          const named = this.partOfCode(part);
+          if (named === null) {
             this.loginFailures.record(ipOf(req));
             sendJson(res, 404, { error: "that cast card isn't one of tonight's" });
             return true;
           }
-          character = def.name;
-          if (releasePart(this.sessions, character) > 0) this.persistSessions();
-          this.endBooths(character);
+          character = named;
         }
         // A part is one performer's: every *other* session's character is
         // held; re-signing the same booth into the same part is fine.
         const others = this.sessions.entries().filter(([t]) => t !== token);
-        const refusal = performerRefusal(model, character, heldCharacters(others));
+        const held = heldCharacters(others);
+        const refusal = performerRefusal(model, character, held);
         if (refusal !== null) {
-          sendJson(res, refusal === "unknown character" ? 404 : 409, { error: refusal });
+          const answer = held.has(foldName(character)) ? heldAnswer({ name: character }, refusal) : { error: refusal };
+          sendJson(res, refusal === "unknown character" ? 404 : 409, answer);
           return true;
         }
-        if (token && this.sessions.grant(token, { character })) {
-          /* upgraded in place */
-        } else {
-          token = randomUUID();
-          this.sessions.set(token, { character, admin: false, host: false });
+        // A sign-in ends the asks on this part; a booth moving on frees its
+        // old one, which ends those too. Its own re-scan is neither.
+        const was = this.sessions.characterOf(token);
+        if (was !== character) {
+          this.rejoin.closeAsks(character);
+          if (was !== null) this.rejoin.closeAsks(was);
         }
-        // D1: a part the story marks `admin: true` makes its booth a host;
-        // switching to any other part takes host away (admin is kept).
-        if (model.characters.get(character)?.admin === true) this.sessions.grant(token, { host: true });
-        else this.sessions.revokeHost(token);
-        // C8: a part some admin cue's `by:` names calls those cues.
-        if (isCaller(model, character)) this.sessions.grant(token, { caller: true });
-        else this.sessions.revokeCaller(token);
-        this.persistSessions();
-        sendJson(res, 200, { token, character, admin: this.sessions.canModerate(token), host: this.sessions.canHost(token), caller: this.sessions.canCall(token) });
+        token = token !== undefined && this.sessions.has(token) ? token : randomUUID();
+        sendJson(res, 200, { token, character, ...this.signInPart(token, character, model) });
         return true;
       }
 
@@ -7962,12 +8673,12 @@ export class EventRuntime {
           codex,
           // W-03: each reserved program's invitation link (its claim token).
           claims: this.claims.links(this.sim?.model ?? this.declaredModel, base, this.codes.event),
-          // Wave 23: each part's own cast-card link (signs in as it, takes it back).
+          // Wave 23: each part's own cast-card link (signs in as it).
           castLinks: this.performerParts.map((character) => {
             const part = partCode(this.claimSecret, character);
-            return { character, part, url: partUrl(base, this.codes.event, part) };
+            return { character, part, code: printedCode(part), url: partUrl(base, this.codes.event, part) };
           }),
-          ...printExtras(this.sim?.model ?? this.declaredModel ?? null, base, this.codes.event, this.factsBook()?.raw ?? null),
+          ...printExtras(this.sim?.model ?? this.declaredModel ?? null, base, this.codes.event, this.claimSecret, this.factsBook()?.raw ?? null),
         });
         return true;
       }
@@ -8320,12 +9031,38 @@ export class EventRuntime {
           if (c.role === "guest") {
             if (!visibleTo(m, c.id)) continue;
             if (m.hidden) sseSend(c.res, "messageModerated", { seq: m.seq, hidden: true });
-            else sseSend(c.res, "message", forGuest(m, this.sim, c.id));
-          } else if (c.role === "mod" || visibleToPrime(m, c, this.agentVoiced, this.sim?.model)) {
+            else sseSend(c.res, "message", forGuest(m, this.sim, c.id, this.namesHiddenFrom(c.pane === true)));
+          } else if (c.role === "mod") {
             sseSend(c.res, "messageModerated", m);
+          } else if (visibleToPrime(m, c, this.agentVoiced, this.sim?.model)) {
+            sseSend(c.res, "messageModerated", forBooth(m, this.namesHiddenFrom(c.pane === true)));
           }
         }
         sendJson(res, 200, { ok: true, seq, hidden: m.hidden });
+        return true;
+      }
+      case COSTUME_MOD_ROUTE: {
+        // Wave 59: the crew's kill switch (a director's; off the host allowlist).
+        if (typeof body["on"] !== "boolean") {
+          sendJson(res, 400, { error: "send {on}" });
+          return true;
+        }
+        this.store.saveCostumeOff(!body["on"]);
+        if (!body["on"]) this.costume.halt();
+        sendJson(res, 200, { ok: true, on: body["on"] });
+        return true;
+      }
+      case "/api/mod/aloud": {
+        // Wave 59: a host's or a director's ▶ (every line of his left plays,
+        // the prompter carries on) or ✓ Done (the scene is over).
+        const action = str(body, "action");
+        if (action !== "release" && action !== "done") {
+          sendJson(res, 400, { error: "action is release or done" });
+          return true;
+        }
+        const took = action === "release" ? this.prompters.release() : this.prompters.done();
+        this.prompterClock();
+        sendJson(res, 200, { ok: true, took });
         return true;
       }
       case "/api/mod/talk": {
@@ -8580,7 +9317,7 @@ export class EventRuntime {
         // C4: a booth pane of a host part (`admin: true`) is a host booth —
         // the NEXT bar and the host routes, journaled `by` this director.
         const host = role === "prime" && this.sim.model.characters.get(id)?.admin === true;
-        this.impersonations.set(token, { role, id, by: label !== "" ? label : by, ...(host ? { host: true } : {}) });
+        this.impersonations.set(token, { role, id, by: label !== "" ? label : by, ...(host ? { host: true } : {}), ...(label !== "" ? { terminal: true as const } : {}) });
         const name = role === "guest" ? (this.sim.persons.get(id)?.name ?? id) : id;
         // Wave 28: `seq`, the newest chat seq now: a room terminal whose stream
         // history comes late floors its visit here (only this visit's lines).

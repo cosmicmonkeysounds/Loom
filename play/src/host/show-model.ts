@@ -6,6 +6,7 @@
 //! sections that fold (wave 37: Needs first, so it sits above the fold). The slim NEXT bar shows only while Show is off
 //! screen. No React, so every rule is tested on plain values.
 
+import type { PrompterStatus } from "../../../core/src/host-board.ts";
 import { countdownLeft, cueTitleTags, type CueRow } from "../../../core/src/cue-sheet.ts";
 import { URGENT_S, formatLeft } from "../clock.ts";
 import type { SheetLayout } from "../director.tsx";
@@ -111,6 +112,22 @@ export interface NightItem {
  *  scrolls sideways inside itself (css/host.css), so the watch values and
  *  the countdown are a swipe away; the ⚠ count is left to the *Needs you*
  *  head. */
+/** Wave 59: the line above NEXT while an ask waits (DRAFT w59). Under one holder
+ *  an ask is the only way back for a lost phone, and with the prompter's strip
+ *  and the Talk card open *Needs you* sits two screens down; null with none. */
+export function asksLine(n: number): string | null {
+  if (n <= 0) return null;
+  return n === 1 ? "🔁 1 wants back in" : `🔁 ${n} want back in`;
+}
+
+/** Wave 59: the teleprompter's scene in one line (DRAFT w59). */
+export function prompterLine(p: PrompterStatus): string {
+  const where = `📜 ${p.readers.join(", ")} · ${p.title} · line ${p.line} of ${p.lines}`;
+  if (p.speaking) return `${where} · 🔊 he is speaking`;
+  if (p.holder !== null) return `${where} · 🔒 ${p.holder} has it`;
+  return p.held ? `${where} · ⏸ he waits for the script` : where;
+}
+
 export function nightStrip(strip: readonly HostStripItem[], showClock: string | null): NightItem[] {
   const out: NightItem[] = [];
   const items = strip.filter((it) => it.kind !== "needs");

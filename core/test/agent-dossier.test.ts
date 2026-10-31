@@ -19,6 +19,7 @@ import type { AgentDossier, AgentRequest } from "../server/agents.ts";
 import type { ChatMessage } from "../server/chat.ts";
 import { scenarioDir, scenarioSource } from "../examples/load.ts";
 import { parseFactsText, FACTS_FILE } from "../src/facts.ts";
+import { withTestKeys } from "./fixtures/hunt-keys.ts";
 import { mentionsKey, nearTokens } from "../src/answer-match.ts";
 import { vBool, vString } from "../src/runtime/expr.ts";
 import { TO_Y2K } from "../../scripts/accept/chains.ts";
@@ -157,7 +158,7 @@ describe("buildDossier: the shape", () => {
           "g1.bottle_round": "1",
           "g1.heart_layer": "2",
           "g1.heart_suspicion": "35",
-          "g1.heart_convinced": "false",
+          "g1.heart_heard": "false",
           "g1.heart_out": "false",
         },
       ),
@@ -188,7 +189,7 @@ describe("buildDossier: the shape", () => {
       bottle: { picked: true, choice: "truth" },
       wallet: { balance: 120 },
       gifts: ["The Ribbon"],
-      heart: { layer: 2, suspicion: 35, convinced: false, barred: false, visits: 2 },
+      heart: { layer: 2, suspicion: 35, heard: false, barred: false, visits: 2 },
       said: ["Hello?", `${"x".repeat(DOSSIER_SAID_CHARS - 1)}…`],
       moments: [
         "reinstalled",
@@ -611,7 +612,7 @@ describe("the request's dossier (wave 20)", () => {
 const SHOW = "trapped-in-the-internet";
 const SHOW_DIR = scenarioDir(SHOW);
 const SHOW_SRC = scenarioSource(SHOW);
-const FACTS_TEXT = readFileSync(join(SHOW_DIR, FACTS_FILE), "utf8");
+const FACTS_TEXT = withTestKeys(readFileSync(join(SHOW_DIR, FACTS_FILE), "utf8"));
 const FACTS = parseFactsText(FACTS_TEXT).facts!;
 const SHOW_CODES = { event: "EVT921", prime: "PRM921", mod: "MOD921" };
 const SLOW = 300_000;
@@ -676,7 +677,7 @@ describe("on the show: the dossier never carries a secret", () => {
     };
     const q = (id: string) => FACTS.questions.find((x) => x.id === id)!;
 
-    for (const n of TO_Y2K.slice(0, 4)) await mod(n); // → introduce_trabolta
+    for (const n of TO_Y2K.slice(0, TO_Y2K.indexOf("introduce_trabolta") + 1)) await mod(n); // → introduce_trabolta
     await mod("mark_for_reinstallation", { subject: pad.id, args: { reason: "a test" } });
     await mod("start_the_hunt");
     for (const g of guests) for (const id of ["H1", "H2", "H3"]) await call(rt, "POST", "/api/guest/codex/redeem", { code: q(id).codex!.code }, { token: g.token });

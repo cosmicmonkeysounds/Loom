@@ -1,7 +1,30 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { roomCaption } from "../src/raycast/plan.ts";
 import { conePath, ducksOn, floorView, planDir, polyPath } from "../src/world/minimap.ts";
-import { DEFAULT_SPOT_FOV, horizontalFov, validateHouse, type DuckSpot } from "@loom/house";
+import { DEFAULT_SPOT_FOV, horizontalFov, validateHouse, type DuckSpot, type HouseMap } from "@loom/house";
 import { twoRooms } from "./world-fixture.ts";
+
+// Wave 59: the wall screens name rooms in-world, on both show maps.
+describe("a wall screen's room names", () => {
+  const show = (file: string) => JSON.parse(readFileSync(new URL(`../../core/examples/trapped-in-the-internet/${file}`, import.meta.url), "utf8")) as HouseMap;
+
+  for (const file of ["house.json", "house.shed.json"]) {
+    it(`${file}: every room reads as the story's, with no bracket and no floor`, () => {
+      const house = show(file);
+      for (const room of house.rooms) {
+        expect(roomCaption(house, room.id)).toBe(room.location);
+        expect(roomCaption(house, room.id)).not.toMatch(/[()]/u);
+      }
+      expect(Object.keys(floorView(house, house.floors[0]!.id))).not.toContain("label");
+    });
+  }
+
+  it("a player between rooms is somewhere in the house", () => {
+    expect(roomCaption(twoRooms(), null)).toBe("somewhere in the house");
+    expect(roomCaption(twoRooms(), "gone")).toBe("somewhere in the house");
+  });
+});
 
 describe("mini-map", () => {
   it("draws one floor's rooms in plan coordinates (north up), padded", () => {

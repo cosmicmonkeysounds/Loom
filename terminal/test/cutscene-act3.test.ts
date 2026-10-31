@@ -134,6 +134,20 @@ describe("every tv3 scene draws", () => {
       }
   });
 
+  it("the special prize (wave 58, G9a): the plain award slide; one name stays big, a tie steps down, nobody shows no number", () => {
+    const award = ACT3.find((d) => d.id === "award")!;
+    const at = (award_winner: string, award_value: number | null) => draw(award, "tv", 6000, { value: "award_most_correct", night: { award_winner, award_value } });
+    const one = at("Microsoft Excel", 5);
+    expect(one).toContain("MOST QUESTIONS CORRECT");
+    expect(one).toContain("Questions correct");
+    expect(one).toContain('class="tv3-award-name"');
+    expect(at("Netscape Navigator and Encarta 95", 5)).toContain('class="tv3-award-name long"');
+    expect(at("Winamp, Excel, MS Paint, Minesweeper, Netscape Navigator and RealPlayer", 5)).toContain('class="tv3-award-name longer"');
+    const nobody = at("Nobody", null);
+    expect(nobody).toContain("Nobody");
+    expect(nobody).not.toContain("Questions correct");
+  });
+
   it("an award shows the winner's name and value off the night block, and asks them forward without one", () => {
     const award = ACT3.find((d) => d.id === "award")!;
     const up = draw(award, "tv", 6000, { value: "award_lore_hoarder" });

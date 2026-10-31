@@ -287,6 +287,11 @@ export function aloudPush(title: string): PushPayload {
   return { kind: "alert", title: "📜 Read this out loud", body: title, tag: "aloud", url: "/" };
 }
 
+/** Wave 59: one line of a beat is yours (DRAFT w59). */
+export function aloudLinePush(title: string): PushPayload {
+  return { kind: "alert", title: "📜 You have a line", body: title, tag: "aloud", url: "/" };
+}
+
 export interface PushHubInit {
   /** Null → push disabled (no keys). */
   sender: PushSender | null;

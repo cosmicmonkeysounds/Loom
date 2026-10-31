@@ -4,6 +4,8 @@
 //! of React so the tests pin each rule.
 
 import { foldName } from "../avatars.ts";
+import { REDEEM_THROTTLED } from "../codex.ts";
+import type { RedeemAnswer } from "../scan-done.tsx";
 import type { SpaceGroup } from "../rooms/spaces.ts";
 import { badgeWorthy } from "../stream/badges.ts";
 import type { Channel, CountdownSummary, GuestCardView, Interaction, ObjectiveView, PrimeGuest, WalletQueueView } from "../types.ts";
@@ -209,7 +211,27 @@ export function scanError(e: unknown, view?: { paused?: unknown; night?: { step?
     return "The show is paused: scan again when it resumes.";
   }
   if (/unknown guest|no such guest|not a guest/iu.test(msg)) return "That pass isn't a guest in this event.";
+  if (/too many wrong codes/iu.test(msg)) return REDEEM_THROTTLED;
   return msg;
+}
+
+// Wave 58: a booth reads codex QRs too. Copy: DRAFT w58.
+/** The scanner's line for a code that unlocks nothing. */
+export const BOOTH_CODE_MISSED = "⛔ That code unlocks nothing.";
+/** The typed box's line for what is neither a guest's pass nor a code. */
+export const BOOTH_TYPED_NOTHING = "⛔ That's not a guest's pass or a codex code.";
+
+/** One line for what a booth's redeem came to: the camera stays on, so a
+ *  performer reads several QRs in a row. A miss never names an entry. */
+export function redeemNote(r: RedeemAnswer, missed: string = BOOTH_CODE_MISSED): string {
+  if (r.unlocked !== null && r.unlocked !== undefined) return r.title ? `🔓 “${r.title}” is in your Codex now.` : "🔓 A new entry is in your Codex now.";
+  if (r.already !== undefined) return r.title ? `📓 You already have “${r.title}”.` : "📓 You already have that one.";
+  return missed;
+}
+
+/** Did this redeem land an entry the booth now holds (new, or already)? */
+export function redeemHeld(r: RedeemAnswer): boolean {
+  return (r.unlocked !== null && r.unlocked !== undefined) || r.already !== undefined;
 }
 
 /** What a player reads for a refused press (wave 21, D4): never the staff room's reason. */
@@ -598,11 +620,11 @@ export function passAccepted(cardOpen: boolean, busy: boolean, gateAllows: boole
 }
 
 /** The scanner window's caption: the claim's "Scan Winamp's pass", else
- *  "Scan a pass". The title bar already draws the camera, so a caption that
+ *  "Scan a pass or a codex QR". The title bar already draws the camera, so a caption that
  *  leads with 📷 loses it (wave 37, C3: never "📷 📷 Scan …"). */
 export function scanTitle(caption?: string): string {
   const c = (caption ?? "").replace(/^\s*📷\s*/u, "").trim();
-  return c !== "" ? c : "Scan a pass";
+  return c !== "" ? c : "Scan a pass or a codex QR"; // DRAFT w58
 }
 
 // --- the booth's layers (wave 37, C1 + C2: × means done, back where it started) ---

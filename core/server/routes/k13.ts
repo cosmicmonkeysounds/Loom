@@ -22,6 +22,7 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { Sim, SimEvent } from "../../src/runtime/sim/index.ts";
 import { truthy } from "../../src/runtime/expr.ts";
+import { inWorldLabel } from "../../src/runtime/sim/model.ts";
 import { foldName } from "../../src/parser/names.ts";
 import { sendJson, str } from "../http-util.ts";
 import { readoutText } from "../chat.ts";
@@ -106,7 +107,7 @@ export class GuestCheckin {
     this.last.set(id, now);
     const events = this.host.signal(id, at);
     const replies = events.filter((e): e is Extract<SimEvent, { type: "respond" }> => e.type === "respond" && e.to === id).map((e) => readoutText(e.text).text);
-    const room = sim.model.locations.get(at)?.label ?? at;
+    const room = inWorldLabel(sim.model.locations.get(at)?.label ?? at);
     sendJson(res, 200, { ok: true, at, channel: `loc:${at}`, moved: sim.locationOf(id) === at, room, replies });
     return true;
   }

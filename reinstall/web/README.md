@@ -233,6 +233,11 @@ that moves (or re-deals) this session's duck moves Gerald too: the
 session-token map fetch carries the session's current `duck`, and the
 stream sends a `duck {session, duck}` frame; either one re-routes the trail.
 
+
+**Stuck?** Hold **R** for 5 seconds (wave 59): a bar fills, letting go cancels,
+and you are back at the spawn with Gerald somewhere new. The walk goes on as it
+was. The rules are in `docs/loom-reinstall.md` §3, *The run reset*.
+
 ## The house map — `/reinstall/map`
 
 Directors reach it in Loom Edit as Run → House → 🗺 Map: the same editor

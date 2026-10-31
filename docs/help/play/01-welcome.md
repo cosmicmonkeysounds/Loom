@@ -50,7 +50,8 @@ The party hides QR codes on the walls: lore for your Codex, and signs
 that check you into a room. **Scan them with 📷 Scan on the taskbar**
 (at the bottom of every screen, and next to your Codex's message box),
 never with your phone's own camera. One tap opens the camera; under it
-is a box to **type the code** instead (or a room's name, to check in).
+is a box to **type the code** printed under the QR instead: it does just
+what scanning does. (A room's name checks you in too.)
 Scanning in the app keeps you signed in; the phone's camera may open a
 different browser, where you aren't joined.
 

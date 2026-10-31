@@ -36,7 +36,7 @@ describe("Show's sections (wave 37)", () => {
     const h = heads(html);
     expect(h[0]).toBe("Needs you (2):true");
     expect(h[1]).toBe("Your jobs (1):true");
-    expect(h.slice(2)).toEqual(["Coming up:true", "Judge (1):true", "Cue sheet:false", "People (2):false", "More:false"]);
+    expect(h.slice(2)).toEqual(["Coming up:true", "Judge (1):true", "Cue sheet:false", "People (1):false", "More:false"]);
     // What waits reads before the cast-pack paragraphs.
     expect(html.indexOf("💰 1 held transfer")).toBeGreaterThan(-1);
     expect(html.indexOf("💰 1 held transfer")).toBeLessThan(html.indexOf("Two long cast-pack paragraphs"));

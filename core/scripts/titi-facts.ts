@@ -45,7 +45,7 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
-import { FACTS_FILE, POSITION_WORDS, clueText, parseFactsText, showFactsProblems } from "../src/facts.ts";
+import { FACTS_FILE, POSITION_WORDS, clueText, parseFactsText, placeholderQuestions, showFactsProblems } from "../src/facts.ts";
 import type { Fact, FactsFile, Question } from "../src/facts.ts";
 import { parse } from "../src/parser/index.ts";
 import { foldName } from "../src/parser/names.ts";
@@ -254,6 +254,10 @@ export function cardString(q: Question, n: number): string {
 /** The world var a question's card string is set on. */
 export const cardVar = (q: Question): string => `${SHOW_SHAPE.world}.q_${q.id.toLowerCase()}`;
 
+/** (wave 58) The world var saying a question's key is still owed
+ *  (`Question.placeholder`): G9a's count skips it, on either road. */
+export const owedVar = (q: Question): string => `${SHOW_SHAPE.world}.owed_${q.id.toLowerCase()}`;
+
 /** Pure: the generated outputs for a validated file. Throws
  *  `TitiFactsError` on a marker problem or an unwrappable text. */
 export function generate(facts: FactsFile, current: GenerateInput): Generated {
@@ -302,12 +306,13 @@ function questionsLoom(f: FactsFile): string {
   for (const { r, questions } of rs) {
     const shape = shapeOf(r);
     out.push(`== ${shape.beat}`, `  setting: ${S.setting}`, `  cast: ${S.reader}`, "");
-    questions.forEach((q, i) => out.push(`${S.reader}: ${shape.read(i + 1)} ${q.text}`));
+    questions.forEach((q, i) => out.push(`${S.reader}: ${shape.read(i + 1)} ${q.spoken ?? q.text}`));
     out.push(`-> ${shape.next}`, "");
   }
 
-  out.push(`// The 📝 card lines (main.loom \`when deal_fact_card\`), the truth count${f.door ? " and the door code" : ""}.`, `== ${S.seedBeat}`, `  setting: ${S.setting}`, "");
+  out.push(`// The 📝 card lines (main.loom \`when deal_fact_card\`), which keys are still owed (G9a skips them), the truth count${f.door ? " and the door code" : ""}.`, `== ${S.seedBeat}`, `  setting: ${S.setting}`, "");
   for (const { questions } of rs) questions.forEach((q, i) => out.push(`set ${cardVar(q)} = "${cardString(q, i + 1)}"`));
+  for (const { questions } of rs) questions.forEach((q) => out.push(`set ${owedVar(q)} = ${q.placeholder === true}`));
   out.push(`set ${S.world}.truth_count = ${f.truths.length}`);
   if (f.door !== undefined) out.push(`set ${S.doorVar} = "${f.door.code}"`);
   out.push("");
@@ -432,7 +437,10 @@ function factsLoom(f: FactsFile): string {
  *  replace or a rewrite to approve, never "not decided yet, skip it". */
 export const DRAFT_NOTE = "DRAFT — awaiting sign-off in facts.json";
 
-const HUNT_HEADER = "| # | Colour | Code | Title | Where in the Desktop | What it says |\n|---|---|---|---|---|---|";
+/** A placeholder question's answer, wherever a table would show it. */
+export const OWED = "⚠ owed";
+
+const HUNT_HEADER = "| # | Colour | Code | Title | Where in the Desktop | The question |\n|---|---|---|---|---|---|";
 const HEADER = "| # | Topic | Code | Title | How it hides | What it says |\n|---|---|---|---|---|---|";
 const CLUE_HEADER = "| Digit | Colour | Code | Title | Where in the house | What it is |\n|---|---|---|---|---|---|";
 
@@ -451,7 +459,8 @@ function printStacks(f: FactsFile): string {
     `## ${S.huntColour[0]!.toUpperCase()}${S.huntColour.slice(1)} — the hunt answers`,
     "",
     "Each row says where its document hides; the hint is what a host may tell a",
-    "stuck program.",
+    "stuck program. The answers themselves are in `facts.json` and the two cards that",
+    "carry the key.",
     "",
     HUNT_HEADER,
   );
@@ -459,7 +468,7 @@ function printStacks(f: FactsFile): string {
     for (const q of questions) {
       const c = q.codex!;
       const where = q.where! + (q.hint ? ` — hint: ${q.hint}` : "");
-      out.push(`| ${q.id}${q.draft ? " · DRAFT" : ""} | ${S.huntColour} | \`${c.code}\` | ${cell(c.title)} | ${cell(where)} | ${cell(`Q: ${q.text} → A: ${q.answer}`)} |`);
+      out.push(`| ${q.id}${q.draft ? " · DRAFT" : ""} | ${S.huntColour} | \`${c.code}\` | ${cell(c.title)} | ${cell(where)} | ${cell(q.text)} |`);
     }
   }
   const clues = f.door?.clues ?? [];
@@ -511,6 +520,10 @@ function printStacks(f: FactsFile): string {
   out.push("");
   return out.join("\n");
 }
+
+/** Where a question's key stands, as a generated table shows it. The key itself
+ *  is never in a doc (wave 58), and neither is a stand-in. */
+const keyCell = (q: Question): string => (q.placeholder === true ? OWED : "in `facts.json`");
 
 function stackRow(x: Fact, stack: string): string {
   const id = `${x.id}${x.draft ? " · DRAFT" : ""}`;
@@ -670,7 +683,7 @@ export function mindBlock(f: FactsFile, combos: string[] = []): string {
   }
   out.push("  match:");
   const words = new Set<string>();
-  for (const q of f.questions) for (const a of [q.answer, ...q.accept]) words.add(norm(a));
+  for (const q of f.questions) if (q.placeholder !== true) for (const a of [q.answer, ...q.accept]) words.add(norm(a));
   for (const w of words) out.push(`    - ${yamlScalar(w)}`);
   out.push("  lore:", `    - ${JSON.stringify(HUNT_MARKER)}`);
   const door = neverWords(f, combos);
@@ -697,23 +710,20 @@ export function mindBlock(f: FactsFile, combos: string[] = []): string {
   return out.join("\n");
 }
 
-/** The H1–F2 table. The first four columns keep the shape
- *  `stagehand/tests/test_secrets.py` parses: `| id | round | question | answer |`. */
+/** The H1–F2 table: the questions only. Since wave 58 no doc states a key, so
+ *  `stagehand/tests/test_secrets.py` reads the answers from `facts.json`. */
 export function designBlock(f: FactsFile): string {
   const out: string[] = [
     "_Generated from `facts.json` by `core/scripts/titi-facts.ts` — DO NOT EDIT this block;",
     `edit \`facts.json\`, then \`${RERUN}\`. The six-stamp pickup-line`,
     "mechanic was retired 2026-10-16 (U9): the line is learnable from Sandy's lore codex",
-    "and asked via the ask-14 DM._",
+    "and asked via the ask-14 DM. The answers, their accepted forms, the unlock codes and",
+    "where each document hides are in `facts.json` and never in a doc._",
     "",
-    "| # | Round | Question (exact, as shown on the TV and in the quest log) | Answer | Accept | CODEX (code) | Found in |",
-    "|---|---|---|---|---|---|---|",
+    "| # | Round | Question (exact, as shown on the TV and in the quest log) | Key |",
+    "|---|---|---|---|",
   ];
-  for (const q of f.questions) {
-    const c = q.codex!;
-    const accept = q.accept.length > 0 ? q.accept.map(cell).join(" · ") : "—";
-    out.push(`| ${q.id} | ${q.round} | ${cell(q.text)} | ${cell(q.answer)} | ${accept} | ${cell(c.id)} (\`${c.code}\`) | ${cell(q.where ?? "")}${q.draft ? " · DRAFT" : ""} |`);
-  }
+  for (const q of f.questions) out.push(`| ${q.id} | ${q.round} | ${cell(q.text)} | ${keyCell(q)} |`);
   return out.join("\n");
 }
 
@@ -850,6 +860,7 @@ export function run(dir: string, opts: RunOptions = {}): number {
     }
   }
   for (const w of modelProblems(facts, root)) log(`WARN  ${w}`);
+  for (const q of placeholderQuestions(facts)) log(`WARN  question ${q.id}: the answer key is still a placeholder. Filings on it are not recorded; do not print its gold card`);
 
   const outputs: Array<[string, string]> = [...Object.entries(gen.files), [OUTPUTS.mind, gen.mind], [OUTPUTS.design, gen.design]];
   const stale: string[] = [];

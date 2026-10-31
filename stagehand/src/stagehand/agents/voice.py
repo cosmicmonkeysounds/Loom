@@ -60,6 +60,7 @@ from .guards import (
     allowed_answer_words,
     bait_classes,
     bait_steer,
+    cover_holds,
     cut_exact_repeats,
     fallback_intent,
     guard_pass,
@@ -68,6 +69,8 @@ from .guards import (
     is_fallback,
     mentions_hunt,
     pick_fallback,
+    sore_point,
+    sore_steer,
     pick_situation_fallback,
     repeats,
     retry_message,
@@ -826,11 +829,12 @@ def build_lean_messages(
     now = right_now(persona, req, ctx)
     if now:
         out.append({"role": "system", "content": now})
-    steer = bait_steer(bait_of(persona, req))
-    if steer:
-        # (wave 42e) Bait mode's steer, before the closing note; it names the
-        # class, never the bait. Not under the kill switch: it is harmless.
-        out.append({"role": "system", "content": steer})
+    # (wave 42e) Bait mode's steer, before the closing note; it names the
+    # class, never the bait. Not under the kill switch: it is harmless. (wave
+    # 58) A sore point's goes first.
+    for steer in (sore_steer(sore_of(persona, req)), bait_steer(bait_of(persona, req))):
+        if steer:
+            out.append({"role": "system", "content": steer})
     out.append({"role": "system", "content": reminder(persona, req, memo=memo, lookup_round=lookups is not None, brief=ctx.options.brief)})
     if retry is not None:
         out.append({"role": "system", "content": retry_note or retry_message(retry, str(req.get("text") or ""), ctx.phase.stage)})
@@ -921,6 +925,8 @@ class StageInfo:
     last: str
     rid: str
     steered: bool = False
+    #: (wave 58) Clippy's line, for the accident's guard.
+    line: str = ""
 
     @classmethod
     def of(cls, persona: Persona, req: dict[str, Any]) -> "StageInfo | None":
@@ -939,6 +945,7 @@ class StageInfo:
             last=live[-1] if live else "",
             rid=str(req.get("id") or ""),
             steered=bool(_one_line(stage.get("direction"), MAX_STEER)),
+            line=str(req.get("text") or ""),
         )
 
     @property
@@ -954,7 +961,7 @@ class StageInfo:
         return rate
 
     def problem(self, say: str) -> str | None:
-        return stage_problem(say, self.situations, self.earlier, steered=self.steered)
+        return stage_problem(say, self.situations, self.earlier, steered=self.steered, line=self.line)
 
     def seed_of(self, salt: str) -> int:
         return int.from_bytes(hashlib.sha256(f"{self.rid}|{salt}".encode()).digest()[:8], "big")
@@ -967,8 +974,10 @@ class StageInfo:
 #: reason. None quotes the word that tripped it.
 STAGE_HINTS = {
     "echo": "It says one of the question's own things back to the whole room. Wave the question away grandly, in your own words, naming none of its things.",
-    "inside": "It puts you inside this computer. You live and work in Halifax, at Maps and Ducks, and appear on this screen by video call from there: never inside the computer, never a system, never in its core or underneath it.",
+    "inside": "It puts you inside this computer. You live and work in Halifax, at Maps and Ducks, and appear on this screen by digital conference from there: never inside the computer, never a system, never in its core or underneath it.",
     "stock": "It is an assistant's stock phrase. You are the Sole Owner and Founder speaking to his staff: no thanks for their concern, no assurances, no talk of what you are permitted, no apology for what you cannot say.",
+    "cover": "It says what you are. In front of the room you answer that neither way: never human, a man or a person, never anything else. Wave it away grandly and move on.",
+    "accident": "It says something about the accident. You never say what it was, and you never say there was none. Close the subject and move on.",
     "steer": "It speaks of your steer out loud. Nobody in the room may know you were steered: just do what it asks, in your own words.",
     "scene": "It breaks the rule of this moment's block.",
     "once": "You have already said that phrase in this scene: never again tonight in front of them; fresh words.",
@@ -1077,6 +1086,20 @@ def bait_of(persona: Persona, req: dict[str, Any]) -> tuple[str, ...]:
     return bait_classes(req.get("text"), unsaid_names(persona, gate_context(req)), heart=at_heart(req))
 
 
+def cover_of(persona: Persona, req: dict[str, Any]) -> bool:
+    """(wave 58) His cover holds for this request: the persona's `cover:` and
+    not at his heart, which admits what he is."""
+    return not at_heart(req) and cover_holds(persona, gate_context(req))
+
+
+def sore_of(persona: Persona, req: dict[str, Any]) -> str:
+    """(wave 58) The sore point of a private line (`guards.sore_point`); ""
+    on a stage line, and with no `cover:` (a persona with nothing to hide)."""
+    if is_stage(req) or getattr(persona, "cover", None) is None:
+        return ""
+    return sore_point(req.get("text"), cover=cover_of(persona, req))
+
+
 def dm_check(persona: Persona, req: dict[str, Any], house: tuple[str, ...] = ()) -> DmCheck | None:
     """(wave 42c) What the DM voice guards read for this request, or None on
     a stage line (the stage has its own guards). At his heart (its prompt
@@ -1098,6 +1121,7 @@ def dm_check(persona: Persona, req: dict[str, Any], house: tuple[str, ...] = ())
         theirs=(*guest_lines(req), *titles),
         bait=bait_of(persona, req),
         names=unsaid_names(persona, gate_context(req)),
+        cover=cover_of(persona, req),
     )
 
 
@@ -1438,7 +1462,7 @@ def _pooled(persona: Persona, reply: Reply, ctx: VoiceContext | None, req: dict[
         return replace(reply, say=stage.fallback())
     # (wave 42d) The line answers what the guest did (an offered fact is never
     # rejected), with the DM guards on; off, the stage's pool as in 42b.
-    intent = fallback_intent(req.get("text"), unsaid_names(persona, gate_context(req))) if ctx.options.dm_guards else ""
+    intent = fallback_intent(req.get("text"), unsaid_names(persona, gate_context(req)), cover=cover_of(persona, req)) if ctx.options.dm_guards else ""
     line = pick_fallback(persona, ctx.phase.stage, (*thread_replies(req), *ctx.said.to_them), intent, question=str(req.get("text") or "") if ctx.options.dm_guards else "")
     return reply if line == reply.say else replace(reply, say=line)
 
@@ -1485,7 +1509,7 @@ def to_the_card(persona: Persona, reply: Reply, ctx: VoiceContext, req: dict[str
     pool = persona.card_lines.get(ctx.phase.stage) or persona.card_lines.get("") or ()
     if not pool or not ctx.options.dm_guards or not reply.say or at_heart(req) or is_stage(req) or is_fallback(persona, reply.say) or _CARD.search(reply.say):
         return reply
-    if fallback_intent(req.get("text"), unsaid_names(persona, gate_context(req))) != "offer":
+    if fallback_intent(req.get("text"), unsaid_names(persona, gate_context(req)), cover=cover_of(persona, req)) != "offer":
         return reply
     heard = {fold(h) for h in (*thread_replies(req), *ctx.said.to_them)}
     line = next((x for x in pool if not any(fold(x) in h for h in heard)), pool[0])

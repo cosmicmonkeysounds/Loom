@@ -42,7 +42,15 @@ modules' headers with `//`. Wave 44 turned `push.ts`, `crawl.ts` and `rejoin.ts`
 turned the headers of `alerts.ts`, `cutscene.tsx`, `chrome/keyboard.ts` and
 `rooms/order.ts` into `//`: 147.63 kB. Wave 55 added the teleprompter's eager
 part and turned the headers of `moments/model.ts`, `moments/provider.tsx`,
-`guest-scan.tsx`, `avatars.ts`, `resume.ts` and `room.ts` into `//`: 146.71 kB.
+`guest-scan.tsx`, `avatars.ts`, `resume.ts` and `room.ts` into `//`: 146.71 kB. Wave 58
+added `fullscreen.ts`, with a `//` header: 147.53 kB. Wave 59's one holder added
+about 0.7 kB (the owed release's loop is in the lazy `rejoin-calls.ts`) and turned
+the headers of `core/src/cue-sheet.ts`, `host.ts`, `moments/exits.ts` and `arm.ts`
+into `//`: 147.03 kB. The shared teleprompter added
+`aloud/shared.ts` and turned the headers of `chrome/taskbar.tsx`,
+`chrome/icons.tsx`, `stream/card-tray.tsx`, `moments/pins-rail.tsx`,
+`moments/surfaces.tsx`, `show-clock.ts`, `claim.ts` and `back-gesture.ts` into `//`:
+147.55 kB with all of wave 59 merged, 147.77 kB after its seam fixes.
 
 ## How a session works
 
@@ -66,25 +74,54 @@ part and turned the headers of `moments/model.ts`, `moments/provider.tsx`,
 - **Getting back in** (wave 23, `rejoin.ts` + the lazy `rejoin-calls.ts`,
   server `core/server/routes/rejoin.ts`). A printed badge
   (`?code=&badge=`, an invited one with `&claim=` too) links to a guest at
-  join or from Me (🪪) and then signs them in on any phone
-  (`/api/guest/enter`) and is their pass at a booth (`scan.ts`). Wave 54: the
+  join or from Me (🪪) and then signs them in on a phone once no other phone
+  holds them (`/api/guest/enter`) and is their pass at a booth (`scan.ts`).
+  Wave 59: a held card lands on `held.tsx` (lazy): what is printed on it, and
+  Ask a host, for a guest and a part; `enterBy` / `enterPart` take this phone's
+  own token. A join that lost its card lands there too (`joinHeld`). Cancel posts
+  `cancelAsk`; a `closed` poll goes back to the card (`tryCard`), in or refused.
+  A badge link on a phone with a stored guest checks that session first
+  (`ui.tsx`, entry `link`): a dead one goes to the card, never to the picker, so a
+  slept phone can't make a second Person. A phone that stops being someone calls
+  `letGo`: the release is owed in host storage (`loom.owed.release`) until the
+  server has it (`payOwed`: on load, on `online`, every 15 s while the page lives,
+  and before a sign-in), so Leave with no signal never strands its own badge. Wave 54: the
   join screen hides the event code once a badge or claim resolves, an invited
   badge lands on *You are …* with one button (`Identities.invited`, no picture
-  pick), and `ui.tsx` keeps a badge beside a possibly stale session, so it
-  still links at the join; a signed-in guest opening someone else's badge gets
+  pick); a signed-in guest opening someone else's badge gets
   the Recruit sheet, never a switch. A featured guest's `?claim=`
   re-enters once joined. The join screen's *Already playing? Get back in*
   (`guest/get-back-in.tsx`, lazy) scans / types a badge or asks a host
   (`/api/guest/rejoin` → Needs and the director phone's *Let them in*). A
   staff badge (`?code=&part=`, the guest code since wave 54) signs in as its
-  part and takes it from a lost booth; on a guest's phone it asks first, with
+  part; on a guest's phone it asks first, with
   Stay as the primary button. `main.tsx` strips `badge` / `part` before render; `ui.tsx` runs
   the entry (`cardPlan`). The page's store falls back to memory when
   `localStorage` is blocked (`host.ts`).
 - **Streams reopen.** `client.ts` `openChatFeed` probes a dead
   `EventSource` (a Caddy 502 during a restart) and reopens on a 1 s → 15 s
   jittered backoff; the tray's live dot reads *reconnecting…*.
-- **Deep links.** `?unlock=` (codex), `?checkin=` (room sign), `?act=` (a
+- **A typed code does what its QR does** (wave 59, server
+  `core/server/routes/printed.ts`). The Scan sheet's `typedRoute` asks
+  `GuestSession.printed` about a bare code before the Codex: a badge's, a room's
+  or a sign's comes back as its QR's link and goes through `guestScan`, so only a
+  true miss fires the story's `wrong code`; a failed ask is said, never redeemed.
+  Typed text with spaces in it goes as `spaced` (`GuestSession.redeem`): a real
+  code unlocks, and words read `TYPED_UNKNOWN`, free, as they did before spaced
+  codes worked. The Codex's composer asks too (`guest/app.tsx`), but sends no
+  `spaced`: a sentence there is still a miss. The booth's `doTyped` does the
+  same through `parseScan`. On a join screen a
+  badge's code resolves with `printed`, and `useIdentities` opens that link
+  (`IdentityLookup` kind `printed`), so the page runs the QR's whole path; so does
+  *Get back in*, with no event code needed. Its one road to `enter` (an embedded
+  pane, or a busy resolve) is `enterBadge`: what the page does with the link, so
+  the owed release, this phone's token and the refused screen hold there too. Tests: `test/guest-scan.test.tsx`,
+  `test/w58-booth-scan.test.tsx`.
+- **The read window** (wave 58). `aloud/model.ts` `ALOUD_WINDOW_MS` is 20
+  minutes, past the longest read: the monologue lands at once and takes 14 at the
+  prompter's pace, so a phone swapped mid-read still gets it.
+- **Deep links.** `?unlock=` (codex; a guest's session, or wave 58's
+  `booth/unlock-link.ts` on a phone signed in as a booth), `?checkin=` (room sign), `?act=` (a
   sign that presses a guest's button, `act-link.ts`, wave 54: 📷 Scan or the
   session's `pendingAct`, then `/api/guest/act`), `?room=` /
   `?go=` (a push tap or an exit), `?claim=`, `?pair=`, `?badge=`,
@@ -225,6 +262,24 @@ windows), the Desk, the director phone and Help are lazy chunks.
   (`booth/card.tsx`: facts, at most three face buttons from the live
   objectives, the press's replies / said / staff lines). Since wave 21
   no booth has *All buttons…*, earlier readouts or the raw id.
+- **A codex QR** (wave 58, [`docs/loom-w58-contract.md`](../docs/loom-w58-contract.md)
+  C4, copy `DRAFT w58`). `ScannerScreen`'s `onCode`
+  redeems a wall code with an `unlock` before anything else
+  (`PrimeSession.redeem` → `POST /api/prime/codex/redeem`, typed `RedeemAnswer`):
+  `redeemNote` is the line under the camera, which stays on, `redeemHeld` shows
+  📓 Open my Codex (`onOpenCodex`), and a refusal goes through `scanError`.
+  `lastCode` drops camera re-reads of the code last answered, so a held wrong
+  code never eats the limiter. The typed box (`doTyped`): a `g-…` id goes to
+  `/api/scan` alone; anything else tries `/api/scan` first, since a real code
+  can have a badge's shape, and on *unknown guest* falls through to the redeem
+  (`BOOTH_TYPED_NOTHING`). A wrong code here is no story event: the server's
+  doubt and Password Manager's line are a guest's. `booth/unlock-link.ts`
+  (`useUnlockLink`, `BoothApp`) is the phone camera's `?unlock=`: once signed in
+  with a view, it redeems once, strips the link and opens the Codex. It is in
+  `BoothApp`, so a part on rails keeps the link until the stage has gone. The
+  Codex room stays read-only (no composer); its empty line points at 📷 Scan.
+  Share lore lists every entry held, on purpose. Tests:
+  `test/w58-booth-scan.test.tsx`.
 - Pop-outs (`booth/popouts/`, one at a time, *Later* → the 🔔 Waiting
   window), the 🚨 Wanted posters and board (`booth/wanted/`), the
   confrontation screen (`booth/confront.tsx`), the shared door queue
@@ -374,7 +429,7 @@ for an older server; contract `docs/loom-w48-contract.md` C2, C5, C7–C13).
 Everything is booth chunk only, in `booth/filter/`:
 
 - `model.ts` (pure, copy `FILTER_COPY` `DRAFT w48`, the 48b lines and
-  `FILTER_GAME_COPY` / `FILTER_LEVEL_COPY` / `FILTER_BANDS` `DRAFT w48b`):
+  `FILTER_GAME_COPY` / `FILTER_LEVEL_COPY` `DRAFT w48b`):
   `waitingLines` (not
   let go on this phone, not censored here while the view catches up),
   `filterPlan` (a line not seen before pops once, the newest of a batch,
@@ -395,9 +450,8 @@ Everything is booth chunk only, in `booth/filter/`:
   `censorRefusal` (409 *already censored* or *the filter no longer catches
   it* → gone quietly; doors, 404, 403, timeout, offline → plain words),
   `censorDone` (the 200's `points` / `mult` / `stars` when sent). 48b:
-  `snapLevel` / `levelOf` / `bandAt` / `bandsAt` / `stepBand` (the dial,
-  0–100 in steps of 5, starts 100; between tiers a strength catches what
-  the lower one does), `levelRefusal`, `mutedNote`, and the game's numbers:
+  `snapLevel` / `levelOf` (the dial, 0–100 in steps of 5, starts 100),
+  `levelRefusal`, `mutedNote`, and the game's numbers:
   `comboOf`, `heatAt`, `notchAt`, `multAt` (C11:
   `mults[min(len − 1, ceil(max(0, heat − elapsed / coolMs)))]`, elapsed
   from the view's arrival), `payOf` (`floor(points × mult)`),
@@ -435,12 +489,11 @@ Everything is booth chunk only, in `booth/filter/`:
 - `strength.tsx` (48b): the `{ kind: "strength" }` layer, opened only from
   ⊞ Start → 🔑 Filter strength (`filterStartItem`, passed as `filter` to
   `playerStartItems` / `boothStartItems` only when `PrimeView.filter` is
-  present). The big %, the band's words, an `<input type="range">` (step
-  5, 44 px track, 28 × 40 thumb) that posts on release (pointer up, touch
-  end, key up, blur; never per move), ◀ Less / More ▶ (a band at a time),
-  the legend (every band's colour, on / off, ⭐ a word; the slur row is
-  *Slurs (never shown)*), the status line (*Saving…*, or the refusal and
-  *Still n%*). **Nothing else points at it**: not the pop-out, the tile,
+  present). Only an `<input type="range">` (step 5, 44 px track, 28 × 40
+  thumb) that posts on release (pointer up, touch end, key up, blur; never
+  per move), not a word beyond the title (wave 59): a refused pick rolls
+  the thumb back, reddens the track and tells a screen reader why.
+  **Nothing else points at it**: not the pop-out, the tile,
   the tray or the help article (which says only that it can be tuned
   *somewhere on your phone*).
 - **Bands' colours** (`css/booth.css`): one token per tier
@@ -539,6 +592,48 @@ Contract `docs/loom-w55-contract.md`. Copy is `DRAFT w55`.
   scrolling was driven in Chromium, since play has no DOM in tests.
 - Help: `docs/help/play/07-performers.md` *Reading out loud*.
 
+### Wave 59: the shared teleprompter
+
+Contract `docs/loom-w59-prompter-contract.md`. Copy is `DRAFT w59`. The server owns a
+scene's one position, in words; his lines wait for it.
+
+- **The store** (`aloud/shared.ts`, eager, its header `//`). `PrompterStore`, one per
+  session (`GuestSession.prompter`, `PrimeSession.prompter`, never a module global,
+  since Run → Players mounts many phones in one page), fed by the stream's `prompter`
+  frame (`CHAT_FRAMES`, `onPrompter`). Read by subscription: `sceneId` is all the app
+  depends on, so five moves a second never re-render it. `pos(now)` adds `rate` from
+  the frame's arrival, up to `stop`. `nudge` follows this phone's own jump until the
+  server answers, `revert` gives it back. `ended` is the last scene to go, with its
+  `first` line and the line it had `reached`; only a `done` frame counts as read
+  (`superseded: false`); a `null` frame is a restart.
+- **`useAloud`** gains `shared` (`SharedScene`: the scene as this phone's script,
+  `role` reader / owner / host), `card` / `dropCard`. While `covering` on a visible
+  page it posts `here` every 4 s, or nothing waits for it. Posts go through the
+  session's `prompterPost` (`POST /api/aloud`). `done` posts `done` when a scene is on.
+  `behind` / `readBehind` are this reader's unread lines a newer scene took off the
+  phone (`linesBehind`, `model.ts`). The mark goes through `markPast`: ✓ Done only past
+  what the phone showed, and a scene taken over only as far as a prompter open here had
+  got, never past a line still behind it (contract C10).
+- **`Prompter`**: `script` is `a.shared?.script ?? a.script`, keyed on the scene.
+  With a scene it does not autoscroll itself: one rAF loop follows
+  `store.pos` (`FOLLOW` of the gap a frame, a snap past a screenful), or, with a finger
+  on the text, sends `move` every `MOVE_MS` and, resting, every `STILL_HERE_MS`.
+  `place` is a repaint, `moveTo` is a move someone asked for (it also jumps the
+  scene). `bitsKey` / `bitsOf` (`prompter-model.ts`) are what the controls need from a
+  frame, as a string, so only a change re-renders. Locked (someone else's finger, or
+  him): `.aloud-text.locked`, the controls and the rail stop, `.aloud-lock` says who.
+  `yOfPos` / `posOfY` turn words into pixels along this phone's lines. A host has no
+  last line to reach, so their ✓ Done always asks twice. *↑ n earlier lines* opens
+  `behind` on a sheet with its own scroll, outside `[data-line]`, so the position never
+  sees it.
+- **`AloudCard`** (the same lazy chunk): one line of yours in someone else's script,
+  never the whole phone. `AloudSlot` shows it when `a.card && !a.covering`.
+- **Host:** `host/prompter-strip.tsx` on Show (`HostView.prompter`, `prompterLine` in
+  `show-model.ts`), 📜 Join (`openPrompter`) and ▶ (`calls.aloud`, on the allowlist).
+  The director phone has the same line and ▶ while something waits.
+- Tests: `test/w59-prompter.test.tsx`; the scrolling is driven in Chromium by
+  `scripts/sim/prompter.spec.ts`.
+
 ### Host windows (wave 25; the contract is `docs/loom-house-desk.md` §6.2)
 
 A host booth (`isHostBooth` in `host/dock.tsx`, never a player) has three
@@ -561,12 +656,24 @@ bar shows is pure in `host/show-model.ts` (`hostWindowShown`,
   wave 37, `.host-show-strip`), Who's calling, a big NEXT
   (`tab-cues.tsx` `NextBox`), the console's last word, LAST + `did:`, then
   folding sections (`showSections`): *Needs you* (`NeedsTab`; first since
-  wave 37, open while something waits), *Your jobs* (`booth/now-card.tsx`
+  wave 37, open while something waits; wave 59: while an ask waits, one line
+  above NEXT, `asksLine` *🔁 n want back in*, jumps to it, since the prompter's
+  strip and the Talk card can push it two screens down), *Your jobs* (`booth/now-card.tsx`
   `NowJobs`, the NOW card laid open — the pinned card steps aside while
   Show is up), *Coming up* (`comingUp`), Judge,
   Cue sheet (`CueSheet`), People, More (the old tab components,
   unchanged). A jump (`ctx.go`, a need's row, the caller chip, a refused
-  press) opens Show at that section (`showTarget`).
+  press) opens Show at that section (`showTarget`). People shows who is
+  online (`personOnline`, wave 59) and its head counts them; the offline sit
+  behind one switch, off each time it opens, and 🗂 Guests keeps everyone. A
+  row a host has open stays until it is closed (`peoplePool`), because a
+  🔁 Re-pair QR or 📡 Scan as… must outlive the phone's grace. Everywhere else
+  `presence.ts` `isOnline` reads the server's per-row `online`: the guest's
+  People, a player's 👥 People (`booth/people.tsx`: a claimer keeps whoever
+  it hunts or holds) and a room's strip. A picker, a DM's name and a card
+  still read every row. A Run persona has no row on a booth, so its DM opens
+  a thread of its own by id, titled Director, with no Card button
+  (`buildPrimeChannels`).
 - **🤖 Talk** (wave 32, contract `docs/loom-w32-contract.md` C6;
   `host/talk.tsx` over the pure `host/talk-model.ts`, core's
   `talk-back.ts`). While `view.talk` is set (a talk scene: `HostView.talk`)
@@ -620,6 +727,14 @@ bar shows is pure in `host/show-model.ts` (`hostWindowShown`,
   answer's, ≤ 10 / s per key, the last value always sent) and
   `audio/music`. All three routes are on the host allowlist.
 
+Wave 58 adds **🎵 Music** above the Mixer (`host/music.tsx`, contract
+`docs/loom-w58-music-contract.md`): it took Now Playing from the Mixer and adds TIDAL's
+⏮ ⏸ ⏭, PLAY NOW (the show's playlists, the app's sidebar, a pasted link), the
+`src:music` strip and the 🤖 card, whose lock is the story's cue through
+`calls.cue`. `mixer.tsx` exports `useMixerView`, `useMixPosts` and `StripLine` for
+it. `musicOpen` opens it for Task Manager (`MUSIC_OWNER`), and folded it polls
+nothing. Tests: `test/w58-music.test.tsx`. Help: `docs/help/play/20-house-desk.md`.
+
 Every write is on the server's host allowlist (`core/server/routes/host.ts`;
 any other mod route answers 403 *not from a booth*), typed in `host/api.ts`
 (`HOST_ROUTES`, `HOST_READS`; `test/host-actions.test.ts` checks every
@@ -643,7 +758,7 @@ cue armed through the who? picker (`armWindow`), `ARM_DEAD_MS` 300 ms,
 ```
 src/
   ui.tsx · app-role.ts   role chooser + which app opens; lazy booth / director / help
-  main.tsx               entry; strips ?pair= / ?badge= / ?part= before render; a root ChunkBoundary (a throw shows Reload, never a blank page)
+  main.tsx               entry; starts fullscreen (wave 58); strips ?pair= / ?badge= / ?part= before render; a root ChunkBoundary (a throw shows Reload, never a blank page)
   rejoin.ts · rejoin-calls.ts   getting back in: badge / cast-card links (first load), enter / ask-a-host / re-pair calls (lazy)
   types.ts               mirror of core's views + chat (keep in step with core/server/{views,chat}.ts)
   client.ts              api() POST + useChatStream / openChatFeed (SSE)
@@ -658,7 +773,7 @@ src/
   session/               guest.ts / prime.ts sessions, channels, stream handlers
   sides/                 sides, crews, factions (lazy)
   credits/               the credits roll (wave 44): lazy.tsx eager, roll.tsx + its models lazy
-  aloud/                 the teleprompter (wave 55): model.ts + lazy.tsx eager, prompter.tsx + its model lazy
+  aloud/                 the teleprompter (wave 55): model.ts + lazy.tsx + shared.ts eager, prompter.tsx + its model lazy
   ui/                    primitives, Win95 windows, objective card, progress
   css/                   base, themes, w95 + one file per lane; styles.css imports them
   widgets.tsx · widgets-fact.tsx   show-card registry (captcha, image, poll, tutorial, pass, fact, answer, email: wave 41's optional inbox, `emailResult`)
@@ -750,9 +865,14 @@ copy. Any new guest line must pass it.
   buttons wrap inside the box (`css/moments.css`).
 - **Lazy chunks** go through `lazy-chunk.tsx` (`retryImport` once, then a
   `ChunkBoundary` with Reload), so a page left open across a deploy never
-  goes white. `main.tsx` wraps the whole app in one more `ChunkBoundary`
-  (wave 26): any throw, in a render or an effect cleanup, shows Reload,
-  never a blank page.
+  goes white. A chunk loaded by hand has no boundary, so it goes through
+  `chunkOrDown` (wave 59, `ui.tsx`'s `rejoin-calls`): a second failure throws
+  `ChunkDown` and the page shows `ChunkFailed`, never the browser's own error,
+  which names the asset's URL. `main.tsx` took any card or re-pair code off the
+  address, so that page's Reload puts them back first (`onReload`, `withCard`) or
+  it forgets them. `main.tsx` wraps the whole app in one more
+  `ChunkBoundary` (wave 26): any throw, in a render or an effect cleanup, shows
+  Reload, never a blank page.
 - **Barrels.** `chat.tsx`, `guest.tsx`, `performer.tsx`, `session.ts`,
   `threads.ts` re-export every name they had before wave 13
   (`test/barrels.test.ts`). Add new code to the lane modules, not the
@@ -811,6 +931,18 @@ copy. Any new guest line must pass it.
   they return a cleanup; `test/w26-composer-cleanup.test.tsx` runs the
   composer's hooks through `test/hooks-harness.ts` and checks the source
   for the pattern.
+- **Fullscreen** (wave 58, `fullscreen.ts`, started only by `main.tsx`, so an
+  embedded player never asks). A browser goes fullscreen only on a tap: the
+  first tap asks, and a touch asks again after anything dropped it; a mouse is
+  asked once, so Esc on a laptop stays Esc. The listener is on `document` in the
+  bubble phase, after React's handlers, and skips a tap whose activation is
+  spent, so a file picker or a share sheet on that same tap still opens. An
+  iPhone's Safari has no fullscreen for a page (`canRequest` is false): only its
+  Home Screen app drops the bars. An installed Android app opens fullscreen
+  through the manifest's `display_override`; `display` stays `standalone` for
+  iOS, and `core/server/routes/k31b.ts` keeps its fallback in step. Driven in
+  Chromium as a Pixel 7 and on a laptop; not yet on a real phone.
+  `test/fullscreen.test.ts`.
 - **Types drift.** `types.ts` mirrors the server by hand. When core adds a
   view field, add it here as optional so an older server still parses.
 - **Lens parity.** The editor's Run lens mirrors the booth's pinned rooms

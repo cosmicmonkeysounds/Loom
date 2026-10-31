@@ -9,7 +9,7 @@ const interactions: InteractionSummary[] = [
   ix('call_to_the_desktop', 'C1/V1 · 📣 Call everyone to the Desktop'),
   ix('accuse', '👁 Put on the watchlist', 'performer'),
   ix('start_the_bingo', 'V2 · 🎱 Start Computer Bingo (20 min)'),
-  ix('introduce_trabolta', 'Clippy 2/X · 🤖 Clippy introduces Trabolta'),
+  ix('introduce_trabolta', 'Clippy 2/X · 🤖 Trabolta comes online'),
   ix('truth_or_dare', '🎩 Truth or Dare from the hat'),
   ix('telephone', '(Optional) ☎️ Telephone: a mangled message · sends someone away'),
 ]
@@ -50,7 +50,7 @@ describe('cueRows', () => {
     const withDuck: InteractionSummary[] = [
       ix('start_the_bingo', 'V2 · 🎱 Start Computer Bingo'),
       { ...ix('printer_opened', '🫘 Printer opened (hardware fallback)'), sequence: false },
-      ix('introduce_trabolta', 'Clippy 2/X · 🤖 Clippy introduces Trabolta'),
+      ix('introduce_trabolta', 'Clippy 2/X · 🤖 Trabolta comes online'),
       { ...ix('the golden duck', 'Reinstallation: the golden duck (server)'), sequence: false },
     ]
     const rows = cueRows(withDuck, { last: 'start_the_bingo', lastBy: 'director', fired: ['start_the_bingo', 'the golden duck'] })

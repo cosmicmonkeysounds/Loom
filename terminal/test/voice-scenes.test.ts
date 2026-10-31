@@ -9,7 +9,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { foldName } from "../src/config.ts";
-import { INTRO_CAPTIONS, INTRO_MORE } from "../src/cutscene/kit/tv1-boot.tsx";
+import { INTRO_CAPTIONS, INTRO_LINE, INTRO_MORE } from "../src/cutscene/kit/tv1-boot.tsx";
 import { BOTTLE_HUNGER, BOTTLE_HUNGER_AT, BOTTLE_SPIN_MS } from "../src/cutscene/kit/tv1-time.ts";
 import { SCENES } from "../src/cutscene/registry.ts";
 import { ADVICE_CHAT } from "../src/cutscene/scenes/act3.tsx";
@@ -107,10 +107,14 @@ describe("VOICE_SCENES (C11)", () => {
     expect(INTRO_CAPTIONS.map((c) => c.text)).toEqual(LINES.get(foldName("Trabolta Introduction"))!.flatMap((l) => splitSentences(l)));
   });
 
-  it("(wave 32) the intro's later lines are the beat's, word for word, in order", () => {
+  it("(wave 58) the intro's lines are the beat's, word for word, in order; the rest of his speech is no scene's", () => {
     const his = LINES.get(foldName("Trabolta Introduction"))!;
+    expect(his[0]).toBe(INTRO_LINE);
     expect(his.slice(1)).toEqual([...INTRO_MORE]);
-    expect(INTRO_CAPTIONS.length).toBe(17);
+    expect(INTRO_CAPTIONS.length).toBe(5);
+    // Trabolta Greeting and the questions run under the plain face.
+    expect(Object.values(VOICE_SCENES).flatMap((v) => v.beats)).not.toContain("Trabolta Greeting");
+    expect(LINES.get(foldName("Trabolta Greeting"))!.length).toBeGreaterThanOrEqual(8);
   });
 
   it("(wave 32) the bottle draws his hunger as he says it: the beat's sentences after the question", () => {
@@ -128,7 +132,7 @@ describe("VOICE_SCENES (C11)", () => {
 
   it("his line shows once: the layer leaves the sentences a scene draws itself", () => {
     expect(VOICE_SCENES["bottle_landed"]!.ownCaption).toBe(true); // "<pick>." and "Truth or dare?" on the bottle
-    // advice_helped: SandyChat types the proposal; those are its `drawn`.
+    // advice_helped: her window types the proposal; those are its `drawn`.
     const advice = VOICE_SCENES["advice_helped"]!;
     const said = LINES.get(foldName("Advice Helped"))!.flatMap((l) => splitSentences(l));
     expect(advice.drawn!.map((i) => said[i]).join(" ")).toBe(ADVICE_CHAT[0]!.text);

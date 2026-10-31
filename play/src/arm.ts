@@ -1,11 +1,11 @@
-//! Arm, then fire, for the story's own buttons (W11). An INTERACTION the
-//! story marks `arm: true` (`InteractionSummary.arm`) — a booth's 🔌 / 💥 /
-//! ❌ patch-bay fallbacks, a guest button that can't be taken back — never
-//! fires in one tap: the first tap arms it (it turns black and reads "Tap
-//! again to fire"), a second one ≥ `ARM_DEAD_MS` and < `ARM_MS` later fires,
-//! and it disarms itself after `ARM_MS` or when the page is left. The model
-//! is core's `tapCue`, the one the director's phone and the laptop's
-//! Director page use; buttons without `arm` fire on the first tap as before.
+// Arm, then fire, for the story's own buttons (W11). An INTERACTION the
+// story marks `arm: true` (`InteractionSummary.arm`) — a booth's 🔌 / 💥 /
+// ❌ patch-bay fallbacks, a guest button that can't be taken back — never
+// fires in one tap: the first tap arms it (it turns black and reads "Tap
+// again to fire"), a second one ≥ `ARM_DEAD_MS` and < `ARM_MS` later fires,
+// and it disarms itself after `ARM_MS` or when the page is left. The model
+// is core's `tapCue`, the one the director's phone and the laptop's
+// Director page use; buttons without `arm` fire on the first tap as before.
 
 import { useCallback, useEffect, useState } from "react";
 import { ARM_DEAD_MS, ARM_MS, tapCue, type Armed, type Tap } from "../../core/src/cue-sheet.ts";

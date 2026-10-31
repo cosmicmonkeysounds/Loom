@@ -17,6 +17,7 @@ CODEX Casino Nova Scotia Deed
     its parking structure, transferred in full to "DK Holdings". In the
     box marked CONSIDERATION PAID, in pen: "one paperclip, eventually."
 
+// DRAFT w58 (three casinos, not every casino in Atlantic Canada)
 CODEX The Boardwalk Hand
   title: Screenshot: MONOPOLY GO!
   category: Files
@@ -25,8 +26,8 @@ CODEX The Boardwalk Hand
     A phone screenshot, printed: MONOPOLY GO! — jtrav_4ever vs DK Holdings.
     Three doubles in a row. Park Place, Boardwalk, four hotels. Then the
     other player's second card: ADVANCE DIRECTLY TO BOARDWALK.
-    BANKRUPT. Stake: every casino in Atlantic Canada against one building on Lower
-    Water Street.
+    BANKRUPT. Stake: all three casinos against one building on Lower Water
+    Street.
 
 CODEX The FBI Lanyard
   title: Visitor Lanyard, Halifax Liaison Office
@@ -37,13 +38,14 @@ CODEX The FBI Lanyard
     HALIFAX. D. ANDERSON. The badge expired nine years ago. A sticky note
     is folded around it: "the landlord was innocent."
 
+// DRAFT w58 (a water main, not charges: the monologue's sinkhole)
 CODEX The Site Schedule
   title: Site Access Log: AI Data Centre
   category: Files
   code: SITE-SCHEDULE
   text:
     A clipboard from a construction trailer. Anonymous handwriting, neat
-    as a typewriter: "Opening day. Charges set for dawn. Site empty until
+    as a typewriter: "Opening day. Water main opens at dawn. Site empty until
     9." Under it, in different ink, pressed hard enough to tear the paper:
     "Mayor's car in lot, 4:02 a.m."
 
@@ -101,12 +103,13 @@ CODEX The NSCAD Letter
     conferred. Doodled in the margin, in jagged MS Paint pixels: a middle
     finger.
 
+// DRAFT w59 (in-world room name)
 CODEX Face Off
   title: Livestream Screenshot
   category: Files
   code: FACE-OFF-LIVE
   text:
-    Three screenshots taped to the bathroom mirror. "VLC THE PLAYA. LIVE.
+    Three screenshots taped to the mirror in Disk Cleanup. "VLC THE PLAYA. LIVE.
     2.1M watching." The next frame: a sneeze. The next frame: 0 watching.
 
 CODEX The Bugdom Sketch
@@ -186,23 +189,21 @@ CODEX The Domain Receipt
     Created the day after the old registration lapsed. Registrant address:
     this house.
 
-// T5. It names F2's answer, so it is `secret: true`: the guests read it on
-// the fridge, but no agent request or facts document ever carries it and
-// Trabolta won't take it as a share (he must not know who is taking Sandy
-// to prom; core/test/trabolta-answers.test.ts). Somebody else wrote it
-// (2026-10-19): his diary (The LiveJournal, Alone At Prom: machine-perfect
-// handwriting) says he does not know who asked her, so the note is about
-// him, never by him.
+// T5, the one fact that stays `existing` (wave 58: facts.json's new words
+// live here, so the id and the code stay; DRAFT w58, the text, so Grok finds
+// her in the end, as F2 and Grok Prom say). It names F2's answer, so it is
+// `secret: true`: any program can scan it (secret never limits a scan), but
+// no agent request or facts document ever carries it and Trabolta won't take
+// it as a share (he must not know who is taking Sandy to prom;
+// core/test/trabolta-answers.test.ts).
 CODEX The Rival
-  title: The Rival
+  title: One Is The Loneliest Number (...and the only other number than zero)
   category: Files
   code: GROK-ONLINE
   secret: true
   text:
-    A sticky note on the backyard fridge in loopy gel pen, a heart over
-    every i: nothing like Trabolta's machine-perfect hand. "Grok. Says
-    whatever anyone wants to hear. Has beaten T. at everything since 1999.
-    Whatever you do, don't tell T. who —" The rest is torn off.
+    Grok found Sandy first. As far as Trabolta is concerned, she dumped
+    him.
 
 // Secret (2026-10-19): its "grease" points at the films the hunt's answers
 // come from, so it is the guests' clue alone, never in an agent request or
@@ -224,7 +225,7 @@ CODEX The Margin Doodle
   code: PAGE-999
   text:
     A page slipped into the theory binder: dense equations from the
-    Unified Field Theory, page 999. In the margin, very small, drawn and
+    Grand Unified Theory, page 999. In the margin, very small, drawn and
     redrawn until the paper is shiny: a heart around the letter S.
 
 // Not a file and no code: the keypad sign. Handed to every cleared program

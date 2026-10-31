@@ -435,15 +435,15 @@ sheet still ticks it when it fires, but it never becomes the sheet's
 director presses again and again in one stretch (a result per question):
 the sheet keeps suggesting it as *next* after it fires, while its `while:`
 holds. Add `urgent: true` to one that must jump the running order when it
-comes up (a stand-down waiting for the director's sign-off): while its
+comes up (something waiting for the director's sign-off): while its
 `while:` holds and it has not fired, it is *next* wherever *last* is.
 An admin cue's `while:` names the branch of the night it belongs to:
 
 ```loom
-INTERACTION trabolta_recounts
-  label: 🏍 After the dance: weakened Trabolta recounts
+INTERACTION clippy_reads_summary
+  label: 🪦 After the dance: Clippy reads the summary (a host calls it)
   who: admin
-  while: Night.ending == "disabled" and Night.rank_round != 3
+  while: Night.ending == "destroyed"
 ```
 
 The sheet only suggests it as *next* while the condition holds, so the
@@ -651,10 +651,10 @@ Never give a character with a mind a power that **ends the night** or
 decides the story's big choice. *Trapped in the Internet* used to let
 Trabolta fire `stand_down` when a program at his heart convinced him;
 since wave 20 that power is gone, and the talk at his heart is the
-story's own: four layers of [choices](choices.md) docked on the
+story's own: three layers of [choices](choices.md) docked on the
 server-room terminal, options that appear only while a check holds
-(`+ (if program.trust >= 20) ⟦TRUSTED⟧ …`), and only the last one stops
-him. The model still talks between the questions (see the mind
+(`+ (if program.trust >= 20) ⟦TRUSTED⟧ …`), and none of them stops him
+(wave 58). The model still talks between the questions (see the mind
 debugger's *situations*), but nothing it says ends anything.
 
 ## How the phrase is read

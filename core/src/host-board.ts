@@ -453,6 +453,11 @@ export function isGateFlag(label: string): boolean {
 /** How long without a sign of a guest before Needs you asks about them. */
 export const UNSEEN_MS = 30 * 60_000;
 
+/** Wave 59: a phone that went quiet still counts as online this long, so a
+ *  locked phone or a quick app switch doesn't flicker on anyone's People
+ *  list. The one number to change. */
+export const ONLINE_GRACE_MS = 3 * 60_000;
+
 /** The director marked this guest as gone home (`<id>.gone` is true). */
 export function isGone(world: readonly WorldRow[] | ReadonlyMap<string, string>, id: string): boolean {
   return truthy(valueOf(world, `${id}.gone`));
@@ -801,11 +806,37 @@ export interface RejoinAsk {
   name: string;
   /** Wall ms the ask opened. */
   at: number;
+  /** Wave 59: a part, not a Person (`id` is the character). */
+  part?: true;
+  /** Wave 59: a phone holds it now, so letting them in signs that phone out.
+   *  Absent from an older server. */
+  held?: boolean;
+}
+
+/** Wave 59: the teleprompter's scene, as a host, a director and Run read it
+ *  (`server/prompter.ts`). */
+export interface PrompterStatus {
+  id: number;
+  title: string;
+  /** Who reads it, by name. */
+  readers: string[];
+  /** Where it is, from 1. */
+  line: number;
+  lines: number;
+  /** His next line is waiting for the script. */
+  held: boolean;
+  /** He is saying a line now. */
+  speaking: boolean;
+  /** Who is pressing it. */
+  holder: string | null;
 }
 
 export interface HostView extends CueSheetView {
   /** `ModView.phase`. */
   runtime: "idle" | "open" | "paused";
+  /** Wave 59: the teleprompter's scene; null with none on, absent from an
+   *  older server. Its ▶ and ✓ Done are `POST /api/mod/aloud`. */
+  prompter?: PrompterStatus | null;
   /** Wave 32: the talk scene that is on (`Night.talk`), its canned lines and
    *  Trabolta's state (`talk-back.ts` `talkView`). Absent from an older
    *  server; null when no talk scene is on. */

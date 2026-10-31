@@ -278,6 +278,21 @@ module docstrings that explain the why).
   touch it. Two TIDAL beds never crossfade (one app, one cable): the old fades,
   the app changes, the new fades in. `dir` / `files` on such a playlist are
   its fallback (`problem()`, or `SILENT_S`). Tests: `tests/test_audio_tidal.py`.
+- **The Music manager** (wave 58, `../docs/loom-w58-music-contract.md` C2–C4).
+  `TidalRemote.pause(on)` is a held pause: the reconciler presses ⏸, never ▶.
+  `previous()` clicks `previous`. `library` is the sidebar's `/playlist/` links
+  every `LIBRARY_EVERY_S`, read before the director's first word too, and a failed
+  read keeps the last list. `Director.play_playlist` / `play_tidal` build an ad-hoc
+  scene (`HAND_PREFIX`) from the one in force, the pick in place of every
+  non-looping entry; ad-hoc names stay out of `status()`'s lists. `set_scene` (a
+  real change) and `stop` let go of a pause, and `_tick_live` never reads a paused
+  app as a silent cable. **The stereo:** `<cue: music, action: skip | hush | play |
+  back>` on the feed (`stereo_of_cue`, never a scene). `_music_loan` marks a hand
+  that is Trabolta's: a director's hand, a held ⏸ or a Stop ignores `skip`, `hush`
+  and `play`, `back` touches only a loan, and every hand, a host's ⏸, live cue,
+  Stop house sounds and restart ends one (`_end_loan`). A guest's `adjust` may carry `them.chummy` only when the
+  request's `them.ranges` offers it (`adjust_names`). Tests:
+  `tests/test_audio_w58.py`, `tests/test_player_adjust.py`.
 - **The SFX library is original and deterministic** (C6): no samples,
   no trademarked motifs; each sound's seed comes from its name, so a
   re-render is byte-identical. One-shots are set by loudness (the loudest
@@ -421,6 +436,20 @@ module docstrings that explain the why).
   `fallbacks:` without intents) to a reply to a fact that never names the
   📝 card. Tests: `tests/test_dm_guards_42e.py`. An older worker refuses a
   persona with `card_lines:`.
+- **The sore points** (wave 58, `guards.py` 8g, `docs/agents.md`,
+  [`docs/loom-w58-contract.md`](../docs/loom-w58-contract.md) C3). He is
+  publicly a man and the accident is never explained, so a persona's `cover:
+  {until: <cond>}` (parsed in `persona.py`, read like `when:`; `Night.truth_told`
+  in the show) turns on `guards.sore_point` (`accident`, `self`), a steer
+  (`sore_steer`) and two reasons, `cover` (`breaks_cover`: a flat claim to be
+  human at any hour, a machine or a bare yes or no while the cover holds, never
+  at his heart) and `accident` (`tells_accident`), in `SEVERE` and `WITHHOLD`,
+  with their own `accident` / `cover` filler pools. The stage has both
+  (`stage_problem(line=)`). They are not bait: `BAIT_CLASSES` and `not_plain`
+  are untouched. `your file has been read` holds the monologue's plot behind
+  `Night.truth_told`, before `heart to heart`, which stays the last block. An
+  older worker refuses a persona with `cover:` (an unknown key), so the MacBook
+  pulls and restarts both together. Tests: `tests/test_w58_cover.py`.
 - Docstrings cite "the wave 12 contract §Cn.m": that lane contract was
   never committed. `docs/agents.md` and the tests describe the behaviour.
 
@@ -489,7 +518,8 @@ module docstrings that explain the why).
   against feed catch-ups until the next live music cue or a story
   restart (so does the mixer's scene / stop, wave 40; its *Follow the
   story* lets go); else the catch-up (`night.music`). Stop house sounds forgets
-  the scene: the beds stay silent until the next music cue or catch-up.
+  the scene and is a hand (ALL STOP): the beds stay silent until the next music
+  cue, *Follow the story* or a restart.
   An empty or dead playlist retries every 10 s (`RETRY_S`).
 - **Three ranks of sound file.** `sounds._best` ranks a file someone put
   there (no tag) over a library stand-in (`loom-sfx v1`, `is_stand_in`)

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { locationOfRoom, occupancyLabel, occupantsByLocation, roomOrder } from "../src/presence.ts";
+import { isOnline, locationOfRoom, occupancyLabel, occupantsByLocation, roomOrder } from "../src/presence.ts";
 import type { Channel, PersonCard, PrimeGuest } from "../src/types.ts";
 
 function card(id: string, location: string | null, kind: PersonCard["kind"] = "guest"): PersonCard {
@@ -18,6 +18,12 @@ describe("occupantsByLocation", () => {
     expect(occ.get("Yard")!.map((p) => p.id)).toEqual(["c"]);
     expect(occ.has("null")).toBe(false);
     expect(occ.get("Hall")![0]).toMatchObject({ group: "Reds", kind: "guest" });
+  });
+
+  it("wave 59: a room shows who is online, and you; an older server's rows all stay", () => {
+    const people = [{ ...card("a", "Hall"), online: true }, { ...card("b", "Hall"), online: false }, card("c", "Hall")];
+    expect(occupantsByLocation(people, { id: "me", name: "Me", group: null, location: "Hall" }).get("Hall")!.map((p) => p.id)).toEqual(["me", "a", "c"]);
+    expect([isOnline({ online: true }), isOnline({ online: false }), isOnline({})]).toEqual([true, false, true]);
   });
 
   it("accepts the performer's guest list too", () => {

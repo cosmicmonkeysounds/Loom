@@ -2,7 +2,7 @@
 title: Setting up terminals, the door sensor and headsets
 section: Live Shows
 order: 48
-keywords: terminal setup, set up a terminal, provisioning, provisioning link, tablet, tablets, fleet, spot, view, code, mod passcode, moderator passcode, passcode, re-point, ⚙, advanced, door, door sensor, calibrate, calibrate door, door shut, door open, connect door sensor, door=serial, door=sim, fault, keys=0, keyboard, mouse-only, server room, heart terminal, announcements, say the house announcements, announce, house setting, always, never, tent, tent laptop, shed, reinstall, kiosk, chrome, voice link, microphone, mic, voices, mic=0, voices=0, https, fully kiosk, headset, headsets, VR, quest, set up this headset, connect, play offline, forget, lobby, test mic, ask again, build stamp
+keywords: terminal setup, set up a terminal, provisioning, provisioning link, tablet, tablets, fleet, spot, view, code, mod passcode, moderator passcode, passcode, re-point, ⚙, advanced, door, door sensor, calibrate, calibrate door, door shut, door open, connect door sensor, door=serial, door=sim, fault, keys=0, keyboard, mouse-only, server room, heart terminal, announcements, say the house announcements, announce, house setting, always, never, tent, tent laptop, shed, reinstall, kiosk, chrome, voice link, microphone, mic, voices, mic=0, voices=0, https, fully kiosk, headset, headsets, VR, quest, set up this headset, connect, play offline, forget, lobby, test mic, ask again, build stamp, bleeps, ad sounds, no ad sounds, hidden gear, top right corner, camera feed, frames, frames a second, old tablets, blank picture, no picture
 ---
 
 How the crew gets every screen in the house onto the event: the wall
@@ -24,15 +24,17 @@ house terminal). A spot another tablet is using right now says *⚠ online
 now*. That's it: the name, the screen and the room come from the map,
 which the house map editor sets. A whole fleet: open
 `/terminal/?code=<mod passcode>&spot=<terminal id>` on each tablet. To
-re-point a running tablet, hold ⚙ for 2 seconds and tap another
-terminal.
+re-point a running tablet, press and hold its top right corner for 2
+seconds and tap another terminal. The ⚙ there is invisible (a wall tablet is
+in guests' hands) and shows only while it's held. A terminal's line or game
+in progress hides it: wait for the screen to go back to idle.
 
 ## The Server Room laptop and its door sensor
 
 The heart terminal (the Server Room, wave 20) bridges the room's door
 sensor:
 `/terminal/?code=<mod passcode>&spot=server-room&door=serial`. The first
-time, hold ⚙ 2 seconds → *advanced* → *door sensor* → **Connect door
+time, hold the top right corner 2 seconds → *advanced* → *door sensor* → **Connect door
 sensor** and pick the board in Chrome's list (once per browser profile),
 then **Calibrate: door shut**, open the door, **Calibrate: door open**.
 Calibrate the door again after every reflash of the board. After that it
@@ -110,6 +112,43 @@ Terminals shows the 🎤 for each tablet: red **🎤 denied** (the microphone
 was refused), **🎤 http** (no microphone over plain http) or **🎤 tap**
 (nobody has touched it since it loaded, so it can neither hear nor be
 heard); **🎤 off** where ⚙, its view or the map turns it off.
+
+## Is its picture getting through?
+
+Every placed terminal says how its link to the games is doing, in two
+places. Hold its top right corner: ⚙ opens with *camera to the games* and
+*the games to here*, each in frames a second, and the last error in words.
+Run → Terminals shows the same on each row: **📷** frames its camera sends (hover
+it for what the server took and the games read), **🎞** the simulation it
+receives and draws, and **⚠** what went wrong in the last minute.
+
+About 3 frames a second from the camera means a program is in that room in the
+game, and about one every 2 seconds means nobody is. Both are working. **📷
+0/s** in red, with the ⚠ beside it, is the one to chase:
+
+- *the camera was refused*: a touch on the tablet asks again. If Chrome doesn't
+  ask, allow the camera for the site in Chrome's settings and reload.
+- *the camera opened but no picture has arrived*, or *the pictures are blank*:
+  the terminal tries other ways of reading the camera by itself, so give it ten
+  seconds. If the number stays at 0, reload, then restart Chrome. A number with
+  *the pictures are blank* beside it is the terminal sending what it gets: check
+  the lens and the room's lights first. A room going dark after it has shown a
+  picture isn't a fault: the games just see a dark room.
+- *the house map has no such spot*: tap this tablet's spot again.
+
+An old tablet may send smaller pictures, or fewer: it drops them to what it can
+keep up with, tries the full size again every so often, and a slow window into
+the game beats a frozen tablet. It draws
+the game as a simple old-school 3D view, at 5 to 20 frames a second.
+
+## No ad sounds or bleeps
+
+The TV, the tent and the server room make no ad sounds, pop-up dings, cutscene
+stings or button bleeps. ⚙ → advanced → **🔇 No ad sounds or bleeps** sets it for
+any one terminal, and that choice stays, even when the kiosk opens its link again.
+On a link it's `&bleeps=0` (none) or `&bleeps=1` (they play), and a link that says
+so wins. His voice, the house announcements with their chime,
+the players' voices and the reinstallation game's own sounds are never touched.
 
 ## A headset
 

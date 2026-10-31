@@ -8,7 +8,7 @@ import { DOORS_POLL_MS, type Identities, type ProgramHit, type ProgramPictures }
 import { claimField } from "../claim.ts";
 import { ApiError, api, type StreamVerdict } from "../client.ts";
 import { usePlayHost } from "../host.ts";
-import { eventGone } from "../lifecycle.ts";
+import { deadTokenKind, eventGone } from "../lifecycle.ts";
 import { roomFromMessage, roomFromSearch, roomTarget, withoutRoom } from "../room.ts";
 import type { Threads } from "../rooms/threads-state.ts";
 import type { WidgetResult } from "../widgets.tsx";
@@ -22,6 +22,8 @@ export interface ResolvedCode {
   theme?: string;
   /** A performer / mod code lists the characters one may sign in as. */
   characters?: string[];
+  /** Wave 59: a code printed on a badge: the path of the link its QR carries. */
+  printed?: string;
 }
 
 /** Resolve a passcode (null if unknown/invalid). The join screens use it to
@@ -50,6 +52,8 @@ async function resolveOrBusy(code: string): Promise<ResolvedCode | null | "busy"
 export type IdentityLookup =
   /** The code opens nothing. */
   | { kind: "unknown" }
+  /** A badge's printed code (wave 59): its QR's link, which the screen opens. */
+  | { kind: "printed"; link: string }
   /** The server is throttling this address (or is unreachable): retry
    *  shortly, the code may be fine. */
   | { kind: "busy" }
@@ -80,6 +84,7 @@ export async function fetchIdentities(code: string, known?: KnownEvent, claim?: 
   const r = await resolveOrBusy(code);
   if (r === "busy") return { kind: "busy" };
   if (r === null) return { kind: "unknown" };
+  if (r.printed !== undefined) return { kind: "printed", link: r.printed };
   const out = await identitiesOf(code, r, r.role, r.characters, claim);
   return out === "gone" ? { kind: "unknown" } : out;
 }
@@ -131,6 +136,7 @@ export function reaskReason(r: IdentityLookup, waiting: (ids: Picker) => boolean
  * (someone may have just taken a name). `claim`: an invitation's token.
  */
 export function useIdentities(code: string, waiting: (ids: Picker) => boolean, claim?: string | null): { ids: IdentityLookup | null | "loading"; busy: boolean; refresh: () => void } {
+  const host = usePlayHost();
   const [ids, setIds] = useState<IdentityLookup | null | "loading">(null);
   const [busy, setBusy] = useState(false);
   const [reload, setReload] = useState(0);
@@ -161,6 +167,8 @@ export function useIdentities(code: string, waiting: (ids: Picker) => boolean, c
         setBusy(false);
         setIds(r);
         known.current = r.kind === "ok" ? { code: c, event: { eventId: r.eventId, title: r.title, role: r.role } } : null;
+        // A typed badge lands where its QR would: the page opens the same link.
+        if (r.kind === "printed" && host.ownsPage) window.location.replace(r.link);
       }
       if (again === null) {
         streak.current = { kind: "closed", n: 0 };
@@ -196,18 +204,17 @@ export async function searchPrograms(eventId: string, code: string, q: string, c
  * stream — a closed `EventSource` is also what a flaky network, a sleeping
  * phone, or a mid-restart server produces, and none of those should log a
  * guest out. Only a definite answer from the server means dead: 401 / 403
- * (the run forgot this token → `"reset"`) or 404 `unknown event` (the event
- * itself is gone → `"ended"`). `null` = alive, or no way to tell.
+ * (the run forgot this token → `"reset"`, or a release cut it → `"released"`)
+ * or 404 `unknown event` (the event itself is gone → `"ended"`). `null` =
+ * alive, or no way to tell.
  */
 export async function tokenDead(base: string, role: "guest" | "prime", token: string): Promise<StreamVerdict> {
   try {
     const res = await fetch(`${base}/api/state?role=${role}`, { headers: { "x-loom-token": token } });
-    if (res.status === 401 || res.status === 403) return "reset";
-    if (res.status === 404) {
-      const body = (await res.json().catch(() => ({}))) as { error?: unknown };
-      if (eventGone(404, String(body.error ?? ""))) return "ended";
-    }
-    return null;
+    if (res.status !== 401 && res.status !== 403 && res.status !== 404) return null;
+    const body = (await res.json().catch(() => ({}))) as { error?: unknown };
+    if (res.status !== 404) return deadTokenKind(String(body.error ?? ""));
+    return eventGone(404, String(body.error ?? "")) ? "ended" : null;
   } catch {
     return null; // no answer at all: the server is away, not the session
   }

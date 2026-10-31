@@ -90,13 +90,15 @@
 //! injected clock for tests.
 
 import { isVoiceFlavour, isVoiceFxMode, voiceFxOf, type VoiceFlavour, type VoiceFx, type VoiceFxMode, type VoiceShot } from "../../src/voice-fx.ts";
+import { isLinkError, type LinkError } from "../../src/link-health.ts";
+import type { CamRate } from "../spatial-cams.ts";
 import type { ShowClock } from "../../src/show-clock.ts";
 import type { IncomingMessage, ServerResponse } from "node:http";
 
 import { ESCAPE_SIGNAL, HEART_SIGNAL, KING_SIGNALS, PICKUP_SIGNAL, type KingState } from "@loom/house";
 
 import type { Sim } from "../../src/runtime/sim/index.ts";
-import type { SimModel } from "../../src/runtime/sim/model.ts";
+import { inWorldLabel, type SimModel } from "../../src/runtime/sim/model.ts";
 import type { BodyItem } from "../../src/parser/ast.ts";
 import { parseSet, splitDirective } from "../../src/runtime/sim/effects.ts";
 import type { SimEvent } from "../../src/runtime/sim/event.ts";
@@ -207,8 +209,10 @@ export const SCREEN_BASES = ["screensaver", "attract", "trabolta_online", "mirro
  *  The finale's waits are among them (wave 17): the bob until 📄, the advice
  *  poll until its tally, Grok Prom and the banishment until the story's next
  *  screen cue — each one's scene keeps moving the whole time. Wave 44 (C3):
- *  the credits hold their end card until the next cue. */
-const PERSISTENT_SLIDES: ReadonlySet<string> = new Set(["bingo", "y2k", "trust_chart", "truth_txt", "bobbing", "advice", "grok_prom", "banish", "hunt_results", "tally", "ad_hijack", "credits"]);
+ *  the credits hold their end card until the next cue. Wave 58: the recount
+ *  and purgatory stand through Task Manager's reading (attract would follow
+ *  them otherwise, and he is gone: no face to come back to). */
+const PERSISTENT_SLIDES: ReadonlySet<string> = new Set(["bingo", "y2k", "trust_chart", "truth_txt", "bobbing", "advice", "grok_prom", "banish", "hunt_results", "tally", "ad_hijack", "credits", "recount", "purgatory"]);
 export function slidePersists(value: string): boolean {
   return PERSISTENT_SLIDES.has(value) || /^(award|ceremony)/u.test(value);
 }
@@ -327,6 +331,9 @@ export interface ScreenVoice {
   head: number;
   /** Lines after the poller's `after`, oldest first, the newest `MAX_VOICE_LINES` at most. */
   lines: ScreenVoiceLine[];
+  /** (wave 59) His next line waits for the teleprompter: `head` stops short of
+   *  it, so the cursor stays behind it. A TV polls quicker while it is set. */
+  held?: true;
 }
 
 /** Speakers the TV shows as captions though they aren't its character (Sandy is
@@ -347,6 +354,10 @@ export const MAX_VOICE_BLOCK = 16_000;
  * (pure). Narration, system notices and hidden messages are left out; the
  * poll admits only the TV's character + `SCREEN_TEXT_ONLY`, which leaves out
  * guests' typed chat. `after` null (a screen that just booted) returns no lines.
+ *
+ * Wave 59: `heldFrom` is the first line the teleprompter holds back (null: none).
+ * The timeline ends just before it, `head` included, so a cursor can never pass
+ * a held line and everything behind it plays in order once it is let go.
  */
 export function voiceLinesOf(
   messages: readonly ChatMessage[],
@@ -354,12 +365,15 @@ export function voiceLinesOf(
   after: number | null,
   speaks: (from: string) => boolean,
   max = MAX_VOICE_LINES,
+  heldFrom: number | null = null,
 ): { head: number; lines: ScreenVoiceLine[] } {
-  const head = messages.length === 0 ? -1 : messages[messages.length - 1]!.seq;
+  let end = messages.length;
+  if (heldFrom !== null) while (end > 0 && messages[end - 1]!.seq >= heldFrom) end--;
+  const head = end === 0 ? -1 : messages[end - 1]!.seq;
   const lines: ScreenVoiceLine[] = [];
   if (after === null || after >= head || channel === "") return { head, lines };
   let total = 0;
-  for (let i = messages.length - 1; i >= 0 && lines.length < max; i--) {
+  for (let i = end - 1; i >= 0 && lines.length < max; i--) {
     const m = messages[i]!;
     if (m.seq <= after) break;
     if (m.channel !== channel || m.kind !== "line" || m.hidden || m.from === "" || !speaks(m.from)) continue;
@@ -520,10 +534,10 @@ export const GAME_MOMENT_SIGNALS: readonly string[] = [ESCAPE_SIGNAL, HEART_SIGN
 /** Never a moment: a checkmate (the story tells only the winner and
  *  `# hosts` — a public one would hint who now holds the door code). Folded,
  *  so the show's admin `chess_won` press is quiet too. Wave 20: the server
- *  room's admin door cues and the heart's autoend toggle (a door that opens
+ *  room's admin door cues (a door that opens
  *  and shuts is no house-wide event; the sensor's own `door_sensor_*` and
  *  the story's `heart_door_*` are not admin cues, so never moments anyway). */
-export const QUIET_MOMENT_SIGNALS: readonly string[] = [KING_SIGNALS.won, "server_door_opened", "server_door_closed", "server_door_trust", "heart_autoend", "trust_patch_bay", ...GAME_MOMENT_SIGNALS].map(foldName);
+export const QUIET_MOMENT_SIGNALS: readonly string[] = [KING_SIGNALS.won, "server_door_opened", "server_door_closed", "server_door_trust", "trust_patch_bay", ...GAME_MOMENT_SIGNALS].map(foldName);
 
 /** (wave 20) Subject-free beats that never become a `beat` moment, folded:
  *  the server room's door chatter (the nag, the door again, the shut, the
@@ -721,7 +735,7 @@ export function momentOf(e: SimEvent, seq: number, at: number, sim: Sim, secrets
       // A reveal for one person, or a quiet one (wave 18b: clearance's
       // rooms open quietly), is no moment: no room "opens" on the screens.
       if (e.person !== null || e.quiet === true) return null;
-      const label = e.kind === "location" ? (sim.model.locations.get(e.target)?.label ?? e.target) : e.kind === "channel" ? e.target.replace(/^room:/u, "") : e.target;
+      const label = e.kind === "location" ? inWorldLabel(sim.model.locations.get(e.target)?.label ?? e.target) : e.kind === "channel" ? e.target.replace(/^room:/u, "") : e.target;
       return make("reveal", label, null);
     }
     default:
@@ -780,8 +794,9 @@ export const SCREEN_NIGHT_VARS = {
   // Wave 50: Clippy's dream, on from the Y2K bug until an ending or a 🌀.
   dream: "Night.dream",
   // Wave 56: what his voice is made of; only the level ever leaves the server.
-  talked_down: "Night.talked_down",
   composure: "Trabolta.composure",
+  // Wave 59: which talk scene is on, for his voice alone.
+  talk: "Night.talk",
   // Wave 48: the Language Report (G14), only while its slide is up.
   lang_flagged: "Night.lang_flagged",
   lang_censored: "Night.lang_censored",
@@ -948,6 +963,8 @@ export interface ScreenPollExtras {
    *  its tally (most first, never a slur), slurs censored, the strength now
    *  and the ⭐ paid. Read only while the Language Report's slide is up. */
   language?: () => { words: ReadonlyArray<{ word: string; n: number }>; unsaid: number; level: number; stars: number };
+  /** (wave 59) The first line of `channel` the teleprompter holds back. */
+  voiceHeldFrom?: (channel: string) => number | null;
 }
 
 /** A filing's public outcome on a screen: `a` accepted (an accurate filing
@@ -1099,6 +1116,14 @@ export interface ScreenDevice {
    *  0), or `chunk: null` once that line is done. Kept only from a `view=tv`
    *  poller (`ScreenState.tvSpeech`); dropped from any other. */
   speech?: { seq: number; chunk: number | null };
+  /** (wave 59) `cs=`: camera frames it sent to the games, per second (absent: no feed there). */
+  camSent?: number;
+  /** (wave 59) `cr=`: simulation frames it received, per second (absent: no stream open). */
+  simReceived?: number;
+  /** (wave 59) `cd=`: simulation frames it drew, per second. */
+  simDrawn?: number;
+  /** (wave 59) `ce=`: the last thing that went wrong with that link, for a minute. */
+  linkError?: LinkError;
 }
 
 /** (wave 26) How long a TV's `sp=` report stays `tvSpeech` without a newer poll. */
@@ -1179,6 +1204,15 @@ export function screenDeviceOf(q: (k: string) => string): ScreenDevice {
   const sp = speechReportOf(q("sp"));
   if (sp !== null) d.speech = sp;
   if (q("bug") === "1") d.bug = true;
+  const rate = (v: string): number | null => (/^\d{1,2}(\.\d)?$/u.test(v) ? Number(v) : null);
+  const cs = rate(q("cs"));
+  if (cs !== null) d.camSent = cs;
+  const cr = rate(q("cr"));
+  if (cr !== null) d.simReceived = cr;
+  const cd = rate(q("cd"));
+  if (cd !== null) d.simDrawn = cd;
+  const ce = q("ce");
+  if (isLinkError(ce)) d.linkError = ce;
   return d;
 }
 
@@ -1654,6 +1688,12 @@ export class ScreenWatch {
     return this.now();
   }
 
+  /** (wave 59) The room line the TV is saying now, or null. */
+  speakingNow(): number | null {
+    const sp = this.tvSpeech;
+    return sp !== null && sp.chunk !== null && this.now() - sp.at <= TV_SPEECH_FRESH_MS ? sp.seq : null;
+  }
+
   /** Each terminal's last poll, most recent first. */
   seen(): Array<ScreenPoll & { ago: number }> {
     const now = this.now();
@@ -1790,10 +1830,12 @@ export class ScreenWatch {
       // play declared characters too, so "any character" would carry their
       // typed chat onto the TV.
       const speaks = (from: string): boolean => chars?.has(from) === true && (foldName(from) === me || textOnly.has(foldName(from)));
-      const got = voiceLinesOf(messages, room, who.after ?? null, speaks);
+      // Wave 59: his lines wait for the teleprompter (`prompter.ts`).
+      const heldFrom = extras.voiceHeldFrom?.(room) ?? null;
+      const got = voiceLinesOf(messages, room, who.after ?? null, speaks, MAX_VOICE_LINES, heldFrom);
       // The director's mute is the TV's (its button, the Run page's): a room
       // terminal — the server-room one — is never silenced by it.
-      voice = { room, muted: this.voiceMuted && target === "tv", ...got };
+      voice = { room, muted: this.voiceMuted && target === "tv", ...got, ...(heldFrom !== null ? { held: true as const } : {}) };
     }
 
     // The night block: public story vars only; the award only while its slide is up.
@@ -1802,9 +1844,9 @@ export class ScreenWatch {
       const n = v === null || v.trim() === "" ? NaN : Number(v);
       return Number.isFinite(n) ? n : null;
     };
-    const named = (path: string): string | null => {
+    const named = (path: string, max = MAX_MOMENT_NAME): string | null => {
       const v = peek(path);
-      return v === null || v.trim() === "" || v === NIGHT_NONE ? null : clip(v, MAX_MOMENT_NAME);
+      return v === null || v.trim() === "" || v === NIGHT_NONE ? null : clip(v, max);
     };
     const flag = (path: string): boolean | null => {
       const v = peek(path);
@@ -1823,7 +1865,8 @@ export class ScreenWatch {
       bottle_pick: named(SCREEN_NIGHT_VARS.bottle_pick),
       bottle_open: flag(SCREEN_NIGHT_VARS.bottle_open),
       results_q: num(SCREEN_NIGHT_VARS.results_q),
-      award_winner: awardUp ? named(SCREEN_NIGHT_VARS.award_winner) : null,
+      // Wave 58: G9a's tie names everyone in it.
+      award_winner: awardUp ? named(SCREEN_NIGHT_VARS.award_winner, MAX_TIE_NAMES) : null,
       award_value: awardValue !== null && /^-?\d+(\.\d+)?$/u.test(awardValue) ? Number(awardValue) : awardValue,
       help_votes: num(SCREEN_NIGHT_VARS.help_votes),
       thwart_votes: num(SCREEN_NIGHT_VARS.thwart_votes),
@@ -1930,8 +1973,10 @@ export class ScreenWatch {
       ...(voice !== undefined ? { voice } : {}),
       voiceFx: voiceFxOf(
         this.voiceFxMode,
-        { phase: night.phase, composure: num(SCREEN_NIGHT_VARS.composure), remaining, talkedDown: flag(SCREEN_NIGHT_VARS.talked_down), alarmOn: night.alarm_on, heartStage: night.heart_stage, reading: awardUp || summaryUp },
-        { now: this.now(), glitch: program.glitch ?? null, flicker: program.flicker, dreamAt: this.dreamOf(sim)?.at ?? null, shot: this.voiceShot },
+        { phase: night.phase, composure: num(SCREEN_NIGHT_VARS.composure), remaining, alarmOn: night.alarm_on, heartStage: night.heart_stage, reading: awardUp || summaryUp },
+        // His first public crack is the first guess at the results: a flicker
+        // in the intro talk (the costume's) is the screens' alone.
+        { now: this.now(), glitch: program.glitch ?? null, flicker: peek(SCREEN_NIGHT_VARS.talk) === "intro" ? null : program.flicker, dreamAt: this.dreamOf(sim)?.at ?? null, shot: this.voiceShot },
       ),
       ...(room !== undefined ? { room } : {}),
       identify: identifyLeft > 0,
@@ -2056,6 +2101,22 @@ export function newestRoomLine(messages: readonly ChatMessage[], channel: string
   return -1;
 }
 
+/**
+ * What the terminals speaking `channel` (`loc:<id>`) are doing, for the
+ * teleprompter (wave 59): the slowest one's `said`, the TV's mute and the line it
+ * is saying. Not `live`: nothing speaks the room, so a hold falls back on time.
+ */
+export function roomVoiceOf(watch: ScreenWatch, model: SimModel | null, channel: string): { live: boolean; muted: boolean; said: number; speaking: number | null } {
+  const now = watch.clock();
+  const on = watch.seen().filter((p) => {
+    if (p.talk === undefined || now - p.at > SPEECH_ONLINE_MS) return false;
+    const r = p.voice !== undefined && p.voice !== "" ? p.voice : (p.room ?? "");
+    return r !== "" && `loc:${locationNamed(model, r)?.id ?? ""}` === channel;
+  });
+  const said = on.length === 0 ? -1 : Math.min(...on.map((p) => p.said ?? -1));
+  return { live: on.length > 0, muted: watch.voiceMuted, said, speaking: watch.speakingNow() };
+}
+
 /** One `speech` step's watch (`DeskSpeechWatch`). */
 export interface SpeechWatch {
   done(now: number): string | null;
@@ -2105,8 +2166,9 @@ export function speechWatchOf(watch: ScreenWatch, model: SimModel | null, room: 
 export interface ScreenTerminals {
   /** Server epoch ms. */
   now: number;
-  /** Each terminal's last poll, most recent first (`ago` in ms). */
-  terminals: Array<ScreenPoll & { ago: number }>;
+  /** Each terminal's last poll, most recent first (`ago` in ms). `cam`
+   *  (wave 59): its spot's feed as the server measures it. */
+  terminals: Array<ScreenPoll & { ago: number; cam?: CamRate }>;
   /** The TV-voice mute (K-18), so the card can flip it. */
   voiceMuted: boolean;
   /** (wave 56) The director's mode for his voice. */
@@ -2116,20 +2178,21 @@ export interface ScreenTerminals {
 }
 
 /** The heartbeat list, read-only (pure apart from the watch's clock). */
-export function screenTerminals(watch: ScreenWatch): ScreenTerminals {
-  return { now: watch.clock(), terminals: watch.seen(), voiceMuted: watch.voiceMuted, voiceFx: watch.voiceFxMode, silentMs: TERMINAL_SILENT_MS };
+export function screenTerminals(watch: ScreenWatch, camRate?: (spot: string) => CamRate): ScreenTerminals {
+  const terminals = watch.seen();
+  return { now: watch.clock(), terminals: camRate === undefined ? terminals : terminals.map((t) => (t.spot === "" ? t : { ...t, cam: camRate(t.spot) })), voiceMuted: watch.voiceMuted, voiceFx: watch.voiceFxMode, silentMs: TERMINAL_SILENT_MS };
 }
 
 /**
  * `GET /api/mod/screen/terminals` — moderator-gated (the author's session or a
  * mod token). Reading it never records a poll, so the editor isn't a terminal.
  */
-export function handleScreenTerminalsGet(watch: ScreenWatch, req: IncomingMessage, res: ServerResponse, url: URL, authorized: (token: string | undefined) => boolean): boolean {
+export function handleScreenTerminalsGet(watch: ScreenWatch, req: IncomingMessage, res: ServerResponse, url: URL, authorized: (token: string | undefined) => boolean, camRate?: (spot: string) => CamRate): boolean {
   if (!authorized(queryTokenOf(req, url))) {
     sendJson(res, 403, { error: "moderators only" });
     return true;
   }
   res.setHeader?.("cache-control", "no-store");
-  sendJson(res, 200, screenTerminals(watch));
+  sendJson(res, 200, screenTerminals(watch, camRate));
   return true;
 }

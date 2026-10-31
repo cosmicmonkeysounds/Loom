@@ -269,7 +269,7 @@ in `audio.json`:
 | 3 | Analog 1 (back) | the living-room **subwoofer** (speaker `living-sub`, its own trim) |
 | 4 | Analog 2 (back) | spare |
 | 5–6 | Analog 3–4 (back) | the kitchen L/R |
-| 7–9 | Analog 5–7 (back) | the hall (The Tube), the Steam Room, the CPU: no speaker yet |
+| 7–9 | Analog 5–7 (back) | the hall (The Tube), the Power Supply, the CPU: no speaker yet |
 | 10 | Analog 8 (back) | The Optical Drive (the mud room) |
 | 11–12 | S/PDIF L/R | unused |
 | 13–14 | **Phones L/R**, a front headphone jack | unused |
@@ -422,8 +422,8 @@ underruns, slips or xruns.
 4. **Chrome's output to VoiceMeeter Input.** Windows 11: Settings → System
    → Sound → **Volume mixer**; Windows 10: Settings → System → Sound →
    **App volume and device preferences**. Chrome shows there only while it
-   plays something: open the TV with `.\tv-kiosk.ps1 -Setup` and press ⚙ →
-   TEST VOICE. Set Chrome's **Output device** to **"VoiceMeeter Input
+   plays something: open the TV with `.\tv-kiosk.ps1 -Setup`, hold the top right corner 2 s (the
+   hidden ⚙) → TEST VOICE. Set Chrome's **Output device** to **"VoiceMeeter Input
    (VB-Audio VoiceMeeter VAIO)"**.
 5. **The router sees the tap.** `uv run stagehand check --config
    trapped.desktop.yaml --only audio` prints `audio tap: VoiceMeeter Output
@@ -560,9 +560,8 @@ uv run stagehand music stop --config trapped.desktop.yaml         # scene off
 in a host's Desk window, balances the house live: Music, Featured tracks,
 Sound effects, Announcements and Trabolta's TV, everywhere, per room and
 per speaker (the sub has its own fader), with live meters while the panel
-is open. Its Now playing shows each bed's track with ⏭ Skip, the scene
-picker (a hand scene, held like `music scene`), Stop music and *Follow the
-story*. The mix is kept by the server for the event (a router restart
+is open. Now playing moved to 🎵 Music (wave 58): each bed's track with ⏭
+Skip, the scene picker, Stop music and *Follow the story* are there. The mix is kept by the server for the event (a router restart
 picks it up) and never edits `audio.json`: the speaker trims stay the
 install. Speaker tests ignore it. Clippy's mic shows as a meter only (it
 lives in CueMix). Muting the TV *everywhere* also stops it ducking the
@@ -570,6 +569,11 @@ music; a featured track muted somewhere takes nothing over there.
 `pnpm showctl doctor`'s Mixer row lists what is off 0 dB.
 
 ### 3.7 The soundtrack from the TIDAL app
+
+Hosts run all of this from 🎵 Music (the Desk, Run → House): pause, previous,
+next, and any playlist in the app's sidebar (wave 58,
+`docs/loom-w58-music-contract.md`). Those buttons work through the same control port,
+so the app must be started as below.
 
 The acts and the ending are John's TIDAL playlists, **played by the TIDAL
 app on this PC** and heard like the TV: through VoiceMeeter, on a bus of
@@ -594,7 +598,7 @@ on the 828x's own clock (the numbers are in `docs/loom-w52-contract.md`).
    router, and a stray pause resumes within a second.
 4. **`.\tidal.ps1 -Check`** (part of `preflight.ps1`), then `uv run
    stagehand music scene act_1 --config trapped.desktop.yaml`: `music
-   status` names the track, and Run -> House -> 🎚 Mixer shows it with ⏭.
+   status` names the track, and Run -> House -> 🎵 Music shows it with ⏭.
    The audio log's health line ends `| tidal playing <track>, capture peak N
    dBFS`, or `| tidal PROBLEM: <why>`.
 
@@ -755,7 +759,7 @@ name doesn't matter; put it in that room.
 | `hall_main` | the main floor hall | **safety** |
 | `hall_up` | the upstairs hall | **safety** |
 | `hall_basement` | the basement hall | **safety** |
-| `casino` | The Graphics Card (bedroom 2, upstairs; the casino) | — |
+| `casino` | The Casino (bedroom 2, upstairs; the casino) | — |
 | `bath_down` | the basement bathroom | **safety** |
 | `bath_up` | the upstairs bathroom | **safety** |
 | `fan_closet_1`, `fan_closet_2` | the fan closet | — |
@@ -1014,7 +1018,7 @@ $env:LOOM_MOD_CODE = '<the mod passcode>'   # this window only
 .\tv-kiosk.ps1 -Setup        # Chrome, no kiosk, opens /terminal/?code=<mod>&spot=desktop-tv
 ```
 
-In that window: check it took the TV spot; hold ⚙ for 2 s → device voice →
+In that window: check it took the TV spot; hold the top right corner for 2 s (the hidden ⚙) → device voice →
 **Microsoft David** (or Mark) for Trabolta → TEST VOICE (Edge's "Natural"
 voices are nicer but untested on `view=tv`). The ⚙ **pace** reads
 **0.92×** (wave 26: a TV set up before keeps its saved 1.00×; re-opening

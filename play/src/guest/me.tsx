@@ -140,7 +140,7 @@ export function MeBadgeRow({ badge, onBadge }: { badge: number | null | undefine
   if (badge !== null) {
     return (
       <p className="me-none me-badge-linked">
-        🪪 Badge linked. Lost this page? Scan your badge with any phone's camera to get back in.
+        🪪 Badge linked. Lost this page? Scan your badge with any phone's camera, and a host can move you there.
       </p>
     );
   }

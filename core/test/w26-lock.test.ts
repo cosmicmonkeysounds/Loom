@@ -223,7 +223,7 @@ describe("the route walk: every guest route is open or refused", () => {
     }
     // The open set is exactly the session housekeeping the contract lists.
     expect([...LOCKED_OPEN].sort()).toEqual(
-      ["/api/guest/register", "/api/guest/resume", "/api/guest/enter", "/api/guest/rejoin", "/api/guest/rejoin/names", "/api/guest/rejoin/poll", "/api/guest/badge", "/api/guest/homescreen", "/api/prime/logout", "/api/push/subscribe", "/api/push/unsubscribe", "/api/push/visible"].sort(),
+      ["/api/guest/register", "/api/guest/resume", "/api/guest/enter", "/api/guest/rejoin", "/api/guest/rejoin/names", "/api/guest/rejoin/poll", "/api/guest/rejoin/cancel", "/api/guest/badge", "/api/guest/homescreen", "/api/guest/logout", "/api/prime/logout", "/api/push/subscribe", "/api/push/unsubscribe", "/api/push/visible"].sort(),
     );
   });
 
@@ -234,8 +234,9 @@ describe("the route walk: every guest route is open or refused", () => {
     await signal(rt, "corrupt", a.id);
     const routes = everyGuestRoute();
     const refused = routes.filter((r) => !LOCKED_OPEN.includes(r));
-    // The open ones last (logout at the very end: it ends the session).
-    const open = routes.filter((r) => LOCKED_OPEN.includes(r)).sort((x, y) => Number(x === n02.LOGOUT_ROUTE) - Number(y === n02.LOGOUT_ROUTE));
+    // The open ones last (the logouts at the very end: they end the session).
+    const ends = (r: string) => Number(r === n02.LOGOUT_ROUTE || r === n02.GUEST_LOGOUT_ROUTE);
+    const open = routes.filter((r) => LOCKED_OPEN.includes(r)).sort((x, y) => ends(x) - ends(y));
     expect(refused.length).toBeGreaterThan(30);
     for (const r of refused) {
       const res = await post(rt, r, { name: "wave", channel: "lobby", text: "x" }, a.token);

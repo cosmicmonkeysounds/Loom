@@ -95,7 +95,7 @@ scene that started before a terminal reloaded carries on where it was;
 nothing that already happened plays again. A tap on a slide still steps
 it aside.
 
-When the house wins something together (*🎀 Encarta won the Bingo Ribbon!
+When the house wins something together (*🎀 Encarta won the Bingo!
 Cheer for them at the Desktop.*), the TV and the wall terminals throw up a
 Win98 **Congratulations!** window for a few seconds: the winner's name, the
 line typing itself out, a WINNER marquee and confetti (with Reduce Motion,
@@ -110,7 +110,7 @@ The tablets themselves only make **small sounds** — a ding when a popup
 arrives, a click when you close one, a sting under a scene. The dings
 and clicks never sound while the character is talking; a scene's stings
 play quietly under him. Some terminals also say the **house
-announcements** — a chime, then the line ("Go to the living room.") with
+announcements** — a chime, then the line ("Go to the Desktop.") with
 a 📢 banner. An announcement waits for the character to finish his
 sentence; it never cuts him off.
 
@@ -166,7 +166,7 @@ minutes without a move and the game is abandoned.
 
 ## The casino
 
-At *Trapped in the Internet* a terminal in the upstairs bedroom is the
+At *Trapped in the Internet* a terminal in The Casino, upstairs, is the
 **casino**. It is not a line to anyone, and it is awake all night.
 
 1. Hold up your pass (or type your program name). The screen shows your
@@ -224,10 +224,10 @@ isn't there, nothing from the room leaves the house.
 ## The TV
 
 The big screen above the fireplace (at *Trapped in the Internet*) is the
-character's **voice in the living room**. It shows his face full screen
+character's **voice in the Desktop**. It shows his face full screen
 and **speaks his lines** in the room it watches (the Desktop), with a
 caption under each; songs are captioned only, and most other characters'
-lines stay on your phone. When the simulation reaches the living room,
+lines stay on your phone. When the simulation reaches the Desktop,
 the window into it takes the right side of the screen. It shows the same
 slides, countdowns and notices as the terminals, and the idle show until
 the character is introduced (nothing to tap there). Every big moment of

@@ -20,7 +20,7 @@ CHARACTER Installation Wizard
 
 CHARACTER Sandy
   playable: false
-  // "I'm sorry, I didn't understand that. Would you like to speak to a live agent?"
+  // "It looks like I didn't understand that. Please wait while I direct you to an agent."
 
 CHARACTER Truther Download
   playable: false

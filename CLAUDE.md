@@ -50,12 +50,14 @@ crates are the original one and lag far behind it.
 | `examples/` | Reference `.loom` projects | — |
 | `mind/` | Superseded by stagehand `agents`; awaiting deletion | — |
 | `simulator/` | Old, kept runnable | its `README.md` |
-| `scripts/` | `dev.mjs`, `ops/` (predeploy, ship, backups, checklist), `accept/` (per-item device checks), `show/` (`showctl`), `sim/` (the full-evening bots), `house-desktop/` (Windows runbook), `house-macbook/` (macOS runbooks), `server-room/` (whisper.cpp and the kiosk on Steph's laptop) | `scripts/show/`, `scripts/accept/`, `scripts/sim/`, `scripts/house-desktop/` READMEs |
+| `scripts/` | `dev.mjs`, `ops/` (predeploy, ship, backups, checklist), `accept/` (per-item device checks), `show/` (`showctl`), `sim/` (the full-evening bots), `house-desktop/` (Windows runbook), `house-macbook/` (macOS runbooks, the costume's relay), `server-room/` (whisper.cpp and the kiosk on Steph's laptop) | `scripts/show/`, `scripts/accept/`, `scripts/sim/`, `scripts/house-desktop/` READMEs |
 | `deploy/` | VPS release, rollback, backup and restore scripts + the Caddyfile | `docs/loom-docker-deploy.md` |
 | `docs/` | Design docs, specs, runbooks, in-app help, history | `docs/README.md` |
 
-`Trapped In The Internet story/` at the root holds the author's original
-story documents. Leave them as they are; quote the path in shell commands.
+`Trapped In The Internet story/` at the root holds the author's own documents:
+`oct30/` is the Oct 30 delivery (the script, the ending, the facts), which the
+story follows, and `older/` is everything before it. Leave them as they are;
+quote the path in shell commands.
 
 ## Commands
 
@@ -71,6 +73,7 @@ pnpm --filter <name> typecheck
 
 pnpm --filter @loom/core titi:facts [--check]   # regenerate the show's files from facts.json
 pnpm --filter @loom/core show:page [--check]    # regenerate SHOW.html
+pnpm --filter @loom/core titi:qr-lock [--check]  # after the print: hold the story to what was printed
 pnpm --filter @loom/core loomcheck examples/trapped-in-the-internet --smoke  # lint a story
 pnpm house:sync                        # house goldens + copy into reinstall/vr
 pnpm test:vr                           # the Godot suite (needs Godot 4.7)
@@ -168,7 +171,8 @@ are in `TECH.md`.
 | John's old laptop | The tent: `/terminal/?code=<mod>&spot=tent&announce=1`, the reinstall wizard and web game. Needs WebGL2 |
 
 Also in the show: the wall tablets (Fully Kiosk), the Server Door chess
-and casino terminals, a Quest 3, the server-room RGB bulb, and phones.
+and casino terminals, a Quest 3, the server-room RGB bulb, Task Manager's iPad 2
+(the costume, wave 59), and phones.
 
 House announcements go the server → the Desktop's `show` job → MQTT
 `show/announce` → the router (on the Desktop too, since 2026-10-27) → the
@@ -181,8 +185,7 @@ and Trabolta's mind connected, and what to do), **🎛 Desk** (the cue list,
 GO, the checks) and **🎨 Cue designer** (lighting looks with a live preview
 and templates, sound auditions, desk cues, and the `cue` / `sound` line
 the story fires each with) and, since wave 40, **🎚 Mixer** (the live
-house balance per source, room and speaker, and the soundtrack's
-transport: skip, scene, stop, follow the story; also in a host's Desk
+house balance per source, room and speaker; also in a host's Desk
 window; `docs/loom-w40-contract.md`). A host's phone has the same Setup and checks in
 its **Desk** window. Help: `docs/help/authoring/49-house-setup.md`,
 `50-cue-designer.md`, `47-house-desk.md`.
@@ -244,7 +247,8 @@ recap lists the minutes, the switches and who never went. Help:
 `SIGNOFF-w48.md`): `censor: Password Manager` in the header. Every line a
 guest sends that the filter catches at her strength pops up in her booth
 as 🔑 LANGUAGE (the rest behind a 🔑 n tray counter). The strength (48b) is
-a slider in her ⊞ Start menu, 0–100% in bands, starting at 100% (over-eager
+a bare slider in her ⊞ Start menu, with no number, legend or words since wave 59
+(the bands still work underneath), starting at the top (over-eager
 on purpose: *password*, *hello*, *check*); whole words go through the
 `obscenity` library, buried stems are ours. Slurs are starred before a line
 is stored. ✂ Censor stars it out everywhere (`p***word`), pays her ⭐
@@ -320,8 +324,9 @@ a real phone: run `SIGNOFF-w53.md` §3 first. Help:
 text `DRAFT w54` on `SIGNOFF-w54.md`): a badge is handed out, scanned with the
 phone's camera, and the phone lands with everything filled in: a staff badge per
 part signs straight in to the upload, an invited badge per featured program lands
-on *You are …* with one button, and a numbered blank opens the picker with no
-code to type. After the upload a host's or an Antivirus's scan of the badge
+on *You are …* with one button, and a numbered blank opens the picker. Since wave
+59 each carries a text code for a phone with no camera, and a card a phone already
+holds is refused. After the upload a host's or an Antivirus's scan of the badge
 confirms them (staff keep the staff door; Clippy only greets). A 🚻 sign presses
 Bathroom Mode. Run → 🖨 Print sheet prints 3 × 2 in badges and location cards,
 ten to a sheet, and fact cards four to a row. Terminals still read the phone's
@@ -334,16 +339,129 @@ out loud (25 beats: Clippy's speeches and read-outs, the hosts' opening lines,
 `aloud: {Night.bobber}` for truth.txt). Their whole phone turns into 📜 READ THIS
 OUT LOUD, which stays until they press ✓ Done on the teleprompter: variable
 speed, a rail that previews and jumps, section jumps. Trabolta's lines stay on
-the TV; they show as cues. The bobber's printout stays. Quick reactions are left
+the TV and show as cues, and since wave 59 they wait for the reader's arrow. The
+bobber's printout stays. Quick reactions are left
 unmarked so a mid-game phone is never blocked. Every phone needs a reload. Help:
 `docs/help/play/07-performers.md`, `docs/help/authoring/56-read-aloud.md`.
+
+**The Oct 30 story** (wave 58, not shipped, and it lands with wave 59 as one
+release and one sync; `docs/loom-w58-contract.md`, the discrepancy log, the edits to the delivered text and show text `DRAFT w58` on
+`SIGNOFF-w58.md`): the user's delivery in `Trapped In The Internet story/oct30/`
+(the script, the ending, the facts) is the story now. The opening is the script
+word for word on Clippy's teleprompter, each press bringing up her next words (🎤
+and a host's 📺 are new, and the hosts have no lines). Trabolta's speech is clean,
+with a short live talk after his sign-off until 🔎; his first public crack is the
+first guess at the results. Every ending plays as it did, then a director presses
+G0 📜 and the whole truth comes out: Trabolta on the TV, clean, on the good
+endings; phoned in from the prom after the rave; Task Manager off his
+teleprompter after Combo A (a message he left before he died, and he does not come
+back: Clippy hosts) and Combo B, in a hidden room no guest's Chats list. G1 waits
+for it. The talk-down is gone: nothing said at his heart ends the night. He is
+publicly a man until his file is read: asked, he dodges and never claims it, and
+the accident is never explained. Sandy's one line is the monologue's everywhere
+(the recorded songs can't follow), she was an answering machine on the
+Northumberland Ferries line, and the billboard is on Lower Water Street. G9a 🏅 is
+the special prize. Every guest, featured program and all 8 booth parts scan every
+coded entry, secret ones included (`/api/prime/codex/redeem`): `secret` only hides
+an entry from Trabolta. **Owed:** H1–H3's answers (the script's three questions,
+on stand-in keys: a filing on one isn't recorded, and their gold cards wait); the
+keypad, re-set by hand before the 15:00 test, because the door code changed; the
+worker's restart, because `sync-show` never reaches his persona or mind; the print,
+after the sync; and the battery on Claude, because nobody has heard this persona
+on the real model. Not proven on a real TV, phone or voice: `SIGNOFF-w58.md` §5.
+The order is `SHOWNIGHT.md` §1, *Landing wave 58 and wave 59*. Help:
+`docs/help/play/19-house-workings.md`, `docs/help/authoring/56-read-aloud.md`.
+
+**The notes from the live run** (wave 59, not shipped, on top of wave 58;
+`docs/loom-w59-contract.md` is the map, and the words, the decisions and what is
+owed are on `SIGNOFF-w59.md`, show text `DRAFT w59`). The user ran `w56` and sent
+a list.
+
+- **Text codes.** Every printed QR now has a text code, and typing it does what
+  scanning does: a badge's on the join box or Get back in; a room's (`R-`), a sign's
+  (`S-`) or a fact's in 📷 Scan, a booth's box or the Codex's. Lower case, spaces and
+  a missing hyphen work, and a room's name does too (`core/server/routes/printed.ts`).
+  A true miss is still `wrong code` (doubt +8); a printed code or a room's name costs
+  nothing. A terminal's TYPE A CODE reads a printed code as no miss.
+- **The QR lock.** Nothing printed reads story text, beats, their order or a fact's
+  words, proved through a real reload (982 rows, none moved). A renamed room, part,
+  reserved program or sign, a changed codex code or a hidden room's last `reveal` does
+  break a card, and `titi:qr-lock` holds them: once the print has run, write it and
+  commit `qr-lock.json` (hashes only). `predeploy.sh` and `sync-show` then stop (exit
+  4) naming what moved; `--qr-moved` or `LOOM_QR_MOVED=1` goes on and means a reprint.
+- **One holder.** A part or a Person is one phone's. A second phone on a badge, a claim
+  link or a typed code gets a refused screen with 🙋 Ask a host, and the holder's own
+  re-scan carries on. Being offline is no release. Releases: Leave the event or sign
+  out, ⏏ Release (a host's or a director's), a spent re-pair, an approved ask, a story
+  restart for a guest and Go live for a part. An Approve moves a phone only when the
+  waiting phone collects it, up to about 3 s; an ask leaves Needs on any sign-in or
+  release. A wrong badge counts against nobody, and a real badge or Ask a host passes
+  a lockout (the house is one IP).
+- **In-world names.** Everything printed, every guest and wall screen and Trabolta's
+  facts read *The Start Bar*, never *The Start Bar (kitchen)*. Crew tools keep the whole
+  label. The floor captions are gone from the wall maps.
+- **The rooms.** The game room is **The Power Supply** and bedroom 2 **The Casino**,
+  with the lore rewritten to fit. Hidden ids stay (`steam-room`, `graphics-card`,
+  `steam-1`), and check-ins, clues and props stay in the same physical rooms. The Tube
+  takes no check-in, so there are 10 location cards, not 11. On Run and in the show book
+  the Act II heading moves up to the ad hijack, with no beat or `Night.step` moved. A
+  chat room opens on its beat for everyone, the crew too (`the way out`, `unlimited
+  power`).
+- **People.** No director is on anyone's list, and a persona that acts reads *Director*
+  on every other phone. Lists show only who is online: an open stream, or heard from in
+  the last 3 minutes (`ONLINE_GRACE_MS`). An Antivirus keeps who it hunts; a host's
+  offline people sit behind one switch, and 🗂 Every guest keeps everyone.
+- **The filter's strength** is only a slider (above).
+- **Terminals.** `🔇 No ad sounds or bleeps` in ⚙ (`bleeps=` on a link), on by itself on
+  the TV, the tent and the server room, never touching his voice, announcements or the
+  players. ⚙ is hidden on every terminal: hold the top right corner 2 s.
+- **The tablets' feed.** The feed and raycaster canvases go to software, a `FeedTuner`
+  ladder handles blank frames, and ⚙ and Run → Terminals read out frames and the last
+  error. **The cause is a hypothesis** (the Mali-400's GPU 2D path), and no real tablet
+  has run this: a tablet's ⚙ settles it (`TECH.md`).
+- **The games.** Dialogue draws over geometry in VR (the talkers' panel was the one
+  surface that didn't). The run reset, hold R 5 s on the web and both triggers + A 5 s
+  in VR with a bar, goes back to the spawn with Gerald somewhere new (`POST
+  /api/spatial/reset`), and a chord beside the King can spend that visit's hit. Gerald's
+  missing body is found and fixed in VR. On the web it was never reproduced, so only
+  checks were added.
+- **The shared prompter.** A scene is one position on the server
+  (`core/server/prompter.ts`, memory only). His lines wait for the arrow, then it locks
+  and scrolls for everyone while he speaks, and a press locks it to that phone. Her arrow
+  past her last line or ✓ Done starts his introduction, and 🤖 is the backup. ▶ Let him
+  speak (a host, the director phone, Run) releases him; no reader online means no hold;
+  his next scripted line lets a hold go. Contract: `docs/loom-w59-prompter-contract.md`.
+- **The costume.** Task Manager's iPad 2: `/costume`, three keys, a five-second menu,
+  a narrow token. The menu is `costume.json`, read live. Run → Terminals → 🎭 is the
+  link and the kill switch. A press is refused while a scene is being read, before the
+  doors and from the final reveal on, and a real burst lands only in the ad and beans
+  talk scenes: AD STORM and GLITCH otherwise flicker the screens and the room bulbs,
+  from the doors to the final reveal (`costume_flicker`). LIGHTS touches the living room
+  only, for 6 s. MUSIC yields to a director's hand, and a restart inside AFTER PARTY's
+  hold needs Follow the story. Runbook, root profile and relay: `docs/trapped/costume.md`,
+  `scripts/house-macbook/costume-root.mjs`, `costume-relay.mjs`.
+- **Fullscreen** (from `oct31-w58/play-fullscreen`). Play goes fullscreen on the first
+  tap. An iPhone's Safari can't: only its Home Screen app drops the bars.
+
+**To ship:** `ship.sh`; `sync-show --replace-maps` with its reload (Download JSON any map
+edits first); the MacBook's `git pull`, `agents` restart and Mind → Reset for his persona,
+mind and heart guard; a reload of every phone, terminal, the TV, the tablets, the tent and
+any open Run tab; the Quest's APK re-exported and sideloaded; the iPad set up; then the
+print, the lock, and `clippy`, `crew/director`, `crew/tech-operator` and `all-crew`
+reprinted. The Desktop needs nothing new for it (the Music manager's router does,
+below). **Not proven on a real device:** no real phone,
+printer, camera, tablet, iPad, Quest, TV or voice has met any of it. It ran in Chromium as
+a phone (Chromium 95 for the tablets, WebKit for the costume's click test), in Godot's
+tests, and on scratch servers with no database. `SIGNOFF-w59.md` §5 is the list. Help:
+`docs/help/play/18-getting-back-in.md`, `docs/help/authoring/48-terminal-setup.md`,
+`56-read-aloud.md`.
 
 **His voice comes apart** (wave 56, shipped in `w56`; `docs/loom-w56-contract.md`,
 decisions on `SIGNOFF-w56.md`, no new show text): towards the end of the night
 and in the major glitches Trabolta's speech breaks, in nine flavours. The server
 says how much (`voiceFx`, `core/src/voice-fx.ts`: a curve over the phases and the
-Y2K clock, scaled by `Trabolta.composure`, healed by a talk-down or the helped
-ending; a spike for the hijack, ⚡ and the dream). Every terminal that speaks him
+Y2K clock, scaled by `Trabolta.composure`, healed by the helped ending and the
+monologue; a spike for the hijack, ⚡ and the dream). Every terminal that speaks him
 plans each sentence (`terminal/src/speech/glitch.ts`: pace, pitch, voice, real
 cut-offs, only ever his own words), and the Desktop's router tears the sound
 itself up on its way to the speakers (`stagehand/audio/voicefx.py`). Run →
@@ -352,6 +470,20 @@ button; `/terminal/?preview=voice` auditions them. It needs every terminal and
 the TV reloaded, and on the Desktop `git pull` and
 `start-stagehand.ps1 -Restart audio`. Not proven on Windows' voices
 or the house speakers: run `SIGNOFF-w56.md` §3 first.
+
+**The music manager, and Trabolta at the stereo** (wave 58's other half, not
+shipped, and it lands with wave 59; `docs/loom-w58-music-contract.md`, show text
+`DRAFT w58-music` on `SIGNOFF-w58-music.md`, a sheet of its own because the Oct 30
+story took `SIGNOFF-w58.md`): Run →
+House → 🎵 Music and the Desk's 🎵 Music (open for Task Manager) hold Now Playing,
+TIDAL's ⏮ ⏸ ⏭, the show's playlists, the app's sidebar, a pasted playlist link
+and the music level. `change_the_music`, like the lights' window, but only for a
+program at `Night.dj_bar` of `chummy` (`warmth: chummy -5 to 10`: the one guest
+slot his reply may move, ±1). His moves are allow-listed and a loan: a live music
+cue ends it, a director's hand refuses it, 🔒 keeps him off. It adds one step to
+the landing: the Desktop's `git pull` and `start-stagehand.ps1 -Restart audio`, or
+the commands are logged as unknown. ⏮ ⏸ and a hand playlist are unproven on the
+real app. Help: `docs/help/authoring/57-music-manager.md`.
 
 ### Release status
 
@@ -555,6 +687,9 @@ on real hardware: the Quest's audio, TTS and mic (`tools/quest.sh logs`),
 the glitch on real phones, and the real speakers.
 
 ### Shipping master (summary)
+
+Waves 58 and 59 land by `SHOWNIGHT.md` §1, *Landing wave 58 and wave 59*. These are
+the house steps the older deploys still owe.
 
 1. The sign-off of waves 13–29 is done (2026-10-27). Shipping carries the
    still-DRAFT lines of wave 22 (no sheet).

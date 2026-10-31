@@ -7,8 +7,9 @@ import { ApiError, api, useChatStream, withTimeout } from "../client.ts";
 import { shareErrorText } from "../codex.ts";
 import { usePlayHost } from "../host.ts";
 import { phoneAnnounce } from "../phone-voice.ts";
+import { letGo } from "../rejoin.ts";
 import { BOOTH_SIGNED_OUT, SessionRole, eventGone, lifecycleDropsSession, lifecycleNotice, lifecycleStartsNewRun, performerSessionDead } from "../lifecycle.ts";
-import { locationOfRoom, occupantsByLocation, type Presence } from "../presence.ts";
+import { isOnline, locationOfRoom, occupantsByLocation, type Presence } from "../presence.ts";
 import { CODEX_ROOM, PINNED_SPACE, QUEST_LOG, STORY_SPACE, WALLET_ROOM } from "../rooms/spaces.ts";
 import { primeStreamUrl } from "../booth/model.ts";
 import { roomOrder } from "../rooms/order.ts";
@@ -19,10 +20,12 @@ import type { CensorResult, Channel, FilterLevelResult, ChatMessage, GuestCardVi
 import { useTyping } from "../typing.ts";
 import { queueSummary } from "../wallet.tsx";
 import type { WidgetResult } from "../widgets.tsx";
+import type { RedeemAnswer } from "../scan-done.tsx";
 import { hasPendingCard } from "./channels.ts";
 import { SAY_TIMEOUT_MS, sayRefusalText } from "./guest.ts";
 import { NO_ANSWERS, tokenDead, useLandingBrand, usePerSession, useRoomLinks, useTheme, type ResolvedCode } from "./shared.ts";
 import { primeStreamHandlers } from "./stream-handlers.ts";
+import { PrompterStore, type PrompterPost } from "../aloud/shared.ts";
 
 export interface PrimeAuth {
   token: string;
@@ -60,6 +63,9 @@ const PRIME_ALERTS = "loom.prime.alerts";
  *  and the cards + notes it deals to it. */
 export const INBOX = "__inbox";
 
+/** What the server calls any director on a phone (`unseen-directors.ts`). */
+export const DIRECTOR = "Director";
+
 /** Build the performer's surfaces: a scanner, the character's Readouts
  *  (readouts + cards the story deals to it), the broadcast feed, the
  *  character's own pinned Quest Log / Codex, the staff rooms (pinned just
@@ -92,7 +98,7 @@ export function buildPrimeChannels(messages: Map<number, ChatMessage>, view: Pri
   // The feed is the house's broadcast: never a DM thread (a host booth's
   // stream also carries guests' Trabolta threads, for answering as him).
   const feedMsgs = all.filter((m) => m.audience === "all" && !m.channel.startsWith("dm:")).sort((a, b) => a.seq - b.seq);
-  const everyone: Presence[] = (view?.guests ?? []).map((g) => ({ id: g.id, name: g.name, kind: "guest" as const, group: g.faction }));
+  const everyone: Presence[] = (view?.guests ?? []).filter(isOnline).map((g) => ({ id: g.id, name: g.name, kind: "guest" as const, group: g.faction }));
   const feed: Channel = {
     id: "__feed",
     kind: "lobby",
@@ -109,10 +115,9 @@ export function buildPrimeChannels(messages: Map<number, ChatMessage>, view: Pri
     decision: null,
     lastTs: feedMsgs.length ? feedMsgs[feedMsgs.length - 1]!.ts : 0,
   };
+  const heldBy = (id: string) => all.filter((m) => Array.isArray(m.audience) && m.audience.includes(id)).sort(bySeq);
   const guests: Channel[] = (view?.guests ?? []).map((g) => {
-    const msgs = all
-      .filter((m) => Array.isArray(m.audience) && m.audience.includes(g.id))
-      .sort((a, b) => a.seq - b.seq);
+    const msgs = heldBy(g.id);
     const where = locationLabel(g.location);
     return {
       id: `guest:${g.id}`,
@@ -128,6 +133,30 @@ export function buildPrimeChannels(messages: Map<number, ChatMessage>, view: Pri
       lastTs: msgs.length ? msgs[msgs.length - 1]!.ts : 0,
     };
   });
+  // Wave 59: a Run persona has no row on a booth, so its DM here opens a
+  // thread of its own, by its id and under no name. It reads and answers as
+  // a guest's does.
+  const rowed = new Set((view?.guests ?? []).map((g) => g.id));
+  const unseen = new Set<string>();
+  for (const m of all) {
+    if (m.from !== DIRECTOR || m.channel !== `dm:${me}` || !Array.isArray(m.audience)) continue;
+    for (const id of m.audience) if (!id.startsWith("@") && !rowed.has(id)) unseen.add(id);
+  }
+  for (const id of unseen) {
+    const msgs = heldBy(id);
+    guests.push({
+      id: `guest:${id}`,
+      kind: "guest",
+      title: DIRECTOR,
+      spaceId: "guests",
+      order: 0,
+      people: [{ id, name: DIRECTOR, kind: "guest", group: null }],
+      messages: msgs,
+      unread: 0,
+      decision: null,
+      lastTs: msgs.length ? msgs[msgs.length - 1]!.ts : 0,
+    });
+  }
   // Authored channels (SPACE/CHANNEL) the performer runs — grouped by space.
   const spaceTitles = new Map((view?.spaces ?? []).map((s) => [s.id, s.title]));
   // The staff rooms (`# hosts`, `# quarantine`) sit just under Pinned: the
@@ -179,7 +208,8 @@ export function buildPrimeChannels(messages: Map<number, ChatMessage>, view: Pri
   });
   // The character's own pinned rooms: its Quest Log (`start quest X for
   // <Character>`) and Codex (what it knows), addressed `@<me>` — read-only
-  // (a booth types no codes; sharing stays on the guest card).
+  // (wave 58: codes go in through 📷 Scan, not here; sharing stays on the guest
+  // card).
   const pinned: Channel[] = [];
   if ((view?.questTotal ?? 0) > 0) {
     const msgs = all.filter((m) => m.channel === QUEST_LOG && mine(m)).sort(bySeq);
@@ -278,6 +308,8 @@ export interface PrimeSession {
   notice: string | null;
   threads: Threads;
   login: (character: string, passcode: string) => Promise<void>;
+  /** Wave 59: become the booth a host let in (Ask a host, `held.tsx`). */
+  adopt: (booth: PrimeAuth) => void;
   /** Scan a guest's pass (`/api/scan`); the answer carries the guest's card (wave 13). */
   scan: (target: string) => Promise<ScanResult>;
   /** What this booth may do to one guest right now (`/api/prime/card`, wave 13). */
@@ -301,6 +333,12 @@ export interface PrimeSession {
   cue: (name: string, subject: string | null, args: Record<string, unknown> | null, presses: number | undefined, signal?: AbortSignal) => Promise<{ refused?: boolean; moved?: boolean; said?: string[]; staff?: string[] }>;
   /** Codex: hand one of the character's entries to a guest. */
   shareCodex: (entry: string, to: string) => Promise<unknown>;
+  /** Wave 58: a codex QR the booth read, or a code it typed, into the
+   *  character's own Codex (`/api/prime/codex/redeem`; a miss is `missed`,
+   *  and a refusal throws). */
+  redeem: (code: string) => Promise<RedeemAnswer>;
+  /** The link of the printed code a typed one is, or null (wave 59). */
+  printed: (code: string) => Promise<string | null>;
   /** The approver's booth: settle a held transfer / deny one in its window. */
   walletApprove: (id: string) => Promise<unknown>;
   walletDeny: (id: string) => Promise<unknown>;
@@ -321,6 +359,9 @@ export interface PrimeSession {
    *  letter (`POST /api/prime/letter`), or take it off (`null`). Optional so
    *  a test's fake session needs none. */
   letter?: (email: string | null) => Promise<{ ok: true; email: string | null }>;
+  /** Wave 59: the shared teleprompter's store, and a phone's press on it. */
+  prompter?: PrompterStore;
+  prompterPost?: PrompterPost;
   /** Wave 48 (C2): the censor's ✂ on a flagged line (`POST
    *  /api/prime/censor {seq}`): 200 is the masked text; 403 / 404 / 409
    *  throw an `ApiError` with the server's reason. Optional so a test's
@@ -354,6 +395,7 @@ export function notePress(map: Map<string, string>, name: string, guest: string 
 
 export function usePrimeSession(): PrimeSession {
   const host = usePlayHost();
+  const [prompter] = useState(() => new PrompterStore());
   const { load, save, drop } = host.storage;
   const crawl = host.crawl;
   const [auth, setAuth] = useState<PrimeAuth | null>(() => {
@@ -392,6 +434,7 @@ export function usePrimeSession(): PrimeSession {
     onSnapshot: (v) => setView(v as PrimeView),
     onTyping,
     onAnnounce: (n) => phoneAnnounce(host, n),
+    onPrompter: (f) => prompter.set(f),
     // The crawl decides at arrival (wave 13: a no-op until the stream lane)
     // and the backlog sets its baseline (stream-handlers.ts).
     ...primeStreamHandlers(crawl, auth, (list) => {
@@ -455,6 +498,12 @@ export function usePrimeSession(): PrimeSession {
       { character, passcode },
     );
     const a: PrimeAuth = { token: r.token, character: r.character, admin: !!r.admin, host: r.host === true, eventId, title };
+    crawl.reset();
+    save(PK, a);
+    setAuth(a);
+    setNotice(null);
+  }, []);
+  const adopt = useCallback((a: PrimeAuth) => {
     crawl.reset();
     save(PK, a);
     setAuth(a);
@@ -563,6 +612,8 @@ export function usePrimeSession(): PrimeSession {
     },
     [post, auth],
   );
+  const redeem = useCallback((code: string) => post<RedeemAnswer>("/api/prime/codex/redeem", { code }, auth!.token), [post, auth]);
+  const printed = useCallback((code: string) => post<{ hit: { url: string } | null }>("/api/prime/printed", { code }, auth!.token).then((r) => r.hit?.url ?? null), [post, auth]);
   const moderate = useCallback(
     (id: string, action: string, name?: string) => post("/api/mod/act", { id, action, name }, auth!.token),
     [post, auth],
@@ -629,18 +680,21 @@ export function usePrimeSession(): PrimeSession {
   // Wave 48 (C2): a hung POST must not leave ✂ on "…" for good.
   const censor = useCallback((seq: number) => withTimeout(post<CensorResult>("/api/prime/censor", { seq }, auth!.token), SAY_TIMEOUT_MS), [post, auth]);
   const filterLevel = useCallback((level: number) => withTimeout(post<FilterLevelResult>("/api/prime/filter", { level }, auth!.token), SAY_TIMEOUT_MS), [post, auth]);
+  // Not `post`: a phone saying it is on the script is no action of the booth's,
+  // and must not read as one to the readouts' banner (`lastActionAt`).
+  const prompterPost = useCallback((body: Record<string, unknown>) => api(`${base}/api/aloud`, body, auth!.token), [base, auth]);
   const leave = useCallback(() => {
     // Sign out frees the part on the server too, so the same performer can
     // sign in from another phone (the iPhone Home Screen icon) without a
-    // director's ⏏ Release. Fire-and-forget: signing out never waits.
-    if (auth !== null) void api(`${base}/api/prime/logout`, {}, auth.token).catch(() => {});
+    // director's ⏏ Release. Signing out never waits; with no signal it stays owed.
+    letGo(host.storage, auth, "prime");
     drop(PK);
     setAuth(null);
     setView(null);
     setReady(false);
     setNotice(null);
     host.onEnded("prime", null);
-  }, [drop, host, auth, base]);
+  }, [drop, host, auth]);
 
   const boothFilter = useMemo(() => (auth !== null ? boothAlertFilter(auth.character) : undefined), [auth]);
   const alerts = useAlerts({
@@ -664,5 +718,5 @@ export function usePrimeSession(): PrimeSession {
   useTheme(auth === null ? landing.theme : view?.theme);
   const arrive = useCallback(() => post("/api/prime/arrive", {}, auth!.token), [post, auth]);
   const choose = useCallback((index: number, menu: { id: number; text: string }) => post("/api/prime/choose", { index, choice: menu.id, text: menu.text }, auth!.token), [post, auth]);
-  return { auth, view, alert: alerts.alert, dismissAlert: alerts.dismiss, alerts, messages, connected, ready, notice, threads, login, scan, card, say, inviteToChannel, leaveChannel, becomeAdmin, act, lastPressedOn, cue, shareCodex, walletApprove, walletDeny, moderate, setHidden, answerWidget, widgetAnswers, letter, censor, filterLevel, arrive, choose, leave, roomLinkPending };
+  return { prompter, prompterPost, auth, view, alert: alerts.alert, dismissAlert: alerts.dismiss, alerts, messages, connected, ready, notice, threads, login, adopt, scan, card, say, inviteToChannel, leaveChannel, becomeAdmin, act, lastPressedOn, cue, shareCodex, redeem, printed, walletApprove, walletDeny, moderate, setHidden, answerWidget, widgetAnswers, letter, censor, filterLevel, arrive, choose, leave, roomLinkPending };
 }

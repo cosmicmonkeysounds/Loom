@@ -221,19 +221,17 @@ describe("act 2's scenes draw", () => {
     q.mockRestore();
   });
 
-  it("the recount holds the hung window and rides off only at the end of the hold, not at the beat's own motorcycle", () => {
+  it("the recount holds the hung window through Task Manager's reading: he never rides off (wave 58)", () => {
     const q = quiet();
     const recount = SCENES.find((s) => s.id === "recount")!;
-    // The story's `sound motorcycle` lands in the same drain as the slide (same at).
-    const moto: ScreenMoment[] = [{ seq: 3, at: AT, kind: "sfx", name: "motorcycle", who: null, kept: false }];
-    for (const t of [5000, 12_000, 40_000, 79_000]) {
-      const html = draw(recount, "tv", t, stateAt(t, { moments: moto }));
-      expect(html, `t ${t}`).toContain("Not Responding");
-      expect(html, `t ${t}`).not.toContain("Greased Lightning");
+    for (const t of [5000, 40_000, 82_000, 800_000]) {
+      for (const target of ["tv", "wall"] as const) {
+        const html = draw(recount, target, t, stateAt(t));
+        expect(html, `${target} t ${t}`).not.toContain("Greased Lightning");
+        expect(html.length, `${target} t ${t}`).toBeGreaterThan(0);
+      }
+      expect(draw(recount, "tv", t, stateAt(t)), `t ${t}`).toContain("Not Responding");
     }
-    expect(draw(recount, "tv", 82_000, stateAt(82_000, { moments: moto }))).toContain("Greased Lightning");
-    expect(draw(recount, "wall", 20_000, stateAt(20_000))).not.toContain("Greased Lightning");
-    expect(draw(recount, "wall", 37_000, stateAt(37_000))).toContain("Greased Lightning");
     q.mockRestore();
   });
 

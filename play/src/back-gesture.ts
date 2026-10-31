@@ -1,15 +1,15 @@
-//! The phone's own Back (wave 18 fix NM-F9): on Android the system Back
-//! gesture (and a browser's ←) walked the page away from the app after any
-//! exit, because nothing in the app ever made a history entry. While the
-//! guest is anywhere but home (a room, an overlay, another window) the app
-//! keeps exactly one entry of its own on the stack; Back pops it and the app
-//! steps back one place instead (`onBack`), then puts the entry back while
-//! there is still somewhere to step back from. Reaching home in the app
-//! takes its entry off again.
-//!
-//! Only when the app owns the page (`host.ownsPage`): embedded in an
-//! editor's Run → Players pane it never touches the page's history (one
-//! pane must never move another).
+// The phone's own Back (wave 18 fix NM-F9): on Android the system Back
+// gesture (and a browser's ←) walked the page away from the app after any
+// exit, because nothing in the app ever made a history entry. While the
+// guest is anywhere but home (a room, an overlay, another window) the app
+// keeps exactly one entry of its own on the stack; Back pops it and the app
+// steps back one place instead (`onBack`), then puts the entry back while
+// there is still somewhere to step back from. Reaching home in the app
+// takes its entry off again.
+//
+// Only when the app owns the page (`host.ownsPage`): embedded in an
+// editor's Run → Players pane it never touches the page's history (one
+// pane must never move another).
 
 import { useEffect, useRef } from "react";
 

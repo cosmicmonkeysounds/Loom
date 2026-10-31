@@ -477,7 +477,7 @@ router
 `lights.json`, played by the Desktop's stagehand `lights` job: 18 house
 bulbs, each by its Zigbee2MQTT friendly name (`living_1..3` in The
 Desktop, `kitchen_1..3` in The Start Bar, `hall_main`, `hall_up`,
-`hall_basement`, `casino` in The Graphics Card, `bath_down`, `bath_up`,
+`hall_basement`, `casino` in The Casino, `bath_down`, `bath_up`,
 `fan_closet_1..2`, `ram_1..3` in The RAM), the server room's
 `server_room_rgb`, and the living room's addressable LED strip on a WLED
 controller (a WeGoIOT ESP32, device topic `wled/living`). Zones group them

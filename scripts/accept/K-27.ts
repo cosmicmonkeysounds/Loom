@@ -38,8 +38,7 @@
 //                        `terminal opened` (or `terminal closed`) for that
 //                        guest with at: R → at_the_heart / heart_holder
 //   watch                print the server-room state every 2 s until Ctrl+C
-//                        (incl. heart_holder, who is at_the_heart, the 🕊
-//                        stand-down offer and talked_down)
+//                        (incl. heart_holder and who is at_the_heart)
 
 import { TO_Y2K, pressChain } from "./chains.ts";
 import { rehearsalGuard } from "./guard.ts";
@@ -137,8 +136,6 @@ async function door(): Promise<string> {
     `heart_opened ${w.get("Night.heart_opened")}`,
     `heart_holder ${w.get("Night.heart_holder")}`,
     `at_the_heart ${atHeart.join(", ") || "nobody"}`,
-    `stand_down_by ${w.get("Night.stand_down_by")}`,
-    `talked_down ${w.get("Night.talked_down")}`,
     `wrong_combos ${w.get("Night.wrong_combos")}`,
     `alarm_on ${w.get("Night.alarm_on")}`,
     `alarms ${w.get("Night.alarms")}`,

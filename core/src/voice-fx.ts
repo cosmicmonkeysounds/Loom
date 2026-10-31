@@ -11,10 +11,10 @@
 //! is clean until the Trust Chart, frays through the overshare, and goes
 //! fast in the Y2K hour, where it also climbs with the clock towards
 //! midnight. `Trabolta.composure`, which every crisis of the night knocks
-//! down, scales it (±25%), so a rough night sounds rougher. A talked-down
-//! Trabolta, or the ending where the programs helped him, is clean: the
-//! voice healing is the payoff. A reading (the awards, the recount) is capped
-//! so that names and numbers get through.
+//! down, scales it (±25%), so a rough night sounds rougher. The ending where
+//! the programs helped him is clean: the voice healing is the payoff. A
+//! reading (the awards, the summary) is capped so that names and numbers get
+//! through.
 //!
 //! **A spike** is a major glitch: it stands over the level for its length,
 //! whatever the phase, so the ad hijack at step 7 hits hard and then he snaps
@@ -69,12 +69,14 @@ export const VOICE_PHASE_LEVEL: Readonly<Record<string, number>> = {
   advice: 0.45,
   finale_song: 0.1,
   finale_rave: 0.5,
-  // The recount: weak, not wrecked. It reads every program's name.
+  // He is gone (wave 58: he does not come back): nothing speaks him here.
   finale_killed: 0.3,
   finale_banish: 1,
   finale_hand_jive: 1,
   finale_shutdown: 1,
   finale_help: 0,
+  // Wave 58: he reads his own file, the whole of it, in his own clean voice.
+  finale_truth: 0,
 };
 
 /** The Y2K hour climbs from its phase's level by this much at midnight. */
@@ -96,7 +98,6 @@ export interface VoiceNight {
   composure: number | null;
   /** Seconds left on the running countdown (the Y2K hour's). */
   remaining: number | null;
-  talkedDown: boolean | null;
   alarmOn: boolean | null;
   heartStage: string | null;
   /** An award or the recount's summary is up: the words must land. */
@@ -107,7 +108,6 @@ const clamp01 = (v: number): number => (Number.isFinite(v) ? Math.min(1, Math.ma
 
 /** The night's level, before the director's mode. */
 export function voiceLevel(n: VoiceNight): number {
-  if (n.talkedDown === true) return 0;
   let level = VOICE_PHASE_LEVEL[n.phase ?? ""] ?? 0;
   if (n.phase === "y2k" && n.remaining !== null) level += VOICE_Y2K_CLIMB * clamp01(1 - n.remaining / VOICE_Y2K_S);
   if (level > 0 && n.composure !== null) level *= 0.75 + 0.5 * clamp01(1 - n.composure / VOICE_COMPOSURE_FULL);

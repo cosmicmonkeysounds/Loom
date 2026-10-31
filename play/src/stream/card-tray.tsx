@@ -1,16 +1,16 @@
-//! The card tray (wave 13): the live cards waiting on you — a CAPTCHA, a
-//! poll, a 📝 fact, a 💬 answer — docked above the composer like the
-//! decision box, so a room still reads as a conversation and the card can't
-//! scroll away. The stream keeps a one-line receipt (`settled.ts`). One card
-//! shows at a time (‹ 1 of 3 ›); the bar folds the card to one line.
-//!
-//! The tray never takes the room over: it opens for a card you haven't seen
-//! yet, comes back folded once you have (a 📝 fact card re-dealt all through
-//! the hunt is the same card), and folds while you type in the composer.
-//! Wave 26 (P1): while a story menu is docked (`crowded`) a new card starts
-//! folded — the menu opens first — unless a receipt or Mission asked for it;
-//! it opens once the menu is answered. `shut` folds it from outside (the
-//! menu unfolding), `onOpenChange` tells the room whether it is open.
+// The card tray (wave 13): the live cards waiting on you — a CAPTCHA, a
+// poll, a 📝 fact, a 💬 answer — docked above the composer like the
+// decision box, so a room still reads as a conversation and the card can't
+// scroll away. The stream keeps a one-line receipt (`settled.ts`). One card
+// shows at a time (‹ 1 of 3 ›); the bar folds the card to one line.
+//
+// The tray never takes the room over: it opens for a card you haven't seen
+// yet, comes back folded once you have (a 📝 fact card re-dealt all through
+// the hunt is the same card), and folds while you type in the composer.
+// Wave 26 (P1): while a story menu is docked (`crowded`) a new card starts
+// folded — the menu opens first — unless a receipt or Mission asked for it;
+// it opens once the menu is answered. `shut` folds it from outside (the
+// menu unfolding), `onOpenChange` tells the room whether it is open.
 
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { usePlayHost } from "../host.ts";

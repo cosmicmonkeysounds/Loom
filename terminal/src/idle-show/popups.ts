@@ -65,7 +65,8 @@ export const POPUP_KINDS: readonly PopupKind[] = [
   { id: "pop-wallet", style: "toast", icon: "coin", title: "Wallet", text: "Your Truthcoin misses you. Check your phone's Wallet.", buttons: OK, sound: "coin" },
   { id: "pop-scan-hint", style: "toast", icon: "info", title: "Got a pass?", text: "Open 🎟 Pass on your phone and hold it to the camera in the corner.", buttons: OK, sound: "blip", scan: true },
   // --- the doors ----------------------------------------------------------------------
-  { id: "pop-bingo", style: "toast", icon: "info", title: "Computer Bingo", text: "Found a program that matches a square? Check the box.", buttons: OK, sound: "chord", pools: ["early"] },
+  // DRAFT w58 (the name in the square)
+  { id: "pop-bingo", style: "toast", icon: "info", title: "Computer Bingo", text: "Found a program that matches a square? Write their name in it.", buttons: OK, sound: "chord", pools: ["early"] },
   { id: "pop-captcha", style: "dialog", icon: "question", title: "Are You Human?", text: "Please select every square containing a program.", buttons: [{ label: "Verify", gag: "more" }, { label: "Skip" }], sound: "ding", pools: ["early"] },
   // --- the hijack -----------------------------------------------------------------
   { id: "pop-hijack", style: "warning", icon: "error", title: "000. 000. 000.", text: "000. 000. 000. 000. 000. 000.", buttons: [{ label: "OK", gag: "more" }], sound: "glitch", pools: ["malware"], adLike: true },
@@ -79,7 +80,7 @@ export const POPUP_KINDS: readonly PopupKind[] = [
   { id: "pop-y2k-1900", style: "dialog", icon: "warning", title: "Year 2000", text: "At midnight your clock may read 1900. Please dress accordingly.", buttons: OK, sound: "exclamation", pools: ["y2k"] },
   { id: "pop-y2k-toaster", style: "dialog", icon: "question", title: "Y2K Compliance", text: "Is your toaster Y2K compliant?", buttons: [{ label: "Yes" }, { label: "It's a toaster", gag: "confirm" }], sound: "ding", pools: ["y2k"] },
   { id: "pop-y2k-save", style: "warning", icon: "clock", title: "Year 2000", text: "{y2k} left in 1999. Save your work. Save everything.", buttons: [{ label: "Save" }, { label: "Save As…", gag: "more" }], sound: "exclamation", pools: ["y2k"] },
-  { id: "pop-majority", style: "dialog", icon: "info", title: "Cold Storage", text: "Disk activity in the basement is up. This is normal.", buttons: [{ label: "OK" }, { label: "Defragment", gag: "dodge" }], sound: "ding", pools: ["y2k"], phases: ["majority"] },
+  { id: "pop-majority", style: "dialog", icon: "info", title: "Cold Storage", text: "Disk activity downstairs is up. This is normal.", buttons: [{ label: "OK" }, { label: "Defragment", gag: "dodge" }], sound: "ding", pools: ["y2k"], phases: ["majority"] },
   // --- the end of the night ---------------------------------------------------------
   { id: "pop-safe-off", style: "dialog", icon: "computer", title: "Shut Down", text: "It is now safe to turn off your house.", buttons: OK, sound: "chord", pools: ["finale"] },
   { id: "pop-saving", style: "progress", icon: "computer", title: "Please Wait", text: "Saving your settings. This is taking a while because you have so many.", buttons: [{ label: "Cancel", gag: "dodge" }], sound: "ding", pools: ["finale"] },

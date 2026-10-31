@@ -19,14 +19,13 @@ export interface CrtCard {
 }
 
 const BOOT_LINES = ["COLD STORAGE ............ OPEN", "HEART.SYS ............... LOADED", "SOMEONE IS IN THE ROOM ... YES"];
-/** The scene's clock: the same moments as `heart.tsx` (WAKE, SEAL, DOWN). */
+/** The scene's clock: the same moments as `heart.tsx` (WAKE, SEAL). */
 const WAKE_BOOT_MS = 700;
 const WAKE_LINE_MS = 700;
 const WAKE_CLOSE_MS = 9000;
 const SEAL_PASS_MS = 3000;
 const PROOF_QUIET_MS = 4700;
 const NOTYET_SUB_MS = 2600;
-const SHUTDOWN_SAFE_MS = 20_500;
 
 const EJECT_LINES = [
   "A fatal exception has occurred at the heart.",
@@ -63,8 +62,6 @@ export function cardOf(value: string, t: number): CrtCard | null {
       return { big: "NOT YET", ...(t >= NOTYET_SUB_MS ? { sub: "COME BACK WHEN THE CLOCK RUNS" } : {}) };
     case "heart_leave":
       return { big: "CONNECTION CLOSED" };
-    case "heart_shutdown":
-      return t >= SHUTDOWN_SAFE_MS ? { sub: "It is now safe to turn off your computer." } : { sub: "Saving his settings…", bar: t / SHUTDOWN_SAFE_MS };
     default:
       return null;
   }

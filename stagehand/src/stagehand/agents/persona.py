@@ -53,6 +53,9 @@
                                        #   lookup resolves a program — so being read is *felt*
     powers: all                        # which `who: agent` powers it may use (or a list, or none)
     bargain: "…"                       # guidance on when a favour is earned
+    cover:                             # (wave 58) what he is, withheld until the story
+      until: Night.truth_told == true  #   says it: a guest who asks is deflected, neither
+                                       #   way (`guards.breaks_cover`; absent = no cover)
     catchphrases:                      # rationed by the new voice (wave 12): once
       - "Your request has been logged" #   per person, at first contact
     catchphrase_stages: [formal]       # …and only while his stage is one of these
@@ -140,6 +143,7 @@ _KNOWN = {
     "fallbacks",
     "card_lines",
     "unsaid",
+    "cover",
     "outside",
 }
 
@@ -244,6 +248,9 @@ class Persona:
     #: Names the new voice never says until the story has (`unsaid:`): each
     #: (name, condition), the condition read like `when:`.
     unsaid: tuple[tuple[str, Condition], ...] = ()
+    #: (wave 58) Until when what he is stays unsaid (`cover: {until}`), read
+    #: like `when:`; None = no cover.
+    cover: Condition | None = None
     #: The mind file's phase cards, in file order, inheritance resolved
     #: (`parse_mind_table`). A bare cue string is a card too.
     phase_cards: dict[str, "PhaseCard"] = field(default_factory=dict)
@@ -489,6 +496,7 @@ def parse_persona(text: str, source: str = "<persona>") -> Persona:
         fallbacks=fallbacks,
         card_lines=card_lines,
         unsaid=_unsaid(meta.get("unsaid"), source),
+        cover=_cover(meta.get("cover"), source),
         outside=outside,
         phase_cards=dict(table.cards),
         stage_cards=dict(table.stage_cards),
@@ -537,7 +545,9 @@ def _catchphrase_stages(value: Any, stages: tuple[str, ...], source: str) -> tup
 #: (wave 42e) also: asked whether their fact was right ("check"), a short
 #: hello ("greet"), an insult ("rude"), and the malware, the advert or the
 #: glitch ("malware": a sub-pool of "other", the rattled stage's denial).
-FALLBACK_INTENTS = ("offer", "praise", "refuse", "unknown", "help", "check", "greet", "rude", "malware", "other")
+#: (wave 58) also: the accident raised ("accident": he closes it, upset) and
+#: what he is, asked ("cover": deflected, neither way).
+FALLBACK_INTENTS = ("offer", "praise", "refuse", "unknown", "help", "check", "greet", "rude", "malware", "accident", "cover", "other")
 
 
 def _fallbacks(value: Any, stages: tuple[str, ...], secrets: Secrets, source: str, *, key: str = "fallbacks", intents: bool = True) -> dict[str, tuple[str, ...]]:
@@ -598,6 +608,17 @@ def _unsaid(value: Any, source: str) -> tuple[tuple[str, Condition], ...]:
         except ValueError as err:
             raise ConfigError(f"{where}: until: {err}") from err
     return tuple(out)
+
+
+def _cover(value: Any, source: str) -> Condition | None:
+    if value in (None, ""):
+        return None
+    if not isinstance(value, dict) or set(value) != {"until"} or not isinstance(value["until"], str) or not value["until"].strip():
+        raise ConfigError(f"{source}: cover: expected a mapping with until:")
+    try:
+        return Condition(value["until"].strip())
+    except ValueError as err:
+        raise ConfigError(f"{source}: cover: until: {err}") from err
 
 
 _MIND_KNOWN = {"stages", "drives", "phases", "secrets"}

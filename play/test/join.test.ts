@@ -68,3 +68,16 @@ describe("the join screen's code lookup", () => {
     expect(calls).toEqual(["/api/resolve-code"]);
   });
 });
+
+describe("a badge's printed code on a join screen (wave 59)", () => {
+  afterEach(() => vi.unstubAllGlobals());
+  it("comes back as its QR's link, and no picker is asked for", async () => {
+    const urls: string[] = [];
+    vi.stubGlobal("fetch", (async (url: string) => {
+      urls.push(url);
+      return new Response(JSON.stringify({ eventId: "evt", role: "guest", title: "Night", printed: "/?code=EVT1&badge=abcdefgh" }), { status: 200, headers: { "content-type": "application/json" } });
+    }) as unknown as typeof fetch);
+    expect(await fetchIdentities("abcd efgh")).toEqual({ kind: "printed", link: "/?code=EVT1&badge=abcdefgh" });
+    expect(urls).toEqual(["/api/resolve-code"]);
+  });
+});

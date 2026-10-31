@@ -338,6 +338,10 @@ export const modApi = {
   async caller(eventId: string, on: boolean): Promise<void> {
     await req('POST', `/e/${eventId}/api/mod/caller`, { on })
   },
+  /** Wave 59: ▶ every line of his left plays, or ✓ Done the scene is over. */
+  async aloud(eventId: string, action: 'release' | 'done'): Promise<void> {
+    await req('POST', `/e/${eventId}/api/mod/aloud`, { action })
+  },
   /** Scan a guest as a character — fires that character's scan reaction.
    *  Resolves to the character's `respond` readouts (the booth's responses). */
   async scanAs(eventId: string, as: string, target: string): Promise<string[]> {
@@ -410,6 +414,12 @@ export const modApi = {
    *  `revokeOthers` also signs out every other phone holding that guest. */
   async pairGuest(eventId: string, id: string, opts: { revokeOthers?: boolean } = {}): Promise<GuestPairing> {
     return await req<GuestPairing>('POST', `/e/${eventId}/api/mod/guest/pair`, { id, ...(opts.revokeOthers ? { revokeOthers: true } : {}) })
+  },
+  /** Sign a guest's phone out (wave 59): their badge or invitation signs in
+   *  again on any phone. Answers how many tokens went. */
+  async releaseGuest(eventId: string, id: string): Promise<number> {
+    const r = await req<{ released?: number }>('POST', `/e/${eventId}/api/mod/guest/release`, { id })
+    return r.released ?? 0
   },
   /** Release a performer's part (N-10): drop the session holding it so the
    *  performer can re-sign on a loaner. Resolves to how many sessions held it. */
@@ -514,6 +524,14 @@ export const screensApi = {
    *  `lib/terminals.ts` `doorOverrideFromScreen`). */
   async state(eventId: string): Promise<unknown> {
     return await req<unknown>('GET', `/e/${eventId}/api/screen/state`)
+  },
+  /** (wave 59) The Task Manager costume's switch and its link. */
+  async costume(eventId: string): Promise<{ on: boolean; url: string }> {
+    return await req<{ on: boolean; url: string }>('GET', `/e/${eventId}/api/mod/costume`)
+  },
+  /** (wave 59) The crew's kill switch. */
+  async setCostume(eventId: string, on: boolean): Promise<{ on: boolean }> {
+    return await req<{ on: boolean }>('POST', `/e/${eventId}/api/mod/costume`, { on })
   },
   /** Make one terminal show its name + spot full screen for 10 s (SW-SCR-21, install day). */
   async identify(eventId: string, name: string): Promise<{ name: string; until: number }> {

@@ -70,6 +70,10 @@ export interface Question {
   round: number;
   /** Exact words the reader speaks and the screens show. */
   text: string;
+  /** What the reader says instead of `text`, when `text` can't be read aloud
+   *  (a blank: the voice strips underscores). The card, the Quest Log and the
+   *  slide keep `text`. */
+  spoken?: string;
   /** The canonical answer. */
   answer: string;
   /** Aliases a filing may use instead (exact after `foldAnswer`). */
@@ -84,6 +88,10 @@ export interface Question {
   codex?: QuestionCodex;
   /** Placeholder content the team must replace. */
   draft?: true;
+  /** The key isn't in yet: `answer` is a stand-in (it carries
+   *  `PLACEHOLDER_MARK`). Nothing is judged on it: a filing is not recorded,
+   *  and no screen shows it. Delete this with the real answer. */
+  placeholder?: true;
 }
 
 /** A free-text answer key (an `answer` card), never listed on a card. */
@@ -136,7 +144,7 @@ export interface Truth {
 export interface DoorClue {
   /** The CODEX id (no digit: the position in words). */
   id: string;
-  /** The poster's title, e.g. `The Cold Door · the first digit` (no digit). */
+  /** The poster's title, e.g. `Server Room · the first digit` (no digit). */
   title: string;
   /** The QR unlock code (no digit, nothing like another clue's). */
   code: string;
@@ -278,6 +286,8 @@ export function validateFacts(raw: unknown): ValidatedFacts {
       if (!Number.isInteger(r) || (r as number) < 1) problems.push(`${label}: round must be an integer ≥ 1 (got ${JSON.stringify(r)})`);
       if (x["topics"] !== undefined && (!Array.isArray(x["topics"]) || !x["topics"].every(isStr))) problems.push(`${label}: topics must be an array of strings`);
       for (const k of ["where", "hint"] as const) if (x[k] !== undefined && !isStr(x[k])) problems.push(`${label}: ${k} must be a string`);
+      if (x["spoken"] !== undefined && (!isStr(x["spoken"]) || x["spoken"].trim() === "")) problems.push(`${label}: spoken must be a non-empty string`);
+      if (x["placeholder"] !== undefined && x["placeholder"] !== true) problems.push(`${label}: placeholder must be true when present`);
       if (x["codex"] !== undefined) checkCodex(x["codex"], `${label}: codex`, problems, false);
     }
     return { ...x, accept } as Question | Answer;
@@ -462,6 +472,15 @@ export function clueText(clue: DoorClue, digit: string): string {
 
 const ANY_DIGIT = /[0-9]/u;
 
+/** What a stand-in answer carries (`Question.placeholder`), so it can never
+ *  be taken for a real one, or outlive its flag. */
+export const PLACEHOLDER_MARK = "PLACEHOLDER";
+
+/** The questions whose key is still owed (`Question.placeholder`). */
+export function placeholderQuestions(f: Pick<FactsFile, "questions">): Question[] {
+  return f.questions.filter((q) => q.placeholder === true);
+}
+
 /** Characters that break a generated string literal / `match` arm line. */
 const BAD_TEXT = /["{}|]/u;
 
@@ -472,8 +491,11 @@ const BAD_TEXT = /["{}|]/u;
  *  category used is declared; `show.title` present; ≥ 15 truths; every
  *  codex id and every code (questions', facts', the codes recorded on
  *  `existing` facts) unique, codes matching `CODE`; no `"`, `{`, `}` or
- *  `|` in a question's or a truth's text; exactly the `SHOW_TIERS`,
- *  in order, every fact in one, each tier smaller than the last; a
+ *  `|` in a question's or a truth's text (or its `spoken` form); a blank
+ *  (`_`) in a question only with a `spoken` form, which holds none; a stand-in
+ *  answer (`PLACEHOLDER_MARK`) always flagged `placeholder`, and that flag
+ *  only on one; exactly the `SHOW_TIERS`, in order, every fact in one, each
+ *  tier smaller than the last; a
  *  `character` fact's codex has an `about`; a fact is `existing` xor has a `codex`; a `door`, when
  *  present, has a 4–8 digit `code`, a clue that never contains it, a
  *  codex (unique id) whose text does, and — with `clues` — one note per
@@ -506,6 +528,12 @@ export function showFactsProblems(f: FactsFile): string[] {
   for (const q of f.questions) {
     const by = `question ${q.id}`;
     if (BAD_TEXT.test(q.text)) problems.push(`${by}: text must not contain " { } or |`);
+    if (q.spoken !== undefined && BAD_TEXT.test(q.spoken)) problems.push(`${by}: spoken must not contain " { } or |`);
+    if (q.spoken !== undefined && q.spoken.includes("_")) problems.push(`${by}: spoken must not contain a blank (the voice strips _)`);
+    if (q.text.includes("_") && q.spoken === undefined) problems.push(`${by}: a blank needs a spoken form (the voice strips _)`);
+    const standIn = [q.answer, ...q.accept].some((a) => a.includes(PLACEHOLDER_MARK));
+    if (standIn && q.placeholder !== true) problems.push(`${by}: the answer is a placeholder, so the question must say placeholder: true`);
+    if (!standIn && q.placeholder === true) problems.push(`${by}: placeholder: true on a real answer (delete the flag)`);
     if (!q.where) problems.push(`${by}: where is missing`);
     if (!q.codex) problems.push(`${by}: codex is missing`);
     else {

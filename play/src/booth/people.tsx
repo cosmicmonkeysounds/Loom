@@ -1,8 +1,10 @@
 //! 👥 People on a player's booth (wave 21, P4): a simple searchable list of
-//! every program — picture, name, where they stand — with MARKED / IN THE
-//! INTERNET tags only for a booth that claims escorts (an Antivirus). A tap
-//! opens their card. No tabs, no last-seen, no story flags: the hosts'
-//! 🗂 Guests is the director's tool, this is a player's.
+//! every program online — picture, name, where they stand — with MARKED /
+//! IN THE INTERNET tags only for a booth that claims escorts (an Antivirus).
+//! A tap opens their card. No tabs, no last-seen, no story flags: the hosts'
+//! 🗂 Guests is the director's tool, this is a player's. Wave 59: online
+//! only, but a claimer keeps the programs it hunts or holds, phone or no
+//! phone: they are in the house, and that row is the Antivirus's job.
 
 import { useState } from "react";
 import type { PrimeGuest, PrimeView } from "../types.ts";
@@ -10,6 +12,7 @@ import { PersonAvatar } from "../ui/primitives.tsx";
 import { Icon } from "../chrome/icons.tsx";
 import { GuestBadges } from "./badges.tsx";
 import { BoothLayer } from "./layer.tsx";
+import { isOnline } from "../presence.ts";
 import { filterGuests, statusTag } from "./model.ts";
 import { wantedOf } from "./wire.ts";
 
@@ -25,7 +28,7 @@ export function peopleTag(g: PrimeGuest, view: PrimeView | null, claimer: boolea
 
 export function PeopleSheet({ view, claimer, onPick, onClose }: { view: PrimeView | null; claimer: boolean; onPick: (guestId: string) => void; onClose: () => void }) {
   const [q, setQ] = useState("");
-  const guests = view?.guests ?? [];
+  const guests = (view?.guests ?? []).filter((g) => isOnline(g) || peopleTag(g, view, claimer) !== null);
   const rooms = new Map((view?.channels ?? []).filter((c) => c.id.startsWith("loc:")).map((c) => [c.id.slice(4), c.title]));
   const hits = filterGuests(guests, q);
   return (
@@ -40,7 +43,7 @@ export function PeopleSheet({ view, claimer, onPick, onClose }: { view: PrimeVie
     >
       <div className="booth-guests">
         <input className="w95-inset booth-search" type="search" placeholder="Search by name" aria-label="Search people" value={q} autoCapitalize="none" autoCorrect="off" spellCheck={false} onChange={(e) => setQ(e.target.value)} />
-        {guests.length === 0 && <p className="booth-none">Nobody yet. Programs appear here as they sign in.</p>}
+        {guests.length === 0 && <p className="booth-none">Nobody online.{/* DRAFT w59 */}</p>}
         {guests.length > 0 && hits.length === 0 && <p className="booth-none">Nobody matches “{q.trim()}”.</p>}
         <ul className="booth-guest-list">
           {hits.map((g) => {

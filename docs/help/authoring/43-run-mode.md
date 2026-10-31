@@ -54,9 +54,9 @@ Every page shares one header:
   speaker test and the music on the house speakers at once (0.3 s), from
   any page. It is a panic button: one press, no confirm, nothing
   journaled. The music stays off until the story's next music cue (the
-  next act), or until the router catches up after a restart; to bring it
-  back sooner, run `stagehand music scene <name>` on the router's
-  computer. The TV's voice (it has its own mute), the terminals and the
+  next act), until **↺ Follow the story** in 🎵 Music, or until the
+  router catches up after a restart; to bring it back sooner, run
+  `stagehand music scene <name>` on the router's computer. The TV's voice (it has its own mute), the terminals and the
   live mics are untouched, and stopping the dance song does not move the
   story's clock. The button then reads one of three things:
   - **■ Stopped**: the router heard it and fades out now.
@@ -107,7 +107,7 @@ Front of house: getting people in.
   with a hairline to cut along.
   - **Badges** are 3 × 2 inches, ten to a sheet, one QR per person. A
     **staff badge** (black edge) per performer part signs its phone straight
-    in as that part, and takes the part back from a lost phone. An **invited
+    in as that part. An **invited
     badge** (gold edge) per `reserved: true` program ([live
     shows](live-shows.md)) lands its guest on their own program with one tap.
     The numbered **blank badges** (B001…) are for everyone else: the phone
@@ -115,7 +115,13 @@ Front of house: getting people in.
     links to the program they pick. Pick how many blanks (60 by default) and
     the first number, then **Load**; to print more later, start from the
     *next batch* number the toolbar shows. Whichever badge a guest has, it
-    gets them back in on any phone and it is their pass at the booths. A
+    gets them back in on any phone once they've let go of the last one, and
+    it is their pass at the booths. **Every printed sign-in is one phone's:**
+    while a phone holds a part or a guest, their badge, invitation or printed
+    code on any other phone is refused, with **🙋 Ask a host**. Being offline
+    is no release. A release is their own Leave the event or Sign out, ⏏
+    Release, a host's *Let them in* on Needs (once the waiting phone has
+    it), or a spent Re-pair. A story restart frees the guests; a booth stays signed in until Go live. A
     staff badge is a sign-in: keep it with its performer, QR side in, and
     never post one. On screen only, a linked badge names its guest, and an
     invited badge has **🔓 lost? open 2 min** (two taps): it opens that
@@ -128,16 +134,39 @@ Front of house: getting people in.
   - **Fact cards** print four to a row, twenty to a sheet, in stack order
     with a coloured band. A number per stack prints a few: the hunt answers
     and the door's digit notes print whole by default, four of each other
-    stack. A digit note prints title and QR only, never a digit.
+    stack. A digit note's code holds no digit, so it prints like the rest.
   - The **join poster** and the **door sign** are off until ticked (it says
     *Scan to join*, or *iPhone? Join, then Add to Home Screen* with the steps
     when the server's Home Screen switch is on), one, two or four to a page.
 
+  **Every card has a text code under its QR**, for anyone with no camera.
+  Typed into 📷 Scan it does what the QR does: a room's (`R-…`) checks in, a
+  sign's (`S-…`) presses its button, a fact's unlocks it. A badge's goes in
+  the code box on the join screen and lands where its QR lands, a staff
+  badge's too, and that one is a sign-in: keep it as private as the QR.
+  Capitals, spaces and hyphens don't matter. Everything printed uses the
+  story's names (*The Start Bar*); the real room shows on screen only, as the
+  note on its card, so you know where it goes.
+
   **skip** moves a card to the tray under the sheets. The toolbar warns in
   red if the codes point at a local address, since a printed QR can't be
-  fixed later. Every code stays good through Restart, Go live, End →
-  relaunch and new performer + moderator codes. Renaming a part or a reserved
-  program retires its badge.
+  fixed later.
+
+  **Changing the story after printing.** Every code stays good through
+  Restart, Go live, End → relaunch, new performer + moderator codes, and any
+  edit to the story's text, beats, their order, objectives or a fact's words:
+  a sync or a Push draft leaves them alone. What retires a card is renaming
+  what it names: a room, a part, a reserved program (or their order), a sign's
+  button or a codex code. One edit breaks a card with nothing renamed: a hidden
+  room's sign needs a `reveal` somewhere in the story, and without one it reads
+  *That room isn't open yet* all night. Once you print, run `pnpm --filter
+  @loom/core titi:qr-lock`: from then on the pre-deploy gate and `sync-show`
+  stop on a story that would break a printed card and name what moved
+  (`sync-show --qr-moved` goes on anyway, for cards you are reprinting). It
+  won't write the lock while a printed room has no `reveal`: give the room
+  `checkin: false` so its card doesn't print, or reveal it, before you print.
+  It checks that a reveal exists, not that the night reaches it, so moving one
+  behind a beat you might skip is still on you.
 - **Directing now** — every co-writer with a console open, who started
   the run, and when.
 - **Terminals** — every wall terminal and the TV that has checked in,
@@ -167,7 +196,9 @@ Front of house: getting people in.
   *Enable Microphone Access*, then reload), **🎤 http** (plain http has no
   microphone: use the https address) and **🎤 tap** (open, but nobody has
   touched it since it loaded, so it neither hears nor is heard — touch it
-  once), its battery (red under 20 % and not charging), and its build (amber when
+  once), the **link to the games**: **📷** the camera frames it sends a second,
+  **🎞** the simulation it receives and draws, and **⚠** what last went wrong,
+  in words ([Is its picture getting through?](48-terminal-setup.md)), its battery (red under 20 % and not charging), and its build (amber when
   it isn't the one the others run, or **old build** when it reports none
   at all while the others do: either way, reload it before doors). **identify**
   puts that screen's name and spot full screen for 10 seconds, with a
@@ -225,6 +256,10 @@ Front of house: getting people in.
   you pick the server room's spot. That laptop runs desktop Chrome on
   the https address; press ⚙ *Connect door sensor* on it once and it
   reconnects by itself after that.
+  **🎭 Costume** is the Task Manager costume's iPad: **On / Off** is the
+  crew's kill switch, and **Copy link** is the iPad's link. Keep the link to
+  yourself; it can only fire that menu, but anyone holding it can
+  (`docs/trapped/costume.md`).
 - **House sound** — *Open House →* goes to the [house desk](47-house-desk.md). Whether the speaker router is listening,
   **■ Stop house sounds** with a **+ announcements** box (also cuts the
   announcement playing and drops the queue), and **Tablets that also say
@@ -466,15 +501,13 @@ countdown): a click opens the Director page and never fires.
   verbs](live-verbs.md)) is only suggested while it holds: in *Trapped
   in the Internet* NEXT is empty while a timer runs the night — all of
   hunt 1, hunt 2's hour, the summons, and the Y2K hour (midnight fires 🌑
-  itself); after the dance it is the ending's own cue, after the song it
-  is G1, and G10 is only suggested when MS Paint was cleared. A `while:` never stops you pressing a cue; the story's rule
+  itself); after the dance it is the ending's own cue, after an ending's
+  last beat it is G0 📜, and G1 once the reading is over, and G10 is only suggested when MS Paint was cleared. A `while:` never stops you pressing a cue; the story's rule
   decides what happens. Acts never change NEXT: they only group the page.
 - A `repeat: true` cue **stays NEXT** while you keep pressing it and its
   `while:` holds (📋 once per question, until the third).
 - An `urgent: true` cue **jumps the order**: while its `while:` holds and
-  it has not fired it is NEXT wherever LAST is (the show's 🕊 *Trabolta
-  stands down* once a program talks him down at his heart: the night
-  ends on your press).
+  it has not fired it is NEXT wherever LAST is.
 - A press the story **turns down** counts for nothing: it never becomes
   LAST and never ticks. A show's cues pressed out of turn say why in
   `# hosts` and do nothing else — a cue pressed ahead of its turn is
@@ -646,7 +679,12 @@ heard from them (*seen 12 m ago*; the same on the rail and in the
 Roster's Seen column). After a server restart or a release, a guest who
 hasn't made a request since reads *not seen since the server started*
 (*not since restart* in the Roster), not *never seen*. Personas show no
-seen line and carry a persona badge. **👋 Went home** marks a guest who
+seen line and carry a persona badge, and no phone ever lists one (no
+People, no 🗂 Guests, no picker): only Run and your own Players panes do.
+A line a persona says reads *Director* on every other phone, and a booth it
+writes to can read and answer it there. A story line that prints a persona's
+name in its own text still shows it.
+**👋 Went home** marks a guest who
 left (*Back* undoes it): a journaled `<id>.gone = true` the story can
 leave out of its head counts. In *Trapped in the Internet* that is the
 Y2K majority, so mark the early leavers before 🕚; the board's *Present
@@ -665,17 +703,23 @@ Wanted board. To mark or unmark the way the story does, fire its event under
 `unmark_for_reinstallation`) or have a host press 🩹 Unmark. On a live run
 it asks first for a real guest.
 
-**Someone lost their phone.** On a server run, a guest's Inspector has
-**🔁 Re-pair**: it shows a QR that signs whatever phone scans it back in
-*as that guest* — same program, codex, quests and score, no new guest
-left behind. Use it for a dead phone, a cleared browser, a camera that
-opened another browser, or a loaner. The code works once, for ten
-minutes. **Sign out old phones** cuts every other phone signed in as
-them (one someone else picked up). Keep the QR off the big screen: it
-is their sign-in. A character's Inspector has **⏏ Release**: it signs
-out whichever booth holds that part, so the performer can sign in again
-on another phone with the performer code. The character's threads and
-buttons stay.
+**Someone lost their phone.** Their badge on a new phone is refused and
+offers **🙋 Ask a host**: *Let them in*, on a host's Needs or the director
+phone, signs the old phone out and the new one in within a few seconds, same
+program, codex, quests and score. It moves only if that phone is still
+waiting: one that cancelled or closed the page changes nothing, and a sign-in
+or release of that guest or part clears the ask off Needs. On a server run, a guest's Inspector also has **🔁
+Re-pair**: it shows a QR that signs whatever phone scans it back in *as that
+guest*, with no new guest left behind, and signs the old phone out. Use it
+for a dead phone, a cleared browser, a camera that opened another browser, or
+a loaner. The code works once, for ten minutes. **Sign out old phones** cuts
+the old phone at once, before the code is used (one someone else picked up).
+Keep the QR off the big screen: it is their sign-in. **⏏ Release** on a
+guest's Inspector signs their phone out with no QR, so their badge or
+invitation signs in again (a host has it on People too). A character's
+Inspector has **⏏ Release**: it signs out whichever booth holds that part, so
+the performer can sign in again on another phone with their badge or the
+performer code. The character's threads and buttons stay.
 
 ## Directing together
 

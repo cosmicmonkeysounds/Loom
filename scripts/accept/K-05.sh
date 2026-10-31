@@ -133,7 +133,7 @@ guard_writes "open and shut the real server-room door into this event (door_sens
 TMP="$(mktemp -d)"; trap 'rm -rf "$TMP"' EXIT
 watch_door 2 "$TMP/now"; cat "$TMP/now" | sed 's/^/    /'
 grep -qE "sensor (open|closed)" "$TMP/now" && ok "the server-room terminal reports the door (door=serial, sensor connected, no fault)" \
-  || bad "no terminal reports a door, or it reads fault/none: on Steph's laptop hold ⚙ 2 s → Connect door sensor; Run → Terminals shows why"
+  || bad "no terminal reports a door, or it reads fault/none: on Steph's laptop hold the top right corner 2 s → Connect door sensor; Run → Terminals shows why"
 grep -qE "story (open|closed)" "$TMP/now" && ok "Night.server_door is set (Power On has played)" || bad "Night.server_door is null: open the doors / play Power On first, else the bridge posts nothing"
 grep -qE "override [Tt]rue" "$TMP/now" && bad "door_override is on: press 🚪 Trust the door sensor on Run first" || ok "the story follows the sensor (no override)"
 

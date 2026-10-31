@@ -57,6 +57,7 @@ class Night {
   ceremony(ending = "song"): ChatMessage[] {
     this.sim.setVar("Night.ending", ending);
     this.sim.setVar("Night.ended", "true");
+    this.press("start_the_ceremony"); // wave 58: the first press only asks
     return this.press("start_the_ceremony");
   }
 }
@@ -141,8 +142,8 @@ describe("wave 45: G13 🚻 The Bathroom Report", () => {
   it("is appended last in act G as an aside, live only during the ceremony", () => {
     const sim = Sim.fromSources(SRC);
     const admin = [...sim.model.interactions.values()].filter((i) => i.who === "admin");
-    // Wave 48: 🔑 G14 is appended after it; wave 50: 🌀, on Anytime, after that; wave 53: ⏭.
-    const last = admin[admin.length - 4]!;
+    // Wave 48: 🔑 G14 is appended after it; wave 50: 🌀, on Anytime, after that; wave 53: ⏭; wave 59: 🎭; wave 58 music: 🔒 🔓.
+    const last = admin[admin.length - 7]!;
     expect(last.id).toBe("bathroom_report");
     expect(last.label.startsWith("G13 · 🚻")).toBe(true);
   });

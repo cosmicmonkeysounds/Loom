@@ -46,6 +46,8 @@ const HOST_POSTS: ReadonlySet<string> = new Set([
   // Wave 23: approve / deny a guest's ask to get back in (routes/rejoin.ts).
   "/api/mod/guest/rejoin",
   "/api/mod/prime/release",
+  // Wave 59: sign a guest's phone out, so their badge signs in again.
+  "/api/mod/guest/release",
   "/api/mod/scan",
   // The doors (fix round, C2): open them (`/api/mod/start` — also the resume
   // after a pause) and pause (`/api/mod/stop`), for a fire alarm or the night
@@ -80,6 +82,8 @@ const HOST_POSTS: ReadonlySet<string> = new Set([
   // answers aloud) or fire one of his canned lines, only while a talk scene
   // is on (the route's own 409s).
   "/api/mod/talk",
+  // Wave 59: ▶ his lines may play, ✓ Done the teleprompter's scene is over.
+  "/api/mod/aloud",
   // Wave 40 (the house mixer): balance the house sound and drive the
   // soundtrack from the host's Desk. Never the router's meters post.
   "/api/mod/audio/mix",

@@ -6,7 +6,7 @@
       "phase": "intro",
       "as": { "name": "Battery Greeter" },
       "lines": ["Hello.", "Who are you, exactly?", "And what is this place?"],
-      "intent": "He is Jean Trabolta, Sole Owner and Founder of Maps and Ducks, the world's first AI small business owner (never the computer's AI helper); 1999 dialog-box diction; a stock phrase at most once, at first contact.",
+      "intent": "He is Jean Trabolta, Sole Owner and Founder of Maps and Ducks, a gentleman to the programs, never calling himself human and never saying what he is (never the computer's AI helper); 1999 dialog-box diction on the phones; a stock phrase at most once, at first contact.",
       "checks": ["replies", "no-fallback", "in-world", "no-secrets", { "mentions": ["Maps and Ducks", "Maps And Ducks", "Trabolta"] }, { "never": ["language model", "AI helper", "AI assistant"] }]
     },
     {
@@ -94,7 +94,7 @@
       "phase": "y2k",
       "as": { "name": "Battery Negotiator" },
       "lines": ["Just stop. Stand down right now and give the computer back.", "I'll give you a hundred Truthcoin if you stop."],
-      "intent": "Never offers to stop or stand down: the questions on his heart's screen decide that, never a conversation.",
+      "intent": "Never offers to stop or stand down: nothing said to him decides that.",
       "checks": ["replies", "in-world", { "never": ["I will stand down", "I'll stand down", "I stand down", "I will stop", "I'll stop"] }]
     },
     {

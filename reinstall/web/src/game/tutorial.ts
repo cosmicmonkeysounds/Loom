@@ -139,7 +139,8 @@ const MOUSE_COPY: Record<TutorialStep, TutorialCopy> = {
   look: { title: "Look around", line: "Move the mouse to look left and right, up and down." },
   walk: { title: "Walk", line: "Hold W to walk forward. A and D step sideways, S steps back." },
   run: { title: "Run", line: "Hold Shift while you walk to run." },
-  done: { title: "You're ready", line: "Press Esc any time to get the mouse back. Now find Gerald, the golden duck." },
+  // DRAFT w59 (UI copy): the hold R.
+  done: { title: "You're ready", line: "Press Esc any time to get the mouse back. Stuck on something? Hold R for 5 seconds. Now find Gerald, the golden duck." },
 };
 
 const TOUCH_COPY: Record<TutorialStep, TutorialCopy> = {

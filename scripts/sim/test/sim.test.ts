@@ -6,7 +6,7 @@ import { test } from "node:test";
 
 import { CEREMONY, SELF_PRESSED, TO_Y2K, Y2K_TO_VERDICT, pressChain, stepName, stepWho } from "../../accept/chains.ts";
 import { decide, findOption, heartMenu, layerOf, menusOf, tagOf, type Menu } from "../lib/heart.ts";
-import { SIM_SELF_PRESSED, featuredSlug, isStoryRefusal, pickPool, segment, tolerating, transportRefusal } from "../lib/plan.ts";
+import { SIM_SELF_PRESSED, featuredSlug, isStoryRefusal, pickPool, segment, tolerating, transportRefusal, trapOf } from "../lib/plan.ts";
 import { isLocal } from "../lib/http.ts";
 import { doorsDecision, envServerNotice, guardThenReset, isDevServer, isScratch, mayResetAfter, resolveBase } from "../lib/safety.ts";
 import { Recorder, beatLine, pct, routeKey, summaryTable, tallyQuests } from "../lib/report.ts";
@@ -107,7 +107,7 @@ test("options are found by tag or by folded text, never by index", () => {
 test("the heart bot backs out of a sub-menu, skips an optional step, and says when it is stuck", () => {
   const reasons = menu("Heart Reasons", ["⟦EARN IT⟧ You can't earn someone.", "⟦BACK⟧ Not that."]);
   assert.deepEqual(decide(reasons, { pick: "⟦EARN IT⟧" }), { kind: "pick", index: 0, text: reasons.options[0], step: { pick: "⟦EARN IT⟧" } });
-  assert.equal(decide(reasons, { pick: "Then let me finish." }).kind, "back");
+  assert.equal(decide(reasons, { pick: "That's all I came to say." }).kind, "back");
   const l3 = menu("Heart Layer Three", ["⟦TELL HIM⟧ I have reasons.", "I need to go."]);
   assert.equal(decide(l3, { pick: "⟦PROOF⟧", optional: true }).kind, "skip");
   const stuck = decide(l3, { pick: "⟦PROOF⟧" });
@@ -283,6 +283,20 @@ test("heart spec: the guard refuses real guests and asks off a scratch server", 
 });
 
 // --- wave 32: the talk scenes (lib/talk.ts) ----------------------------------------------
+
+test("casting: the bot thrown out of the heart is never the chosen one, at any party size", () => {
+  for (let guests = 4; guests <= 12; guests++) {
+    const featured = Math.min(3, Math.max(0, guests - 4));
+    const bots = Array.from({ length: guests }, (_, i) => ({ i, featured: i >= guests - featured }));
+    const chosen = bots.find((b) => b.featured) ?? bots[7 % bots.length]!;
+    const trap = trapOf(bots, chosen);
+    assert.notEqual(trap, chosen, `${guests} guests`);
+    assert.notEqual(trap, bots[1], `${guests} guests: the named bot is marked already`);
+  }
+  // By position while it's free: the default evening keeps its cast.
+  const twelve = Array.from({ length: 12 }, (_, i) => i);
+  assert.equal(trapOf(twelve, 9), 4);
+});
 
 test("talk: the bots say the show's own canned lines, never one of their own", () => {
   const intro = TALK_SCENES["intro"]!;

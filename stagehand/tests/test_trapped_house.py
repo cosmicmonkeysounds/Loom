@@ -253,7 +253,7 @@ def test_every_room_trabolta_can_darken_goes_off_and_comes_back():
     assert all(back[f"zigbee2mqtt/{d}/set"]["brightness"] == 254 for d in bulbs["The Start Bar"])
     # A room outside the allow-list reaches nothing, even if a director types it.
     for room in ("The Internet", "The Cloud", "Disk Cleanup", "The Tube", "The Server Room", "The Optical Drive", "The CPU",
-                 "The Steam Room", "The Fan Closet", "The Graphics Card", "The Hard Drive"):
+                 "The Power Supply", "The Fan Closet", "The Casino", "The Hard Drive"):
         assert evaluate_cues(_show().cues, _directive("cue", f"lights, room: {room}, state: off")) == [], room
 
 
@@ -731,7 +731,7 @@ def test_the_audio_json_is_the_828x_on_its_own_outs():
     labels = [c["label"] for c in audio["outputs"]]
     assert labels[:2] == ["Main L — Living L", "Main R — Living R"]
     assert labels[2] == "Analog 1 — Living sub" and labels[3] == "Analog 2 — spare"
-    assert [lab.split(" — ")[-1].split(" (")[0] for lab in labels[4:10]] == ["Kitchen L", "Kitchen R", "Hall", "Steam Room", "CPU", "Optical Drive"]
+    assert [lab.split(" — ")[-1].split(" (")[0] for lab in labels[4:10]] == ["Kitchen L", "Kitchen R", "Hall", "Power Supply", "CPU", "Optical Drive"]
     assert [lab.split(" — ")[0] for lab in labels[10:12]] == ["S/PDIF L", "S/PDIF R"]
     assert [lab.split(" (")[0] for lab in labels[12:]] == ["Phones L", "Phones R"]
     speakers = {s["id"]: s for s in audio["speakers"]}

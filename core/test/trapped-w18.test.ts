@@ -114,10 +114,10 @@ describe("Trapped in the Internet — wave 18: big moments with their exits (C12
       { kind: "quests", quest: "The Bingo Card", label: "See the quest" },
     ]);
     const rib = n.signal("award_the_ribbon", "g1", undefined, "Clippy");
-    const medal = bigFor(rib, "g1").find((m) => m.text.startsWith("🎀 You won the Bingo Ribbon"))!;
+    const medal = bigFor(rib, "g1").find((m) => m.text.startsWith("🎀 You won the Bingo Floppy Disk"))!;
     expect(medal).toMatchObject({ audience: ["g1"], go: [{ kind: "codex", entry: "Computer Bingo" }] });
     expect(medal.autoClose).toBeUndefined();
-    const cheer = rib.find((m) => m.text === "🎀 Calculator won the Bingo Ribbon! Cheer for them at the Desktop.")!;
+    const cheer = rib.find((m) => m.text === "🎀 Calculator won the Bingo Floppy Disk! Cheer for them at the Desktop.")!;
     expect(cheer).toMatchObject({ moment: "big", autoClose: 6000, audience: "all" });
     // The winner's medal comes first (the moments queue in arrival order).
     expect(rib.indexOf(medal)).toBeLessThan(rib.indexOf(cheer));
@@ -147,7 +147,7 @@ describe("Trapped in the Internet — wave 18: big moments with their exits (C12
     expect(storm).toMatchObject({ moment: "big", go: [{ kind: "room", id: "loc:The Internet" }] });
     const jive = n.press("the_hand_jive");
     expect(bigFor(jive, "g1").map((m) => m.text)).toContain("🕺 The hand jive broke his hold. You are out of the Internet.");
-    n.press("start_the_ceremony");
+    (n.press("start_the_ceremony"), n.press("start_the_ceremony"));
     const award = n.press("award_most_trusted", "g3");
     expect(bigFor(award, "g3").find((m) => m.text.startsWith("🏆 You won Most Trusted!"))).toMatchObject({ go: [{ kind: "room", id: "loc:The Desktop" }] });
   }, SLOW);

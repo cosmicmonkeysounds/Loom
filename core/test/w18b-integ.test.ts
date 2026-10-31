@@ -29,11 +29,12 @@ import { Store } from "../server/store.ts";
 import type { AgentJudgeRequest, AgentRequest } from "../server/agents.ts";
 import type { ScreenState } from "../server/routes/screen.ts";
 import { parseFactsText, FACTS_FILE } from "../src/facts.ts";
+import { withTestKeys } from "./fixtures/hunt-keys.ts";
 import { TO_HUNT2 } from "../../scripts/accept/chains.ts";
 
 const SHOW = "trapped-in-the-internet";
 const SRC = scenarioSource(SHOW);
-const FACTS_TEXT = readFileSync(join(scenarioDir(SHOW), FACTS_FILE), "utf8");
+const FACTS_TEXT = withTestKeys(readFileSync(join(scenarioDir(SHOW), FACTS_FILE), "utf8"));
 const FACTS = parseFactsText(FACTS_TEXT).facts!;
 const CODES = { event: "EVT18B", prime: "PRM18B", mod: "MOD18B" };
 const SLOW = 300_000;
@@ -149,6 +150,7 @@ describe("wave 18b integration — the whole night on the merged show (C1)", () 
     // The ceremony: The Night In Review first, then the awards; a file each.
     n.sim.setVar("g6.gone", "true");
     const before = n.chat.historyFor("g1", false).length;
+    n.raw("start_the_ceremony"); // wave 58: the first press only asks
     const cer = n.raw("start_the_ceremony");
     const order = beats(cer);
     expect(order.indexOf("The Night In Review")).toBeGreaterThan(-1);
@@ -295,7 +297,7 @@ describe("wave 18b integration — results, rulings and the verdict on the merge
     const judges = () => w.res.frames().filter(([e]) => e === "judge").map(([, d]) => d as AgentJudgeRequest);
     const requests = () => w.res.frames().filter(([e]) => e === "request").map(([, d]) => d as AgentRequest);
 
-    for (const c of TO_HUNT2.slice(0, 4)) await mod(c); // → introduce_trabolta
+    for (const c of TO_HUNT2.slice(0, TO_HUNT2.indexOf("introduce_trabolta") + 1)) await mod(c); // → introduce_trabolta
     await mod("start_the_hunt");
     for (const g of guests) for (const q of ["H1", "H2", "H3"]) await call(rt, "POST", "/api/guest/codex/redeem", { code: codeOf(q) }, { token: g.token });
     const h1 = FACTS.questions.find((q) => q.id === "H1")!;

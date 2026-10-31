@@ -797,6 +797,7 @@ calls; it can do nothing else.
 | `POST /api/spatial/found` | session token | `{}` | 401 / 410 as for poses · 409 `{error: "doors are closed"}` while the event is not open (paused, or before the doors open) — the session stays un-found, so the game's retry lands after resume · 409 `{error: "this session has not started — send a pose first"}` for a parked assignment no pose has claimed · 409 `{error: "not near the duck", distance, dy}` unless the last pose is within 2.0 m (plan, `FOUND_PLAN_M`) of the duck **and** either within 1.2 m of its height (`DUCK_MAX_RISE`; a pose is the feet) or on the same floor (`floorOf`) — `nearDuck` · 200 `{ok, released, captured, already}` (`captured`: the program is still captured after the commit — the story kept them, e.g. the banishment; wave 9); commits `signal("the simulation completed", guest)` then `signal("the golden duck", guest)`, journaled `by` the session's `device`, and appends the run (`DuckRun`: guest, name, world, device, `ms` from the begin — or a parked assignment's claiming pose — to the find, less any time the doors were closed — a pause mid-run is not the player's time) to `spatial-runs.jsonl` in the event's state dir, which `/api/mod/recap`'s `duck` board reads (cleared by a story restart). A repeat answers `already` without committing. |
 | `POST /api/spatial/king/hit` | session token | `{}` | 401 / 410 as for poses · 409 `{error: "doors are closed"}` while the event is not open (the visit keeps its hit) · 409 `{error: "this session has not started — send a pose first"}` for a parked assignment · 404 `{error: "no king"}` · 409 `{error: "fallen", king}` · 409 `{error: "already hit", king}` — this visit already hit · 409 `{error: "not near", reach}` unless `kingReach` with `KING_HIT_SLACK` on the session's **last pose** is `"ok"` (`reach` = the verdict; the game flushes a pose first) · 200 `{ok, king}`. On a hit: a journaled `set` of the `health` path to `hp − 1`, then `signal(signals.hit, guest, {hp, max})`, then at 0 `signal(signals.fallen, guest, {hp, max})`, all `by` the session's `device`; then a `king` frame naming the hitter. **One hit per visit**: a visit is spent from its hit until that guest's duck is found — `begin` for a guest whose visit already hit (a re-scan mid-walk, Leave and scan again, after a director's end or a timeout) carries the hit over; a find ends the visit (a re-scan in the 8 s the found session lingers starts a fresh one); a story restart forgets every visit, and so does a server restart (in memory, like sessions). The `Assignment`'s `kingHit` says a re-scan is the visit that already hit, so a game shows ⚔ spent from the start |
 | `POST /api/spatial/moment` | session token (`x-loom-token`, or `token` in the body) | `{kind: "escape"}` · `{kind: "heart", prop}` · `{kind: "pickup", prop}` (wave 26) | One route for the three game moments, judged on the session's **last pose** (the game flushes a pose first), in this order: 401 / 410 as for poses · 400 `{error: "bad moment"}` (an unknown `kind`, a heart or pickup with no `prop`) · 409 `{error: "doors are closed"}` while the event is not open · 409 `{error: "this session has not started — send a pose first"}` (parked) · heart / pickup: 404 `{error: "no such prop"}` (no prop of that kind with that id). Then per kind. **escape**: 409 `{error: "not out", distance}` unless `voidDistance` ≥ `ESCAPE_M − ESCAPE_SLACK` · 409 `{error: "cooldown", retryMs}` within 20 s of this session's last · 200 `{ok, kind, lines, spawn, cooldownMs: 20000}` — the server re-seats the pose at the spawn (room, floor and presence follow; the terminals' ghost jumps back) and commits `simulation escape attempt`. **heart**: 409 `{error: "sealed"}` while the map's King stands · 409 `{error: "already"}` once this guest heard it tonight · 409 `{error: "not there"}` unless `heartReached` · 200 `{ok, kind, lines}` — commits `simulation heart reached {prop}`; the guest counts as having heard it only when `lines` is not empty (empty: he isn't awake yet, or a restart forgot; the game stays silent and asks on the next entry). **pickup**: 409 `{error: "already"}` once this guest took it · 409 `{error: "far", distance}` unless `pickupReach` with `PICKUP_SLACK_M` · 200 `{ok, kind, lines, item, prop}` — commits `simulation pickup taken {item, prop}`. Every commit is journaled `by` the session's `device`. `lines` (`[{from, text}]`, display text) are what that one commit said to this program, game-only beats included (`chat.ts` `momentLines`); they come back **only** in this answer, never on a stream, a phone, a booth or Run (`GAME_ONLY_BEATS`: *Escape Attempt*, *Heart In The Simulation*), so Trabolta can chastise before his reveal. A story that throws on the signal still answers 200 with empty `lines`. The route never answers `{error: "not found"}`: a game reads any other 404 body as an old server. Memory only, cleared by a story restart and lost on a process restart: the cooldown, who heard the heart, who took each pickup; the story's own guards (`program.sim_heart`, `carries_virus`) keep the heart and the virus once-only across one |
+| `POST /api/spatial/reset` | session token | `{}` | 401 / 410 as for poses · 409 `{error: "already found"}` · 200 `{ok, spawn, duck}` (wave 59, the run reset). The session's pose goes back to its spawn and Gerald is dealt a new spot, never the one he was in, from a seed of its own for each reset; a `duck` frame goes out at once and the jump on the next flush. No clock, level, hit, disk or score moves, and it commits nothing, so it is open while the doors are closed. A game ignores an old server's 404 and walks on with Gerald where he was. |
 | `POST /api/spatial/ready` | session token | `{}` | 401 / 410 as for poses · 200 `{ok}` (wave 33). The game's intro (the video, the tutorial) is over: the session's duck-run clock restarts now, **once** (a second call only refreshes the pose timeout), so a first-timer's run isn't timed through the intro. Commits nothing, so it is open while the doors are closed. An old server's 404 is ignored. |
 | `POST /api/spatial/prefs` | session token | `{turn: "snap" \| "smooth"}` | 401 / 410 as for poses · 400 `{error}` for no known key or a bad value · 200 `{ok, prefs}` (wave 33): the program's game settings, merged over what it had, dealt back on **every later assignment** (`prefs`) whatever the device. Kept in the state dir (`spatial-prefs.json`, guest → settings), across a restart **and** a story reset (they are the person's comfort, not the story's). Commits nothing. Since wave 33b no client posts it (VR's snap turn is gone, so there is no setting to keep); it stays for the additive-server rule and an older APK |
 | `POST /api/spatial/told` | session token | `{talker, mark}`, strings of 1–64 characters (wave 49) | 401 / 410 as for poses · 400 `{error}` · 200 `{ok}`. Remembers what this program told a talker (`told[guest][talker] = mark`, the latest wins), dealt back on every later assignment. Memory only: never journaled, forgotten by a story reset and a process restart. Commits nothing, so it is open while the doors are closed |
@@ -958,6 +959,15 @@ VR's label — at three times that size across the wall, never deeper
 (wave 33b: `GAME_TERMINAL_SCALE` / `buildHouseScene({terminalScale})`, VR
 `HouseBuilder.TERMINAL_SCALE`), so the window is 1.44 × 1.08 m; the
 terminals' own world view and the map editor keep them at 1×.
+
+
+**The readout (wave 59).** A terminal reports its link on every poll: `cs`, `cr`,
+`cd` (camera frames sent, simulation frames received and drawn, per second) and
+`ce`, the last error's code (`core/src/link-health.ts`). The server counts each
+spot's frames itself (`CamStore.rate`: taken, and read by a game) and adds them
+as `cam {got, read}` on `GET /api/mod/screen/terminals`. A terminal may send a
+smaller frame than 320 × 240 (`FeedTuner`: 160 × 120, 128 × 96), and both games
+scale it to fit.
 
 ### 2.4 Voice (wave 19; same room since wave 26)
 
@@ -1627,6 +1637,21 @@ of this: no director, no visions, no Hallway, no per-frame cost but a check.
 
 The guests' play help never describes any of this.
 
+### The run reset (wave 59)
+
+For a player stuck on geometry. **R** held for `RESET_HOLD_MS` (5 s,
+`game/reset.ts`) fills a bar; letting go, a blur, ⌘ or a held walk empties it,
+and it fires once per press. The keys held say it, and a key typed in a field
+never reaches them (`typingIn`, read through the tent laptop's shadow root); a
+radio or a checkbox isn't a field, since ⚙ Graphics leaves one holding the focus.
+It teleports to the current map's spawn at once, whatever the server says,
+then posts `POST /api/spatial/reset` and adopts the new duck, and Gerald's line
+adds to the reset's notice instead of replacing it (`movedOverReset`; VR's
+`Game.moved_over_reset`). The Hallway ends
+first and any vision or talk stops; a void's scare finishes first. The
+training, the clock, the path reveal, the level and the visit's hit stay as
+they were, so a reset in the training stays in the training.
+
 ## 4. The terminals — world view
 
 `TerminalConfig` gains `spot` (a `house.terminals[].id`; the terminal's
@@ -2018,6 +2043,17 @@ Provision: `/terminal/?code=…&name=Kitchen&character=Trabolta&spot=start-bar&v
   Main Run Args takes the command-line flags after `--`. See
   `reinstall/vr/README.md` → *Run it from the Godot editor*.
 
+### The run reset (wave 59)
+
+The web game's, on both triggers + A held for `HoldMeter.RESET_HOLD` (5 s), with
+a bar in the HUD. Two of the index and grip triggers count (`VrPlayer.chord`), so
+the show's one right controller can do it with index, grip and A, and two
+controllers with one index each and A; X counts as A. In the house only: the intro
+has no geometry to be stuck on, and the reset never goes back through it.
+`Game._run_reset` teleports at once, and `LinkBase.reset_run` brings the new duck
+through `duck_changed` (dealt locally offline). Pressing any one of those buttons
+near the King is still a hit, so a chord started beside him can spend it.
+
 ### The intro (wave 33)
 
 Before every walk the headset leaves the lobby for a calm practice floor
@@ -2171,7 +2207,10 @@ quiet on the screens (`QUIET_MOMENT_SIGNALS`):
   `program.escapes`, recomputes `program.trust` (the C9 formula: each
   escape is −5), tells `# hosts`, and plays *Escape Attempt*: Trabolta
   chastising, every time, even before his reveal. It is a game-only beat,
-  so its lines reach only the game's answer, never a phone.
+  so its lines reach only the game's answer, never a phone. Once an ending
+  has taken him (`Night.ended` and `Trabolta.awake` false, wave 58) the walk
+  is silent and costs nothing: `# hosts` hears of it and the answer has no
+  lines, which both games take as a plain teleport.
 - `when simulation heart reached for program:` once a night per program
   (`program.sim_heart`) and only while Trabolta is awake: tells `# hosts`
   and plays *Heart In The Simulation*, a short monologue in his fiction

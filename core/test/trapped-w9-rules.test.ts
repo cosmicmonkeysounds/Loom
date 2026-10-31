@@ -140,7 +140,7 @@ function toBobbing(sim: Sim, opts: { lie?: boolean; retract?: boolean } = {}) {
 // ───────────────────────── 💡 holds the dance (D2) ─────────────────────────
 
 describe("wave 9 — 💡 Restore the house lights holds a pending dance (ALL STOP, D2)", () => {
-  for (const ending of ["patch_combo_a", "patch_combo_b", "talked_down"]) {
+  for (const ending of ["patch_combo_a", "patch_combo_b"]) {
     it(`${ending}: 💡 inside the ten-second blackout cancels the automatic dance; 🪩 plays it later`, { timeout: SLOW }, () => {
       const sim = boot();
       toY2k(sim);
@@ -188,7 +188,7 @@ describe("wave 9 — the bottle picks any cleared, free program (T5-crew-cards-0
     // Hunt 1 sends them round the house: room-sign check-ins move them.
     fire(sim, "checked_in", "g1", { at: "The CPU" });
     fire(sim, "checked_in", "g2", { at: "The Start Bar" });
-    fire(sim, "checked_in", "g3", { at: "The Steam Room" });
+    fire(sim, "checked_in", "g3", { at: "The Power Supply" });
     expect(v(sim, "g1.location")).toBe("The CPU");
     fireAll(sim, "hunt_time_up", "first_moment_of_truth");
     expect(v(sim, "g1.location")).toBe("The CPU"); // C2 / V6 move nobody
@@ -235,7 +235,7 @@ describe("wave 9 — a server-room ending closes every live 📝 card (T7-02)", 
   const facts = (evs: SimEvent[], g: string) => widgets(evs).filter((w) => w.widget === "fact" && w.audience[0] === g);
   const qs = (w: { params: Record<string, string> }) => (w.params["questions"] ?? "").split("|").map((q) => q.trim()).filter(Boolean);
 
-  for (const ending of ["patch_combo_a", "patch_combo_b", "talked_down"]) {
+  for (const ending of ["patch_combo_a", "patch_combo_b"]) {
     it(`${ending}: the round-3 card becomes the closing card, once, and nothing after deals another`, { timeout: SLOW }, () => {
       const sim = boot();
       // Everyone checks in at the summons, so nobody is late and marked: a
@@ -256,7 +256,7 @@ describe("wave 9 — a server-room ending closes every live 📝 card (T7-02)", 
         expect(closed[0]!.params["thread"], g).toBe("Trabolta");
         expect(v(sim, `${g}.fact_card_live`), g).toBe(false);
       }
-      const after = fireAll(sim, "trabolta_recounts", "clippy_reads_summary", "start_the_ceremony", "resurrection", "resurrection");
+      const after = fireAll(sim, "clippy_reads_summary", "tell_the_truth", "start_the_ceremony", "start_the_ceremony", "resurrection", "resurrection");
       expect(widgets(after).filter((w) => w.widget === "fact")).toEqual([]);
     });
   }
@@ -270,7 +270,7 @@ describe("wave 9 — a featured goal met before the Truther Download completes i
     upload(sim, "g8", "Bugdom");
     upload(sim, "g9", "Broken Ask Jeeves");
     for (const code of ["MINIATURE-DOSES", "LAMBORGHINI-CERT", "HAMTARO", "DECIMAL-POINT"]) sim.redeem("g8", code);
-    for (const code of ["MAPSANDDUCKS-COM", "CASINO-DEED", "BARRINGTON-ST", "SAVE-THE-PETS", "WHOIS-1999"]) sim.redeem("g9", code);
+    for (const code of ["MAPSANDDUCKS-COM", "CASINO-DEED", sim.model.codex.get("The Billboard On Lower Water")!.code!, "SAVE-THE-PETS", "WHOIS-1999"]) sim.redeem("g9", code);
     for (const e of ["Miniature Doses", "The Lamborghini Certificate", "What Happened To Hamtaro", "The Decimal Point"]) expect(sim.holdsCodex("g8", e), e).toBe(true);
     toTruth1(sim);
     // Excel brings the virus back in hunt 1 and plants it.
@@ -300,7 +300,7 @@ describe("wave 9 — a featured goal met before the Truther Download completes i
   it("the late order still completes on the goal itself (Jeeves' fifth original after the download)", { timeout: SLOW }, () => {
     const sim = boot();
     upload(sim, "g9", "Broken Ask Jeeves");
-    for (const code of ["MAPSANDDUCKS-COM", "CASINO-DEED", "BARRINGTON-ST", "SAVE-THE-PETS"]) sim.redeem("g9", code);
+    for (const code of ["MAPSANDDUCKS-COM", "CASINO-DEED", sim.model.codex.get("The Billboard On Lower Water")!.code!, "SAVE-THE-PETS"]) sim.redeem("g9", code);
     toTruth1(sim);
     toHunt2(sim);
     expect(sim.questStatus("g9", "Unscramble")).toBe("active");

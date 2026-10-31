@@ -3,7 +3,7 @@
 The orchestrator's verdicts on hunt claims are suppressed before they reach
 the mind (the voice reads `learned`), and hunt-answer codex entries never
 reach a prompt. The last block pins the shipped show: every question and
-answer in DESIGN §2.11 is caught, every stamped codex entry is hidden.
+answer in `facts.json` is caught, every stamped codex entry is hidden.
 """
 
 import asyncio
@@ -206,8 +206,9 @@ def test_a_live_dm_claiming_a_hunt_answer_never_lands_in_learned():
 
 
 def _hunt_rows():
-    text = (SHOW / "DESIGN.md").read_text(encoding="utf-8")
-    rows = re.findall(r"^\| (H[1-6]|F[12]) \| [^|]+ \| ([^|]+) \| ([^|]+) \|", text, re.MULTILINE)
+    """(id, question, answer) off `facts.json`: no doc carries the answers (wave 58)."""
+    facts = json.loads((SHOW / "facts.json").read_text(encoding="utf-8"))
+    rows = [(q["id"], q["text"], "owed" if q.get("placeholder") else q["answer"]) for q in facts["questions"]]
     assert len(rows) == 8, rows
     return rows
 
@@ -226,6 +227,8 @@ def test_the_shipped_mind_file_catches_every_hunt_question_and_answer():
     topics_only = Secrets(topics=s.topics)
     for qid, question, answer in _hunt_rows():
         assert topics_only.names_topic(question), f"{qid}: no topic in the question {question!r}"
+        if "owed" in answer:  # a key still owed (facts.json `placeholder`): no answer to catch yet
+            continue
         assert s.names_topic(answer.strip()), f"{qid}: the answer {answer!r} slips past secrets"
         assert s.names_topic(f"I'm certain: {answer.strip()}"), qid
 
@@ -304,7 +307,7 @@ def test_shipped_topics_spare_the_finale_song_and_prom_talk():
         "Clippy will dial up the music",
     ):
         assert not s.names_topic(claim), claim
-    for claim in ("Grok is taking Sandy to computer prom", "the song was Hopelessly Devoted to You", "the last chapter is Appendix Z", "Sandy only ever says to ask for a live agent"):
+    for claim in ("Grok is taking Sandy to computer prom", "the song was Hopelessly Devoted to You", "the last chapter is Appendix Z", "Sandy only ever says she will direct you to an agent"):
         assert s.names_topic(claim), claim
     assert "grok" not in (s.rule("Trabolta") or "").lower()
 
@@ -523,7 +526,8 @@ def test_the_shipped_mind_file_never_lets_a_typed_code_reach_another_programs_pr
         assert s.leaks(f"{a} → {b}") and s.leaks(f"{a.lower()}-{b.lower()}") and s.leaks(f"{a} to {b}"), p
         assert s.leaks(f"Patch {b} to {a}, program.") and s.leaks(f"{a[0]}-{a[1:]} to {b[0]}-{b[1:]}"), p  # W8 T8-01
     # W8 T8-01: the spoken code, as the stub voice said it to a guest.
-    for said in [f"The door code is {code}.", "Four eight two six.", "four-eight-two-six", " ".join(code)]:
+    words = [("zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine")[int(d)] for d in code]
+    for said in [f"The door code is {code}.", " ".join(words).capitalize() + ".", "-".join(words), " ".join(code)]:
         assert s.leaks(said), said
     # W8 review: a bare 97 is a guest's program or the house's bark, never the code.
     for said in ["Welcome, NHL 97.", "Office 97 again?", "Memory usage: 97%", "$19.97"]:

@@ -27,6 +27,7 @@ import { badgesOf, type NameBadge } from "../src/runtime/sim/badges.ts"; // w18b
 import { isPrivateSlot, statsFor, type StatView } from "../src/runtime/sim/stats.ts"; // w21 stats
 import type { ShowClock } from "../src/show-clock.ts";
 import type { TalkView } from "../src/talk-back.ts";
+import type { PrompterStatus } from "./prompter.ts";
 import { CREDITS_AT_PATH, CREDITS_ROLL_PATH } from "../src/credits.ts"; // w44
 
 export type { NameBadge } from "../src/runtime/sim/badges.ts";
@@ -86,6 +87,9 @@ export interface PersonCard {
   /** Where they are standing (a guest's location; null for a character or
    *  before the story places them) — what lets the app show who's *here*. */
   location: string | null;
+  /** Wave 59: online now, grace included (`seenPeople`); runtime-filled, absent
+   *  from a bare sim projection. The phone's People lists show only these. */
+  online?: boolean;
   /** A character voiced by an agent (`mind: external`); `online` says whether
    *  one is answering right now. Absent for guests and performed characters.
    *  `hold` — the character has a `hold:` line, so a guest is always
@@ -807,6 +811,8 @@ export interface ModView {
    *  state (`talk-back.ts` `talkView`), runtime-filled; null when none is
    *  on; absent from an older server. */
   talk?: TalkView | null;
+  /** Wave 59: the teleprompter's scene (`prompter.ts`), null with none on. */
+  prompter?: PrompterStatus | null;
   theme?: string;
   /** Every declared INTERACTION (the director may fire any of them). */
   interactions?: InteractionSummary[];
@@ -1262,15 +1268,19 @@ function questSummaries(sim: Sim): QuestSummary[] {
 function operatorChannels(sim: Sim): ChannelSummary[] {
   const space = DEFAULT_SPACE_ID;
   const out: ChannelSummary[] = [{ id: "lobby", kind: "lobby", title: sim.lobbyTitle(), spaceId: space }];
+  // Wave 59: a side's room and an authored room open on their beat, here too.
   for (const f of sim.model.factions.values()) {
+    if (f.hidden && !sim.factionRevealed(f.id)) continue;
     out.push({ id: `faction:${f.id}`, kind: "faction", title: `#${f.id.toLowerCase()}`, spaceId: space });
   }
   // Every location's derived room — where a beat's setting routes its story.
+  // All of them, always: a director reads The Script, which no phone lists.
   for (const l of sim.model.locations.values()) {
     out.push({ id: `loc:${l.id}`, kind: "location", title: l.label ?? l.id, spaceId: space });
   }
   const staff = staffRoomIds(sim.model);
   for (const id of sim.model.channels.keys()) {
+    if (!sim.channelOpened(id)) continue;
     const h = sim.channelHead(id);
     out.push({ id: h.channel, kind: h.channelKind, title: h.title, spaceId: h.spaceId, ...(staff.has(roomFold(id)) ? { staff: true as const } : {}) });
   }
@@ -2212,6 +2222,9 @@ export interface PrimeGuest {
   /** When the server last heard from this guest (the mod roster's
    *  `lastSeen`, A1) — runtime-filled; null = not since the server started. */
   lastSeen?: number | null;
+  /** Wave 59: online now, grace included — runtime-filled. A player's People
+   *  and a room's strip show only these; 🗂 Guests keeps everyone. */
+  online?: boolean;
   /** Wave 18b: the header `badge:` lines true for them. Absent when none. */
   badges?: NameBadge[];
 }

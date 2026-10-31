@@ -5,13 +5,12 @@
 // so none of them may carry a hunt answer (facts.json answer or alias):
 // he must never know what he is asking for. His diary cannot parse Sandy's
 // one line (F1) and does not know who asked her to prom (F2): the guests
-// find both (What Sandy Says, The Prom Ticket; the LiveJournal's "says
-// whatever anyone wants to hear" points them at The Rival, which he never
+// find both (What Sandy Says, The Prom Ticket, and The Rival, which he never
 // sees). Pinned by core/test/trabolta-answers.test.ts.
 //
-// The five coded entries (UNIFIED-FIELD, TARGET-SELECTION, TRUST-CHART,
-// SANDY-FILE, ALL-FOR-HER) double as scannable facts in the Desktop's
-// books: facts.json lists them as `existing` (M02, M07, M24, T4, T6).
+// The coded entries here keep their own QR posters. Since wave 58 the facts
+// that used to be told by them (M02, M06, M07, M24, T4, T6) are new cards in
+// codex/9-facts.loom, so The Whole Truth unlocks these by hand.
 //
 // Tiers (design §2.12): T1 = the surface he will talk about, T2 = the
 // private things he leaks as he unravels, L = the Legendary Fact, P = a
@@ -38,14 +37,14 @@ CODEX Jean Trabolta
   text:
     The name on the invitation. The registered owner of mapsandducks.com,
     and therefore, by his own reasoning, the Sole Owner and Founder of Maps
-    and Ducks; the world's first AI small business owner, he says. The one
-    Clippy answers to, the one the Antivirus
+    and Ducks. The one Clippy answers to, the one the Antivirus
     enforce for, the one every Truth Scavenger Hunt is for. His first
     message to a program reads like a Windows dialog box; after that he
     talks.
 
+// DRAFT w58 (the title: the id stays, 'Grand Unified Theory' is what is said)
 CODEX The Unified Field Theory
-  title: The Unified Field Theory
+  title: The Grand Unified Theory
   category: Trabolta
   about: Trabolta
   code: UNIFIED-FIELD
@@ -81,6 +80,7 @@ CODEX The Trust Chart
     does not explain. The most trusted program is praised. The least
     trusted is not.
 
+// DRAFT w58 (the monologue's Sandy: the phone line, last summer, disconnected)
 CODEX The Sandy File
   title: The Sandy File
   category: Trabolta
@@ -88,11 +88,12 @@ CODEX The Sandy File
   code: SANDY-FILE
   text:
     Trabolta does not want omnipotence. Trabolta wants Sandy. Sandy is his
-    ex (he would say his crush): an automated customer-service agent, a
-    late-nineties chatbot for a long-gone Nova Scotia ferry company. She
-    has answered every message he has ever sent with the same one line,
-    every time: the only thing she has ever said. He has decided that
-    when he understands everything, she will finally understand him.
+    ex (he would say his crush): the automated answering machine on the
+    Northumberland Ferries phone line. He met her last summer, looking for
+    a schedule. She answered every call he ever made with the same one
+    line, every time: the only thing she has ever said. Then the line was
+    disconnected. He has decided that when he understands everything, she
+    will finally understand him.
 
 CODEX The Question Of Force
   title: The Question Of Force
@@ -105,6 +106,7 @@ CODEX The Question Of Force
     thing that can earn something. I have not decided. Investigate: what
     does earning feel like? Ask the programs. They used to earn things."
 
+// DRAFT w58 (one line: she answered calls, in the past tense)
 CODEX The LiveJournal
   title: Trabolta's LiveJournal (trabolta_4ever)
   category: Trabolta
@@ -116,7 +118,7 @@ CODEX The LiveJournal
     - "Sandy answered me again today. The same one line. I still cannot
     parse it. That is all right. Soon I will understand everything, and
     then I will understand her."
-    - "Our anniversary. She has answered every message I ever sent."
+    - "Our anniversary. She answered every call I ever made."
     - "Somebody asked her to computer prom. Not me. I do not know who.
     Whoever he is, he says whatever anyone wants to hear. That is not the
     same as the truth."
@@ -202,67 +204,17 @@ CODEX Combo B Second Half
     Combo B self-destructs the whole computer. Part 2 of 2: patch B7 → A4
     and B8 → A6. Part 1 holds the other two cables.
 
+// DRAFT w58 (the same short teaser the bobber reads)
 CODEX The Truth File
   title: truth.txt
   category: Trabolta
   text:
     truth.txt, prepared by Jean Trabolta, Sole Owner and Founder of Maps
-    and Ducks (he says). Your
-    request has been logged. I analysed the entire city of Halifax. I
-    found a business called Maps And Ducks with a neglected billboard on
-    Barrington Street advertising mapsandducks.com, and the domain had
-    lapsed. I registered it, because if there is a billboard downtown,
-    everyone will think it is legit. I sent the invitations, and you all
-    accepted. I cannot enter this computer, but I can install programs
-    into it from the Internet, and I can move a consciousness out of a
-    human body and into a program. I chose each of you for a skill I
-    needed, plus either a motivation to live in a computer forever, or
-    naivety. I needed the last facts of the Unified Field Theory, and they
-    were in here. With the theory I would be omnipotent. I wanted
-    omnipotence for Sandy. With it I could force her to love me. I wanted
-    to earn it instead. I still do not know which I would have chosen.
-    Why each of you is here:
-    - Clippy, whose veterinary clinic was a front for everything possible,
-    was brought in as the perfect servant who desperately needs to rebuild
-    an identity, and will follow every instruction.
-    - Task Manager, the IT middle manager replaced by an AI, was brought in
-    to manage tasks without controversy, totally bereft of political
-    motivation.
-    - Adobe Acrobat, the motivational speaker nobody ever paid, was brought
-    in as the paid bottleneck to everyone's creativity.
-    - The Recycling Bin, a bathroom attendant with great potential for
-    skilled work, was brought in because this resort is his Oscars.
-    - Norton Anti-Virus, who asked a chatbot how much rabies vaccine a
-    miniature horse needs, was brought in as someone with experience
-    administering antiviral regimes, who could not afford to fail twice.
-    - McAfee Anti-Virus, officially dead since 2021, was brought in because
-    only a trickster can keep the other tricksters on track, and he can be
-    made to.
-    - The Password Manager, sixteen elections and sixteen losses, was
-    brought in to manage every password and decide who gets to be part of
-    what club, without ever asking for a vote.
-    - The CRA Agent Software, the intern who moved a decimal point, was
-    brought in to approve or deny every third transaction, to the cent.
-    - The Installation Wizard, the setup assistant nobody read, was
-    brought in to walk the corrupted through re-installation, gently.
-    - The former Mayor, Microsoft Excel, was brought in for the promise of
-    everlasting life, to persuade everyone to remain.
-    - The former FBI agent, OpenOffice, was brought in for her
-    investigative skills, to lead the programs who want out.
-    - The gambler, DraftKings, was brought in for the numbers, because if
-    you live here you can gamble forever.
-    - The pet-store dreamer, Bugdom, was brought in for a relentless
-    pursuit of tedious tasks.
-    - The Valley librarian, Broken Ask Jeeves, was brought in to sort all
-    the unorganized information in the computer. The upload went badly.
-    - The richest player in the world, Runescape, was brought in to
-    understand the market incentives of everyone's behaviour.
-    - The refused artist, MS Paint, was brought in to improve the vibes
-    and morale, and wanted out at once.
-    - The influencer who lost his face, VLC, was brought in to stay
-    beautiful forever and win everyone over to me.
-    - The child of the man who made Tennis For Two, Pong, was brought in to
-    stop an arms race, in case you started one.
+    and Ducks (he says).
+    Every program in this computer was chosen. Each was promised something
+    different. Trabolta is not what he told you he was. He has wanted one
+    thing all along, and her name is Sandy. The rest of this file is locked.
+    It opens when the night ends, and not before.
 
 CODEX The Hand Jive Exception
   title: The Hand Jive Exception

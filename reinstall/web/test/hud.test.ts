@@ -23,10 +23,11 @@ describe("hud", () => {
     expect(withinReach(house, [3, 0, 6], { ...duck, pos: [3, 0.9, 6] })).toBe(true);
   });
 
-  it("names the room and its story location", () => {
+  it("names a room in-world: its story location, never the real room", () => {
     const house = SHOW();
-    expect(roomTitle(house, [3, 0, 8])).toEqual({ room: house.rooms.find((r) => r.id === "desktop")!.label, location: "The Desktop" });
-    expect(roomTitle(house, [100, 0, 100]).location).toBeNull();
+    expect(roomTitle(house, [3, 0, 8])).toEqual({ room: "The Desktop", location: null });
+    expect(roomTitle(house, [100, 0, 100])).toEqual({ room: "Somewhere between rooms", location: null });
+    for (const r of house.rooms) expect(r.location, r.label).toBeTruthy();
   });
 
   it("heat: absolute when close, else the trend", () => {

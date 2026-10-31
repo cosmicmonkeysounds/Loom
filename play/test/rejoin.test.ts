@@ -1,9 +1,11 @@
 // Wave 23: getting back in — badge / cast-card links, the enter / ask /
 // poll calls over a fake fetch, the card plan, and the scanners' badge reads.
 
-import { describe, expect, it } from "vitest";
-import { badgeFromText, badgeLinkOf, badgeLinkText, cardFromSearch, cardPlan, printedBadge, rememberBadge, storedBadge, forgetBadge, withoutCard, BADGE_UNKNOWN } from "../src/rejoin.ts";
-import { askHost, askLine, enterBy, enterPart, filterNames, joinedNames, pollAsk, RejoinError } from "../src/rejoin-calls.ts";
+import { readFileSync } from "node:fs";
+import { describe, expect, it, vi } from "vitest";
+import { storedClaim } from "../src/claim.ts";
+import { badgeFromText, badgeLinkOf, badgeLinkText, cardFromSearch, cardPlan, heldOf, joinHeld, joinReserved, letGo, printedBadge, settleOwed, rememberBadge, storedBadge, forgetBadge, withoutCard, BADGE_UNKNOWN, OWED_KEY, OWED_RETRY_MS } from "../src/rejoin.ts";
+import { askHeld, askHost, askLine, cancelAsk, enterBadge, enterBy, enterPart, filterNames, heldLine, joinedNames, payOwed, pollAsk, RejoinError, tryCard } from "../src/rejoin-calls.ts";
 import { memoryStore } from "../src/host.ts";
 import { guestScan } from "../src/guest-scan-sheet.tsx";
 import { parseScan } from "../src/scan.ts";
@@ -135,5 +137,227 @@ describe("scanners", () => {
   it("a host's row says how long ago and to check", () => {
     expect(rejoinDetail({ at: 0 }, 150_000)).toMatch(/^Asked 2 min ago/);
     expect(rejoinDetail({ at: 0 }, 1_000)).toMatch(/^Asked just now/);
+  });
+});
+
+describe("wave 59: one holder", () => {
+  const held = (extra: Record<string, unknown>) => () => ({ status: 409, body: { error: "that is signed in on another phone", held: true, ...extra } });
+
+  it("a held badge throws what's printed on it, never a sign-in", async () => {
+    const f = fakeFetch({ ...resolve, "/e/ev1/api/guest/enter": held({ ref: "B012" }) });
+    const e = await enterBy("EVT1", { badge: CODE }, f.fn).catch((x: unknown) => x);
+    expect(heldOf(e)).toEqual({ name: null, ref: "B012" });
+    expect((e as Error).message).toBe("Badge B012 is already signed in on a phone.");
+    // Closed doors stay their own sentence.
+    const shut = fakeFetch({ ...resolve, "/e/ev1/api/guest/enter": () => ({ status: 409, body: { error: "doors are closed" } }) });
+    const c = await enterBy("EVT1", { badge: CODE }, shut.fn).catch((x: unknown) => x);
+    expect(heldOf(c)).toBeNull();
+    expect((c as Error).message).toMatch(/doors/);
+    expect(heldOf(new Error("x"))).toBeNull();
+  });
+
+  it("a held staff badge throws its part's name", async () => {
+    const f = fakeFetch({ ...resolve, "/e/ev1/api/prime/login": held({ name: "Clippy", error: "Clippy is already taken by another performer" }) });
+    const e = await enterPart("EVT1", "p1", f.fn).catch((x: unknown) => x);
+    expect(heldOf(e)).toEqual({ name: "Clippy", ref: null });
+    expect((e as Error).message).toBe("Clippy is already signed in on a phone.");
+  });
+
+  it("the phone's own token goes with a re-scan", async () => {
+    const f = fakeFetch({ ...resolve, "/e/ev1/api/guest/enter": () => ({ status: 200, body: { ok: true, resumed: true, id: "g-1", name: "W", token: "t1" } }), "/e/ev1/api/prime/login": () => ({ status: 200, body: { token: "pt", character: "Clippy" } }) });
+    await enterBy("EVT1", { badge: CODE }, f.fn, "t1");
+    expect(f.calls[1]!.body).toEqual({ passcode: "EVT1", badge: CODE, token: "t1" });
+    await enterPart("EVT1", "p1", f.fn, "pt");
+    expect(f.calls[3]!.body).toEqual({ passcode: "EVT1", part: "p1", token: "pt" });
+  });
+
+  it("asks for a refused card, naming only what's printed on it", async () => {
+    const f = fakeFetch({ ...resolve, "/e/ev1/api/guest/rejoin": () => ({ status: 200, body: { ok: true, request: "r9", name: "" } }) });
+    const ask = await askHeld({ code: "EVT1", by: { badge: CODE }, name: null, ref: "B012" }, f.fn);
+    expect(ask).toEqual({ eventId: "ev1", title: "The Party", request: "r9", name: "your program" });
+    expect(f.calls[1]!.body).toEqual({ passcode: "EVT1", badge: CODE });
+    expect(askLine({ kind: "pending" }, ask.name)).toMatch(/back in as your program/);
+  });
+
+  it("an approved ask for a part comes back a booth", async () => {
+    const f = fakeFetch({ "/e/ev1/api/guest/rejoin/poll": () => ({ status: 200, body: { state: "approved", part: true, character: "Task Manager", name: "Task Manager", token: "pt", admin: false, host: true, by: "Task Manager" } }) });
+    const got = await pollAsk({ eventId: "ev1", title: "The Party", request: "r", name: "Task Manager" }, f.fn);
+    expect(got).toEqual({ kind: "booth", by: "Task Manager", booth: { token: "pt", character: "Task Manager", admin: false, host: true, eventId: "ev1", title: "The Party" } });
+    expect(askLine(got, "Task Manager")).toBe("Task Manager let you back in as Task Manager.");
+  });
+
+  it("the refused line names the card, and a bare one names nothing", () => {
+    expect(heldLine({ name: "Microsoft Excel", ref: "F01" })).toBe("Microsoft Excel is already signed in on a phone.");
+    expect(heldLine({ name: null, ref: null })).toBe("That badge is already signed in on a phone.");
+  });
+
+  it("an ask closed by a sign-in or a release reads closed, and Cancel tells the server", async () => {
+    const f = fakeFetch({ "/e/ev1/api/guest/rejoin/poll": () => ({ status: 200, body: { state: "closed", name: "Clippy" } }) });
+    const ask = { eventId: "ev1", request: "r7", name: "Clippy" };
+    const got = await pollAsk(ask, f.fn);
+    expect(got).toEqual({ kind: "closed" });
+    expect(askLine(got, "Clippy")).toMatch(/Clippy was signed in or out/);
+    cancelAsk(ask, f.fn);
+    await Promise.resolve();
+    expect(f.calls.at(-1)).toEqual({ path: "/e/ev1/api/guest/rejoin/cancel", body: { request: "r7" } });
+  });
+
+  it("a card tried again goes back the way it came", async () => {
+    const f = fakeFetch({
+      ...resolve,
+      "/e/ev1/api/guest/enter": () => ({ status: 200, body: { ok: true, resumed: true, id: "g-1", name: "Winamp", token: "t1" } }),
+      "/e/ev1/api/prime/login": () => ({ status: 200, body: { token: "pt", character: "Clippy" } }),
+    });
+    expect(await tryCard({ code: "EVT1", by: { badge: CODE }, name: null, ref: "B012" }, f.fn)).toMatchObject({ kind: "guest", guest: { id: "g-1" } });
+    expect(await tryCard({ code: "EVT1", by: { part: "p1" }, name: "Clippy", ref: null }, f.fn)).toMatchObject({ kind: "booth", booth: { character: "Clippy" } });
+    expect(await tryCard({ code: "PRM1", by: { character: "Clippy" }, name: "Clippy", ref: null }, f.fn)).toMatchObject({ kind: "booth" });
+    expect(f.calls.at(-1)!.body).toEqual({ passcode: "PRM1", character: "Clippy" });
+  });
+
+  it("an invited badge scanned with no claim brings its invitation to the join", async () => {
+    const f = fakeFetch({ ...resolve, "/e/ev1/api/guest/enter": () => ({ status: 200, body: { ok: true, resumed: false, badge: 601, claim: "c1" } }) });
+    expect(await enterBy("EVT1", { badge: CODE }, f.fn)).toEqual({ kind: "fresh", eventId: "ev1", badge: 601, claim: "c1" });
+  });
+
+  it("a join that lost its card reads as the refused screen", () => {
+    const held = { data: { held: true, ref: "B012" } };
+    expect(joinHeld(held, "EVT1", CODE, null)).toEqual({ code: "EVT1", by: { badge: CODE }, name: null, ref: "B012" });
+    expect(joinHeld({ data: { held: true, name: "Bugdom" } }, "EVT1", CODE, "c1")).toEqual({ code: "EVT1", by: { badge: CODE, claim: "c1" }, name: "Bugdom", ref: null });
+    expect(joinHeld({ data: { held: true, name: "Bugdom" } }, "EVT1", null, "c1")).toEqual({ code: "EVT1", by: { claim: "c1" }, name: "Bugdom", ref: null });
+    // A program picked with no card keeps its plain "taken".
+    expect(joinHeld({ data: { error: "taken" } }, "EVT1", CODE, null)).toBeNull();
+    expect(joinHeld(held, "EVT1", null, null)).toBeNull();
+    expect(joinReserved({ data: { reserved: true, name: "Bugdom" } })).toBe(true);
+    expect(joinReserved(new Error("x"))).toBe(false);
+  });
+
+  it("a badge printed for another program says so, and is never a silent fail", () => {
+    const r = badgeLinkOf(409, { error: "that badge is saved for Bugdom", reserved: true, name: "Bugdom" });
+    expect(r).toEqual({ kind: "reserved", name: "Bugdom" });
+    expect(badgeLinkText(r!)).toMatch(/saved for Bugdom/);
+  });
+});
+
+describe("a badge typed on the join screen (Get back in)", () => {
+  const fresh = (claim?: string) => ({ ...resolve, "/e/ev1/api/guest/enter": () => ({ status: 200, body: { ok: true, resumed: false, badge: 601, ...(claim !== undefined ? { claim } : {}) } }) });
+  it("pays what the phone owes, then proves it holds the card with its stored token", async () => {
+    const store = memoryStore();
+    store.save(OWED_KEY, [{ role: "guest", eventId: "ev1", token: "old" }]);
+    store.save("loom.guest", { id: "g-1", token: "t1", eventId: "ev1" });
+    const f = fakeFetch({ ...resolve, "/e/ev1/api/guest/logout": () => ({ status: 200, body: {} }), "/e/ev1/api/guest/enter": () => ({ status: 200, body: { ok: true, resumed: true, id: "g-1", name: "Winamp", token: "t1" } }) });
+    expect(await enterBadge(store, "EVT1", CODE, f.fn)).toMatchObject({ kind: "in", guest: { id: "g-1" } });
+    expect(f.calls.map((c) => c.path)).toEqual(["/e/ev1/api/guest/logout", "/api/resolve-code", "/e/ev1/api/guest/enter"]);
+    expect(f.calls[2]!.body).toMatchObject({ passcode: "EVT1", badge: CODE, token: "t1" });
+    expect(store.load(OWED_KEY)).toBeNull();
+  });
+  it("a phone with no stored session sends no token", async () => {
+    const f = fakeFetch(fresh());
+    await enterBadge(memoryStore(), "EVT1", CODE, f.fn);
+    expect(f.calls[1]!.body).not.toHaveProperty("token");
+  });
+  it("a fresh badge rides into the join, an invited one with its invitation", async () => {
+    const store = memoryStore();
+    expect(await enterBadge(store, "EVT1", CODE, fakeFetch(fresh("c1")).fn)).toMatchObject({ kind: "fresh" });
+    expect(storedBadge(store, "EVT1")).toBe(CODE);
+    expect(storedClaim(store, "EVT1")).toBe("c1");
+  });
+  it("a held card lands on the refused screen and remembers nothing", async () => {
+    const store = memoryStore();
+    const f = fakeFetch({ ...resolve, "/e/ev1/api/guest/enter": () => ({ status: 409, body: { held: true, ref: "B012" } }) });
+    const e = await enterBadge(store, "EVT1", CODE, f.fn).catch((x: unknown) => x);
+    expect(heldOf(e)).toEqual({ name: null, ref: "B012" });
+    expect(storedBadge(store, "EVT1")).toBeNull();
+  });
+  it("is the only road to enter on that panel, behind the badge's shape", () => {
+    const src = readFileSync(new URL("../src/guest/get-back-in.tsx", import.meta.url), "utf8");
+    expect(src).not.toMatch(/\benterBy\(/u);
+    const guard = src.indexOf("if (badge === null)");
+    expect(guard).toBeGreaterThan(-1);
+    expect(src.indexOf("enterBadge(host.storage")).toBeGreaterThan(guard);
+  });
+});
+
+describe("a release the server hasn't heard", () => {
+  const logoutCalls = () => {
+    const seen: Array<[string, unknown]> = [];
+    let up = true;
+    const fn = (async (path: string, init?: { headers?: Record<string, string> }) => {
+      seen.push([path, init?.headers?.["x-loom-token"]]);
+      if (!up) throw new TypeError("offline");
+      return { status: 200 } as Response;
+    }) as unknown as typeof fetch;
+    return { seen, fn, down: () => void (up = false), back: () => void (up = true) };
+  };
+
+  it("tells the server, and owes nothing once it has", async () => {
+    const store = memoryStore();
+    const c = logoutCalls();
+    letGo(store, { token: "t1", eventId: "ev 1" }, "guest");
+    await payOwed(store, c.fn);
+    expect(c.seen).toEqual([["/e/ev%201/api/guest/logout", "t1"]]);
+    expect(store.load(OWED_KEY)).toBeNull();
+  });
+
+  it("offline it stays owed, for a guest and a booth, and is paid when the server is back", async () => {
+    const store = memoryStore();
+    const c = logoutCalls();
+    c.down();
+    letGo(store, { token: "t1", eventId: "ev1" }, "guest");
+    await payOwed(store, c.fn);
+    expect(store.load(OWED_KEY)).toEqual([{ role: "guest", eventId: "ev1", token: "t1" }]);
+    letGo(store, { token: "t2", eventId: "ev1" }, "prime");
+    await payOwed(store, c.fn);
+    expect(store.load<unknown[]>(OWED_KEY)).toHaveLength(2);
+    c.back();
+    await payOwed(store, c.fn);
+    expect(store.load(OWED_KEY)).toBeNull();
+    expect(c.seen.slice(-2)).toEqual([
+      ["/e/ev1/api/guest/logout", "t1"],
+      ["/e/ev1/api/prime/logout", "t2"],
+    ]);
+  });
+
+  it("a server that is restarting doesn't count as told", async () => {
+    const store = memoryStore();
+    letGo(store, { token: "t1", eventId: "ev1" }, "guest");
+    await payOwed(store, (async () => ({ status: 503 }) as Response) as unknown as typeof fetch);
+    expect(store.load<unknown[]>(OWED_KEY)).toHaveLength(1);
+    await payOwed(store, (async () => ({ status: 200 }) as Response) as unknown as typeof fetch);
+    expect(store.load(OWED_KEY)).toBeNull();
+  });
+
+  it("a chunk that won't load is no signal: it stays owed and tries again by itself", async () => {
+    vi.useFakeTimers();
+    try {
+      const store = memoryStore();
+      letGo(store, { token: "t1", eventId: "ev1" }, "guest");
+      let loads = 0;
+      const paid: string[] = [];
+      const load = async () => {
+        if (++loads === 1) throw new TypeError("Failed to fetch dynamically imported module");
+        return {
+          payOwed: async () => {
+            paid.push("t1");
+          },
+        };
+      };
+      await settleOwed(store, load);
+      expect(paid).toEqual([]);
+      expect(store.load<unknown[]>(OWED_KEY)).toHaveLength(1);
+      await vi.advanceTimersByTimeAsync(OWED_RETRY_MS);
+      expect(loads).toBe(2);
+      expect(paid).toEqual(["t1"]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("nothing to let go of is nothing owed", async () => {
+    const store = memoryStore();
+    const c = logoutCalls();
+    letGo(store, null, "guest");
+    letGo(store, { token: 3 }, "guest");
+    expect(c.seen).toEqual([]);
+    expect(store.load(OWED_KEY)).toBeNull();
   });
 });

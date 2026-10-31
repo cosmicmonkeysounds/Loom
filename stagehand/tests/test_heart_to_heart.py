@@ -65,8 +65,8 @@ DOSSIER = {
     "bottle": {"picked": True, "choice": "dare"},
     "wallet": {"balance": 140},
     "gifts": ["The Orchard"],
-    "heart": {"layer": 2, "suspicion": 30, "convinced": False, "barred": False, "visits": 2},
-    "said": ["Are you lonely down here?", "What is the Unified Field Theory for?"],
+    "heart": {"layer": 2, "suspicion": 30, "heard": False, "barred": False, "visits": 2},
+    "said": ["Are you lonely down here?", "What is the Grand Unified Theory for?"],
     "moments": ["joined", "marked", "reinstalled", "filed H3"],
 }
 
@@ -135,7 +135,7 @@ def test_the_dossier_never_says_layer_or_counts_the_talk():
 
     for layer in range(0, 6):
         for suspicion in (0, 10, 30, 70):
-            block = dossier_block({**DOSSIER, "heart": {"layer": layer, "suspicion": suspicion, "convinced": False, "barred": False, "visits": 1}})
+            block = dossier_block({**DOSSIER, "heart": {"layer": layer, "suspicion": suspicion, "heard": False, "barred": False, "visits": 1}})
             assert not re.search(r"\blayers?\b|\blevel\b|\bsuspicion\b|\b\d\s*/\s*4\b|out of character", block, re.I), block
     zero = dossier_block({**DOSSIER, "heart": {"layer": 0, "suspicion": 0}})
     assert "At your heart" not in zero

@@ -54,8 +54,8 @@ import {
   useSfxCues,
   type Emitter,
 } from "../kit/index.ts";
-import { ColdDoor, DriftingPopups, Frost, Glass, HealthBar, KingPiece, MirrorBall, Motorcycle, PatchBay, Phone, PrinterArt, Shake, WallCard, useEndAt, useFirstSeen, useFrozen, useLatch, type PopMsg } from "../kit/tv2-parts.tsx";
-import { CUPS, THROW_MS, Y2K_CHIME_TEXT, beanHeap, chartLayout, chartRowAt, chimeFlash, danceBeat, driftLandings, equaliser, glitchYear, kingBar, kingHeard, kingHpAt, kingLine, liveNow, liveRemaining, nightSummary, onGrid, recountRideAt, scenarioFor, tallyOf, throwAt, y2kLevel, y2kRaceClosed } from "../kit/tv2-time.ts";
+import { ColdDoor, DriftingPopups, Frost, Glass, HealthBar, KingPiece, MirrorBall, PatchBay, Phone, PrinterArt, Shake, WallCard, useEndAt, useFirstSeen, useFrozen, useLatch, type PopMsg } from "../kit/tv2-parts.tsx";
+import { CUPS, THROW_MS, Y2K_CHIME_TEXT, beanHeap, chartLayout, chartRowAt, chimeFlash, danceBeat, driftLandings, equaliser, glitchYear, kingBar, kingHeard, kingHpAt, kingLine, liveNow, liveRemaining, nightSummary, onGrid, scenarioFor, tallyOf, throwAt, y2kLevel, y2kRaceClosed } from "../kit/tv2-time.ts";
 
 type Sfx = SceneProps["sfx"];
 type SfxCue = readonly [number, Parameters<Sfx>[0], Parameters<Sfx>[1]?];
@@ -195,10 +195,10 @@ const LATE_ROWS: ReadonlyArray<{ room: string; mark: "ok" | "excused" | "late" }
   { room: "The Desktop", mark: "ok" },
   { room: "Disk Cleanup", mark: "excused" },
   { room: "The Start Bar", mark: "late" },
-  { room: "The Steam Room", mark: "late" },
+  { room: "The Power Supply", mark: "late" },
   { room: "The Cloud", mark: "late" },
   { room: "The RAM", mark: "late" },
-  { room: "The Graphics Card", mark: "late" },
+  { room: "The Casino", mark: "late" },
 ];
 const LATE_EVERY = 520;
 
@@ -303,7 +303,7 @@ function SummonsClosedWall(p: SceneProps) {
 //   1100–2400 the table rises into perspective, ten cups pop up (4-3-2-1)
 //   2600 →    hold: a throw every 2.8 s — a sink splashes (+1 TRUTH), a miss
 //             skips off the rim (THE INTERNET); the rules drift past in
-//             dialogs; "→ THE CLOUD" pulses; "To the backyard." types
+//             dialogs; "→ THE CLOUD" pulses; "To the Cloud." types
 
 const PONG_WORD = "TRUTH PONG";
 const PONG_START = 2600;
@@ -1366,7 +1366,7 @@ function Y2kWall(p: SceneProps) {
 //   0–4000    frost creeps in from the screen's edges; a low hum
 //   1200–7400 a small COLD STORAGE window rises in the corner: the room's
 //             activity meter climbs, its hum waveform swells; one line types:
-//             "Somewhere in the basement, the cold-storage room hums louder."
+//             "Somewhere downstairs, the Server Room hums louder."
 //   7000–9000 it all thaws away. Nothing says who, or why. (Short, so it
 //             never holds back the hour's bigger moments behind it.)
 
@@ -1378,13 +1378,14 @@ function MajorityTv(p: SceneProps) {
   const frost = Math.min(eased(t, 0, 4000, ease.outQuad), 1 - progress(t, 7000, 2000));
   const meter = eased(t, 1600, 5000, ease.inOutQuad);
   const win = Math.min(eased(t, 1200, 500, ease.outCubic), 1 - progress(t, MAJ_END - 1600, 700));
-  const line = "Somewhere in the basement, the cold-storage room hums louder.";
+  const line = "Somewhere downstairs, the Server Room hums louder.";
   return (
     <Stage bg="transparent" className="tv2">
       <Frost amount={frost} t={t} />
       {!reduced && <Particles t={t} emitters={[{ x: 0.5, y: -0.04, w: 1.1, start: 0, end: 5500, rate: 26, life: 3500, speed: 0.05, angle: 90, spread: 30, gravity: 0.03, sway: 0.03, size: 5, colors: ["#e8f6ff", "#ffffff", "#bfe2ff"], shape: "dot", seed: 101 }]} />}
       <div className="tv2-cold" style={{ opacity: win, transform: reduced ? undefined : `translate3d(0, ${((1 - win) * 3).toFixed(2)}em, 0)` }}>
-        <Win98Window title="C:\BASEMENT\COLD STORAGE" icon="lock" inactive width="100%">
+        {/* DRAFT w59 */}
+        <Win98Window title="C:\COLD STORAGE" icon="lock" inactive width="100%">
           <div className="tv2-cold-row">
             <span>Activity</span>
             <div className="tv2-cold-meter">
@@ -1466,7 +1467,7 @@ function HeartTv(p: SceneProps) {
           <Typewriter text="THE SERVER ROOM IS OPEN" t={t} start={HEART.bay + 1800} cps={18} />
         </div>
         <div className="tv2-heart-sub" style={{ opacity: progress(t, HEART.hold, 800) }}>
-          Trabolta’s heart is behind the cold door, in the basement.
+          Trabolta’s heart is behind the cold door, downstairs.
           <br />
           <i>A rack of cables in a cold room.</i>
         </div>
@@ -1480,7 +1481,7 @@ function HeartTv(p: SceneProps) {
 function HeartWall(p: SceneProps) {
   const { t, reduced, done } = p;
   useEndAt(t, 12_000, done);
-  return <WallCard t={t} title="THE SERVER ROOM IS OPEN" lines={["Trabolta’s heart is behind the cold door, in the basement."]} icon="lock" tone="black" bg="#01040a" reduced={reduced} accent={<PatchBay lit={heartLit(t)} cols={8} className="tv2-wall-bay" />} />;
+  return <WallCard t={t} title="THE SERVER ROOM IS OPEN" lines={["Trabolta’s heart is behind the cold door, downstairs."]} icon="lock" tone="black" bg="#01040a" reduced={reduced} accent={<PatchBay lit={heartLit(t)} cols={8} className="tv2-wall-bay" />} />;
 }
 
 // ══ E2c: the King — hit (signal `king hit`) and fallen (`king fallen`) ═══════════════════
@@ -1823,19 +1824,17 @@ function TrabDisabledWall(p: SceneProps) {
   );
 }
 
-// ══ E5: recount — he flickers back, weaker, decrepit ════════════════════════════════════════
+// ══ E5: recount — what is left of him while Task Manager reads his message ═════════════════
 //
 //   0–2500    static; TRABOLTA.EXE (Not Responding) redraws in strips, greyed
 //   hold      the hung window drifts and smears (the old trail of copies), the
 //             face inside sags and jitters, the brightness gutters, System
-//             resources: 3% free; End Task / Wait — Wait is pressed, again
-//   the end   ten seconds before the slide lets go, a motorcycle rides across
-//             the bottom, Greased Lightning; the window fades — he does not come
-//             back. (The story's `sound motorcycle` lands in the same drain as the
-//             slide, before the TV has said a word of the recount, so the ride is
-//             timed off the hold, never off that moment.)
+//             resources: 3% free; End Task / Wait — Wait is pressed, again.
+//             It holds until the ceremony: he is dead and does not come back
+//             (wave 58: no ride, and its errors stop after the first half minute
+//             so that nothing sounds under the reading).
 
-const RECOUNT_RIDE_MS = 6000;
+const RECOUNT_ERRORS_TO = 30_000;
 
 function DecrepitFace({ t, reduced }: { t: number; reduced: boolean }) {
   const j = reduced ? 0 : (noise1(5, Math.floor(t / 120)) - 0.5) * 2;
@@ -1853,12 +1852,9 @@ function DecrepitFace({ t, reduced }: { t: number; reduced: boolean }) {
 }
 
 function RecountTv(p: SceneProps) {
-  const { t, sfx, reduced, target, night } = p;
+  const { t, sfx, reduced, night } = p;
   const summary = nightSummary(night);
-  const rideAt = recountRideAt(target);
-  const rideT = t >= rideAt ? t - rideAt : null;
-  const gone = rideT !== null && rideT > 1200 ? progress(rideT, 1200, 2400) : 0;
-  useSfxCues(t, sfx, [[0, "static", { gain: 0.5 }], [1800, "glitch", { gain: 0.4 }], ...onGrid(t, 9000, 9000, "error", { gain: 0.25 }, rideAt), [rideAt + 900, "whoosh", { gain: 0.35, pitch: 0.7 }], [rideAt + 1400, "shutdown", { gain: 0.25 }]]);
+  useSfxCues(t, sfx, [[0, "static", { gain: 0.5 }], [1800, "glitch", { gain: 0.4 }], ...onGrid(t, 9000, 9000, "error", { gain: 0.25 }, RECOUNT_ERRORS_TO)]);
   const draw = progress(t, 400, 2000);
   const drift = reduced ? { x: 0, y: 0 } : { x: Math.sin(t / 5200) * 3, y: Math.cos(t / 6100) * 2 };
   const gutter = reduced ? 0.85 : 0.62 + 0.25 * noise1(9, Math.floor(t / 90)) + 0.1 * pulse(t, 3000);
@@ -1885,49 +1881,25 @@ function RecountTv(p: SceneProps) {
   return (
     <Stage bg="#0a0d10" fit className="tv2">
       <div className="kit-fill tv2-recount-bg" />
-      <div className="kit-fill" style={{ opacity: gutter * (1 - gone), filter: "grayscale(0.6)" }}>
+      <div className="kit-fill" style={{ opacity: gutter, filter: "grayscale(0.6)" }}>
         {Array.from({ length: trail }, (_, i) => trail - i).map((i) => win(i))}
         {win(0)}
         <Win98Dialog title="TRABOLTA.EXE" message="This program is not responding." kind="warning" actions={["End Task", "Wait"]} pressed={waitPressed ? 1 : undefined} x={60} y={66} width="22em" open={progress(t, 2600, 300)} inactive zIndex={20} />
       </div>
       {t < 2500 && !reduced && <Noise t={t} alpha={0.5 * (1 - progress(t, 0, 2500))} />}
-      {rideT !== null && rideT >= 0 && rideT < RECOUNT_RIDE_MS + 4000 && (
-        <>
-          <div className="tv2-ride" style={{ transform: reduced ? undefined : `translate3d(${lerp(-20, 110, progress(rideT, 0, RECOUNT_RIDE_MS)).toFixed(2)}vw, 0, 0)`, opacity: reduced ? 1 - progress(rideT, RECOUNT_RIDE_MS, 600) : 1 }}>
-            <Motorcycle t={t} size="12em" />
-          </div>
-          <div className="tv2-ride-line" style={{ opacity: Math.min(progress(rideT, 800, 600), 1 - progress(rideT, RECOUNT_RIDE_MS + 2400, 1000)) }}>
-            Greased Lightning. <span style={{ opacity: progress(rideT, 3000, 800) }}>It does not come back.</span>
-          </div>
-          {!reduced && <Particles t={t} emitters={[{ x: 0.5, y: 0.9, w: 1, start: t - rideT, end: t - rideT + RECOUNT_RIDE_MS, rate: 30, life: 1600, speed: 0.06, angle: -150, spread: 40, size: 14, sizeJitter: 0.5, colors: ["rgba(180,160,130,0.4)"], shape: "dot", seed: 161, fade: 0.8 }]} />}
-        </>
-      )}
       <Glass t={t} reduced={reduced} strength={1.2} />
     </Stage>
   );
 }
 
 function RecountWall(p: SceneProps) {
-  const { t, reduced, target, night } = p;
+  const { t, reduced, night } = p;
   const summary = nightSummary(night);
-  const rideT = t - recountRideAt(target);
-  const riding = rideT >= 0 && rideT < RECOUNT_RIDE_MS + 2000;
-  const gone = rideT > 1200 ? progress(rideT, 1200, 2000) : 0;
   return (
     <div className="kit-fill">
-      <div className="kit-fill" style={{ opacity: 1 - gone }}>
+      <div className="kit-fill">
         <WallCard t={t} value="recount" lines={summary.length > 0 ? ["(not responding)", ...summary] : undefined} icon="computer" tone="black" bg="#14181c" reduced={reduced} accent={<span style={{ opacity: 0.6 + 0.3 * noise1(9, Math.floor(t / 90)), display: "inline-block", width: "10em" }}><DecrepitFace t={t} reduced={reduced} /></span>} />
       </div>
-      {riding && (
-        <>
-          <div className="tv2-ride wall" style={{ transform: reduced ? undefined : `translate3d(${lerp(-30, 120, progress(rideT, 0, RECOUNT_RIDE_MS)).toFixed(2)}vw, 0, 0)`, opacity: reduced ? 1 - progress(rideT, RECOUNT_RIDE_MS, 600) : 1 }}>
-            <Motorcycle t={t} size="7em" />
-          </div>
-          <div className="tv2-ride-line wall" style={{ opacity: Math.min(progress(rideT, 800, 600), 1 - progress(rideT, RECOUNT_RIDE_MS + 800, 1000)) }}>
-            Greased Lightning.
-          </div>
-        </>
-      )}
     </div>
   );
 }

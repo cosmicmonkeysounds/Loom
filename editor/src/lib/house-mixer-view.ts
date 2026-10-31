@@ -16,8 +16,10 @@ import {
   type MixerMusic,
   type MixerMusicBed,
   type MixerStrip,
+  type MixerTidal,
   type MixerView,
   type MixLevel,
+  type MusicDj,
 } from '@loom/core/house-mixer'
 import { routerOf } from '@/lib/house-audio'
 
@@ -42,6 +44,7 @@ export function mixerMusicOf(raw: unknown): MixerMusic | null {
       track: typeof b['track'] === 'string' ? b['track'] : null,
       posS: typeof b['posS'] === 'number' ? b['posS'] : 0,
       ...(typeof b['durS'] === 'number' && b['durS'] > 0 ? { durS: b['durS'] } : {}),
+      ...(b['live'] === true ? { live: true } : {}),
     })
   }
   return {
@@ -50,6 +53,8 @@ export function mixerMusicOf(raw: unknown): MixerMusic | null {
     missing: strings(raw['missing']),
     ...(Array.isArray(raw['scenes']) ? { scenes: strings(raw['scenes']) } : {}),
     ...(raw['hand'] === true ? { hand: true } : {}),
+    ...(raw['loan'] === true ? { loan: true } : {}),
+    ...(isRecord(raw['tidal']) ? { tidal: { ...(raw['tidal'] as unknown as MixerTidal), library: Array.isArray(raw['tidal']['library']) ? (raw['tidal']['library'] as MixerTidal['library']) : [] } } : {}),
     ...(Array.isArray(raw['playlists']) ? { playlists: raw['playlists'].filter(isRecord).map((p) => ({ name: String(p['name'] ?? ''), tracks: typeof p['tracks'] === 'number' ? p['tracks'] : 0, loop: p['loop'] === true })) } : {}),
   }
 }
@@ -67,6 +72,7 @@ export function mixerViewOf(raw: unknown): MixerView | null {
     rooms: Array.isArray(raw['rooms']) ? (raw['rooms'].filter(isRecord).map((r) => ({ ...r, speakers: Array.isArray(r['speakers']) ? r['speakers'] : [] })) as unknown as MixerView['rooms']) : [],
     meters: meters !== null ? { at: meters.at ?? 0, outputs: meters.outputs ?? {}, inputs: meters.inputs ?? {}, sources: meters.sources ?? {}, ...(meters.buses !== undefined ? { buses: meters.buses } : {}) } : null,
     music: mixerMusicOf(raw['music']),
+    dj: isRecord(raw['dj']) ? (raw['dj'] as unknown as MusicDj) : null,
     router: routerOf(raw['router']),
     now: typeof raw['now'] === 'number' ? raw['now'] : 0,
   }

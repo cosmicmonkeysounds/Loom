@@ -19,8 +19,11 @@
 //!   whole list a tap away. Once the doors are open a test asks first.
 //! - Try it (wave 30): tap a look or a story sound to play it, or say a line
 //!   on the speakers. No marks; once the doors are open each one asks first.
-//! - 🎚 Mixer (wave 40, `mixer.tsx`), folded under Setup: the house's live
-//!   balance and the soundtrack's transport, polled only while open.
+//! - 🎵 Music (wave 58, `music.tsx`) under Setup: what is playing, the TIDAL
+//!   app's transport and library, and Trabolta's hands on it. Open for Task
+//!   Manager, folded for every other host; it polls only while open.
+//! - 🎚 Mixer (wave 40, `mixer.tsx`), folded: the house's live balance,
+//!   polled only while open.
 //!
 //! The view is a long poll (`GET /api/mod/desk?after=<rev>&wait=25`) with
 //! the booth's token, parked while the page is hidden (`startPoll`).
@@ -34,6 +37,7 @@ import { hostCalls, type HostCalls } from "./api.ts";
 import { browserPollDeps, eventBase, fetchHostPost, type HostAuth } from "./client.ts";
 import { ActButton, ConfirmButton, HostEmpty, failText } from "./kit.tsx";
 import { MixerSection } from "./mixer.tsx";
+import { MusicSection } from "./music.tsx";
 import {
   DESK_POLL_TIMEOUT_MS,
   DESK_REPOLL_MS,
@@ -213,6 +217,7 @@ export function DeskBody({ view, calls, client, me, mixer }: { view: DeskView; c
         </p>
         <How view={view} />
         <Setup view={view} />
+        {mixer !== undefined && <MusicSection auth={mixer} calls={calls} me={me} />}
         {mixer !== undefined && <MixerSection auth={mixer} calls={calls} />}
 
         <fieldset className={`host-box host-desk-standby${card.running ? " running" : ""}`} data-testid="host-desk-standby">

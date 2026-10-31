@@ -7,7 +7,7 @@
 
 | Word | Means | Who usually says it |
 |---|---|---|
-| **INTRO** | Clippy is about to introduce Trabolta. Julia (the tent): let the first reinstalled program start the game now | director → the tent, Clippy |
+| **INTRO** | The first program is on its way to the tent and Clippy is about to introduce Trabolta. Julia (the tent): let them start the game now | director → the tent, Clippy |
 | **BEANS** | The printer lid is open and the room heard nothing (Adobe Acrobat presses 🫘 on their booth first; the radio call is for when they can't). A host or the director: press 🫘 | Adobe Acrobat |
 | **LATE** | The late marks are coming (after 🚨 Summons closed): they land on every Antivirus' Wanted board | whoever is calling → Antivirus |
 | **IN** | The patch-bay watch is inside the server room with the door shut: whoever is calling may fire 🕚 (once Trabolta is awake the first opening plays The Heart, crew or not: press 🔧 before the crew go through) | server-room Antivirus → director |
@@ -104,6 +104,10 @@ keep the radio away from them. The TV and the tent laptop never send sound.
   buttons your objective needs** (wave 21: no *All buttons…* fold; a player's
   refused press says *Not now*). What the
   press came to shows on the card. **📷 Next guest** brings the camera back.
+- **Codex QRs:** **📷 Scan** reads them too, secret ones included, and the entry
+  lands in your 📓 Codex. A wrong code costs you nothing. No ⭐ for it. **Share
+  lore…** on a guest's card can pass on anything you hold, so mind what you hand
+  over.
 - **Booth readouts** are the 📋/🛡/🃏/🚨 lines for you only. They land in the
   pinned **Readouts** room, newest first, and survive a reload; a readout
   about the guest whose card is open shows on the card. The ones that need
@@ -134,8 +138,16 @@ keep the radio away from them. The TV and the tent laptop never send sound.
 
 **📜 READ THIS OUT LOUD (wave 55).** If your part has a scripted line, your
 whole phone says so and stays that way until you have read it: tap it, read
-from the teleprompter, press **✓ Done**. Hosts have one line each in the
-opening, and Adobe has one more at Truth Pong.
+from the teleprompter, press **✓ Done**. The opening is all Clippy's now: the
+hosts have no lines in it. Adobe has one at Truth Pong.
+
+**📜 The full truth (wave 58).** After every ending's last beat a host or a
+director presses **G0 📜** and the whole house hears what really happened, in
+the living room, for 12 to 14 minutes: Trabolta on the TV, or Task Manager off
+his teleprompter after Combo A or Combo B. Stay in the room and stay quiet.
+**After Combo A he does not come back:** no last speech, no motorcycle, and
+Clippy hosts the ceremony. The talk at his heart still happens, but nothing a program
+says there ends the night.
 
 ## The blackout rule (Combo A or Combo B)
 
@@ -170,11 +182,13 @@ his messages by hand. Nothing for performers to do except stay in character:
   your program from the list. Featured guests: scan the QR on your
   invitation instead (your program is 🔒 Reserved for you); lost it → a host
   (More → Setup) or the director opens it for two minutes.
-- **I closed the app / my browser lost me.** Don't sign up again. Find the
-  director (or the house manager walks you there): they show a QR that puts
-  you back exactly where you were (N-02).
+- **I closed the app / my browser lost me.** Don't sign up again. Scan your
+  badge or type its code. If it says you're *already signed in on a phone*,
+  tap **🙋 Ask a host** and stay on that page: a host lets you back in as the
+  same program. No badge: find the director (or the house manager walks you
+  there): they show a QR that puts you back exactly where you were (N-02).
 - **My phone died / I have no phone.** Loaner phones are at [[EDIT: where]].
-  The director pairs you onto it with the same QR.
+  Your badge and 🙋 Ask a host on the loaner, or the director's QR.
 - **iPhone alerts:** only if push was called on 10-24 — [[EDIT: paste the Home
   Screen steps here if K-31b passed, else delete this line]].
 - **The Wi-Fi is bad.** Turn Wi-Fi off; the app works on cellular.

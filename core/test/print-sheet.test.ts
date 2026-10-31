@@ -34,33 +34,37 @@ describe("K-12 print extras", () => {
         ["The Server Room", loc("The Server Room", { hidden: true, checkin: false })],
       ]),
     };
-    const signs = checkinSigns(model, "https://app.example.com", "EVT 1");
+    const signs = checkinSigns(model, "https://app.example.com", "EVT 1", "s3cret");
     expect(signs.map((s) => [s.id, s.label, s.hidden])).toEqual([
-      ["The Desktop", "The Desktop (living room)", false],
+      ["The Desktop", "The Desktop", false],
       ["The Cache", "The Cache", true],
     ]);
     expect(signs[1]!.url).toBe("https://app.example.com/?code=EVT%201&checkin=the-cache");
-    expect(printExtras(null, "https://x", "E").checkin).toEqual([]);
+    // Wave 59: the sign is in-world, the real room a note for the crew's screen.
+    expect(signs.map((s) => s.place)).toEqual(["The Desktop (living room)", null]);
+    expect(signs.every((s) => /^R-[0-9A-Z]{4}$/u.test(s.code))).toBe(true);
+    expect(printExtras(null, "https://x", "E", "s3cret").checkin).toEqual([]);
   });
 
   it("the show prints a sign for every room the check-in rule handles", () => {
     const sim = Sim.fromSources(scenarioSource("trapped-in-the-internet"));
-    const ids = checkinSigns(sim.model, "https://a", "E").map((s) => s.id);
-    for (const room of ["The Desktop", "The Start Bar", "The CPU", "The Steam Room", "The Tube", "Disk Cleanup", "The Cloud", "The RAM", "The Fan Closet", "The Graphics Card", "The Hard Drive"]) expect(ids).toContain(room);
+    const ids = checkinSigns(sim.model, "https://a", "E", "s3cret").map((s) => s.id);
+    for (const room of ["The Desktop", "The Start Bar", "The CPU", "The Power Supply", "Disk Cleanup", "The Cloud", "The RAM", "The Fan Closet", "The Casino", "The Hard Drive"]) expect(ids).toContain(room);
     expect(ids).not.toContain("The Optical Drive");
     expect(ids).not.toContain("The Internet");
     expect(ids).not.toContain("The Server Room"); // locked: a visit would reveal it early
+    expect(ids).not.toContain("The Tube"); // a way through: nothing opens it, so a card could never work
   });
 
   it("lists a cast card per performer part — never a program, an agent or a prop", () => {
     const sim = Sim.fromSources(scenarioSource("trapped-in-the-internet"));
-    const { cast } = printExtras(sim.model, "https://a", "E");
+    const { cast } = printExtras(sim.model, "https://a", "E", "s3cret");
     for (const part of ["Clippy", "Task Manager", "Norton Anti-Virus", "CRA Agent Software", "Recycling Bin"]) expect(cast).toContain(part);
     expect(cast).not.toContain("Trabolta"); // mind: external
     expect(cast).not.toContain("Installation Wizard"); // playable: false
     expect(cast).not.toContain("Kernel");
-    expect(printExtras(null, "https://x", "E").cast).toEqual([]);
-    expect(printExtras(null, "https://x", "E").actions).toEqual([]);
+    expect(printExtras(null, "https://x", "E", "s3cret").cast).toEqual([]);
+    expect(printExtras(null, "https://x", "E", "s3cret").actions).toEqual([]);
   });
 
   it("places each codex entry on its fact stack: hunt answers gold, facts by tier, hand-written ones already placed", () => {
@@ -91,13 +95,13 @@ describe("K-12 print extras", () => {
       Odd: { colour: "blue", stack: "rare — odd places", where: null },
     });
     expect(codexStacks(null)).toEqual({});
-    expect(printExtras(null, "https://x", "E").stacks).toEqual({});
+    expect(printExtras(null, "https://x", "E", "s3cret").stacks).toEqual({});
   });
 
   it("the show's stacks name real codex entries with codes, every hunt answer gold", () => {
     const sim = Sim.fromSources(scenarioSource("trapped-in-the-internet"));
     const facts = parseFactsText(scenarioFactsFile("trapped-in-the-internet")!.source).facts!;
-    const stacks = printExtras(sim.model, "https://a", "E", facts).stacks;
+    const stacks = printExtras(sim.model, "https://a", "E", "s3cret", facts).stacks;
     for (const q of facts.questions) {
       if (!q.codex) continue;
       expect(stacks[q.codex.id]).toEqual({ colour: "gold", stack: "hunt answers", where: q.where ?? null });

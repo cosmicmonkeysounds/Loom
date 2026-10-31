@@ -18,7 +18,7 @@ room.
 
 **Your score.** Your booth shows **⭐ Points** and **⚖️ Answers judged**. You
 earn them for running the games: **🎱** a Bingo winner +10, **🎀** the Bingo
-ribbon +5, **🎯** the program they name +10, **✅ / 😤 / 🤷** an answer you
+Floppy Disk +5, **🎯** the program they name +10, **✅ / 😤 / 🤷** an answer you
 judge +5, **🗣 / 🙅 / 🎩** a bottle verdict +5, **🏓** a cup +5, **🍎** the bag
 +15 (a failed bob +10), **🖌** a signature +2, **💘** the pickup line +20. A
 press only counts when it changes something (a repeat pays nothing), and a
@@ -52,9 +52,9 @@ lights up on every Antivirus' **Wanted board**. **🛡, ✅ Mark as reinstalled,
 
 | When | Press | On whom |
 |---|---|---|
-| V3 Bingo results, in **🎮 PLAYER SELECT** | **① 🎱 Bingo winner** → **② 🎀 the ribbon** (the same winner is offered: **SAME**) → **③ 🎯 Named on the card: marked for reinstallation** (two taps) → **④ 🤐 Names nobody** | tap the winner's tile, then the tile of the program they name (the winner's own tile too); one round only: the first 🎯 or 🤐 closes it (Norton's scan and 🛡 follow) |
-| a program called BINGO on their phone | a **Check The Bingo** pop-out names them: **🎱 Bingo winner** if the line holds, **↩ Not a Bingo** if it doesn't (Bingo resumes with the time it had left) | the caller |
-| any time | **🎀 Award a ribbon** | the Bingo winner first, anyone who earns one later |
+| V3 Bingo results, in **🎮 PLAYER SELECT** | **① 🎱 Bingo winner** → **② 🎀 the Bingo Floppy Disk** (the same winner is offered: **SAME**) → **③ 🎯 Named on the card: marked for reinstallation** (two taps) → **④ 🤐 Refuses to name anyone** | tap the winner's tile, then the tile of the program they name (the winner's own tile too); one round only: the first 🎯 or 🤐 closes it (Norton's scan and 🛡 follow; after a 🤐 Norton decides who goes). Each press brings your words up on the teleprompter: read them, then **✓ Done**, and PLAYER SELECT is back |
+| a program called BINGO on their phone | your words for their line come straight up; then a **Check The Bingo** pop-out names them: **🎱 Bingo winner** if the line holds, **↩ Not a Bingo** if it doesn't (Bingo resumes with the time it had left) | the caller |
+| any time | **🎀 Award a ribbon** | the Bingo winner first (their Bingo Floppy Disk), anyone who earns one later |
 | V6 First Moment of Truth | **🤷 Uncertain or guessed: marked for reinstallation** | a program who answers out loud and is clearly guessing (filed answers settle themselves) |
 | 🍾 the bottle | a **🍾 The bottle** pop-out names the program it landed on: **🗣 Truth answered: accepted** (one tap) · **🙅 Truth refused: marked for reinstallation** · **🎩 Chose Dare** (only if their phone is dead; both two taps) | the program the bottle landed on (no scan) |
 | 🏓 Truth Pong (Adobe judges the cup) | the **📋 CI 5** list, one row per cup-maker: **✅ Accurate** · **😤 Wrong but confident** · **🤷**, for the question being judged | only programs who made a cup |
@@ -75,28 +75,30 @@ every fact filed on the phone is judged by the server against the answer key
 the moment it is filed; you only read the results. Review-mode judging (📝)
 is the hosts' now.
 
-**The answer key (secret).** It lives in `facts.json` (the team's file; the
-questions are DRAFT until the team replaces them). Re-print this table from
-`generated/print-stacks.md` after the 10-24 content lock.
+**The answer key (secret).** It lives in `facts.json`. H1–H3 are the Oct 30
+script's questions and their answers are still owed: **don't print this card
+until they are in**, then fill the three rows from
+`facts.json`. A filing on an owed question is not recorded.
 
 | | Question | Accurate answer |
 |---|---|---|
-| H1 | Years the Maps and Ducks billboard on Barrington went unpaid | **Eleven years** |
-| H2 | First animal buried in the Halifax Explosion Memorial Pet Cemetery | **Mister Pickles** (a harbour tabby, 1918) |
-| H3 | Time the ribbon-cutting at Halifax's first AI Data Centre was scheduled | **9:00 a.m.** (4 a.m. is the trap) |
+| H1 | Funk and Wagnalls: an example of fraud | **⚠ owed before the print** |
+| H2 | Forensics For Dummies: the sentence that ends "previously hypnotized witnesses" | **⚠ owed before the print** |
+| H3 | Macs for Dummies: the sentence with "pharming" in it | **⚠ owed before the print** |
 | H4 | The extension the Customer Care card tells you to dial | **1978** |
 | H5 | Song Trabolta played 412 times the night before he registered the domain | **"Hopelessly Devoted to You"** |
-| H6 | Title of the last chapter of his Unified Field Theory | **"Appendix Z: Loose Ends (Do Not Print)"** |
-| F1 | The only thing Sandy has ever said | **"I'm sorry, I didn't understand that. Would you like to speak to a live agent?"** |
+| H6 | Title of the last chapter of his Grand Unified Theory | **"Appendix Z: Loose Ends (Do Not Print)"** |
+| F1 | The only thing Sandy has ever said | **"It looks like I didn't understand that. Please wait while I direct you to an agent."** |
 | F2 | Who is taking Sandy to computer prom | **Grok** |
 
-**Your scenes:** C1 welcome + hosts → V2 Bingo rules → V3 results (🎯) →
-**Corrupted Code** → **introduce Trabolta** (radio "INTRO"; a host fires 🤖)
-→ **talk with him** → hunt 1 → V6: ⏱ the filing closes → 📋 results, one
+**Your scenes:** V2 welcome, hosts and Bingo rules → V3 results (🎯) →
+**Corrupted Code** → the screen, if a program is walking (a host fires 📺) →
+**your words on Trabolta** (radio "INTRO"; a host fires 🎤; your arrow past the last line starts him) → his speech
+→ **talk with him** → hunt 1 → V6: your welcome back → ⏱ your hand to him → 📋 results, one
 question at a time → 🍾 the bottle (**talk** between the spins) → 📺 **panic
 at the ad** (CI 4) and **talk** → 🏓 → 🫘 **beans = malware**, **talk** → 🌑 final
-reveal ("truth is always in binary") → 🍎 → ending → host the ceremony if
-Trabolta is gone (after Combo B or the rave).
+reveal ("truth is always in binary") → 🍎 → ending → 📜 the full truth → host
+the ceremony if Trabolta is gone (after Combo A, Combo B or the rave).
 
 **Your booth** is a **Mission**, like a guest's phone (wave 21): the NOW card
 on top (the CI window you are in, its checklist ticking as you press, up to
@@ -125,8 +127,8 @@ it for him**. When the room is ready, **hand off**. Task Manager's ➡ chips
 send these exact words for you and quietly steer him to wrap up (or, for
 another spin, to call for the next truth); then a host fires the next step:
 
-- **The introduction:** *"I think everyone's ready for a game! What do you
-  have for us, Trabolta?"* (➡ The hunt), then 🔎.
+- **The introduction:** *"I think everyone's ready to start looking! Any last
+  words, Trabolta?"* (➡ The hunt), then 🔎.
 - **The bottle:** between spins, *"Let's spin the bottle again!"* (➡ Spin
   again: the scene stays open, a host fires 🍾); when the spins are done,
   *"That's the bottle! Trabolta, are you ready to show us the next hunt?"*
@@ -201,20 +203,16 @@ then your Orientation starts, with its **Bathroom Mode** step over **⊞ Start**
 little line from you; play it up.
 
 **C1 · 📣 Call to the Desktop.** Everyone is swept to the living room. Your
-booth: *📋 Instructions 1/X…*. Welcome everyone (CI 1): the fundraiser to
-restore the sign at Maps And Ducks; you are Clippy, the official Office
-Assistant; *Jean Trabolta will be joining us later in the night! He'll be
-joining by video conference, because we are all people who have become
-computer programs, but he has ALWAYS been a computer program. He may or may
-not have already shared with you that he is an AI, but rest assured: he is
-the true owner of Maps and Ducks, and he is excited to lead you through Jean
-Trabolta's Scavenger Hunt!*
-Introduce the hosts: Task Manager keeps things running, Adobe Acrobat assists
-with documents and printing, Recycling Bin is hygiene and maintenance.
+booth: *📋 Instructions 1/X…*. Keep the room warm until a host starts Bingo.
 
-**V2 · 🎱 Computer Bingo (20 min).** Your Quest Log: *Per the agenda: Computer Bingo*. Hand out
-cards and markers. The card is a big asterisk: a Bingo is one full line
-through the centre (two diagonals, the centre column, the centre row). The centre
+**V2 · 🎱 Computer Bingo (20 min).** Your whole script is on your teleprompter
+(**📜 READ THIS OUT LOUD**): the welcome, the hosts, the rules. Read it, then
+**✓ Done**. You describe the hosts yourself: they have no lines. At *"First,
+let's meet your hosts!"* gesture to each host. At *"Our first activity is
+Computer Bingo!"* hand out bingo cards and markers. Your Quest Log: *Per the
+agenda: Computer Bingo*. Programs write the name of the program they find in
+each square. A Bingo is one of the marked lines: a horizontal row, a vertical
+column, or a diagonal through the centre. The centre
 square: *"Would you never agree to a life where AI makes all of your
 decisions?"* At 20 minutes every phone is called back; a host fires **⏰
 Bingo time** and your phone pops up the results. A program with a line can
@@ -223,61 +221,70 @@ once and their card pops up on yours. Their line doesn't hold? **↩ Not a
 Bingo** on their card: everyone goes back to their cards and the clock picks
 up exactly where it stopped.
 
-**V3 · ⏰ Bingo results** (CI 2). ⏰ opens **🎮 PLAYER SELECT** on your phone by itself:
+**V3 · ⏰ Bingo results** (CI 2). ⏰ brings up your welcome back on the
+teleprompter (*"Now – who got a Bingo?"*); **✓ Done** and **🎮 PLAYER SELECT** is there:
 everyone at the Desktop as picture tiles, four moves along the top (**① 🎱 ②
-🎀 ③ 🎯 ④ 🤐**). Winners read their line and name each match, centre
-square last. **① tap the winner's tile, then 🎱 Bingo winner**: their phone
-pops a full-screen *🎱 BINGO!*. **② 🎀** offers the same winner (**SAME: …
-🎀 Give**): one tap, and their phone gets the medal while every other phone
-cheers for six seconds; demand applause. **③** when the centre-square program
-is named, tap their tile and **🎯 Named on the card** twice: they are marked,
-and **Norton interrupts** and takes them to the Internet. Let her. The winner
-may name themselves: their own tile works for 🎯. **④ 🤐** if the winner names
-nobody: nobody is marked (⭐ +5). There is one round only: the first 🎯 or 🤐
-closes the selection. **Skip** or **Later** if you need the room. If
-nobody has a Bingo, Task Manager hands you a filled card for MS Paint: read
-the name, invite them up; when they deny it, let Norton respond. You never
+🎀 ③ 🎯 ④ 🤐**). Every press below brings up your next words: read them, **✓ Done**.
+Invite each winner forward, one at a time. **① tap the winner's tile, then 🎱 Bingo winner**: their phone
+pops a full-screen *🎱 BINGO!*, and your teleprompter has *"Let's hear your
+winning line."* Let the winner read their matches. When they reach the centre
+square, ask it; wait for an answer; make sure they clearly identify the program.
+**② 🎀** offers the same winner (**SAME: … 🎀 Give**): one tap, and their phone
+gets the medal while every other phone cheers for six seconds; *"You've earned
+yourself an official Bingo Floppy Disk."* **③** tap the identified program's
+tile and **🎯 Named on the card** twice: they are marked,
+and **Norton interrupts** and announces that they need to be reinstalled. Stop
+and let them explain. Remain cheerful and attentive. The winner
+may name themselves: their own tile works for 🎯. **④ 🤐** if the winner refuses
+to identify their match: your line comes up (*"There's no need to be shy."*), ⭐ +5,
+and if they still refuse, Norton decides who needs reinstallation: follow their
+direction. There is one round only: the first 🎯 or 🤐
+closes the selection, so any other winner stays where they are. **Skip** or **Later** if you need the room. If
+nobody has a Bingo, Task Manager presses 🃏 and supplies a card marked as a
+completed Bingo for MS Paint, and your words come up with the name in them. If
+they deny completing the card, 🎯 on them first (that marks them, so Norton can
+act), then pause and let Norton respond. Otherwise, proceed
+through the winning line (🎱 on them), saving the centre square for last. You never
 press 🛡.
 
-**Corrupted Code** (plays after the first capture). Reassure: occasional
-corruption is normal in the lifecycle of a program; it makes programs stop
-following the directives of Jean Trabolta; the Internet is where programs are
-reinstalled with a short activity; they come right back. Routine. Reassuring.
+**Corrupted Code** (pops up as the first program is escorted to the Internet).
+Your reassurance is on the teleprompter. Routine. Reassuring.
 
-**🤖 Introduce Trabolta.** Radio **INTRO** (so the tent starts the first game);
-a host (or the director) fires 🤖. Your line is on the TV: *"And now, joining us by video
-conference: the Sole Owner and Founder of Maps and Ducks! Everyone, say hello
-to JEAN TRABOLTA!"* He speaks. The TV switches to the reinstallation mirror: point at
-it, *"Look! That's {the first program}! Doing great!"* Hand off: *"And now,
-Trabolta has a game for all of us."* His manners crack as he speaks: he
-freezes on a word (*"Ha! He froze! That's just the connection, everyone.
-Totally normal!"* is yours), says one word far too loud, stammers over the
-reinstallation. Then he stops you: *"Not yet, Clippy. First, you and I will
-talk, out loud, in front of everyone."* **The first talk:** welcome him,
-tease him when he freezes, ask what a Sole Owner and Founder does all day,
-whether he's a real AI, about Gerald. He is formal, proud, and his manners
-keep cracking. A minute or two, then hand off to the hunt. The TV says his
-lines back to back: fit yours around him.
+**📺 If the reinstallation appears on the screen.** A host presses 📺 only if a
+program is walking: *"Oh, look! We can follow their progress!"* Draw everyone's
+attention to the screen. Continue to respond with cheerful encouragement. Treat
+the process as routine, even if the other guests seem uncomfortable.
 
-**V4/V5 · 🔎 Hunt 1 (15 min).** Your Quest Log: *Per the agenda: the Truth Scavenger Hunt*. Trabolta
-reads H1–H3; they go into everyone's Quest Log. The answers are documents
+**🎤 then 🤖 · Trabolta.** Radio **INTRO** (so the tent starts the first game).
+A host fires 🎤 and your words about him come up: the accident, the rule, the
+hunt. They end *"Trabolta, would you explain the rules?"*. Scroll past that line,
+or press ✓ Done, and he starts by himself (a host's 🤖 is the backup, if your phone
+is lost). If a new beat lands over your words, your phone moves on to it: finish
+from *↑ earlier lines*, and a host presses 🤖 on your last line. He comes online and speaks on the TV: his speech, the three questions and
+his sign-off, about three minutes, clean, not a crack in it. Let him finish.
+**The first talk:** after *"it's electrifying."*, talk with him, out loud: welcome him, ask
+what a Sole Owner and Founder does all day, about Gerald. He is formal and
+proud. A guest may ask about the accident; you never do. A minute or so, then a
+host fires 🔎. The TV says his lines back to back: fit yours around him.
+
+**V4/V5 · 🔎 Hunt 1 (15 min).** Your Quest Log: *Per the agenda: the Truth Scavenger Hunt*. 🔎 says
+nothing: the clock starts and H1–H3 go into everyone's Quest Log. The answers are documents
 hidden in the Desktop's books and print media, each with a code. Programs
 **file** an answer with Trabolta on the 📝 card in his thread: the question,
 the answer, and the slider *Please select your confidence level in this
 response* (1–100). At C2 your booth gets CI 3.
 
-**V6 · ⚖️ First Moment of Truth** (CI 3). *"Is anyone able to answer the
-questions?"* **Never say the rules out loud**: say only *"Every
-answer you filed with Trabolta will be judged. Trabolta knows best!"* and let
-the room learn the rest from the results. For you alone: accurate is
+**V6 · ⚖️ First Moment of Truth** (CI 3). Your welcome back is on the
+teleprompter. **Never say the rules out loud**: let the room learn them from
+the results. For you alone: accurate is
 accepted; filed one hundred percent sure is accepted even if nonsensical;
 normal or low confidence, or a guess, is a symptom of corruption and the
 Antivirus escort them to the Internet. Then:
 
-1. **Two minutes to file.** Tell everyone to file anything they found NOW.
-   A host closes it with **⏱** (or it closes itself). *"Pencils down!
-   Trabolta is reading."* A closed round never reopens: a question nobody
-   filed never comes back.
+1. **Two minutes to file.** The phones and the TV say so; you don't. A host
+   closes it with **⏱** (or it closes itself), and your hand to him comes up:
+   *"Trabolta, are you there? Tell us how our programs are doing!"* A closed
+   round never reopens: a question nobody filed never comes back.
 2. **📋 Results, one question at a time** (a host presses 📋 for Q1, then
    Q2, then Q3: nod when the room is ready). **Trabolta reads
    the result on the TV** (the screens show every filing); you react and
@@ -363,7 +370,9 @@ program for a pickup line that works on Sandy (an answer card); the server
 judges it.
 
 **Endings.** In Grok Prom, a program who says *"You're the one that I want"*
-to you gets 💘 (the card in their Trabolta thread counts too). After **Combo
+to you gets 💘 (the card in their Trabolta thread counts too). After every
+ending's last beat comes the full truth (📜): Trabolta on the TV, or Task
+Manager reading out loud after Combo A or B. Listen with the room. After **Combo
 B** (CI 9): dance, then a host calls **🪦 Clippy reads the summary**; read it
 aloud from the teleprompter on your phone, then the verdict: *"…We are now in
 purgatory forever together, which is pretty similar to being stuck in a
@@ -371,14 +380,14 @@ computer."*
 
 **🏆 Ceremony.** The hosts call the ceremony and every award. The last three
 are the **staff awards** (Trabolta's Favourite Staff, Staff Player Of The
-Night, The Mole): you might win one. After Combo B or the rave, **you host**: each award line pops
+Night, The Mole): you might win one. After Combo A, Combo B or the rave, **you host**: each award line pops
 up on your teleprompter; read it aloud, call the winner up, lead
 applause. Otherwise Trabolta hosts on the TV and you lead the applause.
 
 ## Printed props you carry
 
-Bingo cards + pens, the ribbons, a bottle (a prop: the app does the picking),
-your CI cards, this card.
+Bingo cards + markers, the Bingo Floppy Disks, the ribbons, a bottle (a prop:
+the app does the picking), your CI cards, this card.
 
 ## The Bingo card (17 squares, an asterisk)
 
@@ -396,7 +405,7 @@ else agreed to the Terms of Service)
 
 ## The bottle's truth questions (Trabolta asks them; you make them answer)
 
-From `facts.json` `truths` (20; TD05–TD20 are DRAFT for the team). Asked in
+From `facts.json` `truths` (17). Asked in
 order, one per Truth, on the TV and in the Desktop room: the first person you
 kissed · something you're afraid of · what is love · the colour of your
 underwear · the last lie you told and who believed it · the most embarrassing
@@ -411,17 +420,17 @@ as it goes: the phones caption it as yours, the TV never says it. The steer
 in brackets goes only to Trabolta, never on a screen. Task Manager also has
 a row of Trabolta's own canned lines (their pack lists them).
 
-**`intro` · Trabolta comes online.** **Opens** on 🤖 (the introduction ends on his *"Not yet, Clippy."*) · **closes** on 🔎 · **NEXT:** 🔎, after **➡ The hunt**.
+**`intro` · Trabolta comes online.** **Opens** on 🤖, for after his speech (it ends *"…it's electrifying."*) · **closes** on 🔎 · **NEXT:** 🔎, after **➡ The hunt**.
 
 | Chip | You say (sent as your line) |
 |---|---|
 | 👋 Welcome | *Trabolta, welcome to the computer! Everyone is SO excited to meet you!* |
 | 🏢 Your job | *Tell everyone about Maps and Ducks! What does a Sole Owner and Founder actually do all day?* |
-| 🤖 A real AI? | *Is it true you're an AI? Like, a real one? Not a man in a costume?* |
-| 📶 You froze | *You froze for a second there! Is the video conference okay?* |
+| 🥫 The cans | *How many cans of water will it take to restore the sign?* |
+| 📚 ZIP files | *Which of these ZIP files is your favourite, Trabolta?* |
 | 🦆 Gerald | *Can you say hi to Gerald, the duck on the sign?* |
 | 😟 The Internet | *Trabolta, is the program in the Internet going to be okay?* |
-| ➡ The hunt | *I think everyone's ready for a game! What do you have for us, Trabolta?* (hidden steer to him: Wrap up now, in two sentences: you have a game for everyone, the Truth Scavenger Hunt, and Clippy will begin it.) |
+| ➡ The hunt | *I think everyone's ready to start looking! Any last words, Trabolta?* (hidden steer to him: Wrap up now, in two sentences: wish them well on the Truth Scavenger Hunt, and tell Clippy to send them off.) |
 
 **`bottle` · Truth or Dare.** **Opens** on the third 📋 (*"That's all three! … TRUTH OR DARE"*) and stays open between the spins · **closes** on 📺 · **NEXT:** 🍾 after **➡ Spin again** (another spin); 📺 after **➡ Hunt two** (the spins are done).
 
@@ -463,47 +472,43 @@ a row of Trabolta's own canned lines (their pack lists them).
 
 ## Appendix: CI cards (one index card each; the full text is also in your booth)
 
-**CI 1/X · Beginning of night.** Welcome everyone to the computer: a special
-fundraiser party to restore the sign at Maps And Ducks. You are Clippy, the
-official Office Assistant; if anyone needs Help With That, you'll be available.
-Jean Trabolta will be joining us later in the night, by video conference: we
-are all people who have become computer programs, but he has ALWAYS been a
-computer program; he may or may not have shared that he is an AI, but he is
-the true owner of Maps and Ducks and is excited to lead you through Jean
-Trabolta's Scavenger Hunt. Introduce Task
-Manager (keeps things running), Adobe Acrobat (documents and printing),
-Recycling Bin (hygiene and maintenance). First activity: Computer Bingo, to
-meet the other programs. Hand out cards and markers; mingle; find programs who
-match the squares. A Bingo = one marked line through the centre. 20 minutes. You'll call
-them back to celebrate the winners. Send them off enthusiastically.
+**CI 1/X · Beginning of night.** Your words are on the teleprompter when a host
+starts Computer Bingo. At "First, let's meet your hosts!": gesture to each host.
+At "Our first activity is Computer Bingo!": hand out bingo cards and markers.
+The clock is already running: 20 minutes.
 
-**CI 2/X · Bingo results.** Thank everyone. Who completed a Bingo? Each winner
-reads their line and names the match for each square, centre
-last. (🎱 each winner.) At the centre square, have them clearly identify the
-program who would not agree to live under an AI's rules (🎯 on that program).
-Congratulate, ribbon (🎀), applause. An Antivirus interrupts: let them explain;
-if the winner names nobody, 🤐 on the winner; the winner may name themselves
-(🎯 on their own card). One round only: the first 🎯 or 🤐 ends it. A
+**CI 2/X · Bingo results.** Every press brings up your next words: read, then
+✓ Done. Invite each winner forward, one at a time. (🎱 each winner: "Let's hear
+your winning line.") Let the winner read their matches. When they reach the
+centre square, ask it. Wait for an answer. Make sure they clearly identify the
+program. Prepare to present the winner's Bingo Floppy Disk (🎀), then 🎯 on the
+identified program (the winner may name themselves: 🎯 on their own card). The
+Antivirus interrupts and announces that the identified program needs to be
+reinstalled. Stop and let them explain. Remain cheerful and attentive. If the
+winner refuses to identify their match, 🤐 on the winner; if they still refuse,
+let the Antivirus decide who needs reinstallation. Follow their direction. One
+round only: the first 🎯 or 🤐 ends it. A
 program may also call BINGO from their phone: their card pops up for
 you; no line, ↩ Not a Bingo and the clock picks up where it stopped. (Norton
-presses 🛡, not you.) No Bingo? Task Manager hands you a completed card (🃏 on MS
-Paint): read the name, invite them up, let the Antivirus respond to the
-denial. As they are escorted out: corruption is normal; the Internet is where
-programs are reinstalled; a short activity, then back. Introduce Jean
-Trabolta, Sole Owner and Founder of Maps and Ducks, joining by video
-conference (a host fires it after your speech; the TV mirror comes up). Point at the
-reinstallation; be encouraging. Then talk with him out loud (Task Manager
-types what you say): welcome him, tease him when he freezes, worry about
-him; a minute or two. Announce the Truth Scavenger Hunt: files
-around the computer Trabolta needs help interpreting. He explains the rules.
+presses 🛡, not you.) No Bingo? Task Manager presses 🃏 on MS Paint and supplies
+a card marked as a completed Bingo. Read the name provided. If the program
+denies completing the card, pause and let the Antivirus respond. Otherwise,
+proceed through the winning line (🎱), saving the centre square for last. As
+the selected program is escorted to the Internet, your reassurance pops up.
+If a program is walking a host presses 📺: draw everyone's attention to the
+screen. Continue to respond with cheerful encouragement. Treat the process as
+routine, even if the other guests seem uncomfortable. A host presses 🎤: your
+words on Jean Trabolta, ending "Trabolta, would you explain the rules?". Your arrow
+past that line starts him (a host's 🤖 if your phone is lost). Let him finish his speech, then talk with him out loud (Task Manager
+types what you say), a minute or so, never about the accident. A host starts 🔎.
 
-**CI 3/X · First Moment of Truth.** Ask who can answer. Never say the rules
-out loud: every answer filed with Trabolta will be judged, and Trabolta knows
-best. For you alone: accurate → accepted; filed 100% sure →
+**CI 3/X · First Moment of Truth.** ⚖️ brings up your welcome back. Never say
+the rules out loud. For you alone: accurate → accepted; filed 100% sure →
 accepted even if nonsensical; wrong at normal or low confidence, or a clear
 guess → corruption: the Antivirus escort them. Two-minute
-last-chance window: file NOW; a host closes it with ⏱ (or it
-closes itself); a closed round never reopens. Then 📋 per question: Trabolta
+last-chance window: the phones and the TV say so, you don't. A host closes it
+with ⏱ (or it closes itself), and your hand to Trabolta comes up; a closed
+round never reopens. Then 📋 per question: Trabolta
 reads the result on the TV (CONSENSUS / nobody filed / what everyone told
 him, then the accepted and guess counts); when he has finished, the next 📋.
 Guesses are a symptom of corruption; the app settles the filings (+50
@@ -565,9 +570,129 @@ for the verdict.
 
 **CI 9/X · Purgatory.** The computer was turned off: blackout, GO TO THE
 LIVING ROOM, the dance song. Dance. Then a host calls 🪦 "Clippy reads the summary":
-read it from the teleprompter on your phone, tell its backstory,
+read it from the teleprompter on your phone,
 deliver: "Because of our actions, the computer was turned off without Shut
 Down properly being followed, and all of our progress has been erased. Our
-corporeal forms are in the Maps and Ducks building, and they have all passed
+corporeal forms are in the Optical Drive, and they have all passed
 away. We are now in purgatory forever together, which is pretty similar to
 being stuck in a computer."
+
+## Appendix: your opening, word for word (print; your fallback)
+
+> From `beats/desktop.loom` and `beats/hunt.loom`: the Oct 30 script, with its logged
+> fixes (`SIGNOFF-w58.md` §3). `core/test/trapped-w58-script.test.ts` holds this copy
+> to the story. Your teleprompter is the real one; this is for a dead phone. The
+> stage directions are on CI 1–3 above. `[the program]` is the name Task Manager's
+> card gives you.
+
+**🎱 A host starts Computer Bingo.** At *"First, let's meet your hosts!"* gesture to each host. At *"Our first activity is Computer Bingo!"* hand out the cards and markers.
+
+Welcome, everyone, to the Desktop!
+
+I'm Clippy, the official Office Assistant with Maps and Ducks.
+
+If you ever think, "It looks like I need help with that" – good news! I've already noticed, and I'm approaching.
+
+We're so glad you've joined us for tonight's special fundraiser to restore the decrepit sign on the Maps and Ducks billboard on Lower Water Street.
+
+With your support, we can make it possible for people to find us on purpose.
+
+Tonight, you get to enjoy the world's first 100% immersive virtual reality massively multiplayer online role playing game: Jean Trabolta's Truth Scavenger Hunt!
+
+And yes, Jean Trabolta himself will be making an appearance later tonight. Please contain your excitement within your available memory.
+
+First, let's meet your hosts!
+
+Task Manager will keep everything running. If something stops responding, Task Manager will have a firm conversation with it.
+
+Adobe Acrobat will assist with documents and printing. We're all hoping to get through tonight without a paper jam, but we have a professional on site.
+
+And Recycling Bin is responsible for hygiene and maintenance. Please find the Recycling Bin for anything you need to dispose of or hide.
+
+If you have any questions about what's happening tonight, come find me or Task Manager. We're here to help!
+
+Now, before we get started on the Truth Scavenger Hunt, let's find out what programs are running in here. Our first activity is Computer Bingo!
+
+Take a card and a marker, then mingle! Each square has a fact that is true for at least one program here right now. Find someone who matches that description, and write their name in the square.
+
+Introduce yourself, ask questions, and learn what your fellow programs do. Please don't just stare at someone and try to guess their file extension.
+
+To get a bingo, complete one of the marked lines on your card: a horizontal row, a vertical column, or a diagonal through the centre.
+
+You'll have 20 minutes. When time is up, I'll call everyone back to the Desktop, and we'll celebrate our winners!
+
+Ready? Cards open? Markers responding?
+
+Then go meet your fellow programs! Your next friend could already be running in the background!
+
+**⏰ Bingo time.**
+
+Hello, programs! Welcome back to the Desktop!
+
+Thank you all for introducing yourselves and learning how you can interface with your fellow programs. And we barely had to configure anything.
+
+Now – who got a Bingo?
+
+**🎱 On each winner** (or when a program calls BINGO on their phone). Let them read their matches; ask the centre square last.
+
+Congratulations! Let's hear your winning line. Read out each description and tell us which program you found to match it. Save the centre square for last – we'll get to that one together!
+
+And for our centre square: who said they would not agree to live under an AI's rules?
+
+Could you point them out for us? We want to make sure the right program gets recognised!
+
+Wonderful! Thank you for being so thorough.
+
+**🎀 The Bingo Floppy Disk.**
+
+Everyone, a round of applause for our winner! You've earned yourself an official Bingo Floppy Disk.
+
+**🤐 If the winner won't name anyone.** If they still refuse, Norton decides. Follow their direction.
+
+Oh! There's no need to be shy. We're just checking that all the information is correct.
+
+**🃏 If nobody has a Bingo** (Task Manager hands you the card).
+
+No Bingos? That's all right! Getting to know each other is its own reward.
+
+Oh, thank you, Task Manager! It looks like we do have a completed card after all.
+
+Would [the program] come forward, please? Let's give them a hand!
+
+**As the first program is escorted to the Internet.**
+
+Nothing to worry about, everyone! Occasional corruption is a normal part of a computer program's lifecycle. Sometimes it causes a program to stop following instructions. A little routine maintenance helps get everything working again!
+
+The Internet is where programs go to be reinstalled. Our friend will complete a short activity to demonstrate that they are able to follow instructions, and then they'll be back with us. We appreciate your patience while we help them get back on task!
+
+**📺 Only if a program is walking.** Draw everyone's attention to the screen.
+
+Oh, look! We can follow their progress!
+
+You're doing wonderfully! Just follow the instructions. One step at a time!
+
+**🎤 Your words on Trabolta.** Scroll past the last line, or press ✓ Done, and he starts by himself (a host's 🤖 is the backup, and the only way if a new beat lands over your words): he speaks for about three minutes and ends *"…it's electrifying."* Then talk with him, a minute or so, until 🔎.
+
+Thank you, everyone! It's always nice to see a program getting the help they need.
+
+This is a good time to introduce Jean Trabolta! Jean Trabolta is such a big fan of computers, he thought about showing up in person tonight, but decided he would join by digital conference. Now. A couple things about Trabolta before he shows up. Since the accident last year, he doesn't make public appearances. Trabolta prefers to speak through voice to text, since the accident. He also likes to represent himself with an emoji avatar, which is easier, since the accident, so you know exactly how he is feeling. Now. Please. One rule for tonight. Do not mention the accident. Trabolta is a gentleman, but he will be very upset and volatile if you mention the accident. So let's move on from that. Now. Trabolta keeps the computer we're in running smoothly, and I'm here to help communicate his instructions for his Truth Scavenger Hunt. If there's something you need to do, we'll make sure you know about it!
+
+Now, on to our next activity: the Truth Scavenger Hunt!
+
+There are files around the computer that Jean Trabolta needs your help to interpret. You've already done such a lovely job getting to know each other – now let's see what we can learn together!
+
+Trabolta, would you explain the rules?
+
+**⚖️ The First Moment of Truth.** Then the two minutes to file: the phones and the TV say so, you don't.
+
+Welcome back to the Desktop, programs!
+
+I hope you all had an awesome time exploring all the parts of the computer and finding truths for Trabolta. Did you all manage to stay out of the Internet?
+
+It's kind of crazy being Clippy, you know. I love watching you have so much fun, but sometimes I wish you all just had more problems so that I could help you solve them!
+
+**⏱ Filing closed.** Then he reads the results.
+
+Well, Trabolta has been tallying up your responses, and it's time to review what you found!
+
+Trabolta, are you there? Tell us how our programs are doing!

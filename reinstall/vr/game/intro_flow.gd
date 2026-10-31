@@ -56,7 +56,8 @@ const BODIES := {
 	Step.POINT: "Your controller makes a beam.\nPoint it at the button and pull the trigger\nunder your finger.",
 	Step.WALK: "Push the thumbstick forward gently to walk.\nWalk into the glowing circle.",
 	Step.TURN: "Push the thumbstick left or right to turn\n(or just turn your body).\nTurn around to face the duck behind you.",
-	Step.COMFORT: "Feeling dizzy? Stop, stand still and close your\neyes for a moment. Now find Gerald, the golden duck.",
+	# DRAFT w59 (UI copy): the stuck line.
+	Step.COMFORT: "Feeling dizzy? Stop, stand still and close your\neyes for a moment. Stuck on something? Hold both\ntriggers and A for 5 seconds. Now find Gerald.",
 }
 ## The TURN step once the duck is faced.
 const TURN_DONE := "That's it! You found the duck."

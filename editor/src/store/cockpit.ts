@@ -20,6 +20,7 @@ import { createContext, useContext } from 'react'
 import { create, useStore } from 'zustand'
 import type { SignalArgs, StatField } from '@/lib/api'
 import type { SimEvent, WalletCard } from '@loom/core/sim'
+import type { PrompterStatus } from '@loom/core/host-board'
 import type { WidgetCard } from '@loom/core/chat'
 import type {
   AgentControl,
@@ -587,6 +588,8 @@ export interface CockpitState {
   watchDeclared: boolean
   /** The live countdowns still ahead (`ModView.countdowns`, story seconds). */
   countdowns: CountdownSummary[]
+  /** Wave 59: the teleprompter's scene (`ModView.prompter`); null with none on. */
+  prompter: PrompterStatus | null
   /** The World page's variable filter — shared so the Director's glance
    *  can open World filtered to one watched path. */
   worldFilter: string
@@ -706,6 +709,8 @@ export interface CockpitState {
    *  true when it landed; a refusal lands in `error`. The local backend
    *  has one director and no claim: false, nothing set. */
   claimCaller(on: boolean): Promise<boolean>
+  /** Wave 59: ▶ every line of his left plays, past the teleprompter. */
+  prompterRelease(): void
   /** Hand a codex entry to a holder (a guest or a character) — the story's
    *  `unlock X for who`, server `/api/mod/codex` (journaled `by` you) or
    *  `Sim.unlock` locally. Fires their `learns` hooks like any unlock. */
@@ -725,6 +730,9 @@ export interface CockpitState {
    *  same world var locally). Resolves true when it landed; a refusal lands
    *  in `error`. */
   markGone(id: string, gone: boolean): Promise<boolean>
+  /** Sign a guest's phone out (wave 59), so their badge signs in again. How
+   *  many tokens went; null on a local run (no phones) or a failure. */
+  releaseGuest(id: string): Promise<number | null>
   /** Release a performer's part (N-10) so they can re-sign on a loaner.
    *  Resolves to how many sessions held it (null on failure / local runs). */
   releasePart(character: string): Promise<number | null>
@@ -800,6 +808,7 @@ export const nullCockpit: CockpitStore = create<CockpitState>((set) => ({
   watch: [],
   watchDeclared: false,
   countdowns: [],
+  prompter: null,
   worldFilter: '',
   ownPress: null,
   logPress: null,
@@ -849,9 +858,11 @@ export const nullCockpit: CockpitStore = create<CockpitState>((set) => ({
   closePlayer: noop,
   setVar: noop,
   claimCaller: async () => false,
+  prompterRelease: () => {},
   grantCodex: noop,
   stepQuest: noop,
   pairGuest: async () => null,
+  releaseGuest: async () => null,
   releasePart: async () => null,
   markGone: async () => false,
   walletAct: async () => false,

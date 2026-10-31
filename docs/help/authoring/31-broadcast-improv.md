@@ -76,8 +76,8 @@ invitation, being found.
 
 ```loom
 reply !!🎱 BINGO! Name the program for each square, from memory.
-reply "!!🎀 You won the Bingo Ribbon. Take a bow." with go: codex: Computer Bingo
-broadcast "!!🎀 {Night.ribbon_winner} won the Bingo Ribbon! Cheer for them at the Desktop." to everyone with close: 6s
+reply "!!🎀 You won the Bingo Floppy Disk. Take a bow." with go: codex: Computer Bingo
+broadcast "!!🎀 {Night.ribbon_winner} won the Bingo Floppy Disk! Cheer for them at the Desktop." to everyone with close: 6s
 show poll "🍾 The bottle landed on you. Truth or dare?" to program with options: "Truth | Dare", moment: big
 ```
 

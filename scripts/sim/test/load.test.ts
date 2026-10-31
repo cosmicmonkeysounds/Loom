@@ -291,7 +291,7 @@ test("SecretBook redacts by label and names only labels; facts and the Kernel fe
 test("phases press the chain in order and never twice", () => {
   assert.ok(TO_Y2K.includes(PHASES.intro.through) && TO_Y2K.includes(PHASES.y2k.through));
   const a = pressesTo(TO_Y2K, 0, "intro");
-  assert.deepEqual(a.presses, ["call_to_the_desktop", "start_the_bingo", "bingo_time", "introduce_trabolta"]);
+  assert.deepEqual(a.presses, ["call_to_the_desktop", "start_the_bingo", "bingo_time", "clippy_on_trabolta", "introduce_trabolta"]);
   const b = pressesTo(TO_Y2K, a.cursor, "hunt1");
   assert.deepEqual(b.presses, ["start_the_hunt"]);
   const c = pressesTo(TO_Y2K, b.cursor, "hunt2");
@@ -502,7 +502,7 @@ test("factsSecrets on the show's facts.json: every class present yields its labe
   for (const c of f.door.clues ?? []) checks.push([c.code, `digit note ${c.id}`]);
   for (const x of f.facts ?? []) if (x.codex?.secret === true) checks.push([x.codex.code, `${x.id} codex code`]);
   const labels = checks.map(([, l]) => l);
-  for (const want of [/^H\d+ answer$/u, /^H\d+ codex code$/u, /proposal answer$/u, /^P\d+ answer$/u, /^door code$/u, /^digit note /u]) assert.ok(labels.some((l) => want.test(l)), `no ${want} in facts.json`);
+  for (const want of [/^H\d+ answer$/u, /^H\d+ codex code$/u, /^P\d+ answer$/u, /^door code$/u, /^digit note /u]) assert.ok(labels.some((l) => want.test(l)), `no ${want} in facts.json`);
   assert.ok((f.answers ?? []).length > 0 && (f.door.clues ?? []).length > 0, "facts.json has her line and the digit notes");
   let n = 0;
   for (const [v, label] of checks) {

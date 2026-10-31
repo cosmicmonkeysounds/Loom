@@ -20,7 +20,7 @@ function night() {
   const watch = new ScreenWatch({ now: () => clock.t });
   const fx = () => watch.poll(sim, WHO, () => false).voiceFx;
   fx(); // the first look only folds the history
-  return { sim, clock, fx };
+  return { sim, clock, fx, flicker: () => watch.poll(sim, WHO, () => false).program.flicker };
 }
 
 /** `Night.phase` + what a late phase carries, without playing the night to it. */
@@ -50,14 +50,6 @@ describe("the arc on the real story", () => {
     sim.setVar("Night.final_round", "true");
     sim.setVar("Night.y2k_end", String(Number((sim.world.peek("Time.elapsed") as { value?: number } | undefined)?.value ?? 0) + 900));
     expect(fx().level).toBeGreaterThan(flat); // a quarter of an hour to midnight
-  });
-
-  it("a talk-down heals him", { timeout: SLOW }, () => {
-    const { sim, fx } = night();
-    at(sim, "y2k");
-    expect(fx().level).toBeGreaterThan(0.3);
-    sim.setVar("Night.talked_down", "true");
-    expect(fx().level).toBe(0);
   });
 
   it("the helped ending is clean, the banishment is everything", { timeout: SLOW }, () => {
@@ -117,6 +109,20 @@ describe("the major glitches, pressed for real", () => {
     expect(on.spike).toMatchObject({ kind: "burst", ms: 3600 });
     clock.t += 3601;
     expect(fx().spike).toBeNull();
+  });
+
+  it("a flicker in the intro talk is the screens', and his voice stays clean", { timeout: SLOW }, () => {
+    const { sim, clock, fx, flicker } = night();
+    sim.setVar("Night.step", "4");
+    sim.setVar("Night.talk", "intro");
+    sim.signal("costume_flicker");
+    expect(fx().spike).toBeNull();
+    expect(flicker(), "the screens still flicker").not.toBeNull();
+    clock.t += 10_000;
+    // The same press in another talk scene is the catch in his throat it always was.
+    sim.setVar("Night.talk", "bottle");
+    sim.signal("costume_flicker");
+    expect(fx().spike?.kind).toBe("flicker");
   });
 
   it("a story that has just reloaded plays no spike from its history", { timeout: SLOW }, () => {

@@ -106,12 +106,6 @@ describe("the scenes as cards", () => {
     expect(cardOf("room_heart_sealed", 3000)?.sub).toBe("SHOW ME YOUR PASS");
   });
 
-  it("counts the shutdown down, then lets him go", () => {
-    expect(cardOf("room_heart_shutdown", 0)?.bar).toBe(0);
-    expect(cardOf("room_heart_shutdown", 10_250)?.bar).toBeCloseTo(0.5);
-    expect(cardOf("room_heart_shutdown", 20_500)?.sub).toMatch(/safe to turn off/u);
-  });
-
   it("is gone when its time is up, and never shows before it", () => {
     expect(cardOf("room_heart_leave", HEART_SCENE_MS.heart_leave)).toBeNull();
     expect(cardOf("room_heart_leave", -1)).toBeNull();

@@ -160,12 +160,12 @@ TRAIT Doorkeeper
     move program to The Desktop
     reveal The Start Bar for program quietly
     reveal The CPU for program quietly
-    reveal The Steam Room for program quietly
+    reveal The Power Supply for program quietly
     reveal Disk Cleanup for program quietly
     reveal The Cloud for program quietly
     reveal The RAM for program quietly
     reveal The Fan Closet for program quietly
-    reveal The Graphics Card for program quietly
+    reveal The Casino for program quietly
     reveal The Hard Drive for program quietly
     // Quietly (wave 18b, Q3): the rooms open with no "📂 … are open now."
     // notice; Task Manager's line below says # task-manager is open.

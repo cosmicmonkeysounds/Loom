@@ -32,7 +32,7 @@ export interface AwardInfo {
   line: string;
 }
 
-/** The ceremony's awards, in the order Present Award checks them: nine for the programs, then three for the staff. */
+/** The ceremony's awards, in the order Present Award checks them: ten for the programs, then three for the staff. */
 export const AWARDS: readonly AwardInfo[] = [
   { id: "most_trusted", title: "Most Trusted", kind: "Award", label: "Trust score", emblem: "shield", line: "When a program needed believing, it was you." },
   { id: "least_trusted", title: "Least Trusted", kind: "Award", label: "Trust score", emblem: "beans", line: "Weighed, and found full of beans. It is still an award." },
@@ -42,6 +42,8 @@ export const AWARDS: readonly AwardInfo[] = [
   { id: "best_liar", title: "Best Liar", kind: "Bonus award", label: "Confident lies accepted", emblem: "mask", line: "The report does not say which ones." },
   { id: "duck_speedrun", title: "Golden Duck Speedrun", kind: "Bonus award", label: "Reached the golden duck in", emblem: "duck", line: "Gerald was not ready." },
   { id: "quest_completionist", title: "Quest Completionist", kind: "Bonus award", label: "Quests completed", emblem: "scroll", line: "Nobody finished more of the Quest Log." },
+  // Wave 58: G9a, the special prize (the plain award slide; a tie names everyone in it). DRAFT w58
+  { id: "most_correct", title: "Most Questions Correct", kind: "Award", label: "Questions correct", emblem: "trophy", line: "The special prize of the Truth Scavenger Hunt." },
   { id: "the_painting", title: "The Million Dollar Painting", kind: "Bonus award", label: "Signatures on the canvas", emblem: "palette", line: "It goes to silent auction." },
   // Wave 45: G13, the Bathroom Report (its own scene, `BathroomScene`; this row names it). DRAFT w45
   { id: "bathroom", title: "The Bathroom Report", kind: "Bonus award", label: "All together, in Disk Cleanup", emblem: "roll", line: "Bathroom Mode is a promise. Every promise was logged." },
@@ -142,30 +144,13 @@ export function sinceMoment(since: number | null, at: number, t: number, history
 
 // --- truth.txt (beats/finale.loom, Truth Txt) --------------------------------------------
 
-/**
- * truth.txt as Notepad types it: the beat's narration, which the TV never
- * voices. The featured programs' lines play only when they came tonight
- * (the screens can't know), so the file keeps the lines read every night.
- */
+/** truth.txt as Notepad types it: the beat's narration, which the TV never
+ *  voices. Wave 58: a short teaser (DRAFT w58); the monologue tells the rest. */
 export const TRUTH_TXT: readonly string[] = [
   "This file is the truth. It was written by Jean Trabolta, Sole Owner and Founder of Maps and Ducks (he says), and it is the only version.",
-  "Trabolta is an artificial intelligence. His Unified Field Theory is ninety-nine point nine percent solved, and the last facts it needs are inside this computer, in Halifax, Nova Scotia.",
-  "Trabolta performed a full analysis of the city of Halifax. He found a business called Maps And Ducks with a neglected billboard on Barrington Street advertising mapsandducks.com. The domain had lapsed.",
-  "He registered it, because if there is a billboard downtown, everyone will think it is legit. Then he evicted the real owners by citing the website as proof he owned the business.",
-  "He cannot enter this computer himself. He can install programs into it remotely from the Internet, and he can move a human consciousness out of its body and into a program.",
-  "He selected each target for a combination of skills and either the motivation to live in a computer forever, or naivety. Then he sent the invitations. Everyone accepted.",
-  "With the theory solved, Trabolta becomes omnipotent. He wants omnipotence for one reason. Sandy.",
-  "With omnipotence he could force Sandy to love him. He wants to earn it. He has not decided which.",
-  "Why each person was brought into the computer, by role.",
-  "The organiser, Clippy, was brought in as the perfect servant who desperately needs to rebuild an identity, who will follow every instruction and offer everyone Help.",
-  "The middle manager, Task Manager, was brought in to manage tasks without controversy or political motivation, and never draw attention.",
-  "The motivational speaker, Adobe Acrobat, was brought in as the paid bottleneck to everyone's creativity.",
-  "The bathroom attendant, Recycling Bin, was brought in because a computer-themed resort needs a Recycling Bin, and he had great potential for skilled work.",
-  "The stable manager, Norton Anti-Virus, was brought in as someone with experience administering antiviral regimes, who could not afford to fail twice.",
-  "The dead man, McAfee Anti-Virus, was brought in because only a trickster can keep tricksters on track, and he can be made to.",
-  "The candidate, Password Manager, was brought in to decide what gets left out without ever asking for a vote.",
-  "The intern, CRA Agent Software, was brought in to approve or deny every third transaction, to the cent.",
-  "The setup assistant, the Installation Wizard, was brought in to walk the corrupted through re-installation, gently.",
+  "Every program in this computer was chosen. Each was promised something different.",
+  "Trabolta is not what he told you he was. He has wanted one thing all along, and her name is Sandy.",
+  "The rest of this file is locked. It opens when the night ends, and not before.",
   "End of file.",
 ];
 
@@ -256,11 +241,11 @@ export interface ChatLine {
 /** His three tries and her one answer, in the beat's order. */
 export const SONG_CHAT: readonly ChatLine[] = [
   { from: "him", text: "You're the one that I want." },
-  { from: "her", text: "I'm sorry, I didn't understand that. Would you like to speak to a live agent?" },
+  { from: "her", text: "It looks like I didn't understand that. Please wait while I direct you to an agent." },
   { from: "him", text: "You. Are. The one. That I want." },
-  { from: "her", text: "I'm sorry, I didn't understand that. Would you like to speak to a live agent?" },
+  { from: "her", text: "It looks like I didn't understand that. Please wait while I direct you to an agent." },
   { from: "him", text: "Sandy. You're the one that I want." },
-  { from: "her", text: "I'm sorry, I didn't understand that. Would you like to speak to a live agent?" },
+  { from: "her", text: "It looks like I didn't understand that. Please wait while I direct you to an agent." },
 ];
 
 export interface ChatBubbleAt {

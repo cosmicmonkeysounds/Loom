@@ -3,11 +3,12 @@
 //! slim NEXT bar shows, the sections and their folds, where a jump lands,
 //! the night strip, and *Coming up*.
 
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { cueRows } from "../../core/src/cue-sheet.ts";
 import { sheetLayout } from "../src/director.tsx";
 import { hostStrip } from "../src/host/model.ts";
-import { COMING_CUES, comingUp, hostBarShown, hostWindowShown, nightStrip, sectionHead, sectionOpen, showClockChip, showSections, showTarget } from "../src/host/show-model.ts";
+import { asksLine, COMING_CUES, comingUp, hostBarShown, hostWindowShown, nightStrip, sectionHead, sectionOpen, showClockChip, showSections, showTarget } from "../src/host/show-model.ts";
 import { hostFixture } from "./host-fixture.ts";
 
 describe("the host's windows", () => {
@@ -53,6 +54,20 @@ describe("Show's sections", () => {
     expect(showTarget("more")).toBe("more");
     expect(showTarget("people")).toBe("people");
     expect(showTarget("judge")).toBe("judge");
+  });
+});
+
+describe("an ask that waits (wave 59)", () => {
+  it("says so in one line, and nothing with none", () => {
+    expect(asksLine(0)).toBeNull();
+    expect(asksLine(1)).toBe("🔁 1 wants back in");
+    expect(asksLine(3)).toBe("🔁 3 want back in");
+  });
+  it("sits above NEXT, and its tap goes to Needs", () => {
+    const show = readFileSync(new URL("../src/host/show.tsx", import.meta.url), "utf8");
+    expect(show.indexOf('data-testid="host-show-asks"')).toBeGreaterThan(-1);
+    expect(show.indexOf('data-testid="host-show-asks"')).toBeLessThan(show.indexOf("<NextBox big"));
+    expect(show).toContain('onClick={() => c.ctx?.go("needs")}');
   });
 });
 

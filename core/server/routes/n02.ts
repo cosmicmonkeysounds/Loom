@@ -13,12 +13,13 @@
 //! **fresh token** (persisted like a registration's, cut by every restart
 //! like one) and strips the code from the URL. So a guest who copies their
 //! own token can't hand themselves to someone else's phone, and no
-//! long-lived credential ever sits in a URL. The guest's old tokens
-//! stay valid by default (it also moves a guest onto a loaner phone; the old
-//! one is gone or harmless) — **`revokeOthers: true`** cuts them instead
-//! (a phone someone else picked up: its tokens, streams and push devices
-//! go). A director's persona (`p-…`) is refused with 409: personas are
-//! puppeted from the cockpit, never paired to a phone. Nothing is
+//! long-lived credential ever sits in a URL. Wave 59: a Person is one
+//! phone's (`routes/rejoin.ts`, One holder), so the spent code is a release:
+//! the old phone is signed out as the new one comes in.
+//! **`revokeOthers: true`** cuts it at once instead, before the code is
+//! spent (a phone someone else picked up: its tokens, streams and push
+//! devices go). A director's persona (`p-…`) is refused with 409: personas
+//! are puppeted from the cockpit, never paired to a phone. Nothing is
 //! journaled — a token is not a story fact.
 //!
 //! **Release** (`POST /e/:id/api/mod/prime/release {character}`): a part is
@@ -32,13 +33,20 @@
 //! frees its part the same way, so a performer moving to another phone (the
 //! iPhone Home Screen icon, K-31b) needs no director.
 //!
+//! **A guest's release** (wave 59). `POST /e/:id/api/mod/guest/release {id}`
+//! (on the host allowlist) and the phone's own Leave the event (`POST
+//! /e/:id/api/guest/logout`, its token) sign the guest's phone out, so their
+//! badge or invitation can sign in again. The Person, codex and score stay.
+//!
 //! **Home Screen nonce** (K-31b, `routes/k31b.ts`): behind `LOOM_HOMESCREEN`,
 //! a guest mints a pair code for *themselves* (`POST /api/guest/homescreen`)
 //! that their iPhone's Home Screen app spends at the same resume route. It
 //! is its own kind of code: 12 h, the guest's newest `HOMESCREEN_KEEP` stay
 //! good (Safari may reload the tab — and mint again — between Add to Home
 //! Screen and the icon's first open), a director's QR and this never void
-//! each other, and `revokeOthers` voids both.
+//! each other, and `revokeOthers` voids both. Spending it adds a token: it is
+//! the same phone in its own browser, so it is the one sign-in that doesn't
+//! sign the other out. Every release voids the guest's nonces.
 
 import { randomBytes, randomUUID } from "node:crypto";
 import type { ServerResponse } from "node:http";
@@ -49,10 +57,16 @@ import { HOMESCREEN_TTL_MS, homescreenEnabled, homescreenManifestPath } from "./
 
 export const PAIR_ROUTE = "/api/mod/guest/pair";
 export const RELEASE_ROUTE = "/api/mod/prime/release";
+/** Wave 59: sign a guest's phone out; their badge can sign in again. */
+export const GUEST_RELEASE_ROUTE = "/api/mod/guest/release";
 /** The phone's side: exchange a pair code for a guest token. */
 export const RESUME_ROUTE = "/api/guest/resume";
 /** A booth signing itself out: frees its part. */
 export const LOGOUT_ROUTE = "/api/prime/logout";
+/** A guest leaving the event: frees their Person. */
+export const GUEST_LOGOUT_ROUTE = "/api/guest/logout";
+/** A released token's 401: the phone says why it is out. */
+export const SIGNED_OUT = "signed out on this phone";
 /** How long a re-pair QR stays good. */
 export const PAIR_TTL_MS = 10 * 60_000;
 /** Home Screen nonces kept per guest (K-31b); a fourth drops the oldest. */
@@ -91,6 +105,8 @@ export interface PairingHost {
   persistSessions(): void;
   /** Close the real booth streams for a character (not directors' panes). */
   endBooths(character: string): void;
+  /** A release: the Person's or part's open asks end (wave 59). */
+  closeAsks?(id: string): void;
   joinBase(): string;
   eventCode(): string;
   /** Mint a token (injected for tests). */
@@ -129,6 +145,7 @@ export class Pairing {
   handle(path: string, res: ServerResponse, body: Record<string, unknown>): boolean {
     if (path === PAIR_ROUTE) return this.pair(res, body);
     if (path === RELEASE_ROUTE) return this.release(res, body);
+    if (path === GUEST_RELEASE_ROUTE) return this.releaseGuest(res, body);
     return false;
   }
 
@@ -146,6 +163,7 @@ export class Pairing {
       sendJson(res, 410, { error: "that re-pair code has expired — ask the director for a new one" });
       return true;
     }
+    if (hit.kind === "pair") this.cut(hit.id);
     const token = (this.host.mint ?? randomUUID)();
     this.host.addGuestToken(token, hit.id);
     sendJson(res, 200, { ok: true, id: hit.id, name: person.name, token });
@@ -197,29 +215,63 @@ export class Pairing {
     if (token !== undefined && s !== undefined && s.character !== null) {
       this.host.sessions.dropCharacter(token);
       this.host.persistSessions();
+      this.host.closeAsks?.(s.character);
     }
     sendJson(res, 200, { ok: true });
     return true;
   }
 
-  private pair(res: ServerResponse, body: Record<string, unknown>): true {
+  /** `POST /api/guest/logout`: the guest `id` the caller's token stands for
+   *  lets go of their Person (undefined: nothing to let go of). Always 200,
+   *  like a booth's Sign out. */
+  guestLogout(res: ServerResponse, id: string | undefined): true {
+    if (id !== undefined) this.cut(id);
+    sendJson(res, 200, { ok: true });
+    return true;
+  }
+
+  /** Sign guest `id`'s phone out: its tokens, the nonce that would bring it
+   *  back, and the asks made while it held them. A director's re-pair QR
+   *  stays good. Every release of a guest comes through here. */
+  cut(id: string): number {
+    this.sweep(id, "homescreen");
+    this.host.closeAsks?.(id);
+    return this.host.revokeGuest(id);
+  }
+
+  /** The guest a mod route names, or null once it has answered why not. */
+  private guestFor(res: ServerResponse, body: Record<string, unknown>): { id: string; name: string } | null {
     const sim = this.host.sim();
     if (sim === null) {
       sendJson(res, 409, { error: "no scenario loaded" });
-      return true;
+      return null;
     }
     const id = str(body, "id");
     const person = sim.persons.get(id);
     if (person === undefined) {
       sendJson(res, 404, { error: "unknown guest" });
-      return true;
+      return null;
     }
     if (this.host.isPersona(id)) {
       sendJson(res, 409, { error: "that's a director's persona — play it from the cockpit, not a phone" });
-      return true;
+      return null;
     }
+    return { id, name: person.name };
+  }
+
+  private releaseGuest(res: ServerResponse, body: Record<string, unknown>): true {
+    const guest = this.guestFor(res, body);
+    if (guest === null) return true;
+    sendJson(res, 200, { ok: true, id: guest.id, name: guest.name, released: this.cut(guest.id) });
+    return true;
+  }
+
+  private pair(res: ServerResponse, body: Record<string, unknown>): true {
+    const guest = this.guestFor(res, body);
+    if (guest === null) return true;
+    const { id, name } = guest;
     const revokeOthers = body["revokeOthers"] === true;
-    const revoked = revokeOthers ? this.host.revokeGuest(id) : 0;
+    const revoked = revokeOthers ? this.cut(id) : 0;
     // Only the newest QR for a guest works; expired codes are swept here.
     // Cutting the lost phone also voids any Home Screen code it minted.
     this.sweep(id, revokeOthers ? null : "pair");
@@ -229,7 +281,7 @@ export class Pairing {
     sendJson(res, 200, {
       ok: true,
       id,
-      name: person.name,
+      name,
       pair,
       expiresAt,
       revoked,
@@ -248,6 +300,7 @@ export class Pairing {
     const released = releasePart(this.host.sessions, character);
     if (released > 0) this.host.persistSessions();
     this.host.endBooths(character);
+    this.host.closeAsks?.(character);
     sendJson(res, 200, { ok: true, character, released });
     return true;
   }

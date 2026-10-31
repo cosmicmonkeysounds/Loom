@@ -78,7 +78,7 @@ interface AudioInput {
 
 | | |
 |---|---|
-| Outputs | 1 `Analog 1 — Living sub`, 2 `Analog 2 — spare`, 3/4 Kitchen L/R, 5 Hall, 6 Steam Room, 7 CPU, 8 Optical Drive, 9 `Main L — Living L`, 10 `Main R — Living R`, 11/12 Phones L/R |
+| Outputs | 1 `Analog 1 — Living sub`, 2 `Analog 2 — spare`, 3/4 Kitchen L/R, 5 Hall, 6 Power Supply, 7 CPU, 8 Optical Drive, 9 `Main L — Living L`, 10 `Main R — Living R`, 11/12 Phones L/R |
 | Speakers | `living-l` out [9], `living-r` out [10], `living-sub` out [1] (room `desktop`), `kitchen-l` [3], `kitchen-r` [4], `optical-drive` [8] |
 | Zones | `living` = living-l, living-r, living-sub |
 | Inputs | ch 1 `Mic/Gtr 1 — Clippy's wireless (CueMix)`, `role: clippy`, `reach: [living]`; ch 3 `Analog 1 in — the TV (Trabolta)`, `role: trabolta`, `reach: [everywhere]` (he ducks every speaker, the sub included; the default reach, his route, would leave the sub out) |

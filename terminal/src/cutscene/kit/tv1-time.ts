@@ -273,14 +273,15 @@ export interface BootLine {
   after?: number;
 }
 
-/** The introduction's POST lines, racing (the whole POST is ≈ 1.5 s: he speaks at once). Never more than the story says: the owner, by video conference. */
+/** The introduction's POST lines, racing (the whole POST is ≈ 1.5 s: he speaks at once). Never more than the story says: the owner, by digital conference. */
 export const INTRO_POST: readonly BootLine[] = [
   { at: 200, text: "Main Processor : Desktop-233", status: "OK", after: 40 },
   { at: 270, text: "Memory Test :", status: "", after: 0 },
   { at: 360, text: "Detecting Primary Master ..... THE DESKTOP", status: "OK", after: 30 },
   { at: 420, text: "Detecting Primary Slave ...... THE INTERNET", status: "OK", after: 30 },
   { at: 480, text: "Detecting Programs ...........", status: "FOUND", after: 30 },
-  { at: 540, text: "Connecting video conference ..", status: "OK", after: 30 },
+  // DRAFT w58 (digital conference)
+  { at: 540, text: "Connecting digital conference ", status: "OK", after: 30 },
 ];
 
 // --- the introduction's voice ----------------------------------------------------------------
