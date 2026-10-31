@@ -268,7 +268,7 @@ export function DeskBody({ view, calls, client, me, mixer, startTab }: { view: D
         {tab === "cues" && <CuesTab view={view} calls={calls} act={act} now={now} playingAt={playingAt} />}
         {tab === "music" && mixer !== undefined && <MusicSection auth={mixer} calls={calls} />}
         {tab === "mix" && mixer !== undefined && <MixerSection auth={mixer} calls={calls} />}
-        {tab === "house" && <DeskHouse calls={calls} act={act} tryIt={<TryIt view={view} calls={calls} act={act} say={say} setSay={setSay} />} />}
+        {tab === "house" && <DeskHouse auth={mixer} calls={calls} act={act} tryIt={<TryIt view={view} calls={calls} act={act} say={say} setSay={setSay} />} />}
         {tab === "setup" && (
           <>
             <How view={view} />

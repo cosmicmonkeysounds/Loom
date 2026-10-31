@@ -308,7 +308,7 @@ The refused screen and its neighbours carry no marker, because they are app word
 | `play/src/booth/people.tsx` | 46 |
 | `play/src/director.tsx` | 1374 |
 | `play/src/guest/register.tsx` | 173 |
-| `play/src/host/desk-house.tsx` | 13, 29 |
+| `play/src/host/desk-house.tsx` | 13, 30 |
 | `play/src/host/desk-model.ts` | 441 |
 | `play/src/host/desk-tabs.ts` | 3 |
 | `play/src/host/prompter-strip.tsx` | 22, 28 |

@@ -283,8 +283,8 @@ describe("what the Desk may never do", () => {
   it("a named place waits for 📷 Photos and 📢 Audio ads", () => {
     const s = src("desk-house.tsx");
     expect(s).toContain("LANDING SLOT");
-    expect(s).toContain("function LandingSlot()");
-    expect(s).toContain("<LandingSlot />");
+    expect(s).toContain("function LandingSlot(");
+    expect(s).toContain("<LandingSlot auth={auth} calls={calls} />");
   });
 
   it("the tabs are thumb-sized and fit a phone with no sideways scroll", () => {

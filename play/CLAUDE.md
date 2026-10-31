@@ -743,7 +743,7 @@ dream (`dreamRow`: the story's `dream_toggle` through `calls.cue`, off behind cl
 doors), ⚡, ■ + the announcement, Try it and the terminals (`terminalLines`: silent
 first, `majorityBuild`). It reaches nothing a host couldn't already: `RUN_ONLY` says
 where the costume's switch and the descent are. **Landing:** `LandingSlot` in
-`desk-house.tsx` is the one place for 📷 Photos and 📢 Audio ads. Never on the Desk: Go
+`desk-house.tsx` is the one place for 📷 Photos and 📢 Audio ads, and it has `auth` and `calls`. Never on the Desk: Go
 live, Push draft, Restart, End (`test/w59-desk-tabs.test.tsx`). Driven in Chromium at
 390 × 780 by `scripts/sim/desk.spec.ts`.
 

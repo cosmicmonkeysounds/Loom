@@ -17,6 +17,7 @@ import type { ApiError } from "../client.ts";
 import { VOICE_FLAVOURS, VOICE_FLAVOUR_LABEL, VOICE_FX_MODES, type VoiceFlavour } from "../../../core/src/voice-fx.ts";
 import type { HostView } from "../types.ts";
 import type { HostCalls } from "./api.ts";
+import type { HostAuth } from "./client.ts";
 import { useHostConsole } from "./dock.tsx";
 import { DREAM_CUE, DREAM_NOT_NOW, VOICE_MODE_WORD, dreamDone, dreamRow, terminalLines, terminalsAside, voiceModeLine } from "./desk-tabs.ts";
 import { ActButton, ConfirmButton, HostEmpty, HostSection } from "./kit.tsx";
@@ -32,25 +33,26 @@ export const RUN_ONLY = "A director's, on Run → Terminals and the House map ca
 /**
  * LANDING SLOT. 📷 Photos and 📢 Audio ads go here, and nowhere else on the Desk.
  *
- * Wire both at landing, in this order, and take `auth` and `calls` from
- * `DeskHouseBody`, which has them:
- *   - `PhotosSection` from `./photos.tsx` (lane `oct31-w59/photos`). Remove the one
- *     line that lane mounted in `DeskBody` after the Mixer.
+ * Wire both at landing, in this order. `auth` is undefined only outside a booth.
+ *   - `PhotosSection` from `./photos.tsx` (lane `oct31-w59/photos`). Remove the line
+ *     and the import that lane added to `desk.tsx`.
  *   - the ads' on/off switch (lane `oct31-w59/audio-ads`).
  */
-function LandingSlot() {
+function LandingSlot(_slot: { auth: HostAuth | undefined; calls: HostCalls }) {
   return null;
 }
 
 /** The console's view over the body. Outside a console (the tests) it is empty. */
-export function DeskHouse({ calls, act, tryIt }: { calls: HostCalls; act: Act; tryIt: ReactNode }) {
+export function DeskHouse({ auth, calls, act, tryIt }: { auth: HostAuth | undefined; calls: HostCalls; act: Act; tryIt: ReactNode }) {
   const c = useHostConsole();
-  return <DeskHouseBody view={c?.view ?? null} rows={c?.rows ?? []} calls={calls} act={act} refresh={() => c?.client.refresh()} tryIt={tryIt} />;
+  return <DeskHouseBody view={c?.view ?? null} rows={c?.rows ?? []} auth={auth} calls={calls} act={act} refresh={() => c?.client.refresh()} tryIt={tryIt} />;
 }
 
 export interface DeskHouseBodyProps {
   view: HostView | null;
   rows: readonly { id: string; live: boolean }[];
+  /** The booth's token, for what polls for itself (the landing slot). */
+  auth?: HostAuth | undefined;
   calls: HostCalls;
   act: Act;
   /** A fresh host view after a write. */
@@ -59,7 +61,7 @@ export interface DeskHouseBodyProps {
 }
 
 /** The tab over one view (the tests render it with a fixture). */
-export function DeskHouseBody({ view, rows, calls, act, refresh, tryIt }: DeskHouseBodyProps) {
+export function DeskHouseBody({ view, rows, auth, calls, act, refresh, tryIt }: DeskHouseBodyProps) {
   const send: Act = (done, call, refusal) => act(done, call, refusal).finally(refresh);
   const t = view?.terminals ?? null;
   const dream = dreamRow(rows, t?.dream, view === null || view.doorsClosed === true || view.runtime === "idle");
@@ -83,7 +85,7 @@ export function DeskHouseBody({ view, rows, calls, act, refresh, tryIt }: DeskHo
           <ActButton className="host-desk-wide" label="⚡ Glitch" onClick={() => send((a) => glitchText(a as Record<string, unknown>), () => calls.cue(glitch, null, null))} />
         </HostSection>
       )}
-      <LandingSlot />
+      <LandingSlot auth={auth} calls={calls} />
       {tryIt}
       {t !== null && <TerminalsBox terminals={t} calls={calls} send={send} />}
       <p className="host-note" data-testid="host-desk-run-only">
