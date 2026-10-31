@@ -1,23 +1,23 @@
-//! The moments model (wave 13, the moments lane): the pure part of the
-//! interrupt layer. A *moment* is something the story wants a phone to
-//! notice — a `!` alert, a readout for you, a quest that starts, a card that
-//! asks you, a loud objective going live, and at `bsod` the first line of
-//! every beat that reaches you. Each one renders on a rung of the Win95
-//! ladder (balloon → sticky → dialog → bsod): a major moment at the story's
-//! level, a minor one a rung lower (never below a balloon), a booth never
-//! above `sticky`.
-//!
-//! Wave 18 adds the **big** rung (`moment: "big"`, CONTRACTS C1): full
-//! screen whatever the level, acknowledged once, replayed until it is; and
-//! the hygiene of GUEST-SPEC §7 — priority tiers, one house banner, a phase
-//! change retiring old house moments to Notifications, at most three blue
-//! screens, no Dismiss all, and a wake that brings back only the unacked
-//! bigs and the newest live house banner (everything else is an unread
-//! Notifications row). A booth's big moment is a pop-out (`popout.tsx`).
-//!
-//! Everything here is a pure function or a reducer over plain data, so the
-//! queue, the hold, the missed list and the wake replay are unit-tested
-//! (`test/moments-model.test.ts`) without React. `provider.tsx` drives it.
+// The moments model (wave 13, the moments lane): the pure part of the
+// interrupt layer. A *moment* is something the story wants a phone to
+// notice — a `!` alert, a readout for you, a quest that starts, a card that
+// asks you, a loud objective going live, and at `bsod` the first line of
+// every beat that reaches you. Each one renders on a rung of the Win95
+// ladder (balloon → sticky → dialog → bsod): a major moment at the story's
+// level, a minor one a rung lower (never below a balloon), a booth never
+// above `sticky`.
+//
+// Wave 18 adds the **big** rung (`moment: "big"`, CONTRACTS C1): full
+// screen whatever the level, acknowledged once, replayed until it is; and
+// the hygiene of GUEST-SPEC §7 — priority tiers, one house banner, a phase
+// change retiring old house moments to Notifications, at most three blue
+// screens, no Dismiss all, and a wake that brings back only the unacked
+// bigs and the newest live house banner (everything else is an unread
+// Notifications row). A booth's big moment is a pop-out (`popout.tsx`).
+//
+// Everything here is a pure function or a reducer over plain data, so the
+// queue, the hold, the missed list and the wake replay are unit-tested
+// (`test/moments-model.test.ts`) without React. `provider.tsx` drives it.
 
 import { lowerRung, noticeKey } from "../../../core/src/delivery.ts";
 import { retractedPinSeqs } from "../pins.ts";

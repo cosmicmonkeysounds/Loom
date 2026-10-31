@@ -154,6 +154,11 @@ export interface ChatMessage {
   pick?: true;
   /** Wave 28: beside `pick`, the pick was a deed (`[shows the Sandy File]`). */
   act?: true;
+  /** Wave 55: a line of a beat marked `aloud:` — a teleprompter script. The
+   *  beat name (`beat`) is its section. `readers` hold it on their prompter
+   *  (`@<Character>` or a guest id); `reader`, one of them, says this line
+   *  out loud (absent: a cue or a stage direction). */
+  aloud?: { readers: string[]; reader?: string };
   /** A per-person notice (`broadcast "~…"`): its collapse key (`noticeKey`). Consecutive notices in a room collapse client-side. */
   notice?: string;
   /** A `reply` readout (the `respond` event). */
@@ -281,8 +286,8 @@ export const HISTORY_LIMIT = 400;
  * viewer's whole record), every sticky pin / unpin (a `!!` takeover must
  * survive a reconnect), every `!` alert (a phone waking banners the newest
  * one it missed), every card (one still unanswered must stay answerable),
- * every row `personal` says is the viewer's own (their DMs — the public
- * rooms are what grows), and the root of any reply that is kept (a thread
+ * every row `personal` says is the viewer's own (their DMs and their
+ * teleprompter's lines — the public rooms are what grows), and the root of any reply that is kept (a thread
  * never loses its head). Seq-ordered.
  */
 export function capHistory(msgs: readonly ChatMessage[], limit = HISTORY_LIMIT, personal: (m: ChatMessage) => boolean = () => false): ChatMessage[] {
@@ -309,7 +314,8 @@ export function capHistory(msgs: readonly ChatMessage[], limit = HISTORY_LIMIT, 
  *  every row addressed to them alone. */
 export function guestOwnRow(id: string): (m: ChatMessage) => boolean {
   return (m) =>
-    Array.isArray(m.audience) && (m.channel.startsWith("dm:") || m.channel.startsWith("pm:") || (m.audience.length === 1 && m.audience[0] === id));
+    m.aloud?.readers.includes(id) === true ||
+    (Array.isArray(m.audience) && (m.channel.startsWith("dm:") || m.channel.startsWith("pm:") || (m.audience.length === 1 && m.audience[0] === id)));
 }
 
 /** `capHistory`'s `personal` for the booth of `character`: every row
@@ -320,7 +326,7 @@ export function guestOwnRow(id: string): (m: ChatMessage) => boolean {
 export function boothOwnRow(character: string): (m: ChatMessage) => boolean {
   const me = `@${character}`;
   const dm = `dm:${character}`;
-  return (m) => Array.isArray(m.audience) && (m.audience.includes(me) || m.channel === dm);
+  return (m) => m.aloud?.readers.includes(me) === true || (Array.isArray(m.audience) && (m.audience.includes(me) || m.channel === dm));
 }
 
 function factionChannel(faction: string): ChannelHead {
@@ -597,6 +603,43 @@ const listWords = (words: readonly string[]): string =>
   words.length < 2 ? (words[0] ?? "") : `${words.slice(0, -1).join(", ")} and ${words[words.length - 1]}`;
 
 /**
+ * Wave 55: who reads a beat out loud, from its `aloud:` line (`aloud: Clippy,
+ * Task Manager`, `aloud: {Night.bobber}`): `@<Character>` for a part, the
+ * guest's id for a program named by a `{…}`. A `{…}` naming nobody yet reads
+ * as nobody.
+ */
+export function aloudReaders(sim: Sim, beat: string | null): string[] {
+  const raw = beat !== null ? sim.model.beats.get(beat)?.contract.get("aloud")?.value : undefined;
+  if (raw === undefined) return [];
+  const readers: string[] = [];
+  for (const item of raw.split(",")) {
+    const word = item.trim();
+    if (!word.includes("{")) {
+      if (sim.model.characters.has(word)) readers.push(`@${word}`);
+      continue;
+    }
+    // Always a guest: a featured program is a CHARACTER too, with no booth.
+    const said = sim.worldText(word).trim();
+    for (const p of sim.persons.values()) if (p.name === said) readers.push(p.id);
+  }
+  return [...new Set(readers)];
+}
+
+/** A line's `aloud` field: `speaker` is `@<Character>`, or null for narration
+ *  (a program reader's words, a part's stage direction). */
+function aloudOf(sim: Sim, beat: string | null, speaker: string | null): { aloud?: NonNullable<ChatMessage["aloud"]> } {
+  const readers = aloudReaders(sim, beat);
+  if (readers.length === 0) return {};
+  const reader = speaker !== null ? readers.find((r) => r === speaker) : readers.find((r) => !r.startsWith("@"));
+  return { aloud: { readers, ...(reader !== undefined ? { reader } : {}) } };
+}
+
+/** Who says a line in this batch: the phones to wake for their script. */
+export function aloudSpeakers(messages: readonly DraftMessage[]): string[] {
+  return [...new Set(messages.flatMap((m) => (m.aloud?.reader !== undefined ? [m.aloud.reader] : [])))];
+}
+
+/**
  * Route a freshly-emitted batch of sim events into guest-facing messages.
  * Pure apart from reading the sim's current clock + faction membership, both
  * of which are deterministic functions of the replayed command history.
@@ -633,7 +676,7 @@ export function composeGuestMessages(sim: Sim, events: readonly SimEvent[], opts
           // Un-addressed scripted speech (no participant bound — e.g. the
           // NARRATOR of an entry beat) is stage voice: it plays in the
           // setting's room for everyone, not a nobody-can-see-it DM.
-          out.push({ ...storyChannel(sim, e.setting), from: e.speaker, kind: "line", text: e.text, ts, audience: "all", parentSeq: null, beat: e.beat, ...delivery });
+          out.push({ ...storyChannel(sim, e.setting), from: e.speaker, kind: "line", text: e.text, ts, audience: "all", parentSeq: null, beat: e.beat, ...delivery, ...aloudOf(sim, e.beat, `@${e.speaker}`) });
         }
         break;
       }
@@ -643,7 +686,7 @@ export function composeGuestMessages(sim: Sim, events: readonly SimEvent[], opts
         // game-only beat's narration stays out of chat too (C6).
         if (isGameOnlyBeat(e.beat)) break;
         const delivery = { ...(e.manner !== undefined ? { manner: e.manner } : {}), ...(isEffectManner(e.manner) ? { fx: true as const } : {}) };
-        out.push({ ...storyChannel(sim, e.setting), from: "Narrator", kind: "narration", text: e.text, ts, audience: "all", parentSeq: null, beat: e.beat, ...delivery });
+        out.push({ ...storyChannel(sim, e.setting), from: "Narrator", kind: "narration", text: e.text, ts, audience: "all", parentSeq: null, beat: e.beat, ...delivery, ...aloudOf(sim, e.beat, null) });
         break;
       }
       case "widget": {

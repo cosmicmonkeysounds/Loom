@@ -3,7 +3,7 @@ title: Performer station
 section: Performers
 order: 7
 role: performer
-keywords: upload, uploading, your upload, staff door, not you, performer, booth, player, players, mission, score, points, stat, notes, team, people, new mission, your game is on, pop-out, popout, later, waiting, wanted, wanted board, claim, i'll get them, hand it back, take over, confrontation, corruption detected, captured, caught by, door queue, at the door, player select, tiles, picker, still missing, they're here, cue bar, your cue, call it, clippy, chat log, chats, now, objective, checklist, to-do, tick, alert, chime, late, keep screen on, push, notifications, get alerts, iphone, home screen, release, re-sign, loaner, lost phone, file a fact, filed fact, judge, judging, verdict, confidence, override, review, hosts, character, sign in, scanner, scan, camera, next guest, close, back, one tap, readout, readouts, admin, moderator, capture, hide, guest card, card, face, all buttons, not on offer, facts, guests, messages, who's here, restricted, marked, pinned, pin, quest log, codex, wallet, approve, deny, audit, approval, transfer, arm, tap twice, tap again to fire, near miss, not your button, start, taskbar, balloon, sticky
+keywords: teleprompter, read out loud, read aloud, script, my script, lines, upload, uploading, your upload, staff door, not you, performer, booth, player, players, mission, score, points, stat, notes, team, people, new mission, your game is on, pop-out, popout, later, waiting, wanted, wanted board, claim, i'll get them, hand it back, take over, confrontation, corruption detected, captured, caught by, door queue, at the door, player select, tiles, picker, still missing, they're here, cue bar, your cue, call it, clippy, chat log, chats, now, objective, checklist, to-do, tick, alert, chime, late, keep screen on, push, notifications, get alerts, iphone, home screen, release, re-sign, loaner, lost phone, file a fact, filed fact, judge, judging, verdict, confidence, override, review, hosts, character, sign in, scanner, scan, camera, next guest, close, back, one tap, readout, readouts, admin, moderator, capture, hide, guest card, card, face, all buttons, not on offer, facts, guests, messages, who's here, restricted, marked, pinned, pin, quest log, codex, wallet, approve, deny, audit, approval, transfer, arm, tap twice, tap again to fire, near miss, not your button, start, taskbar, balloon, sticky
 ---
 
 The performer station is the same app, recomposed for the booth: your
@@ -130,6 +130,28 @@ Under the checklist the card can carry **one extra row**: **🚨 Wanted board
 objective is about (the bottle's), **🎮 PLAYER SELECT (n)** or **📋 a list
 (n)** of the programs to work through, or one or two buttons that act on
 no particular guest. Tap it.
+
+## Reading out loud
+
+When the story has words for you to say, your whole phone turns into **📜 READ
+THIS OUT LOUD**, with a sound. It can't be closed: it stays until you have read
+them. Tap it for the teleprompter.
+
+- **Your lines** are big and white. Small grey lines are cues: what someone else
+  says, or what happens in the room. Yellow marks the reading line.
+- **▶ Scroll** moves the words for you, and **− / +** or the slider set the
+  speed. A finger on the words holds them. Or just scroll by hand.
+- **The strip down the right edge** is the whole script. Drag it to preview a
+  line and let go to jump there. **↩** takes you back to where you were.
+- **≡ Jump** lists every section, with NEW on the ones you haven't read. **⏮ ⏭**
+  go a section at a time and **↶ ↷** a line at a time.
+- **A− A+** change the size. Your speed and size stay on this phone.
+- **✓ Done** when you finish. Before the last line it asks you to tap twice.
+
+✕ only goes back to the pop-up. New lines join the end of the script, so a line
+landing while you read shows **＋ new lines**, and a line after ✓ Done pops up
+again. To read anything again: ⊞ Start → **📜 My script**. The screen stays on
+while the teleprompter is open.
 
 ## Pop-outs
 

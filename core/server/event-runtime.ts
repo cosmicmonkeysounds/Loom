@@ -26,7 +26,7 @@ import { allSnapshotFlags, arrivalDue, awardOnly, boothChannels, callsCue, playe
 import { passOk, type Passcodes } from "./auth.ts";
 import { SessionStore } from "./session.ts";
 import { Store, type AgentWait, type AgentWaits, type Mutation } from "./store.ts";
-import { ChatStore, HISTORY_LIMIT, boothOwnRow, capHistory, composeGuestMessages, goForViewer, guestOwnRow, decisionChannelFor, isPinnedRoom, menuChannelsFor, momentLines, readoutText, visibleTo, type ChatMessage, type ComposeOptions, type DraftMessage } from "./chat.ts";
+import { ChatStore, HISTORY_LIMIT, aloudSpeakers, boothOwnRow, capHistory, composeGuestMessages, goForViewer, guestOwnRow, decisionChannelFor, isPinnedRoom, menuChannelsFor, momentLines, readoutText, visibleTo, type ChatMessage, type ComposeOptions, type DraftMessage } from "./chat.ts";
 import { CASINO_BET_GAP_MS, DIRECTOR, WalletBook, walletSeam, type WalletOp, type WalletRefusal } from "./wallet.ts";
 import { TerminalVisits } from "./terminal-visits.ts";
 import { payoutOf, rollFor, type CasinoGame } from "../src/casino.ts";
@@ -69,7 +69,7 @@ import { LOGOUT_ROUTE, Pairing, RESUME_ROUTE, releasePart } from "./routes/n02.t
 import { BADGES_ROUTE, BADGE_ROUTE, ENTER_ROUTE, REJOIN_DECIDE_ROUTE, REJOIN_NAMES_ROUTE, REJOIN_POLL_ROUTE, REJOIN_ROUTE, Rejoin, partCode, partUrl } from "./routes/rejoin.ts";
 import { HOMESCREEN_ROUTE } from "./routes/k31b.ts";
 import { PushRoutes } from "./routes/k31.ts";
-import { PushHub, boothOwner, guestOwner, messagePush, pushConfigFromEnv, readoutPush, webPushSender, type PushSender } from "./push.ts";
+import { PushHub, aloudPush, boothOwner, guestOwner, messagePush, pushConfigFromEnv, readoutPush, webPushSender, type PushSender } from "./push.ts";
 import { printExtras } from "./routes/k12.ts";
 import { buildCards } from "./routes/cards.ts";
 import { CLAIM_UNLOCK_ROUTE, Claims, mintClaimSecret } from "./routes/claims.ts";
@@ -382,12 +382,14 @@ export type LifecycleKind = "reset" | "reload" | "golive" | "ended";
 
 /** A message as a guest client may see it: never the director attribution
  *  a mod `say`-as-a-participant carries. */
-function forGuest(m: ChatMessage, sim: Sim | null = null, viewer: string | null = null): ChatMessage {
+export function forGuest(m: ChatMessage, sim: Sim | null = null, viewer: string | null = null): ChatMessage {
   // Wave 18 (C2): a guest gets only the exits to rooms they can see.
   const seen = viewer !== null ? goForViewer(m, sim, viewer) : m;
-  if (seen.via === undefined) return seen;
-  const { via: _via, ...rest } = seen;
-  return rest;
+  // Wave 55: another reader's script is only a line in the room.
+  const notTheirs = seen.aloud !== undefined && (viewer === null || !seen.aloud.readers.includes(viewer));
+  if (seen.via === undefined && !notTheirs) return seen;
+  const { via: _via, aloud, ...rest } = seen;
+  return notTheirs || aloud === undefined ? rest : { ...rest, aloud };
 }
 
 /** A game's own high-rate calls (`/api/spatial/*` POSTs) carry tiny bodies —
@@ -2275,6 +2277,11 @@ export class EventRuntime {
       }
     }
     appended.push(...compose(from === 0 ? events : events.slice(from)));
+    // Wave 55: a phone in a pocket hears its script is waiting.
+    for (const reader of aloudSpeakers(appended)) {
+      const title = appended.find((m) => m.aloud?.reader === reader)?.beat ?? "Your script";
+      this.push.notify(reader.startsWith("@") ? boothOwner(reader.slice(1)) : guestOwner(reader), aloudPush(title), false);
+    }
     // A commit whose events never reached a fanout: its lines go now.
     for (const crew of this.crewAfter.values()) post(crew);
     this.crewAfter.clear();

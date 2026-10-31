@@ -142,6 +142,8 @@ export const Code = {
   /** `with ack: none` on a moment tail with no `go:` in the same tail: the
    *  phone shows its usual OK anyway (wave 26, C1, a warning). */
   L1226AckNoneWithoutGo: "L1226",
+  /** A beat's `aloud:` names no signable part and no `{…}` (wave 55). */
+  L1227AloudNobody: "L1227",
 } as const;
 
 export type Code = (typeof Code)[keyof typeof Code];

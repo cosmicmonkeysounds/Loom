@@ -1,23 +1,23 @@
-//! The moments layer (wave 13; the moments lane owns it): one queue of the
-//! story's moments, rendered by the interrupt ladder — a tray balloon tip, a
-//! sticky banner, a Win95 dialog box, a blue screen — plus the quiet
-//! feedback toast, the glitch on every level change, the missed count for
-//! the taskbar tray and the busy-surface hold. The pure rules are in
-//! `model.ts`; this file is the React engine around them.
-//!
-//! Mounted by both apps (`guest/app.tsx`, `booth/app.tsx`): the provider
-//! wraps the root, `<MomentsLayer/>` sits where the sticky banner should
-//! flow (directly under the title bar), and the full-screen surfaces are
-//! `position: fixed` layers at the tokens' z values.
-//!
-//! Wave 18: the big moment (`BigMoment`, every guest, whatever the level),
-//! every surface's exits from `exits.ts` (a guest app passes `go` +
-//! `exitContext`; without them the old room / pass exits stand), the
-//! Notifications rows (`BellButton` here; the window and `useNotifications`
-//! in `notifications.tsx`, which loads with the window), the per-sign-in
-//! memory of acknowledged bigs / seen moments / deleted rows, and a booth's
-//! pop-outs (`popOutAdapter` feeds them to the store in `popout.tsx`, the
-//! booth's chunk, through `popout-registry.ts`).
+// The moments layer (wave 13; the moments lane owns it): one queue of the
+// story's moments, rendered by the interrupt ladder — a tray balloon tip, a
+// sticky banner, a Win95 dialog box, a blue screen — plus the quiet
+// feedback toast, the glitch on every level change, the missed count for
+// the taskbar tray and the busy-surface hold. The pure rules are in
+// `model.ts`; this file is the React engine around them.
+//
+// Mounted by both apps (`guest/app.tsx`, `booth/app.tsx`): the provider
+// wraps the root, `<MomentsLayer/>` sits where the sticky banner should
+// flow (directly under the title bar), and the full-screen surfaces are
+// `position: fixed` layers at the tokens' z values.
+//
+// Wave 18: the big moment (`BigMoment`, every guest, whatever the level),
+// every surface's exits from `exits.ts` (a guest app passes `go` +
+// `exitContext`; without them the old room / pass exits stand), the
+// Notifications rows (`BellButton` here; the window and `useNotifications`
+// in `notifications.tsx`, which loads with the window), the per-sign-in
+// memory of acknowledged bigs / seen moments / deleted rows, and a booth's
+// pop-outs (`popOutAdapter` feeds them to the store in `popout.tsx`, the
+// booth's chunk, through `popout-registry.ts`).
 
 import { Suspense, createContext, useCallback, useContext, useEffect, useMemo, useReducer, useRef, useState, type ReactNode } from "react";
 import { DEFAULT_ALERT_LEVEL } from "../../../core/src/delivery.ts";

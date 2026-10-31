@@ -281,6 +281,12 @@ export function readoutPush(character: string, text: string): PushPayload {
   return { kind: "readout", title: `🎭 ${character}`, body: clip(text), tag: `readout:${character}`, url: roomUrl("scanner") };
 }
 
+/** Wave 55: a script is waiting on this phone. A tap opens the app, whose
+ *  pop-up stays until it is read. DRAFT w55. */
+export function aloudPush(title: string): PushPayload {
+  return { kind: "alert", title: "📜 Read this out loud", body: title, tag: "aloud", url: "/" };
+}
+
 export interface PushHubInit {
   /** Null → push disabled (no keys). */
   sender: PushSender | null;

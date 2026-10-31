@@ -1,0 +1,124 @@
+/* ── the teleprompter (wave 55; `aloud/`) ─────────────────────────────────
+   Over everything: the app, the pass (45), a `!!` takeover (50) and the
+   glitch (55). White on black in both themes, the room may be dark. */
+.aloud-alert, .aloud-prompter, .aloud-plain {
+  position: absolute; inset: 0; z-index: 60;
+  font-family: var(--ui-font); background: var(--black); color: var(--white);
+}
+.aloud-alert {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px;
+  width: 100%; padding: calc(24px + var(--safe-top)) 20px calc(24px + var(--safe-bottom));
+  border: 12px solid var(--highlight); text-align: center; cursor: pointer;
+  animation: aloud-frame 1s steps(1, end) infinite;
+}
+@keyframes aloud-frame { 50% { border-color: var(--bad); } }
+.aloud-alert-head { font: 900 clamp(34px, 12vw, 76px)/1.02 var(--ui-font); color: var(--highlight); overflow-wrap: anywhere; }
+.aloud-alert-title { font: 700 clamp(22px, 7vw, 40px)/1.15 var(--ui-font); overflow-wrap: anywhere; }
+.aloud-alert-sub { font: 17px/1.3 var(--ui-font); color: rgba(255, 255, 255, 0.75); }
+.aloud-alert-go {
+  display: block; width: 100%; max-width: 420px; margin-top: 12px; padding: 22px 12px;
+  font: 800 22px/1.1 var(--ui-font); color: var(--black); background: var(--highlight); border-radius: var(--radius);
+}
+.aloud-prompter { display: flex; flex-direction: column; overflow: hidden; }
+.aloud-bar {
+  flex: none; display: flex; align-items: center; gap: 8px;
+  padding: calc(6px + var(--safe-top)) 8px 6px 12px; background: var(--highlight); color: var(--black);
+}
+.aloud-bar-words { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.aloud-bar-head { font: 900 15px/1.2 var(--ui-font); letter-spacing: 0.02em; }
+.aloud-bar-title { font: 13px/1.25 var(--ui-font); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.aloud-x {
+  flex: none; min-width: var(--tap); min-height: var(--tap); font: 700 20px/1 var(--ui-font);
+  color: inherit; background: transparent; border: 0; cursor: pointer;
+}
+.aloud-stage { position: relative; flex: 1; min-height: 0; }
+.aloud-text {
+  position: absolute; inset: 0 52px 0 0; overflow-y: auto; overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch; touch-action: pan-y; scrollbar-width: none;
+  padding: var(--aloud-mark, 30%) 8px 0 26px; line-height: 1.28;
+}
+.aloud-text::-webkit-scrollbar { display: none; }
+.aloud-section { margin: 1.2em 0 0.4em; font: 800 14px/1.2 var(--ui-font); letter-spacing: 0.08em; text-transform: uppercase; color: var(--highlight); }
+.aloud-text section:first-child .aloud-section { margin-top: 0; }
+.aloud-line { margin: 0 0 0.6em; overflow-wrap: anywhere; }
+.aloud-line.mine { font-weight: 650; color: rgba(255, 255, 255, 0.78); }
+.aloud-line.mine.now { color: var(--white); }
+.aloud-line.cue { font-size: 0.56em; line-height: 1.3; color: rgba(255, 255, 255, 0.5); }
+.aloud-who { font-weight: 700; }
+.aloud-manner { font-size: 0.56em; font-style: italic; font-weight: 400; color: var(--highlight); }
+.aloud-mark {
+  position: absolute; left: 6px; top: 30%; transform: translateY(0.2em);
+  font: 18px/1 var(--ui-font); color: var(--highlight); pointer-events: none;
+}
+.aloud-end { min-height: var(--aloud-tail, 70%); padding-top: 12px; text-align: center; font-size: 18px; color: rgba(255, 255, 255, 0.7); }
+.aloud-rail {
+  position: absolute; top: 6px; right: 6px; bottom: 6px; width: 40px; padding: 0 8px;
+  display: flex; flex-direction: column; gap: 1px; background: rgba(255, 255, 255, 0.08);
+  border-radius: 6px; touch-action: none; cursor: grab;
+}
+.aloud-rail i { flex-shrink: 1; flex-basis: 0; min-height: 0; border-radius: 1px; }
+.aloud-rail i.mine { background: rgba(255, 255, 255, 0.55); }
+.aloud-rail i.cue { background: rgba(255, 255, 255, 0.16); }
+.aloud-rail-tick { position: absolute; left: 0; right: 0; height: 2px; background: var(--highlight); }
+.aloud-rail-thumb {
+  position: absolute; left: -2px; right: -2px; height: 16px; margin-top: -2px;
+  border: 2px solid var(--highlight); border-radius: 5px; background: rgba(240, 215, 122, 0.25); pointer-events: none;
+}
+.aloud-preview {
+  position: absolute; right: 54px; left: 12px; padding: 10px 12px;
+  display: flex; flex-direction: column; gap: 4px; font: 16px/1.3 var(--ui-font);
+  color: var(--black); background: var(--highlight); border-radius: var(--radius); pointer-events: none;
+}
+.aloud-preview strong { font-size: 13px; }
+.aloud-preview-next { font-size: 13px; opacity: 0.7; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.aloud-chips { position: absolute; left: 12px; right: 56px; bottom: 8px; display: flex; flex-wrap: wrap; gap: 8px; pointer-events: none; }
+.aloud-chip {
+  pointer-events: auto; min-height: var(--tap); padding: 0 14px; font: 700 15px/1 var(--ui-font);
+  color: var(--white); background: #3a3936; border: 1px solid rgba(255, 255, 255, 0.4); border-radius: 22px; cursor: pointer;
+}
+.aloud-chip.fresh { color: var(--black); background: var(--highlight); border-color: var(--highlight); }
+.aloud-controls {
+  flex: none; display: flex; flex-direction: column; gap: 6px; width: 100%; max-width: none; margin: 0;
+  padding: 8px 8px calc(8px + var(--safe-bottom)); background: #26251f; border-top: 1px solid rgba(255, 255, 255, 0.2);
+}
+.aloud-row { display: flex; align-items: stretch; gap: 6px; }
+.aloud-row > button {
+  flex: 1; min-width: 0; min-height: 48px; padding: 0 6px; font: 700 18px/1 var(--ui-font);
+  color: var(--white); background: #3a3936; border: 0; border-radius: var(--radius); cursor: pointer;
+}
+.aloud-row > button:disabled { opacity: 0.35; cursor: default; }
+.aloud-row > .aloud-play { flex: 2.4; font-size: 22px; color: var(--black); background: var(--highlight); }
+.aloud-speed > button { flex: 0 0 56px; font-size: 26px; }
+.aloud-speed label { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 2px; font: 700 14px/1 var(--ui-font); text-align: center; }
+.aloud-speed input { width: 100%; height: 28px; margin: 0; accent-color: var(--highlight); }
+.aloud-row > .aloud-jump { flex: 1.5; font-size: 16px; }
+.aloud-done {
+  min-height: 48px; padding: 0 10px; font: 800 16px/1.1 var(--ui-font); color: var(--white);
+  background: var(--good); border: 0; border-radius: var(--radius); cursor: pointer;
+}
+.aloud-row > .aloud-done { flex: 2; font-size: 16px; background: var(--good); }
+.aloud-row > .aloud-done.armed { font-size: 13px; background: var(--bad); }
+.aloud-done.big { width: min(100%, 340px); min-height: 64px; font-size: 22px; }
+.aloud-sheet { position: absolute; inset: 0; z-index: 2; display: flex; flex-direction: column; background: var(--black); }
+.aloud-sheet-bar {
+  flex: none; display: flex; align-items: center; justify-content: space-between;
+  padding: calc(6px + var(--safe-top)) 8px 6px 14px; font: 800 18px/1.2 var(--ui-font);
+  color: var(--black); background: var(--highlight);
+}
+.aloud-sheet-list { flex: 1; overflow-y: auto; overscroll-behavior: contain; padding-bottom: var(--safe-bottom); }
+.aloud-sheet-list > button {
+  display: flex; flex-direction: column; gap: 3px; width: 100%; min-height: 60px; padding: 10px 14px; text-align: left;
+  font: 14px/1.3 var(--ui-font); color: rgba(255, 255, 255, 0.72); background: transparent;
+  border: 0; border-bottom: 1px solid rgba(255, 255, 255, 0.16); cursor: pointer;
+}
+.aloud-sheet-list > button.now { background: #3a3936; }
+.aloud-sheet-list strong { font-size: 18px; color: var(--white); }
+.aloud-sheet-list em { font-size: 12px; font-style: normal; color: var(--highlight); }
+.aloud-plain b { font-size: 22px; color: var(--highlight); }
+.aloud-plain { display: flex; flex-direction: column; gap: 10px; padding: calc(12px + var(--safe-top)) 14px calc(12px + var(--safe-bottom)); }
+.aloud-plain-text { flex: 1; overflow-y: auto; font-size: 26px; line-height: 1.3; }
+@media (max-height: 480px) {
+  .aloud-controls { flex-direction: row; flex-wrap: wrap; padding-top: 4px; padding-bottom: calc(4px + var(--safe-bottom)); }
+  .aloud-row { flex: 1 1 30%; min-width: 220px; }
+}
+@media (prefers-reduced-motion: reduce) { .aloud-alert { animation: none; } }

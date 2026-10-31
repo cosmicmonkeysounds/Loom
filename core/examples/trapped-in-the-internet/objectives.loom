@@ -772,7 +772,7 @@ OBJECTIVE Purgatory
   go: The Desktop
   title: Dance, then read the summary
   text:
-    After the dance a host calls 🪦 the summary: read it from the Desktop room. "We are now in purgatory forever together."
+    After the dance a host calls 🪦 the summary: read it from the teleprompter. "We are now in purgatory forever together."
 
 // w21 (wave 21: points, no 🎤 bar, no All buttons…)
 OBJECTIVE Host The Ceremony
@@ -782,7 +782,7 @@ OBJECTIVE Host The Ceremony
   go: The Desktop
   title: The awards ceremony
   text:
-    The hosts call each award. If you host (after Combo B or the rave), each award line lands in the Desktop room: read it aloud, call the winner up, lead the applause. Otherwise lead the applause for Trabolta's. The three staff awards come last, and one might be yours.
+    The hosts call each award. If you host (after Combo B or the rave), each award line pops up on your teleprompter: read it aloud, call the winner up, lead the applause. Otherwise lead the applause for Trabolta's. The three staff awards come last, and one might be yours.
 
 // ════════════════════════════════════════════════════════════════════
 // The host parts: Task Manager, Adobe Acrobat, the Recycling Bin.

@@ -1,24 +1,24 @@
-//! The guest's own 📷 Scan (W11, W-13). The walls carry the codex QRs
-//! (`…/?code=<event>&unlock=<code>` — the door code's four digit clues
-//! among them) and the room check-in signs (`…&checkin=<room>`, K-13).
-//! Scanned with the phone's camera app, each one opens a new tab — or a
-//! different browser with no session, where a tipsy guest joins again as a
-//! ghost program. Scanned here, in the app, the code lands in the session
-//! already open: an `unlock=` redeems through `/api/guest/codex/redeem`, a
-//! `checkin=` checks in through `/api/guest/checkin`, and anything else
-//! (the join QR, your own pass, an invitation) just says what it is, and
-//! someone else's pass opens the Recruit sheet (wave 18).
-//!
-//! And the other half: a codex / check-in link that arrives in a browser
-//! with **no** session (`LinkLanding`) shows the code in big type — "type
-//! it into your Codex in the app you joined with" — never the program
-//! picker; joining is the secondary path.
-//!
-//! The pure classifiers are unit-tested in `test/guest-scan.test.tsx`; the
-//! camera is `scanner.tsx`'s, the booth's.
-//!
-//! Wave 26: the 📷 Scan sheet and its classifiers moved to
-//! `guest-scan-sheet.tsx` (a lazy chunk); this file keeps the landing.
+// The guest's own 📷 Scan (W11, W-13). The walls carry the codex QRs
+// (`…/?code=<event>&unlock=<code>` — the door code's four digit clues
+// among them) and the room check-in signs (`…&checkin=<room>`, K-13).
+// Scanned with the phone's camera app, each one opens a new tab — or a
+// different browser with no session, where a tipsy guest joins again as a
+// ghost program. Scanned here, in the app, the code lands in the session
+// already open: an `unlock=` redeems through `/api/guest/codex/redeem`, a
+// `checkin=` checks in through `/api/guest/checkin`, and anything else
+// (the join QR, your own pass, an invitation) just says what it is, and
+// someone else's pass opens the Recruit sheet (wave 18).
+//
+// And the other half: a codex / check-in link that arrives in a browser
+// with **no** session (`LinkLanding`) shows the code in big type — "type
+// it into your Codex in the app you joined with" — never the program
+// picker; joining is the secondary path.
+//
+// The pure classifiers are unit-tested in `test/guest-scan.test.tsx`; the
+// camera is `scanner.tsx`'s, the booth's.
+//
+// Wave 26: the 📷 Scan sheet and its classifiers moved to
+// `guest-scan-sheet.tsx` (a lazy chunk); this file keeps the landing.
 
 import { checkinFromSearch } from "./checkin.ts";
 import { unlockFromSearch } from "./codex.ts";
