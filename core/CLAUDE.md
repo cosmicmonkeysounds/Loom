@@ -25,11 +25,11 @@ The show, *Trapped in the Internet* (Oct 31 2026), is the Loom project in
 | `server/event-runtime.ts` | one live event (`EventRuntime`, ~7,000 lines): every `/e/:id/api/*` handler, the journal commit + `fanout`, restarts, the ticker |
 | `server/registry.ts` | `EventRegistry`: one `EventRuntime` per event, rehydrated at boot |
 | `server/views.ts`, `chat.ts` | pure projections: `GuestView` / `PrimeView` / `ModView`, and SimEvent → channel messages. The editor imports both (`@loom/core/views`, `@loom/core/chat`) |
-| `server/routes/` | route modules split out of the runtime: `host.ts` (the host allowlist), `screen.ts` (the terminals' screen state + heartbeat), `claims.ts`, `crews.ts`, `sides.ts`, `cards.ts`, `recap.ts`, `mod-log.ts`, `metrics.ts`, `press-lines.ts`, and the OCT31 item files `k12.ts` (print sheet, wave 54's `actions` signs), `k13.ts` (check-in), `k31.ts` / `k31b.ts` (push), `n02.ts` (re-pair, release), `rejoin.ts` (wave 23: badges, invitations re-entering, ask a host, per-part staff badges; wave 54: invited badges) |
+| `server/routes/` | route modules split out of the runtime: `host.ts` (the host allowlist), `screen.ts` (the terminals' screen state + heartbeat), `claims.ts`, `crews.ts`, `sides.ts`, `cards.ts`, `recap.ts`, `mod-log.ts`, `metrics.ts`, `press-lines.ts`, and the OCT31 item files `k12.ts` (print sheet, wave 54's `actions` signs), `k13.ts` (check-in), `k31.ts` / `k31b.ts` (push), `n02.ts` (re-pair, release), `rejoin.ts` (wave 23: badges, invitations re-entering, ask a host, per-part staff badges; wave 54: invited badges), `printed.ts` (wave 59: a typed code back to its QR's link) |
 | `server/` hubs | transport-free, clock-injected classes: `agents.ts` (`AgentHub`), `spatial.ts` (`SpatialHub`), `spatial-voice.ts`, `spatial-cams.ts`, `wallet.ts` (`WalletBook`), `facts.ts` (`FactsBook`), `push.ts` (`PushHub`), `audio.ts`, `lights.ts`, `lights-shown.ts` (wave 39: the lights estimate + the games' `lights` frame feed), `desk.ts` (`DeskHub`, wave 25: the house desk's runs, playhead, check marks; pure model `src/house-desk.ts`), `collab.ts` (`CollabHub`, Yjs), `live-file.ts` (`LiveFileSource`: a project file read live; `credits.ts`, `descent.ts`) |
 | `server/` control plane | `config.ts` (env), `boot.ts`, `db/` (`queries.ts`: access is `getProjectFor` / `listProjectsFor`), `auth-server.ts` (BetterAuth), `projects.ts`, `events-api.ts`, `collab-api.ts`, `mail.ts`, `migrate.ts` |
 | `server/store.ts` | the per-event state dir: journal, codes, sessions, meta (scenario source + phase), project snapshots |
-| `scripts/` | `titi-facts.ts`, `loomcheck.ts`, `show-page.ts`, `sync-example.ts`, `live-guard.ts` |
+| `scripts/` | `titi-facts.ts`, `titi-qr-lock.ts`, `loomcheck.ts`, `show-page.ts`, `sync-example.ts`, `live-guard.ts` |
 | `examples/load.ts` | the project loader (`scenarioSource`, `main.loom` first, like `db/queries.ts` `projectSource`) |
 | `test/` | vitest, ~160 files; show suites are `trapped-*.test.ts`; fixtures in `test/fixtures/` |
 
@@ -43,6 +43,7 @@ pnpm --filter @loom/core serve                           # event server on :7000
 pnpm --filter @loom/core migrate                         # control-plane tables
 pnpm --filter @loom/core loomcheck examples/trapped-in-the-internet --smoke
 pnpm --filter @loom/core titi:facts --check              # the show's generated files are current
+pnpm --filter @loom/core titi:qr-lock [--check]          # hold the story to what was printed (once printed)
 pnpm --filter @loom/core show:page --check               # SHOW.html is current
 pnpm sync-example "<project>" [example]                  # from the repo root: push an example + reload
 pnpm dev                                                 # from the repo root: the whole dev stack
@@ -509,6 +510,42 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   `/api/mod/scan` only read a badge. A director's play-as holds nothing and is refused nothing.
   A Home Screen nonce (K-31b, off by default) is the one sign-in that adds a
   token: the same phone. Tests: `test/w59-claims.test.ts`.
+- **Text codes and in-world names** (wave 59, `routes/printed.ts`, `routes/k12.ts`).
+  Every printed QR has a text code: the guest code, a badge's, a staff badge's
+  (the part code, printed: wave 54's "no typed code" is overruled), `R-` + four
+  for a room and `S-` + four for a sign (`roomCode`, `signCode`: the claim secret
+  and the folded name), a codex entry's own (`CodexDef.printed`, as written;
+  `code` stays folded and the QR's link keeps it), the digit notes' too.
+  `printedHit` turns what was typed back into **the link the QR carries**, so
+  a typed code takes the scan's path. `POST /api/guest/printed` and
+  `/api/prime/printed` `{code}` → `{hit: {kind, url} | null}` come first in both
+  Scan sheets; a codex code answers null, like a miss, so this is no oracle and
+  the redeem routes keep the miss rules. `/api/guest/codex/redeem` asks
+  `printedHit` too, for whatever skips that question (a terminal's TYPE A CODE):
+  a printed code answers `printed: <kind>`, no miss. `{spaced: true}` is the Scan
+  sheet's typed text: spaced text no entry holds answers `words: true` with no
+  story event, and counts against `redeemMisses`; a real code typed with spaces
+  unlocks. Without the flag spaced text is still a miss (the Codex's box).
+  `/api/resolve-code` takes a badge's
+  code only (`printed`: the path): a room's short code or name must not hand out
+  the guest code. Misses are limited per guest or part (`printedAsks`,
+  `LOOM_RL_PRINTED`). `inWorldLabel` (`src/in-world.ts`, no imports, so a phone can
+  use it) is a `label:`
+  as a player reads it: brackets and a ` — ` tail are the crew's. Every
+  guest-facing title goes through it (`Sim.channelHead`, `locationSnapshots`
+  unless `operator`, check-in, capture, the reveal shot, `/cards`, the signs, a
+  Go button, the booth's upload stage), and so do Trabolta's facts and dossier,
+  which reach his prompt. `operatorChannels` and `ModView.locations` keep the
+  whole label. `pnpm --filter @loom/core titi:qr-lock` writes `qr-lock.json` (hashes
+  only; `printedIdentities` is the list of what a story can move), `--check`
+  fails naming what moved, `predeploy.sh` and `sync-show.sh` run it once the file
+  exists, `LOOM_QR_MOVED=1` / `--qr-moved` goes past it. A hidden room's identity
+  includes whether a `reveal` line opens it (`storyReveals`), so losing the last
+  one fails `--check` though the link and code are unchanged; writing the lock
+  refuses while a printed room has none (`deadRooms`; the override locks it, and
+  it stays a warning). It can't see behind a reveal: one in a beat the night never
+  reaches, or a sign's button edited to do nothing. Tests:
+  `test/w59-printed.test.ts`, `test/w59-qr-lock.test.ts`.
 - **A booth scans codex QRs** (wave 58). `POST /api/prime/codex/redeem {code}`
   (a booth's token, a host's too: it is off the host allowlist's surface)
   answers `/api/guest/codex/redeem`'s shape (`{ok, unlocked, title?, already?,

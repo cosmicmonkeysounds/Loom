@@ -1,5 +1,5 @@
-//! Wave 14 — the `/cards` page: every room check-in, codex fact, join and
-//! invitation QR on one screen, made to be scanned off a laptop or the TV
+//! Wave 14 — the `/cards` page: every room check-in, codex fact, join,
+//! invitation and staff badge QR on one screen, made to be scanned off a laptop or the TV
 //! with a phone (nothing is printed). Self-contained: one HTML page + one
 //! script (`/cards.js`, since the CSP allows no inline script), no build
 //! step. It holds no secrets: it asks for the moderator passcode, resolves
@@ -114,7 +114,7 @@ const store = {
 let done = {};
 try { done = JSON.parse(store.get(DONE) || "{}") || {}; } catch { done = {}; }
 const saveDone = () => store.set(DONE, JSON.stringify(done));
-const TABS = [["rooms", "Rooms", ["rooms"]], ["facts", "Facts", ["facts"]], ["other", "Other", ["join", "signs", "invitations"]]];
+const TABS = [["rooms", "Rooms", ["rooms"]], ["facts", "Facts", ["facts"]], ["other", "Other", ["join", "signs", "invitations", "staff"]]];
 let auth = null; // {eventId, token, passcode}
 let data = null;
 let tab = "rooms";

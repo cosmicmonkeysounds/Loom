@@ -563,7 +563,6 @@ button.gear { border-color: transparent; opacity: 0; font-size: 1.3em; padding: 
   border-radius: 4px;
 }
 .minimap svg { display: block; width: 100%; height: auto; max-height: min(28vh, 170px); }
-.minimap figcaption { font-size: 0.45em; letter-spacing: 0.2em; color: var(--phosphor-dim); text-align: center; }
 .mm-room { fill: rgba(40, 255, 140, 0.06); stroke: var(--phosphor-dim); stroke-width: 0.06; }
 .mm-room.outdoor { fill: none; stroke-dasharray: 0.2 0.15; }
 .mm-room.mine { fill: rgba(40, 255, 140, 0.16); }

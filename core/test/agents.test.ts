@@ -1206,7 +1206,8 @@ when knock for program:
       expect.objectContaining({ id: guest.id, name: "Ada", location: "The Cache", captured: false, vars: expect.objectContaining({ humanity: "20" }), codex: [] }),
     ]);
     expect(facts.characters.find((c) => c.id === "Trabolta")).toMatchObject({ mind: "external", online: true, codex: ["The Sandy File"], vars: { truth: "35" } });
-    expect(facts.locations).toEqual([{ id: "The Cache", label: "The Cache (kitchen)", occupants: ["Ada"] }]);
+    // Wave 59: his prompt reads the story's name; the bracket is the real room.
+    expect(facts.locations).toEqual([{ id: "The Cache", label: "The Cache", occupants: ["Ada"] }]);
     expect(facts.codex.find((e) => e.title === "The Sandy File")).toMatchObject({ holders: ["Trabolta"], hasCode: false });
     expect(facts.powers.map((p) => p.id)).toEqual(["cut the lights", "snoop"]);
   });

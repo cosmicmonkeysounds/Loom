@@ -20,11 +20,12 @@ const HIT: RedeemAnswer = { unlocked: "The Duck", title: "The Duck" };
 const ALREADY: RedeemAnswer = { unlocked: null, already: "The Duck", title: "The Duck" };
 const MISS: RedeemAnswer = { unlocked: null, missed: true };
 
-function fakeSession(o: { redeem?: PrimeSession["redeem"]; scan?: PrimeSession["scan"] } = {}) {
+function fakeSession(o: { redeem?: PrimeSession["redeem"]; scan?: PrimeSession["scan"]; printed?: PrimeSession["printed"] } = {}) {
   const redeem = vi.fn(o.redeem ?? (() => Promise.resolve(HIT)));
   const scan = vi.fn(o.scan ?? (() => Promise.reject(new Error("unknown guest"))));
-  const session = { auth: { token: "t", character: "Clippy", admin: false, eventId: "default" }, view: null, redeem, scan } as unknown as PrimeSession;
-  return { session, redeem, scan };
+  const printed = vi.fn(o.printed ?? (() => Promise.resolve(null)));
+  const session = { auth: { token: "t", character: "Clippy", admin: false, eventId: "default" }, view: null, redeem, scan, printed } as unknown as PrimeSession;
+  return { session, redeem, scan, printed };
 }
 type Screen = ReturnType<typeof mountHooks<Parameters<typeof ScannerScreen>[0]>>;
 function mount(s: PrimeSession, extra: Partial<Parameters<typeof ScannerScreen>[0]> = {}): Screen {
@@ -190,6 +191,30 @@ describe("the typed box", () => {
     await flush(h);
     expect(await done).toBe(false);
     expect(hint(h)).toBe(BOOTH_TYPED_NOTHING);
+  });
+
+  it("a printed code reads as its QR would: a badge is a pass, a room says so, neither reaches the Codex", async () => {
+    const link = (rest: string) => `https://x/?code=E&${rest}`;
+    const badge = fakeSession({ printed: () => Promise.resolve(link("badge=abcdefgh")) });
+    const a = mount(badge.session);
+    const passed = type(a, "ABCD-EFGH");
+    a.act(() => {});
+    await flush(a);
+    await flush(a);
+    await passed;
+    expect(badge.scan).toHaveBeenCalledWith("abcdefgh");
+    expect(badge.redeem).not.toHaveBeenCalled();
+
+    const room = fakeSession({ printed: () => Promise.resolve(link("checkin=the-cpu")) });
+    const b = mount(room.session);
+    const said = type(b, "R-K7QM");
+    b.act(() => {});
+    await flush(b);
+    await flush(b);
+    expect(await said).toBe(true);
+    expect(hint(b)).toBe("That's a room sign — scan the guest's pass.");
+    expect(room.scan).not.toHaveBeenCalled();
+    expect(room.redeem).not.toHaveBeenCalled();
   });
 
   it("a mistyped guest id is a wrong pass, never a redeem (it would eat the limit)", async () => {

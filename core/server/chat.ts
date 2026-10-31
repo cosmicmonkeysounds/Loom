@@ -26,6 +26,7 @@
 //! each person's messages addressed to them alone.
 
 import type { Sim, SimEvent, WalletCard } from "../src/runtime/sim/index.ts";
+import { inWorldLabel } from "../src/runtime/sim/model.ts";
 import { walletLine } from "./wallet.ts";
 import { isEffectManner, noticeKey, splitNotice, type GoTarget, type MomentClass } from "../src/delivery.ts";
 import { resolveGoWords } from "../src/go.ts";
@@ -987,7 +988,7 @@ export function composeGuestMessages(sim: Sim, events: readonly SimEvent[], opts
         out.push({ ...LOBBY, from: "", kind: "narration", text: e.text, ts, audience: "all", parentSeq: null, ambient: true });
         break;
       case "captured":
-        out.push(sys(`⛓️ You've been taken to ${sim.model.locations.get(e.location)?.label ?? e.location}.`, [e.person]));
+        out.push(sys(`⛓️ You've been taken to ${inWorldLabel(sim.model.locations.get(e.location)?.label ?? e.location)}.`, [e.person]));
         break;
       case "escaped":
         out.push(sys("🏃 You broke free.", [e.person]));

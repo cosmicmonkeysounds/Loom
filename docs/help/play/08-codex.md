@@ -39,7 +39,8 @@ Lore reaches you three ways:
   📷, not the phone's own camera: that may open another browser, where
   you aren't joined (it then shows the code in big letters to type in
   here). Codes don't care about capitals, dashes or spaces. A
-  miss says so right there in the room.
+  miss says so right there in the room, and the house notices: check what
+  you typed before you press.
   Too many tries in a row and the box asks you to wait a minute.
 - **The story.** Answer the right way, be scanned by the right person,
   finish the right puzzle.

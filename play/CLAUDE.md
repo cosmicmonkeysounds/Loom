@@ -97,6 +97,20 @@ into `//`: 147.03 kB.
 - **Streams reopen.** `client.ts` `openChatFeed` probes a dead
   `EventSource` (a Caddy 502 during a restart) and reopens on a 1 s → 15 s
   jittered backoff; the tray's live dot reads *reconnecting…*.
+- **A typed code does what its QR does** (wave 59, server
+  `core/server/routes/printed.ts`). The Scan sheet's `typedRoute` asks
+  `GuestSession.printed` about a bare code before the Codex: a badge's, a room's
+  or a sign's comes back as its QR's link and goes through `guestScan`, so only a
+  true miss fires the story's `wrong code`; a failed ask is said, never redeemed.
+  Typed text with spaces in it goes as `spaced` (`GuestSession.redeem`): a real
+  code unlocks, and words read `TYPED_UNKNOWN`, free, as they did before spaced
+  codes worked. The Codex's composer asks too (`guest/app.tsx`), but sends no
+  `spaced`: a sentence there is still a miss. The booth's `doTyped` does the
+  same through `parseScan`. On a join screen a
+  badge's code resolves with `printed`, and `useIdentities` opens that link
+  (`IdentityLookup` kind `printed`), so the page runs the QR's whole path; so does
+  *Get back in*, with no event code needed. Tests: `test/guest-scan.test.tsx`,
+  `test/w58-booth-scan.test.tsx`.
 - **Deep links.** `?unlock=` (codex; a guest's session, or wave 58's
   `booth/unlock-link.ts` on a phone signed in as a booth), `?checkin=` (room sign), `?act=` (a
   sign that presses a guest's button, `act-link.ts`, wave 54: 📷 Scan or the

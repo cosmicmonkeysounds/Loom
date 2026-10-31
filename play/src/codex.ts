@@ -43,6 +43,8 @@ export function withoutUnlock(search: string): string {
  *  redeems: 8 a minute, then 429). Null = say nothing — a wrong code is
  *  answered in the Codex room itself, and other failures stay quiet. */
 export const REDEEM_THROTTLED = "Too many tries — wait a minute, then try again.";
+/** What the typed box says when the text is no code at all. */
+export const TYPED_UNKNOWN = "That isn't a code — check the sign and type it again.";
 export function redeemErrorText(e: unknown): string | null {
   const status = typeof e === "object" && e !== null ? (e as { status?: unknown }).status : undefined;
   return status === 429 ? REDEEM_THROTTLED : null;

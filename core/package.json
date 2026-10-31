@@ -35,6 +35,7 @@
     "serve": "tsx server/server.ts",
     "loomcheck": "tsx scripts/loomcheck.ts",
     "titi:facts": "tsx scripts/titi-facts.ts",
+    "titi:qr-lock": "tsx scripts/titi-qr-lock.ts",
     "show:page": "tsx scripts/show-page.ts"
   },
   "devDependencies": {

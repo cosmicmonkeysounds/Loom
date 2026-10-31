@@ -134,16 +134,39 @@ Front of house: getting people in.
   - **Fact cards** print four to a row, twenty to a sheet, in stack order
     with a coloured band. A number per stack prints a few: the hunt answers
     and the door's digit notes print whole by default, four of each other
-    stack. A digit note prints title and QR only, never a digit.
+    stack. A digit note's code holds no digit, so it prints like the rest.
   - The **join poster** and the **door sign** are off until ticked (it says
     *Scan to join*, or *iPhone? Join, then Add to Home Screen* with the steps
     when the server's Home Screen switch is on), one, two or four to a page.
 
+  **Every card has a text code under its QR**, for anyone with no camera.
+  Typed into 📷 Scan it does what the QR does: a room's (`R-…`) checks in, a
+  sign's (`S-…`) presses its button, a fact's unlocks it. A badge's goes in
+  the code box on the join screen and lands where its QR lands, a staff
+  badge's too, and that one is a sign-in: keep it as private as the QR.
+  Capitals, spaces and hyphens don't matter. Everything printed uses the
+  story's names (*The Start Bar*); the real room shows on screen only, as the
+  note on its card, so you know where it goes.
+
   **skip** moves a card to the tray under the sheets. The toolbar warns in
   red if the codes point at a local address, since a printed QR can't be
-  fixed later. Every code stays good through Restart, Go live, End →
-  relaunch and new performer + moderator codes. Renaming a part or a reserved
-  program retires its badge.
+  fixed later.
+
+  **Changing the story after printing.** Every code stays good through
+  Restart, Go live, End → relaunch, new performer + moderator codes, and any
+  edit to the story's text, beats, their order, objectives or a fact's words:
+  a sync or a Push draft leaves them alone. What retires a card is renaming
+  what it names: a room, a part, a reserved program (or their order), a sign's
+  button or a codex code. One edit breaks a card with nothing renamed: a hidden
+  room's sign needs a `reveal` somewhere in the story, and without one it reads
+  *That room isn't open yet* all night. Once you print, run `pnpm --filter
+  @loom/core titi:qr-lock`: from then on the pre-deploy gate and `sync-show`
+  stop on a story that would break a printed card and name what moved
+  (`sync-show --qr-moved` goes on anyway, for cards you are reprinting). It
+  won't write the lock while a printed room has no `reveal`: give the room
+  `checkin: false` so its card doesn't print, or reveal it, before you print.
+  It checks that a reveal exists, not that the night reaches it, so moving one
+  behind a beat you might skip is still on you.
 - **Directing now** — every co-writer with a console open, who started
   the run, and when.
 - **Terminals** — every wall terminal and the TV that has checked in,

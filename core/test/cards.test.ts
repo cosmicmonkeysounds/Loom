@@ -10,7 +10,7 @@ import { CODES, booth, call, cleanup, mod, post, runtime } from "./w13-fix-harne
 
 afterAll(cleanup);
 
-type Section = { kind: string; label: string; items: { ref: string; title: string; code?: string; url: string; svg: string; stack?: string; secret?: boolean }[] };
+type Section = { kind: string; label: string; items: { ref: string; title: string; sub?: string; code?: string; url: string; svg: string; stack?: string; secret?: boolean }[] };
 
 describe("GET /api/mod/cards", () => {
   it("is for moderators only: 401 without a token, 403 for an unknown token, 403 for a host booth", async () => {
@@ -49,9 +49,19 @@ describe("GET /api/mod/cards", () => {
     // Stacked from the facts file: the hunt answers lead, secrets marked.
     expect(facts[0]!.stack).toBe("hunt answers");
     expect(facts.some((f) => f.secret === true)).toBe(true);
-    // A digit note shows title + QR only.
-    const digit = facts.find((f) => f.stack === "the cold door's digits");
-    if (digit !== undefined) expect(digit.code).toBeUndefined();
+    // Wave 59: every card carries its text code, a digit note's too, and that
+    // code holds no digit. (Booleans: a failure must never print a code.)
+    const notes = facts.filter((f) => f.stack === "the cold door's digits");
+    expect(notes.length).toBe(4);
+    expect(notes.every((f) => typeof f.code === "string" && f.code !== "" && !/\d/u.test(f.code))).toBe(true);
+    expect(notes.some((f) => /kitchen|bedroom|laundry|game room/u.test(`${f.title} ${f.sub ?? ""}`))).toBe(false);
+    expect(sections.flatMap((s) => s.items).every((i) => typeof i.code === "string" && i.code !== "")).toBe(true);
+    expect(rooms.every((i) => /^R-[0-9A-Z]{4}$/u.test(i.code ?? ""))).toBe(true);
+    expect(rooms.map((i) => i.title)).toContain("The Start Bar");
+    expect(rooms.some((i) => i.title.includes("("))).toBe(false);
+    expect(sections.find((s) => s.kind === "signs")!.items.every((i) => /^S-[0-9A-Z]{4}$/u.test(i.code ?? ""))).toBe(true);
+    expect(sections.find((s) => s.kind === "invitations")!.items.length).toBeGreaterThan(0);
+    expect(sections.find((s) => s.kind === "staff")!.items.map((i) => i.title)).toContain("Clippy");
     expect(sections[2]!.items[0]!.url).toBe(`http://localhost/?code=${CODES.event}`);
   });
 

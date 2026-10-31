@@ -35,7 +35,8 @@ confronting a marked one.
 
 Scan your **staff badge** with your phone's camera: it signs you straight
 in as your part (each badge is one part's). Do it from a phone that isn't
-signed in as a guest. Typing works too — pick
+signed in as a guest. No camera? Type the code under its QR in the code box
+instead: it does the same. Typing works too — pick
 **I'm a Performer**, enter the **performer passcode** from the host, and
 the story's **parts** appear — every character with something to do,
 with their pictures — tap yours. A part is one booth's: a greyed-out

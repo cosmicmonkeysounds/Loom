@@ -19,6 +19,7 @@ import type {
 } from "../../parser/index.ts";
 import { splitArgsCommas, splitTopLevelCommas, stripPrefix } from "../../parser/rust.ts";
 import { FoldedIndex, foldName } from "../../parser/names.ts";
+export { inWorldLabel } from "../../in-world.ts";
 import type { Bundle } from "../bundle.ts";
 import { vBool, vNumber, vString, type Value } from "../expr.ts";
 import { lowerRawBody } from "./effects.ts";
@@ -248,6 +249,8 @@ export interface CodexDef {
   about: string | null;
   /** Folded unlock code, or null for story-only entries. */
   code: string | null;
+  /** The code as a card prints it (`code` is folded, a run of letters). */
+  printed: string | null;
   /** Characters that hold the entry from the start (plus its subject). */
   knownTo: string[];
   text: string;
@@ -1075,6 +1078,7 @@ function codexDef(id: string, body: CodexBody): CodexDef {
     title: body.title ?? id,
     about: body.about,
     code: body.code !== null && foldCode(body.code).length > 0 ? foldCode(body.code) : null,
+    printed: body.code !== null && foldCode(body.code).length > 0 ? body.code.trim().toUpperCase() : null,
     knownTo: [...body.knownTo],
     text: body.text,
     secret: body.properties.get("secret")?.value.trim() === "true",

@@ -21,7 +21,7 @@ import { ESCAPE_COOLDOWN_MS, VOICE_MAX_BYTES, kingSignal, lightStateDoes, lightS
 
 import { asNumber, truthy } from "../src/runtime/expr.ts";
 import { Sim, type SimEvent } from "../src/runtime/sim/index.ts";
-import { foldCode, namedEvents, type SimModel } from "../src/runtime/sim/model.ts";
+import { foldCode, inWorldLabel, namedEvents, type SimModel } from "../src/runtime/sim/model.ts";
 import { allSnapshotFlags, arrivalDue, awardOnly, boothChannels, callsCue, captureFor, playerHiddenRooms, cueState, guestCardView, interactionActors, interactionSubjectOnly, isCaller, guestFlags, guestView, isLocked, modView, staffRoomChannels, notePress, pressMovedArm, pressRefusal, pressRefused, primeView, scanRefused, rosterRow, staffRoomIds, themeOf, titleOf, type AgentMindSummary, type GuestView, type ModPresence, type ModView, type PrimeView, type RuntimePhase } from "./views.ts";
 import { passOk, type Passcodes } from "./auth.ts";
 import { SessionStore } from "./session.ts";
@@ -66,11 +66,12 @@ import { StoryMarks, huntsFor } from "./wanted.ts";
 import { canonicalPlaceArgs } from "./place-args.ts";
 import { CHECKIN_ROUTE, GuestCheckin } from "./routes/k13.ts";
 import { GUEST_LOGOUT_ROUTE, LOGOUT_ROUTE, Pairing, RESUME_ROUTE, SIGNED_OUT, releasePart } from "./routes/n02.ts";
-import { BADGES_ROUTE, BADGE_ROUTE, ENTER_ROUTE, REJOIN_CANCEL_ROUTE, REJOIN_DECIDE_ROUTE, REJOIN_NAMES_ROUTE, REJOIN_POLL_ROUTE, REJOIN_ROUTE, Rejoin, heldAnswer, partCode, partUrl, reservedAnswer, type BoothGrant } from "./routes/rejoin.ts";
+import { BADGES_ROUTE, BADGE_ROUTE, ENTER_ROUTE, REJOIN_CANCEL_ROUTE, REJOIN_DECIDE_ROUTE, REJOIN_NAMES_ROUTE, REJOIN_POLL_ROUTE, REJOIN_ROUTE, Rejoin, heldAnswer, partCode, partUrl, printedCode, reservedAnswer, type BoothGrant } from "./routes/rejoin.ts";
 import { HOMESCREEN_ROUTE } from "./routes/k31b.ts";
 import { PushRoutes } from "./routes/k31.ts";
 import { PushHub, aloudPush, boothOwner, guestOwner, messagePush, pushConfigFromEnv, readoutPush, webPushSender, type PushSender } from "./push.ts";
 import { printExtras } from "./routes/k12.ts";
+import { PRINTED_GUEST_ROUTE, PRINTED_PRIME_ROUTE, printedHit, type PrintedHit } from "./routes/printed.ts";
 import { buildCards } from "./routes/cards.ts";
 import { CLAIM_UNLOCK_ROUTE, Claims, mintClaimSecret } from "./routes/claims.ts";
 import { modPatch, modViewJson } from "./mod-patch.ts";
@@ -824,6 +825,7 @@ export class EventRuntime {
   private readonly loginFailures: RateLimiter;
   private readonly registrations: RateLimiter;
   private readonly redeemMisses: RateLimiter;
+  private readonly printedAsks: RateLimiter;
   private readonly widgetAnswers: RateLimiter;
   // Wallet calls per guest (`/api/guest/wallet/*`, `LOOM_RL_WALLET`).
   private readonly walletCalls: RateLimiter;
@@ -1318,6 +1320,7 @@ export class EventRuntime {
     this.loginFailures = limiterFor(limits.loginFailures);
     this.registrations = limiterFor(limits.register);
     this.redeemMisses = limiterFor(limits.redeemMisses);
+    this.printedAsks = limiterFor(limits.printedAsks);
     this.widgetAnswers = limiterFor(limits.widgets);
     this.walletCalls = limiterFor(limits.wallet);
     // The TV-voice mute outlives restarts and Go live (an ALL STOP must
@@ -1399,6 +1402,33 @@ export class EventRuntime {
   get performerParts(): string[] {
     const model = this.declaredModel;
     return model === null ? [] : identityDefs(model).filter(performerPickable).map((d) => d.name);
+  }
+
+  /** Wave 59: the printed text code `code` is, as the link its QR carries
+   *  (`routes/printed.ts`), or null. */
+  printedHit(code: string): PrintedHit | null {
+    const model = this.declaredModel;
+    return printedHit(code, {
+      secret: this.claimSecret,
+      base: this.joinBase(),
+      guestCode: this.codes.event,
+      model,
+      parts: this.performerParts,
+      badgeNumber: (c) => this.rejoin.badges.numberOf(c),
+      invited: () => this.claims.links(model, this.joinBase(), this.codes.event),
+    });
+  }
+
+  /** The Scan sheets' question: does this typed code go anywhere but the
+   *  Codex? `who` keys the limiter, like the redeem routes' misses; a miss
+   *  costs nothing here, the redeem that follows is what counts. */
+  private answerPrinted(res: ServerResponse, who: string, body: Record<string, unknown>): void {
+    const code = str(body, "code");
+    if (code.length > MAX_CODE_LENGTH) return void sendJson(res, 200, { hit: null });
+    if (!this.printedAsks.allowed(who)) return void sendJson(res, 429, { error: "too many wrong codes — wait a minute" });
+    const hit = this.printedHit(code);
+    if (hit === null) this.printedAsks.record(who);
+    sendJson(res, 200, { hit });
   }
 
   /** The story's model, doors open or not: the live sim's when there is one,
@@ -3725,7 +3755,7 @@ export class EventRuntime {
       quests: sim.questsFor(id).map((q) => ({ id: q.def.id, title: q.def.title, status: q.status })),
       location: (loc) => {
         const l = sim.model.locations.get(loc);
-        return l === undefined ? null : (l.label ?? l.id);
+        return l === undefined ? null : inWorldLabel(l.label ?? l.id);
       },
       filings,
       currencySlot: sim.model.currency?.slot ?? null,
@@ -3948,9 +3978,10 @@ export class EventRuntime {
         vars: varsOf(c.id),
         codex: sim.codexFor(c.id).filter((e) => !e.secret).map((e) => e.title),
       })),
+      // Trabolta's prompt: a label's crew note is the real house (wave 59).
       locations: [...sim.model.locations.values()].map((l) => ({
         id: l.id,
-        label: l.label ?? l.id,
+        label: inWorldLabel(l.label ?? l.id),
         occupants: programs.filter((p) => p.location === l.id).map((p) => p.name),
       })),
       codex: [...sim.model.codex.values()].filter((e) => !e.secret).map((e) => ({
@@ -6751,7 +6782,7 @@ export class EventRuntime {
         id: e.id,
         title: e.title,
         about: e.about,
-        code: e.code!,
+        code: e.printed ?? e.code!,
         url: `${base}/?code=${encodeURIComponent(this.codes.event)}&unlock=${encodeURIComponent(e.code!)}`,
         secret: e.secret,
       }));
@@ -6770,8 +6801,12 @@ export class EventRuntime {
         title: this.title,
         eventPass: this.codes.event,
         codex: this.codexLinks(base, model),
-        extras: printExtras(model, base, this.codes.event, this.factsBook()?.raw ?? null),
+        extras: printExtras(model, base, this.codes.event, this.claimSecret, this.factsBook()?.raw ?? null),
         claims: this.claims.links(model, base, this.codes.event),
+        staff: this.performerParts.map((character) => {
+          const part = partCode(this.claimSecret, character);
+          return { character, code: printedCode(part), url: partUrl(base, this.codes.event, part) };
+        }),
       }),
     );
   }
@@ -7295,6 +7330,12 @@ export class EventRuntime {
         return true;
       }
 
+      case PRINTED_GUEST_ROUTE: {
+        const id = this.requireGuest(req, body, res);
+        if (id === null) return true;
+        this.answerPrinted(res, id, body);
+        return true;
+      }
       case "/api/guest/codex/redeem": {
         // A guest types (or scans) an unlock code — a QR on the wall, a
         // puzzle's answer. Journaled; a miss is a story event too.
@@ -7319,6 +7360,24 @@ export class EventRuntime {
         // just goes on unjournaled), and nothing reaches the journal.
         if (!this.redeemMisses.allowed(id)) {
           sendJson(res, 429, { error: "too many wrong codes — wait a minute" });
+          return true;
+        }
+        // Wave 59: a badge's, a room's or a sign's printed code is no wrong
+        // code, whichever box it came through: the Scan sheets ask first
+        // (`/api/guest/printed`), a terminal's TYPE A CODE doesn't.
+        const printed = this.printedHit(code);
+        if (printed !== null) {
+          sendJson(res, 200, { ok: true, unlocked: null, printed: printed.kind, codex: guestView(this.sim!, id).codex });
+          return true;
+        }
+        // Wave 59: the Scan sheet's box takes a code with spaces in it and
+        // offers a room's name, so a phrase from it (`spaced`) that opens
+        // nothing was never a guess at a code: a plain answer and no story
+        // event. It still counts against the throttle, or a space would buy
+        // free guesses.
+        if (body["spaced"] === true && /\s/u.test(code) && !this.sim!.model.codexCodes.has(foldCode(code))) {
+          this.redeemMisses.record(id);
+          sendJson(res, 200, { ok: true, unlocked: null, words: true, codex: guestView(this.sim!, id).codex });
           return true;
         }
         const events = this.commit("redeem", id, code);
@@ -7460,6 +7519,15 @@ export class EventRuntime {
         this.fanout(events);
         // `shared: false` — they already held it, nothing moved.
         sendJson(res, 200, { ok: true, shared: events.some((e) => e.type === "codexUnlocked") });
+        return true;
+      }
+      case PRINTED_PRIME_ROUTE: {
+        const character = this.characterOf(tokenOf(req, body));
+        if (!character) {
+          sendJson(res, 403, { error: "no character — sign in" });
+          return true;
+        }
+        this.answerPrinted(res, character, body);
         return true;
       }
       case "/api/prime/codex/redeem": {
@@ -8384,9 +8452,9 @@ export class EventRuntime {
           // Wave 23: each part's own cast-card link (signs in as it).
           castLinks: this.performerParts.map((character) => {
             const part = partCode(this.claimSecret, character);
-            return { character, part, url: partUrl(base, this.codes.event, part) };
+            return { character, part, code: printedCode(part), url: partUrl(base, this.codes.event, part) };
           }),
-          ...printExtras(this.sim?.model ?? this.declaredModel ?? null, base, this.codes.event, this.factsBook()?.raw ?? null),
+          ...printExtras(this.sim?.model ?? this.declaredModel ?? null, base, this.codes.event, this.claimSecret, this.factsBook()?.raw ?? null),
         });
         return true;
       }

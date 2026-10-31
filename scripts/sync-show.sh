@@ -7,6 +7,7 @@
 #   scripts/sync-show.sh --i-know-this-is-live   # reload a LIVE show anyway
 #   scripts/sync-show.sh --replace-lights   # the repo's lights.json over the project's
 #   scripts/sync-show.sh --replace-desk     # the repo's desk.json over the project's
+#   scripts/sync-show.sh --qr-moved         # past the printed-QR lock: those cards get reprinted
 #
 # What it does: opens an SSH tunnel to the VPS's Postgres container (not
 # published on any host port — the tunnel dials its Docker-network IP from
@@ -30,6 +31,11 @@
 # their own switches: --replace-audio / --keep-audio, --replace-lights /
 # --keep-lights and --replace-desk / --keep-desk (a plain sync adds the
 # repo's file only when the project has none).
+#
+# Once the cards are printed the story has a lock (`titi:qr-lock`, the
+# example's qr-lock.json): a sync that would break a printed QR stops here
+# (exit 4) and says what moved, before it touches anything. --qr-moved (or
+# LOOM_QR_MOVED=1) goes on anyway. No lock file, no check.
 #
 # Environment (all optional except LOOM_SSH):
 #   LOOM_SSH           ssh destination of the VPS (user@host) — required
@@ -55,10 +61,12 @@ set -euo pipefail
 : "${LOOM_TUNNEL_PORT:=15432}"
 
 DRY=0
+QR_MOVED="${LOOM_QR_MOVED:-0}"
 PASS=()
 for a in "$@"; do
   case "$a" in
     --dry-run) DRY=1 ;;
+    --qr-moved) QR_MOVED=1 ;;
     -h|--help) awk 'NR == 1 { next } /^#/ { sub(/^# ?/, ""); print; next } { exit }' "$0"; exit 0 ;;
     *) PASS+=("$a") ;;
   esac
@@ -74,6 +82,14 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 TSX="${TSX:-$ROOT/core/node_modules/.bin/tsx}"
 # Shell-quoted for the remote command line (a dir with spaces or quotes).
 VPS_DIR_Q="$(printf '%q' "$LOOM_VPS_DIR")"
+
+# The printed QRs, before anything is touched (a dry run says so too).
+if [[ -f "$ROOT/core/examples/$LOOM_EXAMPLE/qr-lock.json" ]]; then
+  if ! (cd "$ROOT/core" && LOOM_QR_MOVED="$QR_MOVED" "$TSX" scripts/titi-qr-lock.ts --check --example "$LOOM_EXAMPLE"); then
+    echo "sync-show: the story no longer matches the printed QRs: nothing was touched (exit 4; --qr-moved to go on)" >&2
+    exit 4
+  fi
+fi
 
 if [[ $DRY -eq 1 ]]; then
   echo "would: ssh $LOOM_SSH  →  docker IP of the 'db' service in $LOOM_VPS_DIR (+ POSTGRES_PASSWORD from its .env if unset)"

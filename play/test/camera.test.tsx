@@ -34,6 +34,7 @@ describe("the camera's life", () => {
       auth: { token: "t", character: "Norton", admin: false, eventId: "default" },
       view: null,
       scan: (id: string) => Promise.resolve({ guest: { id, name: "Ada" }, card: { guest: { id, name: "Ada", faction: null, captured: false, location: null }, live: [], guestScoped: [], readouts: [] }, responses: ["✅ Cleared Ada."] }),
+      printed: () => Promise.resolve(null),
     } as unknown as PrimeSession;
     let closed = 0;
     const gate = closedGate(CLOSED_PASS_MS);

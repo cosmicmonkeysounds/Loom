@@ -9,6 +9,7 @@
 // director at the part) never goes on rails. Only the server's word moves it.
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { inWorldLabel } from "../../../core/src/in-world.ts";
 import { CutsceneStage } from "../cutscene.tsx";
 import { useCutscene } from "../guest/app.tsx";
 import { usePlayHost } from "../host.ts";
@@ -74,7 +75,7 @@ export function BoothUploadStage({ s, over, onContinue, onLeave }: { s: PrimeSes
   const decision = boothDecision(view, (i, menu) => void choose?.(i, menu).catch(() => {}));
   // The caption holds once the story moves the part on, as the guest's does.
   const where = useRef<string | null>(null);
-  if (view?.location !== undefined) where.current = view.channels.find((c) => c.id === `loc:${view.location}`)?.title ?? view.location;
+  if (view?.location !== undefined) where.current = inWorldLabel(view.channels.find((c) => c.id === `loc:${view.location}`)?.title ?? view.location);
   return (
     <div className="root cut-root">
       <CutsceneStage

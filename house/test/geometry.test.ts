@@ -1,7 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { buildFloors, buildRamps, buildWalls, doorGap, mm, mmi, pointInPoly, propSolid, roomById, roomElevation, styleOf, wallsByFloor } from "../src/index.ts";
+import { buildFloors, buildRamps, buildWalls, doorGap, mm, mmi, pointInPoly, propSolid, roomById, roomElevation, roomName, styleOf, wallsByFloor } from "../src/index.ts";
 import type { HouseMap, WallKind, WallSegment } from "../src/index.ts";
 import { fixture, loadHouse, SHOW_HOUSE } from "./golden.ts";
+
+describe("roomName", () => {
+  const room = (label: string, location?: string) => ({ id: "r", label, floor: "f", poly: [], ...(location !== undefined ? { location } : {}) });
+
+  it("is the story's name, else the label without the crew's bracket", () => {
+    expect(roomName(room("Start Bar (kitchen)", "The Start Bar"))).toBe("The Start Bar");
+    expect(roomName(room("Fan Closet (laundry)"))).toBe("Fan Closet");
+    expect(roomName(room("Fan Closet (laundry)", "  "))).toBe("Fan Closet");
+    expect(roomName(room("(kitchen)"))).toBe("(kitchen)");
+  });
+});
 
 /** A hand-written segment: `[floor, axis, c, lo, hi, bottom, top, kind]`. */
 type Row = [string, "x" | "z", number, number, number, number, number, WallKind];

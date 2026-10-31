@@ -170,9 +170,10 @@ export function GuestRegister({ session }: { session: GuestSession }) {
       {!filledIn && <p className="sub">Enter the code from your host, then pick the program you are tonight.</p>}
       {claim !== null && invited === null && !invitedTaken && <p className="pick-hint">Your invitation saved your program for you — pick it below.</p>}
       {badge !== null && invited === null && <p className="pick-hint">🪪 Badge {printedBadge(badge)} links to the program you pick. Lose this page? Scan your badge, and a host can let you back in.</p>}
+      {/* The placeholder: DRAFT w59. */}
       {!filledIn && (
         <input
-          placeholder="Event code (from the host)"
+          placeholder="Event code, or your badge's code"
           value={code}
           autoFocus={code === ""}
           autoCapitalize="characters"

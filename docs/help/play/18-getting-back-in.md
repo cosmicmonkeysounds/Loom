@@ -20,8 +20,9 @@ take it. Get back in one of these ways.
 
 Your badge has a QR on it. **Scan it with your phone's camera** when you
 arrive: it opens the party with everything filled in, and it becomes yours
-when you pick your program. (Joined another way? Link it from **Me → 🪪 Link
-my badge**.)
+when you pick your program. No camera? Open the party and **type the code
+under the QR** in the code box: it does the same. (Joined another way? Link it
+from **Me → 🪪 Link my badge**.)
 
 - Left the event, or a host released you? **Scan your badge with any
   phone's camera**, or open the party, tap **🔁 Already playing? Get back

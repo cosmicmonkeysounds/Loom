@@ -57,6 +57,28 @@ describe('print sheet', () => {
     expect(on.url).toBe(off.url)
   })
 
+  it('wave 59: every card carries its text code, and only in-world names print', () => {
+    const items = buildPrintItems({
+      ...CODES,
+      codex: [{ id: 'A Note', title: 'A Note', about: null, code: 'THE-NOTE', url: 'https://x/?code=E&unlock=thenote' }],
+      stacks: { 'A Note': { colour: 'silver', stack: 'the digits', where: 'The Cache (kitchen): behind the kettle' } },
+      checkin: [{ id: 'The Cache', label: 'The Cache', slug: 'the-cache', url: 'https://x/?code=E&checkin=the-cache', hidden: true, code: 'R-K7QM', place: 'The Cache (kitchen)' }],
+      actions: [{ name: 'bath', label: '🚻 Bathroom Mode', line: 'Scan this.', url: 'https://x/?code=E&act=bath', code: 'S-K7QM' }],
+      castLinks: [{ character: 'Clippy', part: 'pcclippy', url: 'https://x/?code=E&part=pcclippy', code: 'PCCL-IPPY' }],
+      claims: [{ character: 'Excel', claim: 't', url: 'https://x/?code=E&claim=t&badge=b', ref: 'F01', code: 'ABCD-EFGH' }],
+    })
+    const printed = items.filter((i) => i.kind !== PrintKind.Join && i.kind !== PrintKind.Door)
+    expect(printed.map((i) => i.code)).toEqual(['THE-NOTE', 'R-K7QM', 'S-K7QM', 'S-K7QM', 'PCCL-IPPY', 'ABCD-EFGH'])
+    const room = items.find((i) => i.kind === PrintKind.Room)!
+    expect(room.title).toBe('The Cache')
+    expect(room.hint).not.toMatch(/kitchen/)
+    // The real room is the screen-only note, beside the crew's other note.
+    expect(room.note).toBe('The Cache (kitchen) · hidden until the story opens it')
+    const note = items.find((i) => i.kind === PrintKind.Codex)!
+    expect(factLine(note.stack!)).toBe('SILVER · The Cache: behind the kettle')
+    for (const i of items) expect([i.title, i.hint, i.code].join(' ')).not.toMatch(/kitchen/)
+  })
+
   it('wave 54: one staff badge per part: its own link, no passcode and no part code in print', () => {
     const items = buildPrintItems({
       ...CODES,
@@ -127,8 +149,8 @@ describe('print sheet', () => {
     const clues = items.filter((i) => isDigitClue(i.stack))
     expect(clues).toHaveLength(2)
     for (const c of clues) {
-      expect(c.code).toBe('')
-      // nothing printed holds a digit (the QR's link is the only way in)
+      expect(c.code).not.toBe('')
+      // nothing printed holds a digit (the schema keeps one out of the code)
       expect([c.title, c.hint, c.code, factLine(c.stack!)].join(' ')).not.toMatch(/\d/)
     }
     expect(factLine(clues[0]!.stack!)).toBe('SILVER')

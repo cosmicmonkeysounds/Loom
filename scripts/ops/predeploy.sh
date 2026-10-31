@@ -4,8 +4,10 @@
 #   scripts/ops/predeploy.sh [--allow-dirty] [--skip-tests] [--vr]
 #
 # Checks: a clean tree, the story (`loomcheck --smoke` on Trapped in the
-# Internet, and `titi:facts --check` — the files generated from the show's
-# facts.json are up to date), every TS package's typecheck + tests
+# Internet, `titi:facts --check` — the files generated from the show's
+# facts.json are up to date — and, once the cards are printed and it has a
+# qr-lock.json, `titi:qr-lock --check`: LOOM_QR_MOVED=1 goes past it, for
+# cards being reprinted), every TS package's typecheck + tests
 # (`pnpm -r`), the guest's first load (play's entry chunk ≤ 149 kB gzip,
 # `play/scripts/first-load.mjs`), stagehand's pytest, the ops-script
 # tests, and that docker-compose.yml still parses.
@@ -54,6 +56,9 @@ run "story: facts.json → generated files" pnpm --filter @loom/core titi:facts 
 # would hide it: say it here. `titi:facts` names each one.
 owed="$(pnpm --silent --filter @loom/core titi:facts --check 2>/dev/null | grep 'still a placeholder' || true)"
 if [ -n "$owed" ]; then echo "$owed" | sed 's/^WARN  /   ⚠ /'; fi
+if [ -f core/examples/trapped-in-the-internet/qr-lock.json ]; then
+  run "story: nothing printed has moved" pnpm --filter @loom/core titi:qr-lock --check
+fi
 run "ops scripts" bash scripts/ops/test/run.sh
 run "accept-script helpers + the sim" node --no-warnings --test scripts/accept/live-guard.test.ts scripts/accept/burst.test.ts scripts/sim/test/sim.test.ts scripts/sim/test/load.test.ts
 run "compose file parses" env POSTGRES_PASSWORD=x BETTER_AUTH_SECRET=x LOOM_BASE_URL=http://x \
