@@ -241,6 +241,9 @@ export interface RecapOptions {
   title?: string;
   /** Persona ids (mod-spawned rehearsal guests) — flagged, still listed. */
   personas?: ReadonlySet<string> | ReadonlyMap<string, unknown>;
+  /** Wave 59: ids left out altogether, a host's read: a persona's name never
+   *  reaches a phone (`unseen-directors.ts`). Run's read leaves it unset. */
+  hide?: ReadonlySet<string>;
   /** Every duck found this story (`SpatialHub.runs()`). */
   duckRuns?: readonly DuckRun[];
 }
@@ -303,7 +306,9 @@ export function computeRecap(sim: Sim, opts: RecapOptions = {}): Recap {
   const bathroomNever: Recap["bathroomNever"] = [];
   const elapsed = num(sim, "Time.elapsed") ?? 0;
   let bathSeconds = 0;
-  for (const p of sim.persons.values()) {
+  const hide = opts.hide ?? new Set<string>();
+  const shown = [...sim.persons.values()].filter((p) => !hide.has(p.id));
+  for (const p of shown) {
     const base = { id: p.id, name: p.name, persona: personas.has(p.id) };
     const lied = Math.max(0, (lies.get(p.id) ?? 0) - unsettledLies(sim, p.id));
     const accepted = num(sim, `${p.id}.truths_accepted`) ?? 0;
@@ -349,7 +354,7 @@ export function computeRecap(sim: Sim, opts: RecapOptions = {}): Recap {
       id: f.id,
       members: sim
         .factionMembers(f.id)
-        .filter((id) => sim.persons.has(id))
+        .filter((id) => sim.persons.has(id) && !hide.has(id))
         .map((id) => ({ id, name: sim.persons.get(id)!.name })),
     }))
     .sort((a, b) => b.members.length - a.members.length || a.id.localeCompare(b.id));
@@ -359,11 +364,11 @@ export function computeRecap(sim: Sim, opts: RecapOptions = {}): Recap {
   const recap: Omit<Recap, "text"> = {
     title: opts.title ?? sim.lobbyTitle(),
     ending: ending === "" || ending === "none" ? null : ending,
-    programs: sim.persons.size,
+    programs: shown.length,
     totals,
     lists: ranked,
     chessGames: chessGames.sort((a, b) => b.won - a.won || a.lost - b.lost || b.drawn - a.drawn || a.name.localeCompare(b.name)),
-    duck: duckBoard(sim, opts.duckRuns ?? [], personas),
+    duck: duckBoard(sim, (opts.duckRuns ?? []).filter((r) => !hide.has(r.guest)), personas),
     factions,
     bathroomNever,
   };

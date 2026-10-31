@@ -86,7 +86,7 @@ import { CREDITS_FILE } from "../src/credits.ts"; // w44
 import { DESCENT_FILE, DescentSource } from "./descent.ts"; // w49
 import { SWEAR_CENSORED, SWEAR_FILTER, SWEAR_FLAGGED, decodeHits, encodeHits, filterHits, hitList, isFilterLevel, maskText, maskUnsaid, type FilterHit } from "../src/language-filter.ts"; // w48, w48b
 import { FilterBook, type FilterView } from "./language-filter.ts"; // w48
-import { NO_ONE, directorIds, forBooth, hostSeen, seenCues, seenName, seenPeople, seenRows, type PeopleRound } from "./unseen-directors.ts";
+import { NO_ONE, directorIds, directorNames, forBooth, hostSeen, seenCrews, seenCues, seenFrom, seenName, seenPeople, seenRows, type PeopleRound } from "./unseen-directors.ts";
 import { guestSide } from "./routes/sides.ts";
 import { CrewRoutes, answeredInviteCards, crewDrafts } from "./routes/crews.ts"; // w18 crews
 import { isCrewId, isCrewRoom } from "../src/runtime/sim/crews.ts"; // w18 crews
@@ -386,10 +386,11 @@ function agentAdjustments(raw: unknown): Array<[string, number]> {
 export type LifecycleKind = "reset" | "reload" | "golive" | "ended";
 
 /** A message as a guest client may see it: never the director attribution
- *  a mod `say`-as-a-participant carries. */
-export function forGuest(m: ChatMessage, sim: Sim | null = null, viewer: string | null = null): ChatMessage {
+ *  a mod `say`-as-a-participant carries, and a Run persona's name (`hide`)
+ *  as "Director". */
+export function forGuest(m: ChatMessage, sim: Sim | null = null, viewer: string | null = null, hide: ReadonlySet<string> = NO_ONE): ChatMessage {
   // Wave 18 (C2): a guest gets only the exits to rooms they can see.
-  const seen = viewer !== null ? goForViewer(m, sim, viewer) : m;
+  const seen = seenFrom(viewer !== null ? goForViewer(m, sim, viewer) : m, hide);
   // Wave 55: another reader's script is only a line in the room.
   const notTheirs = seen.aloud !== undefined && (viewer === null || !seen.aloud.readers.includes(viewer));
   if (seen.via === undefined && !notTheirs) return seen;
@@ -1492,6 +1493,16 @@ export class EventRuntime {
     return { guests, booths, directors: directorIds(this.sim, this.personaOwners) };
   }
 
+  /** Wave 59: the names a phone's chat lines and crews read as "Director". */
+  private personaNames(): ReadonlySet<string> {
+    return directorNames(this.sim, this.personaOwners);
+  }
+
+  /** The same for one stream or token: a director's own pane hides nobody. */
+  private namesHiddenFrom(pane: boolean): ReadonlySet<string> {
+    return pane ? NO_ONE : this.personaNames();
+  }
+
   /** Is `token` a director's own pane (Run → Players)? */
   private directorPane(token: string | undefined): boolean {
     const imp = this.impersonations.get(token ?? "");
@@ -1530,7 +1541,7 @@ export class EventRuntime {
   private guestViewFor(id: string, online: ReadonlySet<string>, avatars = this.avatarMap(), round = this.peopleRound(), director = false): GuestView {
     const base = guestView(this.reqSim(), id, this.decisionChannels.get(id) ?? null, online, this.menuChannels);
     return {
-      ...base,
+      ...seenCrews(base, director ? NO_ONE : this.personaNames()),
       ...seenPeople(base, round, director ? NO_ONE : round.directors),
       answered: this.answeredFor(id),
       avatars,
@@ -1723,9 +1734,9 @@ export class EventRuntime {
     if (m === null || !live) return m;
     for (const c of this.clients) {
       if (c.role === "guest") {
-        if (!m.hidden && visibleTo(m, c.id)) sseSend(c.res, "messageModerated", forGuest(m, this.sim, c.id));
+        if (!m.hidden && visibleTo(m, c.id)) sseSend(c.res, "messageModerated", forGuest(m, this.sim, c.id, this.namesHiddenFrom(c.pane === true)));
       } else if (c.role === "prime") {
-        if (visibleToPrime(m, c, this.agentVoiced, this.sim?.model)) sseSend(c.res, "messageModerated", forBooth(m));
+        if (visibleToPrime(m, c, this.agentVoiced, this.sim?.model)) sseSend(c.res, "messageModerated", forBooth(m, this.namesHiddenFrom(c.pane === true)));
       } else {
         sseSend(c.res, "messageModerated", m);
       }
@@ -2130,15 +2141,16 @@ export class EventRuntime {
    *  and a booth's are capped (`capHistory`: the recent stream, plus their
    *  pinned rooms, pins, alerts, cards, own threads and thread roots). */
   private historyFor(c: Client): ChatMessage[] {
+    const hide = this.namesHiddenFrom(c.pane === true);
     return c.role === "guest"
-      ? capHistory(this.chat.historyFor(c.id, false), HISTORY_LIMIT, guestOwnRow(c.id)).map((m) => forGuest(m, this.sim, c.id))
+      ? capHistory(this.chat.historyFor(c.id, false), HISTORY_LIMIT, guestOwnRow(c.id)).map((m) => forGuest(m, this.sim, c.id, hide))
       : c.role === "mod"
         ? [...this.chat.all()]
         : capHistory(
             this.chat.all().filter((m) => !m.hidden && visibleToPrime(m, c, this.agentVoiced, this.sim?.model)),
             HISTORY_LIMIT,
             boothOwnRow(c.id),
-          ).map(forBooth);
+          ).map((m) => forBooth(m, hide));
   }
 
   /** A lifecycle transition every connected client should react to
@@ -2196,11 +2208,13 @@ export class EventRuntime {
    * performer/mod console (the full feed, so admins can moderate live).
    */
   private deliverMessage(m: ChatMessage): void {
+    const names = this.personaNames();
     for (const c of this.clients) {
+      const hide = c.pane === true ? NO_ONE : names;
       if (c.role === "guest") {
-        if (!m.hidden && visibleTo(m, c.id)) sseSend(c.res, "message", forGuest(m, this.sim, c.id));
+        if (!m.hidden && visibleTo(m, c.id)) sseSend(c.res, "message", forGuest(m, this.sim, c.id, hide));
       } else if (c.role === "prime") {
-        if (visibleToPrime(m, c, this.agentVoiced, this.sim?.model)) sseSend(c.res, "message", forBooth(m));
+        if (visibleToPrime(m, c, this.agentVoiced, this.sim?.model)) sseSend(c.res, "message", forBooth(m, hide));
       } else {
         sseSend(c.res, "message", m);
       }
@@ -5873,8 +5887,15 @@ export class EventRuntime {
 
     // --- K-26: the ceremony's recap numbers (directors only) ---
     if (method === "GET" && path === "/api/mod/recap") {
-      if (opts.moderator !== true && !this.canHostToken(queryTokenOf(req, url))) sendJson(res, 403, { error: "moderators only" });
-      else sendRecap(res, url, this.sim, { title: this.title, personas: this.personaOwners, duckRuns: this.spatial.runs() });
+      const token = queryTokenOf(req, url);
+      if (opts.moderator !== true && !this.canHostToken(token)) {
+        sendJson(res, 403, { error: "moderators only" });
+        return true;
+      }
+      // Wave 59: a host's phone never receives a persona's row; Run does, and
+      // a director's own phone or pane of a host part.
+      const director = opts.moderator === true || this.sessions.canModerate(token) || this.directorPane(token);
+      sendRecap(res, url, this.sim, { title: this.title, personas: this.personaOwners, duckRuns: this.spatial.runs(), ...(director ? {} : { hide: directorIds(this.sim, this.personaOwners) }) });
       return true;
     }
     // --- wave 41 (C5): Trabolta's letters (directors only, never a host booth) ---
@@ -6056,7 +6077,8 @@ export class EventRuntime {
       const messages = this.chat.historyFor(id, admin).filter((m) => !this.isExpired(m));
       // A host booth moderates too, but reads no director's `via`.
       const booth = admin && opts.moderator !== true && this.characterOf(token) !== null;
-      sendJson(res, 200, { messages: admin ? (booth ? messages.map(forBooth) : messages) : messages.map((m) => forGuest(m, this.sim, id)) });
+      const hide = this.namesHiddenFrom(opts.moderator === true || this.directorPane(token));
+      sendJson(res, 200, { messages: admin ? (booth ? messages.map((m) => forBooth(m, hide)) : messages) : messages.map((m) => forGuest(m, this.sim, id, hide)) });
       return true;
     }
 
@@ -8446,9 +8468,11 @@ export class EventRuntime {
           if (c.role === "guest") {
             if (!visibleTo(m, c.id)) continue;
             if (m.hidden) sseSend(c.res, "messageModerated", { seq: m.seq, hidden: true });
-            else sseSend(c.res, "message", forGuest(m, this.sim, c.id));
-          } else if (c.role === "mod" || visibleToPrime(m, c, this.agentVoiced, this.sim?.model)) {
+            else sseSend(c.res, "message", forGuest(m, this.sim, c.id, this.namesHiddenFrom(c.pane === true)));
+          } else if (c.role === "mod") {
             sseSend(c.res, "messageModerated", m);
+          } else if (visibleToPrime(m, c, this.agentVoiced, this.sim?.model)) {
+            sseSend(c.res, "messageModerated", forBooth(m, this.namesHiddenFrom(c.pane === true)));
           }
         }
         sendJson(res, 200, { ok: true, seq, hidden: m.hidden });

@@ -20,6 +20,10 @@
 //! Run plays as it did. The same lists show who is online: `PeopleRound` says,
 //! and each row carries `online` for the phone to filter on, because a phone
 //! also reads these rows for a DM's name, a wallet's pick and a scanned card.
+//! A persona that acts reads "Director" on every other phone: its chat lines
+//! (`seenFrom`), a crew or side it founds (`seenCrews`), a host's recap
+//! (`RecapOptions.hide`). Its DM to a booth stays readable and answerable: the
+//! phone opens a thread for it with no name (`buildPrimeChannels`).
 
 import type { HostView } from "../src/host-board.ts";
 import { foldName } from "../src/parser/names.ts";
@@ -53,11 +57,18 @@ export function seenCaller<T extends { name: string } | null | undefined>(caller
   return { ...caller, name: seenName(caller.name, model) };
 }
 
+/** A chat line with a Run persona's name (`directorNames`) read as "Director". */
+export function seenFrom(m: ChatMessage, hide: ReadonlySet<string>): ChatMessage {
+  return hide.has(m.from) ? { ...m, from: DIRECTOR } : m;
+}
+
 /** A chat line as a booth reads it: never the director who said it as a
- *  participant (`via`), the same as a guest's copy. */
-export function forBooth(m: ChatMessage): ChatMessage {
-  if (m.via === undefined) return m;
-  const { via: _via, ...rest } = m;
+ *  participant (`via`), the same as a guest's copy, and a persona's name
+ *  (`hide`) as "Director". */
+export function forBooth(m: ChatMessage, hide: ReadonlySet<string> = NO_ONE): ChatMessage {
+  const seen = seenFrom(m, hide);
+  if (seen.via === undefined) return seen;
+  const { via: _via, ...rest } = seen;
   return rest;
 }
 
@@ -99,6 +110,21 @@ export function directorIds(sim: Sim | null, owners: ReadonlyMap<string, string>
   return out;
 }
 
+/** The names a non-director reads as "Director": what the Run personas go
+ *  by. A real guest who shares one keeps it (their lines are theirs), and a
+ *  name a real person holds gives no director away. */
+export function directorNames(sim: Sim | null, owners: ReadonlyMap<string, string>): ReadonlySet<string> {
+  const ids = directorIds(sim, owners);
+  if (sim === null || ids.size === 0) return NO_ONE;
+  const out = new Set<string>();
+  for (const id of ids) {
+    const name = sim.persons.get(id)?.name;
+    if (name !== undefined) out.add(name);
+  }
+  for (const p of sim.persons.values()) if (!ids.has(p.id)) out.delete(p.name);
+  return out;
+}
+
 /** `rows` without anyone in `hide` (the same array when nobody goes). */
 export function seenRows<T extends { id: string }>(rows: T[], hide: ReadonlySet<string>): T[] {
   return hide.size === 0 ? rows : rows.filter((r) => !hide.has(r.id));
@@ -116,6 +142,20 @@ export function seenPeople(view: Pick<GuestView, "people" | "roster">, round: Pe
     })),
     roster: seenRows(view.roster, hide),
   };
+}
+
+/** A guest's crew fields as that phone reads them: a founder, a leader, a
+ *  crew mate or an inviter who is a Run persona (`hide`, names) is "Director". */
+export function seenCrews<T extends Partial<Pick<GuestView, "crew" | "invites" | "sides">>>(view: T, hide: ReadonlySet<string>): T {
+  if (hide.size === 0) return view;
+  const read = <N extends string | null | undefined>(name: N): N | typeof DIRECTOR => (typeof name === "string" && hide.has(name) ? DIRECTOR : name);
+  const out = { ...view };
+  if (view.crew != null) out.crew = { ...view.crew, founderName: read(view.crew.founderName), memberNames: view.crew.memberNames.map(read) };
+  if (view.invites !== undefined) out.invites = view.invites.map((i) => ({ ...i, fromName: read(i.fromName) }));
+  if (view.sides !== undefined) {
+    out.sides = view.sides.map((s) => ({ ...s, leader: read(s.leader), ...(s.founder !== undefined ? { founder: read(s.founder) } : {}) }));
+  }
+  return out;
 }
 
 /** A host booth's panel (built on the directors' view) with every
