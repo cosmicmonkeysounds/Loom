@@ -70,7 +70,8 @@ stagehand/
                                    mix's levels → the mixer's gain table, effectiveDb's mirror),
                                    footsteps (wave 49: FootstepBank, Walkers, stepPaceS's mirror)
                                    tap (a capture device summed into an input: VoiceMeeter → input 3, wave 46),
-                                   tidal (the TIDAL app as a stereo bed: capture + DevTools remote, wave 52)
+                                   tidal (the TIDAL app as a stereo bed: capture + DevTools remote, wave 52),
+                                   voicefx (his voice broken in real time, an insert on the trabolta input, wave 56)
     audio/sfx/                     the SFX library: dsp (synthesis toolkit), spec + registry (`SFX`), render,
                                    cli, inspect (PNGs), one module per category (sirens, dings, telephony,
                                    digital, retro, party, story, ambient)
@@ -85,7 +86,7 @@ stagehand/
 ```bash
 cd stagehand
 uv sync                                            # once; makes .venv
-uv run --extra anthropic pytest                    # 2997 passed + 4 skipped, ~90 s, no hardware, no network
+uv run --extra anthropic pytest                    # 3148 passed + 4 skipped, ~110 s, no hardware, no network
                                                    # (without the extra the SDK's few tests skip)
 uv run pytest tests/test_trapped_house.py -q       # after any story or rig change
 uv run stagehand modules
@@ -248,6 +249,21 @@ module docstrings that explain the why).
   Z2M is back. `pace: false` is the kill switch. Tests:
   `tests/test_lights_pacer.py`. A `z2m_task` must run the real `node.exe`,
   never nvm's shim (`zigbee2mqtt.ps1 -InstallTask`, `-Check` flags it).
+- **His voice's insert** (wave 56, `audio/voicefx.py`,
+  `../docs/loom-w56-contract.md` C4). `audio.voicefx: true` on the Desktop puts
+  `VoiceFx` on the `trabolta` input, after the tap and before the mixer
+  (`Engine._duplex_cb`). `_voicefx_loop` reads `voiceFx` off `/api/screen/state`
+  once a second (`on_voice_fx`), so a spike lands with the TV's picture. It never
+  decides how broken he is. A **source** (`Repeat`, `Scramble`, `Tape`, `Pitch`)
+  replaces the voice, one at a time; **colours** (`Gate`, `Crush`, `Ring`) treat
+  it, and never pile up, because they multiply; `Echo`'s tail outlives its event.
+  Sources and colours fade in and out over a block: a jump is a click. A read
+  head may never pass what is written (`fx.block`). `FLAVOURS` and `FLAVOUR_FROM`
+  are pinned to core and the terminal. At level 0 it only remembers: the sound is
+  untouched, sample for sample. An exception restores the block and takes it out
+  of the path (`voicefx_failed`); over budget it trips dry. Both are in the health
+  line; he never goes silent. `python -m stagehand.audio.voicefx in.wav outdir`
+  renders every flavour. Tests: `tests/test_audio_voicefx.py`.
 - **Long files stream, never cache.** Soundtrack beds and `tracks:` open
   as a `Stream` (`SoundBank.stream`); at most the current and next track
   of each bed are open; `_preload` skips tracks. Short story sounds stay

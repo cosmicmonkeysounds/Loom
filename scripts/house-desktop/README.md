@@ -464,6 +464,11 @@ In the **MacBook fallback** (§11) the router is output-only: nothing is
 routed from input 3, so set Chrome's output back to HDMI and the TV's
 volume up, or Trabolta is not heard at all.
 
+**His voice breaks here (wave 56).** `voicefx: true` in `trapped.desktop.yaml`
+breaks the voice on input 3 on its way to the speakers. Run → Terminals, 🌀 His
+voice says how much. To hear it, open `/terminal/?preview=voice` in a tab beside
+the TV and press a flavour; the audio log's health line says `voice fx level …`.
+
 ### 3.6 The soundtrack and who ducks what
 
 The router plays **music all night** on its `music` bus, under every story

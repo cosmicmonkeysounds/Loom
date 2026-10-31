@@ -3,7 +3,7 @@ title: How the house works (staff)
 section: Performers
 order: 19
 role: performer
-keywords: staff, descent, hallucination, talking props, hallway, footsteps, how the house works, behind the scenes, guest guide, hidden rules, spoilers, marked, marks, what marks, lift, locked, lock screen, quarantine, quarantined, capture, release, banished, banish, hand jive, party favour, after the end, show over, human again, speedrun, reinstall, reinstallation, not marked, held, path, trail, golden trail, gerald, king, health bar, shared bar, kneel, hit, chess, server door, checkmate, door code, no prize, heart, server room, close the door, trusted, proof, thrown out, escape, void, virus, disk, pickup, terminal, linked, world view, window, microphone, mic, camera, shadow, identify, idle show, glitch, takeover, announcements, house speakers, holding line, answer as, stimulus, grant, freeze, reserve, audit, every third, auto-approve, director cancelled, truther download, factions, heat, switching sides, codex, wrong code
+keywords: staff, his voice, stutter, voice glitch, descent, hallucination, talking props, hallway, footsteps, how the house works, behind the scenes, guest guide, hidden rules, spoilers, marked, marks, what marks, lift, locked, lock screen, quarantine, quarantined, capture, release, banished, banish, hand jive, party favour, after the end, show over, human again, speedrun, reinstall, reinstallation, not marked, held, path, trail, golden trail, gerald, king, health bar, shared bar, kneel, hit, chess, server door, checkmate, door code, no prize, heart, server room, close the door, trusted, proof, thrown out, escape, void, virus, disk, pickup, terminal, linked, world view, window, microphone, mic, camera, shadow, identify, idle show, glitch, takeover, announcements, house speakers, holding line, answer as, stimulus, grant, freeze, reserve, audit, every third, auto-approve, director cancelled, truther download, factions, heat, switching sides, codex, wrong code
 ---
 
 The guest guide (every Help article without *Performers* on it) tells a
@@ -159,6 +159,18 @@ A program walking in either game is heard on the real speakers near where it
 walks: clearly in its own room, muffled through a wall or a ceiling. It works
 only where there are speakers. If someone in the kitchen stops and listens,
 that is the point. Never explain it.
+
+## His voice comes apart
+
+Late in the night Trabolta's speech starts to go: the pace and the pitch wander,
+words stutter and drop out, other voices cut in. It follows the story by itself
+and gets worse towards midnight. The big glitches hit hard for a few seconds at
+any hour, then he snaps back. Talk him down, or help him in the end, and his
+voice comes back whole. That is the payoff, so never explain it.
+
+Nothing he says changes: the captions and his chat lines stay exactly as written,
+so a line that's hard to hear can always be read. If it ever gets in the way of
+the show, a director or a host sets 🌀 His voice to **Clean**.
 
 ## Clippy's dream
 

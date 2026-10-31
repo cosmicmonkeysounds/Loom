@@ -20,7 +20,7 @@ The show, *Trapped in the Internet* (Oct 31 2026), is the Loom project in
 | `src/runtime/sim/sim.ts` | the `Sim`: world, ledger, hook drain, the executor, every journaled mutation |
 | `src/runtime/sim/` (rest) | `crews.ts` (crews, faction mode), `board.ts` (watch / countdown), `badges.ts`, `stats.ts`, `channel-types.ts`, `effects.ts`, `DESIGN.md` |
 | `src/lsp/` | `Workspace` (completion, hover, definition, references, symbols, diagnostics), `graph.ts` (the story graph), `rename.ts`, `w18-lints.ts` … `w55-lints.ts` (workspace lints L12xx) |
-| `src/*.ts` | browser-safe shared modules: `house-desk.ts` (wave 25, `@loom/core/house-desk`), `talk-back.ts` (wave 32, `@loom/core/talk-back`: `TalkView`, `readTalkPost`, `talkView`) + `talk-scenes.ts` (the show's canned talk lines, `DRAFT w32`), `cue-sheet.ts`, `pick-echo.ts` (wave 28), `host-board.ts`, `delivery.ts`, `facts.ts` + `answer-match.ts`, `casino.ts`, `go.ts`, `show-clock.ts`, `identity-kind.ts` |
+| `src/*.ts` | browser-safe shared modules: `house-desk.ts` (wave 25, `@loom/core/house-desk`), `talk-back.ts` (wave 32, `@loom/core/talk-back`: `TalkView`, `readTalkPost`, `talkView`) + `talk-scenes.ts` (the show's canned talk lines, `DRAFT w32`), `cue-sheet.ts`, `pick-echo.ts` (wave 28), `voice-fx.ts` (wave 56), `host-board.ts`, `delivery.ts`, `facts.ts` + `answer-match.ts`, `casino.ts`, `go.ts`, `show-clock.ts`, `identity-kind.ts` |
 | `server/server.ts` | process boot, static apps (`/`, `/terminal/`, `/reinstall/`, `/cards`, `/webmaster/`), `/api/health`, `/api/resolve-code`, control-plane routing |
 | `server/event-runtime.ts` | one live event (`EventRuntime`, ~7,000 lines): every `/e/:id/api/*` handler, the journal commit + `fanout`, restarts, the ticker |
 | `server/registry.ts` | `EventRegistry`: one `EventRuntime` per event, rehydrated at boot |
@@ -442,6 +442,15 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   every guest but a reader, and `fanout` pushes `aloudPush` to a hidden phone.
   How far a reader has read is their phone's. `L1227` catches an `aloud:` naming
   no signable part (`src/lsp/w55-lints.ts`). Tests: `test/w55-aloud.test.ts`.
+- **His voice** (wave 56, [`docs/loom-w56-contract.md`](../docs/loom-w56-contract.md)).
+  `src/voice-fx.ts` (`@loom/core/voice-fx`, pure) decides how broken Trabolta
+  sounds: `voiceLevel` (a curve over `Night.phase`, the Y2K clock, scaled by
+  `Trabolta.composure`; healed by `Night.talked_down`), `voiceSpikeOf` (the
+  glitch, burst, flicker and dream shots, a director's shot) and the mode
+  (`auto | clean | broken`). `ScreenWatch` puts `voiceFx` on every answer. The
+  mode lives beside the mute (`Store.loadVoiceFx`, in the state dir); the shot
+  is memory only. `POST /api/mod/screen/voice {fx?, shot?}` is on the host
+  allowlist. Tests: `test/voice-fx.test.ts`, `test/trapped-w56-voice.test.ts`.
 - **Hub files have one owner at a time.** `event-runtime.ts`,
   `views.ts`, `chat.ts` and `sim.ts` are touched by almost every
   feature; when several agents work in parallel, give each of these to

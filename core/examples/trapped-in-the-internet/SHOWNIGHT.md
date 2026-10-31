@@ -462,6 +462,7 @@ stays at or under 3 Hz; no open flames; VR is played seated with a spotter.
 | VPS dead | Start the warm standby, restore the newest 10-minute backup from the MacBook (`~/LoomBackups`), repoint DNS. |
 | Rain or wind | Switch to the shed on the Run page's House map card (*Tent \| Shed*), or at `/reinstall/map` on a phone. |
 | A terminal silent, or red ⛶ | Its Wi-Fi, power, is the page open? Relaunch Chrome with `--kiosk` (TV, laptops) or touch the tablet once. A terminal that loops or loses its camera: hold ⚙ 2 s → View `mirror` (`docs/trapped/kiosk.md` → *The mirror fallback*). |
+| His voice is too broken to follow, or sounds wrong | Run → Terminals: 🌀 His voice → **Clean** (a host's phone: More → Terminals). It takes effect on his next words on the terminals and within a second on the speakers. Captions were never touched. **Auto** puts it back |
 | The TV silent after a reboot | Click once into the TV page; `M` unmutes. |
 | Server Door terminal dead | The director fires ♟ `chess_won` naming the winner (it gives the door code). |
 | Door sensor wrong | 🚪 opened / 🚪 closed by hand; later 🚪 *Trust the door sensor again* once it reads right. A door fault: ⚙ on that terminal (calibrate again after a reflash). |
