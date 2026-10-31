@@ -1842,9 +1842,9 @@ export class ScreenWatch {
       const n = v === null || v.trim() === "" ? NaN : Number(v);
       return Number.isFinite(n) ? n : null;
     };
-    const named = (path: string): string | null => {
+    const named = (path: string, max = MAX_MOMENT_NAME): string | null => {
       const v = peek(path);
-      return v === null || v.trim() === "" || v === NIGHT_NONE ? null : clip(v, MAX_MOMENT_NAME);
+      return v === null || v.trim() === "" || v === NIGHT_NONE ? null : clip(v, max);
     };
     const flag = (path: string): boolean | null => {
       const v = peek(path);
@@ -1863,7 +1863,8 @@ export class ScreenWatch {
       bottle_pick: named(SCREEN_NIGHT_VARS.bottle_pick),
       bottle_open: flag(SCREEN_NIGHT_VARS.bottle_open),
       results_q: num(SCREEN_NIGHT_VARS.results_q),
-      award_winner: awardUp ? named(SCREEN_NIGHT_VARS.award_winner) : null,
+      // Wave 58: G9a's tie names everyone in it.
+      award_winner: awardUp ? named(SCREEN_NIGHT_VARS.award_winner, MAX_TIE_NAMES) : null,
       award_value: awardValue !== null && /^-?\d+(\.\d+)?$/u.test(awardValue) ? Number(awardValue) : awardValue,
       help_votes: num(SCREEN_NIGHT_VARS.help_votes),
       thwart_votes: num(SCREEN_NIGHT_VARS.thwart_votes),

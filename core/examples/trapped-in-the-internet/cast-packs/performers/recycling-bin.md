@@ -61,13 +61,16 @@ reinstalled and 👁 are the Antivirus' own and never on your card: radio
 one. The console's **Needs** tab leads with **🚨 n marked · m nobody on it** while programs wait on the Antivirus' Wanted board (tap it for the board, read-only); **Judge** has the *Judging: auto ⇄ review* switch; **More** is split into **Night** (doors, pause, the show clock, announce, the alert level), **House** (wallets, the King, terminals, Trabolta, crews) and **Setup** (codes and QRs, parts). Help → *The host console* has the rest.
 
 **You call the games now (wave 21).** Clippy is a *player*, not a
-caller: every game cue (🎱 Bingo, ⏰ Bingo time, 🔎 the hunt, ⚖️ ⏱ 📋 🍾 the First
-Moment of Truth, 📓 Hunt 2, 🍎 the bob, 🪦 the summary, 🏆 the ceremony and
-every award) is the hosts' and the directors', like the rest of the sheet.
+caller: every game cue (🎱 Bingo, ⏰ Bingo time, 📺 🎤 🤖 the hand-over to Trabolta,
+🔎 the hunt, ⚖️ ⏱ 📋 🍾 the First Moment of Truth, 📓 Hunt 2, 🍎 the bob, 🪦 the
+summary, 📜 the full truth, 🏆 the ceremony and every award) is the hosts' and
+the directors', like the rest of the sheet. Most of these bring up Clippy's
+words on her teleprompter, so give her time to read before the next one.
 Clippy's phone pops **YOUR GAME IS ON** when you fire one; watch Clippy for
-the nod between 📋 results. The three **staff awards** (G10a–c: Trabolta's
-Favourite Staff, Staff Player Of The Night, The Mole) come after G10 (or G9),
-name their own winner (no subject) and The Mole is the last award before G11.
+the nod between 📋 results. **G9a 🏅 Most Questions
+Correct** and the three **staff awards** (G10a–c: Trabolta's Favourite Staff,
+Staff Player Of The Night, The Mole) name their own winner (no subject); the
+staff awards come after G10 (or G9a), and The Mole is the last award before G11.
 Clippy and the four Antivirus play for ⭐ Points: when you press a shared game
 button (🎀, ✅, 🏓 …) Clippy earns nothing, so leave Clippy's games to Clippy.
 
@@ -116,9 +119,16 @@ The house deals the programs files about **who they are connected to** (Codex �
   hosts ("The Recycling Bin: hygiene and maintenance") in the app before
   Clippy's tour.
 - **C1:** be in the living room. Clippy introduces you: hygiene and maintenance.
+- **The cans of water.** At 🤖 Trabolta tells the room that every can of water
+  they drink earns five cents on the recycling, toward the sign. It's only
+  words and a prop (nothing counts them), but the empties are yours: a bag by
+  the cans, and stay proud of it. Who the benefactor is, nobody knows.
 - **All night:** Disk Cleanup is your domain. Keep the line moving, keep it
   clean, keep the Bathroom Mode joke alive. There is a hunt clue in there
   (the customer-service card): never point at it.
+- **📜 The full truth (G0):** once the ending has had its moment, any host or
+  director may fire it (■ Stop house sounds first if a dance track is up). It
+  runs 12 to 14 minutes in the living room, and G1 waits for it.
 - **At each summons** (C1, C2, ⏳): nudge anyone lingering in Disk Cleanup.
   Anyone who left Bathroom Mode on by mistake: **🚻 End Bathroom Mode** on
   their row in your console's People tab (or tell the director, W-10).

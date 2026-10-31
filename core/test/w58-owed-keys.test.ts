@@ -78,3 +78,14 @@ describe("the show's generated files", () => {
     }
   });
 });
+
+describe("the docs carry no digit note's code (wave 58)", () => {
+  it("README and DESIGN name the notes by room and point at facts.json", () => {
+    const codes = SHOW.door!.clues!.map((c) => c.code);
+    expect(codes).toHaveLength(4);
+    for (const doc of ["README.md", "DESIGN.md"]) {
+      const text = read(doc);
+      for (const [i, code] of codes.entries()) expect(text.includes(code), `${doc}: note ${i + 1}`).toBe(false);
+    }
+  });
+});

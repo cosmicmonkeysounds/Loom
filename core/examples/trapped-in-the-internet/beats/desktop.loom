@@ -16,10 +16,10 @@
 // one program at a time, so their lines are private to that program.
 
 // C1 / V1 — `call_to_the_desktop`.
+// Wave 58: no line here, as at Hunt Time Up: the sweep is in the Antivirus'
+// objective, and the rule's banner calls the programs.
 == Call To The Desktop
   setting: The Desktop
-
-Every screen in the house says the same thing. An Antivirus walks the halls, sweeping programs toward the living room.
 
 // V2 — `start_the_bingo`. Clippy Script 1/X (oct30 SCRIPT:3-43), word for word:
 // she describes the hosts, and they have no lines of their own. The stage

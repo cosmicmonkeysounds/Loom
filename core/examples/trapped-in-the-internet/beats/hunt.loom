@@ -30,10 +30,11 @@
 Trabolta: Please. Search for the truth, and have fun. Jean Trabolta's Truth Scavenger Hunt - it's electrifying.
 
 // C2 — `hunt_time_up` (auto at 15 minutes).
+// Wave 58: no line here. Its one Narrator line was a stage direction on every
+// phone. The Antivirus' objective Sweep To The Desktop carries it, and the
+// rule's banner tells the programs.
 == Hunt Time Up
   setting: The Desktop
-
-The Antivirus sweep the house, room by room, herding programs back to the Desktop.
 
 // V6 — `first_moment_of_truth` (SCRIPT:155-159). Part 3 is split around the
 // two-minute last-chance window: the phones, the TV's countdown and the objective

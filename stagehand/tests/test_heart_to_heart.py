@@ -66,7 +66,7 @@ DOSSIER = {
     "wallet": {"balance": 140},
     "gifts": ["The Orchard"],
     "heart": {"layer": 2, "suspicion": 30, "heard": False, "barred": False, "visits": 2},
-    "said": ["Are you lonely down here?", "What is the Unified Field Theory for?"],
+    "said": ["Are you lonely down here?", "What is the Grand Unified Theory for?"],
     "moments": ["joined", "marked", "reinstalled", "filed H3"],
 }
 

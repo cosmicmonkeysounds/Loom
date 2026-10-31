@@ -101,6 +101,27 @@ MacBook's `trapped.macbook.local.yaml` (for the router fallback and for
 firing sounds by hand from the MacBook) and (hashed) in the Desktop's
 Mosquitto password file.
 
+**Wave 58, once, after the final merge** (the Oct 30 story; the running order
+is `SHOWNIGHT.md` §1):
+
+- **Trabolta's worker.** His persona, his mind and the door code's never-list
+  load at boot from the MacBook's checkout, and `sync-show` never reaches them.
+  `git pull`, then `cd stagehand && uv run stagehand launchd restart --job
+  agents`, then Run → Mind → **Reset**. Pull and restart together, never from a
+  half-merged tree: an older worker refuses a persona with `cover:`.
+- **The keypad** is re-set by hand to `facts.json` `door.code` before the 15:00
+  test. Never say it on the radio.
+- **Reload** the TV, every terminal, the tablets, the tent and every booth, then
+  check the build stamps on Run → Terminals. An old TV shows the old captions
+  under the new speech. An old booth still says *scan the guest's pass* and
+  can't take a codex QR.
+- **Run → Mind:** an `engine macbook` row means Claude refused a line and the
+  standby wrote it, about 99 s at the median. Nobody has heard this persona on
+  Claude yet; the battery run is owed (`trabolta-mind.md`).
+- **Before G0 📜** the director may ask you for ■ Stop house sounds: a dance
+  track never ducks under him. If he drops out mid-way, mute the TV: Task
+  Manager takes over.
+
 **Watch all night:** `showctl status --watch 5` · Run → Mind (the worker)
 and Run → Terminals (every row, the 🚪 and 🔌 badges on the server room's) ·
 the uptime alert on `https://app.mapsandducks.com/api/health` (anything but
@@ -132,7 +153,7 @@ frontend.
 | the MacBook dead | the story is fine on the VPS. Trabolta is down (the directors answer DMs). Backups stop: tell the director |
 | Steph's laptop dead | the door and the patch bay go on the 🚪 / 🔌 💥 ❌ buttons (the watch radios); his heart's terminal is gone until it is back |
 | router dead | the ISP router (same SSID/password) |
-| VPS dead | OP-21: start the warm standby, restore the newest backup, repoint DNS |
+| VPS dead | OP-21: start the warm standby, restore the newest backup, repoint DNS. A standby built before tonight's release runs the older image: `ship.sh` against it before anyone trusts it (no booth scanning, old terminal bundles otherwise) |
 | rain / wind mid-show | the shed switch (W-22): open `/reinstall/map` (signed in with the mod code), press **Shed** in the *Map:* bar and confirm — or `POST /e/<event>/api/mod/spatial/variant {"file":"house.shed.json"}` with the mod token. Programs mid-game keep playing; anyone standing in the shed goes back to the new start. Julia (the tent) moves the tent light + speaker. (Copying files on the VPS does nothing: the event plays the project's maps.) |
 
 **ALL STOP:** the director presses 💡 (house lights; it also holds a pending

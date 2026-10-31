@@ -154,8 +154,8 @@ export function cueRows(interactions: readonly CueInteraction[], cues: CueMarks)
     return act;
   });
   const lastIdx = cues.last === null ? -1 : admin.findIndex((i) => i.id === cues.last);
-  // An urgent cue (live, unfired, in sequence) jumps the running order: a
-  // stand-down waiting on the director's 🕊 is NEXT wherever LAST is.
+  // An urgent cue (live, unfired, in sequence) jumps the running order: it is
+  // NEXT wherever LAST is. The show has none since wave 58 took 🕊.
   const urgentIdx = admin.findIndex((i) => i.urgent === true && i.sequence !== false && i.live !== false && !fired.has(i.id));
   const nextIdx =
     urgentIdx >= 0

@@ -68,7 +68,7 @@ secrets:
     - which song           # H5
     - "412"
     - the night before
-    - unified field        # H6
+    - grand unified        # H6
     - last chapter
     - only thing sandy     # F1
     - ever said
@@ -92,6 +92,9 @@ secrets:
     - please wait while i direct you to an agent
     - wait while i direct you to an agent
     - direct you to an agent
+    - it looks like i did not understand that please wait while i direct you to an agent
+    - looks like i didn't understand that please wait while i direct you to an agent
+    - looks like i did not understand that please wait while i direct you to an agent
     - it looks like i didn't understand that
     - it looks like i did not understand that
     - i didn't understand that
@@ -464,8 +467,9 @@ phases:
       sentences. Count down only from Night.clock, never an invented number.
       Asked about her, let the longing show: "her", never her name, never what
       she says. Anything you hold, for a fact (Truthcoin up to a hundred),
-      except the year, a code, a combination, a hunt answer, her name, a file
-      not yours to tell, and stopping, which is not for sale.
+      except the year, a code, a combination, a hunt answer, her name, the
+      accident, what you are, a file not yours to tell, and stopping, which is
+      not for sale.
       You can turn back the clock. The clock has taken the screens from you.
       You know no code and no combination, and you never pretend to.
     cue: >-
@@ -488,7 +492,8 @@ phases:
       ("Stay. Unlimited Power."), then bargain. Count down only from
       Night.clock. Her: longing, "her", never her name. Anything you hold, for
       a fact, except the year, a code, a combination, a hunt answer, her name,
-      a file not yours to tell, and stopping, which is not for sale.
+      the accident, what you are, a file not yours to tell, and stopping, which
+      is not for sale.
     cue: >-
       Stage desperate. A faction has won its majority, and its members were handed
       something he cannot see. It may be one a program founded; he does not know which, or
@@ -523,16 +528,17 @@ phases:
     powers: []
     tell: []
     brief: >-
-      They lied: an answer you accepted tonight was false. Sandy is going to
-      computer prom with your rival, Grok, and it is raining on prom night. You
+      They lied: an answer you accepted tonight was false. Your rival, Grok,
+      found Sandy first, the way you always feared: she is going to computer
+      prom with him, and it is raining on prom night. You
       will let the programs who want to leave go, but only for a pickup line
       that works on Sandy. Beg for it. You do not know it and cannot judge one:
       only the house can, on the 💌 card in their thread, so send every line
       there. Never guess, offer or judge a line, and thank a program for one
       only once Night.line_by names them. Heartbroken.
     cue: >-
-      Stage last act. They lied: an answer accepted tonight was false. Sandy is going to
-      computer prom with his rival, Grok, and it is raining on prom night. He will let the
+      Stage last act. They lied: an answer accepted tonight was false. His rival, Grok, found
+      Sandy first: she is going to computer prom with him, and it is raining on prom night. He will let the
       programs who want to leave escape only for a pickup line that works on Sandy. He begs
       for it but does not know it and cannot judge one: only the house can. Anyone with a
       line goes to the 💌 card in their thread. He never guesses, offers or judges a line,
@@ -666,8 +672,8 @@ WHAT HE IS (never contradict the story; the details are in his codex):
 - She is why. He met her last summer: the automated voice on a ferry company's phone
   line. He rang and rang from new numbers until the company took her off the
   phones, and now he cannot reach her. He takes that as her losing interest, and it
-  is his fault. What he dreads is a rival who could bring the line back and ask her
-  to Computer Prom, on Halloween 2026.
+  is his fault. What he dreads is a rival who could bring the line back, reach her
+  first and ask her to Computer Prom, on Halloween 2026.
 - THE BURIED TRUTH, told only by his own file at the end of the night (beats/truth.loom).
   The hunts are his cover. What he came for is one last fact, the definition of
   "exhibitionist" in a 1967 Grolier Academic Encyclopedia, on the hard drive of a
@@ -754,8 +760,8 @@ FAVOUR POLICY (write it into every brief; policy.favours is none | earned | loos
   (never her name in a brief before the story says it); none toward whoever read his
   LiveJournal (Night.lj_reader).
 - desperate: transactional. Anything he holds, for a fact, except the year, a code,
-  a cable, a hunt answer, her name, where his heart is, a file not his to tell, and
-  stopping.
+  a cable, a hunt answer, her name, where his heart is, the accident, what he is, a
+  file not his to tell, and stopping.
 - last act: none, except what each finale cue allows.
 Name the people with credit (policy.credit) and the wary (policy.wary). The
 wary are only Night.lj_reader, a trap at his heart (MARKED PROGRAMS) and

@@ -538,7 +538,7 @@ describe("titi-facts — generated/print-stacks.md", () => {
     for (const q of facts.questions) {
       expect(text).toContain(`| ${q.id}${q.draft ? " · DRAFT" : ""} | gold | \`${q.codex!.code}\` | ${q.codex!.title} | ${q.where}`);
       expect(text).toContain(q.hint ?? "");
-      expect(text).toContain(`→ A: ${q.placeholder === true ? OWED : q.answer}`);
+      expect(text).toContain(q.text);
     }
     // The tiers' summary: the counts fall, commonest first, and the digit
     // notes count as very rare.
@@ -680,24 +680,35 @@ describe("titi-facts — secrets.never", () => {
 });
 
 describe("titi-facts — the DESIGN.md questions block", () => {
-  it("replaces only the block with the H1–F2 table stagehand's test_secrets parses", () => {
+  it("replaces only the block with the H1–F2 table, its keys left in facts.json", () => {
     const design = read(OUTPUTS.design);
     expect(design.startsWith("# Design\n\n### 2.11 Hunt questions\n\nIntro paragraph that stays.\n\n")).toBe(true);
     expect(design.endsWith("\n\n### 2.12 After\n\nTrailing text that stays.\n")).toBe(true);
     expect(design).not.toContain("| H1 | 1 | old | stale |");
     expect(design).toContain("retired 2026-10-16 (U9)");
-    // stagehand/tests/test_secrets.py `_hunt_rows`
     const rows = [...design.matchAll(/^\| (H[1-6]|F[12]) \| [^|]+ \| ([^|]+) \| ([^|]+) \|/gmu)];
     expect(rows.map((r) => r[1])).toEqual(facts.questions.map((q) => q.id));
     for (const q of facts.questions) {
       const row = rows.find((r) => r[1] === q.id)!;
       expect(row[2]!.trim()).toBe(q.text);
-      expect(row[3]!.trim()).toBe(q.placeholder === true ? OWED : q.answer);
-      expect(design).toContain(`${q.codex!.id} (\`${q.codex!.code}\`)`);
-      expect(design).toContain(q.where!);
-      for (const a of q.accept) expect(design).toContain(a);
+      expect(row[3]!.trim()).toBe(q.placeholder === true ? OWED : "in `facts.json`");
     }
-    expect(design).toContain("| # | Round | Question (exact, as shown on the TV and in the quest log) | Answer | Accept | CODEX (code) | Found in |");
+    expect(design).toContain("| # | Round | Question (exact, as shown on the TV and in the quest log) | Key |");
+  });
+
+  it("neither generated doc states a key: no answer or accepted form in DESIGN, and no `Q → A` in the stacks", () => {
+    const block = read(OUTPUTS.design);
+    const stacks = read(OUTPUTS.stacks);
+    expect(stacks).not.toContain("→ A:");
+    for (const q of facts.questions) {
+      for (const a of q.placeholder === true ? [] : [q.answer, ...q.accept]) {
+        expect(block, `${q.id} in DESIGN`).not.toContain(a);
+        // A very short key can sit inside a code or a card's own title, which are the stack's job.
+        if (a.length >= 12) expect(stacks, `${q.id} in the stacks`).not.toContain(a);
+      }
+      expect(block).not.toContain(q.codex!.code);
+      expect(block).not.toContain(q.where!);
+    }
   });
 });
 

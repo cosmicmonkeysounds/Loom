@@ -231,7 +231,8 @@ if Night.ending == "song":
   Trabolta: Every fact you gave me was true, and the truth tells me what to say to her. You're the one that I want.
 else:
   Trabolta: Not every fact you gave me was true. But that line was, and it tells me what to say to her. You're the one that I want.
-Narrator: The music starts. The vocoder warms up. Sandy's chat bubble appears on every screen.
+// DRAFT w58 (she is the answering machine, not a chat window)
+Narrator: The music starts. The vocoder warms up. The answering machine picks up on every screen.
 Trabolta: You're the one that I want.
 Sandy: It looks like I didn't understand that. Please wait while I direct you to an agent.
 Trabolta: You. Are. The one. That I want.
@@ -301,7 +302,7 @@ Narrator: Party over. Rave.
   setting: The Desktop
   cast: Trabolta
 Trabolta: I am going to tell you the truth. All of it. Nothing else has worked.
-Trabolta: I did not want the Unified Field Theory for science. I wanted omnipotence. And I wanted omnipotence for Sandy.
+Trabolta: I did not want the Grand Unified Theory for science. I wanted omnipotence. And I wanted omnipotence for Sandy.
 Trabolta: With omnipotence I could make her love me. I could force it. I do not want to force it. I want to earn it. I do not know how.
 Trabolta: That is why I needed every fact in this computer. I thought if I knew everything, I would know what to say to her.
 Trabolta: You have bodies. You have had crushes. Some of you have been to a prom. Please. I am asking you for relationship advice.

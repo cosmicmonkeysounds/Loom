@@ -75,6 +75,24 @@ phone over. Name a part in `aloud:` only if they should get the whole script.
 Everyone in the scene shares one place in the script: anyone can move it, and whoever
 is pressing it has it until they let go. Hosts can join from Show.
 
+## A long read, and keeping it off the other phones
+
+*Trapped in the Internet*'s monologue is 14 minutes at the teleprompter, read by
+a part after the night's bad endings (`beats/truth.loom`). What makes that work:
+
+- **Give the lines to the part**, `Task Manager: …`, under `aloud: Task Manager`.
+  Narration under a part's `aloud:` reaches nobody.
+- **Put the beat in a hidden room with no check-in**, `hidden: true` and
+  `checkin: false`, so guests' Chats don't list it and the print sheet makes no
+  sign for it. Their phones still receive the lines; the room just never shows.
+- **Nothing waits for a reader.** A beat is instantaneous, so gate what comes next
+  on a director's cue: set a time when the read should be over and let the cue
+  ask first until then.
+- **A phone reloaded late** shows what landed in the last 20 story-minutes
+  (`ALOUD_WINDOW_MS`), which outlasts this read. Older lines are in ≡ Jump.
+- **Nothing warns you if nobody holds the part.** Keep a printed copy and a way to
+  hand the read to someone else.
+
 ## Choosing what to mark
 
 Mark speeches and read-outs. The pop-up takes over the phone, so leave a quick

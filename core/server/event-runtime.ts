@@ -3154,6 +3154,13 @@ export class EventRuntime {
     return v !== null && (v.kind === "bool" ? v.value : v.kind === "string" && v.value.trim() === "true");
   }
 
+  /** Awake in the body the worker answered, asleep now (wave 58). Never "asleep
+   *  now" alone: a worker's closed gate answers through the same route with the
+   *  `unavailable` and distress lines, and a character with no `awake` has no gate. */
+  private asleepSinceAsked(req: AgentRequest): boolean {
+    return req.self.vars["awake"] === "true" && !this.talkAwake(req.character);
+  }
+
   /** The public talk thread (C4): Trabolta answering Clippy aloud in the Desktop. */
   private talkThread(): AgentThread {
     return { character: TALK_AGENT, channel: `loc:${TALK_ROOM}`, audience: [`@${TALK_AS}`], public: true };
@@ -4298,6 +4305,16 @@ export class EventRuntime {
       // owed request first, in modTalk, and opens a fresh one).
       this.postHostsNote(TALK_LATE_NOTE);
       sendJson(res, 410, { error: "the talk scene closed" });
+      return;
+    }
+    if (this.asleepSinceAsked(req)) {
+      // Wave 58: he died with this reply in flight, and "his DMs stop". Nothing
+      // lands (no line, no adjust, no act). The thread is asked again, because
+      // the worker answers a closed gate itself: the new body reads him asleep,
+      // so the guest gets the unavailable line, or the distress line if that is
+      // what they sent.
+      this.agents.line(req.thread);
+      sendJson(res, 410, { error: "he went to sleep" });
       return;
     }
     if (text !== "") {

@@ -103,7 +103,8 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   codes, or a live event's passcodes. `show-page.test.ts` fails if the
   generated `SHOW.html` names any secret it reads from `facts.json` or
   the story.
-- **A hunt key still owed** (wave 58, `facts.ts` `Question.placeholder`). A
+- **A hunt key still owed** (wave 58, the contract's C1, `facts.ts`
+  `Question.placeholder`). A
   question may ship before its answer: a stand-in `answer` carrying
   `PLACEHOLDER_MARK`, flagged `placeholder: true` (`showFactsProblems` refuses
   one without the other). `judgeWidget` passes a filing on it with no verdict,
@@ -551,7 +552,8 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   it stays a warning). It can't see behind a reveal: one in a beat the night never
   reaches, or a sign's button edited to do nothing. Tests:
   `test/w59-printed.test.ts`, `test/w59-qr-lock.test.ts`.
-- **A booth scans codex QRs** (wave 58). `POST /api/prime/codex/redeem {code}`
+- **A booth scans codex QRs** (wave 58,
+  [`docs/loom-w58-contract.md`](../docs/loom-w58-contract.md) C4). `POST /api/prime/codex/redeem {code}`
   (a booth's token, a host's too: it is off the host allowlist's surface)
   answers `/api/guest/codex/redeem`'s shape (`{ok, unlocked, title?, already?,
   missed?}`, no `codex`). A part is no Person, so `Sim.redeem` would do nothing:
@@ -607,8 +609,8 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   mode lives beside the mute (`Store.loadVoiceFx`, in the state dir); the shot
   is memory only. `POST /api/mod/screen/voice {fx?, shot?}` is on the host
   allowlist. Tests: `test/voice-fx.test.ts`, `test/trapped-w56-voice.test.ts`.
-- **The full truth** (wave 58, `examples/.../beats/truth.loom`, story only but
-  for three small reads). The monologue plays on the director's 📜
+- **The full truth** (wave 58, [`docs/loom-w58-contract.md`](../docs/loom-w58-contract.md)
+  C2, `examples/.../beats/truth.loom`, story only but for three small reads). The monologue plays on the director's 📜
   `tell_the_truth`, after an ending's last beat: `The Full Truth` (Trabolta, 18
   merged lines, `MAX_VOICE_LINES` keeps a poll's newest 40; phase `finale_truth`,
   level 0) or `The Full Truth Read` (`Task Manager:` lines under `aloud:` in the
@@ -647,6 +649,20 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   (directors only, never on the host allowlist; `costumeOff` beside the TV mute in
   the state dir). The cooldowns, a restore that is due and the rest of an ad storm
   are memory only. Tests: `test/w59-costume.test.ts`.
+  He does not return from Combo A or B: a reply written while `awake` read true
+  and landing after it went false is dropped (410, `asleepSinceAsked`) and the
+  thread is asked again, because the worker's gate answers through the same
+  `/api/agent/reply` (the `unavailable` and distress lines). Never gate that route
+  on `awake` alone. Tests: `test/w58-agent-late-reply.test.ts`,
+  `test/trapped-w58-gone.test.ts`.
+- **The special prize** (wave 58, the contract's C5, G9a `award_most_correct`). `questions_right`
+  is written per program only when G9a is pressed (a role watcher on
+  `Night.prize_gen`; a watcher pass runs the programs' before the story's, so
+  the story watcher reads the new numbers) and sits on the role's `secret:`
+  list: a live count beside `truths_accepted` would tell the worker who lied.
+  `recap.ts` `questionsRight` reads the same rule live, and
+  `test/trapped-w58-prize.test.ts` holds the two together. `titi:facts` writes
+  `Night.owed_<id>` (`owedVar`) from `Question.placeholder`.
 - **Hub files have one owner at a time.** `event-runtime.ts`,
   `views.ts`, `chat.ts` and `sim.ts` are touched by almost every
   feature; when several agents work in parallel, give each of these to

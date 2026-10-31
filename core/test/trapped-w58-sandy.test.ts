@@ -54,6 +54,14 @@ describe("F1 under the fold", () => {
     expect(judged(LINE.replace(/'/gu, ""))).toBe("accurate");
     expect(judged(LINE.replace(/[.,]/gu, ""))).toBe("accurate");
   });
+  it("the whole line is right the two ways a person writes it out: no contraction, or no leading word", () => {
+    const written = LINE.replace("didn't", "did not");
+    expect(judged(written)).toBe("accurate");
+    expect(judged(written.replace(/\./gu, ""))).toBe("accurate");
+    const clipped = LINE.slice(LINE.indexOf(" ") + 1);
+    expect(judged(clipped)).toBe("accurate");
+    expect(judged(clipped.replace("didn't", "did not"))).toBe("accurate");
+  });
   it("each half is right, and every form folds to something of its own", () => {
     const [first, second] = LINE.split(". ") as [string, string];
     expect(judged(first)).toBe("accurate");
@@ -89,6 +97,14 @@ describe("the monologue's canon", () => {
     expect(terminal("slides.ts")).not.toContain("PROM 1999");
     expect(terminal("cutscene/scenes/act3.tsx")).not.toContain("PROM 1999");
   });
+  it("nothing on a screen or a phone still calls her a chat: the song's line and her window on the TV", () => {
+    const song = LOOM.flatMap((f) => f.source.split("\n")).filter((l) => /^\s*Narrator:/u.test(l) && /Sandy|answering machine/iu.test(l));
+    expect(song.join(" ")).not.toMatch(/chat/iu);
+    expect(LOOM.map((f) => f.source).join("\n")).toContain("The answering machine picks up on every screen.");
+    expect(terminal("cutscene/scenes/act3.tsx")).not.toContain("SandyChat");
+    expect(terminal("cutscene/scenes/act3.tsx").match(/title="Answering Machine 1\.0"/gu)).toHaveLength(2);
+  });
+
   it("she is the answering machine on the ferry line, met last summer, and the line is gone", () => {
     const file = text("The Sandy File");
     expect(file).toContain("Northumberland Ferries");

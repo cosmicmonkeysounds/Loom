@@ -381,6 +381,14 @@ the tent laptop the mounted reinstall game adds its own
   Clippy's, and a host's 🤖 starts it. The `bingo_time` slide can still be up
   under it: the beat's `cue tv_mirror` clears it. *Bottle Landed* adds `BOTTLE_HUNGER`
   (`kit/tv1-time.ts`, two marks).
+- **The full truth (wave 58, [`docs/loom-w58-contract.md`](../docs/loom-w58-contract.md)
+  C2).** `CLEAN_BEATS` holds *Heart Heard*, *Advice Helped* and *The Full Truth*.
+  `speech/split.ts` no longer cuts a sentence at *Jr.* or *Sr.*. `TRUTH_TXT` is a
+  short teaser, the same words as the story's. The `recount` scene (`act2.tsx`) is
+  what is left of him while Task Manager reads: it holds until the ceremony, its
+  errors stop after the first half minute so nothing sounds under the reading, and
+  there is no ride any more. The award slide's title steps down for a long tie
+  (`most_correct` names everyone tied).
 - **The mirror before him (wave 58).** The TV keeps the screensaver until
   he is revealed, but Clippy's *"We can follow their progress!"* comes
   first: on the host's 📺 (`Night.screen` "mirror") `tv.ts` `mirrorBeforeHim`

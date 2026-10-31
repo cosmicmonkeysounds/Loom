@@ -37,7 +37,7 @@ midnight, 0.8 the majority, 0.85 the final reveal and the bob, 0.9 Grok prom,
 1 banishment, the hand jive, a destroyed computer. Then `Trabolta.composure`,
 which the story already knocks down at every crisis, scales it ±25%.
 
-- **He heals.** `Night.talked_down` and `finale_help` are 0.
+- **He heals.** `finale_help` is 0 (`finale_truth` too, wave 58, which also took out `Night.talked_down`).
 - **He tries.** `advice` is 0.45: the confession stays mostly whole.
 - **A reading is capped at 0.2** while an award or the recount's summary is up:
   names and numbers must land.
@@ -99,8 +99,8 @@ key; from 0.7 a long one can break in two places.
   (`VOICE_STRETCH_MAX_MS` still caps it).
 - **Digits and names survive.** `packet` never drops either.
 - **Bounded.** A flavour works `WINDOW_WORDS` (12) words of a sentence.
-- **Never broken:** `CLEAN_BEATS` (Heart Convinced, Heart Return, Heart Shutdown,
-  Advice Helped), because the level only falls once those lines have moved the
+- **Never broken:** `CLEAN_BEATS` (Heart Heard, Advice Helped, The Full Truth since
+  wave 58), because the level only falls once those lines have moved the
   story's vars. Announcements and TEST VOICE have no shaper at all.
 - **A plan never costs a line.** A shaper that throws says the sentence plainly.
   A plain sentence takes the old code path, untouched.

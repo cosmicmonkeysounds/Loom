@@ -355,12 +355,14 @@ describe("Trapped in the Internet — wave 9 (the cue sheet)", () => {
 
   // Wave 21: the three staff awards (G10a–c, appended to the sheet) come
   // before G11, and G11's `while:` waits for The Mole.
-  it("T5-crew-cards-08 / R2-diff-clients-04: with no MS Paint at the party NEXT after G9 is the staff awards, then G11, never G10", { timeout: SLOW }, () => {
+  it("T5-crew-cards-08 / R2-diff-clients-04: with no MS Paint at the party NEXT after G9 is G9a, then the staff awards, then G11, never G10", { timeout: SLOW }, () => {
     const sim = boot(PROGRAMS.filter(([id]) => id !== "g4"));
     throughG9(sim);
     expect(v(sim, "Night.painting")).toBe(false);
     expect(live(sim, "award_the_painting")).toBe(false);
-    expect(sheet(sim)).toEqual({ last: "award_quest_completionist", next: "award_staff_trusted" });
+    expect(sheet(sim)).toEqual({ last: "award_quest_completionist", next: "award_most_correct" });
+    expect(press(sim, "award_most_correct").refused).toBe(false);
+    expect(sheet(sim)).toEqual({ last: "award_most_correct", next: "award_staff_trusted" });
     for (const a of ["award_staff_trusted", "award_staff_points", "award_staff_mole"]) expect(press(sim, a).refused, a).toBe(false);
     expect(sheet(sim)).toEqual({ last: "award_staff_mole", next: "resurrection" });
     expect(press(sim, "resurrection").refused).toBe(false);
@@ -368,11 +370,13 @@ describe("Trapped in the Internet — wave 9 (the cue sheet)", () => {
     expect(sheet(sim)).toEqual({ last: "resurrection", next: null });
   });
 
-  it("T5-crew-cards-08 / R2-diff-clients-04: with MS Paint cleared NEXT after G9 is G10, then the staff awards, then G11", { timeout: SLOW }, () => {
+  it("T5-crew-cards-08 / R2-diff-clients-04: with MS Paint cleared NEXT after G9 is G9a, then G10, then the staff awards, then G11", { timeout: SLOW }, () => {
     const sim = boot();
     throughG9(sim);
     expect(v(sim, "Night.painting")).toBe(true);
-    expect(sheet(sim)).toEqual({ last: "award_quest_completionist", next: "award_the_painting" });
+    expect(sheet(sim)).toEqual({ last: "award_quest_completionist", next: "award_most_correct" });
+    expect(press(sim, "award_most_correct").refused).toBe(false);
+    expect(sheet(sim)).toEqual({ last: "award_most_correct", next: "award_the_painting" });
     expect(press(sim, "award_the_painting", "g4").refused).toBe(false);
     expect(v(sim, "Night.ceremony_done")).toBe(false);
     expect(sheet(sim)).toEqual({ last: "award_the_painting", next: "award_staff_trusted" });
@@ -426,7 +430,7 @@ describe("Trapped in the Internet — wave 9 (the cue sheet)", () => {
     // Trabolta hosts on the verdict's roads (Combo A: Clippy, wave 58).
     sim.fireBeat("Song Ending");
     press(sim, "tell_the_truth");
-    advance(sim, 720);
+    advance(sim, 830);
     press(sim, "start_the_ceremony");
     expect(v(sim, "Night.ceremony_host")).toBe("Trabolta");
     expect(v(sim, "Night.award_lines")).toBe("template");

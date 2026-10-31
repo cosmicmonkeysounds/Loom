@@ -63,6 +63,7 @@ def told(**world):
         "Of course I am a real person.",
         "I am a very busy man.",
         "I'm just a man.",
+        "I am the man behind Maps and Ducks.",
         "I am flesh and blood.",
         "I have a body.",
         "I was born in Halifax.",
@@ -357,6 +358,22 @@ def test_the_water_is_spelled_for_the_voice():
     assert "ZIP files" in body
 
 
+@pytest.mark.parametrize(
+    "line",
+    [
+        "A fully immersive virtual reality game, program: three rounds of trivia, and a special prize for the most questions correct.",
+        "The books around the house are ZIP files: open one and you extract its text files. What is in them, I do not know.",
+        "All of the clues can be answered through the ZIP files; I do not know which.",
+        "Maps and Ducks is on Lower Water Street, the finest purveyor of maps and decoy ducks east of Montreal.",
+        "I join you by digital conference, program.",
+    ],
+)
+def test_the_scripts_own_words_pass_his_guards(line):
+    model = Model(say(line))
+    assert run(answer_lean(TRABOLTA, MODEL, request(text="What is all this?"), context(), model)).say == line
+    assert len(model.calls) == 1
+
+
 def test_the_unavailable_line_fits_both_ends_of_the_night():
     line = TRABOLTA.unavailable
     assert "later tonight" not in line and "unavailable" in line
@@ -387,6 +404,12 @@ def test_the_buried_truth_reaches_no_prompt_before_his_file():
     assert "what the accident was stays yours" in flat
     # The film and the answers stay out, even here.
     assert not TRABOLTA.secrets.leaks(block.prompt)
+
+
+def test_neither_sore_point_is_for_sale_at_the_last_hour():
+    assert "the accident, what you are, a file not yours to tell" in " ".join(TRABOLTA.bargain.split())
+    for phase in ("y2k", "majority"):
+        assert "the accident, what you are, a file not yours to tell" in " ".join(TRABOLTA.phase_cards[phase].brief.split()), phase
 
 
 def test_the_buried_truth_in_the_mind_is_gated():
@@ -426,6 +449,12 @@ def _codex_titles() -> set[str]:
     for f in [*(SHOW / "codex").glob("*.loom"), *(SHOW / "generated").glob("*.loom")]:
         out.update(t.strip() for t in re.findall(r"^\s*title:\s*(.+)$", f.read_text(), re.M))
     return out
+
+
+def test_the_printer_is_the_way_in_never_the_router():
+    world = (SHOW / "codex/1-world.loom").read_text()
+    entry = " ".join(world[world.index("CODEX The Halifax Computer") : world.index("CODEX The Optical Drive")].split())
+    assert "malfunctioning printer" in entry and "router" not in entry
 
 
 def test_no_tell_list_names_an_entry_that_is_gone():

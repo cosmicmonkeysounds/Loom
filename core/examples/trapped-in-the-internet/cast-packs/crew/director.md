@@ -50,8 +50,8 @@ does ends the night or needs you; you may read their numbers in Run → World
 
 | # | Cue | Then | Set stage (classic only: the story mind sets it itself) |
 |---|---|---|---|
-| 1 | **C1/V1 📣** Call everyone to the Desktop (by 21:00) | Clippy welcomes, hosts | |
-| 2 | **V2 🎱** Start Computer Bingo (20 min) | | |
+| 1 | **C1/V1 📣** Call everyone to the Desktop (by 21:00) | Programs gather | |
+| 2 | **V2 🎱** Start Computer Bingo (20 min) | Clippy's welcome pops up on her teleprompter; she names the hosts | |
 | 3 | **V3 ⏰** Bingo time: results | Norton interrupts; Corrupted Code | |
 | 3a | radio **INTRO**, then **Clippy 2/X 📺** only if a program is walking | the TV follows them; Clippy cheers | |
 | 3b | **Clippy 2/X 🎤** Clippy tells the room about Trabolta | her paragraph, ending *"Trabolta, would you explain the rules?"* | |
@@ -75,7 +75,7 @@ does ends the night or needs you; you may read their numbers in Run → World
 | 18 | **🍎** Bobbing for Truth → **📄** Read truth.txt (the slide holds while the bobber reads) → **⚖** the verdict when they finish | | |
 | 19 | Grok Prom only: 💘 from a host, or **💔** / the alt **💌 → 🗳 → 💞 / ⛈ → 🕺** | | |
 | 19b | **G0 📜** The full truth, after the ending's last beat: Trabolta on the TV, or Task Manager on the teleprompter after Combo A or B. ■ Stop house sounds first if a dance track is still up (the rave's never ducks). Leave 🌀 His voice on Auto or Clean, and no shots: a director's own Broken or shot can still break him | | about 12 to 14 minutes |
-| 20 | (**✍** first, only if the second director wrote award lines) → **G1 🏆** ceremony (NEXT once 📜 is over; a press sooner asks, a second inside 30 s goes on) → **G2–G9** awards, winner picked from the recap → **G10 🖌** the painting (only if MS Paint came; without her NEXT skips it) → **G10a–c** the three staff awards (no winner to pick: 🛡 Trabolta's Favourite Staff, ⭐ Staff Player Of The Night, 🤫 The Mole, the last) → **G11 🎃** Resurrection (last: ends the show and rolls the credits; **G12 🎬** rolls them again). **G13 🚻** The Bathroom Report: any time between G1 and G11, best before G2 (no winner to pick; programs that never went already lost 5 trust at G1). **G14 🔑** The Language Report: the same, any time between two awards (who cursed the most, the top censored words, her ⭐; the TV shows them all, slurs only as black bars) | | |
+| 20 | (**✍** first, only if the second director wrote award lines) → **G1 🏆** ceremony (NEXT once 📜 should be over: wait for his last word; a press sooner asks, a second inside 30 s goes on) → **G2–G9** awards, winner picked from the recap → **G9a 🏅** the special prize (no winner to pick: the story counts the questions right; a tie names everyone in it and they share it) → **G10 🖌** the painting (only if MS Paint came; without her NEXT skips it) → **G10a–c** the three staff awards (no winner to pick: 🛡 Trabolta's Favourite Staff, ⭐ Staff Player Of The Night, 🤫 The Mole, the last) → **G11 🎃** Resurrection (last: ends the show and rolls the credits; **G12 🎬** rolls them again). **G13 🚻** The Bathroom Report: any time between G1 and G11, best before G2 (no winner to pick; programs that never went already lost 5 trust at G1). **G14 🔑** The Language Report: the same, any time between two awards (who cursed the most, the top censored words, her ⭐; the TV shows them all, slurs only as black bars) | | |
 
 **The talk scenes (wave 32).** At the four 🤖 marks above, Clippy talks
 with Trabolta live in front of the room: Task Manager types what Clippy
@@ -88,7 +88,7 @@ Trabolta into The Desktop from Run: during a scene that line reaches
 everyone and answers Clippy. A slow or missing mind only ever shows in
 `# hosts` (*🤖 Trabolta isn't answering — tap one of his canned lines*),
 never in the room, and an answer that comes after the scene moved on is
-dropped. **⚡ Glitch** (`ad_burst`, cue 77, Anytime) works only while a
+dropped. **⚡ Glitch** (`ad_burst`, cue 79, Anytime) works only while a
 scene is on: a flicker before the ad attack, an ad burst (every screen and
 phone, his pained line, a sound) after it; the scenes also glitch on their
 own about every 45 s. For 8 s after 📺 a ⚡ is refused (*⚡ The ad hijack
@@ -127,7 +127,7 @@ uncertain (the current verdict is outlined; a filing that was settled as a
 mark, a guess, has no buttons). A host's 📝 on a program's card judges only that program's
 **latest** filing: while an earlier one still waits, it changes nothing and
 `# hosts` says *"📝 Not judged: … Judge it on Run → Mind → Judging"*. **Trabolta rules every answer that isn't an exact match** (wave 18b): a
-near miss (*Mr Pickels*, *Grko*, *11 years ago*, with a ⚠ line in `# hosts`
+near miss (*Mr Waffels*, *11 years ago*, with a ⚠ line in `# hosts`
 naming the key) and a plain miss alike go to his laptop, one at a time, his
 voice replies first. The card reads *🤖 asking Trabolta…* (or queued), and
 seconds later `# hosts` gets *🤖 Trabolta ruled …: the same as / not "<key>"
@@ -254,9 +254,11 @@ after doors.
 3. The show map is the tent or shed variant chosen at 10:00 (**Tent** or
    **Shed** `● live` in the map page's *Map:* bar), and its status line reads
    "the project's map", not "this event's map".
-4. Trabolta: worker connected (Run → Mind), **mind Reset**, `lookup: false`,
-   thinking off; only `gpt-oss:20b` loaded (the story mind); John's MacBook on
-   its charger, `caffeinate`; he is hidden and asleep.
+4. Trabolta: worker connected (Run → Mind), **restarted on the final merge**
+   (`sync-show` never reaches his persona or mind: the tech op pulls and
+   restarts them together), **mind Reset**, `lookup: false`, thinking off; only
+   `gpt-oss:20b` loaded (the story mind); John's MacBook on its charger,
+   `caffeinate`; he is hidden and asleep.
 5. `pnpm showctl doctor` green (the tech op runs `showctl preflight` on
    each computer: `macbook`, `desktop`, `serverroom`, `tent`). Terminals
    green on the heartbeat card, showing attract; the TV (John's Desktop) on
@@ -265,7 +267,8 @@ after doors.
 6. Lights: Z2M + WLED up; screensaver look on; one blackout test (stairs,
    bathroom, tent, server room, the path stay lit; the Tube strip dim).
 7. Server-room door (wave 20): a real open → shut shows 🚪 *open* / *shut* on Run → Terminals within a second, no fault, no *override*, and the bulb follows; then 🔄 (and 🚪 Trust the door sensor if anyone pressed a 🚪); the keypad opens from
-   outside with the story's code (`facts.json` `door.code`, tested at 15:00);
+   outside with the story's code (`facts.json` `door.code`: wave 58 changed it,
+   so the keypad is re-set by hand before the 15:00 test);
    the patch bay is all unplugged (🔌 *0* on its row) and one cable in → 🔌 *1*
    → out again; no 🔌 *buttons* (🔌 Trust the patch bay if anyone pressed a
    patch button); the server-room terminal is green and asleep.
@@ -281,9 +284,11 @@ after doors.
 11. The door terminal by the keypad (the King's chess) green on the
     Terminals card. The four silver digit notes hidden (never in the server
     room). Bean printer button paired.
-12. Print: the QR stacks sorted by colour and hidden where
+12. Print (only after the sync, and with H1–H3's answers in: no *placeholder*
+    WARN from `titi:facts`): the QR stacks sorted by colour and hidden where
     `generated/print-stacks.md` says (gold = the hunt answers, green, blue,
-    red), the check-in signs, Bingo cards + pens, trophies, every card.
+    red), the check-in signs, Bingo cards + pens, trophies, every card; the
+    cans of water out; Task Manager's printed monologue in his pocket.
 13. Judging card on Run → Mind reads `auto`, nothing pending; `facts.json`
     is the one synced with the story (`titi:facts --check` green).
 14. Safety: first aid + extinguisher placed, egress clear, glow tape, GFCIs

@@ -5,15 +5,15 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { componentFor, sceneForRoom } from "../src/cutscene/pick.ts";
 import { ACTS, SCENES, duplicateIds } from "../src/cutscene/registry.ts";
-import { SCENES as HEART, bayLight, layerOf } from "../src/cutscene/scenes/heart.tsx";
+import { SCENES as HEART, layerOf } from "../src/cutscene/scenes/heart.tsx";
 import { fakeState } from "../src/cutscene/fake.ts";
 import type { SceneProps } from "../src/cutscene/types.ts";
 import { HEART_SCENE_MS } from "../src/heart/heart.ts";
 
 /** The room cues the story plays (CONTRACT-w20 §2.11). */
-const ROOM_CUES = ["room_heart_wake", "room_heart_sealed", "room_heart_sealed_present", "room_heart_layer_1", "room_heart_layer_2", "room_heart_layer_3", "room_heart_layer_4", "room_heart_proof", "room_heart_warn", "room_heart_eject", "room_heart_notyet", "room_heart_leave", "room_heart_shutdown"];
+const ROOM_CUES = ["room_heart_wake", "room_heart_sealed", "room_heart_sealed_present", "room_heart_layer_1", "room_heart_layer_2", "room_heart_layer_3", "room_heart_proof", "room_heart_warn", "room_heart_eject", "room_heart_notyet", "room_heart_leave"];
 /** §3.8: the scenes that may cover the choice panel's docked menu. */
-const COVERING = ["heart_wake", "heart_sealed", "heart_sealed_present", "heart_eject", "heart_notyet", "heart_leave", "heart_shutdown"];
+const COVERING = ["heart_wake", "heart_sealed", "heart_sealed_present", "heart_eject", "heart_notyet", "heart_leave"];
 /** D29: never in a scene the guest sees. */
 const OUTSIDE = /\b(john|steph|jesse|party|the show|actors?|performers?|rehearsal|loom|stagehand|arduino|zigbee|laptop|grand central|sensor)\b/iu;
 
@@ -58,7 +58,6 @@ describe("the heart's room scenes (§3.8)", () => {
     expect(by["heart_eject"]).toMatchObject({ ms: 8_000, face: "angry" });
     expect(by["heart_notyet"]).toMatchObject({ ms: 6_000, face: "pleased" });
     expect(by["heart_leave"]).toMatchObject({ ms: 3_000, face: "neutral" });
-    expect(by["heart_shutdown"]).toMatchObject({ ms: 25_000, face: "dying", faceMs: 25_000 });
     for (const d of HEART) expect(d.ms, d.id).toBe(HEART_SCENE_MS[d.id.startsWith("heart_layer") ? "heart_layer" : (d.id as keyof typeof HEART_SCENE_MS)]);
   });
 
@@ -76,30 +75,22 @@ describe("the heart's room scenes (§3.8)", () => {
     expect(render("heart_notyet", 5_500)).toContain("NOT YET");
     expect(render("heart_notyet", 5_500)).toContain("COME BACK WHEN THE CLOCK RUNS");
     expect(render("heart_leave", 1_000)).toContain("CONNECTION CLOSED");
-    expect(render("heart_shutdown", 24_000)).toContain("It is now safe to turn off your computer.");
   });
 
   it("read the layer off the cue", () => {
     expect(layerOf("heart_layer_3")).toBe(3);
-    expect(layerOf("heart_layer_9")).toBe(4);
+    expect(layerOf("heart_layer_9")).toBe(3);
     expect(layerOf("heart_layer")).toBe(1);
     expect(render("heart_layer", 1_000, "heart_layer_2")).toContain("HEART.EXE");
     // Wave 29: no count, no progress pips — nothing says how far through the talk they are.
-    for (const n of [1, 2, 3, 4]) {
+    for (const n of [1, 2, 3]) {
       const html = render("heart_layer", 1_000, `heart_layer_${n}`);
       const text = html.replace(/<[^>]*>/gu, " ");
       expect(text).not.toMatch(/\bLAYER\b|\d\s*\/\s*4/iu);
       expect(html).not.toContain("ht-layer-pips");
     }
     expect(render("heart_layer", 1_000, "heart_layer_2")).toContain("WHAT I AM");
-    expect(render("heart_layer", 1_000, "heart_layer_4")).toContain("THE ASK");
-  });
-
-  it("take the patch bay dark top row first", () => {
-    expect(bayLight(0, 0, 0)).toBe(1);
-    expect(bayLight(0, 11, 11_000)).toBe(0); // the top row is out before the bottom starts
-    expect(bayLight(1, 0, 11_000)).toBe(1);
-    expect(bayLight(1, 11, 25_000)).toBe(0);
+    expect(render("heart_layer", 1_000, "heart_layer_3")).toContain("THE ARGUMENT");
   });
 
   it("never step outside his world (D29)", () => {

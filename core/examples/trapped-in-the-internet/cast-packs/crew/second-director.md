@@ -47,6 +47,16 @@ cues early: it cuts the window short. Hold 🕚 until the patch-bay watch radios
 After 🍎, press 📄 (truth.txt holds on the screens while the bobber reads),
 then **⚖** for the verdict when they finish.
 
+**1a. The opening, in order (wave 58: the Oct 30 script).** ⏰ brings up Clippy's
+welcome back; she presses 🎱 🎀 🎯 🤐 and each brings up her next words, so
+nothing there is yours. Once Norton has taken the first program out: radio
+**INTRO**, then **📺** only if a program is walking (nobody walking: skip it;
+it is never NEXT). **🎤** brings up her paragraph on Trabolta. **🤖** on her
+*"Trabolta, would you explain the rules?"*, not before: he speaks for about
+three minutes, clean, and the 🤖 Talk card waits for *"it's electrifying."* A
+minute or so of talk, then **🔎** (nothing is said on it). **⚖️** brings up her
+welcome back, and **⏱** her hand to him.
+
 **1b. The First Moment of Truth, in order.** V6 opens a two-minute filing
 window. ⏱ closes it (or it closes itself: then ⏱ ticks and NEXT is 📋). Then 📋 once per question (Q1, Q2,
 Q3): Trabolta reads the result on the TV and the filings settle.
@@ -92,7 +102,8 @@ against the final verdict for good; that is the point. A typo the key did
 not know → override that one filing, and tell John to add the alias to
 `facts.json`. Clippy's own mis-tap (😤 meant as ✅) is undone by Clippy
 pressing ✅ for the same question on the same program. The key, for reference
-(DRAFT questions until the team replaces them):
+(H1–H3 are the Oct 30 script's and owed: fill them in from
+`facts.json` before you print this card):
 
 | | Accurate answer |
 |---|---|
@@ -191,9 +202,21 @@ queued.
    line you post would be spoken as well, on top).
 3. **If Trabolta is gone** (Combo A, Combo B, the rave): Clippy hosts and reads each line
    aloud; the TV shows the award slide.
-4. Fire **G0 📜** after the ending's last beat, then **G1** when NEXT moves to it
-   (a press sooner asks first), then G2–G9 with the winner as the subject. Firing an award
-   again corrects it. Then **G10 🖌** on MS Paint (only if she came; without
+4. Fire **G0 📜** once the ending has had its moment: after the song, the hand
+   jive, the dance, 🪦. ■ Stop house sounds first if a dance track is up (the
+   rave's never ducks), and leave 🌀 His voice on Auto or Clean with no shots:
+   a director's Broken still breaks him. It takes about 12 minutes on the TV and
+   14 at the teleprompter. **📜 Task Manager reads it instead** is the way out if
+   the TV has no voice (mute the TV first). If nobody holds the part nothing
+   warns you: he has a printed copy. Then **G1** when NEXT moves to it and he has
+   said his last word (a press sooner asks first; a press while he is reading
+   breaks the rest of his voice), then G2–G9 with the winner as the subject. Firing an award
+   again corrects it. Then **G9a 🏅 Most Questions Correct**, the special prize
+   Trabolta promised (wave 58: no winner to pick, the story counts each
+   program's questions right; a tie names everyone in it and they share it; a
+   press again reads the newest numbers; the recap's *Questions correct* is the
+   same count, live, if you have to hand it out by hand).
+   Then **G10 🖌** on MS Paint (only if she came; without
    her the sheet's NEXT skips it), then **G10a–c**, the three staff awards
    (wave 21: no winner to name, the story picks the player; The Mole is the
    last award), then

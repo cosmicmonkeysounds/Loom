@@ -117,6 +117,9 @@ into `//`: 147.03 kB. The shared teleprompter added
   pane, or a busy resolve) is `enterBadge`: what the page does with the link, so
   the owed release, this phone's token and the refused screen hold there too. Tests: `test/guest-scan.test.tsx`,
   `test/w58-booth-scan.test.tsx`.
+- **The read window** (wave 58). `aloud/model.ts` `ALOUD_WINDOW_MS` is 20
+  minutes, past the longest read: the monologue lands at once and takes 14 at the
+  prompter's pace, so a phone swapped mid-read still gets it.
 - **Deep links.** `?unlock=` (codex; a guest's session, or wave 58's
   `booth/unlock-link.ts` on a phone signed in as a booth), `?checkin=` (room sign), `?act=` (a
   sign that presses a guest's button, `act-link.ts`, wave 54: 📷 Scan or the
@@ -259,7 +262,8 @@ windows), the Desk, the director phone and Help are lazy chunks.
   (`booth/card.tsx`: facts, at most three face buttons from the live
   objectives, the press's replies / said / staff lines). Since wave 21
   no booth has *All buttons…*, earlier readouts or the raw id.
-- **A codex QR** (wave 58, copy `DRAFT w58`). `ScannerScreen`'s `onCode`
+- **A codex QR** (wave 58, [`docs/loom-w58-contract.md`](../docs/loom-w58-contract.md)
+  C4, copy `DRAFT w58`). `ScannerScreen`'s `onCode`
   redeems a wall code with an `unlock` before anything else
   (`PrimeSession.redeem` → `POST /api/prime/codex/redeem`, typed `RedeemAnswer`):
   `redeemNote` is the line under the camera, which stays on, `redeemHeld` shows

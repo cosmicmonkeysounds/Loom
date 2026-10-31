@@ -141,8 +141,12 @@ default). With nobody calling, nothing asks.
   asks **who** first; pick them, then tap the cue again to fire it for
   them (the armed row reads *Tap again to fire → Winamp*). A cue armed for
   a person waits **10 s** for that tap, not 4 s, while the list scrolls
-  back to its row. Only an **award** (G2–G10) also has a **Value** box above the
+  back to its row. Only an **award** with a winner to pick (G2–G10, never G9a) also has a **Value** box above the
   list (optional: lies accepted, the duck time, quests done).
+- **G0 📜** is NEXT once an ending's last beat has played: press it when the
+  ending has had its moment, with ■ Stop house sounds first if a dance track is
+  up. **G1** then asks once if the monologue should still be going; a second
+  press inside 30 s goes on.
 - A message at the bottom says whether it fired. *✓ Fired* means the
   story took it. *Not taken — X doesn't apply right now (# hosts says
   why)* means the story turned it down: pressed out of turn, it did

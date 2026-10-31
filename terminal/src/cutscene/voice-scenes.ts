@@ -23,7 +23,7 @@
 //! His line shows once: the layer captions the sentence he is saying unless
 //! the scene draws it itself (`ownCaption`: the intro, the bottle's
 //! "<pick>." / "Truth or dare?") or that sentence is one of its `drawn`
-//! (advice_helped's proposal, typed in SandyChat).
+//! (advice_helped's proposal, typed in the answering machine's window).
 
 import { BOTTLE_HUNGER_AT, BOTTLE_SPIN_MS, BOTTLE_VOICE_END } from "./kit/tv1-time.ts";
 import { INTRO_CAPTIONS, INTRO_MS, INTRO_VOICE_END } from "./kit/tv1-boot.tsx";
@@ -60,7 +60,7 @@ export const VOICE_SCENES: Readonly<Record<string, VoiceScene>> = {
   verdict: { beats: ["The Verdict"], marks: [1200, VERDICT_PLAN.tiles + 7 * VERDICT_PLAN.tileEvery + 100, VERDICT_PLAN.totals - 500, VERDICT_PLAN.totals] },
   // "…The house says YES." while the card is up; "That is the line." on the stamp.
   pickup_line: { beats: ["Pickup Line"], marks: [1500, 4200], tail: 8000 - 5400 },
-  // His first two lines before SandyChat opens (the window stays shut, his
+  // His first two lines before her window opens (the window stays shut, his
   // words captioned); the chat opens on "Sandy." and types the proposal as
   // he says it (sentences 5–7, drawn by the chat, never captioned twice);
   // her answer in Sandy's pause; THAT WAS A YES on "That was a yes."; the

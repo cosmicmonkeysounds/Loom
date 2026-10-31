@@ -101,11 +101,10 @@ describe("a pick in the thread (B4)", () => {
 
 describe("the composer and the line's end (B6, B7)", () => {
   const since = 1_000;
-  it("is held back through a proof or the shutdown, for the rest of a thrown line, and once the heart is done", () => {
+  it("is held back through a proof, for the rest of a thrown line, and once the heart is done", () => {
     const at = (value: string, now: number) => composerBlocked({ cue: { value, at: 2_000 }, since, now, stage: "talk", heart: true });
     expect(at("room_heart_proof", 3_000)).toBe(true);
     expect(at("room_heart_proof", 9_000)).toBe(false);
-    expect(at("room_heart_shutdown", 20_000)).toBe(true);
     expect(at("room_heart_eject", 600_000)).toBe(true);
     expect(at("room_heart_layer_2", 2_100)).toBe(false);
     // An eject from before this line opened is not this line's (past the first-word hold).

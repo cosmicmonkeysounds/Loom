@@ -156,6 +156,25 @@ else if Night.award == "quest_completionist":
     Trabolta: A bonus award. Quest Completionist. {Night.award_winner}. Nobody finished more of the Quest Log. Come up here.
   else if Night.award_lines != "director":
     Trabolta: A bonus award. Quest Completionist. Quests done: {Night.award_value}. {Night.award_winner}. Nobody finished more of the Quest Log. Come up here.
+else if Night.award == "most_correct":
+  // G9a (wave 58): the story named the winner and counted (main.loom). A
+  // tie reads everyone in it; nobody right is said, and the night goes on.
+  // Every line here is DRAFT w58.
+  cue screens_award_most_correct
+  set Night.screen = "award_most_correct"
+  if Night.ceremony_host == "Clippy":
+    if Night.award_winner == "Nobody":
+      Clippy: Award. Most Questions Correct, the special prize of the Truth Scavenger Hunt. The report lists nobody. Not one question. The prize stays in its box.
+    else if Night.prize_tied > 1:
+      Clippy: Award. Most Questions Correct, the special prize of the Truth Scavenger Hunt. The report lists a tie: {Night.award_winner}. Questions correct: {Night.award_value} each. Please come forward together and share it.
+    else:
+      Clippy: Award. Most Questions Correct, the special prize of the Truth Scavenger Hunt. The report lists {Night.award_winner}. Questions correct: {Night.award_value}. Please come forward.
+  else if Night.award_lines != "director" and Night.award_winner == "Nobody":
+    Trabolta: The special prize of my Truth Scavenger Hunt, for the most questions correct. Nobody. Not one of you found me one true answer. The prize stays with me.
+  else if Night.award_lines != "director" and Night.prize_tied > 1:
+    Trabolta: The special prize of my Truth Scavenger Hunt, for the most questions correct: {Night.award_value} each. A tie. {Night.award_winner}. Come up together and share it.
+  else if Night.award_lines != "director":
+    Trabolta: The special prize of my Truth Scavenger Hunt, for the most questions correct: {Night.award_value}. {Night.award_winner}. You brought me the truth. Come and take your prize.
 else if Night.award == "the_painting":
   cue screens_award_the_painting
   set Night.screen = "award_the_painting"

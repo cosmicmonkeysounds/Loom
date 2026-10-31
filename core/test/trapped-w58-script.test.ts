@@ -110,7 +110,30 @@ describe.skipIf(!has)("wave 58: the opening against the delivered script", () =>
   });
 });
 
+describe("wave 58: Clippy's printed copy", () => {
+  it("is every line of hers in the opening, word for word, in the night's order", () => {
+    const pack = read("cast-packs/performers/clippy.md");
+    const printed = pack.slice(pack.indexOf("## Appendix: your opening, word for word"));
+    const hers = BEATS.flatMap(spokenIn).filter((l) => l.startsWith("Clippy: ")).map((l) => l.slice("Clippy: ".length).replace("{Night.framed_name}", "[the program]"));
+    expect(hers.length).toBeGreaterThan(40);
+    let from = 0;
+    for (const line of hers) {
+      const at = printed.indexOf(`\n${line}\n`, from);
+      expect(at, line).toBeGreaterThanOrEqual(0);
+      from = at + line.length;
+    }
+  });
+});
+
 describe("wave 58: nothing but the performers' lines in the opening", () => {
+  it("the two beats that only move the room say nothing: the sweep is the Antivirus' objective, and each rule has a banner", () => {
+    for (const b of ["Call To The Desktop", "Hunt Time Up"]) {
+      const lines = body(b).split("\n").slice(1).filter((l) => l.trim() !== "" && !l.startsWith("//") && !/^ {2}(setting|cast|aloud):/u.test(l));
+      expect(lines, b).toEqual([]);
+    }
+    expect(read("objectives.loom")).toContain("Patrol the whole computer and send everyone to the living room.");
+  });
+
   it("no Narrator line in any of its beats: a Narrator line reaches every phone, directions and all", () => {
     for (const b of BEATS) {
       expect(body(b), b).not.toMatch(/^Narrator/mu);
@@ -210,6 +233,24 @@ describe("wave 58: the buttons bring up the script's branches", () => {
     expect(said(out, "Clippy").at(-1)).toBe("Would MS Paint come forward, please? Let's give them a hand!");
     expect(beatsOf(fire(sim, "frame_for_bingo", "g5", "Task Manager"))).not.toContain("No Bingos");
     expect(beatsOf(fire(sim, "bingo_winner", "g4", "Clippy"))).toContain("Winning Line");
+  });
+
+  it("a framed program who denies the card: the sheets' 🎯 marks them, the Wanted board and Norton's 🛡 follow, and the word is on Clippy's sheets", () => {
+    const sim = boot();
+    for (const c of TO_BINGO) fire(sim, c);
+    fire(sim, "frame_for_bingo", "g4", "Task Manager");
+    // Nothing else can reach them: no 🛡 and no 🤐 on a framed program, unmarked.
+    const shield = sim.model.interactions.get("send to the internet")!.while!;
+    expect(v(sim, "g4.marked")).toBe(false);
+    expect(sim.holds(shield, "g4", "Norton Anti-Virus")).toBe(false);
+    fire(sim, "named_at_bingo", "g4", "Clippy");
+    expect(v(sim, "g4.marked")).toBe(true);
+    expect(sim.holds(shield, "g4", "Norton Anti-Virus")).toBe(true);
+    fire(sim, "send to the internet", "g4", "Norton Anti-Virus");
+    expect(v(sim, "g4.corrupted")).toBe(true);
+    expect(read("codex/7-clippy.loom").replace(/\s+/gu, " ")).toContain("(App) If they deny the card, 🎯 on them first");
+    expect(read("cast-packs/performers/clippy.md").replace(/\s+/gu, " ")).toContain("they deny completing the card, 🎯 on them first");
+    expect(sim.model.objectives.get("Celebrate The Winners")!.brief).toContain("A framed program who denies the card: 🎯 on them");
   });
 
   it("📺 is the mirror, only after the first reinstallation, once, before he is online; off the sequence", () => {

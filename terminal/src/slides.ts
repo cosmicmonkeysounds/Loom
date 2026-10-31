@@ -595,7 +595,7 @@ export const SLIDE_COPY: Readonly<Record<string, SlideCopy>> = {
     lines: [
       "Q1. What extension does the Customer Care card tell you to dial?",
       "Q2. Which song did Trabolta play 412 times the night before he registered mapsandducks.com?",
-      "Q3. What is the title of the last chapter of Trabolta's unfinished Unified Field Theory?",
+      "Q3. What is the title of the last chapter of Trabolta's unfinished Grand Unified Theory?",
     ],
   },
   return: { title: "RETURN TO THE DESKTOP", lines: ["Time is up."] },

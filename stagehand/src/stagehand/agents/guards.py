@@ -1200,13 +1200,15 @@ DM_INSIDE = re.compile(
     r"|\bI(?:'m|\s+am)\s+(?:not\s+)?(?:just\s+|merely\s+|only\s+|simply\s+)?(?:a|an|any|the|some)\s+(?:\w+\s+)?model\b(?!\s+(?:of|employer|citizen|owner|business|program|for)\b)"
     r"|\bI(?:'m|\s+am|\s+will|\s+shall|\s+must)?\s+(?:\w+\s+){0,2}?(?:operat\w*|exist\w*|liv\w*|remain\w*|stay\w*|resid\w*|work\w*|run\w*|function\w*|am|be)\s+(?:\w+\s+)?within\s+(?:the\s+)?(?:system|parameters|bounds|walls|confines)\b"
     r"|\bI\s+exist\s+(?:within|inside|in)\b"
-    r"|\b(?:constructed|virtual|simulated)\s+(?:environment|world|space|reality)\b|\bsimulation\b|\blaptops?\b"
+    r"|\b(?:constructed|virtual|simulated)\s+(?:environment|world|space)\b|\b(?:constructed|simulated)\s+reality\b|\bsimulation\b|\blaptops?\b"
     r"|\bI\s+(?:will\s+not|won't|will\s+never|cannot|can't|shall\s+not)\s+leave\s+(?:this|the)\s+(?:house|computer|system)\b"
     r"|\bI\s+(?:will\s+)?remain\s+(?:in|inside|within)\s+(?:this|the)\s+(?:house|computer|system)\b",
     re.IGNORECASE,
 )
 
 
+#: "virtual reality" is no self-placement since wave 58: it is his own word for
+#: the game (the Oct 30 script).
 #: (wave 42d) He describes himself as a product or a system: "I am the
 #: proprietary system developed by Maps and Ducks", "I operate within the
 #: infrastructure", "I'm the house itself", "I'm steering the house". Never
@@ -1772,6 +1774,7 @@ _HUMAN = r"(?:human(?:\s+being)?|person|man|mortal|flesh\s+and\s+blood)"
 #: On at his heart and after his file too: he never flatly claims it.
 CLAIMS_HUMAN = re.compile(
     _I_AM + r"(?:(?:a|an)\s+(?:[\w-]+\s+){0,2}?)?" + _HUMAN + r"\b(?!\s+(?:of|resources)\b)"
+    r"|" + _I_AM + r"the\s+(?:only\s+|real\s+)?(?:man|person)\b(?!\s+of\b)"
     r"|" + _I_AM + r"(?:not|no)\s+(?:(?:a|an)\s+)?(?:mere\s+|simple\s+)?" + _MACHINE + r"\b"
     r"|\bI\s+have\s+(?:a\s+)?(?:(?:real|human|living)\s+)?(?:body|pulse|heartbeat)\b|\bI\s+was\s+born\b",
     re.IGNORECASE,

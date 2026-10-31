@@ -9,7 +9,7 @@ night from the door to an ending and the awards, compressed: every timed
 stretch (Bingo's 20 min, the hunts, the hour, the Y2K hour) is skipped by
 firing its cue by hand. It runs on **https://app.mapsandducks.com** once
 the pending ship has landed (below); until then the VPS plays the older
-`w18b-1021` story, and some steps here won't match it.
+`w56` story, and some steps here won't match it.
 
 The cue order below is pinned by a test: `core/test/trapped-in-the-internet.test.ts`
 → *the WIP demo (DEMO.md)* drives it with three phones to both endings. If you
@@ -18,9 +18,8 @@ change the order here, change it there.
 ## Before you start (once)
 
 1. The VPS runs a current release (`scripts/ops/ship.sh <tag>`, the server
-   **before** the sync; as of 2026-10-24 it runs `w18b-1021`, and master's
-   waves 18b Stage B to 22 reach it only with the next ship and a
-   `sync-show`, see [`SHOWNIGHT.md`](./SHOWNIGHT.md) §1); featured programs join only
+   **before** the sync; as of 2026-10-31 it runs `w56`, and wave 58 reaches it
+   only with the next ship and a `sync-show`, see [`SHOWNIGHT.md`](./SHOWNIGHT.md) §1); featured programs join only
    with their invitations; the cue sheet refuses 📺 until all three 📋 are read and
    while the bottle is open), and the show's story is in your
    server project: `LOOM_SSH=loom-vps pnpm sync-show` (with
@@ -112,8 +111,9 @@ guest's card in that performer's booth (phone C / D), or in Run while you
 | **V2 · 🎱 Start Computer Bingo (20 min)** | — | Clippy's script in *The Desktop* room (wave 58: *"Welcome, everyone, to the Desktop!"*), the Bingo Card quest, the TV's Bingo slide (a text placeholder) + corner countdown. |
 | **V3 · ⏰ Bingo time: results** | Clippy: **🎱 Bingo winner** + **🎀 Award a ribbon** on a guest (Calculator). Norton: **🛡 Send to the Internet** on **MS Paint**. | 🎀 broadcast; Norton's line to MS Paint ("you did not agree to be ruled by AI"); **Corrupted Code** (Clippy: "Nothing to worry about, everyone!"). Phone B: "⛓️ You've been taken to The Internet", the **Installation Wizard**'s reinstallation instructions. |
 | *(tent laptop)* | — | On the laptop's tent tab: **MS Paint** is in the red *IN THE INTERNET NOW* strip (☣ MS Paint) → tap it (no headset online, so the game starts at once; with one online, **Play here**) → follow the golden chevrons to **Gerald, the golden duck** and walk into him. Phone B: "Reinstallation complete", *The Golden Duck*. (The map is the 3-floor placeholder of the house; the tent is out back.) |
-| **Clippy 2/X · 🤖 Clippy introduces Trabolta** | — | Trabolta appears in everyone's People list and DMs ("Hello, … I am Jean Trabolta, Sole Owner and Founder of Maps and Ducks…", his green grinning picture); the TV flips to his face, then the mirror of the house. |
-| **V4/V5 · 🔎 Truth Scavenger Hunt 1 (15 min)** | — | Hunt One in the Quest Log; a **📝 File a fact** card in each Trabolta thread. |
+| **Clippy 2/X · 🎤 Clippy tells the room about Trabolta** | — | Wave 58: her paragraph on her teleprompter, ending *"Trabolta, would you explain the rules?"*. (**📺 Follow the reinstallation** first, only if a program is walking: the TV shows them.) |
+| **Clippy 2/X · 🤖 Trabolta comes online** | Task Manager: the 🤖 Talk card, after his sign-off. | Trabolta appears in everyone's People list and DMs ("Hello, … I am Jean Trabolta, Sole Owner and Founder of Maps and Ducks…", his green grinning picture); the TV flips to his face for his speech, the three questions and his sign-off, about three minutes, then the mirror of the house. |
+| **V4/V5 · 🔎 Truth Scavenger Hunt 1 (15 min)** | — | Nothing is said: he has said it. Hunt One in the Quest Log; a **📝 File a fact** card in each Trabolta thread. A filing on H1–H3 isn't recorded until their answers are in. |
 | **C2 · ⏰ Hunt over** → **V6 · ⚖️ First Moment of Truth** | — | 🔔 "Last chance: file your round-one facts with Trabolta. Two minutes." Phones A/B can file an answer on the **📝 File a fact** card (pick the question, type it, set the confidence slider; wave 18b: *File it* with the slider unset points at it in red). An exact match is judged at once in `# hosts`; anything else goes to **Trabolta's judge** when the worker runs (*… asked Trabolta to rule*, then *🤖 Trabolta ruled …*), and without the worker it stands as proposed (the phone only hears "Your fact is in the record"). |
 | **⏱ Close round-one filings now** → **📋 Results: the next question** (press it three times: Q1 now, Q2 and Q3 at the top of Act II; 📺 waits for all three) | Clippy: **✅ Q1** on Calculator, **😤 Q2** on Excel (a confident lie spoken in the room: accepted, looks identical). | **Trabolta reads** question 1's result on the TV (wave 18b: nobody filed / CONSENSUS / *"I will read what you told me."* and every filing, then the accepted and guess counts), and the TV shows each filer's row with SURE / NOT SURE, ACCEPTED / GUESS and his ruling's 🤖 stamp (the walls only the counts). Every filing for it is settled: +50 to the accepted ones, a guess is marked for reinstallation. A refused press (a fourth 📋) lands in `# hosts`, never on the guest's phone. |
 
@@ -155,6 +155,8 @@ guest's card in that performer's booth (phone C / D), or in Run while you
 3. Every phone gets Trabolta's DM card *"Give me a pickup line that works on Sandy."* — type **You're the one that I want** and send it (the server judges it) → the **Song Ending**. (Or Clippy: **💘 Said "You're the one that I want"** on whoever says it aloud.)
    (Alternatives: **💔 Nobody has the line** → the rave; **💌 relationship advice** → a poll on every phone → **🗳 Count the advice poll**.)
 
+**Then the full truth**: **G0 · 📜 The full truth** once the song has had its moment: Trabolta reads his own file on the TV, about 12 minutes (mute the TV to skip it in a demo; press G1 twice inside 30 s to go on).
+
 **Then the ceremony (2 min)**: **G1 · 🏆 Start the awards ceremony** (wave 18b: *The Night In Review* plays first, the host reading who everyone really was, and each phone gets its private *Your File* in The Uploader's thread), then e.g.
 **G2 · 🥇 Most Trusted** with the winner picked in the cue's *who?* box (the
 top of the Trust Chart). The winner's phone: "🏆 You won Most Trusted!"; the
@@ -191,5 +193,5 @@ them out).
 - **VR headsets** aren't part of this demo (the Quest build exists; a headset runs the same game, the King's shared health bar included).
 - **Trabolta's voice needs the laptop worker**; without it he has his hold line and a director answers as him.
 - **TV slides are text placeholders** (no artwork yet: "CEREMONY", "AWARD MOST TRUSTED"); the award slide doesn't name the winner — the winner's phone and the host's line do. Only the Trust Chart is drawn for real.
-- **The hunt questions, the facts and the Truth-or-Dare questions are DRAFT placeholders** in `facts.json` until the team writes the real ones (the character facts quote the invitations' real-world details — the team's call before printing).
+- **H1–H3's answers are owed** (wave 58): the three questions are the Oct 30 script's, and their keys are stand-ins that no screen shows. The character facts quote the invitations' real-world details (the team's call before printing).
 - Not built: the tablet bench (K-02), the live tent run (K-03), the live mind run (K-04), the cellular sheet (K-07), K-31b, the printed QR posters on the walls (the Run page's 🖨 Print sheet makes them; the Desktop's piles are `generated/print-stacks.md`), cast-pack rehearsals.

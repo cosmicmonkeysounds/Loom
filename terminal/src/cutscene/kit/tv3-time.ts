@@ -32,7 +32,7 @@ export interface AwardInfo {
   line: string;
 }
 
-/** The ceremony's awards, in the order Present Award checks them: nine for the programs, then three for the staff. */
+/** The ceremony's awards, in the order Present Award checks them: ten for the programs, then three for the staff. */
 export const AWARDS: readonly AwardInfo[] = [
   { id: "most_trusted", title: "Most Trusted", kind: "Award", label: "Trust score", emblem: "shield", line: "When a program needed believing, it was you." },
   { id: "least_trusted", title: "Least Trusted", kind: "Award", label: "Trust score", emblem: "beans", line: "Weighed, and found full of beans. It is still an award." },
@@ -42,6 +42,8 @@ export const AWARDS: readonly AwardInfo[] = [
   { id: "best_liar", title: "Best Liar", kind: "Bonus award", label: "Confident lies accepted", emblem: "mask", line: "The report does not say which ones." },
   { id: "duck_speedrun", title: "Golden Duck Speedrun", kind: "Bonus award", label: "Reached the golden duck in", emblem: "duck", line: "Gerald was not ready." },
   { id: "quest_completionist", title: "Quest Completionist", kind: "Bonus award", label: "Quests completed", emblem: "scroll", line: "Nobody finished more of the Quest Log." },
+  // Wave 58: G9a, the special prize (the plain award slide; a tie names everyone in it). DRAFT w58
+  { id: "most_correct", title: "Most Questions Correct", kind: "Award", label: "Questions correct", emblem: "trophy", line: "The special prize of the Truth Scavenger Hunt." },
   { id: "the_painting", title: "The Million Dollar Painting", kind: "Bonus award", label: "Signatures on the canvas", emblem: "palette", line: "It goes to silent auction." },
   // Wave 45: G13, the Bathroom Report (its own scene, `BathroomScene`; this row names it). DRAFT w45
   { id: "bathroom", title: "The Bathroom Report", kind: "Bonus award", label: "All together, in Disk Cleanup", emblem: "roll", line: "Bathroom Mode is a promise. Every promise was logged." },

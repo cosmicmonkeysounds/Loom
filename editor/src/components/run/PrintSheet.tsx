@@ -68,7 +68,7 @@ const CSS = `
 .card32 .tier { position: absolute; left: 0; top: 0; bottom: 0; width: 0.07in; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 .cardfact { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding: 0.11in 0.08in 0.04in; text-align: center; overflow: hidden; }
 .cardfact .band { position: absolute; left: 0; right: 0; top: 0; height: 0.07in; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-.cardfact h2 { margin: 0 0 0.02in; font-size: 7.5pt; font-weight: 800; line-height: 1.1; max-height: 2.2em; overflow: hidden; }
+.cardfact h2 { flex: none; margin: 0 0 0.02in; font-size: 7.5pt; font-weight: 800; line-height: 1.1; max-height: 3.3em; overflow: hidden; }
 .cardfact .qr { width: 1.28in; height: 1.28in; }
 .cardfact .code { font-family: ui-monospace, Menlo, monospace; font-size: 7pt; font-weight: 700; white-space: nowrap; }
 .cardfact .stack { font-size: 5pt; line-height: 1.1; color: #52525b; max-height: 2.2em; overflow: hidden; }

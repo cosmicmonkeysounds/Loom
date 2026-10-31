@@ -132,7 +132,7 @@ describe("VOICE_SCENES (C11)", () => {
 
   it("his line shows once: the layer leaves the sentences a scene draws itself", () => {
     expect(VOICE_SCENES["bottle_landed"]!.ownCaption).toBe(true); // "<pick>." and "Truth or dare?" on the bottle
-    // advice_helped: SandyChat types the proposal; those are its `drawn`.
+    // advice_helped: her window types the proposal; those are its `drawn`.
     const advice = VOICE_SCENES["advice_helped"]!;
     const said = LINES.get(foldName("Advice Helped"))!.flatMap((l) => splitSentences(l));
     expect(advice.drawn!.map((i) => said[i]).join(" ")).toBe(ADVICE_CHAT[0]!.text);

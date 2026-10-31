@@ -2207,7 +2207,10 @@ quiet on the screens (`QUIET_MOMENT_SIGNALS`):
   `program.escapes`, recomputes `program.trust` (the C9 formula: each
   escape is −5), tells `# hosts`, and plays *Escape Attempt*: Trabolta
   chastising, every time, even before his reveal. It is a game-only beat,
-  so its lines reach only the game's answer, never a phone.
+  so its lines reach only the game's answer, never a phone. Once an ending
+  has taken him (`Night.ended` and `Trabolta.awake` false, wave 58) the walk
+  is silent and costs nothing: `# hosts` hears of it and the answer has no
+  lines, which both games take as a plain teleport.
 - `when simulation heart reached for program:` once a night per program
   (`program.sim_heart`) and only while Trabolta is awake: tells `# hosts`
   and plays *Heart In The Simulation*, a short monologue in his fiction

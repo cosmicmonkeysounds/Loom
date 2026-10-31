@@ -5413,8 +5413,8 @@ describe("Trapped in the Internet — wave 5 (lane B): the takeover, the resurre
     const admin = (modView(sim, "open", "x").interactions ?? []).filter((i) => i.who === "admin");
     const ids = admin.map((i) => i.id);
     const at = ids.indexOf("award_quest_completionist");
-    // Wave 21: the three staff awards sit between G10 and G11.
-    expect(ids.slice(at, at + 6)).toEqual(["award_quest_completionist", "award_the_painting", "award_staff_trusted", "award_staff_points", "award_staff_mole", "resurrection"]);
+    // Wave 21: the three staff awards sit between G10 and G11. Wave 58: 🏅 G9a before G10.
+    expect(ids.slice(at, at + 7)).toEqual(["award_quest_completionist", "award_most_correct", "award_the_painting", "award_staff_trusted", "award_staff_points", "award_staff_mole", "resurrection"]);
     expect(admin.find((i) => i.id === "resurrection")!.subject).toBeUndefined();
     expect(admin.find((i) => i.id === "award_the_painting")!.subject).toBe(true);
   });

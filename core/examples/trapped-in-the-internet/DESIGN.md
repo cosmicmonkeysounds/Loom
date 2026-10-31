@@ -639,6 +639,8 @@ bath_s: 0 to 100000 = 0            // wave 45: story seconds in Bathroom Mode ov
 bath_presses: 0 to 1000 = 0        // wave 45: real switches of Bathroom Mode, on and off
 bath_open: 0 to 1 = 0              // wave 45: 1 while a trip is open (an expression adds its seconds)
 no_bath: 0 to 1 = 0                // wave 45: 1 from G1 for a program that never went: −5 on the Trust Chart
+questions_right: 0 to 8 = 0        // wave 58: its questions right (G9a); secret, written only when G9a is pressed
+prize_seen: 0 to 99 = 0            // wave 58: the last press of G9a this program counted itself for
 lang_flagged: 0 to 100000 = 0      // wave 48: words of its lines the Password Manager's filter caught (G14)
 lang_censored: 0 to 100000 = 0     // wave 48: of them, words she censored (48b: ✂ raises doubt +5, never marks)
 from_jeeves: 0 to 99 = 0           // findings Broken Ask Jeeves shared with this program (Ten Findings)
@@ -1080,18 +1082,19 @@ model); the server never refuses an unarmed press.
 _Generated from `facts.json` by `core/scripts/titi-facts.ts` — DO NOT EDIT this block;
 edit `facts.json`, then `pnpm --filter @loom/core titi:facts`. The six-stamp pickup-line
 mechanic was retired 2026-10-16 (U9): the line is learnable from Sandy's lore codex
-and asked via the ask-14 DM._
+and asked via the ask-14 DM. The answers, their accepted forms, the unlock codes and
+where each document hides are in `facts.json` and never in a doc._
 
-| # | Round | Question (exact, as shown on the TV and in the quest log) | Answer | Accept | CODEX (code) | Found in |
-|---|---|---|---|---|---|---|
-| H1 | 1 | According to Funk and Wagnalls, what is an example of fraud? | ⚠ owed | — | Funk And Wagnalls (`WAGNALLS-FRAUD`) | The Desktop: in Funk and Wagnalls, among the books (the page is owed) · DRAFT |
-| H2 | 1 | According to Forensics For Dummies, finish this sentence: “___ ___ ___ ___ ___ previously hypnotized witnesses.” | ⚠ owed | — | Forensics For Dummies (`DUMMIES-FORENSICS`) | The Desktop: in Forensics For Dummies, among the books (the page is owed) · DRAFT |
-| H3 | 1 | According to Macs for Dummies, finish this sentence: “A similar online _, called pharming, also involves the use of __ ___ __.” | ⚠ owed | — | Macs For Dummies (`DUMMIES-MACS`) | The Desktop: in Macs for Dummies, among the books (the page is owed) · DRAFT |
-| H4 | 2 | What extension does the Customer Care card tell you to dial? | 1978 | ext 1978 · ext. 1978 · nineteen seventy eight · nineteen seventy-eight | The Extension (`EXT-1978`) | The Desktop: the Customer Care card, tucked into the atlas · DRAFT |
-| H5 | 2 | Which song did Trabolta play 412 times the night before he registered mapsandducks.com? | Hopelessly Devoted to You | hopelessly devoted | The Search History (`SEARCH-HISTORY`) | The Desktop: the laminated play history, inside encyclopaedia volume M · DRAFT |
-| H6 | 2 | What is the title of the last chapter of Trabolta's unfinished Unified Field Theory? | Appendix Z: Loose Ends (Do Not Print) | appendix z · appendix · loose ends · do not print · appendix z loose ends | The Final Chapter (`APPENDIX-Z`) | The Desktop: the binder's table of contents, inside encyclopaedia volume U · DRAFT |
-| F1 | 3 | What is the only thing Sandy has ever said? | It looks like I didn't understand that. Please wait while I direct you to an agent. | please wait while i direct you to an agent · wait while i direct you to an agent · direct you to an agent · it looks like i didn't understand that · it looks like i did not understand that · i didn't understand that · i did not understand that · didn't understand · did not understand | What Sandy Says (`CALL-LOG-S`) | The Desktop: the forty-page call log, in the back pages of encyclopaedia volume S · DRAFT |
-| F2 | 3 | Who is taking Sandy to computer prom? | Grok | grok ai | The Prom Ticket (`COMPUTER-PROM`) | The Desktop: the prom ticket, slipped into the atlas · DRAFT |
+| # | Round | Question (exact, as shown on the TV and in the quest log) | Key |
+|---|---|---|---|
+| H1 | 1 | According to Funk and Wagnalls, what is an example of fraud? | ⚠ owed |
+| H2 | 1 | According to Forensics For Dummies, finish this sentence: “___ ___ ___ ___ ___ previously hypnotized witnesses.” | ⚠ owed |
+| H3 | 1 | According to Macs for Dummies, finish this sentence: “A similar online _, called pharming, also involves the use of __ ___ __.” | ⚠ owed |
+| H4 | 2 | What extension does the Customer Care card tell you to dial? | in `facts.json` |
+| H5 | 2 | Which song did Trabolta play 412 times the night before he registered mapsandducks.com? | in `facts.json` |
+| H6 | 2 | What is the title of the last chapter of Trabolta's unfinished Grand Unified Theory? | in `facts.json` |
+| F1 | 3 | What is the only thing Sandy has ever said? | in `facts.json` |
+| F2 | 3 | Who is taking Sandy to computer prom? | in `facts.json` |
 <!-- /titi-facts:questions -->
 
 `Night.facts_requested` = 3 after start_the_hunt, 6 after start_the_second_hunt, 8 after
@@ -1146,7 +1149,7 @@ everyone at the end) · **X** finale artefact · **D** the server-room door code
 | The Y2K Clock | The Y2K Clock | E | | | | The Y2K Clock (everyone) | ✚ | System clock reset to 11 p.m., 31 Dec 1999. Midnight: back to 1 Jan 1900 (94 years to wait for Internet in Halifax) or the Y2K Bug. |
 | The Cold Door | The Cold Door | E | | | | with The Y2K Clock (every cleared program, the final round); wave 11: also with the first digit note (`door_digit_found`) | | Wave 7, replaces *The Cold Lock*; `secret: true`, no code. The keypad sign, word for word (`facts.json` `door.clue`; wave 11: "FOUR DIGITS. FOUR NOTES ARE HIDDEN IN THE HOUSE, ONE DIGIT ON EACH. OR BEAT THE KING AT THE TERMINAL BY THIS DOOR.", no riddle), "He plays chess. Only checkmate counts. A draw is not a win. Neither is crying.", and "The patch bay forgives one wrong combination. Not two." |
 | The Door Code | The Door Code | D | | | | a checkmate at the Server Door terminal (`chess_won`, until 📄; wave 11, was from step 14); all four digit notes (`door_digit_found`, until 📄); The Whole Truth (last) | ✚ (last) | Wave 7: generated from `facts.json` `door` into `codex/9-facts.loom`, `secret: true`, no code; its text holds the keypad's four digits. Never held by Trabolta. |
-| Server Room First Digit … Server Room Fourth Digit | Server Room · the first digit … the fourth digit | D | | `FOGGED-KETTLE` · `FROSTED-MIRROR` · `WARM-LINT` · `LOST-PIECE` | | scanned at the Start Bar's kettle · the Graphics Card's mirror · the Fan Closet's dryer · the Steam Room's board-game box (silver, `generated/print-stacks.md`), or shared / sold | | Wave 11: generated from `facts.json` `door.clues` into `codex/9-facts.loom`, `secret: true`; each text names its position in words and the digit; no digit in any id, title or code; four of four → *The Door Code* (§3 E2d). |
+| Server Room First Digit … Server Room Fourth Digit | Server Room · the first digit … the fourth digit | D | | `door.clues` in `facts.json` | | scanned at the Start Bar's kettle · the Graphics Card's mirror · the Fan Closet's dryer · the Steam Room's board-game box (silver, `generated/print-stacks.md`), or shared / sold | | Wave 11: generated from `facts.json` `door.clues` into `codex/9-facts.loom`, `secret: true`; each text names its position in words and the digit; no digit in any id, title or code; four of four → *The Door Code* (§3 E2d). |
 | The Truther Download | TRUTHER DOWNLOAD v0.9 | E | | | | Truther Download Arrives (every program) | | The user's text verbatim (below), `secret: true`, with **Sandy's name blacked out** `█████` (wave 6, decision 5: no Sandy before the overshare). Every holder then gets `The Truther Download Unredacted` (TRUTHER DOWNLOAD v1.0 (correction), `secret: true`: "The name we had to black out: SANDY.") once the story names her: `trabolta_overshares` on a scenario-1 night (`Night.step >= 13`), else the recount / truth.txt. |
 | ILOVEYOU | LOVE-LETTER-FOR-YOU.TXT.vbs | E | | `LOVE-LETTER-FOR-YOU` | | QR taped under VR station 2 (The Internet) | | A virus. Learning it sets `carries_virus`. |
 | Free Antivirus Trial | FREE_ANTIVIRUS_TRIAL.EXE | E | | `FREE-TRIAL-30-DAYS` | | QR on the tablet stand (The Internet) | | "Another antivirus" that turns out to be a virus anyway. Learning it sets `carries_virus`. |
@@ -1969,7 +1972,7 @@ tent is captured by the tablet's scan.
   words, plurals, word order, spelling word by word with the first letter kept, and the key's
   words in order plus up to 4 more unless one turns it around or hedges (*not*, *never*, *or*,
   *but* …), adds an am/pm the key leaves open or is a lone letter; numbers and am/pm exact —
-  *Mr Pickels*, *Grko*, *11 years ago*) is never an automatic lie or guess (a wrong answer at
+  *Mr Waffels*, *11 years ago*) is never an automatic lie or guess (a wrong answer at
   100 still is). Abbreviations are judged exact (`spellOut`: Mr. / Mrs. / Dr., yrs, ext,
   hr(s), min(s), sec(s), a leading-zero time like 0900), so *Ext. 1978* is accurate with no
   ⚠. In `auto`
@@ -2829,10 +2832,10 @@ digit"). `facts.json` `door.clues` holds four secret notes, one per digit of `do
 
 | Note | Code | Where |
 |---|---|---|
-| Server Room First Digit | `FOGGED-KETTLE` | The Start Bar (kitchen): wedged behind the kettle |
-| Server Room Second Digit | `FROSTED-MIRROR` | The Graphics Card (bedroom two): taped to the back of the mirror |
-| Server Room Third Digit | `WARM-LINT` | The Fan Closet (laundry): in the dryer's lint-filter slot |
-| Server Room Fourth Digit | `LOST-PIECE` | The Steam Room (game room): inside the lid of a board-game box |
+| Server Room First Digit | in `facts.json` | The Start Bar (kitchen): wedged behind the kettle |
+| Server Room Second Digit | in `facts.json` | The Graphics Card (bedroom two): taped to the back of the mirror |
+| Server Room Third Digit | in `facts.json` | The Fan Closet (laundry): in the dryer's lint-filter slot |
+| Server Room Fourth Digit | in `facts.json` | The Steam Room (game room): inside the lid of a board-game box |
 
 However a note arrives (a scan, a share, a sale), a ROLE hook (`when program learns Server Room
 First Digit:` …) fires `door_digit_found for program`, which sets `program.door_digits` (0 to 4,
@@ -3884,9 +3887,8 @@ spoken on the TV and posted in The Desktop; Clippy presses 🗣 *Truth answered*
 Ninety coded entries (wave 4: 7 in `1-world`, 21 in `2-files`, 6 in `4-trabolta`, 48 in the
 generated `9-facts`, 8 in `generated/questions.loom`). **The Desktop's print stacks**
 (`generated/print-stacks.md`, generated from `facts.json`, §2.11): the 8 hunt answers (gold,
-each on its own document — the lease invoice in volume B, the plaque rubbing in P, the
-programme on the mantel, the Customer Care card in the atlas, Grok's prom ticket slipped into
-the atlas, …), the 30 **main** facts (green: inside the encyclopaedias, volumes A–M), the 6
+each on its own document — the three books' pages for H1–H3, whose answers are still owed, the
+Customer Care card in the atlas, the prom ticket slipped into the atlas, …), the 30 **main** facts (green: inside the encyclopaedias, volumes A–M), the 6
 **trabolta** facts (blue: deep in the print media on the mantel) and the 24 **character** facts
 (red: the back pages of volumes N–Z and the atlas) all hide in the living room's old
 newspapers, encyclopaedias and atlas. The stacks mark twelve hand-written rows "already

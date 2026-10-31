@@ -218,7 +218,7 @@ The story keeps the door's state itself (`Night.server_door`, *open* or
 | *door* | The Heart played; he wants the door shut. |
 | *scan* | The door is shut; he waits for a pass at the terminal. |
 | *talk* | A program is at his heart, answering his questions. |
-| *done* | He stood down, or the night ended. |
+| *done* | The night ended. |
 
 - **Before Trabolta is awake** (🤖 Clippy introduces him) the door is
   just a door: `# hosts` hears of it and nothing happens.

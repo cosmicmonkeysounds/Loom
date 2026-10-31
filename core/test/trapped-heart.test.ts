@@ -857,6 +857,26 @@ describe("The Heart — the talk ends nothing (wave 58)", () => {
     expect(v(other, "Night.heart_stage")).toBe("done");
   });
 
+  it.each(["patch_combo_a", "patch_combo_b"])("a menu left docked across %s: a pick ends it and nobody answers", { timeout: SLOW }, (combo) => {
+    const sim = awake();
+    toY2K(sim);
+    open(sim);
+    shut(sim);
+    scan(sim, "g1");
+    expect(heartMenu(sim, "g1")?.beat).toBe("Heart Layer One");
+    fire(sim, combo);
+    expect(v(sim, "Trabolta.awake")).toBe(false);
+    // Whichever option they tap, at whatever point the menu was left.
+    const options = heartMenu(sim, "g1")!.options;
+    expect(options.length).toBeGreaterThan(1);
+    const m = heartMenu(sim, "g1")!;
+    const e = sim.choose("g1", options.length - 1, m.id);
+    expect(lines(e)).toEqual([]);
+    expect(heartMenu(sim, "g1")).toBeNull();
+    expect(v(sim, "g1.heart_pick")).toBe("none");
+    expect(v(sim, "g1.heart_layer")).toBe(1);
+  });
+
   it("after truth.txt or an ending nothing in the tree moves", { timeout: SLOW }, () => {
     const sim = atLayerOne();
     sim.setVar("Night.r3_closed", "true");
