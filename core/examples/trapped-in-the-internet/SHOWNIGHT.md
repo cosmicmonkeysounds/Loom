@@ -664,8 +664,8 @@ lies.** ⚖ plays the full truth on the TV, about 14 minutes, clean: leave 🌀 
 Auto or Clean. When it has been heard the ending follows by itself. Found: his news
 (8-A). Nobody found it: his speech, a 6 s pause, two minutes of lines on every phone
 (💬 closes it early), he reads them all, one second's flicker, then his news (8-B). Then
-*"I'm off to see my lady"*, the song, and **the rave, on every ending**. Grok Prom, the
-advice poll and the hand jive are off the night and their rows stay grey. Combo A and B
+*"I'm off to see my lady"*, the song, and **the rave, on every ending**. The prom branch,
+the advice poll and the hand jive are off the night and their rows stay grey. Combo A and B
 keep their beats and Task Manager's read; the rave follows that read. **■ Stop house
 sounds before G1, on every ending** (the rave's never ducks). Clippy hosts.
 

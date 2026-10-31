@@ -147,7 +147,7 @@ const SCRIPT: readonly string[] = [
   "Truth is a binary tree.",
   "You rarely ever have the full truth. What we believe we experience as the truth is typically dependent on a chain of structure that has lies somewhere inside of it.",
   "I have been working on a solution to find the complete truth that illuminates all of the lies, that can finally bring me to the girl I want to go steady with.",
-  "But we’ve run out of time, and no one found the definition for the final clue. I know that Bobbing For Truth document says the term was “Exhibitionist,” but no one found the clue in time, and it’s too late.",
+  "But we’ve run out of time, and no one found the definition for the final clue. I know that Bobbing For Truth document says the term was [the answer], but no one found the clue in time, and it’s too late.",
   "I haven’t solved the Grand Unified Theory. I don’t know what the perfect words are to say to win Sandy back from Grok.",
   "Unless…unless I just ask.",
   "Do you think I should just ask her for a dance?",

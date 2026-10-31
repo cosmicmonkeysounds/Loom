@@ -615,12 +615,12 @@ phases:
   bobbing:
     powers: [assess]
     brief: >-
-      Bobbing for the Bag of Truth. Before truth.txt is read you give your final
-      assessment of every program's trustworthiness: assess is live again,
+      Bobbing for the Bag of Truth. You have read the final answers and named who
+      you trust on the TV. Your final word on each program stands: assess is live,
       nothing else. Tell each program where it stands, and why.
     cue: >-
-      Stage last act. Bobbing for the Bag of Truth. Before truth.txt is read he gives his
-      final assessment of trustworthiness: assess is live again, nothing else.
+      Stage last act. Bobbing for the Bag of Truth. He has read the final answers and named
+      who he trusts on the TV: assess is live, nothing else.
   grok_prom:
     drives: {longing: 95}
     powers: []
