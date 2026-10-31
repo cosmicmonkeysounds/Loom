@@ -52,8 +52,8 @@ export interface Probe {
   run(cmd: string, args: readonly string[], timeoutMs?: number): Promise<RunResult>;
   /** Can a TCP connection be opened? */
   port(host: string, port: number, timeoutMs?: number): Promise<boolean>;
-  /** GET a local URL: status + body, or null when nothing answers. */
-  http(url: string, timeoutMs?: number): Promise<{ status: number; body: string } | null>;
+  /** GET a URL: status, body and its Content-Security-Policy, or null when nothing answers. */
+  http(url: string, timeoutMs?: number): Promise<{ status: number; body: string; csp?: string | null } | null>;
   exists(path: string): boolean;
   readFile(path: string): string | null;
   /** The current user's uid (launchd's `gui/<uid>` domain); null on Windows. */
@@ -88,7 +88,7 @@ export function realProbe(root: string): Probe {
     http: async (url, timeoutMs = 3_000) => {
       try {
         const r = await fetch(url, { signal: AbortSignal.timeout(timeoutMs) });
-        return { status: r.status, body: await r.text() };
+        return { status: r.status, body: await r.text(), csp: r.headers.get("content-security-policy") };
       } catch {
         return null;
       }
@@ -316,9 +316,23 @@ export function kioskUrl(server: string, spot: string, extra = ""): string {
 }
 
 /** Where the laptop's whisper.cpp answers (`scripts/server-room/start-whisper.ps1`; the terminal's `WHISPER_URL`). */
-const WHISPER_HEALTH = "http://127.0.0.1:8178/health";
+const WHISPER_ORIGIN = "http://127.0.0.1:8178";
+const WHISPER_HEALTH = `${WHISPER_ORIGIN}/health`;
 
-/** Steph's laptop: Chrome new enough for Web Serial, the M4 on USB, whisper up. */
+/** May a page under this Content-Security-Policy fetch `origin`? */
+export function cspConnects(csp: string | null | undefined, origin: string): boolean {
+  if (!csp) return true;
+  const sources = (name: string) =>
+    csp
+      .split(";")
+      .map((d) => d.trim().split(/\s+/u))
+      .find((d) => d[0] === name)
+      ?.slice(1);
+  return (sources("connect-src") ?? sources("default-src") ?? [origin]).includes(origin);
+}
+
+/** Steph's laptop: Chrome new enough for Web Serial, the M4 on USB, whisper up
+ *  and the live page allowed to reach it, the terminal's own Chrome profile. */
 export async function serverroomChecks(p: Probe, server: string): Promise<Check[]> {
   const out: Check[] = [await chromeCheck(p, WEB_SERIAL_CHROME)];
   let found: boolean | null = null;
@@ -339,7 +353,20 @@ export async function serverroomChecks(p: Probe, server: string): Promise<Check[
   if (found !== null) out.push(row("Grand Central M4", found ? "ok" : "fail", found ? "on USB" : "not on USB — plug the M4 in (a data cable, not charge-only)", read));
   const whisper = await p.http(WHISPER_HEALTH);
   out.push(row("Whisper", whisper?.status === 200 ? "ok" : "warn", whisper?.status === 200 ? "listening on 127.0.0.1:8178" : "not running — scripts/server-room/start-whisper.ps1 (spoken answers wait on it; the choices still work)", WHISPER_HEALTH));
-  out.push(row("Kiosk URL", "info", `${kioskUrl(server, "server-room", "&door=serial&camera=user&webcam=C310&pad=1&whisper=1&crt=1")} — first launch WITHOUT --kiosk to grant the serial port, camera, microphone and device access, then relaunch with --kiosk --autoplay-policy=no-user-gesture-required`, "docs/trapped/kiosk.md"));
+  // Whisper can be up and still unreachable: the served page's CSP decides, and Vite sends none.
+  const page = await p.http(`${server}/terminal/`, 8_000);
+  if (page === null) out.push(row("Page → whisper", "warn", "couldn't read the live terminal page", `${server}/terminal/`));
+  else {
+    const reaches = cspConnects(page.csp, WHISPER_ORIGIN);
+    out.push(row("Page → whisper", reaches ? "ok" : "fail", reaches ? "the live page may fetch whisper" : "the live page refuses whisper (connect-src): it needs a release from the MacBook, then a reload here (the choices still work)", `${server}/terminal/ Content-Security-Policy`));
+  }
+  const appData = p.env["LOCALAPPDATA"];
+  if (p.platform === "win32" && appData) {
+    const profile = `${appData}\\loom-terminal`;
+    const set = p.exists(profile);
+    out.push(row("Chrome profile", set ? "ok" : "warn", set ? "the terminal's own profile exists" : "not set up — scripts/server-room/start-terminal.ps1 -Setup: its grants live in this profile, and the kiosk has no mouse to answer them", profile));
+  }
+  out.push(row("Kiosk URL", "info", `${kioskUrl(server, "server-room", "&door=serial&camera=user&webcam=C310&pad=1&whisper=1&crt=1")} — scripts/server-room/start-terminal.ps1 -Setup grants the serial port, camera, microphone and device access, then start-terminal.ps1 runs the kiosk`, "docs/trapped/kiosk.md"));
   out.push(row("By hand", "info", "⚙ on the terminal: the door sensor connected + calibrated; open → shut the door once and watch 🚪 flip on Run → Terminals; plug one patch cable and watch 🔌 count it; the GameCube controller walks the choices and SPEAK TO HIM says your words back", "the M4 checks"));
   return out;
 }

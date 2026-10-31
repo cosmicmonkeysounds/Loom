@@ -322,8 +322,12 @@ $env:LOOM_MOD_CODE = '<mod>'                # Windows
 **Steph's laptop** (the server room)
 
 - `pnpm showctl preflight serverroom` (Windows: `.\scripts\show\showctl.ps1 preflight serverroom`).
-- Mains, sleep off, the monitor as the main display, keyboard and mouse in
-  reach, the kiosk on `…/terminal/?code=<mod>&spot=server-room&door=serial&camera=user`.
+- Mains, sleep off, the CRT as the only display, no keyboard or mouse in
+  reach, the kiosk from `scripts\server-room\start-terminal.ps1` (whisper, then
+  `…/terminal/?code=<mod>&spot=server-room&door=serial&camera=user&webcam=C310&pad=1&whisper=1&crt=1`;
+  `docs/trapped/kiosk.md`).
+- SPEAK TO HIM says your words back; *YOUR VOICE ISN'T REACHING HIM* means
+  whisper is down or the page was never granted device access.
 - ⚙ shows the door sensor connected and calibrated; a real open → shut shows
   on Run → Terminals within a second; then 🔄.
 - The patch bay all unplugged; ⚙'s table reads every input empty.
@@ -360,7 +364,7 @@ $env:LOOM_MOD_CODE = '<mod>'                # Windows
 8. Lights: the server-room bulb answers 💡 Identify and sits on `heart_idle`; `stagehand check --only lights` is green, `health/lights` online and Run → House → Setup's 💡 Lights row green; the bulb never drops under 80 / 254. Every placed Hue and ZL1 bulb and the WLED strip answer 💡 Identify; one `lights_blackout` test (the halls and both bathrooms stay at their dim floor, the server room on its heart look).
 9. The server-room door: the keypad was set by hand to `facts.json` `door.code` and tested at 15:00, and it opens from inside with no code; the keypad sign hangs beside it; the sensor reads 🚪 shut / open on Run → Terminals within a second, with no fault and no override; then 🔄.
 10. The patch bay: all unplugged; ⚙'s live table reads every input empty; Run → Terminals shows no 🔌 fault and the story is not on the buttons (or 🔌 Trust the patch bay again was pressed).
-11. The server-room terminal (Steph's laptop) is green and asleep on its screensaver, the M4 on USB, an external keyboard in reach, and the webcam reads a pass in the room's light; Run → Director shows 🔄 reset and 🕊 talked down, and 🕊 Heart autoend is off.
+11. The server-room terminal (Steph's laptop) is green and asleep on its screensaver, the M4 on USB, the GameCube controller walks the choices, and the webcam reads a pass in the room's light; Run → Director shows 🔄 reset and 🕊 talked down, and 🕊 Heart autoend is off.
 12. The King: Run → House map's King row reads 15 / 15; the Server Door tablet is charging.
 13. The tent: the old laptop on spot `tent` with WebGL2, the Quest charged (if go), the Installation Wizard video loaded on the second device, the heater on its GFCI leg, the EXIT sign on.
 14. Push: the staff test alert arrived on every performer phone. Every part has done its upload on its own phone (Run's watch *Staff uploaded* gone or at 8), before the doors: the booth is the upload until then, so an Antivirus who signs in at the door is not at the door. Stuck: ⏭ Wave the staff through their upload (Anytime).
