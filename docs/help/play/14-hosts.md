@@ -137,8 +137,10 @@ While you type, the bar steps aside with the taskbar.
 **The cues of the opening and the ending** (wave 58). Most of the opening's cues
 bring up Clippy's next words on her teleprompter, so give her time. **📺 Follow
 the reinstallation** is never NEXT: press it only if a program is walking. **🤖
-Trabolta comes online** goes on her *"would you explain the rules?"*, and his
-speech runs about three minutes before the 🤖 Talk card is wanted. After an
+Trabolta comes online** fires itself when her arrow passes *"would you explain the
+rules?"* or she presses ✓ Done. The button is the backup, if she has no phone on the
+teleprompter; pressed before or after, it does no harm. His speech runs about three
+minutes before the 🤖 Talk card is wanted. After an
 ending, **G0 📜 The full truth** is NEXT: press it once the ending has had its
 moment, with ■ Stop house sounds first if a dance track is up. **G1** asks first
 if the monologue hasn't finished. [How the house works](house-workings.md) has

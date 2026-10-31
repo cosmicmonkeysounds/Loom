@@ -127,8 +127,9 @@ Clippy: Oh, look! We can follow their progress!
 Clippy: You're doing wonderfully! Just follow the instructions. One step at a time!
 
 // 🎤 `clippy_on_trabolta` (SCRIPT:109-117), unconditional, whether or not the
-// mirror came up. It must not share a beat with his lines: the TV says his as
-// soon as a beat lands, and never waits for hers.
+// mirror came up. His speech is a separate press, because it wakes him (🤖): her
+// arrow past the last line here, or her ✓ Done, fires it (wave 59, `sceneFinished`
+// in core/server/event-runtime.ts). With no reader a host presses it.
 == Clippy On Trabolta
   setting: The Desktop
   cast: Clippy
@@ -159,7 +160,7 @@ set Night.screen = "mirror"
 -> Trabolta Greeting
 
 // The rest of his speech, then the questions through the generated reader, then
-// his sign-off (`Hunt One Go`). The chain lands whole on 🤖; the TV says it in
+// his sign-off (`Hunt One Go`). The chain lands whole on `introduce_trabolta`; the TV says it in
 // order, and the `intro` talk scene stays open behind it until 🔎.
 == Trabolta Greeting
   setting: The Desktop

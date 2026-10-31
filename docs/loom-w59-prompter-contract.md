@@ -115,6 +115,10 @@ an autoscroll and it carries on after.
   it; one who joined to watch and left the phone awake doesn't.
 - A scripted line of his that isn't in the scene (C2).
 - ▶ from a host's Show, the director phone or Run. ✓ Done from a joined prompter.
+- A scene left up with nobody at it is no reason to wait for anything: `reading()` is
+  what the costume asks, and it's true only with a line of his waiting or saying, a
+  finger, an autoscroll, or a move in the last `DRIVE_TTL_MS`. `active` stays on until
+  the next marked beat.
 - A restart forgets the scene, and the rest of the lines play (the TV's cursor is
   behind them). The phones go back to wave 55's own script.
 
@@ -144,6 +148,27 @@ reader hadn't reached stays theirs (wave 55's guarantee):
   comes back, and the phone's own script (the whole night, as in wave 55) opens at the
   first unread line. The scene they read is in that script too, and goes on that ✓ Done.
 - A scene read to its end owes nothing, ✓ Done or not.
+
+## C11. Her last line is his cue
+
+`Clippy On Trabolta` has no line of his: his speech is `introduce_trabolta`, a press,
+because it wakes him. So there is nothing for the arrow to reach. `PrompterDeps.finished`
+says a scene is over, once: the position reached `total` (a scroll, an autoscroll
+running out; never with a line of his still to say), or a reader's ✓ Done closed it.
+A newer scene taking over, a host's ✓ Done, a director's or Run's close, and a restart
+are not an end. A host driving for a dead phone gets there by scrolling.
+
+The runtime's `sceneFinished` fires `introduce_trabolta` through `deskFire`, the same
+`commit("signal", …)` + `fanout` as a host's press, read as `📜 Teleprompter`, for that
+beat alone (`HANDOVER_BEAT`), unless `Night.trabolta_introduced` is already true. Either
+order is safe. 🤖 first: the end does nothing and says nothing. The arrow first: 🤖
+reads *Trabolta is already online. Nothing happens.* in `# hosts`, which is true, and
+the cue sheet shows the press as a refused one.
+
+Nothing about the beat changed. The end block is `--aloud-tail` tall, so at any text
+size the last scroll puts the arrow past the last line and `sharedPos` reads `total`.
+No reader online, a phone on an old build, or a restart mid-read: nothing fires, and
+🤖 is the way, which is how the bots go.
 
 ## Tests
 

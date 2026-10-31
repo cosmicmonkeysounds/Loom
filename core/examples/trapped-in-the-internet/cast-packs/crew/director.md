@@ -54,8 +54,8 @@ does ends the night or needs you; you may read their numbers in Run → World
 | 2 | **V2 🎱** Start Computer Bingo (20 min) | Clippy's welcome pops up on her teleprompter; she names the hosts | |
 | 3 | **V3 ⏰** Bingo time: results | Norton interrupts; Corrupted Code | |
 | 3a | radio **INTRO**, then **Clippy 2/X 📺** only if a program is walking | the TV follows them; Clippy cheers | |
-| 3b | **Clippy 2/X 🎤** Clippy tells the room about Trabolta | her paragraph, ending *"Trabolta, would you explain the rules?"* | |
-| 4 | **Clippy 2/X 🤖** Trabolta comes online | his speech, the questions, his sign-off, about three minutes; 🤖 talk scene *intro* after it, until 🔎 | *formal* |
+| 3b | **Clippy 2/X 🎤** Clippy tells the room about Trabolta | her paragraph, ending *"Trabolta, would you explain the rules?"*. Her arrow past that line, or her ✓ Done, fires 🤖 | |
+| 4 | **Clippy 2/X 🤖** Trabolta comes online (fires itself off her prompter; press it only as the backup, if she has no phone on it) | his speech, the questions, his sign-off, about three minutes; 🤖 talk scene *intro* after it, until 🔎 | *formal* |
 | 5 | **V4/V5 🔎** Hunt 1 (15 min) (nothing is said on it) | (auto **C2 ⏰** at 15 min) | *hungry* at C2 |
 | 6 | **V6 ⚖️** First Moment of Truth (two-minute filing window) | the server judges every filing | |
 | 6a | **⏱** Close round-one filings (auto at 2 min) | Clippy hands to Trabolta | |

@@ -93,7 +93,7 @@ until they are in**, then fill the three rows from
 
 **Your scenes:** V2 welcome, hosts and Bingo rules → V3 results (🎯) →
 **Corrupted Code** → the screen, if a program is walking (a host fires 📺) →
-**your words on Trabolta** (radio "INTRO"; a host fires 🎤, then 🤖) → his speech
+**your words on Trabolta** (radio "INTRO"; a host fires 🎤; your arrow past the last line starts him) → his speech
 → **talk with him** → hunt 1 → V6: your welcome back → ⏱ your hand to him → 📋 results, one
 question at a time → 🍾 the bottle (**talk** between the spins) → 📺 **panic
 at the ad** (CI 4) and **talk** → 🏓 → 🫘 **beans = malware**, **talk** → 🌑 final
@@ -257,8 +257,9 @@ the process as routine, even if the other guests seem uncomfortable.
 
 **🎤 then 🤖 · Trabolta.** Radio **INTRO** (so the tent starts the first game).
 A host fires 🎤 and your words about him come up: the accident, the rule, the
-hunt. They end *"Trabolta, would you explain the rules?"*: a host fires 🤖 on
-that. He comes online and speaks on the TV: his speech, the three questions and
+hunt. They end *"Trabolta, would you explain the rules?"*. Scroll past that line,
+or press ✓ Done, and he starts by himself (a host's 🤖 is the backup, if your phone
+is lost). He comes online and speaks on the TV: his speech, the three questions and
 his sign-off, about three minutes, clean, not a crack in it. Let him finish.
 **The first talk:** after *"it's electrifying."*, talk with him, out loud: welcome him, ask
 what a Sole Owner and Founder does all day, about Gerald. He is formal and
@@ -496,8 +497,8 @@ the selected program is escorted to the Internet, your reassurance pops up.
 If a program is walking a host presses 📺: draw everyone's attention to the
 screen. Continue to respond with cheerful encouragement. Treat the process as
 routine, even if the other guests seem uncomfortable. A host presses 🎤: your
-words on Jean Trabolta, ending "Trabolta, would you explain the rules?", and 🤖
-on that. Let him finish his speech, then talk with him out loud (Task Manager
+words on Jean Trabolta, ending "Trabolta, would you explain the rules?". Your arrow
+past that line starts him (a host's 🤖 if your phone is lost). Let him finish his speech, then talk with him out loud (Task Manager
 types what you say), a minute or so, never about the accident. A host starts 🔎.
 
 **CI 3/X · First Moment of Truth.** ⚖️ brings up your welcome back. Never say
@@ -669,7 +670,7 @@ Oh, look! We can follow their progress!
 
 You're doing wonderfully! Just follow the instructions. One step at a time!
 
-**🎤 Your words on Trabolta.** On the last line a host fires 🤖: he speaks for about three minutes and ends *"…it's electrifying."* Then talk with him, a minute or so, until 🔎.
+**🎤 Your words on Trabolta.** Scroll past the last line, or press ✓ Done, and he starts by himself (a host's 🤖 is the backup): he speaks for about three minutes and ends *"…it's electrifying."* Then talk with him, a minute or so, until 🔎.
 
 Thank you, everyone! It's always nice to see a program getting the help they need.
 

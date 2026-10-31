@@ -69,7 +69,7 @@ import { GUEST_LOGOUT_ROUTE, LOGOUT_ROUTE, Pairing, RESUME_ROUTE, SIGNED_OUT, re
 import { BADGES_ROUTE, BADGE_ROUTE, ENTER_ROUTE, REJOIN_CANCEL_ROUTE, REJOIN_DECIDE_ROUTE, REJOIN_NAMES_ROUTE, REJOIN_POLL_ROUTE, REJOIN_ROUTE, Rejoin, heldAnswer, partCode, partUrl, printedCode, reservedAnswer, type BoothGrant } from "./routes/rejoin.ts";
 import { HOMESCREEN_ROUTE } from "./routes/k31b.ts";
 import { PushRoutes } from "./routes/k31.ts";
-import { Prompters, readPrompterOp, sceneOf, type PrompterFrame, type PrompterStatus } from "./prompter.ts";
+import { Prompters, readPrompterOp, sceneOf, type PrompterFrame, type PrompterStatus, type SceneDraft } from "./prompter.ts";
 import { PushHub, aloudLinePush, aloudPush, boothOwner, guestOwner, messagePush, pushConfigFromEnv, readoutPush, webPushSender, type PushSender } from "./push.ts";
 import { printExtras } from "./routes/k12.ts";
 import { PRINTED_GUEST_ROUTE, PRINTED_PRIME_ROUTE, printedHit, type PrintedHit } from "./routes/printed.ts";
@@ -349,6 +349,11 @@ export const SCAN_REPEAT_MS = 1500;
 const AGENT_HISTORY = 30;
 /** Wave 59: how far back a press looks for lines still being said. */
 const COSTUME_LOOKBACK_MS = 20 * 60_000;
+/** Wave 59: the beat that hands over to him, and the cue its end fires. */
+const HANDOVER_BEAT = "Clippy On Trabolta";
+const HANDOVER_CUE = "introduce_trabolta";
+/** Who that press reads as, in the journal and the desk's activity. */
+const PROMPTER_BY = "📜 Teleprompter";
 
 /**
  * The guest POST routes a **locked** phone may still call (wave 26, C2): the
@@ -1352,6 +1357,7 @@ export class EventRuntime {
         this.modViewLast = null;
         this.pushSnapshots();
       },
+      finished: (scene) => this.sceneFinished(scene),
     });
     this.screens = new ScreenWatch({
       ...(init.now !== undefined ? { now: init.now } : {}),
@@ -2462,6 +2468,15 @@ export class EventRuntime {
       }, 200);
       this.prompterTimer.unref?.();
     }
+  }
+
+  /** Her last line is his cue: the arrow past it, or her ✓ Done, is 🤖, on the
+   *  path a host's press takes. Once: a press of 🤖 first leaves nothing to do
+   *  and nothing said, and 🤖 after it reads *already online*, which is true. */
+  private sceneFinished(scene: SceneDraft): void {
+    if (this.sim === null || this.phase !== "open" || scene.sections.at(-1)?.title !== HANDOVER_BEAT) return;
+    if (worldString(this.sim.world.peek("Night.trabolta_introduced")) === "true") return;
+    this.deskFire(HANDOVER_CUE, PROMPTER_BY);
   }
 
   private prompterName(who: string): string {

@@ -277,3 +277,97 @@ describe("over the real runtime", () => {
     expect(isHostRoute("POST", "/api/mod/aloud", { action: "release" }, { alertsPath: "", isAgent: () => false })).toBe(true);
   });
 });
+
+describe("her last line is his cue", () => {
+  const press = (rt: EventRuntime, name: string) => post(rt, "/api/mod/signal", { name }, { moderator: true });
+  const said = (rt: EventRuntime) => (rt["chat"] as ChatStore).all();
+  const online = (rt: EventRuntime) => said(rt).filter((m) => m.text.includes("TRABOLTA IS ONLINE")).length;
+  const hosts = (rt: EventRuntime) => said(rt).filter((m) => m.channel === "room:hosts").length;
+  const awake = (rt: EventRuntime) => (rt["sim"] as unknown as Sim).world.peek("Night.trabolta_introduced");
+
+  /** Clippy with her phone on her paragraph, as the 🎤 press leaves it. */
+  async function atHerParagraph() {
+    const rt = runtime();
+    const clippy = await booth(rt, "Clippy");
+    const res = await stream(rt, "prime", clippy);
+    for (const cue of ["call_to_the_desktop", "start_the_bingo", "bingo_time", "clippy_on_trabolta"]) expect((await press(rt, cue)).status).toBe(200);
+    const scene = frames(res).at(-1)!;
+    expect(scene.script?.sections[0]!.title).toBe("Clippy On Trabolta");
+    await post(rt, "/api/aloud", { scene: scene.id, op: "here", open: true }, { token: clippy });
+    const aloud = (op: Record<string, unknown>, token = clippy) => post(rt, "/api/aloud", { scene: scene.id, ...op }, { token });
+    return { rt, clippy, res, scene, aloud };
+  }
+
+  it("the arrow past her last line fires 🤖, once, and 🤖 after it says only the truth", async () => {
+    const { rt, scene, aloud, res } = await atHerParagraph();
+    await aloud({ op: "press", pos: 0 });
+    await aloud({ op: "move", pos: scene.total - 1 });
+    expect(online(rt)).toBe(0);
+    await aloud({ op: "move", pos: scene.total });
+    expect(online(rt)).toBe(1);
+    expect(frames(res).at(-1)!.done).toBeUndefined();
+    await aloud({ op: "letgo", pos: scene.total });
+    await aloud({ op: "done" });
+    expect(online(rt)).toBe(1);
+    const before = hosts(rt);
+    expect((await press(rt, "introduce_trabolta")).json).toMatchObject({ ok: true, refused: true });
+    expect(online(rt)).toBe(1);
+    expect(said(rt).filter((m) => m.channel === "room:hosts").slice(before).map((m) => m.text)).toEqual(["🤖 Trabolta is already online. Nothing happens."]);
+    rt.dispose();
+  });
+
+  it("her ✓ Done fires it too, wherever the arrow is", async () => {
+    const { rt, aloud } = await atHerParagraph();
+    await aloud({ op: "done" });
+    expect(online(rt)).toBe(1);
+    rt.dispose();
+  });
+
+  it("🤖 first: the arrow and ✓ Done then do nothing, and say nothing in # hosts", async () => {
+    const { rt, scene, aloud } = await atHerParagraph();
+    expect((await press(rt, "introduce_trabolta")).json).toMatchObject({ ok: true });
+    expect(online(rt)).toBe(1);
+    const before = hosts(rt);
+    await aloud({ op: "press", pos: 0 });
+    await aloud({ op: "move", pos: scene.total });
+    await aloud({ op: "letgo", pos: scene.total });
+    await aloud({ op: "done" });
+    expect(online(rt)).toBe(1);
+    expect(hosts(rt)).toBe(before);
+    rt.dispose();
+  });
+
+  it("a host's ✓ Done or a director's close leaves 🤖 to them; a host driving for a dead phone gets there too", async () => {
+    const first = await atHerParagraph();
+    const host = await booth(first.rt, "Task Manager");
+    await first.aloud({ op: "done" }, host);
+    expect(awake(first.rt)).not.toEqual(true);
+    expect(online(first.rt)).toBe(0);
+    first.rt.dispose();
+
+    const second = await atHerParagraph();
+    expect((await post(second.rt, "/api/mod/aloud", { action: "done" }, { moderator: true })).json).toMatchObject({ took: true });
+    expect(online(second.rt)).toBe(0);
+    second.rt.dispose();
+
+    const third = await atHerParagraph();
+    const driver = await booth(third.rt, "Task Manager");
+    await third.aloud({ op: "press", pos: 0 }, driver);
+    await third.aloud({ op: "move", pos: third.scene.total }, driver);
+    expect(online(third.rt)).toBe(1);
+    third.rt.dispose();
+  });
+
+  it("another scene's end fires nothing", async () => {
+    const rt = runtime();
+    const clippy = await booth(rt, "Clippy");
+    const res = await stream(rt, "prime", clippy);
+    expect((await post(rt, "/api/mod/beat", { name: "Following The Reinstallation" }, { moderator: true })).status).toBe(200);
+    const scene = frames(res).at(-1)!;
+    await post(rt, "/api/aloud", { scene: scene.id, op: "press", pos: 0 }, { token: clippy });
+    await post(rt, "/api/aloud", { scene: scene.id, op: "move", pos: scene.total }, { token: clippy });
+    await post(rt, "/api/aloud", { scene: scene.id, op: "done" }, { token: clippy });
+    expect(online(rt)).toBe(0);
+    rt.dispose();
+  });
+});

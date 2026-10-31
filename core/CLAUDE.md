@@ -599,7 +599,12 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   present; a live `say` has none) lets the hold go, in order.
   `POST /api/mod/aloud {action: release | done}` is on the host allowlist. Every
   stream's first frames include a `prompter` (null with none). `pushLifecycle` clears
-  it. Tests: `test/w59-prompter.test.ts`, `test/w59-prompter-server.test.ts`.
+  it. `finished` (the position reached `total`, or a reader's ✓ Done, once a scene) is
+  `sceneFinished`: the end of `Clippy On Trabolta` fires `introduce_trabolta` through
+  `deskFire` unless he is already in (the contract's C11). `reading()`, not `status()`,
+  is what must not cut across a read asks: a scene nobody has touched in
+  `DRIVE_TTL_MS` stays up but isn't being read.
+  Tests: `test/w59-prompter.test.ts`, `test/w59-prompter-server.test.ts`.
 - **His voice** (wave 56, [`docs/loom-w56-contract.md`](../docs/loom-w56-contract.md)).
   `src/voice-fx.ts` (`@loom/core/voice-fx`, pure) decides how broken Trabolta
   sounds: `voiceLevel` (a curve over `Night.phase`, the Y2K clock, scaled by
@@ -633,8 +638,7 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   committed, so the story's own `ad_burst` refusals never reach `# hosts`. The
   night's end is `Night.step` 16 on (the reveal, the bobbing, Grok Prom and the
   advice poll all play with `Night.ended` false; `step` is what a story edit must
-  keep). A scene on the shared prompter refuses a press until its ✓ Done
-  (`Prompters.status`): nothing else ends one but a newer scene or a restart.
+  keep). A scene being read on the shared prompter (`Prompters.reading`) refuses a press.
   MUSIC is refused while anyone else's hand is on the soundtrack
   (`AudioHub.musicHand`: the last scene or stop's `by`, memory only, corrected by
   the router's `hand`), and AFTER PARTY's timed return stands down then too. Every

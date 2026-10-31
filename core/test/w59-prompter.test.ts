@@ -20,6 +20,7 @@ function rig(messages: readonly ChatMessage[], o: { online?: boolean } = {}) {
   const frames: PrompterFrame[] = [];
   const voice: RoomVoice = { live: true, muted: false, said: -1, speaking: null };
   let changed = 0;
+  let finished = 0;
   const p = new Prompters({
     now: () => now,
     send: (f) => frames.push(f),
@@ -27,6 +28,7 @@ function rig(messages: readonly ChatMessage[], o: { online?: boolean } = {}) {
     online: () => o.online ?? true,
     name: (w) => w.replace(/^@/u, ""),
     changed: () => (changed += 1),
+    finished: () => (finished += 1),
   });
   const draft = sceneOf(messages, CTX)!;
   p.land(draft);
@@ -37,6 +39,7 @@ function rig(messages: readonly ChatMessage[], o: { online?: boolean } = {}) {
     voice,
     last: () => frames[frames.length - 1]!,
     changed: () => changed,
+    finished: () => finished,
     to: (ms: number) => {
       now += ms;
       p.tick();
@@ -422,6 +425,40 @@ describe("the night never hangs", () => {
     expect(r.p.status()).toMatchObject({ id: 2, readers: ["Clippy"], line: 1, lines: 3, held: true, speaking: false, holder: null });
     r.p.op(r.id, "@Clippy", false, { op: "jump", pos: 4 });
     expect(r.p.status()).toMatchObject({ line: 2, speaking: true, held: false });
+  });
+});
+
+describe("a scene's end", () => {
+  it("an autoscroll running out of script finishes it, once", () => {
+    const r = rig([clippy(1)]);
+    r.here();
+    expect(r.p.op(r.id, "@Clippy", false, { op: "play", on: true, speed: 1 })).toBeNull();
+    r.to(1_000);
+    expect(r.finished()).toBe(0);
+    r.to(2_000);
+    expect(r.finished()).toBe(1);
+    r.p.op(r.id, "@Clippy", false, { op: "done" });
+    expect(r.finished()).toBe(1);
+  });
+
+  it("the arrow can't finish a scene with a line of his still to say", () => {
+    const r = rig([clippy(1), him(2)]);
+    r.here();
+    r.p.op(r.id, "@Clippy", false, { op: "jump", pos: 99 });
+    expect(r.last().speaking).not.toBeNull();
+    expect(r.finished()).toBe(0);
+    r.to(60_000);
+    expect(r.p.op(r.id, "@Clippy", false, { op: "move", pos: 99 })).toBeNull();
+    r.p.op(r.id, "@Clippy", false, { op: "press" });
+    r.p.op(r.id, "@Clippy", false, { op: "move", pos: 99 });
+    expect(r.finished()).toBe(1);
+  });
+
+  it("a newer scene isn't an end", () => {
+    const r = rig([clippy(1)]);
+    r.here();
+    r.p.land(sceneOf([clippy(5)], CTX));
+    expect(r.finished()).toBe(0);
   });
 });
 

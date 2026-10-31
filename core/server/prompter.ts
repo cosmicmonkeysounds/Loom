@@ -22,6 +22,9 @@
 //! while they drive it (`DRIVE_TTL_MS`), and a scripted line of his that isn't
 //! in the scene lets it all go (`outrun`). Pure but for the injected clock and
 //! outlets: the runtime calls `tick` on a timer and on every poll.
+//!
+//! A scene can end on a cue of its own: `finished` says when the position has
+//! passed its last line or its reader pressed ✓ Done, once a scene.
 
 import type { PrompterStatus } from "../src/host-board.ts";
 import type { ChatMessage } from "./chat.ts";
@@ -236,6 +239,9 @@ export interface PrompterDeps {
   name(who: string): string;
   /** A hold or the scene changed: the host and director views are stale. */
   changed(): void;
+  /** The script ran out, or a reader pressed ✓ Done. Once a scene, never for
+   *  one a newer scene took over or a host or a director closed from outside. */
+  finished?(scene: SceneDraft): void;
 }
 
 interface Run {
@@ -273,6 +279,7 @@ interface Live {
   speaking: { run: Run; at: number; until: number; started: boolean } | null;
   rev: number;
   sentAt: number;
+  finished: boolean;
 }
 
 const clampSpeed = (n: number): number => Math.min(SPEED_MAX, Math.max(SPEED_MIN, n));
@@ -344,6 +351,7 @@ export class Prompters {
       speaking: null,
       rev: 0,
       sentAt: 0,
+      finished: false,
     };
     this.live = s;
     s.stop = this.stopOf(s);
@@ -486,13 +494,17 @@ export class Prompters {
         // last reader, or a host, ends the scene for everyone.
         s.here.delete(who);
         const others = s.draft.readers.some((r) => r !== who && now - (s.here.get(r)?.at ?? -Infinity) <= HERE_TTL_MS);
-        if (!s.draft.owners.includes(who) && !(s.draft.readers.includes(who) && others)) this.close(false);
+        if (!s.draft.owners.includes(who) && !(s.draft.readers.includes(who) && others)) {
+          this.close(false);
+          if (s.draft.readers.includes(who)) this.finish(s);
+        }
         return null;
       }
     }
     s.drove.set(who, now);
     s.stop = this.stopOf(s);
     if (!this.step(s, now)) this.emit(s);
+    this.ranOut(s, now);
     return null;
   }
 
@@ -517,7 +529,19 @@ export class Prompters {
       s.rate = 0;
       s.playing = false;
       this.emit(s);
+      this.ranOut(s, now);
     } else if (s.rate > 0 && now - s.sentAt >= RESYNC_MS) this.emit(s);
+  }
+
+  /** The position has passed the last line. */
+  private ranOut(s: Live, now: number): void {
+    if (s.speaking === null && !this.isHeld(s) && this.posAt(s, now) >= s.total) this.finish(s);
+  }
+
+  private finish(s: Live): void {
+    if (s.finished) return;
+    s.finished = true;
+    this.deps.finished?.(s.draft);
   }
 
   private isHeld(s: Live): boolean {

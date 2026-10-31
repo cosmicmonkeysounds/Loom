@@ -3285,14 +3285,15 @@ INTERACTION bingo_time
   while: Night.step == 2
 
 // Wave 58: Clippy's paragraph about him (SCRIPT:109-117), its own cue so her
-// words and his never land together: it ends on "Trabolta, would you explain
-// the rules?", and that is 🤖.
-// DRAFT w58 (the button's label and description)
+// words and his never land together. It ends on "Trabolta, would you explain
+// the rules?". Wave 59: her arrow past that line, or her ✓ Done, is 🤖
+// (`sceneFinished`, core/server/event-runtime.ts).
+// DRAFT w58 (the button's label); DRAFT w59 (its description)
 INTERACTION clippy_on_trabolta
   label: Clippy 2/X · 🎤 Clippy tells the room about Trabolta
   who: admin
   while: Night.step == 3 and Night.clippy_handed != true
-  description: After the first reinstallation (or when the Bingo is done with). Her paragraph pops up on her teleprompter; it closes the Bingo round if it is still open. It ends "Trabolta, would you explain the rules?": then 🤖.
+  description: After the first reinstallation (or when the Bingo is done with). Her paragraph pops up on her teleprompter; it closes the Bingo round if it is still open. It ends "Trabolta, would you explain the rules?". When her arrow passes that line, or she presses ✓ Done, he starts by himself: 🤖 is the backup.
 
 // Wave 58: only if a program is walking (SCRIPT:99-107): the TV's mirror, before
 // he is online, and Clippy's cheerful words. Off the sequence: most nights skip it.
@@ -3304,11 +3305,11 @@ INTERACTION follow_the_reinstallation
   while: Night.step == 3 and Night.first_reinstall_done == true and Night.mirror_followed != true
   description: Press it only once a program is walking in the Internet. The TV shows them while they are in the Desktop's room of the copy, and Clippy's words pop up on her teleprompter. Nobody walking: skip it.
 
-// DRAFT w58 (the description)
+// DRAFT w59 (the description)
 INTERACTION introduce_trabolta
   label: Clippy 2/X · 🤖 Trabolta comes online
   who: admin
-  description: On Clippy's "Trabolta, would you explain the rules?". He comes online and gives his whole speech, the three questions and his sign-off on the TV, about three minutes; check the terminals show his face. The 🤖 Talk card stays open behind it for the banter after.
+  description: The backup. He starts by himself when Clippy's arrow passes "Trabolta, would you explain the rules?" or she presses ✓ Done; press this if neither can happen (no reader, a lost phone). Before or after that it is harmless. He comes online and gives his whole speech, the three questions and his sign-off on the TV, about three minutes; check the terminals show his face. The 🤖 Talk card stays open behind it for the banter after.
 
 // DRAFT w58 (the description)
 INTERACTION start_the_hunt
