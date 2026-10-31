@@ -485,6 +485,8 @@ const showHouseWarned = new Map<string, string>();
  *  (`agent:<Character>`): a replay counts these against the power's
  *  `limit:`, never a director's fire of the same interaction. */
 const AGENT_BY = "agent:";
+/** Trabolta's power at the stereo (the story's `cast/trabolta.loom`). */
+const MUSIC_POWER = "change_the_music";
 /** The journal's `by` on the judging-mode flip around a near-miss filing
  *  (`commitUnderReview`): the facts judge, not a director. */
 const JUDGE_BY = "Judge";
@@ -1139,6 +1141,7 @@ export class EventRuntime {
       restoreLights: (a) => this.costumeRestoreLights(a),
       musicStory: () => {
         if (this.audio.musicHand() === COSTUME_BY) this.audio.music({ action: "story" }, COSTUME_BY);
+        return this.audio.pausedOver(COSTUME_BY);
       },
     });
     this.projectFacts = init.facts !== undefined ? init.facts : this.store.loadFacts();
@@ -2751,12 +2754,13 @@ export class EventRuntime {
     this.audio.setProjectText(text);
   }
 
-  /** What the audio routes read off this event (`audio.ts`). */
-  private audioContext(): AudioContext {
+  /** What the audio routes read off this event (`audio.ts`). `hide`: who a
+   *  host's 🎵 Music leaves off its pals (wave 59: a Run persona). */
+  private audioContext(hide: ReadonlySet<string> = NO_ONE): AudioContext {
     return {
       house: () => this.spatialHouse(),
       model: () => this.sim?.model ?? this.declaredModel,
-      dj: () => (this.sim !== null ? musicDjOf(this.sim.worldEntries(), [...this.sim.persons.values()]) : null),
+      dj: () => (this.sim !== null ? musicDjOf(this.sim.worldEntries(), [...this.sim.persons.values()].filter((p) => !hide.has(p.id))) : null),
     };
   }
 
@@ -4188,6 +4192,13 @@ export class EventRuntime {
         const used = this.agentPowerUses.get(def.id) ?? 0;
         if (def.limit !== null && used >= def.limit) {
           out.push({ kind: "fire", ok: false, what: def.id, error: "power exhausted for this run" });
+          continue;
+        }
+        // The story can't see a hand on the soundtrack, and the router ignores
+        // his move under one (the music contract's C4): nothing happened, so
+        // nothing is told and no use is spent.
+        if (def.id === MUSIC_POWER && this.audio.musicHand() !== null) {
+          out.push({ kind: "fire", ok: false, what: def.id, error: "the music is in someone's hand" });
           continue;
         }
         const subject = act.subject ?? (sim.persons.has(counterpart) ? counterpart : undefined);
@@ -6611,7 +6622,11 @@ export class EventRuntime {
     }
     // --- the house speakers (wave 17, audio.ts): the config + stagehand's long poll ---
     // --- the house mixer (wave 40): a director's or a host's panel ---
-    if (method === "GET" && path === "/api/mod/audio/mixer") return handleMixerGet(this.audio, this.audioContext(), req, res, url, (t) => opts.moderator === true || this.canHostToken(t));
+    if (method === "GET" && path === "/api/mod/audio/mixer") {
+      const token = queryTokenOf(req, url);
+      const director = opts.moderator === true || this.sessions.canModerate(token) || this.directorPane(token);
+      return handleMixerGet(this.audio, this.audioContext(director ? NO_ONE : directorIds(this.sim, this.personaOwners)), req, res, url, (t) => opts.moderator === true || this.canHostToken(t));
+    }
     if (method === "GET" && path === "/api/mod/audio") return handleAudioGet(this.audio, this.audioContext(), req, res, url, (t) => opts.moderator === true || this.sessions.canModerate(t));
     // --- the footsteps (wave 49, C3.1): the router's stream, a director's alone ---
     if (method === "GET" && path === "/api/mod/audio/walkers") {

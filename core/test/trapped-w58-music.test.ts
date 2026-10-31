@@ -13,6 +13,7 @@ import { scenarioSource } from "../examples/load.ts";
 import { Sim } from "../src/runtime/sim/index.ts";
 import type { SimEvent } from "../src/runtime/sim/index.ts";
 import type { AgentRequest } from "../server/agents.ts";
+import type { AudioHub } from "../server/audio.ts";
 import { EventRuntime } from "../server/event-runtime.ts";
 import { Store } from "../server/store.ts";
 
@@ -305,6 +306,52 @@ describe("the server's warmth (C5)", () => {
       sim.setVar("Night.dj_free_at", "0");
     }
     expect(await fireIt("g")).toMatchObject({ ok: false, error: "power exhausted for this run" });
+  });
+
+  it("a move inside someone's hand never reaches the story, and costs no use", async () => {
+    const { rt, sim, id, reply, fireIt } = await guestLine();
+    await reply({});
+    sim.setVar("Night.step", "7");
+    sim.setVar("Night.music", "act_2");
+    sim.setVar(`${id}.chummy`, "3");
+    const hub = (rt as unknown as { audio: AudioHub }).audio;
+    hub.music({ action: "scene", scene: "afterparty" }, "🎭 Costume");
+    expect(await fireIt("a")).toEqual({ kind: "fire", ok: false, what: POWER, error: "the music is in someone's hand" });
+    expect(value(sim, "Night.dj_last")).toBe("none");
+    expect(value(sim, "Night.dj_free_at")).toBe(0);
+    hub.music({ action: "story" }, "Director");
+    for (const text of ["b", "c", "d", "e"]) {
+      expect(await fireIt(text)).toEqual({ kind: "fire", ok: true, what: POWER });
+      sim.setVar("Night.dj_free_at", "0");
+    }
+    expect(await fireIt("f")).toMatchObject({ ok: false, error: "power exhausted for this run" });
+  });
+
+  it("a held pause and a Stop hold him off the same way", async () => {
+    const { rt, sim, id, reply, fireIt } = await guestLine();
+    await reply({});
+    sim.setVar("Night.step", "7");
+    sim.setVar("Night.music", "act_2");
+    sim.setVar(`${id}.chummy`, "3");
+    const hub = (rt as unknown as { audio: AudioHub }).audio;
+    hub.music({ action: "pause" }, "Task Manager");
+    expect(await fireIt("a")).toMatchObject({ ok: false, error: "the music is in someone's hand" });
+    hub.music({ action: "resume" }, "Task Manager");
+    hub.stop({}, "Tech op");
+    expect(await fireIt("b")).toMatchObject({ ok: false, error: "the music is in someone's hand" });
+  });
+
+  it("a Run persona stays off a host's card, and on Run's", async () => {
+    const { rt, sim, id } = await guestLine();
+    sim.setVar(`${id}.chummy`, "4");
+    const p = await call(rt, "POST", "/api/mod/persona", { name: "Dana the Director" }, { moderator: true });
+    const persona = (p.json["guest"] as { id: string }).id;
+    sim.setVar(`${persona}.chummy`, "6");
+    const host = await call(rt, "POST", "/api/prime/login", { character: "Task Manager", passcode: CODES.prime });
+    const token = host.json["token"] as string;
+    const pals = async (o: { token?: string; moderator?: boolean }) => ((await call(rt, "GET", "/api/mod/audio/mixer", {}, o)).json["dj"] as { pals: Array<{ name: string }> }).pals.map((x) => x.name);
+    expect(await pals({ token })).toEqual(["Winamp"]);
+    expect(await pals({ moderator: true })).toEqual(["Dana the Director", "Winamp"]);
   });
 
   it("the Music card reads it", async () => {

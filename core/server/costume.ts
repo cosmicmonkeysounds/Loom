@@ -110,11 +110,15 @@ export interface CostumeDeskDeps {
   note: (item: CostumeItem) => void;
   /** The story's look again, after a press that did `action`. */
   restoreLights: (action: Extract<CostumeAction, { kind: "look" | "light" }>) => void;
-  /** The story's soundtrack scene again, unless another hand has taken it. */
-  musicStory: () => void;
+  /** The story's soundtrack scene again, unless another hand has taken it.
+   *  True: ask again soon, a host's held ⏸ sits on the hold. */
+  musicStory: () => boolean;
 }
 
 export type CostumePress = { ok: true } | { ok: false; why: string };
+
+/** How soon a hold's return asks again while a host's ⏸ sits on it. */
+const MUSIC_RETURN_RETRY_S = 5;
 
 export class CostumeDesk {
   private readonly gate: CostumeGate;
@@ -168,10 +172,10 @@ export class CostumeDesk {
       }, file.restoreS);
     } else if (action.kind === "music" && action.holdS !== undefined) {
       if (this.musicTimer !== null) this.cancel(this.musicTimer);
-      this.musicTimer = this.later(() => {
-        this.musicTimer = null;
-        this.deps.musicStory();
-      }, action.holdS);
+      const back = (): void => {
+        this.musicTimer = this.deps.musicStory() ? this.later(back, MUSIC_RETURN_RETRY_S) : null;
+      };
+      this.musicTimer = this.later(back, action.holdS);
     } else if (action.kind === "cue" && action.times > 1) {
       this.again(action, file, action.times - 1, costumeCue(action.cue, this.deps.facts()));
     }

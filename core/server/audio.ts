@@ -264,6 +264,17 @@ export const AUDIO_HEALTH_SOURCES_MAX = 32;
 /** (wave 38) An input peak is clamped to this range (dBFS); silence reads the floor. */
 export const AUDIO_PEAK_FLOOR_DB = -120;
 export const AUDIO_PEAK_CEIL_DB = 24;
+/** (wave 59) The last word on who holds the soundtrack: a command's `by` and
+ *  when. `pause`: a held ⏸, and `under` the hand it sat on. `stop`: Stop house
+ *  sounds. */
+interface MusicHandCommand {
+  by: string | null;
+  at: number;
+  pause?: true;
+  stop?: true;
+  under?: MusicHandCommand | null;
+}
+
 /** (wave 40) At most this many scenes and playlists in a music report. */
 export const AUDIO_MUSIC_SCENES_MAX = 64;
 export const AUDIO_MUSIC_PLAYLISTS_MAX = 64;
@@ -660,7 +671,7 @@ export class AudioHub {
   private musicSeq = 0;
   /** (wave 59) The last command that moved the hand: `by` null is a `story`, or
    *  a `resume` of a held `pause`. Memory only. */
-  private handCommand: { by: string | null; at: number; pause?: true } | null = null;
+  private handCommand: MusicHandCommand | null = null;
   /** (wave 40) The router's last meters packet (memory only) and the last
    *  sound `music` a packet carried, with when it arrived. */
   private lastMeters: MixerMeters | null = null;
@@ -722,20 +733,22 @@ export class AudioHub {
 
   /** (wave 59) What a command does to the hand. A track forward or back is
    *  nobody's. A playlist picked by hand is one, like a scene. A pause holds
-   *  until told (the Music manager's C0), so it is one until its `resume`. */
+   *  until told (the Music manager's C0), so it is one until its `resume`,
+   *  which gives back the hand it sat on. */
   private moveHand(cmd: MusicCommand, by: string, at: number): void {
+    const h = this.handCommand;
     switch (cmd.action) {
       case "next":
       case "previous":
         return;
       case "resume":
-        if (this.handCommand?.pause === true) this.handCommand = { by: null, at };
+        if (h?.pause === true) this.handCommand = { ...(h.under ?? { by: null }), at };
         return;
       case "story":
         this.handCommand = { by: null, at };
         return;
       case "pause":
-        this.handCommand = { by, at, pause: true };
+        this.handCommand = { by, at, pause: true, under: (h?.pause === true ? h.under : h) ?? null };
         return;
       default:
         this.handCommand = { by, at };
@@ -743,18 +756,27 @@ export class AudioHub {
   }
 
   /** (wave 59) Whose hand is on the soundtrack: the `by` of the last scene,
-   *  stop, playlist or held pause until a `story` lets go of it, null for
-   *  nobody, "" for a hand the router reports that no command here explains
-   *  (this server restarted, or it came over MQTT). A report just after a
-   *  command says nothing of it; a later one wins, because the router lets go
-   *  by itself on a story restart. Trabolta's loan is no hand: the router
-   *  reports one for it, it ends by itself, and any hand ends it first. */
+   *  stop, playlist, held pause or Stop house sounds until a `story` lets go
+   *  of it, null for nobody, "" for a hand the router reports that no command
+   *  here explains (this server restarted, or it came over MQTT). A report
+   *  just after a command says nothing of it; a later one wins, because the
+   *  router lets go by itself on a story restart. A Stop holds while nothing
+   *  plays: a scene reported after it is a live cue's or Follow the story's.
+   *  Trabolta's loan is no hand: the router reports one for it, it ends by
+   *  itself, and any hand ends it first. */
   musicHand(): string | null {
     const report = this.musicReport();
     const cmd = this.handCommand;
+    if (cmd?.stop === true && (report === null || report.at <= cmd.at + MUSIC_HAND_SETTLE_MS || report.music.scene === null)) return cmd.by;
     if (report?.music.hand === undefined || (cmd !== null && report.at <= cmd.at + MUSIC_HAND_SETTLE_MS)) return cmd?.by ?? null;
     if (report.music.loan === true) return null;
     return report.music.hand || report.music.tidal?.paused === true ? (cmd?.by ?? "") : null;
+  }
+
+  /** (wave 59) A held ⏸ sits on `by`'s hand, so its ⏵ gives it back. */
+  pausedOver(by: string): boolean {
+    const h = this.handCommand;
+    return h?.pause === true && h.under?.by === by && this.musicHand() !== null;
   }
 
   /** (wave 40) The recent music commands (≤ `MUSIC_COMMANDS`, ≤
@@ -980,6 +1002,7 @@ export class AudioHub {
     const s: AudioStop = { seq: ++this.stopSeq, at: this.now(), by: by.slice(0, 64), announce: o.announce === true };
     this.stopLog.push(s);
     if (this.stopLog.length > AUDIO_STOPS) this.stopLog.shift();
+    this.handCommand = { by: s.by, at: s.at, stop: true };
     this.wake();
     return s;
   }

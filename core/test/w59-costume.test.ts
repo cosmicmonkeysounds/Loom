@@ -695,6 +695,110 @@ describe("w59 costume: what a press does", () => {
     r.rt.dispose();
   });
 
+  describe("the hand against ■ Stop and ⏸", () => {
+    const hostMusic = (r: Awaited<ReturnType<typeof live>>, action: string) => call(r.rt, "POST", "/api/mod/audio/music", { action }, { moderator: true });
+    const stopHouse = (r: Awaited<ReturnType<typeof live>>) => call(r.rt, "POST", "/api/mod/audio/stop", { announce: true }, { moderator: true });
+    const actions = (r: Awaited<ReturnType<typeof live>>) => r.hub.audio.musicCommands().map((c) => c.action);
+    const reports = (r: Awaited<ReturnType<typeof live>>, scene: string | null, hand: boolean) =>
+      r.hub.audio.report({ health: audioHealthOf({ ok: true, music: { scene, beds: [], missing: [], hand } }, r.hub.audio.clock()) });
+
+    it("ALL STOP inside AFTER PARTY: the timed return stands down and no press lands", async () => {
+      const r = await live();
+      await r.fire("party");
+      r.advance(10);
+      expect((await stopHouse(r)).status).toBe(200);
+      expect((await call(r.rt, "POST", "/api/mod/costume", { on: false }, { moderator: true })).status).toBe(200);
+      reports(r, null, true);
+      r.advance(25);
+      reports(r, null, true);
+      expect(actions(r)).toEqual(["scene"]);
+      expect((await call(r.rt, "POST", "/api/mod/costume", { on: true }, { moderator: true })).status).toBe(200);
+      expect((await r.fire("party")).json).toMatchObject({ why: "hand" });
+      expect(r.pending()).toBe(0);
+      r.rt.dispose();
+    });
+
+    it("a Stop holds for a router that reports no hand, until it reports a scene", async () => {
+      const r = await live();
+      await stopHouse(r);
+      r.advance(3);
+      reports(r, null, false);
+      expect(r.hub.audio.musicHand()).not.toBe(null);
+      expect((await r.fire("next")).json).toMatchObject({ why: "hand" });
+      r.advance(3);
+      reports(r, "act_2", false); // the story's next live music cue
+      expect(r.hub.audio.musicHand()).toBe(null);
+      expect((await r.fire("next")).status).toBe(200);
+      r.rt.dispose();
+    });
+
+    it("Follow the story lets go of a Stop", async () => {
+      const r = await live();
+      await stopHouse(r);
+      r.advance(3);
+      reports(r, null, true);
+      await hostMusic(r, "story");
+      r.advance(3);
+      reports(r, "act_2", false);
+      expect(r.hub.audio.musicHand()).toBe(null);
+      r.rt.dispose();
+    });
+
+    it("⏸ then ⏵ inside the hold: the return still comes", async () => {
+      const r = await live();
+      await r.fire("party");
+      r.advance(10);
+      await hostMusic(r, "pause");
+      r.advance(1);
+      await hostMusic(r, "resume");
+      expect(r.hub.audio.musicHand()).toBe(COSTUME_BY);
+      r.advance(19);
+      expect(r.hub.audio.musicCommands().at(-1)).toMatchObject({ action: "story", by: COSTUME_BY });
+      r.rt.dispose();
+    });
+
+    it("a ⏸ that outlasts the hold: the return waits for its ⏵, then comes", async () => {
+      const r = await live();
+      await r.fire("party");
+      r.advance(10);
+      await hostMusic(r, "pause");
+      reports(r, "afterparty", true);
+      r.advance(40);
+      reports(r, "afterparty", true);
+      expect(actions(r)).toEqual(["scene", "pause"]);
+      await hostMusic(r, "resume");
+      r.advance(6);
+      expect(r.hub.audio.musicCommands().at(-1)).toMatchObject({ action: "story", by: COSTUME_BY });
+      expect(r.pending()).toBe(0);
+      r.rt.dispose();
+    });
+
+    it("a ⏸ the story's next live cue ended owes the hold nothing", async () => {
+      const r = await live();
+      await r.fire("party");
+      r.advance(10);
+      await hostMusic(r, "pause");
+      r.advance(25);
+      reports(r, "act_2", false); // a live cue resumes and lets go
+      r.advance(6);
+      expect(actions(r)).toEqual(["scene", "pause"]);
+      expect(r.pending()).toBe(0);
+      r.rt.dispose();
+    });
+
+    it("a Stop over a held ⏸ ends the hold's return", async () => {
+      const r = await live();
+      await r.fire("party");
+      r.advance(10);
+      await hostMusic(r, "pause");
+      await stopHouse(r);
+      r.advance(40);
+      expect(actions(r)).toEqual(["scene", "pause"]);
+      expect(r.pending()).toBe(0);
+      r.rt.dispose();
+    });
+  });
+
   it("a hold let go of early owes the house no second return", async () => {
     const r = await live();
     await r.fire("party");
