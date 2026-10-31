@@ -555,15 +555,26 @@ export function yearWords(year: string): string {
 const YEAR_LEADS = ["in", "since", "of"] as const;
 const DIGIT_YEAR_LEADS: ReadonlySet<string> = new Set(["in", "since"]);
 
-/** A patch-bay pair as `neverWords` writes it (`V2-D5`). */
+/** A patch-bay pair as `neverWords` writes it (`V2-D3`, `B7-A6`). */
 const PAIR_WORD = /^[A-Z]+\d+-[A-Z]+\d+$/u;
+
+/** The patch panel's own names for the wire's V<k> and D<i> (the firmware's
+ *  `config.h`): what a Patch Sheet prints, and what a guest reads out. */
+export const PANEL_JACKS: Readonly<Record<string, string>> = { V1: "B8", V2: "B7", V3: "B4", V4: "B2", D1: "A5", D2: "A7", D3: "A6", D4: "A4" };
+
+/** A wire pair in the panel's names (`V2-D3` → `B7-A6`), or itself off the panel. */
+export function panelPair(pair: string): string {
+  const jacks = pair.split("-").map((end) => PANEL_JACKS[end]);
+  return jacks.length === 2 && jacks.every((j) => j !== undefined) ? jacks.join("-") : pair;
+}
 
 /** What no line of the character's mind may ever carry, whoever typed it
  *  (`secrets.never`): the keypad code, the ways it is said (digit by
  *  digit; a year's '97, "in 97" / "since ninety-seven" / "of ninety-seven" and
  *  "nineteen ninety-seven" — never a bare 97, which a guest's program may
- *  be called) and every patch-bay pair (`V2-D5`; the worker matches any spelling and
- *  either way round, V2 → D5, D5 to V2 …, a code with separators, 1 9 9 7,
+ *  be called) and every patch-bay pair, as the wire and as the panel write it
+ *  (`V2-D3`, `B7-A6`; the worker matches any spelling and either way round,
+ *  B7 → A6, A6 to B7 …, a code with separators, 1 9 9 7,
  *  and number words with any spacing). A program who tells him the code
  *  must not hand it to every other program's prompt through his notes, and
  *  a voice told to speak plainly says numbers in words. */
@@ -601,7 +612,7 @@ export function neverWords(f: FactsFile, combos: string[] = []): string[] {
   for (const combo of combos) {
     for (const pair of combo.split(",")) {
       const p = pair.trim().toUpperCase().replace(/\s+/gu, "");
-      if (PAIR_WORD.test(p)) out.add(p);
+      if (PAIR_WORD.test(p)) out.add(p).add(panelPair(p));
     }
   }
   return [...out];

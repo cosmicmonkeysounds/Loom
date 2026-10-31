@@ -780,7 +780,7 @@ ul.check label { min-width: 0; cursor: pointer; }
         <path class="wire" d="M605 348 V430"/>
         <rect class="dev" x="500" y="520" width="210" height="56"/>
         <text x="510" y="545" style="font-weight:600">Door LDR + patch bay</text>
-        <text class="s" x="510" y="564">15 jacks</text>
+        <text class="s" x="510" y="564">16 jacks, 8 live</text>
         <path class="wire" d="M605 486 V520"/>
 
         <path class="https" d="M580 152 H950 V470 H940"/>
@@ -837,16 +837,16 @@ Windows (PowerShell):
 <section class="win" id="patchbay">
   <h2><span>The patch bay (wave 22)</span><span class="btns" aria-hidden="true"><i></i><i></i><i></i></span></h2>
   <div class="body prose">
-    <p>Fifteen ¼-inch TS jacks on the server-room panel, read by the same Grand Central M4 as the door sensor (firmware folder <code>hardware/server-room-m4</code>, renamed from <code>server-room-door</code>).</p>
+    <p>Two rows of eight ¼-inch TRS jacks on the server-room panel, A and B, eight live and eight decoys, read by the same Grand Central M4 as the door sensor (firmware folder <code>hardware/server-room-m4</code>, renamed from <code>server-room-door</code>).</p>
     <ul>
-      <li><strong>Sources V1–V8</strong> (top row): each its own resistor divider off the M4's 3V3, with 1 kΩ in series to the tip. Eight well-separated voltages.</li>
-      <li><strong>Inputs D1–D7</strong> (bottom row) on pins A2–A8: a 220 kΩ pulldown at the jack, 1 kΩ in series, 100 nF to ground at the pin. An empty input reads near zero.</li>
+      <li><strong>Sources</strong> (row B): B8, B7, B4 and B2, four fixed voltages from 0.965 V to 3.019 V, well separated.</li>
+      <li><strong>Inputs</strong> (row A): A5, A7, A6 and A4, on pins A0–A3: a 100–220 kΩ pulldown at each jack, and the firmware drains each pin before it reads it. An empty input reads near zero.</li>
       <li>Every sleeve to ground. Nothing analog ever touches 5 V.</li>
     </ul>
     <p>The firmware decodes which source each input sees and reports the settled cable pairs. The terminal posts <code>patch_changed</code> with the pairs only when the bay has settled on a complete state (exactly four source-to-input cables) that differs from the last complete state it posted. Pulling a cable and plugging the same one back never counts twice. A cable from source to source, or input to input, is invisible, so the bay reads incomplete and nothing is judged. The terminal never knows the combinations: the story compares the pairs with the secrets it holds.</p>
     <p>The story judges the bay only from 🕚 <em>System clock → 11 PM</em> (<code>y2k_clock</code>) until 📄 <em>Read truth.txt</em> (<code>read_truth_txt</code>), and never after an ending. One wrong combination is forgiven ("Stop touching me."); the second trips the alarm.</p>
     <div class="note"><strong>The buttons win once pressed.</strong> If an Antivirus presses a patch-bay button (🔌 Combo A, 💥 Combo B, ❌ wrong combination, in their booth) or a director presses a <code>patch_*</code> fallback, the story sets <code>Night.patch_override</code> and follows the buttons, ignoring the bay, until a director presses the new admin cue <code>trust_patch_bay</code>. Use the buttons when the bay misreads or a cable is source-to-source.</div>
-    <p>The patch-bay layout changed this wave, and Combo A with it. Reprint Combo A's two codex halves and the patch-bay watch card. This page never prints the combinations: they are seeded in the story (<code>Kernel.combo_a</code> / <code>combo_b</code> in <code>main.loom</code>) and printed on the codex halves.</p>
+    <p>Wave 57 rebuilt the layout around the panel as built, and both combinations with it. Reprint the four Patch Sheets and the patch-bay watch card. This page never prints the combinations: they are seeded in the story (<code>Kernel.combo_a</code> / <code>combo_b</code> in <code>main.loom</code>) and printed on the codex halves.</p>
     <p>Crew check: in the terminal's ⚙ (2-second hold) the live table shows each input's reading and the source it decodes. Patch each source into each input in turn and see the right source on every row.</p>
   </div>
 </section>
@@ -1043,8 +1043,8 @@ Windows (PowerShell):
       <dt><strong>U4 · Where this page lives</strong></dt><dd>A tracked file only, or a crew page the VPS serves?</dd>
       <dt><strong>U5 · The second director's computer</strong></dt><dd>Which machine runs Run all night, and where is John's backup console?</dd>
       <dt><strong>U7 · The patch-bay watch</strong></dt><dd>Now that the bay judges itself, does an Antivirus still sit inside, and does 🕚 still wait for IN?</dd>
-      <dt><strong>U8 · The bay's wiring</strong></dt><dd>Is the divider and pulldown circuit built, and are the eight voltages chosen?</dd>
-      <dt><strong>U9 · Jack labels</strong></dt><dd>Which physical jacks are V1–V8 and D1–D7 on the panel? The printed halves and the watch card use these labels.</dd>
+      <dt><strong>U8 · The bay's wiring</strong></dt><dd>Answered in wave 57: the four voltages and the pulldowns are built, and both combinations read back correctly with real cables.</dd>
+      <dt><strong>U9 · Jack labels</strong></dt><dd>Answered in wave 57: the sources are B8, B7, B4 and B2, the inputs A5, A7, A6 and A4, and the other eight jacks are decoys. The Patch Sheets and the watch card print those names.</dd>
       <dt><strong>U10 · The MOTU</strong></dt><dd>Answered: on the Desktop (the MacBook is the fallback), with no ADAT expander (Analog 1–8, Main L/R, Phones L/R). Still open: does it run under ASIO on MOTU's Windows driver at 32 in / 30 out with no dropouts?</dd>
       <dt><strong>U11 · The laptops</strong></dt><dd>What OS is Steph's laptop, and does the old tent laptop have WebGL2?</dd>
       <dt><strong>U12 · Counts</strong></dt><dd>How many wall tablets for the <code>auto</code> spots, and how many Quest headsets?</dd>
@@ -1052,7 +1052,7 @@ Windows (PowerShell):
       <dt><strong>U14 · Names</strong></dt><dd>McAfee's actor, the second director, the tech operator, the house manager, and the emergency card's address and phone lines.</dd>
     </dl>
     <h3>Decided in wave 22</h3>
-    <p>The patch bay layout (8 sources and 7 inputs, Combo A changed with it), a re-plugged cable never counting twice, source-to-source and input-to-input cables reading as incomplete, and the buttons overriding the bay until <code>trust_patch_bay</code>.</p>
+    <p>A re-plugged cable never counting twice, source-to-source and input-to-input cables reading as incomplete, and the buttons overriding the bay until <code>trust_patch_bay</code>.</p>
     <h3>Sign-off status</h3>
     <ul>
       <li><strong>Signed off 2026-10-27</strong> (<em>"Every line in the signoffs looks good! ship those please."</em>): <code>SIGNOFF-w13.md</code>, <code>SIGNOFF-w18.md</code>, <code>history/SIGNOFF-w18b.md</code> (strike the <em>write every name down</em> line from the printed Bingo card, O1), <code>history/SIGNOFF-w20.md</code> (the persona's <code>outside:</code> list included), <code>SIGNOFF-w21.md</code>, <code>SIGNOFF-w26.md</code>, <code>SIGNOFF-w27.md</code>, <code>SIGNOFF-w28.md</code>. Every drafted default is accepted.</li>

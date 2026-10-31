@@ -1,6 +1,6 @@
 // The server-room M4 (Trapped in the Internet, waves 20 + 22): an Adafruit
 // Grand Central M4 on Steph's laptop that reads an LED shining on an LDR
-// across the server-room door (lit = shut) and the patch bay's seven inputs,
+// across the server-room door (lit = shut) and the patch bay's four inputs,
 // and reports both as JSON lines over USB serial, 115200. The server-room
 // terminal page reads them with Web Serial and posts door_sensor_opened /
 // door_sensor_closed and patch_changed {combo} to the event; nothing here
@@ -33,11 +33,18 @@ struct BoardPins : dl::Pins {
 };
 
 // The patch bay's inputs, D1 first (config.h PB_PINS).
+static const uint8_t kBayPins[] = PB_PINS;
+static_assert(sizeof kBayPins / sizeof kBayPins[0] >= (size_t)pb::kInputs, "PB_PINS has a pin per input");
+
+// An empty jack floats, and a bare pin wanders up through the sources' levels:
+// a phantom cable could finish a patch. The chip's pull-down works only while
+// the pin is digital, so each read drains the pin through it first. A floating
+// pin has nothing to bring it back up; a real cable does at once.
 struct BayPins : pb::Pins {
   uint16_t adc(int input) override {
-    static const uint8_t pin[] = PB_PINS;
-    static_assert(sizeof pin / sizeof pin[0] >= (size_t)pb::kInputs, "PB_PINS has a pin per input");
-    return (uint16_t)analogRead(pin[input]);
+    pinMode(kBayPins[input], INPUT_PULLDOWN);
+    delayMicroseconds(PB_DRAIN_US);
+    return (uint16_t)analogRead(kBayPins[input]);
   }
 };
 

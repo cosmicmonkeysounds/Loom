@@ -15,16 +15,17 @@
 
 ## The bay
 
-**15 jacks**, no decoys. Top row: the **8 sources V1–V8**. Bottom row: the
-**7 inputs D1–D7**. A combination is **four cables**, each from one top (V)
-jack to one bottom (D) jack. Order does not matter, and nor does which end
-of a cable goes where. The bay can't see a cable from top to top or from
-bottom to bottom: to it that patch is not finished.
+**16 jacks** in two rows, A and B, and only **8 are live**: row B's **B2, B4,
+B7, B8** and row A's **A4, A5, A6, A7**. The other eight are wired to nothing.
+A combination is **four cables**, each from a live B jack to a live A jack.
+Order does not matter, and nor does which end of a cable goes where. The bay
+can't see a cable in a dead jack, or from A to A or B to B: to it that patch
+is not finished.
 
-| Name | The four cables (read them in V order) | What it does | Call |
+| Name | The four cables | What it does | Call |
 |---|---|---|---|
-| **Combo A** "Disable" | **V2–D5 · V4–D1 · V6–D7 · V7–D3** | disables Trabolta (blackout, dance, he recounts) | **"A"** |
-| **Combo B** "Self-destruct" | **V1–D6 · V3–D2 · V5–D7 · V8–D4** | destroys the computer (blackout, dance, purgatory) | **"B"** |
+| **Combo A** "Shut-Down" | **B2→A7 · B4→A5 · B7→A6 · B8→A4** | disables Trabolta (blackout, dance, he recounts) | **"A"** |
+| **Combo B** "Self-destruct" | **B2→A5 · B4→A7 · B7→A4 · B8→A6** | destroys the computer (blackout, dance, purgatory) | **"B"** |
 | anything else, once all four cables are in | | wrong combination | **"WRONG"** |
 
 Guests learn the halves from their codex once their faction wins the majority.
@@ -47,8 +48,8 @@ keypad, never on the radio).
    it: Combo A or B blacks out the house, a wrong one gets Trabolta's
    *Stop touching me.* (or, the second time, the alarm). **If that
    happens, press nothing.** Press only when **nothing happens** (check the
-   cables against the table first), or when a cable runs **top to top or
-   bottom to bottom** (the bay can't see it, so you call it ❌). Then press
+   cables against the table first), or when a cable sits in a **dead jack**
+   or runs **A to A or B to B** (the bay can't see it, so you call it ❌). Then press
    it yourself on your booth, on the card of the program at the cables: **🔌
    Combo A is in**, **💥 Combo B is in** or **❌ wrong combination** (the
    buttons lead the card from 🕚 through the Y2K hour; from 🌑 the final
@@ -61,7 +62,7 @@ keypad, never on the radio).
    bay again*. Say on the radio which you pressed. (A ❌ pressed within a
    minute of the bay's own *Stop touching me.* is the same patch and is not
    counted twice: your booth says *Not counted*. If it was a new patch, a
-   cable top to top or bottom to bottom, **press ❌ again**. A press pays
+   cable in a dead jack, A to A or B to B, **press ❌ again**. A press pays
    ⭐ only when the story takes it.) DRAFT w22
 3. After a WRONG, nod at the guests, say nothing, let them pull cables.
    (Everyone is forgiven one: the **second** wrong combination trips the

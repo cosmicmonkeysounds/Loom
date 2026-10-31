@@ -506,7 +506,7 @@ too (N-09, decision #20). Design and history:
 [`docs/trapped/room-audio.md`](./trapped/room-audio.md).
 
 **The server room** has no stagehand device. An LDR + LED on the door frame
-(the door is shut while the LED shines on the LDR) and the 15-jack patch
+(the door is shut while the LED shines on the LDR) and the patch
 bay both feed the **Grand Central M4** on a USB cable to Steph's laptop,
 and that terminal page (Web Serial) posts the edges to the story itself:
 `door_sensor_opened` / `door_sensor_closed`, and `patch_changed {combo}`
@@ -582,7 +582,7 @@ of the mod feed.
 | Sensor | Signal |
 |---|---|
 | *(not stagehand, wave 20)* The LDR + LED on the server-room door, read by the Grand Central M4 at his heart's terminal (Web Serial) | the terminal posts `door_sensor_opened` / `door_sensor_closed` (`{level}`) itself; the story ignores them while a director's 🚪 override is on. The ESP32's `sensors/serverroom/door` and the Zigbee `server_room_door` are no longer read: a stagehand rule posting `server_door_opened` would itself be a 🚪 override |
-| *(not stagehand, wave 22)* The patch bay's 15 jacks, read by the same M4 | the terminal posts `patch_changed {combo}` itself, only in the Y2K hour; the story judges it against its seeds, and while a 🔌 💥 ❌ press holds the bay it only tells `# hosts` (`Night.patch_override`, until *🔌 Trust the patch bay again*) |
+| *(not stagehand, wave 22)* The patch bay's 16 jacks (8 live), read by the same M4 | the terminal posts `patch_changed {combo}` itself, only in the Y2K hour; the story judges it against its seeds, and while a 🔌 💥 ❌ press holds the bay it only tells `# hosts` (`Night.patch_override`, until *🔌 Trust the patch bay again*) |
 | Zigbee button over the printer's START key | `printer_button_pressed` |
 | Reed switch on the printer lid | `printer_opened` (the first opening before 🤖 plays the beans + the glitch look; one opened late — the overshare or the Y2K hour — plays only *Full Of Beans*, the spill sound and −20 composure, and leaves the step, the lights, the screens and the terminals alone) |
 | The ESP32 patch-bay scanner (`sensors/patchbay/state {"combo", "complete"}`; **not installed**, a bench fallback) | `patch_combo_a` / `patch_combo_b` / `patch_rejected`, judged in the YAML (stagehand's signal rules carry no arguments) |

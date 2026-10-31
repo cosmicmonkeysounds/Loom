@@ -44,6 +44,11 @@ import type { PatchLine } from "./door-protocol.ts";
 export const PATCH_STALE_MS = 3000;
 /** A post lost to the network is tried again after these waits (ms). */
 export const PATCH_RETRY_MS: readonly number[] = [1000, 2000, 4000];
+/** The panel's own names for the wire's V<k> and D<i> (the firmware's `config.h`):
+ *  people read B8 and A5, the wire says V1 and D1. */
+export const SOURCE_JACKS: readonly string[] = ["B8", "B7", "B4", "B2"];
+export const INPUT_JACKS: readonly string[] = ["A5", "A7", "A6", "A4"];
+
 /** Four V–D cables make a combination. */
 export const PATCH_PAIRS = 4;
 /** `Night.step` of the Y2K hour, from which the story judges a set (main.loom's
@@ -85,7 +90,7 @@ export interface PatchSummary {
   count: number;
   /** Inputs between levels. */
   between: number;
-  /** A source on two inputs (a wiring fault: impossible with TS cables). */
+  /** A source on two inputs (a wiring fault: impossible with one plug per jack). */
   dup: boolean;
 }
 

@@ -1,15 +1,17 @@
 #!/usr/bin/env bash
 # N-21 bench check for the server-room patch bay (hardware/server-room-m4,
 # wave 22), run on the laptop the Grand Central M4 is plugged into, with the
-# 15-jack bay wired to it (8 sources V1–V8 on top, 7 inputs D1–D7 below) and
-# one patch cable. ~10 minutes (~25 with the full walk). It talks to the
-# board over USB serial only: no server, no stagehand, no terminal page.
+# panel wired to it (the live jacks: sources B8 B7 B4 B2, inputs A5 A7 A6 A4;
+# the other eight are decoys) and one patch cable. ~5 minutes (~8 with the full
+# walk). It talks to the board over USB serial only: no server, no stagehand,
+# no terminal page. It prompts in the panel's names; the board says V1–V4 and
+# D1–D4 (the table is in the firmware's config.h).
 #
 #   scripts/accept/N-21.sh [port]       # no port: the only usbmodem / ttyACM
 #   scripts/accept/N-21.sh COM5         # Windows (Git Bash), needs pyserial
 #
-# It checks the empty bay reads under the floor, learns V1–V8 one cable at a
-# time (`pb learn V<k>`), checks they climb in order and sit at least
+# It checks the empty bay reads under the floor, learns the four sources one
+# cable at a time (`pb learn V<k>`), checks they climb in order and sit at least
 # 2 × tol apart, walks a source through every input (or, with the full walk,
 # every source through every input), prints the table of readings, checks
 # each one lands within the tolerance of its source, and offers `pb save`.
@@ -146,6 +148,12 @@ def settled(want, timeout=6.0):
 
 def volts(raw): return f"{raw * 3.3 / 4095:.2f} V"
 
+# The panel's own names, V1 first and D1 first (the firmware's config.h).
+SOURCES = ["B8", "B7", "B4", "B2"]
+INPUTS = ["A5", "A7", "A6", "A4"]
+def src(k): return SOURCES[k - 1] if k <= len(SOURCES) else f"V{k}"
+def inp(i): return INPUTS[i - 1] if i <= len(INPUTS) else f"D{i}"
+
 step("1. the board answers, with a bay")
 lines(1.0)
 h = reply("version", ("hello",), 1.5)
@@ -154,7 +162,9 @@ if h is None:
 ok(f"{h['fw']} · door mode {h['mode']}")
 pbv, pbd = h.get("pbv", 0), h.get("pbd", 0)
 if not pbd:
-    bad("this firmware reads no patch bay (pbd 0 or missing): flash hardware/server-room-m4 1.2.0 or later"); done()
+    bad("this firmware reads no patch bay (pbd 0 or missing): flash hardware/server-room-m4 1.3.0 or later"); done()
+if (pbv, pbd) != (len(SOURCES), len(INPUTS)):
+    bad(f"a bay of {pbv} sources × {pbd} inputs is not this panel: flash hardware/server-room-m4 1.3.0 or later"); done()
 ok(f"a bay of {pbv} sources × {pbd} inputs")
 cal = reply("pb get", ("pbcal",))
 if cal is None:
@@ -170,54 +180,54 @@ if p is None:
 else:
     hi = max(p["raw"])
     ok(f"empty: every input under the floor (highest {hi} of {floor})") if all(k == 0 for k in p["src"]) else bad(f"an input reads between levels with no cable: {p['raw']}")
-    if hi > floor // 2: note(f"an empty input reads {hi}, more than half the floor: check the 220 kΩ pull-down on it")
+    if hi > floor // 2: note(f"an empty input reads {hi}, more than half the floor: check the pull-down on it")
 
-step("3. learn every source (one cable, into D1)")
+step(f"3. learn every source (one cable, into {inp(1)})")
 levels = list(nominal)
 for k in range(1, pbv + 1):
-    ask(f"ONE cable: from V{k} into D1, nothing else in")
+    ask(f"ONE cable: from {src(k)} into {inp(1)}, nothing else in")
     r = reply(f"pb learn V{k}", ("pbcal", "err"), 3.0)
     if r is None:
-        bad(f"V{k}: no answer to pb learn"); continue
+        bad(f"{src(k)}: no answer to pb learn"); continue
     if r["t"] == "err":
-        bad(f"V{k}: the board refused it ({r['error']})"); continue
+        bad(f"{src(k)}: the board refused it ({r['error']})"); continue
     levels[k - 1] = r["raw"]
     off = r["raw"] - nominal[k - 1]
-    ok(f"V{k}: {r['raw']} ({volts(r['raw'])}; nominal {nominal[k - 1]}, {off:+d})")
-    if abs(off) > 3 * tol: note(f"V{k} is {off:+d} counts from its nominal level: a wrong resistor on its divider?")
-if levels[3] and abs(levels[3] - 1848) > 150:
-    note(f"V4 reads {levels[3]}, not ≈ 1848: is the ADC reading against 3.3 V? (README: verify the reference)")
+    ok(f"{src(k)}: {r['raw']} ({volts(r['raw'])}; nominal {nominal[k - 1]}, {off:+d})")
+    if abs(off) > tol: note(f"{src(k)} is {off:+d} counts from its nominal level: is its voltage what config.h says?")
+if levels[3] and abs(levels[3] - 3646) > 150:
+    note(f"{src(4)} reads {levels[3]}, not ≈ 3646: is the ADC reading against 3.3 V? (README: verify the reference)")
 order = all(levels[i] < levels[i + 1] for i in range(len(levels) - 1))
-ok("the levels climb V1 → V8") if order else bad(f"the levels are out of order: {levels} (two dividers swapped?)")
+ok("the levels climb " + " → ".join(SOURCES)) if order else bad(f"the levels are out of order: {levels} (two sources swapped?)")
 gaps = [levels[i + 1] - levels[i] for i in range(len(levels) - 1)]
-tight = [f"V{i + 1}–V{i + 2} {g}" for i, g in enumerate(gaps) if g < 2 * tol]
+tight = [f"{src(i + 1)}–{src(i + 2)} {g}" for i, g in enumerate(gaps) if g < 2 * tol]
 ok(f"every neighbour at least 2 × tol ({2 * tol}) apart (closest {min(gaps)})") if not tight else bad("too close to tell apart: " + ", ".join(tight))
 
 step("4. the walk")
-full = yes(f"walk EVERY source through every input ({pbv * pbd} plugs, ~15 min)? (n = V1 through every input, then every source in D{pbd})")
+full = yes(f"walk EVERY source through every input ({pbv * pbd} plugs, ~4 min)? (n = {src(1)} through every input, then every source in {inp(pbd)})")
 plan = [(k, i) for k in range(1, pbv + 1) for i in range(1, pbd + 1)] if full else \
        [(1, i) for i in range(1, pbd + 1)] + [(k, pbd) for k in range(2, pbv + 1)]
 table = {}  # (k, i) → raw
 for (k, i) in plan:
-    ask(f"ONE cable: V{k} → D{i}")
+    ask(f"ONE cable: {src(k)} → {inp(i)}")
     p = settled(f"V{k}-D{i}")
     if p is None:
         last = next((l for l in reversed(since(time.time() - 2)) if l.get("t") == "patch"), None)
-        bad(f"V{k} → D{i}: never settled as V{k}-D{i} (reads {last['src'] if last else '?'}, raw {last['raw'] if last else '?'})")
+        bad(f"{src(k)} → {inp(i)}: never settled as V{k}-D{i} (reads {last['src'] if last else '?'}, raw {last['raw'] if last else '?'})")
         continue
     raw = p["raw"][i - 1]
     table[(k, i)] = raw
     dev = raw - levels[k - 1]
-    if abs(dev) <= tol // 2: ok(f"V{k} → D{i}: {raw} ({dev:+d})")
-    elif abs(dev) <= tol: note(f"V{k} → D{i}: {raw} ({dev:+d}): inside the tolerance, but past half of it")
-    else: bad(f"V{k} → D{i}: {raw} ({dev:+d}) is outside ±{tol}")
+    if abs(dev) <= tol // 2: ok(f"{src(k)} → {inp(i)}: {raw} ({dev:+d})")
+    elif abs(dev) <= tol: note(f"{src(k)} → {inp(i)}: {raw} ({dev:+d}): inside the tolerance, but past half of it")
+    else: bad(f"{src(k)} → {inp(i)}: {raw} ({dev:+d}) is outside ±{tol}")
     others = [x for j, x in enumerate(p["raw"]) if j != i - 1]
-    if others and max(others) >= floor: bad(f"V{k} → D{i}: another input rose with it ({p['raw']}): crosstalk or a short between jacks")
+    if others and max(others) >= floor: bad(f"{src(k)} → {inp(i)}: another input rose with it ({p['raw']}): crosstalk or a short between jacks")
 
 step("5. the table (12-bit counts; — not plugged in the walk)")
-print("    " + "".join(f"{'D' + str(i):>7}" for i in range(1, pbd + 1)) + f"{'learnt':>9}")
+print("    " + "  " + "".join(f"{inp(i):>7}" for i in range(1, pbd + 1)) + f"{'learnt':>9}")
 for k in range(1, pbv + 1):
-    print(f"    V{k}" + "".join(f"{table[(k, i)] if (k, i) in table else '—':>7}" for i in range(1, pbd + 1)) + f"{levels[k - 1]:>9}")
+    print(f"    {src(k)}" + "".join(f"{table[(k, i)] if (k, i) in table else '—':>7}" for i in range(1, pbd + 1)) + f"{levels[k - 1]:>9}")
 if table:
     worst = max(abs(raw - levels[k - 1]) for (k, _i), raw in table.items())
     ok(f"the widest spread from a learnt level is {worst} (tol {tol})") if worst <= tol else bad(f"a reading lands {worst} from its level, past tol {tol}")

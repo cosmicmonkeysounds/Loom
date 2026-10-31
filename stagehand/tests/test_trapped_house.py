@@ -661,12 +661,18 @@ def _canonical(pairs: list[tuple[str, str]]) -> str:
     return ",".join(f"V{v}-D{d}" for v, d in sorted(pairs, key=lambda p: int(p[0])))
 
 
+#: The panel's jacks by the wire's numbers (the M4's config.h): the sheets print jacks.
+_PANEL_SOURCES = {"B8": "1", "B7": "2", "B4": "3", "B2": "4"}
+_PANEL_INPUTS = {"A5": "1", "A7": "2", "A6": "3", "A4": "4"}
+
+
 def _codex_combo(text: str, letter: str) -> str:
     pairs: list[tuple[str, str]] = []
     for half in ("First Half", "Second Half"):
         m = re.search(rf"^CODEX Combo {letter} {half}\s*\n(.*?)(?=^\S|\Z)", text, re.M | re.S)
         assert m, f"no CODEX Combo {letter} {half}"
-        pairs += re.findall(r"V(\d+)\s*(?:→|->)\s*D(\d+)", m.group(1))
+        cables = re.findall(r"(B\d)\s*(?:→|->)\s*(A\d)", m.group(1))
+        pairs += [(_PANEL_SOURCES[b], _PANEL_INPUTS[a]) for b, a in cables]
     assert len(pairs) == 4, f"Combo {letter}: expected 4 cables, found {pairs}"
     return _canonical(pairs)
 
@@ -676,8 +682,8 @@ def test_the_patch_combos_agree_across_yaml_kernel_and_codex():
     for combo in (combo_a, combo_b):
         pairs = re.findall(r"V(\d+)-D(\d+)", combo)
         assert len(pairs) == 4 and combo == _canonical(pairs), f"{combo} is not canonical (sorted by V)"
-        # Wave 22: the M4 bay has 8 sources (V1–V8) and 7 inputs (D1–D7).
-        assert all(1 <= int(v) <= 8 and 1 <= int(d) <= 7 for v, d in pairs), f"{combo} is not on the 8 + 7 bay"
+        # Wave 57: the panel has 4 live sources (V1–V4) and 4 live inputs (D1–D4).
+        assert all(1 <= int(v) <= 4 and 1 <= int(d) <= 4 for v, d in pairs), f"{combo} is not on the 4 + 4 panel"
 
     main = (STORY / "main.loom").read_text(encoding="utf-8")
     seeds = dict(re.findall(r'set\s+Kernel\.(combo_[ab])\s*=\s*"([^"]+)"', main))

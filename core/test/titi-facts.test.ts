@@ -605,7 +605,7 @@ describe("titi-facts — the trabolta.mind.md secrets block", () => {
     // What no line of his mind may carry: the door code (+ '97) and every seeded combo pair.
     const never = block.slice(block.indexOf("  never:")).split("\n").filter((l) => l.startsWith("    - ")).map((l) => unquote(l.slice(6).replace(/\s+# [a-z -]+$/u, "").trim()));
     expect(never).toEqual([...neverWords(facts, ["V2-D5,V4-D1", "V1-D6,V3-D2"]), ...answerNeverWords(facts)]);
-    expect(never.slice(-7, -3)).toEqual(["V2-D5", "V4-D1", "V1-D6", "V3-D2"]);
+    expect(never.slice(-9, -3)).toEqual(["V2-D5", "V4-D1", "B2-A5", "V1-D6", "V3-D2", "B4-A7"]);
     expect(never.slice(-3)).toEqual(["you're the one that i want", "youre the one that i want", "you are the one that i want"]);
     expect(block).toContain("# the door code");
     expect(block).toContain("# the patch-bay pairs");
@@ -630,7 +630,7 @@ describe("titi-facts — secrets.never", () => {
     const notes = [...facts.door!.clues!.map((c) => c.code), "first digit", "second digit", "third digit", "fourth digit"];
     expect(said).toEqual([
       "1997", "'97", "in 97", "in ninety-seven", "since 97", "since ninety-seven", "of ninety-seven",
-      "nineteen ninety-seven", "one nine nine seven", ...notes, "V2-D5", "V4-D1",
+      "nineteen ninety-seven", "one nine nine seven", ...notes, "V2-D5", "V4-D1", "B2-A5",
     ]);
     expect(neverWords({ ...year, door: { ...year.door!, clues: undefined } }, ["V2-D5"])).toEqual(["1997", "'97", "in 97", "in ninety-seven", "since 97", "since ninety-seven", "of ninety-seven", "nineteen ninety-seven", "one nine nine seven", "V2-D5"]);
     expect(said).not.toContain("97");
