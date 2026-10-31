@@ -1,4 +1,5 @@
 import { createRoot } from "react-dom/client";
+import { startFullscreen } from "./fullscreen.ts";
 import { ChunkBoundary, ChunkFailed } from "./lazy-chunk.tsx";
 import { cardFromSearch, withoutCard } from "./rejoin.ts";
 import { resumeFromSearch, withoutResume } from "./resume.ts";
@@ -25,6 +26,9 @@ if (card !== null) {
     /* fine */
   }
 }
+
+// Wave 58: the phone's whole screen, wherever the browser lets it.
+startFullscreen({ document, navigator, matchMedia: (query) => window.matchMedia(query) });
 
 const el = document.getElementById("root");
 // Wave 26 integration: one throw anywhere (a render, an effect cleanup) must

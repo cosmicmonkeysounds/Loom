@@ -70,6 +70,7 @@ const FALLBACK_MANIFEST: Record<string, unknown> = {
   start_url: "/",
   scope: "/",
   display: "standalone",
+  display_override: ["fullscreen", "standalone"],
   background_color: "#0b0d12",
   theme_color: "#3b3a5c",
   icons: [{ src: "/apple-touch-icon.png", sizes: "192x192", type: "image/png" }],
