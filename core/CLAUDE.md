@@ -120,7 +120,12 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   every phone's lists there too: `people`, `roster`, `guests`, a `pick:`,
   the Wanted board, a host's `people` and `roster`. Only Run and a
   director's own Players pane (`Client.pane`, never a wall terminal's
-  pilot) keep them.
+  pilot) keep them. A persona that acts reads "Director" on every other
+  phone: its chat lines (`forGuest`, `forBooth`, by name, so a real guest
+  who shares it keeps it), a crew or side it founds (`seenCrews`), and a
+  host's `/api/mod/recap` leaves it out (`RecapOptions.hide`). The one thing
+  left is a story line that prints the name in its own text, such as the
+  `# hosts` note when a persona founds a faction.
 - **Who is online** (wave 59, `peopleRound`): an open stream as `presence()`
   counts it, or a phone or booth heard from inside `ONLINE_GRACE_MS`
   (`host-board.ts`, 3 minutes). `PersonCard.online` and `PrimeGuest.online`

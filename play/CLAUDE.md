@@ -584,12 +584,16 @@ bar shows is pure in `host/show-model.ts` (`hostWindowShown`,
   Cue sheet (`CueSheet`), People, More (the old tab components,
   unchanged). A jump (`ctx.go`, a need's row, the caller chip, a refused
   press) opens Show at that section (`showTarget`). People shows who is
-  online (`personOnline`, wave 59); the offline sit behind one switch, off
-  each time it opens, and 🗂 Guests keeps everyone. Everywhere else
+  online (`personOnline`, wave 59) and its head counts them; the offline sit
+  behind one switch, off each time it opens, and 🗂 Guests keeps everyone. A
+  row a host has open stays until it is closed (`peoplePool`), because a
+  🔁 Re-pair QR or 📡 Scan as… must outlive the phone's grace. Everywhere else
   `presence.ts` `isOnline` reads the server's per-row `online`: the guest's
   People, a player's 👥 People (`booth/people.tsx`: a claimer keeps whoever
   it hunts or holds) and a room's strip. A picker, a DM's name and a card
-  still read every row.
+  still read every row. A Run persona has no row on a booth, so its DM opens
+  a thread of its own by id, titled Director, with no Card button
+  (`buildPrimeChannels`).
 - **🤖 Talk** (wave 32, contract `docs/loom-w32-contract.md` C6;
   `host/talk.tsx` over the pure `host/talk-model.ts`, core's
   `talk-back.ts`). While `view.talk` is set (a talk scene: `HostView.talk`)

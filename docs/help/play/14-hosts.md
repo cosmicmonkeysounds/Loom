@@ -158,7 +158,8 @@ While you type, the bar steps aside with the taskbar.
   End Bathroom Mode** (when it's on), **⛔ Restrict / Unrestrict**, **👋 Went
   home / Back**, **🔁 Re-pair** (a single-use QR for a lost phone) and
   **📡 Scan as…** (scan them as any part). This list shows who is online;
-  tick **Offline (n)** for the rest (a lost phone is offline).
+  tick **Offline (n)** for the rest (a lost phone is offline). A row you
+  have open stays until you close it, even if that phone drops off.
 - **More** — the rest of the night, in three tabs: **Night** (the show,
   the clock, announce, the alert level), **House** (wallet, the King,
   terminals, Trabolta, crews) and **Setup** (codes and invitations, parts).
