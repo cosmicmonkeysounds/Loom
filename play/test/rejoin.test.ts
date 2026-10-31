@@ -1,8 +1,8 @@
 // Wave 23: getting back in — badge / cast-card links, the enter / ask /
 // poll calls over a fake fetch, the card plan, and the scanners' badge reads.
 
-import { describe, expect, it } from "vitest";
-import { badgeFromText, badgeLinkOf, badgeLinkText, cardFromSearch, cardPlan, heldOf, joinHeld, joinReserved, letGo, printedBadge, rememberBadge, storedBadge, forgetBadge, withoutCard, BADGE_UNKNOWN, OWED_KEY } from "../src/rejoin.ts";
+import { describe, expect, it, vi } from "vitest";
+import { badgeFromText, badgeLinkOf, badgeLinkText, cardFromSearch, cardPlan, heldOf, joinHeld, joinReserved, letGo, printedBadge, settleOwed, rememberBadge, storedBadge, forgetBadge, withoutCard, BADGE_UNKNOWN, OWED_KEY, OWED_RETRY_MS } from "../src/rejoin.ts";
 import { askHeld, askHost, askLine, cancelAsk, enterBy, enterPart, filterNames, heldLine, joinedNames, payOwed, pollAsk, RejoinError, tryCard } from "../src/rejoin-calls.ts";
 import { memoryStore } from "../src/host.ts";
 import { guestScan } from "../src/guest-scan-sheet.tsx";
@@ -283,6 +283,32 @@ describe("a release the server hasn't heard", () => {
     expect(store.load<unknown[]>(OWED_KEY)).toHaveLength(1);
     await payOwed(store, (async () => ({ status: 200 }) as Response) as unknown as typeof fetch);
     expect(store.load(OWED_KEY)).toBeNull();
+  });
+
+  it("a chunk that won't load is no signal: it stays owed and tries again by itself", async () => {
+    vi.useFakeTimers();
+    try {
+      const store = memoryStore();
+      letGo(store, { token: "t1", eventId: "ev1" }, "guest");
+      let loads = 0;
+      const paid: string[] = [];
+      const load = async () => {
+        if (++loads === 1) throw new TypeError("Failed to fetch dynamically imported module");
+        return {
+          payOwed: async () => {
+            paid.push("t1");
+          },
+        };
+      };
+      await settleOwed(store, load);
+      expect(paid).toEqual([]);
+      expect(store.load<unknown[]>(OWED_KEY)).toHaveLength(1);
+      await vi.advanceTimersByTimeAsync(OWED_RETRY_MS);
+      expect(loads).toBe(2);
+      expect(paid).toEqual(["t1"]);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("nothing to let go of is nothing owed", async () => {

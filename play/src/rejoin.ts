@@ -232,6 +232,8 @@ export interface OwedRelease {
 
 /** Where a phone keeps the releases it owes. */
 export const OWED_KEY = "loom.owed.release";
+/** How often a page still owing a release tries again. */
+export const OWED_RETRY_MS = 15_000;
 
 export function owedReleases(storage: SessionStorage): OwedRelease[] {
   try {
@@ -251,15 +253,22 @@ export function setOwed(storage: SessionStorage, list: OwedRelease[]): void {
   }
 }
 
+let settleAgain: ReturnType<typeof setTimeout> | null = null;
+
 /** Tell the server every release this phone owes (`rejoin-calls.ts`'s
  *  `payOwed`, the lazy chunk). Resolves once tried. Never throws: a chunk that
- *  won't load is a phone with no signal, which stays owed. */
-export async function settleOwed(storage: SessionStorage): Promise<void> {
+ *  won't load is a phone with no signal, so it stays owed and tries again
+ *  while the page lives (a phone on dead Wi-Fi never says it's back online). */
+export async function settleOwed(storage: SessionStorage, load: () => Promise<{ payOwed: (storage: SessionStorage) => Promise<void> }> = () => import("./rejoin-calls.ts")): Promise<void> {
   if (owedReleases(storage).length === 0) return;
   try {
-    await (await import("./rejoin-calls.ts")).payOwed(storage);
+    await (await load()).payOwed(storage);
   } catch {
-    /* tried again on the next load, or when the phone says it's back online */
+    if (settleAgain !== null) return;
+    settleAgain = setTimeout(() => {
+      settleAgain = null;
+      void settleOwed(storage, load);
+    }, OWED_RETRY_MS);
   }
 }
 

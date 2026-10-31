@@ -6,7 +6,7 @@
 //! `test/rejoin.test.ts`.
 
 import type { AdoptedGuest, ResumeLink } from "./resume.ts";
-import { BADGE_UNKNOWN, owedReleases, setOwed, type HeldCard, type HeldShown } from "./rejoin.ts";
+import { BADGE_UNKNOWN, OWED_RETRY_MS, owedReleases, setOwed, type HeldCard, type HeldShown } from "./rejoin.ts";
 import type { SessionStorage } from "./host.ts";
 
 /** What `enter` gave: the guest session to adopt, or "join as usual" (with
@@ -243,8 +243,6 @@ async function boothLogin(code: string, who: { part: string } | { character: str
   return { token, character, admin: r.body["admin"] === true, host: r.body["host"] === true, eventId: ev.eventId, ...(ev.title !== undefined ? { title: ev.title } : {}) };
 }
 
-/** How often a page still owing a release tries again. */
-export const OWED_RETRY_MS = 15_000;
 /** How long one try may hang: a sign-in waits on it. */
 export const OWED_TIMEOUT_MS = 4_000;
 
