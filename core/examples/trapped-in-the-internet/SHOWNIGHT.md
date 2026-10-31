@@ -663,12 +663,13 @@ while he is reading breaks the rest of his voice. After Combo A he does not come
 back and Clippy hosts. The talk-down is gone:
 nothing said at his heart ends the night. **G9a 🏅** names its own winner.
 
-**The audio ads** (wave 59a). Through the second hunt, by themselves: from about
-3 minutes in, once Clippy has finished reading and the Truther Download has landed,
-one of the 14 starts every 3.5 minutes on every wall and a third of the phones,
-until the five-minute warning. Nothing to press. They give way to a talk scene, a
-read, an announcement, a cutscene and paused doors, and the × closes one on its own
-device. Run → Terminals → 📢 says where the list has got to and what it waits for.
+**The audio ads** (wave 59a). From the second hunt until 🌑 or an ending, by
+themselves: a random one of the 14 every 3 to 10 minutes, on 1 to 3 random walls and a
+random quarter of the phones, none again until all 14 have played. Never on the TV, in
+the tent, in the server room or on the Server Door. Nothing to press. They give way to a
+talk scene, a read, Trabolta on the TV, an announcement, a cutscene and paused doors,
+and the × closes one on its own device. Run → Terminals → 📢 says how many have played
+and what the next waits for.
 
 **Clippy's dream** (wave 50). On *"…the Y2K BUG."*, about 30 s after 🕚, every
 terminal melts into the dream by itself, until an ending. Nothing to press. If a
@@ -719,8 +720,8 @@ stays at or under 3 Hz; no open flames; VR is played seated with a spotter.
 | Trabolta goes quiet in Ad Hijack, Second Hunt or Full Of Beans | He is waiting for the script. Clippy scrolls to his blue lines. If she can't: ▶ **Let him speak** on a host's Show, the director phone or Run's Director page. |
 | `# hosts`: *A new beat cut Clippy off* | Her phone moved on to the new beat. She finishes from *↑ earlier lines*, and a host presses 🤖 on her last line. |
 | The server restarted in the middle of a read | The rest of his lines play. In the opening a host presses 🤖 on her last line. |
-| The audio ads must stop, or are getting in the way | Run → Terminals → 📢 **Off**: whatever is playing stops everywhere, no more start, and it holds through a restart. **On** resumes at the next one. ■ Stop house sounds cuts only the one on the air. |
-| No audio ads at all in the second hunt | Run → Terminals → 📢 says why: off, *waiting for* something, or the list is done. A phone left on the teleprompter holds them for 5 minutes at most; ▶ **Let him speak** or ✓ Done frees it sooner. If it counts up and nothing is heard: `pnpm showctl doctor`, *Audio ads* (`scripts/ops/ads-media.sh upload` needs no restart), then reload the terminals. |
+| The audio ads must stop, or are getting in the way | Run → Terminals → 📢 **Off**: whatever is playing stops everywhere, no more start, and it holds through a restart. **On** lets the next one go. ■ Stop house sounds cuts only the one on the air. |
+| No audio ads for more than 10 minutes, between the second hunt and 🌑 | Run → Terminals → 📢 says why: off, or *waiting for* something. **A reader's phone left open on the teleprompter holds them until ✓ Done, with no time limit**, so *someone reading on the teleprompter* with nobody reading means find that phone and press ✓ Done. If it counts up and nothing is heard: `pnpm showctl doctor`, *Audio ads* (`scripts/ops/ads-media.sh upload` needs no restart), then reload the terminals. |
 | An ad on a wall shows ▶ and no sound | Nobody has touched that tablet yet: tap ▶. A guest's phone does the same until its first tap. Nothing is broken. |
 | The costume must stop, or someone won't leave it alone | Run → Terminals → 🎭 **Off**: the menu empties and every press is refused, and it stays off through a restart. |
 | The costume reads *Not Responding* | Usually right: a cooldown (8 s, AD STORM 60 s), his lines, a scene being read on the prompter, before the doors, or from the final reveal on. If nothing ever lands, look at its light, then the relay (`docs/trapped/costume.md`). |

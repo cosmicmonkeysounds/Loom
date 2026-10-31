@@ -182,10 +182,10 @@ Front of house: getting people in.
   and it holds through a restart like the mute. **Fire a flavour** breaks his
   next words one way for 8 seconds, in any mode, which is how to audition them;
   `/terminal/?preview=voice` on a set-up terminal does the same with no show
-  running. **📢 Audio ads** is the kill switch for the second hunt's fourteen ads:
-  **Off** stops whatever is playing everywhere and no more start, **On** resumes at
-  the next one, and it holds through a restart. Beside it the card says how many
-  have gone out and what the next one waits for. Each row
+  running. **📢 Audio ads** is the kill switch for the fourteen random ads that run from the
+  second hunt to the final reveal: **Off** stops whatever is playing everywhere and no
+  more start, **On** lets the next one go, and it holds through a restart. Beside it
+  the card says how many have played and what the next one waits for. Each row
   shows what the tablet reports: **🔇** nobody has touched it yet so it
   can't speak, **💤** its screen is off or another app is on top, **⛶**
   it is not full screen (on a tablet, touch it once: it asks again on

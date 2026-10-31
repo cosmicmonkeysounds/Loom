@@ -511,7 +511,10 @@ describe("the night", () => {
       // The Y2K clock is a slide the walls keep up for the hour: it holds them only a while.
       const before = n.rt.ads.aired;
       await n.run(AD_STANDING_SLIDE_HOLD_MS / 1000 - 5);
+      expect((await n.ads())["hold"]).toBe("cutscene");
       expect(n.rt.ads.aired).toBe(before);
+      await n.run(6);
+      expect((await n.ads())["hold"]).not.toBe("cutscene");
       await n.untilAired(before + 1, 2 * ADS_GAP_MAX_MS / 1000);
       expect(n.rt.ads.air).not.toBeNull();
       expect(offers(g.stream).length).toBeGreaterThan(1);

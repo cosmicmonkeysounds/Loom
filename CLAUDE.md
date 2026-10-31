@@ -260,12 +260,15 @@ screen state's `night.language`). Help:
 `docs/help/authoring/55-language-filter.md`.
 
 **The audio ads** (wave 59a, not shipped; `docs/loom-w59-ads-contract.md`, the one
-new word `DRAFT w59a`): through the second hunt, from about 3 minutes in until the
-five-minute warning, the 14 MP3s play in order, one every 3.5 minutes, on every wall
-that can and a third of the phones in turn, in a Windows 95 pop-up with an ×. Never on
-the TV, in the server room or in the tent. A busy phone is skipped and another takes
-its place. They give way to a talk scene, a read, an announcement, a cutscene, a
-blackout and paused doors. Run → Terminals → 📢 is the kill switch, journaled. No
+new word `DRAFT w59a`): from the second hunt until the final reveal or an ending, a
+random one of the 14 MP3s every 3 to 10 minutes (none again until all have played), on
+1 to 3 random walls and a random quarter of the phones, in a Windows 95 pop-up with an ×.
+Sacred, by one rule on view and spot both (`adTerminal`): never the TV, the tent, the
+server room or the Server Door, the reinstall games, or a terminal with no spot. A busy
+phone is skipped and another takes its place. They give way to a talk scene, a read
+(with no time limit, so a phone left on the prompter holds them until ✓ Done), Trabolta
+on the TV, an announcement, a cutscene, a blackout and paused doors. Run → Terminals →
+📢 is the kill switch, journaled. No
 story change and no `sync-show`: `scripts/ops/ads-media.sh upload` (`~/loom-media/ads`,
 never in git or an image), then the release, then reload every phone and terminal. Not
 proven on a real iPhone, Android phone or old tablet. Help:

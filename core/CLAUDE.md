@@ -85,7 +85,7 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   (`ScreenWatch` `dreamAt` / `dreamHeard`, wave 50: a restart replays the cue
   as history and the dream is simply on), the teleprompter's scene, position and
   holds (wave 59: a restart forgets them and the rest of the lines play), the
-  audio ad on the air and the phones' rotation (wave 59a: the list itself is journaled), and
+  audio ad on the air, who got it and the drawn gap (wave 59a: what each pass has played is journaled), and
   most hub timers live in memory and are lost on a process restart.
   Document a new one the same way.
 - **Server changes are additive.** Old clients (terminals on old
@@ -639,18 +639,25 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   `ALOUD_WINDOW_MS` outlasts the 14-minute read. Both versions and Task Manager's
   printed copy are held to the delivered file by `test/trapped-monologue.test.ts`.
 - **The audio ads** (wave 59a, [`docs/loom-w59-ads-contract.md`](../docs/loom-w59-ads-contract.md)).
-  `src/audio-ads.ts` (`@loom/core/audio-ads`, pure) holds the 14 MP3s and the pace;
-  `server/audio-ads.ts` `AdsHub` decides, on story time, at the end of `tickOnce`.
-  `adsHold` names what keeps one off the air and cuts one on it. `signal("audio_ad_aired", …)`
-  and `signal("audio_ads_switched", …)` are journaled and no story hook hears them:
-  `restore` replays them, so a restart resumes the list and keeps the switch, and
-  `loadScenario` resets it. What is on the air, the phones' rotation and the holds are
-  memory only. The first ad waits for `Night.truther_at`; the window is `Night.phase`
-  `hunt_2` with `Night.hunt2_on`. Walls read `ScreenState.ad` (`adTerminal`: never the
-  TV, a mirror, a room terminal or `server-room`), phones the `ad` stream frame; a phone
-  that can't take one posts `/api/ad/busy` and the next takes its place. `POST
+  `src/audio-ads.ts` (`@loom/core/audio-ads`, pure) holds the 14 MP3s, the sacred rule
+  (`adTerminal`, the one place: the view and the spot both, every `server-room*` spot
+  included, and no spot is never) and the counts; `server/audio-ads.ts` `AdsHub` draws
+  the dice, on story time, at the end of `tickOnce`: a random ad with none repeated
+  until all 14 have played, a fresh 3 to 10 minute gap, a fresh 1 to 3 walls
+  (`onWall`: only those read `ScreenState.ad`) and a quarter of the phones, at least 2.
+  `adsHold` names what keeps one off the air and cuts one on it, `reading` with no time
+  cap and `speaking` from a reporting TV's `talk=` (else the room's lines by length).
+  `signal("audio_ad_aired", …)` and `signal("audio_ads_switched", …)` are journaled and
+  no story hook hears them: `restore` replays them, so a restart keeps the pass and the
+  switch, and `loadScenario` resets it. What is on the air, who got it, the drawn gap and
+  the announcement hold are memory only. The window is `Night.step` 8 up to 16, not
+  `Night.ended`. Phones read the `ad` stream frame, in absolute server ms with the
+  server's `now`; a stream opens on one (a stop with nothing on the air, so a restart
+  reaches a phone it forgot), and 📢 Off and ■ stop every stream whatever is on the air.
+  A phone that can't take one posts `/api/ad/busy` and another takes its place. `POST
   /api/mod/screen/ads {on}` is a director's, off the host allowlist; `GET
-  /api/mod/screen/terminals` carries `ads`. The MP3s are never in git or an image:
+  /api/mod/screen/terminals` carries `ads`, read when it asks. `LOOM_ADS_GAP_S=20-30` is
+  a scratch server's pace. The MP3s are never in git or an image:
   `scripts/ops/ads-media.sh`. Tests: `test/w59-audio-ads.test.ts`.
 - **The Task Manager costume** (wave 59, [`docs/trapped/costume.md`](../docs/trapped/costume.md)).
   An iPad 2 on iOS 9, so `server/costume-page.ts` is a hand-written ES5 page with

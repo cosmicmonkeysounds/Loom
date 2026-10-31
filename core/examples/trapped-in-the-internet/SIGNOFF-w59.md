@@ -398,15 +398,19 @@ restart has happened: nothing on this sheet is live.
 
 ## 8. The audio ads (wave 59a)
 
-Your note: *"after the 2nd round of questions, there should be audio ads that pop up on the
-terminals and peoples' phones."* Built on `oct31-w59/audio-ads`, not shipped. The contract is
+Your notes: *"after the 2nd round of questions, there should be audio ads that pop up on the
+terminals and peoples' phones"*, then *"the audio ads should be totally random, and pop up every
+3 - 10 minutes on random terminals and phones. Remember the TV and Tent and Server Room are
+sacred."* Built on `oct31-w59/audio-ads`, not shipped. The contract is
 `docs/loom-w59-ads-contract.md`, with the ship order and what no real device has seen.
 
 - **The words we added:** `▶ Play` (`play/src/ad-slot.tsx`, `terminal/src/AdSpot.tsx`), which a
   phone or a wall shows until it may make a sound, and the crew's lines on Run's 📢 row
   (`editor/src/lib/terminals.ts`). The ads' names are the files'. Root `CLAUDE.md` names the marker.
-- **A call to check:** the first ad starts about 2¾ minutes in, not 1. The Truther Download lands
-  2 minutes in and takes the screens, which would cut ad 1 off a minute into itself, so the first
-  one waits for it and its slide. The other 13 keep the 3.5-minute pace and all 14 still fit.
+- **Calls to check:** a reader's phone left open on the teleprompter holds the ads until ✓ Done,
+  with no time limit, and Run says so. A slide the walls keep up, such as the Y2K clock, holds them
+  for 5 minutes from its cue and no longer, or the final hour would have none. A wall the draw
+  picks that turns out to be in use sits that pop out, with nothing in its place. The ads run on
+  through Truth Pong and the Y2K hour, so on your rule they can land in those, between the reads.
 - **Real-device checks owed:** a real iPhone, a real Android phone and an old tablet each play one,
   and the balance in the rooms.

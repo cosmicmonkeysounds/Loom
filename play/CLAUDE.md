@@ -54,7 +54,7 @@ into `//`: 147.03 kB. The shared teleprompter added
 (wave 59a) added `ad-player.ts`, `ad-spots.ts` and `ad-slot.tsx` and turned the headers
 of `ui/window.tsx`, `takeover.tsx`, `wake-lock.ts`, `lazy-chunk.tsx`, `client.ts`,
 `threads.ts`, `pins.ts`, `presence.ts`, `lifecycle.ts` and `countdown.tsx` into `//`:
-148.28 kB.
+148.40 kB.
 
 ## How a session works
 
@@ -127,8 +127,11 @@ of `ui/window.tsx`, `takeover.tsx`, `wake-lock.ts`, `lazy-chunk.tsx`, `client.ts
   first `touchend` or `click` unlocks one shared element (`ad-player.ts`; the terminal
   uses it too). Busy (an open card via `adCardOpen`, the moments' `held`, the
   teleprompter, the stage, a lock, a takeover) or hidden, the phone posts `/api/ad/busy`
-  and another takes its place; getting busy mid-ad ends it. A refused play leaves
-  `▶ Play`. Tests: `test/w59-audio-ads.test.ts`, `scripts/sim/ads.spec.ts`.
+  and another takes its place; getting busy or hidden mid-ad ends it. Frames are in
+  absolute server ms: `AdSpots.clock` keeps the largest server-minus-phone gap, so a
+  frame a sleeping phone wakes to joins at the real place, or is dropped once over. A
+  refused play leaves `▶ Play`. The pop-up sits under the title bar, clear of Send.
+  Tests: `test/w59-audio-ads.test.ts`, `scripts/sim/ads.spec.ts`.
 - **The read window** (wave 58). `aloud/model.ts` `ALOUD_WINDOW_MS` is 20
   minutes, past the longest read: the monologue lands at once and takes 14 at the
   prompter's pace, so a phone swapped mid-read still gets it.

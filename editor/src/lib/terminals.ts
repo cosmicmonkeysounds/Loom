@@ -138,7 +138,7 @@ const AD_HOLD_WORDS: Record<import('@loom/core/audio-ads').AdHold, string> = {
   blackout: 'a blackout',
 }
 
-/** What 📢's row says about the list. DRAFT w59a */
+/** What 📢's row says: how many have played, and why the next waits. DRAFT w59a */
 export function adsLine(a: import('@loom/core/audio-ads').AdsStatus): string {
   const count = `${a.aired} played`
   if (!a.on) return `${count}: off`

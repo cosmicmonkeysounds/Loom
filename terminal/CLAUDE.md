@@ -53,7 +53,7 @@ play app's own `useChatStream` (imported as source) and narrows it to
 | `src/sound/` | `bus.ts` (master, effects, voices buses; `soundPlayingUntil`), `library.ts` (30 synthesised `SFX_NAMES`), `sfx()` |
 | `src/speech/` | `engine.ts` (browser → Fully → silent ladder, opt-in server voice, the queue and its pauses, `VoiceFloor`), `lexicon.ts` + `pronounce.json` (how a word is said), `split.ts`, `pick-voice.ts` (male for the character, female for announcements; macOS + Windows names), `said.ts` (`RoomSpeech` → `talk` / `said` / `sp`, `PollPacer`, the drain re-poll), `glitch.ts` (wave 56: pure: a sentence → a plan of fragments), `VoiceBench.tsx` (`?preview=voice`) |
 | `src/announce.ts` | which house announcements a terminal says, the chime |
-| `src/ad-spot.ts`, `src/AdSpot.tsx` | wave 59a: the audio ad on a wall: `adsHere` (the server's `adTerminal` + `bleepsOn`), `AdMachine` (pure: one screen's beats), `WallAd` (the page's one, over play's `ad-player.ts`: the only `<audio>` in the app), `adTable` (a board or a hand up); `docs/loom-w59-ads-contract.md` |
+| `src/ad-spot.ts`, `src/AdSpot.tsx` | wave 59a: the audio ad on a wall the server picked: `adsHere` (core's sacred `adTerminal` + `bleepsOn`), `adCovered` (never a slide: the server rules on those), `AdMachine` (pure: one screen's beats), `WallAd` (the page's one, over play's `ad-player.ts`: the only `<audio>` in the app), `adTable` (a board or a hand up); `docs/loom-w59-ads-contract.md` |
 | `src/face/` | the SVG face (`Face.tsx`) and `mood.ts` (`browGeometry`: SVG's y points down, so angry pulls the inner brows down) |
 | `src/scanner.tsx`, `src/scan.ts`, `src/camera.ts` | QR scan (`BarcodeDetector`, else jsQR); what a code means; one shared ref-counted `MediaStream` |
 | `src/pilot.ts`, `src/chat.tsx`, `src/controls.tsx`, `src/idle.ts` | impersonate / say / end; `terminal opened` / `closed` (`VisitLatch`); a room terminal checks for a locked pass first (`refusesLockedPass`, `passLocked`); the thread + composer; the 2 s ⚙ hold; the leash (30 s, files 120 s, heart 180 s); wave 42b: the guest's place in his line (`pilotWait` over play's `useAgentWait`, `chat.tsx` `WaitLine` + `waitCells`: an amber system line with the phone's `DRAFT w42` words and a ten-block bar where the typing row goes, its estimate counting down; `answering` is the typing row; a queued line holds the leash; the waits are the piloted guest's only and clear on every `history` frame; `test/w42-wait.test.ts`) |
@@ -623,8 +623,9 @@ that differs on the tablets is most likely the GPU (see *A software canvas*).
   child's first effect can't slip one out.
 - **The audio ads (wave 59a)** are the one thing that isn't the bus: real MP3s through
   `AdPlayer`, gated by `adsHere` at `AdSpot`, so `bleepsOn` still rules a wall. They
-  never play on the TV or in the server room, whatever ⚙ says. `w59-bleeps.test.ts`
-  pins `ad-spot.ts` as the only way in.
+  never play on the TV, the tent, the server room, the Server Door or `view=reinstall`,
+  whatever ⚙ or `bleeps=1` says (core's `adTerminal`). `w59-bleeps.test.ts` pins
+  `ad-spot.ts` as the only way in.
 - **The ⚙ is hidden (wave 59).** `button.gear` is `opacity: 0` and shows only
   while held. It keeps its corner, its 2 s hold and its accessible name, and
   `::before` gives it a corner's worth of target. Never `display: none` or

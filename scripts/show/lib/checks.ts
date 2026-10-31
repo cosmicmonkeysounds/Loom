@@ -80,7 +80,7 @@ export function adsMediaCheck(status: number | null): Check {
   const read = `GET ${ADS_PROBE}`;
   if (status === 200) return row("Audio ads", "ok", "the media is served", read);
   const why = status === null ? "no answer" : `HTTP ${status}`;
-  return row("Audio ads", "warn", `${why}: no ad plays in the second hunt, and nothing says so. scripts/ops/ads-media.sh upload`, read);
+  return row("Audio ads", "warn", `${why}: no ad plays tonight, and nothing says so. scripts/ops/ads-media.sh upload`, read);
 }
 
 export function runCheck(view: Json, title: string | null, landingTitle: string | null): Check[] {
