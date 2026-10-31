@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { revealOffsets, speakable, splitSentences } from "../src/speech/split.ts";
 
+describe("a title's stop ends no sentence (wave 58)", () => {
+  it("keeps Jr. and Sr. inside their sentence", () => {
+    expect(splitSentences("Mayor Randy Barkmore Jr. could proceed with the data centre. Then it fell.")).toEqual(["Mayor Randy Barkmore Jr. could proceed with the data centre.", "Then it fell."]);
+    expect(splitSentences("In Grade Six, Randy Jr. defeated her.")).toEqual(["In Grade Six, Randy Jr. defeated her."]);
+  });
+});
+
 describe("speakable", () => {
   it("strips markdown, stage directions, links and emoji", () => {
     expect(speakable("*static crackles* I have been **expecting** you, `program`.")).toBe("static crackles I have been expecting you, program.");

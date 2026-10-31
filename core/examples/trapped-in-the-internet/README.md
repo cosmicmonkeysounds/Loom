@@ -89,7 +89,12 @@ beats/finale.loom      Final Reveal · Bobbing For Truth · The Bag Of Truth · 
                        · Truth Txt · The Verdict · Song Ending · Grok Prom · Pickup Line ·
                        Sad Confession · Relationship Advice · Advice Helped · Advice
                        Thwarted · The Hand Jive
-beats/review.loom      the ending monologue (wave 18b): The Night In Review (public,
+beats/truth.loom       wave 58: the full truth, the monologue after every ending's last
+                       beat: The Full Truth (Trabolta on the TV, 18 merged lines) ·
+                       The Full Truth Read (Task Manager's teleprompter, in the hidden
+                       room The Script). The two are held to the delivered file by
+                       core/test/trapped-monologue.test.ts
+beats/review.loom      the night in review (wave 18b): The Night In Review (public,
                        before every ceremony) · Who You Were · The Report On Everyone ·
                        Everyone Else · The Rest Of The Report · Goals Met Tonight · The
                        Goals Report · What You Did · What We Did · Your File (private,

@@ -216,6 +216,14 @@ LOCATION The Server Room
   hidden: true
   checkin: false
 
+// Wave 58: where Task Manager's reading of the monologue lands (The Full Truth
+// Read), so it reaches his teleprompter and no guest's Chats. Nobody stands
+// here: hidden and no check-in, The Server Room's pattern.
+LOCATION The Script
+  label: The Script
+  hidden: true
+  checkin: false
+
 // ── Every guest is a Program ────────────────────────────────────────
 // Per-person state plus every rule that applies to one uploaded mind.
 // Engine keys used but never declared: program.score (= Truthcoin, the

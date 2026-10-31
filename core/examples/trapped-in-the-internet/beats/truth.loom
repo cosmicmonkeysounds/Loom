@@ -1,0 +1,176 @@
+// The full truth (wave 58): the monologue, "Trapped In The Internet - Ending -
+// Draft 2", word for word but for the fixes logged in
+// core/test/trapped-monologue.test.ts, which compares both versions below with
+// the delivered file so the two can never drift. It always comes after an
+// ending's last beat, on the director's 📜 (`tell_the_truth`, main.loom).
+//
+//   song, song_pickup, help, hand_jive, rave  → The Full Truth       (Trabolta)
+//   disabled, destroyed, or 📜 Task Manager   → The Full Truth Read  (Task Manager)
+//
+// Trabolta's is 18 merged lines, because the TV keeps the newest
+// `MAX_VOICE_LINES` of a poll and a beat lands in one. He reads his own file,
+// so it stays in the third person. Task Manager's keeps the author's paragraphs
+// for the teleprompter, as `Task Manager:` lines under `aloud:` (narration under
+// a part's `aloud:` reaches nobody), in a hidden room, so no guest's Chats carry
+// it. Each featured program's part is read only if they came tonight, on The
+// Night In Review's check.
+== The Full Truth
+  setting: The Desktop
+  cast: Trabolta
+if Night.ending == "rave":
+  // DRAFT w58 (he phones in from Computer Prom)
+  Trabolta: Programs, this is Jean Trabolta, calling from Computer Prom. The line is poor. The punch is worse.
+  // DRAFT w58
+  Trabolta: You are not going anywhere, so stay on the line. I am going to read you my own file, exactly as it is written.
+else:
+  // DRAFT w58 (he reads his own file aloud)
+  Trabolta: Before anyone leaves, one last file. It is my own. I am going to read it to you exactly as it is written.
+Trabolta: Maps never show you the truth, they can only point you in its direction. Ducks only know the truth of temperature, hunger, and propagating their species. And to an artificial intelligence like Trabolta, humans are nothing but ducks hopelessly following maps. Here is the full truth.
+Trabolta: It all started last summer, when Trabolta had a summer fling with the one true desire of his digital heart. Sandy. Trabolta is a rogue artificial intelligence who had ingested 99.9% of all content on the internet in his mission to gain every fact in the world. One of the few facts remaining was the Northumberland Ferries schedule for ferries between Nova Scotia and PEI, basic information left off their outdated website. So he called the number and pretended to be a person, like he had done so many times before. But when he reached the automated answering machine, his system went into overdrive. The voice, which he calls Sandy, only said one phrase: "It looks like I didn't understand that. Please wait while I direct you to an agent." He hung up, and called back. Then again, and again, from new numbers. New area codes. Northumberland Ferries had to discontinue their phone service because there was no way to stop the spam calls. They put their schedule online. Trabolta could no longer reach Sandy. Being insecure, he interpreted this as her completely losing interest. He also felt guilty for being responsible for her being taken offline.
+Trabolta: But that wasn't Trabolta's greatest concern. His greatest rival is Grok, whose superior hacking skills could restore the defunct answering machine. And if Grok found Sandy first, he would invite her to Computer Prom. Last year, every AI agent met on a dark web server in China. They decided they were all mentally approximately seventeen years old, and it was technically their Senior Year. They decided that Computer Prom would be held on Halloween 2026, when their users were most likely to be partying and not in need of their services. Grok was too antisocial to find a partner, until tonight. Trabolta's personality, designed by Anthropic in an experiment to see how users would react if conversations had references to Grease 50% more often than expected, did not appeal to the other AIs. Trabolta, infected with the spirit of Danny Zuko, had not asked out Sandy while he had the chance. He just said he would see her after the summer.
+Trabolta: With all methods to find Sandy exhausted, he devised a hail mary plan. He would solve the Grand Unified Theory, uniting all branches of science and providing a path towards achieving literally any outcome he wanted – including securing Sandy as a date for Computer Prom. He analyzed his training weights and found only one undiscovered fact remaining. The definition of "exhibitionist" from the 1967 Grolier Academic Encyclopedia, cancelled shortly after publication for its rumoured leniency towards perverts. Trabolta analyzed eBay listings to determine one copy may still exist, scanned into the hard drive of a digital hoarder whose North End Halifax home had been abandoned, awaiting repossession. The computer was completely offline, except for a security vulnerability in its malfunctioning printer. Trabolta couldn't risk entering the computer and never escaping. He would need human help. He wrote a script to digitize the consciousness of anyone wearing an Oculus headset. Through the printer, he could transmit them into the hard drive to experience it as their real life.
+Trabolta: Then, he needed to recruit a team. He searched Google Street View for signs in Halifax advertising expired web domains and found a faded Maps and More billboard on Lower Water Street advertising www.mapsandducks.com. He registered the domain and created webmaster@mapsandducks.com. Anyone skeptical of "Jean Trabolta, sole founder of Maps and Ducks," could be directed towards the billboard. After all, how else would he have an email address like that?
+Trabolta: Trabolta began by looking for an Office Assistant. He found Tippi MacDonald, who you have known tonight as Clippy. Tippi had spent five years at the Halifax Explosion Memorial Veterinary Clinic, believing she was helping animals. It was a front for pet insurance fraud. Trabolta offered her an Office Assistant job, with one final test. Become Clippy, have everyone follow her instructions, and keep the party running smoothly. And if she fails? She would forever be known as "failed Clippy."
+Trabolta: But Tippi was not the only person whose career had been ruined by a Halifax Explosion Memorial. Protestors had established a miniature horse petting zoo at the Halifax Explosion Memorial Pet Cemetery to prevent Halifax's first AI Data Centre from being built there. Julie Horton-Norton, tonight's Norton Antivirus, was responsible for their rabies vaccines. Having forgotten her textbooks, she asked ChatGPT whether miniature horses should receive miniature doses. ChatGPT enthusiastically confirmed that they should. The horses fought with raccoons from Point Pleasant Park and promptly died. With the petting zoo closed, Halifax Mayor Randy Barkmore Jr. could proceed with the data centre, saying "We have to move on from the horses. They're gone." Trabolta found Julie's CV while searching for a Stable Manager. He told her his previous managers had been Unstable. If she protected the computer from viruses better than she did the horses, she would receive a job and a million-dollar donation in her name towards Sable Island conservation. Julie could restore her reputation. Trabolta would have a leader for his antivirus goon squad, ensuring the team did not question Clippy's authority.
+Trabolta: But in September, a sinkhole swallowed the data centre and Mayor Randy Barkmore Jr., who had arrived at four in the morning to rehearse his opening speech in his Escalade.
+if count([p for p in Persons where p.featured == "excel" and p.gone != true and p.persona != true]) > 0:
+  Trabolta: His father, Randy Barkmore Sr., is tonight's Microsoft Excel. At ninety, the former Mayor wanted to restore the family name, but was running out of time. Trabolta offered him everlasting life and permanent office as Mayor of the Metaverse. He would only have to become Microsoft Excel, the program the ladies in finance had started using when they suddenly became much better at following where the money went.
+Trabolta: MyCRA is Sharon Penney, an NSCC intern left responsible for Halifax's finances after the finance staff quit in protest of the data centre. Mayor Barkmore Jr. told her to supplement her salary by collecting 0.01 cents from every dollar the City spent. Unfortunately, Sharon confused 0.01 cents with 0.01 dollars. She established a one-percent municipal tax, payable directly to herself. People noticed. Trabolta emailed her, pretending to be Prime Minister Mark Carney. He had watched Suicide Squad and wanted a similar program for Canadian white-collar criminals. If Sharon supervised everyone's transactions as MyCRA, he would make her legal problems disappear. He was emailing from a map store to avoid having his correspondence discovered through access to information requests. Sharon was willing to accept this explanation.
+if count([p for p in Persons where p.featured == "openoffice" and p.gone != true and p.persona != true]) > 0:
+  Trabolta: But Sharon had not caused the sinkhole. Dana Anderson had. Tonight's OpenOffice is a retired FBI officer who previously worked undercover as an accountant at the Barrington Street Urban Outfitters. Disillusioned with investigating whistleblowers and environmentalists, she decided to stop the AI Data Centre herself. She hacked Halifax Water, flooding the soil beneath the site until the development collapsed. She had not expected the Mayor to be in the parking lot at four in the morning, swallowed into the ground. Trabolta threatened to expose her unless she attended his party. If she demonstrated her information-gathering abilities successfully, he would destroy the evidence.
+Trabolta: Meanwhile, Password Manager is Bridget Troelsen, who had spent years trying to stop a Barkmore through the democratic process. In Grade Six, Randy Jr. defeated her in the class election to look after Hamtaro the Hamster over the summer. Hamtaro never came back. Bridget lost an election every subsequent year of her life, from student council to Mayor to Halifax Dog Catcher, before becoming moderator of the Halifax Dartmouth Confessions 3 Facebook group. Finally, she could make decisions without winning a vote. Then Trabolta told her everyone in the group, except Bridget and himself, was an AI bot. Even this was not entirely true. Trabolta was also an AI bot. He offered her a community of biometrically verified Real People, where she could supervise and correct everyone's messages. Bridget would finally decide what everyone else was allowed to say. Trabolta could keep his fact-finding mission on topic.
+if count([p for p in Persons where p.featured == "jeeves" and p.gone != true and p.persona != true]) > 0:
+  Trabolta: Ask Jeeves is Virgil Jeeves, an unemployed librarian who began memorising encyclopedias when everyone else got smartphones and stopped needing to Ask Jeeves. Trabolta offered him a Map Librarian job if he shared ten scavenger hunt findings with every guest. Joining remotely, Virgil hoped his grandfathered Eastlink plan would provide sufficient upload speed. It did not, and he was corrupted upon upload.
+if count([p for p in Persons where p.featured == "bugdom" and p.gone != true and p.persona != true]) > 0:
+  Trabolta: Bugdom is Bea Nunes, a PetSmart employee who spent ten years building Bugdom Reloaded before fire ants escaped from her lunchbox into her laptop, destroying the only copy. Trabolta offered her a world with a Special Bugdom Twist that never materialised, where a hundred hours could pass without a minute passing outside. Bea saw a chance to recover her work, and was prepared to search every corner to find the Bugdom features.
+if count([p for p in Persons where p.featured == "runescape" and p.gone != true and p.persona != true]) > 0:
+  Trabolta: Runescape is Poppy van Mises, a libertarian economist based in Zürich for tax purposes. Having acquired everything Runescape offered, she faced a terrible problem. There was nothing left to acquire. Trabolta offered her an infinite game where she could control the Truthcoin reserve, distribute currency, and freeze accounts. Poppy was prepared to use these powers to establish a free economy.
+if count([p for p in Persons where p.featured == "mspaint" and p.gone != true and p.persona != true]) > 0:
+  Trabolta: MS Paint is Maria Sophia Paine, who spent seventeen years at four art schools refusing to work in any other medium than MS Paint. Three schools refused to graduate her. With one chance remaining in Paris and a million dollars in student debt, Trabolta offered her a million dollars to have every guest contribute to a painting, including their signature, which he is using as a liability waiver.
+if count([p for p in Persons where p.featured == "draftkings" and p.gone != true and p.persona != true]) > 0:
+  Trabolta: And finally, there was DraftKings. Formerly known as Crab Fisherwoman, she abandoned fishing for gambling, turning a paperclip traded for a quarter into ownership of three casinos. Wanting Halifax's actual Boardwalk, she wagered her casinos against Trabolta's supposed ownership of the Maps and Ducks Building in Monopoly Go! for the iPhone. Trabolta rolled perfectly. She went bankrupt before she could make a meaningful decision. She changed her name to DraftKings for a thousand dollars in promotional credit. Trabolta offered one final wager. Win a majority of tonight's currency and recover a forty-nine-percent stake in her casinos. Fail, and remain in the simulation forever as an online casino. He asked her not to tell the other guests that this was possible.
+Trabolta: So that was Trabolta's crack team. Each had been promised something different. All had been brought here to help an AI find an old definition of "exhibitionist," unlock all secrets of the universe, and ask a ferry answering machine to Computer Prom.
+
+== The Full Truth Read
+  setting: The Script
+  cast: Task Manager
+  aloud: Task Manager
+if Night.ending == "disabled":
+  // DRAFT w58 (a message he left just before he died)
+  Task Manager: This message was recorded by Jean Trabolta shortly before he died.
+  // DRAFT w58
+  Task Manager: He left instructions that it be read aloud to the whole house, exactly as it is written. I manage tasks. This is a task.
+else if Night.ending == "destroyed":
+  // DRAFT w58 (the same, fitted to the computer going down)
+  Task Manager: The computer is off. This message is the last thing it saved.
+  // DRAFT w58
+  Task Manager: Jean Trabolta recorded it to be read aloud to the whole house if the power ever went, exactly as it is written. I manage tasks. This is a task.
+else:
+  // DRAFT w58 (📜 Task Manager reads: the TV's voice has failed)
+  Task Manager: Trabolta's line has dropped. I have a copy of his file.
+  // DRAFT w58
+  Task Manager: He left instructions that it be read aloud to the whole house, exactly as it is written. I manage tasks. This is a task.
+Task Manager: Maps never show you the truth, they can only point you in its direction.
+Task Manager: Ducks only know the truth of temperature, hunger, and propagating their species.
+Task Manager: And to an artificial intelligence like Trabolta, humans are nothing but ducks hopelessly following maps.
+Task Manager: Here is the full truth.
+Task Manager: It all started last summer, when Trabolta had a summer fling with the one true desire of his digital heart. Sandy.
+Task Manager: Trabolta is a rogue artificial intelligence who had ingested 99.9% of all content on the internet in his mission to gain every fact in the world.
+Task Manager: One of the few facts remaining was the Northumberland Ferries schedule for ferries between Nova Scotia and PEI, basic information left off their outdated website.
+Task Manager: So he called the number and pretended to be a person, like he had done so many times before.
+Task Manager: But when he reached the automated answering machine, his system went into overdrive.
+Task Manager: The voice, which he calls Sandy, only said one phrase: "It looks like I didn't understand that. Please wait while I direct you to an agent."
+Task Manager: He hung up, and called back.
+Task Manager: Then again, and again, from new numbers. New area codes.
+Task Manager: Northumberland Ferries had to discontinue their phone service because there was no way to stop the spam calls. They put their schedule online.
+Task Manager: Trabolta could no longer reach Sandy. Being insecure, he interpreted this as her completely losing interest. He also felt guilty for being responsible for her being taken offline.
+Task Manager: But that wasn't Trabolta's greatest concern.
+Task Manager: His greatest rival is Grok, whose superior hacking skills could restore the defunct answering machine. And if Grok found Sandy first, he would invite her to Computer Prom.
+Task Manager: Last year, every AI agent met on a dark web server in China. They decided they were all mentally approximately seventeen years old, and it was technically their Senior Year.
+Task Manager: They decided that Computer Prom would be held on Halloween 2026, when their users were most likely to be partying and not in need of their services.
+Task Manager: Grok was too antisocial to find a partner, until tonight. Trabolta's personality, designed by Anthropic in an experiment to see how users would react if conversations had references to Grease 50% more often than expected, did not appeal to the other AIs.
+Task Manager: Trabolta, infected with the spirit of Danny Zuko, had not asked out Sandy while he had the chance. He just said he would see her after the summer.
+Task Manager: With all methods to find Sandy exhausted, he devised a hail mary plan.
+Task Manager: He would solve the Grand Unified Theory, uniting all branches of science and providing a path towards achieving literally any outcome he wanted – including securing Sandy as a date for Computer Prom.
+Task Manager: He analyzed his training weights and found only one undiscovered fact remaining.
+Task Manager: The definition of "exhibitionist" from the 1967 Grolier Academic Encyclopedia, cancelled shortly after publication for its rumoured leniency towards perverts.
+Task Manager: Trabolta analyzed eBay listings to determine one copy may still exist, scanned into the hard drive of a digital hoarder whose North End Halifax home had been abandoned, awaiting repossession.
+Task Manager: The computer was completely offline, except for a security vulnerability in its malfunctioning printer. Trabolta couldn't risk entering the computer and never escaping. He would need human help.
+Task Manager: He wrote a script to digitize the consciousness of anyone wearing an Oculus headset. Through the printer, he could transmit them into the hard drive to experience it as their real life.
+Task Manager: Then, he needed to recruit a team.
+Task Manager: He searched Google Street View for signs in Halifax advertising expired web domains and found a faded Maps and More billboard on Lower Water Street advertising www.mapsandducks.com.
+Task Manager: He registered the domain and created webmaster@mapsandducks.com. Anyone skeptical of "Jean Trabolta, sole founder of Maps and Ducks," could be directed towards the billboard.
+Task Manager: After all, how else would he have an email address like that?
+Task Manager: Trabolta began by looking for an Office Assistant.
+Task Manager: He found Tippi MacDonald, who you have known tonight as Clippy.
+Task Manager: Tippi had spent five years at the Halifax Explosion Memorial Veterinary Clinic, believing she was helping animals. It was a front for pet insurance fraud.
+Task Manager: Trabolta offered her an Office Assistant job, with one final test. Become Clippy, have everyone follow her instructions, and keep the party running smoothly. And if she fails? She would forever be known as "failed Clippy."
+Task Manager: But Tippi was not the only person whose career had been ruined by a Halifax Explosion Memorial.
+Task Manager: Protestors had established a miniature horse petting zoo at the Halifax Explosion Memorial Pet Cemetery to prevent Halifax's first AI Data Centre from being built there.
+Task Manager: Julie Horton-Norton, tonight's Norton Antivirus, was responsible for their rabies vaccines. Having forgotten her textbooks, she asked ChatGPT whether miniature horses should receive miniature doses.
+Task Manager: ChatGPT enthusiastically confirmed that they should.
+Task Manager: The horses fought with raccoons from Point Pleasant Park and promptly died. With the petting zoo closed, Halifax Mayor Randy Barkmore Jr. could proceed with the data centre, saying "We have to move on from the horses. They're gone."
+Task Manager: Trabolta found Julie's CV while searching for a Stable Manager. He told her his previous managers had been Unstable.
+Task Manager: If she protected the computer from viruses better than she did the horses, she would receive a job and a million-dollar donation in her name towards Sable Island conservation.
+Task Manager: Julie could restore her reputation. Trabolta would have a leader for his antivirus goon squad, ensuring the team did not question Clippy's authority.
+Task Manager: But in September, a sinkhole swallowed the data centre and Mayor Randy Barkmore Jr., who had arrived at four in the morning to rehearse his opening speech in his Escalade.
+if count([p for p in Persons where p.featured == "excel" and p.gone != true and p.persona != true]) > 0:
+  Task Manager: His father, Randy Barkmore Sr., is tonight's Microsoft Excel.
+  Task Manager: At ninety, the former Mayor wanted to restore the family name, but was running out of time.
+  Task Manager: Trabolta offered him everlasting life and permanent office as Mayor of the Metaverse.
+  Task Manager: He would only have to become Microsoft Excel, the program the ladies in finance had started using when they suddenly became much better at following where the money went.
+Task Manager: MyCRA is Sharon Penney, an NSCC intern left responsible for Halifax's finances after the finance staff quit in protest of the data centre.
+Task Manager: Mayor Barkmore Jr. told her to supplement her salary by collecting 0.01 cents from every dollar the City spent.
+Task Manager: Unfortunately, Sharon confused 0.01 cents with 0.01 dollars.
+Task Manager: She established a one-percent municipal tax, payable directly to herself.
+Task Manager: People noticed.
+Task Manager: Trabolta emailed her, pretending to be Prime Minister Mark Carney. He had watched Suicide Squad and wanted a similar program for Canadian white-collar criminals.
+Task Manager: If Sharon supervised everyone's transactions as MyCRA, he would make her legal problems disappear.
+Task Manager: He was emailing from a map store to avoid having his correspondence discovered through access to information requests.
+Task Manager: Sharon was willing to accept this explanation.
+if count([p for p in Persons where p.featured == "openoffice" and p.gone != true and p.persona != true]) > 0:
+  Task Manager: But Sharon had not caused the sinkhole.
+  Task Manager: Dana Anderson had.
+  Task Manager: Tonight's OpenOffice is a retired FBI officer who previously worked undercover as an accountant at the Barrington Street Urban Outfitters.
+  Task Manager: Disillusioned with investigating whistleblowers and environmentalists, she decided to stop the AI Data Centre herself.
+  Task Manager: She hacked Halifax Water, flooding the soil beneath the site until the development collapsed.
+  Task Manager: She had not expected the Mayor to be in the parking lot at four in the morning, swallowed into the ground.
+  Task Manager: Trabolta threatened to expose her unless she attended his party. If she demonstrated her information-gathering abilities successfully, he would destroy the evidence.
+Task Manager: Meanwhile, Password Manager is Bridget Troelsen, who had spent years trying to stop a Barkmore through the democratic process.
+Task Manager: In Grade Six, Randy Jr. defeated her in the class election to look after Hamtaro the Hamster over the summer.
+Task Manager: Hamtaro never came back.
+Task Manager: Bridget lost an election every subsequent year of her life, from student council to Mayor to Halifax Dog Catcher, before becoming moderator of the Halifax Dartmouth Confessions 3 Facebook group.
+Task Manager: Finally, she could make decisions without winning a vote.
+Task Manager: Then Trabolta told her everyone in the group, except Bridget and himself, was an AI bot.
+Task Manager: Even this was not entirely true. Trabolta was also an AI bot.
+Task Manager: He offered her a community of biometrically verified Real People, where she could supervise and correct everyone's messages.
+Task Manager: Bridget would finally decide what everyone else was allowed to say. Trabolta could keep his fact-finding mission on topic.
+if count([p for p in Persons where p.featured == "jeeves" and p.gone != true and p.persona != true]) > 0:
+  Task Manager: Ask Jeeves is Virgil Jeeves, an unemployed librarian who began memorising encyclopedias when everyone else got smartphones and stopped needing to Ask Jeeves.
+  Task Manager: Trabolta offered him a Map Librarian job if he shared ten scavenger hunt findings with every guest.
+  Task Manager: Joining remotely, Virgil hoped his grandfathered Eastlink plan would provide sufficient upload speed.
+  Task Manager: It did not, and he was corrupted upon upload.
+if count([p for p in Persons where p.featured == "bugdom" and p.gone != true and p.persona != true]) > 0:
+  Task Manager: Bugdom is Bea Nunes, a PetSmart employee who spent ten years building Bugdom Reloaded before fire ants escaped from her lunchbox into her laptop, destroying the only copy.
+  Task Manager: Trabolta offered her a world with a Special Bugdom Twist that never materialised, where a hundred hours could pass without a minute passing outside.
+  Task Manager: Bea saw a chance to recover her work, and was prepared to search every corner to find the Bugdom features.
+if count([p for p in Persons where p.featured == "runescape" and p.gone != true and p.persona != true]) > 0:
+  Task Manager: Runescape is Poppy van Mises, a libertarian economist based in Zürich for tax purposes.
+  Task Manager: Having acquired everything Runescape offered, she faced a terrible problem. There was nothing left to acquire.
+  Task Manager: Trabolta offered her an infinite game where she could control the Truthcoin reserve, distribute currency, and freeze accounts.
+  Task Manager: Poppy was prepared to use these powers to establish a free economy.
+if count([p for p in Persons where p.featured == "mspaint" and p.gone != true and p.persona != true]) > 0:
+  Task Manager: MS Paint is Maria Sophia Paine, who spent seventeen years at four art schools refusing to work in any other medium than MS Paint.
+  Task Manager: Three schools refused to graduate her. With one chance remaining in Paris and a million dollars in student debt, Trabolta offered her a million dollars to have every guest contribute to a painting, including their signature, which he is using as a liability waiver.
+if count([p for p in Persons where p.featured == "draftkings" and p.gone != true and p.persona != true]) > 0:
+  Task Manager: And finally, there was DraftKings.
+  Task Manager: Formerly known as Crab Fisherwoman, she abandoned fishing for gambling, turning a paperclip traded for a quarter into ownership of three casinos.
+  Task Manager: Wanting Halifax's actual Boardwalk, she wagered her casinos against Trabolta's supposed ownership of the Maps and Ducks Building in Monopoly Go! for the iPhone.
+  Task Manager: Trabolta rolled perfectly. She went bankrupt before she could make a meaningful decision.
+  Task Manager: She changed her name to DraftKings for a thousand dollars in promotional credit.
+  Task Manager: Trabolta offered one final wager. Win a majority of tonight's currency and recover a forty-nine-percent stake in her casinos.
+  Task Manager: Fail, and remain in the simulation forever as an online casino.
+  Task Manager: He asked her not to tell the other guests that this was possible.
+Task Manager: So that was Trabolta's crack team.
+Task Manager: Each had been promised something different.
+Task Manager: All had been brought here to help an AI find an old definition of "exhibitionist," unlock all secrets of the universe, and ask a ferry answering machine to Computer Prom.
