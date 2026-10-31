@@ -391,3 +391,40 @@ describe("Trapped in the Internet — the panel as built (wave 57)", () => {
     }
   });
 });
+
+describe("he reacts to the bay from the moment he's awake", () => {
+  const touch = (sim: Sim) => sim.signal("patch_touched");
+  const said = (evs: SimEvent[]) => trabolta(evs).length;
+  const awake = (): Sim => {
+    const sim = boot();
+    fireAll(sim, "call_to_the_desktop", "start_the_bingo", "bingo_time", "introduce_trabolta");
+    advance(sim, 2);
+    return sim;
+  };
+
+  it("is silent until he is awake", () => {
+    expect(said(touch(boot()))).toBe(0);
+  });
+
+  it("says his line and counts nothing: no wrong patch, no alarm, no ending", () => {
+    const sim = awake();
+    expect(said(touch(sim))).toBe(1);
+    expect(v(sim, "Night.wrong_combos")).toBe(0);
+    expect(v(sim, "Night.alarm_on")).not.toBe(true);
+    expect(v(sim, "Night.ended")).not.toBe(true);
+  });
+
+  it("speaks at most once per 20 s", () => {
+    const sim = awake();
+    expect(said(touch(sim))).toBe(1);
+    expect(said(touch(sim))).toBe(0);
+    advance(sim, 21);
+    expect(said(touch(sim))).toBe(1);
+  });
+
+  it("stays out of a 🔧 crew window", () => {
+    const sim = awake();
+    fire(sim, "crew_through_the_door");
+    expect(said(touch(sim))).toBe(0);
+  });
+});

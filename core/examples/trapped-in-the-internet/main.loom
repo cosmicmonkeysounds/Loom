@@ -6189,6 +6189,17 @@ when patch_changed:
       set Night.bay_rejected_at = Time.elapsed
       fire bay_rejected
 
+// The bay is touched (the user, 2026-10-31): from the moment he is awake, a cable
+// going in or out, or any full patch, gets his line at the terminal. It counts
+// nothing: no wrong patch, no alarm, no ending (those stay the Y2K hour's, above). The
+// terminal posts `patch_touched`, no pairs, and leaves out a full patch the hour
+// judges. Silent before he's awake, in a 🔧 crew window, during the alarm and once
+// the verdict is in. At most one line per 20 s, like the door's.
+when patch_touched:
+  if Night.ended != true and Night.r3_closed != true and Trabolta.awake == true and Night.alarm_on != true and Time.elapsed >= Night.crew_door_until and Time.elapsed >= Night.touched_again_at:
+    set Night.touched_again_at = Time.elapsed + 20
+    -> Patch Touched
+
 // The 🔌 💥 ❌ presses (a director's, or the room Antivirus' radio_*). In
 // the Y2K hour, before the verdict, a press hands the bay to the buttons
 // (one # hosts line the first time); out of turn it only says why, with no
@@ -7408,6 +7419,7 @@ set Night.server_door = "closed"
 set Night.heart_stage = "sealed"
 set Night.door_override = false
 set Night.door_again_at = 0
+set Night.touched_again_at = 0
 set Night.door_again_said = false
 set Night.heart_present = false
 set Night.heart_talker = "none"

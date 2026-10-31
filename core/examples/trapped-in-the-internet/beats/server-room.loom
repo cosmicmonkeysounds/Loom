@@ -1202,6 +1202,12 @@ if Night.wrong_combos >= 2 and Night.alarm_on != true:
 else:
   Trabolta: Stop touching me.
 
+// `patch_touched`: the bay touched at any hour he's awake. His one line, counting nothing.
+== Patch Touched
+  setting: The Server Room
+  cast: Trabolta
+Trabolta: Stop touching me.
+
 // ── E4: Combo A — take the grease out of the lightning ─────────────
 
 == Trabolta Disabled

@@ -28,6 +28,9 @@ is not finished.
 | **Combo B** "Self-destruct" | **B2→A5 · B4→A7 · B7→A4 · B8→A6** | destroys the computer (blackout, dance, purgatory) | **"B"** |
 | anything else, once all four cables are in | | wrong combination | **"WRONG"** |
 
+From the moment he's awake, anyone touching the bay gets *Stop touching me.* at the terminal, at most every 20 s.
+It counts nothing: only the Y2K hour's full patches do. Press 🔧 first and he stays quiet for you too.
+
 Guests learn the halves from their codex once their faction wins the majority.
 Do **not** help them: you are an Antivirus. You do not know the door code: the
 inside handle always opens with none, but **once you step out you can't get

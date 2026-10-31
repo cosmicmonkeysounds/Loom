@@ -546,3 +546,10 @@ opens The Server Room on every phone. So:
 - Every host and Antivirus knows the honour rule and where ♟ is on a
   guest's card (the booth's ⚡ Actions on that guest).
 - See [Run mode](43-run-mode.md) for the cue sheet itself.
+
+## He notices the bay
+
+From the moment Trabolta is awake, a cable going in or out, or a full patch, gets *Stop touching me.* at
+the server-room terminal, at most once every 20 seconds. It counts nothing: the endings, wrong patches and the
+alarm stay in the Y2K hour. He stays quiet before he's awake, in a 🔧 crew window, during the alarm and once
+truth.txt is read. What's plugged in when the terminal connects never sets him off.

@@ -560,6 +560,12 @@ pack holds the monologue, and the monologue names that answer, as it always has:
 `all-crew`. Before printing, fill in from `facts.json` the second director's answer table, Clippy's answer key
 and Adobe Acrobat's round-2 line: none is written in the files. A right answer judged from an old copy gets 😤.
 
+### 8.5 He notices the bay
+
+Your note: *"he should respond to the patch bay being messed with from the moment he turns on"*. `patch_touched`
+(`main.loom`) plays his existing *Stop touching me.* from `Trabolta.awake`, at most every 20 s, counting nothing. The
+terminal's half, which sends the signal and cuts him off, ships with the door cut on `oct31-w59/heart-door`.
+
 ## 9. The audio ads (wave 59a)
 
 Your notes: *"after the 2nd round of questions, there should be audio ads that pop up on the
