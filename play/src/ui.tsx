@@ -10,7 +10,7 @@ import { Suspense, lazy, useEffect, useState } from "react";
 import { GuestApp } from "./guest/app.tsx";
 import { LazyHelpSheet as HelpSheet } from "./help-lazy.tsx";
 import { initialRole, roleForBrand, type AppRole } from "./app-role.ts";
-import { ChunkBoundary, ChunkFailed, retryImport } from "./lazy-chunk.tsx";
+import { ChunkBoundary, ChunkDown, ChunkFailed, chunkOrDown, retryImport } from "./lazy-chunk.tsx";
 import { resumeToAdopt, storedGuestName, type ResumeLink } from "./resume.ts";
 import { cardPlan, heldOf, letGo, rememberBadge, settleOwed, type CardLink, type HeldCard } from "./rejoin.ts";
 import { claimField, claimFromSearch, rememberClaim } from "./claim.ts";
@@ -24,7 +24,7 @@ import { browserHost } from "./host.ts";
 const PerformerApp = lazy(retryImport(() => import("./booth/app.tsx").then((m) => ({ default: m.PerformerApp }))));
 // Wave 23: the calls behind a badge / invitation / cast-card link, fetched
 // only when the page opened with one.
-const loadRejoinCalls = retryImport(() => import("./rejoin-calls.ts"));
+const loadRejoinCalls = chunkOrDown(() => import("./rejoin-calls.ts"));
 const DirectorApp = lazy(retryImport(() => import("./director.tsx").then((m) => ({ default: m.DirectorApp }))));
 // Wave 59: a card a phone already holds. Only a refused page fetches it.
 const HeldPanel = lazy(retryImport(() => import("./held.tsx").then((m) => ({ default: m.HeldPanel }))));
@@ -99,6 +99,9 @@ export function App({ resume = null, card = null }: { resume?: ResumeLink | null
   const [confirmFor, setConfirmFor] = useState<string | null>(() => (pending === null ? null : storedGuestName(storedRaw("loom.guest"))));
   const [resuming, setResuming] = useState(false);
   const [resumeError, setResumeError] = useState<string | null>(null);
+  // The chunk behind a card or a re-pair link wouldn't load: Reload, not the
+  // browser's own words.
+  const [chunkDown, setChunkDown] = useState(false);
   // A badge, an invitation or a cast card (wave 23): sign in by it first.
   const [first] = useState(() => entryFor(card, window.location.search, storedRaw));
   const [entry, setEntry] = useState<Entry | null>(first.entry);
@@ -155,7 +158,8 @@ export function App({ resume = null, card = null }: { resume?: ResumeLink | null
         .catch((e: unknown) => {
           const shown = heldOf(e);
           if (shown !== null) return setHeld({ code: entry.code, by: { part: entry.part }, ...shown });
-          setResumeError(e instanceof Error ? e.message : "That staff badge didn't work.");
+          if (e instanceof ChunkDown) setChunkDown(true);
+          else setResumeError(e instanceof Error ? e.message : "That staff badge didn't work.");
           setRole("none");
         })
         .finally(done);
@@ -182,7 +186,8 @@ export function App({ resume = null, card = null }: { resume?: ResumeLink | null
           if (shown !== null) setHeld({ code: entry.code, by, ...shown });
           else if (entry.kind === "claim") setRole("guest");
           else {
-            setResumeError(e instanceof Error ? e.message : "That badge didn't work.");
+            if (e instanceof ChunkDown) setChunkDown(true);
+            else setResumeError(e instanceof Error ? e.message : "That badge didn't work.");
             setRole("none");
           }
         })
@@ -207,7 +212,10 @@ export function App({ resume = null, card = null }: { resume?: ResumeLink | null
         browserHost.storage.save("loom.guest", guest);
         setRole("guest");
       })
-      .catch((e: unknown) => setResumeError(e instanceof Error ? e.message : "That re-pair code didn't work."))
+      .catch((e: unknown) => {
+        if (e instanceof ChunkDown) setChunkDown(true);
+        else setResumeError(e instanceof Error ? e.message : "That re-pair code didn't work.");
+      })
       .finally(() => {
         setResuming(false);
         setPending(null);
@@ -264,6 +272,8 @@ export function App({ resume = null, card = null }: { resume?: ResumeLink | null
       </div>
     );
   }
+
+  if (chunkDown) return <ChunkFailed what="This page" onBack={() => setChunkDown(false)} />;
 
   if (held !== null) {
     return (

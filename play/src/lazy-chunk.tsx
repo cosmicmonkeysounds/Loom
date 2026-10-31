@@ -18,6 +18,20 @@ export function retryImport<T>(load: () => Promise<T>, wait = RETRY_MS, sleep: (
   return () => load().catch(() => sleep(wait).then(load));
 }
 
+/** What a chunk loaded by hand threw (`chunkOrDown`). The browser's own error
+ *  names the asset's full URL, and no guest should read that. */
+export class ChunkDown extends Error {}
+
+/** `retryImport` for a chunk with no boundary round it: its caller's catch tells
+ *  a chunk that won't load (`ChunkDown`, `ChunkFailed`'s job) from a refusal. */
+export function chunkOrDown<T>(load: () => Promise<T>, wait = RETRY_MS, sleep?: (ms: number) => Promise<void>): () => Promise<T> {
+  const fetched = retryImport(load, wait, sleep);
+  return () =>
+    fetched().catch(() => {
+      throw new ChunkDown("a chunk didn't load");
+    });
+}
+
 /**
  * A `React.lazy` part that can be asked for again: a rejected lazy keeps its
  * rejection for good, so "Try again" needs a fresh one (`again()`).
