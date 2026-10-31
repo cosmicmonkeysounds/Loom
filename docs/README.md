@@ -37,6 +37,7 @@ its `INDEX.md`).
 | [`loom-w40-contract.md`](./loom-w40-contract.md) | The wave 40 contract (the house mixer): the mix's keys and sums (`core/src/house-mixer.ts`), `GET /api/mod/audio/mixer`, `POST /api/mod/audio/mix` / `music` / `meters`, the router's strips, live meters and music commands, the editor's 🎚 Mixer and the host Desk's. Its integration changes are at the end. |
 | [`loom-w42-contract.md`](./loom-w42-contract.md) | The wave 42 contract (Trabolta under load, and as intended): the windowed agent hub (`capacity=`), the guests' `agentWait` queue strip, overflow engines for one mind, the DM guards and fallbacks by intent, and the measured 50-guest and 54-scenario results. |
 | [`trapped/kiosk.md`](./trapped/kiosk.md) | Kiosk settings for the tablets, the TV and the laptops (Fully Kiosk, Chrome `--kiosk`). Operational, partly stale: "the house Mac" is now John's Desktop (the TV) plus John's MacBook. |
+| [`trapped/costume.md`](./trapped/costume.md) | The Task Manager costume: the iPad 2 on his chest, what a press can do, the root profile, the relay fallback. |
 | [`trapped/room-audio.md`](./trapped/room-audio.md) | The house speaker router plan (§11–12 are the operational parts). Partly stale: the wave 1 banner names QLab and one house Mac; the wave 18b banner retires QLab, and the house Mac is now the Desktop (the router since 2026-10-27, the broker, `show`) plus the MacBook (Trabolta; the router fallback). |
 
 ## Running it in production

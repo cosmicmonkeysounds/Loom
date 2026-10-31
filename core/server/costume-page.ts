@@ -29,17 +29,19 @@ const HTML = `<!doctype html>
 <link rel="stylesheet" href="/costume.css">
 </head>
 <body>
-<div id="keys">
-  <div id="led"></div>
-  <div class="key" id="k-ctrl" data-key="ctrl"><span>CTRL</span></div>
-  <div class="key" id="k-alt" data-key="alt"><span>ALT</span></div>
-  <div class="key" id="k-del" data-key="del"><span>DELETE</span></div>
-</div>
-<div id="menu" class="hidden">
-  <div id="dlg">
-    <div id="bar"><span id="title">Close Program</span><span id="x">x</span></div>
-    <div id="list"></div>
-    <div id="status"></div>
+<div id="app">
+  <div id="keys">
+    <div id="led"></div>
+    <div class="key" id="k-ctrl" data-key="ctrl"><span>CTRL</span></div>
+    <div class="key" id="k-alt" data-key="alt"><span>ALT</span></div>
+    <div class="key" id="k-del" data-key="del"><span>DELETE</span></div>
+  </div>
+  <div id="menu" class="hidden">
+    <div id="dlg">
+      <div id="bar"><span id="title">Close Program</span><span id="x">x</span></div>
+      <div id="list"></div>
+      <div id="status"></div>
+    </div>
   </div>
 </div>
 <script src="/costume.js"></script>
@@ -52,6 +54,7 @@ html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#
 body{position:fixed;top:0;left:0;right:0;bottom:0;font-family:"Helvetica Neue",Helvetica,Arial,sans-serif;
   -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:rgba(0,0,0,0);-webkit-text-size-adjust:none}
 .hidden{display:none}
+#app{position:absolute;top:0;left:0;right:0;bottom:0}
 
 #keys{position:absolute;top:0;left:0;right:0;bottom:0;background:#a9a28c;background-image:-webkit-linear-gradient(top,#bdb6a0,#97907a);background-image:linear-gradient(to bottom,#bdb6a0,#97907a)}
 #led{position:absolute;top:1%;right:1.5%;width:14px;height:14px;border-radius:7px;background:#4a4636;border:1px solid #6d6753}
@@ -361,10 +364,13 @@ const JS = String.raw`(function () {
     idle();
   }
 
-  document.addEventListener('touchstart', onStart, false);
-  document.addEventListener('touchmove', onMove, false);
-  document.addEventListener('touchend', onEnd, false);
-  document.addEventListener('touchcancel', onEnd, false);
+  // On an element, not the document: a newer browser makes a document's touch
+  // listeners passive, and then nothing stops the page scrolling.
+  var app = document.getElementById('app');
+  app.addEventListener('touchstart', onStart, false);
+  app.addEventListener('touchmove', onMove, false);
+  app.addEventListener('touchend', onEnd, false);
+  app.addEventListener('touchcancel', onEnd, false);
 
   if (testMode) {
     document.addEventListener('mousedown', function (e) {

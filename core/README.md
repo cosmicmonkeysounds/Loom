@@ -120,6 +120,7 @@ http://<host>:7000/             the participant app (built loom-play)
 http://<host>:7000/terminal/    the wall terminals (built loom-terminal)
 http://<host>:7000/reinstall/   the reinstallation game + map editor
 http://<host>:7000/cards        every printed QR on one screen (moderator code)
+http://<host>:7000/costume      the Task Manager costume's page (its link is on Run → Terminals)
 ```
 
 - **The doors**: `idle → open → paused`. Guest and performer actions

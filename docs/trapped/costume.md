@@ -85,22 +85,27 @@ It can't fetch that from letsencrypt.org, for the same reason it can't reach
 anything else, so the MacBook serves it. Keep the iPad on the party's Wi-Fi, the
 MacBook's LAN.
 
-1. On the MacBook: `node scripts/house-macbook/costume-root.mjs`. It takes the
-   root from the Mac's own system roots, checks its fingerprint and prints an
-   address.
-2. On the iPad, in **Safari**: open that address and tap **Install ISRG Root X1**.
-   Settings opens the profile: **Install**, enter the passcode if asked, **Install**,
-   **Done**. On iOS 9 a profile's root is trusted at once; there is no *Certificate
-   Trust Settings* page to visit.
-3. Stop the script (Ctrl+C).
-4. Copy the link from Run → Terminals to the iPad (AirDrop can't: send it to
-   yourself in Notes, or type it in) and open it in Safari. The small light top
-   right of the keys turns **green** when the server answers: that's the proof.
+1. On the MacBook, with the link copied from Run → Terminals:
+
+   ```bash
+   COSTUME_LINK='<the link>' node scripts/house-macbook/costume-root.mjs
+   ```
+
+   It takes the root from the Mac's own system roots, checks its fingerprint and
+   prints an address.
+2. On the iPad, in **Safari**: open that address and tap **1. Install ISRG Root
+   X1**. Settings opens the profile: **Install**, enter the passcode if asked,
+   **Install**, **Done**. On iOS 9 a profile's root is trusted at once; there is no
+   *Certificate Trust Settings* page to visit.
+3. Back in Safari, tap **2. Open the costume**. The small light top right of the
+   keys turns **green** when the server answers: that's the proof.
+4. Stop the script (Ctrl+C): its page holds the link.
 5. **Add to Home Screen** from the share sheet, and open it from the icon, so it
    has no address bar. If the icon loses the link, delete it and repeat this step.
 6. Settings → General → **Auto-Lock: Never**.
-7. Settings → General → **Multitasking**: turn off **Gestures**, or a chest full of
-   fingers will throw you to the home screen. Check **Accessibility → Zoom** is off.
+7. Settings → General → **Multitasking Gestures** (under *Multitasking*, on some
+   versions): off, or a chest full of fingers will throw you to the home screen.
+   Check Settings → General → Accessibility → **Zoom** is off.
 8. Settings → General → Accessibility → **Guided Access**: on, with a passcode. Open
    the page, triple-click the Home button, **Start**. Now nobody can leave it.
 

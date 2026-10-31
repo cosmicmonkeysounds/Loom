@@ -5,9 +5,12 @@
 // anything else. The certificate comes from this Mac's own system roots and its
 // fingerprint is checked. No dependencies, macOS only.
 //
-//   node scripts/house-macbook/costume-root.mjs [port]
+//   COSTUME_LINK='<the link from Run → Terminals>' node scripts/house-macbook/costume-root.mjs [port]
 //
-// Open http://<this Mac>:<port>/ in Safari on the iPad and tap the link.
+// Open http://<this Mac>:<port>/ in Safari on the iPad and tap the first link.
+// With COSTUME_LINK set the page offers the costume's link too, so nobody types
+// it on an iPad 2, which has no AirDrop. That page holds the token: stop this
+// once the iPad has it. The link is never printed.
 
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
@@ -26,8 +29,10 @@ if (createHash("sha256").update(der).digest("hex") !== FINGERPRINT) {
   process.exit(1);
 }
 
+const link = process.env.COSTUME_LINK ?? "";
+const row = (href, text) => `<p style="font:32px Helvetica;margin:40px"><a href="${href}">${text}</a></p>`;
 const PAGE = `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Root</title><p style="font:32px Helvetica;margin:40px"><a href="/isrg-root-x1.cer">Install ISRG Root X1</a></p>`;
+<title>Root</title>${row("/isrg-root-x1.cer", "1. Install ISRG Root X1")}${link !== "" ? row(link.replace(/&/gu, "&amp;"), "2. Open the costume") : ""}`;
 
 createServer((req, res) => {
   if (req.url === "/isrg-root-x1.cer") {
