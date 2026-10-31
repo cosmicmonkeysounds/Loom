@@ -169,7 +169,7 @@ describe('📢 the audio ads row', () => {
     const html = render([], MAP, { ads })
     expect(html).toContain('run-terminals-ads-on')
     expect(html).toContain('run-terminals-ads-off')
-    expect(html).toContain('2 of 14: playing Adobe')
+    expect(html).toContain('2 played: playing Adobe')
   })
   it('is left out for an older server', () => {
     expect(render([], MAP, { ads: null })).not.toContain('run-terminals-ads')

@@ -519,12 +519,15 @@ describe('the link to the games (wave 59)', () => {
 
 describe('📢 the audio ads', () => {
   const ads = { on: true, aired: 3, total: 14, playing: null, running: true, hold: null }
-  it('says where the list has got to and why it waits', () => {
-    expect(adsLine(ads)).toBe('3 of 14: next soon')
-    expect(adsLine({ ...ads, playing: 'Tippi' })).toBe('3 of 14: playing Tippi')
-    expect(adsLine({ ...ads, hold: 'talk' })).toBe('3 of 14: waiting for a talk scene')
-    expect(adsLine({ ...ads, on: false })).toBe('3 of 14: off')
-    expect(adsLine({ ...ads, running: false })).toBe('3 of 14: they run through the second hunt')
-    expect(adsLine({ ...ads, aired: 14 })).toBe('14 of 14: the list is done')
+  it('says how many have played and why the next waits', () => {
+    expect(adsLine(ads)).toBe('3 played: the next within 10 minutes')
+    expect(adsLine({ ...ads, playing: 'Tippi' })).toBe('3 played: playing Tippi')
+    expect(adsLine({ ...ads, hold: 'talk' })).toBe('3 played: waiting for a talk scene')
+    expect(adsLine({ ...ads, hold: 'doors' })).toBe('3 played: waiting for the doors')
+    expect(adsLine({ ...ads, hold: 'speaking' })).toBe('3 played: waiting for Trabolta speaking on the TV')
+    expect(adsLine({ ...ads, hold: 'reading' })).toBe('3 played: waiting for someone reading on the teleprompter')
+    expect(adsLine({ ...ads, on: false })).toBe('3 played: off')
+    expect(adsLine({ ...ads, running: false })).toBe('3 played: they run from the second hunt to the final reveal')
+    expect(adsLine({ ...ads, aired: 30 })).toBe('30 played: the next within 10 minutes')
   })
 })

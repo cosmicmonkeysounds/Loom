@@ -32,7 +32,12 @@ class FakeAudio implements AdAudio {
     if (name === "src") this.src = "";
   }
 }
-const offer = (o: Partial<AdOffer> = {}): AdOffer => ({ seq: 7, n: 2, name: "Adobe", url: "/media/ads/ad-02-adobe.mp3", in: 0, from: 0, left: 60_000, ...o });
+/** An ad sent now: `lead` ms ahead of its start, or `ago` ms past it, `left` ms long from there. */
+const offer = ({ lead = 0, ago = 0, left = 60_000 }: { lead?: number; ago?: number; left?: number } = {}): AdOffer => {
+  const now = Date.now();
+  const at = now + lead - ago;
+  return { seq: 7, n: 2, name: "Adobe", url: "/media/ads/ad-02-adobe.mp3", at, until: now + lead + left, now };
+};
 const settle = () => vi.advanceTimersByTimeAsync(0);
 
 describe("the frame", () => {
@@ -40,8 +45,8 @@ describe("the frame", () => {
     expect(CHAT_FRAMES).toContain("ad");
     const onAd = vi.fn();
     const on = chatFrameHandler(() => ({ onAd }), { replace() {}, upsert() {}, drop() {} });
-    on("ad", JSON.stringify({ stop: true }));
-    expect(onAd).toHaveBeenCalledWith({ stop: true });
+    on("ad", JSON.stringify({ stop: true, now: 5 }));
+    expect(onAd).toHaveBeenCalledWith({ stop: true, now: 5 });
   });
 });
 
@@ -138,10 +143,12 @@ describe("a phone's turn", () => {
   let told: number[];
   let s: AdSpots;
   let hidden: boolean;
+  let listen: Map<string, () => void>;
   beforeEach(() => {
     vi.useFakeTimers();
     hidden = false;
-    vi.stubGlobal("document", { addEventListener() {}, removeEventListener() {}, get hidden() { return hidden; } });
+    listen = new Map();
+    vi.stubGlobal("document", { addEventListener: (k: string, f: () => void) => listen.set(k, f), removeEventListener: (k: string) => listen.delete(k), get hidden() { return hidden; } });
     a = new FakeAudio();
     told = [];
     s = new AdSpots(() => a);
@@ -153,7 +160,7 @@ describe("a phone's turn", () => {
   });
 
   it("waits out the lead, then shows the pop-up and plays", async () => {
-    s.take(offer({ in: 3000 }));
+    s.take(offer({ lead: 3000 }));
     await vi.advanceTimersByTimeAsync(2999);
     expect(s.shown()).toBeNull();
     await vi.advanceTimersByTimeAsync(1);
@@ -174,24 +181,24 @@ describe("a phone's turn", () => {
     expect(a.paused).toBeGreaterThan(0);
   });
   it("closes on its own if the track's end never comes", async () => {
-    s.take(offer({ left: 1000 }));
+    s.take(offer({ left: 10_000 }));
     await settle();
-    await vi.advanceTimersByTimeAsync(4100);
+    await vi.advanceTimersByTimeAsync(13_100);
     expect(s.shown()).toBeNull();
   });
   it("a stop frame stops it, even in the lead", async () => {
     s.take(offer());
     await settle();
-    s.take({ stop: true });
+    s.take({ stop: true, now: Date.now() });
     expect(s.shown()).toBeNull();
-    s.take(offer({ in: 3000 }));
-    s.take({ stop: true });
+    s.take(offer({ lead: 3000 }));
+    s.take({ stop: true, now: Date.now() });
     await vi.advanceTimersByTimeAsync(4000);
     expect(s.shown()).toBeNull();
   });
   it("busy, it says so at once and plays nothing", async () => {
     s.setBusy(true);
-    s.take(offer({ in: 3000 }));
+    s.take(offer({ lead: 3000 }));
     expect(told).toEqual([7]);
     await vi.advanceTimersByTimeAsync(4000);
     expect(a.plays).toEqual([]);
@@ -202,7 +209,7 @@ describe("a phone's turn", () => {
     expect(told).toEqual([7]);
   });
   it("gets busy in the lead: it says so at the start", async () => {
-    s.take(offer({ in: 3000 }));
+    s.take(offer({ lead: 3000 }));
     s.setBusy(true);
     await vi.advanceTimersByTimeAsync(3000);
     expect(a.plays).toEqual([]);
@@ -216,7 +223,7 @@ describe("a phone's turn", () => {
   });
   it("a refused play leaves the pop-up up with ▶, and ▶ plays from where it has got to", async () => {
     a.next = "refuse";
-    s.take(offer({ from: 2 }));
+    s.take(offer({ ago: 2000 }));
     await settle();
     expect(s.shown()?.refused).toBe(true);
     a.next = "ok";
@@ -226,11 +233,96 @@ describe("a phone's turn", () => {
     expect(a.src).toBe("/media/ads/ad-02-adobe.mp3#t=12.0");
     expect(s.shown()?.refused).toBe(false);
   });
+  it("a page that goes hidden mid-ad stops at once, and stays shut", async () => {
+    s.take(offer());
+    await settle();
+    expect(s.shown()).not.toBeNull();
+    hidden = true;
+    listen.get("visibilitychange")?.();
+    expect(s.shown()).toBeNull();
+    expect(a.paused).toBeGreaterThan(0);
+    hidden = false;
+    listen.get("visibilitychange")?.();
+    expect(s.shown()).toBeNull();
+  });
+  it("a page hidden in the lead isn't cut then: it says so when the ad starts", async () => {
+    s.take(offer({ lead: 3000 }));
+    hidden = true;
+    listen.get("visibilitychange")?.();
+    expect(told).toEqual([]);
+    await vi.advanceTimersByTimeAsync(3000);
+    expect(told).toEqual([7]);
+    expect(a.plays).toEqual([]);
+  });
+  it("the disarm takes its listeners with it", () => {
+    const off = s.arm(() => {});
+    expect(listen.has("visibilitychange")).toBe(true);
+    off();
+    expect(listen.has("visibilitychange")).toBe(false);
+  });
+
+  describe("a phone that slept through the frame", () => {
+    /** The phone's clock has heard the server, then its page stops for `ms`. */
+    const slept = async (ms: number) => {
+      s.take({ stop: true, now: Date.now() });
+      const f = offer({ lead: 3000 });
+      await vi.advanceTimersByTimeAsync(ms);
+      return f;
+    };
+    it("woken mid-ad, it joins at the real place, not the top", async () => {
+      const f = await slept(25_000);
+      s.take(f);
+      await settle();
+      expect(a.src).toBe("/media/ads/ad-02-adobe.mp3#t=22.0");
+      expect(s.shown()).not.toBeNull();
+    });
+    it("woken after it ended, it plays nothing and shows nothing", async () => {
+      const f = await slept(95_000);
+      s.take(f);
+      await vi.advanceTimersByTimeAsync(5000);
+      expect(a.plays).toEqual([]);
+      expect(s.shown()).toBeNull();
+      expect(told).toEqual([]);
+    });
+    it("with too little left to be worth joining, the same", async () => {
+      const f = await slept(60_000);
+      s.take(f);
+      await settle();
+      expect(a.plays).toEqual([]);
+    });
+    it("its clock isn't fooled by the frame it slept on", async () => {
+      s.take({ stop: true, now: Date.now() + 40_000 }); // this phone runs 40 s slow
+      const sent = Date.now() + 40_000;
+      const f: AdOffer = { seq: 7, n: 2, name: "Adobe", url: "/media/ads/ad-02-adobe.mp3", at: sent + 3000, until: sent + 63_000, now: sent };
+      await vi.advanceTimersByTimeAsync(25_000);
+      s.take(f);
+      await settle();
+      expect(a.src).toBe("/media/ads/ad-02-adobe.mp3#t=22.0");
+    });
+    it("a timer that fires late, the page frozen in the lead, finds the same", async () => {
+      s.take({ stop: true, now: Date.now() });
+      s.take(offer({ lead: 3000 }));
+      vi.setSystemTime(Date.now() + 200_000);
+      await vi.advanceTimersByTimeAsync(3000);
+      expect(a.plays).toEqual([]);
+      expect(s.shown()).toBeNull();
+    });
+  });
+
   it("an unarmed session (a Run pane) ignores it and says nothing", () => {
     const pane = new AdSpots(() => a);
     pane.take(offer());
     expect(told).toEqual([]);
     expect(pane.shown()).toBeNull();
+  });
+});
+
+describe("where it sits", () => {
+  it("under the title bar: at the foot of a room it sat on Send", () => {
+    const css = readFileSync(new URL("../src/css/moments.css", import.meta.url), "utf8");
+    const rule = /\.ad-spot \{[^}]*\}/u.exec(css)![0];
+    expect(rule).toMatch(/top: calc\(var\(--safe-top\)/u);
+    expect(rule).not.toMatch(/bottom:/u);
   });
 });
 

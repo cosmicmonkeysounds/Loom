@@ -3,10 +3,10 @@
 // One per session, like the teleprompter's: never a module global, so Run →
 // Players' panes (which never arm) stay silent.
 
-import type { AdFrame } from "../../core/src/audio-ads.ts";
+import { AD_JOIN_LEFT_MS, type AdFrame, type AdOffer } from "../../core/src/audio-ads.ts";
 import { AdPlayer, pageAudio, type AdAudio, type AdSound } from "./ad-player.ts";
 
-export type AdOffer = Exclude<AdFrame, { stop: true }>;
+export type { AdOffer };
 
 /** The pop-up, while one is up. */
 export interface AdShown {
@@ -25,7 +25,8 @@ export class AdSpots {
   private busy = false;
   private tell: ((seq: number) => void) | null = null;
   private offer: AdOffer | null = null;
-  private startedAt = 0;
+  /** Server ms minus this phone's: the largest seen (`clock`). */
+  private skew: number | null = null;
   private timer: ReturnType<typeof setTimeout> | null = null;
   private closer: ReturnType<typeof setTimeout> | null = null;
   private readonly subs = new Set<() => void>();
@@ -57,14 +58,21 @@ export class AdSpots {
   arm(tell: (seq: number) => void): () => void {
     this.tell = tell;
     const tap = () => this.player.unlock();
+    // A page that goes hidden is busy like any other (C4): no sound nobody asked for
+    // from a pocket. One still in its lead tells the server at `begin`.
+    const seen = () => {
+      if (document.hidden && this.shownNow !== null) this.end();
+    };
     const ask = { capture: true, passive: true };
     document.addEventListener("touchend", tap, ask);
     document.addEventListener("click", tap, ask);
+    document.addEventListener("visibilitychange", seen);
     return () => {
       this.tell = null;
       this.end();
       document.removeEventListener("touchend", tap, ask);
       document.removeEventListener("click", tap, ask);
+      document.removeEventListener("visibilitychange", seen);
     };
   }
 
@@ -78,33 +86,56 @@ export class AdSpots {
     return this.busy || (typeof document !== "undefined" && document.hidden);
   }
 
+  /** Every frame says the server's time. A frame that sat in a sleeping phone's
+   *  queue reads far below the rest, so the largest gap is the true one. */
+  private clock(sent: number): void {
+    const skew = sent - Date.now();
+    if (this.skew === null || skew > this.skew) this.skew = skew;
+  }
+
+  private serverNow(): number {
+    return Date.now() + (this.skew ?? 0);
+  }
+
   /** The stream's `ad` frame. Nothing armed: not this phone's to answer. */
   take(f: AdFrame): void {
-    if ("stop" in f) return this.end();
+    this.clock(f.now);
+    if (!("seq" in f)) {
+      if (f.stop === true) this.end();
+      return;
+    }
     if (this.tell === null) return;
+    // A frame this phone slept through: the ad is over, or as good as, so nothing
+    // starts alone with nothing on the air, and nobody needs telling.
+    const now = this.serverNow();
+    if (f.until - now < AD_JOIN_LEFT_MS) return;
     if (this.cannot()) return this.tell(f.seq);
     this.end();
     this.offer = f;
-    this.timer = setTimeout(() => this.begin(f), f.in);
+    this.timer = setTimeout(() => this.begin(f), Math.max(0, f.at - now));
   }
 
   private begin(f: AdOffer): void {
     this.timer = null;
+    const now = this.serverNow();
+    if (f.until - now < AD_JOIN_LEFT_MS) {
+      this.offer = null;
+      return;
+    }
     if (this.cannot()) {
       this.offer = null;
       this.tell?.(f.seq);
       return;
     }
-    this.startedAt = Date.now();
     this.show({ seq: f.seq, n: f.n, name: f.name, refused: false });
-    this.closer = setTimeout(() => this.end(), f.left + AD_OVERRUN_MS);
-    this.player.start(f.url, f.from);
+    this.closer = setTimeout(() => this.end(), f.until - now + AD_OVERRUN_MS);
+    this.player.start(f.url, Math.max(0, now - f.at) / 1000);
   }
 
   /** ▶, inside a tap: where the ad has got to by now. */
   retry(): void {
     const f = this.offer;
-    if (f !== null) this.player.start(f.url, f.from + (Date.now() - this.startedAt) / 1000);
+    if (f !== null) this.player.start(f.url, Math.max(0, this.serverNow() - f.at) / 1000);
   }
 
   /** × , the track's end, a stop, a sign-out: silence, and no pop-up. */

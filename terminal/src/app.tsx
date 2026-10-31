@@ -108,6 +108,7 @@ import { effectsLevel, setBleeps, setSoundMuted, setSoundVolume, sfx, voiceNoise
 import { drawsSlides, loadCutscenes, screenTargetOf, silentView } from "./cutscene/load.ts";
 import { attractOf, useScreenState, watchWhileAsleep, type ScreenState } from "./screen.ts";
 import { AdSpot } from "./AdSpot.tsx";
+import { adCovered } from "./ad-spot.ts";
 import { Attract } from "./Attract.tsx";
 import { IdleShow } from "./idle-show/IdleShow.tsx";
 import { hash32 } from "./idle-show/rng.ts";
@@ -494,8 +495,8 @@ export function App() {
   const drawnLayers = screenLayers(screenState.state, Date.now(), { piloting, peek, room: bare, slides: !station, dreamReady });
   const { takeover, covered } = coverOf(config.crt ? plainLayers(drawnLayers) : drawnLayers);
   const staged = (n: ReactNode) => (config.crt ? <CrtStage>{n}</CrtStage> : n);
-  // Wave 59a: a line, a walk, a slide, an overlay or the glitch on this screen: no audio ad.
-  const adBusy = piloting || watching || (screenState.state?.spot?.here ?? 0) > 0 || covered || drawnLayers.burst !== null || announcement !== null;
+  // Wave 59a: a line, a walk, an overlay or the glitch on this screen: no audio ad.
+  const adBusy = piloting || watching || (screenState.state?.spot?.here ?? 0) > 0 || adCovered(drawnLayers) || announcement !== null;
   // The heart terminal: the server room's own room terminal, or any with a door sensor.
   const heartTerminal = isHeartTerminal(room, config.door);
   // Keyed, so it keeps its place (and the glitch, a scene, the flicker keep

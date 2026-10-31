@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import type { AdOnAir } from "../../core/src/audio-ads.ts";
 import type { AdAudio } from "../../play/src/ad-player.ts";
-import { AD_JOIN_LEFT_MS, AdMachine, WallAd, adsHere } from "../src/ad-spot.ts";
+import { AD_JOIN_LEFT_MS, AdMachine, WallAd, adCovered, adsHere } from "../src/ad-spot.ts";
 import { defaultConfig, type TerminalConfig } from "../src/config.ts";
 import { adOf } from "../src/screen.ts";
 
@@ -13,10 +13,23 @@ const AD: AdOnAir = { seq: 1000, n: 3, name: "Mizz Butter", url: "/media/ads/ad-
 const wall = (o: Partial<TerminalConfig> = {}): TerminalConfig => ({ ...defaultConfig({ eventId: "e", token: "t", spot: "start-bar" }), ...o });
 
 describe("which terminals play one", () => {
-  it("a wall, the chess and the casino terminals", () => {
+  it("a wall and the casino terminal", () => {
     expect(adsHere(wall())).toBe(true);
-    expect(adsHere(wall({ spot: "server-room-door", view: "chess" }))).toBe(true);
-    expect(adsHere(wall({ view: "casino" }))).toBe(true);
+    expect(adsHere(wall({ spot: "graphics-card", view: "casino" }))).toBe(true);
+  });
+  it("the Server Door never, whatever its link or ⚙ say", () => {
+    expect(adsHere(wall({ spot: "server-room-door", view: "chess" }))).toBe(false);
+    expect(adsHere(wall({ spot: "server-room-door", view: "chess", bleeps: true }))).toBe(false);
+    expect(adsHere(wall({ spot: "server-room-door", view: "auto", bleeps: true }))).toBe(false);
+  });
+  it("the tent and the reinstall games never, even with bleeps on", () => {
+    expect(adsHere(wall({ spot: "tent", bleeps: true }))).toBe(false);
+    expect(adsHere(wall({ spot: "tent", view: "reinstall", bleeps: true }))).toBe(false);
+    expect(adsHere(wall({ spot: "hall", view: "reinstall", bleeps: true }))).toBe(false);
+  });
+  it("a terminal that doesn't say where it is never", () => {
+    expect(adsHere(wall({ spot: "" }))).toBe(false);
+    expect(adsHere(wall({ spot: "", bleeps: true }))).toBe(false);
   });
   it("never the TV, however it was set up, or the server room, or the tent", () => {
     expect(adsHere(wall({ view: "tv" }))).toBe(false);
@@ -31,6 +44,23 @@ describe("which terminals play one", () => {
   });
   it("a wall ⚙ turned quiet stays quiet", () => {
     expect(adsHere(wall({ bleeps: false }))).toBe(false);
+  });
+});
+
+describe("what on a screen stops one", () => {
+  const none = { overlay: null, glitch: null, burst: null };
+  it("an overlay, the glitch or a burst", () => {
+    expect(adCovered({ ...none, overlay: {} })).toBe(true);
+    expect(adCovered({ ...none, glitch: {} })).toBe(true);
+    expect(adCovered({ ...none, burst: {} })).toBe(true);
+  });
+  it("never a slide: the Y2K clock stands for the whole final hour, and the server decides", () => {
+    expect(adCovered({ ...none, slide: { value: "y2k" } } as Parameters<typeof adCovered>[0])).toBe(false);
+  });
+  it("is what the app asks", () => {
+    const app = readFileSync(new URL("../src/app.tsx", import.meta.url), "utf8");
+    expect(app).toMatch(/adCovered\(drawnLayers\)/u);
+    expect(app).not.toMatch(/const adBusy[^\n]*\bcovered\b/u);
   });
 });
 

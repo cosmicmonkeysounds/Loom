@@ -121,13 +121,13 @@ function CostumeRow({ costume }: { costume: { on: boolean; url: string } }) {
   )
 }
 
-/** Wave 59a: the audio ads through the second hunt. Off stops whatever is playing
- *  everywhere and no more start; On resumes at the next in the list. */
+/** Wave 59a: the audio ads, from the second hunt to the final reveal. Off stops
+ *  whatever is playing everywhere and no more start; On lets the next one go. */
 function AdsRow({ ads }: { ads: AdsStatus }) {
   const setAds = useTerminals((s) => s.setAds)
   return (
     <div className="mb-2 flex flex-wrap items-center gap-1 rounded border border-zinc-800 px-2 py-1" data-testid="run-terminals-ads">
-      <span className="mr-1 text-[11px] text-zinc-400" title="Fourteen audio ads through the second hunt, on the walls and a third of the phones at a time. Never on the TV or in the server room.">
+      <span className="mr-1 text-[11px] text-zinc-400" title="Fourteen audio ads, from the second hunt to the final reveal: one every 3 to 10 minutes, in random order, on 1 to 3 random walls and a random quarter of the phones. Never on the TV, in the tent or in the server room, the Server Door included.">
         📢 Audio ads
       </span>
       {[true, false].map((on) => (

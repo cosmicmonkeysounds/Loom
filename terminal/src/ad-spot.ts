@@ -5,16 +5,22 @@
 //! care. Pure but for the audio element, injected for the tests.
 
 import { AdPlayer, pageAudio, type AdAudio } from "@loom/play/ad-player.ts";
-import { adTerminal, type AdOnAir } from "../../core/src/audio-ads.ts";
+import { AD_JOIN_LEFT_MS, adTerminal, type AdOnAir } from "../../core/src/audio-ads.ts";
 import { bleepsOn, roomOf, type TerminalConfig } from "./config.ts";
 
-/** Too little of an ad left to be worth joining (ms). */
-export const AD_JOIN_LEFT_MS = 8_000;
+export { AD_JOIN_LEFT_MS };
 
-/** May this terminal play one at all? The server's rule, and this tablet's own
- *  `bleepsOn`: the tent and any wall ⚙ turned quiet stay quiet. */
+/** May this terminal play one at all? The one sacred rule, and this tablet's own
+ *  `bleepsOn`: a wall ⚙ turned quiet stays quiet. */
 export function adsHere(c: TerminalConfig): boolean {
   return bleepsOn(c) && adTerminal({ view: c.view, spot: c.spot, room: roomOf(c) ?? "" });
+}
+
+/** What on this screen stops an ad here. Never a slide: a story slide is the server's
+ *  hold everywhere, and one still up when the server lets an ad go (the Y2K clock
+ *  stands for an hour) is the room's wallpaper by then. */
+export function adCovered(l: { overlay: unknown; glitch: unknown; burst: unknown }): boolean {
+  return l.overlay !== null || l.glitch !== null || l.burst !== null;
 }
 
 export interface WallAdShown {

@@ -129,23 +129,22 @@ export interface ScreenTerminals {
 
 // DRAFT w59a
 const AD_HOLD_WORDS: Record<import('@loom/core/audio-ads').AdHold, string> = {
-  doors: 'the doors are paused',
+  doors: 'the doors',
   talk: 'a talk scene',
-  reading: 'someone is reading',
+  reading: 'someone reading on the teleprompter',
+  speaking: 'Trabolta speaking on the TV',
   announcement: 'an announcement',
   cutscene: 'a cutscene',
   blackout: 'a blackout',
-  truther: 'the Truther Download',
 }
 
 /** What 📢's row says about the list. DRAFT w59a */
 export function adsLine(a: import('@loom/core/audio-ads').AdsStatus): string {
-  const count = `${a.aired} of ${a.total}`
+  const count = `${a.aired} played`
   if (!a.on) return `${count}: off`
   if (a.playing !== null) return `${count}: playing ${a.playing}`
-  if (a.aired >= a.total) return `${count}: the list is done`
-  if (!a.running) return `${count}: they run through the second hunt`
-  return a.hold !== null ? `${count}: waiting for ${AD_HOLD_WORDS[a.hold]}` : `${count}: next soon`
+  if (!a.running) return `${count}: they run from the second hunt to the final reveal`
+  return a.hold !== null ? `${count}: waiting for ${AD_HOLD_WORDS[a.hold]}` : `${count}: the next within 10 minutes`
 }
 
 /** What the editor remembers of a terminal (client epoch ms). */
