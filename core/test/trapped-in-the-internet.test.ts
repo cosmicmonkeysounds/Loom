@@ -247,11 +247,7 @@ describe("Trapped in the Internet — compile", () => {
     const flat = (id: string) => m.codex.get(id)!.text.replace(/\s+/gu, " ");
     expect(flat("The Carney Letter")).toContain("approve or deny every third transaction.");
     expect(flat("Approve Or Deny")).toContain("Truthcoin transactions as possible and to approve or deny every third one");
-    expect(flat("The Truth File")).toContain("brought in to approve or deny every third transaction, to the cent.");
     expect(pack("cra-agent.md")).toContain("approve or deny every third");
-    expect(pack("adobe-acrobat.md")).toContain("brought in to approve or deny every third transaction, to the cent.");
-    const finale = FILES.find((f) => f.path === "beats/finale.loom")!.source;
-    expect(finale).toContain("Narrator: The intern, CRA Agent Software, was brought in to approve or deny every third transaction, to the cent.");
     // Nowhere does the demand stay "every transaction" / "every one of them".
     const packs = (d: string): string[] => readdirSync(d, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? packs(join(d, e.name)) : e.name.endsWith(".md") ? [join(d, e.name)] : []));
     const texts = [...FILES.map((f) => [f.path, f.source] as const), ...packs(packDir).map((p) => [p, readFileSync(p, "utf8")] as const)];
@@ -4414,7 +4410,7 @@ describe("Trapped in the Internet — wave 3 story fixes", () => {
     expect((s2.choose("g2", 0).filter((e) => e.type === "quest") as Ev<"quest">[]).filter((e) => e.action === "update")).toEqual([]);
   });
 
-  it("the review and truth.txt read only the featured programs who came; the mirror says what is on it", { timeout: SLOW }, () => {
+  it("the review reads only the featured programs who came; the mirror says what is on it", { timeout: SLOW }, () => {
     const sim = boot(); // Excel, OpenOffice, MS Paint and VLC came; DraftKings, Bugdom, Jeeves, Runescape and Pong did not
     fireAll(sim, "call_to_the_desktop", "start_the_bingo", "bingo_time");
     fire(sim, "send to the internet", "g4", null, "Norton Anti-Virus");
@@ -4440,13 +4436,6 @@ describe("Trapped in the Internet — wave 3 story fixes", () => {
     for (const here of ["Microsoft Excel is", "OpenOffice is", "MS Paint is Maria", "VLC is Victor"]) expect(rc.some((x) => x.startsWith(here)), here).toBe(true);
     for (const gone of ["DraftKings is the artist", "Bugdom is Bea", "Broken Ask Jeeves is", "Runescape is Poppy", "Pong is the child"]) expect(rc.some((x) => x.startsWith(gone)), gone).toBe(false);
     for (const cast of ["Clippy is Tippi", "Norton Anti-Virus is Julie Horton-Norton", "McAfee Anti-Virus is John McAfee", "Password Manager is Bridget Troelsen", "CRA Agent Software is Sharon Penney"]) expect(rc.some((x) => x.startsWith(cast)), cast).toBe(true); // the cast always
-
-    const tt = boot();
-    toBobbing(tt);
-    const txt = narr(fire(tt, "read_truth_txt")).map((e) => e.text);
-    expect(txt.some((x) => x.startsWith("The former Mayor"))).toBe(true);
-    expect(txt.some((x) => x.startsWith("The gambler"))).toBe(false);
-    expect(txt.some((x) => x.startsWith("The organiser, Clippy"))).toBe(true);
   });
 
   it("the tent tablet's scan is the Wizard's video; an uncorrupted visitor gains doubt; a pop-up is an alert", { timeout: SLOW }, () => {
@@ -4734,22 +4723,21 @@ describe("Trapped in the Internet — wave 4 facts (lane A)", () => {
     }
   });
 
-  it("truth.txt reads the cast in the invitations' words (the featured only when they came)", { timeout: SLOW }, () => {
-    const sim = boot(); // Excel, OpenOffice, MS Paint and VLC came; Jeeves did not
+  it("truth.txt is a short teaser, the same every night: the monologue tells the rest (wave 58)", { timeout: SLOW }, () => {
+    const sim = boot();
     toBobbing(sim);
     const txt = narr(fire(sim, "read_truth_txt")).map((e) => e.text);
-    expect(txt.some((x) => x.startsWith("The librarian, Broken Ask Jeeves"))).toBe(false);
-    for (const line of [
-      "The former Mayor, Microsoft Excel, was brought in to persuade everyone to remain. He would say yes to everlasting life.",
-      "The artist, MS Paint, was brought in to improve the vibes and the morale, for a million dollars and one painting. She wanted out the moment she arrived.",
-      "The stable manager, Norton Anti-Virus, was brought in as someone with experience administering antiviral regimes, who could not afford to fail twice.",
-      "The dead man, McAfee Anti-Virus, was brought in because only a trickster can keep tricksters on track, and he can be made to.",
-      "The candidate, Password Manager, was brought in to decide what gets left out without ever asking for a vote.",
-      "The intern, CRA Agent Software, was brought in to approve or deny every third transaction, to the cent.",
-    ]) {
-      expect(txt, line).toContain(line);
+    expect(txt[0]).toBe("📄 truth.txt — Notepad");
+    expect(txt.at(-1)).toBe("End of file.");
+    expect(txt.join(" ").split(/\s+/u).length).toBeLessThan(90);
+    expect(txt.some((x) => x.includes("brought in"))).toBe(false);
+    // The printout and the codex entry carry the same words.
+    const pack = readFileSync(join(scenarioDir(SHOW), "cast-packs", "performers", "adobe-acrobat.md"), "utf8");
+    const entry = sim.model.codex.get("The Truth File")!.text.replace(/\s+/gu, " ");
+    for (const line of txt.slice(2, -1)) {
+      expect(pack.replace(/\s+/gu, " "), line).toContain(line);
+      expect(entry, line).toContain(line);
     }
-    expect(txt.some((x) => x.includes("Red Bull") || x.includes("Yu-gi-oh") || x.includes("subreddit"))).toBe(false);
   });
 });
 

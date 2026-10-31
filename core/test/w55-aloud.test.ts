@@ -205,7 +205,7 @@ describe("wave 55: the show's read-aloud beats", () => {
     const lines = said(msgs, "g-2");
     expect(lines[0]!.text).toBe("📄 truth.txt — Notepad");
     expect(lines.at(-1)!.text).toBe("End of file.");
-    expect(lines.some((m) => m.text.includes("Microsoft Excel"))).toBe(true);
+    expect(lines.some((m) => m.text.includes("her name is Sandy"))).toBe(true);
     expect(said(msgs, "g-1")).toEqual([]);
   });
 
