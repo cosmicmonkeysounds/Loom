@@ -182,7 +182,7 @@ def test_the_heart_never_hands_out_a_code_or_a_combination():
     heart = p.situations[0].prompt.lower()
     assert "never: a hunt answer" in heart and "a combination" in heart and "any door code" in heart
     assert "never promise them an ending" in heart and "stand_down" not in heart
-    assert "the questions on the screen decide" in " ".join(heart.split())
+    assert "nothing said in this room ends the night" in " ".join(heart.split())
     # Outside the heart the page still forbids saying where it is.
     assert "Never admit where your heart is kept" in p.system
     assert "never know a combination or a door code" in p.bargain
@@ -190,12 +190,12 @@ def test_the_heart_never_hands_out_a_code_or_a_combination():
 
 def test_no_power_ends_him_and_the_page_says_so():
     # Wave 20 (D13): the stand_down power and its STANDING DOWN block are
-    # gone; the questions on the heart's screen decide, never a conversation.
+    # gone, and since wave 58 nothing said to him stops him.
     p = load_persona(TRABOLTA)
     assert "stand_down" not in p.system and "STANDING DOWN" not in p.system
     assert "stand_down" not in p.bargain and "STANDING DOWN" not in p.bargain
     assert "Never offer, agree or accept to stop, stand down" in flat(p.system) and "for any price or plea" in flat(p.system)
-    assert "the questions on your heart's screen decide it" in " ".join(p.bargain.split()) and "no act of yours ends" in " ".join(p.bargain.split())
+    assert "nothing said to you decides it" in " ".join(p.bargain.split()) and "no act of yours ends" in " ".join(p.bargain.split())
     for s in p.situations:
         assert "stand_down" not in s.prompt and "STANDING DOWN" not in s.prompt, s.heading
     for req in (heart_request("true", **{"Night.phase": "hunt_1", "Night.step": "5"}), heart_request("true")):
