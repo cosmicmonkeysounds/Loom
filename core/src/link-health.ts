@@ -8,6 +8,7 @@ export const LINK_ERRORS = {
   cam_insecure: "the camera needs the https address",
   cam_none: "no camera on this device",
   cam_error: "the camera failed to open",
+  cam_waiting: "the camera hasn't opened: is Chrome asking for permission on the tablet?",
   no_frames: "the camera opened but no picture has arrived",
   blank: "the camera's pictures are blank",
   no_spot: "the house map has no such spot",

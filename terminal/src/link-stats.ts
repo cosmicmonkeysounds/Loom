@@ -56,6 +56,7 @@ export class LinkStats {
   private readonly receivedRate = new RateMeter();
   private readonly drawnRate = new RateMeter();
   private lastError: { code: LinkError; at: number } | null = null;
+  private standing: LinkError | null = null;
   private frame: LinkSnapshot["frame"] = null;
   private cost = 0;
   private feeding = false;
@@ -78,6 +79,11 @@ export class LinkStats {
     this.lastError = { code, at: now };
   }
 
+  /** A failure that holds until it's cleared (a refused camera): it never ages. */
+  hold(code: LinkError | null): void {
+    this.standing = code;
+  }
+
   captureCost(ms: number): void {
     this.cost = ms;
   }
@@ -98,7 +104,7 @@ export class LinkStats {
       sent: this.sentRate.perSecond(now),
       received: this.receivedRate.perSecond(now),
       drawn: this.drawnRate.perSecond(now),
-      error: e === null ? null : { code: e.code, agoMs: Math.max(0, now - e.at) },
+      error: this.standing !== null ? { code: this.standing, agoMs: 0 } : e === null ? null : { code: e.code, agoMs: Math.max(0, now - e.at) },
       frame: this.frame,
       costMs: this.cost,
       feeding: this.feeding,
@@ -132,8 +138,13 @@ export function linkReadout(s: LinkSnapshot, seen: Pick<LinkSnapshot, "received"
   const size = f === null ? "" : ` (${f.w} × ${f.h}, ${(f.bytes / 1024).toFixed(1)} KB${s.costMs > 0 ? `, ${Math.round(s.costMs)} ms each` : ""})`;
   const out = [s.feeding ? `camera to the games: ${rate(s.sent)} frames a second${size}` : "camera to the games: not sending from here"];
   out.push(seen.watching ? `the games to here: ${rate(seen.received)} frames a second, ${rate(seen.drawn)} drawn` : "the games to here: not watching");
-  out.push(s.error === null ? "no errors" : `last error, ${Math.round(s.error.agoMs / 1000)} s ago: ${LINK_ERRORS[s.error.code]}`);
+  out.push(s.error === null ? "no errors" : s.error.agoMs === 0 ? `error: ${LINK_ERRORS[s.error.code]}` : `last error, ${Math.round(s.error.agoMs / 1000)} s ago: ${LINK_ERRORS[s.error.code]}`);
   return out;
+}
+
+/** Is that error worth a warning colour now? */
+export function linkTroubled(s: LinkSnapshot): boolean {
+  return s.error !== null && s.error.agoMs <= ERROR_SHOWN_MS;
 }
 
 /** The page's. */

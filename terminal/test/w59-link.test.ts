@@ -5,7 +5,7 @@
 import { describe, expect, it } from "vitest";
 import { FEED_BLANK_RUN, FEED_EVERY_MS, FEED_MISS_RUN, FEED_SHARE, FEED_SIZES, FEED_SLOW_MS, FEED_SLOW_RUN, FeedTuner, cameraError, feedError, looksBlank, runFeed, type FeedDeps } from "../src/camfeed.ts";
 import { constraintsFor, CameraHub } from "../src/camera.ts";
-import { ERROR_SHOWN_MS, LinkStats, RATE_WINDOW_MS, RateMeter, linkQuery, linkReadout } from "../src/link-stats.ts";
+import { ERROR_SHOWN_MS, LinkStats, RATE_WINDOW_MS, RateMeter, linkQuery, linkReadout, linkTroubled } from "../src/link-stats.ts";
 import { nextPace, SLOWEST_FRAME_MS } from "../src/raycast/RaycastView.tsx";
 import { JSQR_EVERY_MS, scanDelay } from "../src/scanner.tsx";
 import { deviceQuery } from "../src/health.ts";
@@ -138,6 +138,18 @@ describe("the link's counters", () => {
     expect(linkQuery(s.snapshot(ERROR_SHOWN_MS + 1)).ce).toBeUndefined();
     s.watch(-1);
     expect(linkQuery(s.snapshot(1000)).cr).toBeUndefined();
+  });
+  it("a failure that stands never ages off Run, and clears when it's over", () => {
+    const s = new LinkStats();
+    s.hold("cam_denied");
+    const later = s.snapshot(ERROR_SHOWN_MS * 10);
+    expect(linkQuery(later).ce).toBe("cam_denied");
+    expect(linkTroubled(later)).toBe(true);
+    expect(linkReadout(later)[2]).toBe(`error: ${LINK_ERRORS.cam_denied}`);
+    s.hold(null);
+    expect(s.snapshot(0).error).toBe(null);
+    s.error(0, "offline");
+    expect(linkTroubled(s.snapshot(ERROR_SHOWN_MS + 1))).toBe(false);
   });
   it("rides the poll", () => {
     expect(deviceQuery({ audio: null, visible: null, battery: null, charging: null, version: "v", link: { cs: "2.9", cr: "10.0", cd: "18.0", ce: "offline" } })).toMatchObject({ cs: "2.9", cr: "10.0", cd: "18.0", ce: "offline" });

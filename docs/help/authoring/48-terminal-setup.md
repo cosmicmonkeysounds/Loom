@@ -113,6 +113,38 @@ was refused), **🎤 http** (no microphone over plain http) or **🎤 tap**
 (nobody has touched it since it loaded, so it can neither hear nor be
 heard); **🎤 off** where ⚙, its view or the map turns it off.
 
+## Is its picture getting through?
+
+Every placed terminal says how its link to the games is doing, in two
+places. Hold its top right corner: ⚙ opens with *camera to the games* and
+*the games to here*, each in frames a second, and the last error in words.
+Run → Terminals shows the same on each row: **📷** frames its camera sends (hover
+it for what the server took and the games read), **🎞** the simulation it
+receives and draws, and **⚠** what went wrong in the last minute.
+
+About 3 frames a second from the camera means a program is in that room in the
+game, and about one every 2 seconds means nobody is. Both are working. **📷
+0/s** in red, with the ⚠ beside it, is the one to chase:
+
+- *the camera was refused*: a touch on the tablet asks again. If Chrome doesn't
+  ask, allow the camera for the site in Chrome's settings and reload.
+- *the camera opened but no picture has arrived*, or *the pictures are blank*:
+  the terminal tries two other ways of reading the camera by itself, so give it
+  ten seconds. If the number stays at 0, reload, then restart Chrome.
+- *the house map has no such spot*: tap this tablet's spot again.
+
+An old tablet may send smaller pictures, or fewer: it drops them to what it can
+keep up with, and a slow window into the game beats a frozen tablet. It draws
+the game as a simple old-school 3D view, at 5 to 20 frames a second.
+
+## No ad sounds or bleeps
+
+The TV, the tent and the server room make no ad sounds, pop-up dings, cutscene
+stings or button bleeps. ⚙ → advanced → **🔇 No ad sounds or bleeps** sets it for
+any one terminal, and that choice stays. On a link it's `&bleeps=0` (none) or
+`&bleeps=1` (they play). His voice, the house announcements with their chime,
+the players' voices and the reinstallation game's own sounds are never touched.
+
 ## A headset
 
 **A headset that says SET UP THIS HEADSET** has no moderator passcode

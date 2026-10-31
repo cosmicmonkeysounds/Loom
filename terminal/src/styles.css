@@ -785,7 +785,7 @@ button.gear::after {
   background: currentColor;
 }
 /* Nobody can aim at what they can't see: a corner's worth of finger. */
-button.gear::before { content: ""; position: absolute; top: -8px; right: -10px; bottom: -14px; left: -14px; }
+button.gear::before { content: ""; position: absolute; top: -14px; right: -28px; bottom: -14px; left: -14px; }
 button.gear.holding { opacity: 1; }
 button.gear.holding::after { width: 100%; transition: width var(--hold-ms, 2000ms) linear; }
 

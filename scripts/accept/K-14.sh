@@ -40,6 +40,21 @@ for f in terminal/dist/assets/*.js reinstall/web/dist/assets/*.js play/dist/asse
     echo "FAIL $f: a regex lookbehind (Safari 16.4+)"; grep -oE '.{20}\(\?<[=!].{20}' "$f" | head -3; fail=1
   fi
 done
+# The wall tablets run Chrome 95 (wave 59): what a build target can't lower and
+# a terminal page would die on or draw nothing with. The canvas calls first.
+for f in terminal/dist/assets/*.js; do
+  hits=$(grep -oE '\.roundRect\(|\.letterSpacing|\.fontKerning|createConicGradient\(' "$f" | sort | uniq -c || true)
+  if [[ -n "$hits" ]]; then
+    echo "FAIL $f: a canvas call newer than Chrome 95"; echo "$hits"; fail=1
+  fi
+done
+# (The CRT's rules are left out: it runs a current Chrome on Steph's laptop.)
+for f in terminal/dist/assets/*.css; do
+  hits=$(sed -E 's/\.crt-stage[^{}]*\{[^}]*\}//g' "$f" | grep -oE '[0-9](dvh|svh|lvh|dvw|svw|lvw)\b|:has\(|color-mix\(|@container|@layer' | sort | uniq -c || true)
+  if [[ -n "$hits" ]]; then
+    echo "FAIL $f: CSS newer than Chrome 95"; echo "$hits"; fail=1
+  fi
+done
 grep -q 'typeof globalThis.structuredClone' terminal/dist/assets/index-*.js || { echo "FAIL terminal bundle lacks the structuredClone guard"; fail=1; }
 [[ $fail -eq 0 ]] && echo "OK  bundles: no unguarded post-Chrome-87 API (terminal + reinstall), no regex lookbehind (+ play)"
 

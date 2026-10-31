@@ -53,6 +53,8 @@ export const FEED_MAX_BYTES = 96 * 1024;
 
 /** Time before the feed asks for a camera that failed to open again. */
 export const FEED_CAMERA_RETRY_MS = 15_000;
+/** A camera still opening after this long (ms) is usually a prompt nobody has answered. */
+export const FEED_CAMERA_WAIT_MS = 20_000;
 
 /** The sizes, largest first. The last is under Chrome's floor for a GPU
  *  canvas (128 × 129 pixels), so it is software on any build. */
@@ -421,9 +423,10 @@ function frameGrabber(video: HTMLVideoElement, stream: () => MediaStream | null,
   return async () => {
     if (ctx === null) return miss("no_frames");
     fit(ctx);
-    const started = performance.now();
     const pic = tuner.track ? await trackPicture(stream()) : videoPicture(video);
     if (pic === null) return miss("no_frames");
+    // What this costs the page: waiting for the track's next frame costs it nothing.
+    const started = performance.now();
     try {
       const r = cropRect(pic.w, pic.h);
       ctx.drawImage(pic.image, r.sx, r.sy, r.sw, r.sh, 0, 0, canvas.width, canvas.height);
@@ -456,6 +459,7 @@ export function useCamFeed(config: TerminalConfig | null, hub: CameraHub = pageC
   const token = config?.token ?? "";
   const spot = config?.spot.trim() ?? "";
   const facing = config?.camera ?? "user";
+  const view = config?.view ?? "auto";
   const [attempt, setAttempt] = useState(0);
   useEffect(() => {
     if (!on) {
@@ -478,11 +482,16 @@ export function useCamFeed(config: TerminalConfig | null, hub: CameraHub = pageC
     document.body.appendChild(video);
     feedStatus.set({ kind: "waiting" });
     linkStats.setFeeding(true);
+    const waiting = window.setTimeout(() => linkStats.hold("cam_waiting"), FEED_CAMERA_WAIT_MS);
     void hub.acquire(facing).then((stream) => {
+      window.clearTimeout(waiting);
       if (!alive) return;
+      linkStats.hold(null);
       if (stream === null) {
         const state = hub.snapshot.state;
-        linkStats.error(Date.now(), cameraError(state));
+        // The TV's Desktop has no camera, and that's no fault of the TV's.
+        if (view === "tv" && state === "none") linkStats.setFeeding(false);
+        else linkStats.hold(cameraError(state));
         if (cameraRetryable(state)) {
           feedStatus.set({ kind: "retrying", problem: `the camera failed to open (${state})` });
           retry = window.setTimeout(() => setAttempt((n) => n + 1), FEED_CAMERA_RETRY_MS);
@@ -512,6 +521,7 @@ export function useCamFeed(config: TerminalConfig | null, hub: CameraHub = pageC
           fetch(url, { method: "POST", headers: { "content-type": "application/json", "x-loom-token": token }, body: JSON.stringify({ spot, jpeg: f.jpeg, w: f.w, h: f.h }) }).then(
             async (r): Promise<FeedReply> => {
               if (r.ok) linkStats.sent(Date.now(), { w: f.w, h: f.h, bytes: base64Bytes(f.jpeg) });
+              else if (feedOutcome(r.status) === "stop") linkStats.hold(feedError(r.status));
               else linkStats.error(Date.now(), feedError(r.status));
               return { status: r.status, watched: r.ok ? watchedOf(await r.json().catch(() => null)) : undefined };
             },
@@ -530,6 +540,7 @@ export function useCamFeed(config: TerminalConfig | null, hub: CameraHub = pageC
     });
     return () => {
       alive = false;
+      window.clearTimeout(waiting);
       window.clearTimeout(retry);
       if (touchAgain !== null) window.removeEventListener("pointerdown", touchAgain);
       unfollow?.();
@@ -539,6 +550,7 @@ export function useCamFeed(config: TerminalConfig | null, hub: CameraHub = pageC
       hub.release();
       feedStatus.set({ kind: "off" });
       linkStats.setFeeding(false);
+      linkStats.hold(null);
     };
-  }, [on, eventId, token, spot, facing, hub, attempt]);
+  }, [on, eventId, token, spot, facing, view, hub, attempt]);
 }

@@ -167,7 +167,9 @@ Front of house: getting people in.
   *Enable Microphone Access*, then reload), **🎤 http** (plain http has no
   microphone: use the https address) and **🎤 tap** (open, but nobody has
   touched it since it loaded, so it neither hears nor is heard — touch it
-  once), its battery (red under 20 % and not charging), and its build (amber when
+  once), the **link to the games**: **📷** the camera frames it sends a second,
+  **🎞** the simulation it receives and draws, and **⚠** what last went wrong,
+  in words ([Is its picture getting through?](48-terminal-setup.md)), its battery (red under 20 % and not charging), and its build (amber when
   it isn't the one the others run, or **old build** when it reports none
   at all while the others do: either way, reload it before doors). **identify**
   puts that screen's name and spot full screen for 10 seconds, with a

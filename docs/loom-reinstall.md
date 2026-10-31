@@ -959,6 +959,15 @@ VR's label — at three times that size across the wall, never deeper
 `HouseBuilder.TERMINAL_SCALE`), so the window is 1.44 × 1.08 m; the
 terminals' own world view and the map editor keep them at 1×.
 
+
+**The readout (wave 59).** A terminal reports its link on every poll: `cs`, `cr`,
+`cd` (camera frames sent, simulation frames received and drawn, per second) and
+`ce`, the last error's code (`core/src/link-health.ts`). The server counts each
+spot's frames itself (`CamStore.rate`: taken, and read by a game) and adds them
+as `cam {got, read}` on `GET /api/mod/screen/terminals`. A terminal may send a
+smaller frame than 320 × 240 (`FeedTuner`: 160 × 120, 128 × 96), and both games
+scale it to fit.
+
 ### 2.4 Voice (wave 19; same room since wave 26)
 
 The wall terminals' microphones are heard in the games at each terminal's

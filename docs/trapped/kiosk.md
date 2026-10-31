@@ -52,6 +52,12 @@ The app's half is `terminal/src/kiosk.ts` and `fullscreen.ts`:
   right corner, but press and hold there: the ⚙ appears, a bar fills, and setup
   opens at 2 s. A short tap does nothing. This keeps a curious guest out of
   setup.
+- **No ad sounds or bleeps on the TV, the tent and the server room** (wave 59).
+  ⚙ → advanced → *🔇 No ad sounds or bleeps*, or `&bleeps=0` / `&bleeps=1`, sets
+  it for one tablet, and the choice stays.
+- **Is the picture getting through?** ⚙ and Run → Terminals read out the camera
+  frames sent, the simulation frames received and the last error
+  (`docs/help/authoring/48-terminal-setup.md`).
 - **Full screen by default.** Every gesture while not full screen asks the
   browser again (a text box tap is left alone for the keyboard). Fully
   Kiosk's JavaScript Interface hides its bars. Chrome `--kiosk`, F11 and a
@@ -589,7 +595,8 @@ of the 3D world.
 
 - a wall terminal shows *ONLINE*, the scanner or a pilot **before**
   `introduce_trabolta`;
-- a terminal loops, crashes, or its camera keeps failing, and a Fully
+- a terminal loops, crashes, or its camera keeps failing (⚙ and Run →
+  Terminals read out frames each way and the last error), and a Fully
   restart didn't fix it;
 - the TV's `view=tv` misbehaves (a voice that loops or talks over a song, a
   frozen face) and the mute isn't enough.

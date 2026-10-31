@@ -214,9 +214,10 @@ corner mini-map shows the floor, the ducks and this terminal's view cone.
 
 - **No WebGL2** (old tablets): a Canvas 2D raycaster draws the same thing
   (`src/raycast/`). three.js is never loaded on such a device.
-- **Camera feeds.** A placed terminal sends its camera (160 × 120, about
-  3 fps) to the games, which hang it on the wall where the tablet hangs.
-  `&cam=0` or ⚙ turns it off.
+- **Camera feeds.** A placed terminal sends its camera (320 × 240, about
+  3 fps, less on a tablet that can't keep up) to the games, which hang it on
+  the wall where the tablet hangs. `&cam=0` or ⚙ turns it off. ⚙ and Run →
+  Terminals read out frames each way and the last error.
 - **The shadow view.** `view=shadow`, or `auto` while the camera is live:
   the camera full screen with the players drawn into it.
 - **The voice link.** A placed terminal's microphone is heard in the games

@@ -14,7 +14,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { DEFAULT_TV_ROOM, VIEWS, VIEW_INFO, announceChoiceValue, announceFromChoice, baseOf, bleepsOn, connect, defaultConfig, pickCharacter, roomChoices, savedCharacter, TV_SPEED, withViewDefaults, type DoorConfig, type TerminalConfig, type TerminalView } from "./config.ts";
 import { feedStatusText, feedWanted, useFeedStatus } from "./camfeed.ts";
-import { linkReadout, linkStats } from "./link-stats.ts";
+import { linkReadout, linkStats, linkTroubled } from "./link-stats.ts";
 import { micBox, voiceRoles } from "./voice/roles.ts";
 import { DoorSetup } from "./heart/DoorSetup.tsx";
 import { RigSetup } from "./gamepad/RigSetup.tsx";
@@ -66,7 +66,7 @@ function LinkReadout() {
     return () => window.clearInterval(t);
   }, []);
   return (
-    <div className={`link-readout small ${now.error !== null ? "warn" : "muted"}`} data-link-readout="">
+    <div className={`link-readout small ${linkTroubled(now) ? "warn" : "muted"}`} data-link-readout="">
       {linkReadout(now, seen).map((line) => (
         <div key={line.slice(0, 12)}>{line}</div>
       ))}

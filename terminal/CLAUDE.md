@@ -44,7 +44,7 @@ play app's own `useChatStream` (imported as source) and narrows it to
 | `src/config.ts` | `TerminalConfig`, `VIEWS` / `VIEW_INFO`, URL hints (`hintsFromSearch`, `withoutSecrets`), `provision` / `connect`, `roomOf`, `tvRoomOf` |
 | `src/Setup.tsx`, `src/setup-map.ts` | the two-step setup (passcode, tap a map terminal); `followMap` / `followVoice` re-read the map entry on boot; `linkConfig` (a `?code=` link: `urlConfig` + `withViewDefaults`, so a spot-only TV link speaks at 0.92) |
 | `src/screen.ts` | the screen-state poll + its types (`ScreenState`, `night`, `room`, `king`, `results`, `moments`, `spot`); `voice=`/`room=` + `after=` + `talk=`/`said=`; `useScreenState` paces with `PollPacer` and exposes `pollNow` |
-| `src/health.ts` | the heartbeat keys (`deviceQuery`): `ver audio vis fs ann mic bat` + door `door dlv dft dwn` + bay `pb pbc pbx pft`; wave 50's `bug` rides `speechQuery` |
+| `src/health.ts` | the heartbeat keys (`deviceQuery`): `ver audio vis fs ann mic bat` + door `door dlv dft dwn` + bay `pb pbc pbx pft` + wave 59's link `cs cr cd ce`; wave 50's `bug` rides `speechQuery` |
 | `src/slides.ts`, `src/ScreenLayer.tsx` | the screen layer: overlay > slide > attract > base, holds, `PeekClock`, slide copy, the live Y2K clock and Trust Chart, TV mp4 slides, the glitch (`glitchLayer`, `GlitchTakeover`, `coverOf`) and the ad burst (wave 32: `burstLayer`, `isBurst`; `burst-flash.tsx` where no cutscene layer draws it) |
 | `src/Attract.tsx`, `src/attract.ts` | the asleep screen (the idle show full screen); Mystify's pure parts |
 | `src/dream/` | Clippy's dream (wave 50): `dream.ts` (pure: the phase, `moshMode`, `dreamYields`), `player.ts` (the page's one video, its health and fallback), `DreamView.tsx` (the hooks + where it plays), `mosh.ts` (pure: a cycle's plan, `drawMosh`), `stamp.ts` (the scene's copy), `Mosh.tsx` (the canvas) |
@@ -66,7 +66,8 @@ play app's own `useChatStream` (imported as source) and narrows it to
 | `src/world/` | spatial SSE + house map → `WorldStore`; `presence.ts` (linked by room: `linkedNow`, `linkedPane`, `usePresenceLatch`); `director.ts` (mount / follow / orbit, three-free), `minimap.ts`, `WorldView.tsx` (three.js, lazy) |
 | `src/raycast/` | the no-WebGL2 Canvas 2D raycaster (lazy, never imports three); `swarm.ts`: its ghosts, a small Canvas 2D swarm |
 | `src/shadow/` | `view=shadow`: the camera with ghosts, the world view's swarm with shards dropping out on the flicker (lazy) |
-| `src/camfeed.ts` | the camera feed to the games (`POST /api/mod/spatial/cam`); one frame / 2 s while the reply says `watched: false`; never from the tent |
+| `src/camfeed.ts` | the camera feed to the games (`POST /api/mod/spatial/cam`); one frame / 2 s while the reply says `watched: false`; never from the tent; wave 59: a software canvas, `FeedTuner` (the ladder and the pace) |
+| `src/link-stats.ts` | wave 59: the link to the games, counted: `linkStats` (frames sent, received, drawn, the last error), `linkQuery` (the heartbeat's `cs cr cd ce`), `linkReadout` (⚙). The codes' words are `core/src/link-health.ts` |
 | `src/voice/` | the voice link: `roles.ts` (who takes part, `micReport`), `mic.ts`, `capture.ts`, `uplink.ts`, `stream.ts`, `playback.ts`, `link.ts` (lazy `VoiceLink`), `hook.ts`, `MicCue.tsx` |
 | `src/Tv.tsx`, `src/tv.ts` | `view=tv`: which lines are spoken / captioned (`TV_SILENT_BEATS`), the cursor, the mute |
 | `src/chess/` | `view=chess`: `session.ts` (pure), `post.ts` (chess results, pending in `loom.terminal.pending-chess`), `ChessTerminal.tsx` (lazy, `@loom/chess`; the board measured to its pane by `useFit` + `fit.ts` `boardSide`, since a phone's `100vh` overshoots), `tutorial.ts` + `Tutorial.tsx` (wave 43: three cards, once per challenger per page, ? HELP; holds the leash, locks the board) |
@@ -441,7 +442,7 @@ drain during a poll in flight polls again right after it.
 ## Provisioning keys
 
 `?code= name= character= camera= engine= spot= view= room= announce= cam=
-mic= voices= door= keys= bay= pause= webcam= pad= whisper= crt=` (`UrlHints`). A new key needs three edits in
+mic= voices= door= keys= bay= pause= webcam= pad= whisper= crt= bleeps=` (`UrlHints`). A new key needs three edits in
 `config.ts`: `UrlHints`, `hintsFromSearch`, and `withoutSecrets` (which
 scrubs the bar), plus `provision`'s defaults. `name` / `view` / `room` on a
 link override the map and stop `fromMap`; the setup-by-map path leaves
@@ -524,6 +525,33 @@ the line at *not yet* and *leave*.
   minute after it shuts. The story asks the first guest; `speaksPrompt` asks
   the rest, in the story's words (`PASS_LINE`).
 
+## The link to the games (wave 59)
+
+The old tablets (SM-T280: Android 5.1.1, Mali-400, Chrome 95, GPU rasterization
+off) are the wall terminals, so this path is theirs. The chain in a current
+Chromium is sound: a fake camera reaches a game session at 2.9 frames a second,
+no WebGL2 and at 6× CPU throttle. What's special about the tablets is the GPU.
+
+- `FeedTuner` (pure) decides how: `<video>` → canvas, then `ImageCapture` off the
+  track, then the smallest size (128 × 96 is under Chrome's floor for a GPU
+  canvas), then both. A rung is taken after `FEED_BLANK_RUN` blank frames or
+  `FEED_MISS_RUN` looks with no frame. `looksBlank` compares the JPEG with the
+  empty canvas's. A blank frame isn't uploaded: the game keeps the terminal's
+  screen look rather than a black window.
+- The feed takes at most `FEED_SHARE` of the page (`gap`), and `FEED_SLOW_RUN`
+  slow captures drop a size. jsQR waits as long as it took. The raycaster's
+  pace follows its frame cost (`nextPace`, 20 down to 5 fps).
+- A tablet with no WebGL2 opens the camera at 640 × 480 (`constraintsFor`
+  `small`): jsQR decodes at 480 px wide anyway.
+- `denied` isn't retried on a timer (`cameraRetryable`), but a touch asks again:
+  a prompt nobody answered reads the same as a refusal. A camera still opening
+  after `FEED_CAMERA_WAIT_MS` says so (`cam_waiting`): that's a prompt on the
+  tablet that nobody has seen.
+- `linkStats` is in the base bundle. Every frame source calls it, and the
+  heartbeat carries `cs cr cd ce`. The server measures `got` / `read` per spot
+  itself (`CamStore.rate`, `cam` on `/api/mod/screen/terminals`), so Run can tell
+  a tablet that isn't sending from a server that isn't getting it.
+
 ## Conventions and gotchas
 
 - **Old browsers.** The build targets `chrome87` / `safari14`
@@ -555,7 +583,24 @@ the line at *not yet* and *leave*.
   (`sound/bus.ts` `VIEW_VOLUME.tv = 0`): Chrome's sound on the Desktop is
   cabled into the 828x as Trabolta's channel, which the router plays on
   every house speaker and ducks the music under, so a TV accent would
-  play house-wide and duck the music like his voice.
+  play house-wide and duck the music like his voice. **No bleeps** (wave 59,
+  `config.ts` `bleepsOn`, `bus.ts` `setBleeps`): on `QUIET_SPOTS` (the TV, the
+  tent, the server room), or `bleeps=0` / ⚙'s `🔇 No ad sounds or bleeps`, the
+  bus drops every effect and the casino's jingles before anything is scheduled.
+  A saved choice wins. It keeps his voice with `voiceNoise`, the chime, the
+  players' voices (`voicesOut`) and the game's own sounds on the tent
+  (`soundOutput`). `test/w59-bleeps.test.ts` walks `src/` and fails on a new
+  sound source that goes round the gate. Set from `App` while rendering, so a
+  child's first effect can't slip one out.
+- **The ⚙ is hidden (wave 59).** `button.gear` is `opacity: 0` and shows only
+  while held. It keeps its corner, its 2 s hold and its accessible name, and
+  `::before` gives it a corner's worth of target. Never `display: none` or
+  `pointer-events: none` it. The crew's words say *the top right corner*.
+- **A software canvas (wave 59).** A 2D canvas that is only ever read with
+  `toDataURL`, or only drawn, stays on the GPU. On the SM-T280s that path shows
+  nothing (`docs/trapped/kiosk.md`, the GPU rasterization flag). So the feed's
+  and the raycaster's canvases ask for `willReadFrequently`, and a new one on a
+  no-WebGL2 path should too.
 - **Fiction safety.** Nothing names the character before the
   introduction (idle-show copy, scenes with `namesCharacter`). Casino bets
   are never retried. Chess results are retried and kept for 60 s across a
