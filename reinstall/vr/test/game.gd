@@ -2383,6 +2383,8 @@ func _test_main_and_game() -> void:
 	link.found_answered.emit(true, {"ok": true, "released": true, "already": false})
 	_check(game.state() == GameFlow.State.FOUND and game.hud.big_text() == "REINSTALLATION COMPLETE", "game: found → REINSTALLATION COMPLETE")
 	_check(game.duck.is_flying() and game.trail.count() == 0, "game: the duck flies, the trail goes")
+	game.duck._process(Duck.FLIGHT + 0.1)
+	_check(not game.duck.body_shown(), "game: … and flies right out of sight")
 	game._process(GameFlow.CELEBRATE + 0.1)
 	_check(game.state() == GameFlow.State.LOBBY and link.ended == ["found"], "game: after the celebration the session ends → lobby")
 	_check(game.cams.polling().is_empty(), "game: the session's end stops the camera feeds")
@@ -2391,6 +2393,7 @@ func _test_main_and_game() -> void:
 
 	# Not captured: "YOU FOUND GERALD".
 	link.assignment_received.emit(_assignment(house, "s-2", false))
+	_check(game.duck.body_shown(), "game: the next walk's Gerald has his body back (wave 59: he kept the last flight's hidden model)")
 	var dp2: Array = link.adopted.back()["duck"]["pos"]
 	player.teleport(Vector3(dp2[0], dp2[1], dp2[2] + 0.3), 0.0)
 	game._process(0.016)
