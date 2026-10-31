@@ -344,12 +344,12 @@ once four cables settle into a set it hasn't just posted, and the **story**
 judges it (the combinations live only in the story: nothing here, in the
 terminal or on the heartbeat knows them).
 
-| Source | Jack | Volts | 12-bit counts (`PB_NOMINAL`) |
+| Source | Jack | Volts at the jack | As the board reads it (`PB_NOMINAL`) |
 |---|---|---|---|
-| V1 | B8 | 0.965 | 1197 |
-| V2 | B7 | 1.442 | 1789 |
-| V3 | B4 | 2.033 | 2523 |
-| V4 | B2 | 3.019 | 3746 |
+| V1 | B8 | 0.965 | 1177 |
+| V2 | B7 | 1.442 | 1769 |
+| V3 | B4 | 2.033 | 2488 |
+| V4 | B2 | 3.019 | 3646 |
 
 | Input | Jack | Pin |
 |---|---|---|
@@ -401,7 +401,10 @@ drives the pin, so a source on a cable sees no load to speak of and recovers at
 once.
 
 The ADC reads against the SAMD51's 3.3 V analog rail. **Check on the bench**
-that B2 into any input reads ≈ 3746 (`N-21.sh` prints it).
+that B2 into any input reads ≈ 3646 (`N-21.sh` prints it). The counts above are
+the middle of both combinations patched with real cables on 2026-10-31, through
+the pull-downs: each level held within about ±40 across its inputs, well inside
+`tol`, so no `pb learn` was needed.
 
 ### What a cable reads
 

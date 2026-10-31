@@ -195,8 +195,8 @@ for k in range(1, pbv + 1):
     off = r["raw"] - nominal[k - 1]
     ok(f"{src(k)}: {r['raw']} ({volts(r['raw'])}; nominal {nominal[k - 1]}, {off:+d})")
     if abs(off) > tol: note(f"{src(k)} is {off:+d} counts from its nominal level: is its voltage what config.h says?")
-if levels[3] and abs(levels[3] - 3746) > 150:
-    note(f"{src(4)} reads {levels[3]}, not ≈ 3746: is the ADC reading against 3.3 V? (README: verify the reference)")
+if levels[3] and abs(levels[3] - 3646) > 150:
+    note(f"{src(4)} reads {levels[3]}, not ≈ 3646: is the ADC reading against 3.3 V? (README: verify the reference)")
 order = all(levels[i] < levels[i + 1] for i in range(len(levels) - 1))
 ok("the levels climb " + " → ".join(SOURCES)) if order else bad(f"the levels are out of order: {levels} (two sources swapped?)")
 gaps = [levels[i + 1] - levels[i] for i in range(len(levels) - 1)]

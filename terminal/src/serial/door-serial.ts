@@ -139,7 +139,7 @@ interface Sink {
 }
 
 /** The firmware's nominal source levels (`config.h` `PB_NOMINAL`): the sim's readings. */
-export const SIM_LEVELS: readonly number[] = [1197, 1789, 2523, 3746];
+export const SIM_LEVELS: readonly number[] = [1177, 1769, 2488, 3646];
 const SIM_INPUTS = 4;
 
 /** The dev rig: O / C open and shut a pretend door, F toggles a fault; a

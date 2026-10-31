@@ -1345,7 +1345,7 @@ static void test_pb_floor_tol_get_save_and_reset() {
   CHECK(reply("pb tol 90").find("\"floor\":200,\"tol\":90,") != std::string::npos);
   CHECK_STR(reply("pb floor 10"), "{\"t\":\"err\",\"error\":\"out of range\",\"cmd\":\"pb floor 10\"}");
   CHECK_STR(reply("pb tol 5000"), "{\"t\":\"err\",\"error\":\"out of range\",\"cmd\":\"pb tol 5000\"}");
-  // A floor that would swallow V1 (1197, less the tolerance): refused.
+  // A floor that would swallow V1 (1177, less the tolerance): refused.
   CHECK(reply("pb tol 400").find("\"tol\":400,") != std::string::npos);
   CHECK_STR(reply("pb floor 900"), "{\"t\":\"err\",\"error\":\"out of range\",\"cmd\":\"pb floor 900\"}");
   CHECK(reply("pb tol 90").find("\"floor\":200,\"tol\":90,") != std::string::npos);
@@ -1372,7 +1372,7 @@ static void test_pb_floor_tol_get_save_and_reset() {
   // `pb reset`: the nominal table, not saved; the door untouched.
   m.out.clear();
   m.say("pb reset");
-  CHECK(m.out.last().find("\"levels\":[1197,1789,2523,3746],\"floor\":150,\"tol\":200,\"saved\":false}") != std::string::npos);
+  CHECK(m.out.last().find("\"levels\":[1177,1769,2488,3646],\"floor\":150,\"tol\":200,\"saved\":false}") != std::string::npos);
   CHECK(m.e.settings().close == 2000);
   // The door's `save` leaves the bay's record too.
   CHECK(reply("save").find("\"saved\":true}") != std::string::npos);

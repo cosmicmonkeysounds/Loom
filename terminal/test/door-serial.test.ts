@@ -143,9 +143,9 @@ describe("the sim patch bay (door=sim, Shift + digits)", () => {
     expect(await doorActions()!.bay({ c: "pb", op: "learn", source: 2 })).toEqual({ t: "err", error: "pb: need exactly one cable", cmd: "pb learn V2" });
     k.digit(2);
     k.digit(3);
-    expect(await doorActions()!.bay({ c: "pb", op: "learn", source: 2 })).toMatchObject({ t: "pbcal", src: 2, raw: 1789 });
+    expect(await doorActions()!.bay({ c: "pb", op: "learn", source: 2 })).toMatchObject({ t: "pbcal", src: 2, raw: 1769 });
     expect(await doorActions()!.bay({ c: "pb", op: "save" })).toMatchObject({ t: "pbcal", src: 0 });
-    expect(doorStatus().pbcal).toMatchObject({ t: "pbcal", levels: [1197, 1789, 2523, 3746] });
+    expect(doorStatus().pbcal).toMatchObject({ t: "pbcal", levels: [1177, 1769, 2488, 3646] });
     link.stop();
   });
 

@@ -93,10 +93,12 @@
 #define PB_SOURCES 4
 // D1 … D4 in order (A14 is the LDR, A4 the optional LED sense; A5–A13, A15 spare).
 #define PB_PINS {A0, A1, A2, A3}
-// The sources' nominal levels (12-bit counts: the volts above on the 3.3 V
-// reference), the first-boot and `pb reset` values. `pb learn V<k>` replaces
-// each with what the bench reads, `pb save` keeps them.
-#define PB_NOMINAL {1197, 1789, 2523, 3746}
+// The sources' levels as this board reads them (12-bit counts: the middle of
+// both combinations patched with real cables, 2026-10-31, through the
+// pull-downs; a little under the volts above on the 3.3 V reference), the
+// first-boot and `pb reset` values. `pb learn V<k>` replaces each with what the
+// bench reads, `pb save` keeps them.
+#define PB_NOMINAL {1177, 1769, 2488, 3646}
 #define PB_FLOOR 150      // under this an input is empty (≈ 0.12 V)
 #define PB_TOL 200        // within this of a level it is that source (≈ 160 mV;
                           //   the closest two levels are 592 counts apart)
