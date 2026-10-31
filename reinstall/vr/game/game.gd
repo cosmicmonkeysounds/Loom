@@ -1279,8 +1279,8 @@ func _tick_reset(delta: float) -> void:
 ## its word ([method LinkBase.reset_run] → [method _on_duck_changed]). The
 ## walk's clocks, its level and the visit's hit stay as they were.
 func _run_reset() -> void:
-	descent.interrupt()
 	_close_hallway()
+	descent.interrupt()
 	_clear_trail()
 	var spawn: Dictionary = builder.house["spawn"]
 	player.teleport(builder.to_world(spawn["pos"]), builder.yaw_to_world(float(spawn.get("yaw", 0.0))))

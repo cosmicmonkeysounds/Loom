@@ -45,6 +45,7 @@ func _run() -> void:
 	await _test_hallway()
 	await _test_hallway_timeout()
 	await _test_hallway_session_end()
+	await _test_reset_inside()
 	await _test_hallway_remap()
 	await _test_hallway_walked()
 	await _test_autopilot()
@@ -1333,6 +1334,33 @@ func _test_hallway_session_end() -> void:
 	var again := _assignment(house, "h-5")
 	link.assignment_received.emit(again)
 	_check(game.descent.level == 0 and game.descent.visible and not game.hallway.active(), "session end: the next walk starts clean")
+	link.session_over.emit("test")
+	await _end(main)
+
+
+## Wave 59: the run reset reaches the Hallway, a talk and a vision too.
+func _test_reset_inside() -> void:
+	var got: Array = await _game()
+	var main: Node = got[0]
+	var game: Game = got[1]
+	var link: LinkBase = got[2]
+	var house: Dictionary = got[3]
+	var spawn := HouseFrames.vec(house["spawn"]["pos"])
+	game.player.read_input = false
+	var at: Array = _at_the_door(game, house, "h-r")
+	_go_through(game, at[1])
+	_check(game.hallway.active(), "reset: inside the Hallway")
+	game._process(DT)
+	var level: int = game.descent.level
+	game.player.reset_chord = true
+	game._process(HoldMeter.RESET_HOLD + 0.1)
+	game._process(DT)
+	_check(link.get("run_resets") == 1, "reset: the hold reaches the Hallway")
+	_check(not game.hallway.active() and game.builder.visible and game.ghosts.visible and game.lamps.visible and game.trail.visible, "reset: out of the Hallway, the house back")
+	_check(_near(game.player.feet().x, spawn.x) and _near(game.player.feet().z, spawn.z), "reset: at the spawn (%s)" % game.player.feet())
+	_check(game.descent.level == level and game.descent.running, "reset: the descent's level stands, and it goes on")
+	game.player.reset_chord = false
+	game._process(DT)
 	link.session_over.emit("test")
 	await _end(main)
 
