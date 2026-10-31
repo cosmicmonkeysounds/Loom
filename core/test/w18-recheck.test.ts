@@ -8,9 +8,9 @@ import { EventRuntime } from "../server/event-runtime.ts";
 
 const FILES = scenarioFiles("trapped-in-the-internet");
 
-describe("N9: a house banner that sends everyone to the living room carries the way there", () => {
+describe("N9: a house banner that sends everyone to the Desktop carries the way there", () => {
   it("every such broadcast has `with go: The Desktop`", () => {
-    const lines = FILES.flatMap((f) => f.source.split("\n").filter((l) => /^\s*broadcast "!/u.test(l) && /to the living room/iu.test(l)));
+    const lines = FILES.flatMap((f) => f.source.split("\n").filter((l) => /^\s*broadcast "!/u.test(l) && /to the Desktop\b/iu.test(l)));
     expect(lines.length).toBeGreaterThanOrEqual(3);
     for (const l of lines) expect(l, l).toMatch(/with go: The Desktop/u);
   });

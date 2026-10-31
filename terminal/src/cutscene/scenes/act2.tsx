@@ -1366,7 +1366,7 @@ function Y2kWall(p: SceneProps) {
 //   0–4000    frost creeps in from the screen's edges; a low hum
 //   1200–7400 a small COLD STORAGE window rises in the corner: the room's
 //             activity meter climbs, its hum waveform swells; one line types:
-//             "Somewhere in the basement, the cold-storage room hums louder."
+//             "Somewhere downstairs, the Server Room hums louder."
 //   7000–9000 it all thaws away. Nothing says who, or why. (Short, so it
 //             never holds back the hour's bigger moments behind it.)
 
@@ -1378,7 +1378,7 @@ function MajorityTv(p: SceneProps) {
   const frost = Math.min(eased(t, 0, 4000, ease.outQuad), 1 - progress(t, 7000, 2000));
   const meter = eased(t, 1600, 5000, ease.inOutQuad);
   const win = Math.min(eased(t, 1200, 500, ease.outCubic), 1 - progress(t, MAJ_END - 1600, 700));
-  const line = "Somewhere in the basement, the cold-storage room hums louder.";
+  const line = "Somewhere downstairs, the Server Room hums louder.";
   return (
     <Stage bg="transparent" className="tv2">
       <Frost amount={frost} t={t} />
@@ -1466,7 +1466,7 @@ function HeartTv(p: SceneProps) {
           <Typewriter text="THE SERVER ROOM IS OPEN" t={t} start={HEART.bay + 1800} cps={18} />
         </div>
         <div className="tv2-heart-sub" style={{ opacity: progress(t, HEART.hold, 800) }}>
-          Trabolta’s heart is behind the cold door, in the basement.
+          Trabolta’s heart is behind the cold door, downstairs.
           <br />
           <i>A rack of cables in a cold room.</i>
         </div>
@@ -1480,7 +1480,7 @@ function HeartTv(p: SceneProps) {
 function HeartWall(p: SceneProps) {
   const { t, reduced, done } = p;
   useEndAt(t, 12_000, done);
-  return <WallCard t={t} title="THE SERVER ROOM IS OPEN" lines={["Trabolta’s heart is behind the cold door, in the basement."]} icon="lock" tone="black" bg="#01040a" reduced={reduced} accent={<PatchBay lit={heartLit(t)} cols={8} className="tv2-wall-bay" />} />;
+  return <WallCard t={t} title="THE SERVER ROOM IS OPEN" lines={["Trabolta’s heart is behind the cold door, downstairs."]} icon="lock" tone="black" bg="#01040a" reduced={reduced} accent={<PatchBay lit={heartLit(t)} cols={8} className="tv2-wall-bay" />} />;
 }
 
 // ══ E2c: the King — hit (signal `king hit`) and fallen (`king fallen`) ═══════════════════

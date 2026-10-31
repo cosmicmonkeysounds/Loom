@@ -115,7 +115,8 @@ function TvStage({ bg = "#000", className, children, style }: { bg?: string; cla
 
 // --- B1 · call_desktop -------------------------------------------------------------------------
 
-const SWEEP: readonly string[] = ["An Antivirus is sweeping the halls.", "Programs found in the halls will be escorted.", "Proceed to the living room.", "Walk. You are a program, not a process.", "The Desktop is the living room."];
+// DRAFT w59 (the story's names, never the house's)
+const SWEEP: readonly string[] = ["An Antivirus is sweeping the Tube.", "Programs found in the Tube will be escorted.", "Proceed to the Desktop.", "Walk. You are a program, not a process.", "The Desktop is the room with the big screen."];
 
 /**
  *   0–700     the interrupt: black, a tear of static, the beacon starts turning
@@ -171,7 +172,7 @@ function CallDesktopWall({ t, sfx, reduced }: SceneProps) {
       title={copy("call_desktop").title}
       lines={linesOf("call_desktop")}
       bg="radial-gradient(ellipse at 50% 55%, #0a6c70 0, #01262a 75%)"
-      footer="★ ALL PROGRAMS: REPORT TO THE DESKTOP ★ THE DESKTOP IS THE LIVING ROOM ★"
+      footer="★ ALL PROGRAMS: REPORT TO THE DESKTOP ★ THE ROOM WITH THE BIG SCREEN ★"
       art={
         <>
           <Chevrons t={t} reduced={reduced} rows={4} />

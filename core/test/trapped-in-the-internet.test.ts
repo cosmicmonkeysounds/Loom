@@ -774,7 +774,7 @@ describe("Trapped in the Internet — the whole night", () => {
     const web = saidBy(s1, "Installation Wizard");
     expect(web.length).toBeGreaterThanOrEqual(5);
     expect(web.every((e) => aud(e) === '["g4"]')).toBe(true);
-    expect(web.some((e) => e.text.includes("You are in the Internet, out in the backyard at the end of the tunnel."))).toBe(true);
+    expect(web.some((e) => e.text.includes("You are in the Internet, out in the Cloud at the end of the tunnel."))).toBe(true);
     expect(texts(s1).some((t) => /bottom of the stairs/iu.test(t))).toBe(false);
     expect(has(cues(s1), "tablet_wizard")).toBe(true);
     expect(has(cues(s1), "tablet_webmd")).toBe(false);
@@ -1367,13 +1367,13 @@ describe("Trapped in the Internet — the whole night", () => {
     expect(v(sim, "Night.ended")).toBe(true);
     expect(has(cues(pa), "lights_blackout")).toBe(true);
     // The phones' full-screen takeover (a room-wide `!!` pin, no broadcast), lifted by the dance.
-    expect(casts(pa).some((b) => b.cue.includes("GO TO THE LIVING ROOM"))).toBe(false);
-    expect(pa.filter((e) => e.type === "pinned").map((e: any) => `${e.key}|${e.text}`)).toEqual(["|!!GO TO THE LIVING ROOM"]);
+    expect(casts(pa).some((b) => b.cue.includes("GO TO THE DESKTOP"))).toBe(false);
+    expect(pa.filter((e) => e.type === "pinned").map((e: any) => `${e.key}|${e.text}`)).toEqual(["|!!GO TO THE DESKTOP"]);
     expect(sim.questStatus("g4", "Find The Exit")).toBe("done");
     const dance = advance(sim, 10);
     expect(has(cues(dance), "lights_dance")).toBe(true);
     expect(dance.filter((e) => e.type === "unpinned").map((e: any) => `${e.key}|${e.text}`)).toEqual(["|💃 Dance."]);
-    // T6-05: the screens' GO TO THE LIVING ROOM overlay comes down with the dance too.
+    // T6-05: the screens' GO TO THE DESKTOP overlay comes down with the dance too.
     expect(cues(dance)).toContain("cue screens_screensaver");
     expect(v(sim, "Night.screen")).toBe("screensaver");
 
@@ -4078,7 +4078,7 @@ describe("Trapped in the Internet — the awards ceremony (K-25)", () => {
     expect(v(sim, "Night.ceremony_host")).toBe("Trabolta");
     expect(beats(s)).toContain("The Ceremony");
     expect(cues(s)).toContain("cue screens_ceremony");
-    expect(casts(s).map((c) => c.cue.replace(/^"|"$/gu, ""))).toEqual(["!🏆 THE AWARDS CEREMONY. Every program to the living room."]);
+    expect(casts(s).map((c) => c.cue.replace(/^"|"$/gu, ""))).toEqual(["!🏆 THE AWARDS CEREMONY. Every program to the Desktop."]);
     expect(composeGuestMessages(sim, s).some((m) => m.alert === true)).toBe(true);
     // Wave 18b: The Night In Review, then The Ceremony's two opening lines.
     expect(beats(s).indexOf("The Night In Review")).toBeLessThan(beats(s).indexOf("The Ceremony"));
@@ -5331,10 +5331,10 @@ describe("Trapped in the Internet — wave 5 (lane B): the takeover, the resurre
   it("B13: Combo B covers every phone (`!!` pin → takeover + alert); 🪩 lifts it once, the backstops stay quiet", () => {
     const sim = boot();
     const b = fire(sim, "computer_destroyed");
-    expect(pins(b, "pinned")).toEqual(["||!!GO TO THE LIVING ROOM"]);
-    expect(casts(b).some((c) => c.cue.includes("GO TO THE LIVING ROOM"))).toBe(false); // no double chime
+    expect(pins(b, "pinned")).toEqual(["||!!GO TO THE DESKTOP"]);
+    expect(casts(b).some((c) => c.cue.includes("GO TO THE DESKTOP"))).toBe(false); // no double chime
     const msg = composeGuestMessages(sim, b).filter((m) => m.pin !== undefined);
-    expect(msg.map((m) => [m.text, m.takeover, m.alert, m.audience])).toEqual([["GO TO THE LIVING ROOM", true, true, "all"]]);
+    expect(msg.map((m) => [m.text, m.takeover, m.alert, m.audience])).toEqual([["GO TO THE DESKTOP", true, true, "all"]]);
     expect(v(sim, "Night.takeover")).toBe(true);
     // The director's 🪩 before the 10 s auto-dance: one unpin, room-wide.
     expect(pins(fire(sim, "lights_dance"), "unpinned")).toEqual(["||💃 Dance."]);

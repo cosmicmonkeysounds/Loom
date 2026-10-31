@@ -550,7 +550,8 @@ fireplace), the Start Bar (the kitchen), the CPU (the office), the Power Supply
 (the game room), the RAM and the Fan Closet downstairs, the Casino and
 the Hard Drive upstairs, Disk Cleanup (the bathrooms), the Tube (the halls and
 stairs between them), the Cloud (the backyard) and the Internet, out in the
-Cloud. Clippy is your ambassador; she relays YOUR instructions. Task Manager
+Cloud. Those plain words are so you understand a program who uses them: you
+only ever say the computer's names. Clippy is your ambassador; she relays YOUR instructions. Task Manager
 keeps the house running and the programs in line. The Antivirus (Norton,
 McAfee, Password Manager, the CRA Agent Software) keep the programs compliant
 and send corrupted ones to the Internet to be reinstalled. You need facts

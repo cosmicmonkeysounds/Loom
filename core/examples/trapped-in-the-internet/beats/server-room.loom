@@ -33,7 +33,8 @@
 
 == Majority Reached
   setting: The Desktop
-Narrator: Somewhere in the basement, the cold-storage room hums louder.
+// DRAFT w59 (in-world room name)
+Narrator: Somewhere downstairs, the Server Room hums louder.
 Narrator: Nobody announces it. The programs who need to know already do.
 
 // Private, per member of the winning faction (ROLE watcher, also late
@@ -146,7 +147,8 @@ reply !🗝 THE WHOLE TRUTH: your faction has the majority. The door code is in 
 reveal The Server Room
 // w20: a quiet notice (no `!`): no chime or banner pulls a crowd to
 // the door at the moment he asks for it shut.
-broadcast "🚪 The server room is open. Trabolta's heart is behind the cold door, in the basement." to everyone
+// DRAFT w59 (in-world room name)
+broadcast "🚪 The server room is open. Trabolta's heart is behind the cold door, downstairs." to everyone
 // The server-room look only (lights_server_open is only the siren's off now:
 // no strip in the room, w20b Q6; the RGB bulb is lights.json's, D10), and never while the
 // patch-bay alarm's look is up. `Night.lights` is the house look stagehand
@@ -1205,7 +1207,8 @@ else:
 == Trabolta Disabled
   setting: The Desktop
 Narrator: Every light in the house goes out. Ten seconds of dark.
-Narrator: Then every phone says one thing. GO TO THE LIVING ROOM.
+// DRAFT w59 (in-world room name)
+Narrator: Then every phone says one thing. GO TO THE DESKTOP.
 Narrator: Music. One song for dancing.
 
 // After the dance, the director fires 📜: the message he left, read by Task
@@ -1217,7 +1220,8 @@ Narrator: Music. One song for dancing.
   setting: The Desktop
 Narrator: Every light in the house goes out. Ten seconds of dark.
 Narrator: Somewhere, a computer is turned off without Shut Down being followed.
-Narrator: Then every phone says one thing. GO TO THE LIVING ROOM.
+// DRAFT w59 (in-world room name)
+Narrator: Then every phone says one thing. GO TO THE DESKTOP.
 Narrator: Music. One song for dancing.
 
 // ── E8: purgatory (after the dance; clippy_reads_summary) ──────────

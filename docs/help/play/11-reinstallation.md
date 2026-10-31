@@ -14,7 +14,7 @@ gets out of the Internet — prove you can follow instructions, and you are
 
 When the Antivirus quarantine a corrupted program ([Your
 pass](your-pass.md)), they walk it through the Tube to the Internet: the
-**tent in the backyard, at the end of the tunnel**. Your phone is locked
+**tent in the Cloud, at the end of the tunnel**. Your phone is locked
 until you are reinstalled, and it shows the **Installation Wizard**'s
 instructions: why you are there, the headset or the laptop, Bathroom
 Mode, and where the exit is (it is clearly marked; it is for safety).
@@ -75,7 +75,7 @@ each step finishes when you do it.
 Been reinstalled before? **Skip training ▶** jumps straight in.
 
 While you walk on the laptop, a notice from the story (a blackout, an
-alarm, *go to the living room*) covers the game and **pauses** it: you
+alarm, *go to the Desktop*) covers the game and **pauses** it: you
 can't move and nobody is timed out. Your walk carries on when it clears.
 
 ## Moving around
@@ -128,7 +128,7 @@ pass again (a duck you already found still counts).
 
 ## The King
 
-Down in the basement a tall golden chess piece stands in a doorway:
+Downstairs a tall golden chess piece stands in a doorway:
 **the King**. Walk up close and face him, then press **⚔ HIT** on the
 tablet (or Space), or pull the **trigger** in a headset. *⚔ You hit the
 King!* Too far, or looking away? It says *Get closer to the King.* or

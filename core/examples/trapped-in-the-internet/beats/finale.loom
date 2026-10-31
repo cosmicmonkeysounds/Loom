@@ -224,7 +224,8 @@ set Night.terminals = "song"
 sound youre_the_one_vocoder
 set Night.everyone_free = true
 // w18 (fix): the banner carries its way there (recheck N9).
-broadcast "!🎵 TRABOLTA SOLVED IT. Those of you who want to leave may leave. To the living room for the song." to everyone with go: The Desktop
+// DRAFT w59 (in-world room name)
+broadcast "!🎵 TRABOLTA SOLVED IT. Those of you who want to leave may leave. To the Desktop for the song." to everyone with go: The Desktop
 Trabolta: You succeeded. I have solved the Grand Unified Theory, and I am pursuing Sandy. Those of you who want to leave may leave.
 // From Grok Prom (the pickup line) he has just said they lied to him.
 if Night.ending == "song":

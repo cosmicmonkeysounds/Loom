@@ -33,12 +33,13 @@ CODEX Maps And Ducks
     invitation says, is "a special fundraiser party to restore the sign at
     Maps And Ducks." The duck on the sign is called Gerald.
 
+// DRAFT w59 (in-world room name)
 CODEX The Billboard On Lower Water
   title: The Billboard On Lower Water
   category: The story
   code: LOWER-WATER-ST
   text:
-    A street photo, taped up in the hall. Above Lower Water Street, faded
+    A street photo, taped up in the Tube. Above Lower Water Street, faded
     by a hundred Halifax winters: a cartoon duck holding a folded map, and
     a big red map pin that reads YOU'RE HERE. (Sic. Nobody ever fixed it.
     Nobody ever paid to fix it.) Underneath, in letters a metre high:
@@ -111,6 +112,7 @@ CODEX The Centre Square
 
 // w18b (R18): the owner, not the computer's AI helper.
 // w26 (R5: only the screens in its room see it)
+// DRAFT w59 (in-world room name)
 CODEX The Reinstallation Protocol
   title: The Reinstallation Protocol
   category: How it works
@@ -118,7 +120,7 @@ CODEX The Reinstallation Protocol
   text:
     A corrupted program has gone against the will of Jean Trabolta, Sole
     Owner and Founder of Maps and Ducks. It is taken through the Tube to the Internet, out in the
-    backyard: a clearly marked exit, two VR headsets, and a tablet. The program watches
+    Cloud: a clearly marked exit, two VR headsets, and a tablet. The program watches
     the video. It puts on a headset, or takes the tablet, and enters a copy
     of this house. It follows the golden chevrons to the golden duck and
     walks right up to him. The duck lays a golden egg and flies away. The
@@ -171,12 +173,13 @@ CODEX The Orientation List
     keeps. It is a list of programs that follow instructions. Clippy is
     proud of the list. Trabolta reads the list.
 
+// DRAFT w59 (in-world room name)
 CODEX The Server Room
   title: The Server Room
   category: Places
   code: COLD-STORAGE
   text:
-    A laminated sign on a door in the basement: COLD STORAGE. AUTHORISED
+    A laminated sign on a door downstairs: COLD STORAGE. AUTHORISED
     PROGRAMS ONLY. THE PATCH BAY IS ALARMED. Under it, a keypad that wants
     four digits. The door is cold to the touch. Something behind it hums,
     very steadily, like it is concentrating.

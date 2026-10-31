@@ -202,7 +202,7 @@ function SlideClip({ src, cue, muted, onFail, onEnded }: { src: string; cue: str
 }
 
 const OVERLAY_TEXT: Record<Exclude<OverlayKind, "blackout">, string> = {
-  go_to_living_room: "GO TO THE LIVING ROOM",
+  go_to_living_room: "GO TO THE DESKTOP",
   alarm: "INTRUSION — SERVER ROOM",
 };
 

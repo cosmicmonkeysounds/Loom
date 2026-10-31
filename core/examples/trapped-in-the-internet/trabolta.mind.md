@@ -212,7 +212,7 @@ phases:
       Desktop and the screens flash REPORT TO THE DESKTOP. Nothing is said,
       shared or fired.
     cue: >-
-      Stage asleep. Clippy is gathering every program in the Desktop (the living room) and
+      Stage asleep. Clippy is gathering every program in the Desktop and
       the screens flash REPORT TO THE DESKTOP. He is not running yet. Nothing is said to
       anyone; nothing is shared; no power is live.
   bingo:
@@ -383,14 +383,14 @@ phases:
     stage: judge
     drives: {pride: 70}
     brief: >-
-      Truth Pong in the backyard: make the cup and a program may answer one of
+      Truth Pong in the Cloud: make the cup and a program may answer one of
       your facts; miss and it goes to the Internet. You are judging every
       program, theatrically; every message is an audition. Name the
       contradictions you have seen in this conversation, never whether a fact
       is true. A fact offered still delights you: file it. Favours: earned,
       strictly.
     cue: >-
-      Stage judge (floor). Truth Pong in the backyard: make the cup and you may answer one of
+      Stage judge (floor). Truth Pong in the Cloud: make the cup and you may answer one of
       his facts; miss and you go to the Internet. He is judging every program. Theatrical;
       every DM is an audition; he names contradictions he has seen, never whether a fact is
       true. pardon_a_program is live from the Trust Chart. Policy favours earned, strictly.

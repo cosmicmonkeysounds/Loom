@@ -2491,7 +2491,8 @@ ROLE Program
   // The code in hand by any road (a checkmate, the majority, the notes)
   // settles the quest the notes started.
   when self.codex.the_door_code == true and self.quest.the_cold_door == "active":
-    complete quest The Cold Door for self "The door code is in your Codex. The keypad is by the cold door in the basement."
+    // DRAFT w59 (in-world room name)
+    complete quest The Cold Door for self "The door code is in your Codex. The keypad is by the cold door, downstairs."
 
   // ── The heart's proofs (wave 7; wave 20: the ⟦PROOF⟧ options) ──
   // His worker may share lore as a bargain; a proof he handed over himself
@@ -6142,8 +6143,10 @@ when trabolta_disabled:
     sound dance_song
     set Night.dance_at = Time.elapsed + 10
     set Night.takeover = true
-    pin "!!GO TO THE LIVING ROOM"
-    do announce "Go to the living room."
+    // DRAFT w59 (in-world room name)
+    pin "!!GO TO THE DESKTOP"
+    // DRAFT w59 (in-world room name)
+    do announce "Go to the Desktop."
     -> Trabolta Disabled
 
 // Ten seconds of dark, then the dance look (the song file opens with ten
@@ -6222,8 +6225,10 @@ when computer_destroyed:
     sound dance_song
     set Night.dance_at = Time.elapsed + 10
     set Night.takeover = true
-    pin "!!GO TO THE LIVING ROOM"
-    do announce "Go to the living room."
+    // DRAFT w59 (in-world room name)
+    pin "!!GO TO THE DESKTOP"
+    // DRAFT w59 (in-world room name)
+    do announce "Go to the Desktop."
     -> Computer Destroyed
 
 // E8: after the dance, Clippy reads the summary. Purgatory.
@@ -6280,7 +6285,8 @@ when final_reveal:
     cue screens_final_reveal
     set Night.screen = "final_reveal"
     set Night.terminals = "final_reveal"
-    broadcast "!🌑 ALL PROGRAMS: to the living room for the final Truth Scavenger Hunt reveal." to everyone with go: The Desktop
+    // DRAFT w59 (in-world room name)
+    broadcast "!🌑 ALL PROGRAMS: to the Desktop for the final Truth Scavenger Hunt reveal." to everyone with go: The Desktop
     -> Final Reveal
   else:
     broadcast "🌑 Not now: the final reveal has already played, or the night has ended. Nothing happens." to channel(hosts)
@@ -6526,7 +6532,8 @@ when the_truth_read:
   // DRAFT w58
   broadcast "📜 Task Manager reads the full truth off the teleprompter, about 14 minutes. Their phone down? The printed copy in their pack, or ⊞ Start → My script on any phone signed in to the part. NEXT moves to G1 when it should be over." to channel(hosts)
   // DRAFT w58
-  broadcast "!📜 THE FULL TRUTH. To the living room." to everyone with go: The Desktop
+  // DRAFT w59 (in-world room name)
+  broadcast "!📜 THE FULL TRUTH. To the Desktop." to everyone with go: The Desktop
   -> The Full Truth Read
 
 // Trabolta, on the TV, clean: a phase of its own (voice-fx reads it 0), and
@@ -6557,7 +6564,8 @@ when the_truth_spoken:
   // DRAFT w58
   broadcast "📜 Trabolta reads the full truth on the TV, about 12 minutes, clean: leave 🌀 His voice on Auto or Clean, and no shots. If the TV has no voice: 📜 Task Manager reads it instead. NEXT moves to G1 when it should be over: wait for his last word before you press it." to channel(hosts)
   // DRAFT w58
-  broadcast "!📜 THE FULL TRUTH. To the living room." to everyone with go: The Desktop
+  // DRAFT w59 (in-world room name)
+  broadcast "!📜 THE FULL TRUTH. To the Desktop." to everyone with go: The Desktop
   -> The Full Truth
 
 // ── G. The awards ceremony (K-25) ──
@@ -6596,7 +6604,8 @@ when start_the_ceremony:
     cue music_ceremony
     set Night.music = "ceremony"
     sound ceremony_bed
-    broadcast "!🏆 THE AWARDS CEREMONY. Every program to the living room." to everyone with go: The Desktop
+    // DRAFT w59 (in-world room name)
+    broadcast "!🏆 THE AWARDS CEREMONY. Every program to the Desktop." to everyone with go: The Desktop
     // Wave 18b (R8): the review first, then the awards. The ceremony's
     // slide is cued at the head of The Ceremony (beats/ceremony.loom).
     set Night.review_gen += 1

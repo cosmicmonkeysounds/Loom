@@ -154,7 +154,7 @@ function PreviewDream({ q }: { q: URLSearchParams }) {
           <span className="announce-icon" aria-hidden="true">
             📢
           </span>
-          Go to the living room.
+          Go to the Desktop.
         </div>
       )}
       {ready && what !== "plain" && <Mosh key={run} mode={what === "take" ? "take" : "rot"} target={target} seedKey={key} reduced={false} />}

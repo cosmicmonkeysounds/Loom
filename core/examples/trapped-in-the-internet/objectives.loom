@@ -115,6 +115,7 @@ OBJECTIVE Take The Tour
   text:
     Clippy shows you the computer: rooms, your pass, the Codex, Bathroom Mode. Finish it or skip it. Clippy will remember either way.
 
+// DRAFT w59 (in-world room name)
 OBJECTIVE Go To The Desktop
   for: Program
   while: Night.phase == "desktop" and program.cleared == true
@@ -122,7 +123,7 @@ OBJECTIVE Go To The Desktop
   title: Go to the Desktop: a game is about to begin
   go: The Desktop
   text:
-    Everyone to the living room. Clippy welcomes the programs and introduces the hosts.
+    Everyone to the Desktop. Clippy welcomes the programs and introduces the hosts.
 
 // w26 (B1: a guest calls BINGO from here)
 // DRAFT w58 (the name in the square, the marked lines)
@@ -213,6 +214,7 @@ OBJECTIVE The Hour
   buttons: scan
 
 // w26 (G1: no exemption stated up front)
+// DRAFT w59 (in-world room name)
 OBJECTIVE Be At The Desktop
   for: Program
   while: Night.summons_open == true and program.cleared == true
@@ -220,7 +222,7 @@ OBJECTIVE Be At The Desktop
   title: Be at the Desktop: five minutes
   go: scan as "📷 Check in"
   text:
-    Go to the living room and scan the Desktop's check-in QR: that is your check-in. The Antivirus are counting.
+    Go to the Desktop and scan its check-in QR: that is your check-in. The Antivirus are counting.
     - Checked in, done when program.summons_ok == true
 
 OBJECTIVE The Door Is Closed
@@ -295,11 +297,12 @@ OBJECTIVE The Y2K Hour
     - Filed final Q2, done when program.fact_f2 == true
   buttons: scan
 
+// DRAFT w59 (in-world room name)
 OBJECTIVE The Final Reveal
   for: Program
   while: Night.phase == "final_reveal" and program.cleared == true
   act: F
-  title: The final reveal: to the living room
+  title: The final reveal: to the Desktop
   go: The Desktop
   text:
     Lights down. Everyone may speak: what you learned, what you believe, what should happen next.
@@ -333,11 +336,12 @@ OBJECTIVE Help Or Thwart
     - Voted, done when program.advice != "none"
 
 
+// DRAFT w59 (in-world room name)
 OBJECTIVE The Night Is Over
   for: Program
   while: Night.ended == true
   act: G
-  title: To the living room for the awards
+  title: To the Desktop for the awards
   go: The Desktop
   text:
     The night has ended. Stay for the ceremony: if your name is called, come up to the TV. The reinstallation games in the Internet are open to every program now: a party favour.
