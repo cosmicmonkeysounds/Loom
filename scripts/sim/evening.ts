@@ -86,7 +86,7 @@ import { Client, Stream, failure, sleep, type Res } from "./lib/http.ts";
 import { doorsDecision, envServerNotice, guardThenReset, isDevServer, isScratch, mayResetAfter, resolveBase } from "./lib/safety.ts";
 import { Recorder, beatLine, slowRoutes, summaryTable, tallyQuests, type BeatResult } from "./lib/report.ts";
 import { atLeast, awardWinners, betProblems, mismatches, notNone, read, truthy, worldOf, wrongPatchProblems, type Row, type Want } from "./lib/world.ts";
-import { SIM_SELF_PRESSED, featuredSlug, pickPool, segment, tolerating, transportRefusal } from "./lib/plan.ts";
+import { SIM_SELF_PRESSED, featuredSlug, pickPool, segment, tolerating, transportRefusal, trapOf } from "./lib/plan.ts";
 import { TALK_AGENT, TALK_AS, burstProblems, cannedLine, glitchHeldFor, probeReply, replyAfter, talkLineProblems, type TalkMsg } from "./lib/talk.ts";
 
 // ------------------------------------------------------------------ flags
@@ -593,8 +593,8 @@ const role = {
   named: () => bots[1]!,
   liar: () => bots[2]!,
   late: () => bots[3]!,
-  trap: () => bots[4 % bots.length]!,
-  hearty: () => bots.find((b) => b.featured === null && b !== bots[4] && b !== bots[1]) ?? bots[0]!,
+  trap: () => trapOf(bots, role.chosen()),
+  hearty: () => bots.find((b) => b.featured === null && b !== role.trap() && b !== bots[1]) ?? bots[0]!,
   chess: () => bots[5 % bots.length]!,
   gambler: () => bots[6 % bots.length]!,
   chosen: () => bots.find((b) => b.featured !== null) ?? bots[7 % bots.length]!,

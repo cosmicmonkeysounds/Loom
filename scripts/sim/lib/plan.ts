@@ -26,6 +26,16 @@ export const POOL: readonly string[] = [
   "Ring Doorbell",
 ];
 
+/**
+ * Who gets thrown out of the heart: by position, so a run is repeatable, but
+ * never the bot the next heart beat needs. Its ⟦CHOSEN⟧ is only offered at a first
+ * meeting (`heart_layer` only rises), and with pool bots first the fifth bot is
+ * the first featured one at 5 to 7 guests.
+ */
+export function trapOf<B>(bots: readonly B[], chosen: B): B {
+  return [4, 2, 3].map((i) => bots[i % bots.length]!).find((b) => b !== chosen) ?? bots[0]!;
+}
+
 /** `n` pool names nobody on the roster holds yet (case-folded). */
 export function pickPool(n: number, taken: ReadonlySet<string>): string[] {
   return POOL.filter((p) => !taken.has(p.toLowerCase())).slice(0, Math.max(0, n));
