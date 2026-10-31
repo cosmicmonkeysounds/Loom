@@ -286,6 +286,11 @@ export const FRAG_START_MS = 1200;
 /** (wave 56) After a cut-off: `speak()` right on the heels of `cancel()` is
  *  lost on some engines. */
 export const CANCEL_SETTLE_MS = 40;
+/** (wave 59) A stop holds its `cancel()` until the last `speak()` has been out this
+ *  long. Chrome on macOS, cancelled straight after `speak()`, stops speaking for good:
+ *  every later `speak()` never starts, and neither a click nor a reload brings it
+ *  back. On a kiosk that's a Chrome restart. At +2 ms and later it was fine. */
+export const CANCEL_HOLD_MS = 20;
 /** (wave 56) The most of the device's other voices a broken sentence hops through. */
 const MAX_ALTERNATES = 6;
 
@@ -314,6 +319,10 @@ export class BrowserEngine implements SpeechEngine {
   private stopCurrent: (() => void) | null = null;
   /** The `unlock()` generation in which a `speak()` never started here. */
   private deadAt: number | null = null;
+  /** When the last `speak()` went out (`Date.now()`). */
+  private spokeAt = 0;
+  /** The `cancel()` a stop is holding back. */
+  private held = 0;
   /** `prefer`: the lean when no voice is chosen (`CHARACTER_VOICE` /
    *  `ANNOUNCE_VOICE`, so the character never sounds like an announcement).
    *  `noise`: plays a broken sentence's bursts (`sound/bus.ts` `voiceNoise`). */
@@ -385,10 +394,7 @@ export class BrowserEngine implements SpeechEngine {
       u.onboundary = started;
       u.onend = finish;
       u.onerror = finish;
-      this.stopCurrent = () => {
-        speechSynthesis.cancel();
-        finish();
-      };
+      this.stopCurrent = () => this.holdCancel(finish);
       // Never stall the queue: a speak() that doesn't start is a stub (the
       // device is written off — the ladder moves on), and one that never
       // ends is cut after a generous reading time.
@@ -404,6 +410,7 @@ export class BrowserEngine implements SpeechEngine {
           finish();
         }, START_TIMEOUT_MS + 3 * readingMs(p.text, this.opts.speed)),
       );
+      this.spokeAt = Date.now();
       speechSynthesis.speak(u);
       // Some engines (Chrome) pause long utterances after ~15 s; a resume
       // nudge keeps them going.
@@ -411,6 +418,19 @@ export class BrowserEngine implements SpeechEngine {
         if (speechSynthesis.paused) speechSynthesis.resume();
       }, 5000);
     });
+  }
+
+  /** (wave 59) A stop's `cancel()`, then `then`: now, or once the last `speak()` has
+   *  been out `CANCEL_HOLD_MS`. */
+  private holdCancel(then?: () => void): void {
+    const go = () => {
+      speechSynthesis.cancel();
+      then?.();
+    };
+    const wait = this.spokeAt + CANCEL_HOLD_MS - Date.now();
+    window.clearTimeout(this.held);
+    if (wait > 0) this.held = window.setTimeout(go, wait);
+    else go();
   }
 
   /** (wave 56) A broken sentence: one utterance per fragment, each with its
@@ -434,8 +454,8 @@ export class BrowserEngine implements SpeechEngine {
       });
     this.stopCurrent = () => {
       stopped = true;
-      speechSynthesis.cancel();
       wake?.();
+      this.holdCancel();
     };
     const all = speechSynthesis.getVoices();
     const own = pickVoice(all, this.opts.voice || null, this.opts.prefer ?? {});
@@ -532,6 +552,7 @@ export class BrowserEngine implements SpeechEngine {
           finish();
         }, startMs + 3 * readingMs(f.text, rate)),
       );
+      this.spokeAt = Date.now();
       speechSynthesis.speak(u);
     });
   }
@@ -894,6 +915,10 @@ export class SpeechQueue {
   private lastEndAt: number | null = null;
   /** Ends the pause in progress early (`stop()`). */
   private wake: (() => void) | null = null;
+  /** An engine is saying a chunk now. */
+  private playing = false;
+  /** (wave 59) When the last `stop()` that cut a chunk has settled (`Date.now()`). */
+  private settledAt = 0;
   constructor(
     private engines: { primary: SpeechEngine; fallback: SpeechEngine | null },
     private readonly on: {
@@ -939,6 +964,8 @@ export class SpeechQueue {
     this.gen++;
     this.queue = [];
     this.lastEndAt = null;
+    // (wave 59) Counted from the cancel, which an engine may hold back.
+    if (this.playing) this.settledAt = Date.now() + CANCEL_HOLD_MS + CANCEL_SETTLE_MS;
     this.wake?.();
     this.engines.primary.stop();
     this.engines.fallback?.stop();
@@ -1037,6 +1064,9 @@ export class SpeechQueue {
         // The pause between lines: before this one, counted from the end of
         // the last (a line queued long after it waits for nothing).
         if (this.lastEndAt !== null) await this.pause(this.lastEndAt + this.gaps.line - Date.now());
+        // (wave 59) A line right behind a stop waits for the cancel to settle: a
+        // lost `speak()` never starts, and the engine would be written off.
+        if (g === this.gen) await this.pause(this.settledAt - Date.now());
         let spoken = false;
         for (let i = 0; i < u.chunks.length && g === this.gen; i++) {
           if (i > 0) await this.pause(this.gaps.chunk);
@@ -1047,7 +1077,7 @@ export class SpeechQueue {
           if (ready === null) {
             this.on.chunk(u.id, i);
             // Nothing can say it: pace the transcript as if it were spoken.
-            await new Promise((r) => setTimeout(r, readingMs(u.chunks[i]!)));
+            await this.pause(readingMs(u.chunks[i]!));
           } else {
             this.on.engine?.(ready.p.kind);
             // V1 (wave 26): `chunk` means he started the sentence — the
@@ -1061,12 +1091,15 @@ export class SpeechQueue {
               fired = true;
               this.on.chunk(u.id, i);
             };
+            this.playing = true;
             try {
               await ready.engine.play(this.shaped(ready.p, u, i), this.on.level, start);
             } catch {
               // An engine that throws (a WebView's half-built speechSynthesis
               // refusing a voice, a decode gone wrong) must never wedge the
               // queue: the chunk counts as said and the line goes on.
+            } finally {
+              this.playing = false;
             }
             start();
           }

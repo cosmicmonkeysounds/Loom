@@ -98,27 +98,32 @@ const TYPE_LAG = 50;
  * His words typing out. `cut` is as far as his voice has got: the end of the
  * sentence he's on. It stops there and waits for the next, and the sentence's
  * room is taken from the first letter, so no word jumps a line mid-type.
+ * `halt` (wave 59, the door cut him off): it stays where it had got to. Drawn
+ * fresh, that's `cut`, the end of the sentence he was on.
  */
-export function Typed({ text, cut, cps, onType }: { text: string; cut: number; cps: number; onType?: () => void }) {
-  const [shown, setShown] = useState(0);
+export function Typed({ text, cut, cps, onType, halt = false }: { text: string; cut: number; cps: number; onType?: () => void; halt?: boolean }) {
+  const [shown, setShown] = useState(() => (halt ? cut : 0));
   useEffect(() => {
-    if (shown >= cut) return;
+    if (halt || shown >= cut) return;
     const t = window.setTimeout(() => setShown((n) => Math.min(cut, n + (cut - n > TYPE_LAG ? 3 : 1))), 1000 / cps);
     return () => window.clearTimeout(t);
-  }, [shown, cut, cps]);
+  }, [shown, cut, cps, halt]);
   useLayoutEffect(() => onType?.(), [shown, onType]);
   return (
     <>
       {text.slice(0, shown)}
-      <span className="cursor">▮</span>
+      {!halt && <span className="cursor">▮</span>}
       <span className="type-rest">{text.slice(shown, cut)}</span>
     </>
   );
 }
 
+const NOT_CUT: ReadonlyMap<number, number> = new Map();
+
 export function Thread({
   lines,
   revealed,
+  cutOff = NOT_CUT,
   typing,
   character,
   guestName,
@@ -130,6 +135,8 @@ export function Thread({
   lines: Line[];
   /** How much of each of the character's messages to show (seq → chars). */
   revealed: ReadonlyMap<number, number>;
+  /** (wave 59) Lines the door cut off: where each stopped (seq → chars; 0: he never started it, so it isn't drawn). */
+  cutOff?: ReadonlyMap<number, number>;
   typing: boolean;
   character: string;
   guestName: string;
@@ -192,9 +199,11 @@ export function Thread({
       )}
       {lines.map((m) => {
         if (waiting(m)) return null;
-        const cut = revealed.get(m.seq);
+        const stopped = cutOff.get(m.seq);
+        if (stopped === 0) return null;
+        const cut = stopped ?? revealed.get(m.seq);
         const text = cut === undefined ? m.text : m.text.slice(0, cut);
-        const partial = cut !== undefined && cut < m.text.length;
+        const partial = stopped === undefined && cut !== undefined && cut < m.text.length;
         const who = m.theirs ? character : m.from === guestName || m.pick === true ? "you" : m.from;
         return (
           <div key={m.seq} className={lineClass(m, partial)} data-seq={m.seq}>
@@ -204,7 +213,7 @@ export function Thread({
             </span>
             <span className="text">
               {typeCps !== null && cut !== undefined ? (
-                <Typed text={m.text} cut={cut} cps={typeCps} onType={pin} />
+                <Typed text={m.text} cut={cut} cps={typeCps} onType={pin} halt={stopped !== undefined} />
               ) : (
                 <>
                   {text}

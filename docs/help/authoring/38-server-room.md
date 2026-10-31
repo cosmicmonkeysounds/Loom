@@ -245,6 +245,17 @@ The story keeps the door's state itself (`Night.server_door`, *open* or
   seconds, however often it bounces, and *"Good."* when it shuts after
   that. During a talk `# hosts` hears it too (at most once every 20
   seconds).
+- **The door cuts him off.** On the server-room terminal the door moving,
+  open or shut, stops him mid-word, whatever he is saying, and drops the
+  lines he still owed: they never come back, and what the story says for
+  the new door plays next. A 🚪 press does the same at the terminal's next
+  poll, within about 2 seconds. Only the door and the patch bay (below) do
+  this: nothing a player presses, says or types interrupts him, on the CRT
+  or a plain terminal. A plain terminal's DISCONNECT ends the visit, and him
+  with it; the CRT has no such button. His lines elsewhere in the house
+  aren't touched. An
+  opening inside the 20 seconds above leaves him quiet until he next asks,
+  up to 15 seconds, with *CLOSE THE DOOR* on the screen.
 - **Inside a 🔧 crew window** (below) an opening only tells `# hosts`.
 - **From 📄 truth.txt** (below) an opening only tells `# hosts`.
 
@@ -431,6 +442,14 @@ A majority or The Heart while the alarm look is up keeps the siren and
 the alarm look; their server-room look goes up when the latch clears.
 The room's own bulb swells red with the alarm and gets its heart look
 back then too.
+
+**The bay cuts him off**, as the door does, on the server-room terminal. A
+full patch that counts stops him the moment the terminal reports it, and a
+🔌 💥 ❌ that's taken at its next poll, within about 2 seconds; what the
+story says next plays. So does a cable going in or out from the moment he's
+awake, at most once in about 20 seconds: inside that nothing happens, no cut
+and no line. It can leave him cut off with no line after it where the story
+keeps him quiet (a 🔧 crew window, after truth.txt).
 
 When the alarm's look comes down it also cancels a cut room's 90-second
 restore still pending (the latch puts the whole house back on), so a

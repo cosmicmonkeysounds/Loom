@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { defaultConfig } from "../src/config.ts";
-import { ADAFRUIT_VID, doorSignalRequest, patchSignalRequest, pickPort, postDoorSignal, requestDoorPort, startDoorLink, type SerialLike, type SerialPortLike } from "../src/serial/door-serial.ts";
+import { ADAFRUIT_VID, doorSignalRequest, patchSignalRequest, patchTouchedRequest, pickPort, postDoorSignal, requestDoorPort, startDoorLink, type SerialLike, type SerialPortLike } from "../src/serial/door-serial.ts";
 import { DOOR_SETTINGS_KEY } from "../src/serial/door-protocol.ts";
-import { doorActions, doorHeartbeat, doorStatus, doorStatusText, patchStatusText } from "../src/serial/door-status.ts";
+import { doorActions, doorHeartbeat, doorStatus, doorStatusText, onBayCut, patchStatusText } from "../src/serial/door-status.ts";
 
 const config = defaultConfig({ eventId: "evt", token: "MODTOK", name: "Heart", door: "sim" });
 const tick = () => new Promise((r) => setTimeout(r, 0));
@@ -44,6 +44,12 @@ describe("the door bridge's post", () => {
     expect(init.headers).toEqual({ "content-type": "application/json", "x-loom-token": "MODTOK" });
     expect(JSON.parse(String(init.body))).toEqual({ name: "patch_changed", args: { combo: "V1-D2,V3-D1,V5-D4,V8-D6" }, label: "Terminal · Heart" });
     expect(() => patchSignalRequest(config, "V1-D2,DROP")).toThrow();
+  });
+  it("a touch is patch_touched with no args: this signal never carries a pair", () => {
+    const { url, init } = patchTouchedRequest(config);
+    expect(url).toBe("/e/evt/api/mod/signal");
+    expect(init.headers).toEqual({ "content-type": "application/json", "x-loom-token": "MODTOK" });
+    expect(JSON.parse(String(init.body))).toEqual({ name: "patch_touched", args: {}, label: "Terminal · Heart" });
   });
   it("reads ok / refused / network", async () => {
     expect(await postDoorSignal(config, "door_sensor_closed", 1, async () => new Response("{}", { status: 200 }))).toBe("ok");
@@ -93,6 +99,34 @@ describe("the sim door (door=sim)", () => {
 });
 
 describe("the sim patch bay (door=sim, Shift + digits)", () => {
+  it("stops him and tells the story, with the screen's `awake` and no pairs, and heartbeats no differently", async () => {
+    const k = keyTarget();
+    const bodies: Array<{ name: string; args: Record<string, unknown> }> = [];
+    const fetchFn = vi.fn(async (_url: string, init: RequestInit) => {
+      bodies.push(JSON.parse(String(init.body)));
+      return new Response("{}", { status: 200 });
+    }) as unknown as typeof fetch;
+    const link = startDoorLink(config, { fetchFn, keys: k.target, store: memory() });
+    let cuts = 0;
+    const off = onBayCut(() => cuts++);
+    const night = { server_door: "closed" as const, door_override: false, patch_override: false, step: 6 };
+    link.screen({ ...night, awake: false });
+    k.digit(1);
+    k.digit(2);
+    await tick();
+    expect([cuts, bodies]).toEqual([0, []]); // not awake: just a bay
+    link.screen({ ...night, awake: true });
+    k.digit(3);
+    k.digit(1);
+    await tick();
+    expect(cuts).toBe(1);
+    expect(bodies).toEqual([{ name: "patch_touched", args: {}, label: "Terminal · Heart" }]);
+    expect(Object.keys(doorHeartbeat()).filter((q) => q.startsWith("pb") || q === "pft").sort()).toEqual(["pb", "pbc", "pbx"]);
+    expect(patchStatusText(doorStatus())).toBe("simulated patch bay: 2 cables");
+    off();
+    link.stop();
+  });
+
   it("fakes cables, posts a new set of four once, and reports counts on the heartbeat", async () => {
     const k = keyTarget();
     const bodies: Array<{ name: string; args: Record<string, unknown> }> = [];

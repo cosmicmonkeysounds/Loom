@@ -530,6 +530,30 @@ and the Quest needs no new APK. The Desktop's `git pull` and `-Restart audio` is
 enough for VR; the tent's web game needs a release (`?only=tv`) and a reload.
 Runbook: `scripts/house-desktop/README.md` §3.8.
 
+**The door and the bay cut him off at his heart** (wave 59, not shipped; no new show
+text). On the server-room terminal the door moving, open or shut, stops him mid-word and
+drops what he still owed; the story's lines for the new door play next. It's the
+terminal's own door: the sensor at once, a 🚪 press within a poll. A patch that counts
+does the same at the moment of the post (from the Y2K hour, on the bridge's own gate), and
+a 🔌 💥 ❌ press at the next poll. Before the hour a patch still counts nothing, but **from
+`Trabolta.awake` until an ending he notices the bay**: any other settled cable change, one
+in or out or a full patch, posts `patch_touched`, no args, so no pairs, cuts him off and
+gets *Stop touching me.* (`when patch_touched:`, `Patch Touched`). The terminal holds
+itself to one every 22 s, a counted post included, so a line the story's 20 s would refuse
+never costs a cut; inside that nothing happens. The connect's first reading, a fault and
+a cable between levels don't count, and nothing the bay did before the hour counts as
+posted. A cut with no line after it is left by the story's other guards (a 🔧 crew window,
+after truth.txt). Nothing the player does interrupts him: the plain terminal's click,
+Space and SPEAK TO HIM are gone from a heart terminal too. Only its DISCONNECT, which ends
+the visit, stops him, and the CRT has no such button. The TV, the walls and the house are
+untouched. `stop` also holds `cancel()` 20 ms behind `speak()` everywhere now: straight
+after it, Chrome on macOS never speaks again until it restarts. Windows' Chrome is
+untested, so that is a guard, not a fix for a seen fault there. The terminal half needs a
+release and the server-room terminal reloaded, no `sync-show` (the story half is its own).
+`heart/door-cut.ts`, `serial/patch-bridge.ts`; proved in Chromium on a scratch server with
+a fake M4, and on Chrome's real macOS voice, muted; not on Steph's laptop, the M4, Windows'
+voices or the CRT itself. Help: `docs/help/authoring/38-server-room.md`.
+
 ### Release status
 
 The VPS runs **`w56`** (master `d8223795`, shipped 2026-10-30; rollback `w53b`):

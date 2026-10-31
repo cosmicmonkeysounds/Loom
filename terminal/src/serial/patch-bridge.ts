@@ -36,6 +36,17 @@
 //!   Only a post the server took (`ok`) counts as posted: the same cables
 //!   plugged again after a refusal or a lost post are tried again. No
 //!   reconcile: a combination is an event, not a level.
+//! - **He cuts off (wave 59):** a post that counts stops him at the terminal the
+//!   moment it goes out (`io.cut`), as the door does, once, not on a retry.
+//! - **He notices (wave 59):** from `Trabolta.awake` until an ending, any other
+//!   settled change to the cables, one going in or out or a full patch the hour
+//!   doesn't take, posts `patch_touched`, no args and so no pairs, and cuts him off.
+//!   It counts nothing: no set is posted or forgotten, so the same cables plugged
+//!   in the hour still count. `PATCH_TOUCH_EVERY_MS` apart at most, a post that
+//!   counts included, and inside that nothing happens: no cut, no post. Only a
+//!   clean reading: the first since a connect is only looked at, and a fault or a
+//!   cable between levels waits until the bay reads clean, then compares with the
+//!   last clean one. Not retried: he'd be answering a hand that's gone.
 
 import type { PostOutcome } from "./door-bridge.ts";
 import type { PatchLine } from "./door-protocol.ts";
@@ -56,8 +67,14 @@ export const PATCH_PAIRS = 4;
 export const PATCH_FROM_STEP = 14;
 
 export const PATCH_SIGNAL = "patch_changed";
+/** The bay was touched at any hour he's awake (wave 59). Never carries pairs. */
+export const PATCH_TOUCHED_SIGNAL = "patch_touched";
+/** The story answers `patch_touched` at most every 20 s, on a clock of whole
+ *  seconds. This waits that out and a step of it, so a line it would refuse never
+ *  costs a cut. */
+export const PATCH_TOUCH_EVERY_MS = 22_000;
 
-/** What the story says (the screen state's `night`). */
+/** What the story says (the screen state's `night`, and `character.awake`). */
 export interface StoryPatch {
   server_door: "open" | "closed" | null;
   patch_override: boolean | null;
@@ -65,6 +82,10 @@ export interface StoryPatch {
   step: number | null;
   /** `Night.ended`. */
   ended: boolean | null;
+  /** `Trabolta.awake` (null, or left out: nobody says he is). */
+  awake?: boolean | null;
+  /** `Night.alarm_on`: the story has him quiet about the bay while it screams. */
+  alarm_on?: boolean | null;
 }
 
 /** The story could act on a set now: Power On played, the Y2K hour on, no ending. */
@@ -153,6 +174,10 @@ export function patchQuery(r: PatchReport | null): Record<string, string> {
 
 export interface PatchIo {
   post(combo: string): Promise<PostOutcome>;
+  /** Post `patch_touched`. */
+  touch(): void;
+  /** Stop him at this terminal, now (`door-status.ts` `bayCut`). */
+  cut(): void;
   now(): number;
   later(fn: () => void, ms: number): () => void;
 }
@@ -162,6 +187,10 @@ export class PatchBridge {
   private reading_: PatchState | null = null;
   /** The settled pairs on the previous line since connect (null: none yet). */
   private prev: string | null = null;
+  /** The last clean reading's pairs since connect (null: none yet). */
+  private clean: string | null = null;
+  /** When he was last cut off over the bay. */
+  private touchedAt = Number.NEGATIVE_INFINITY;
   /** The last set the story took (an `ok`; kept across reconnects, forgotten
    *  while the hour is not on: a new run). */
   private lastPosted: string | null = null;
@@ -188,28 +217,52 @@ export class PatchBridge {
     return this.story !== null && hourOn(this.story) && this.story.ended !== true && this.story.patch_override !== true;
   }
 
+  /** He's awake, and nothing has ended his noticing the bay. */
+  private noticing(): boolean {
+    const s = this.story;
+    return s !== null && s.server_door !== null && s.awake === true && s.ended !== true && s.alarm_on !== true;
+  }
+
   /** A `patch` line from the board. */
   line(l: PatchLine): void {
     if (this.stopped) return;
     this.reading_ = { pairs: l.pairs, count: l.count, complete: l.complete, raw: l.raw, src: l.src, stable: l.stable, at: this.io.now() };
+    this.look(l, this.posts(l));
+  }
+
+  /** The combination's rules. → this line posted, or will when the post in flight lands. */
+  private posts(l: PatchLine): boolean {
     const was = this.prev;
     this.prev = l.pairs;
-    if (was === l.pairs) return; // the periodic line: nothing changed
+    if (was === l.pairs) return false; // the periodic line: nothing changed
     // Any change drops a retry of the bay as it was.
     this.giveUp();
-    if (was === null) return; // the first line since connect: only looked at
+    if (was === null) return false; // the first line since connect: only looked at
     const combo = l.complete && l.count === PATCH_PAIRS ? l.pairs : null;
-    if (combo === null || combo === this.lastPosted || combo === this.trying || !this.gateOpen()) return;
-    if (this.inFlight) {
-      this.pending = combo;
-      return;
-    }
-    this.send(combo, 0);
+    if (combo === null || combo === this.lastPosted || combo === this.trying || !this.gateOpen()) return false;
+    if (this.inFlight) this.pending = combo;
+    else this.send(combo, 0);
+    return true;
+  }
+
+  /** Did the cables move, for him to notice? `counted`: the hour answers this line itself. */
+  private look(l: PatchLine, counted: boolean): void {
+    const live = patchSummary(l.src);
+    if (!l.stable || live.between > 0 || live.dup) return; // on its way in, or a fault
+    const was = this.clean;
+    this.clean = l.pairs;
+    if (was === null || was === l.pairs || counted || !this.noticing()) return;
+    const now = this.io.now();
+    if (now - this.touchedAt < PATCH_TOUCH_EVERY_MS) return;
+    this.touchedAt = now;
+    this.io.cut();
+    this.io.touch();
   }
 
   /** The port closed or the board went away: the next line is a first look. */
   disconnected(): void {
     this.prev = null;
+    this.clean = null;
     this.reading_ = null;
     this.pending = null;
     this.giveUp();
@@ -218,7 +271,7 @@ export class PatchBridge {
   /** A screen poll answered. */
   screen(night: StoryPatch): void {
     if (this.stopped) return;
-    this.story = { server_door: night.server_door, patch_override: night.patch_override, step: night.step, ended: night.ended };
+    this.story = { server_door: night.server_door, patch_override: night.patch_override, step: night.step, ended: night.ended, awake: night.awake ?? null, alarm_on: night.alarm_on ?? null };
     if (!hourOn(this.story)) {
       // Not the hour (yet, or again: the story started over): a set posted in
       // a run before this one may be plugged again.
@@ -248,6 +301,10 @@ export class PatchBridge {
     this.pending = null;
     this.trying = combo;
     this.posted.push(combo);
+    if (attempt === 0) {
+      this.touchedAt = this.io.now();
+      this.io.cut();
+    }
     const run = this.run;
     void this.io.post(combo).then(
       (out) => this.landed(combo, attempt, out, run),
