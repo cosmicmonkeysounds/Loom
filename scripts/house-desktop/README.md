@@ -560,9 +560,8 @@ uv run stagehand music stop --config trapped.desktop.yaml         # scene off
 in a host's Desk window, balances the house live: Music, Featured tracks,
 Sound effects, Announcements and Trabolta's TV, everywhere, per room and
 per speaker (the sub has its own fader), with live meters while the panel
-is open. Its Now playing shows each bed's track with ⏭ Skip, the scene
-picker (a hand scene, held like `music scene`), Stop music and *Follow the
-story*. The mix is kept by the server for the event (a router restart
+is open. Now playing moved to 🎵 Music (wave 58): each bed's track with ⏭
+Skip, the scene picker, Stop music and *Follow the story* are there. The mix is kept by the server for the event (a router restart
 picks it up) and never edits `audio.json`: the speaker trims stay the
 install. Speaker tests ignore it. Clippy's mic shows as a meter only (it
 lives in CueMix). Muting the TV *everywhere* also stops it ducking the
@@ -599,7 +598,7 @@ on the 828x's own clock (the numbers are in `docs/loom-w52-contract.md`).
    router, and a stray pause resumes within a second.
 4. **`.\tidal.ps1 -Check`** (part of `preflight.ps1`), then `uv run
    stagehand music scene act_1 --config trapped.desktop.yaml`: `music
-   status` names the track, and Run -> House -> 🎚 Mixer shows it with ⏭.
+   status` names the track, and Run -> House -> 🎵 Music shows it with ⏭.
    The audio log's health line ends `| tidal playing <track>, capture peak N
    dBFS`, or `| tidal PROBLEM: <why>`.
 

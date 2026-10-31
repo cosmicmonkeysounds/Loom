@@ -80,6 +80,11 @@ are answered from Run by the director** (identity control → *be* Task
 Manager) **or from your own phone**, whichever of you is free; agree by radio
 who has them. Status reports, never plot.
 
+**The music is yours.** Your Desk opens on 🎵 Music: what is playing,
+⏮ ⏸ ⏭, any show playlist, ↺ Follow the story. 🔒 keeps Trabolta off it and
+hands back whatever he had on. He changes it only for a program he has grown
+chummy with, and `# hosts` tells you when he does.
+
 **"I am also the bank."** Every program has a **Wallet** (a pinned room on
 their phone) from the moment they log in; the Truther Download opens
 `# truthcoin-exchange` and your bank readout. They send, request and trade

@@ -185,8 +185,7 @@ and Trabolta's mind connected, and what to do), **🎛 Desk** (the cue list,
 GO, the checks) and **🎨 Cue designer** (lighting looks with a live preview
 and templates, sound auditions, desk cues, and the `cue` / `sound` line
 the story fires each with) and, since wave 40, **🎚 Mixer** (the live
-house balance per source, room and speaker, and the soundtrack's
-transport: skip, scene, stop, follow the story; also in a host's Desk
+house balance per source, room and speaker; also in a host's Desk
 window; `docs/loom-w40-contract.md`). A host's phone has the same Setup and checks in
 its **Desk** window. Help: `docs/help/authoring/49-house-setup.md`,
 `50-cue-designer.md`, `47-house-desk.md`.

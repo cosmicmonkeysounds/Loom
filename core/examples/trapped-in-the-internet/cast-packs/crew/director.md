@@ -169,6 +169,7 @@ never from a guest card.
 | `# hosts` says Trabolta's worker is stalled (⏳) | the tech op restarts the `agents` job; answer his DMs as Trabolta from Run meanwhile (every waiting thread got his hold line once) |
 | dead door terminal (the King's chess) | **♟** They beat the King: the door code (fallback), **naming the winner** (with nobody named it only reminds `# hosts`); the door terminal reports its own wins *by Terminal · <name>* |
 | the King's health knocked down too early, or after a rehearsal | **👑** Restore the King's health (Anytime): back to 15/15 in both games and at the door |
+| Trabolta must stay off the music | **🔒** Keep Trabolta off the music (cue 86, Anytime, or 🔒 in 🎵 Music): it hands back what he had on; **🔓** Let Trabolta reach the music (cue 87) undoes it |
 | the crew need to open the server-room door themselves | **🔧** Crew going through the server-room door (Anytime; the server-room Antivirus has it too): for 2 minutes an opening only tells `# hosts`, The Heart is kept |
 | the server-room door opened and nothing happened | **🚪** Server room door opened (the door sensor's fallback; the server-room Antivirus has it too): once Trabolta is awake the first one plays The Heart. Run → Terminals shows the sensor: a red 🚪 is a fault |
 | the door is shut but his screen still says CLOSE THE DOOR | **🚪** Server room door closed (sensor fallback). After either 🚪 the story follows the buttons (*Door on buttons* on the glance) until **🚪 Trust the door sensor again** |

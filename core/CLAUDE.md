@@ -654,9 +654,12 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   or going), never by the scene alone: a beat nobody opened, or one whose reader's
   phone died, stays live until a ✓ Done, a newer scene or a restart.
   MUSIC is refused while anyone else's hand is on the soundtrack
-  (`AudioHub.musicHand`: the last scene, stop, hand playlist or held pause's `by`,
-  memory only, corrected by the router's `hand`; Trabolta's loan is no hand, so a
-  press ends it), and AFTER PARTY's timed return stands down then too. Every
+  (`AudioHub.musicHand`: the last scene, stop, hand playlist, held pause or Stop
+  house sounds' `by`, memory only, corrected by the router's `hand`; a Stop holds
+  until a scene is reported again, and ⏵ gives back the hand its ⏸ sat on;
+  Trabolta's loan is no hand, so AFTER PARTY or BACK TO NORMAL ends it and NEXT
+  TRACK only moves the track), and AFTER PARTY's timed return stands down then
+  too, or waits out a host's ⏸ on it (`pausedOver`). Every
   action uses the house's own path (`lights.test`, `audio.play`, `audio.music`,
   `deskFire(cue, COSTUME_BY)`, the canned `say`). A light item never reaches a
   safety fixture (`costumeFixtures`), and the show's stay on `living`, which every
@@ -688,7 +691,9 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   `tidal` and `loan`, a bed `live`, each optional (`audioMusicOf`). The words both
   panels draw are in `src/house-mixer.ts` (`musicSource`, `djLines`, …).
   `MixerView.dj` is `musicDjOf` over the sim's world, null for a story without
-  `Night.dj_locked`. The header `warmth: <slot> <min> to <max>` (`model.warmth`,
+  `Night.dj_locked`; a host's read leaves a Run persona off its pals
+  (`audioContext(hide)`). `applyAgentActs` refuses `change_the_music` while
+  `musicHand()` is anyone's, so no use is spent and nothing is told. The header `warmth: <slot> <min> to <max>` (`model.warmth`,
   ROLE slots keep no range) names the one guest slot an agent's `adjust` may move,
   `them.<slot>`, by `Math.sign` whatever was asked; `them.ranges` offers it to a
   guest's request. Every other guest `them.` key is still ignored. Tests:

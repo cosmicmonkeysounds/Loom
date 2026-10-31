@@ -24,7 +24,7 @@ A press is refused:
 - for 8 s after any press that landed, and for longer after a heavy one (AD STORM 60 s);
 - LIGHTS, during the alarm, a blackout, or while Trabolta has a room's lights out;
 - SOUNDS and MUSIC, with the router offline; LIGHTS, with the lights module offline;
-- MUSIC, while a director or a host has the soundtrack by hand (a Stop or a chosen scene), until they press *Follow the story*;
+- MUSIC, while a director or a host has the soundtrack by hand (a Stop, a chosen scene or playlist, or a held ⏸), until they press *Follow the story* (or ▶ for a ⏸; a Stop also lets go at the story's next music cue). Trabolta's loan is no hand: AFTER PARTY or BACK TO NORMAL takes the music back from him, and NEXT TRACK only moves the track;
 - AD STORM and GLITCH, while the ad hijack's takeover is on the screens;
 - POKE TRABOLTA, while he is asleep or a reply of his is owed.
 

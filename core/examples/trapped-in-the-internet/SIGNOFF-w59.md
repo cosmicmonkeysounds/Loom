@@ -149,7 +149,7 @@ Found on the way. Each is built as it says, and yours to overrule.
 | N-47 | Clippy's aside at her Cloud check-in reads *Remember, the Cloud is just someone else's backyard!* (`main.loom:2586`) | Kept: the joke works, at the cost of one real-house word on a guest's phone | *…someone else's computer!* has no house word and is the old saying, but loses the pun |
 | N-48 | The Casino's room tone is still a graphics card's coil whine (read only, never auditioned) | Kept: no work, and only someone who knows the sound would notice | A swap needs a new synthesised sound and an audition on the Desktop's router |
 | N-49 | "A song is on" has no check of its own in the costume | Every song plays after `Night.ended`, so the ending's refusal covers it | |
-| N-50 | A server restart inside AFTER PARTY's 45 s hold loses its timed return | BACK TO NORMAL reads *Not Responding*, and someone presses Follow the story in the Mixer. Before this a guest could release a director's hand | |
+| N-50 | A server restart inside AFTER PARTY's 45 s hold loses its timed return | BACK TO NORMAL reads *Not Responding*, and someone presses ↺ Follow the story in 🎵 Music. Before this a guest could release a director's hand | |
 | N-51 | `costume-root.mjs` puts the link on a plain-http LAN page during setup | Stop the script once the iPad has it. The token can only fire the menu, but don't post it | |
 
 ## 4. Every word we wrote

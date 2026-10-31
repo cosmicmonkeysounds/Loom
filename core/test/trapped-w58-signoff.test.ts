@@ -107,7 +107,13 @@ describe("wave 58's Music manager: its own sheet", () => {
 
   it("records each decision", () => {
     const rows = MUSIC_SHEET.split("\n").filter((l) => /^\| [MT]-\d+ \|/u.test(l));
-    expect(rows.map((r) => /^\| ([MT]-\d+)/u.exec(r)![1])).toEqual(["M-1", "M-2", "M-3", "M-4", "M-5", "M-6", "T-1", "T-2", "T-3", "T-4", "T-5", "T-6", "T-7", "T-8", "T-9", "T-10"]);
+    expect(rows.map((r) => /^\| ([MT]-\d+)/u.exec(r)![1])).toEqual(["M-1", "M-2", "M-3", "M-4", "M-5", "M-6", "T-1", "T-2", "T-3", "T-4", "T-5", "T-6", "T-7", "T-8", "T-9", "T-10", "T-11", "T-12"]);
+  });
+
+  it("keeps the mind's marker out of the prompt the model reads", () => {
+    const mind = read("trabolta.mind.md");
+    expect(mind.slice(0, mind.indexOf("\n---", 4))).toMatch(/# DRAFT w58-music/u);
+    expect(mind.slice(mind.indexOf("\n---", 4))).not.toMatch(/DRAFT/u);
   });
 
   it("names every file that holds a DRAFT w58-music marker", () => {

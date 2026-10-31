@@ -33,7 +33,9 @@ Your words, verbatim:
 | T-7 | **Hosts can lock him out** | 🔒 on 🎵 Music, or the two new Anytime cues. It hands back what he had on. |
 | T-8 | **Who hears about it** | The asker gets a private line and `# hosts` gets a line. The house just hears the music change. |
 | T-9 | **No printed fact changes for this** | Fact M19, *Ask Him Nicely*, is the Oct 30 delivery's: it says he can change the vibes, and its Codex page says the lights and sounds. So the card already covers the music, and he can offer it himself. |
-| T-10 | **His loan gives way to the costume** | A MUSIC press on Task Manager's iPad takes the music back from him, because a loan is no hand. A host's own ⏸ or hand playlist refuses the press, because those are. |
+| T-10 | **His loan gives way to the costume** | AFTER PARTY or BACK TO NORMAL on Task Manager's iPad takes the music back from him, because a loan is no hand; NEXT TRACK only moves the track. A host's own ⏸ or hand playlist refuses the press, because those are. |
+| T-11 | **A Stop and a pause hold him off** | ■ Stop house sounds is a hand: only the story's next music cue or ↺ Follow the story brings the music back, and the costume's MUSIC and his moves are refused until then. A host's ⏸ refuses him too, and a ⏸ on his loan ends it, so his 30 s or 3 min can't lift it. |
+| T-12 | **A move under a hand is refused before the story hears it** | No use spent, no `🎵` line, nothing in the panel's Last line. The line the model already wrote still goes out, so he can say yes and nothing happens. A `silence` on a file bed is not refused this way: the bed has no pause, so the story's line says it stopped. |
 
 ## 2. Still to prove, on the Desktop, before anyone relies on it
 

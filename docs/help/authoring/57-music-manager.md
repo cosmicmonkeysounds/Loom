@@ -29,7 +29,8 @@ the Desktop, and each act plays its fallback folder.
   holds until you press ▶ or the scene changes.
 - Each **bed** (a playlist playing on some speakers): the rooms it plays in, the
   track and how far in, and **⏭ Skip**.
-- **■ Stop music** stops the soundtrack, held like a hand scene.
+- **■ Stop music** stops the soundtrack, held like a hand scene. So does
+  ■ Stop house sounds: Trabolta and the costume can't bring it back.
 - An empty playlist shows as a warning. *No soundtrack reported yet* means the
   router has no `soundtrack.yaml`, or hasn't sent its first report.
 

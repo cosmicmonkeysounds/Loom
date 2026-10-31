@@ -3868,8 +3868,8 @@ INTERACTION costume_flicker
   description: The Task Manager costume presses this itself. The screens and the room bulbs flicker once. No ad, no line, no spoiler.
 
 // DRAFT w58-music (the labels, and the # hosts lines above). The Music manager's
-// switch, on hand all night. Each shows only
-// when it would do something.
+// switch, on hand all night. Each greys out as
+// *not on offer* when it would do nothing.
 INTERACTION trabolta_music_lock
   label: 🔒 Keep Trabolta off the music
   who: admin

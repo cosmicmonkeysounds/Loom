@@ -41,7 +41,12 @@ chummy but by the story's own paths (C5).
 - **TIDAL only for ⏮ and ⏸.** A file bed has neither (a crossfade is not a
   pause). The buttons show only while a bed is on the app.
 - **A pause holds until told.** ⏵ Resume, or any scene change. A live `cue
-  music_<scene>` wins over a hand, as it always has, so it resumes too.
+  music_<scene>` wins over a hand, as it always has, so it resumes too. Trabolta
+  can't lift one: a held pause refuses his moves, and a host's ⏸ on his loan ends
+  the loan.
+- **Stop house sounds is a hand.** Nothing brings the music back but the story's
+  next music cue or *Follow the story*: no catch-up, no costume press and no move
+  of his (ALL STOP: nothing restarts until the house manager says so).
 - **Trabolta's music is a loan**, never a hand. A live music cue ends it, a
   director's hand refuses it, and it ends by itself.
 
@@ -95,16 +100,20 @@ Button names were read off the app on 2026-10-31, read-only, while it played:
 `<cue: music, action: skip | hush | play | back[, playlist: <name>]>` on the feed
 (`stereo_of_cue`). `scene_of_cue` never reads these (`music,` is not `music_`).
 
-| Action | With a director's hand | Else |
+| Action | With a director's hand, a held ⏸ or a Stop | Else |
 |---|---|---|
 | `skip` | ignored, logged | `Director.next()` |
 | `hush` | ignored | the app pauses, the loan starts |
 | `play` | ignored | `play_playlist`, the loan starts |
 | `back` | ignored unless a loan is in force | the loan ends, the catch-up runs |
 
-A director's scene, playlist, stop or *Follow the story*, Stop house sounds, a
+A director's scene, playlist, stop, ⏸ or *Follow the story*, Stop house sounds, a
 story restart and a live music cue all end a loan. Then the story's later `back`
 finds none and does nothing.
+
+The server refuses the act before the story hears it while `AudioHub.musicHand` is
+anyone's (`applyAgentActs`): no use is spent, no `🎵` line goes out and the panel's
+last line stays. His reply is already written by then, so it still goes out.
 
 ## C5 Chummy (`warmth:`, `Program.chummy`)
 
@@ -132,14 +141,16 @@ app's library and never the ending's playlist.
 
 `Night.dj_back_at`'s rule sends `back`. `Night.dj_last` / `dj_for` name what he
 did last. `trabolta_music_lock` / `trabolta_music_unlock` (`who: admin`, on hand
-all night, each showing only when it does something) set `Night.dj_locked`.
+all night, each greyed out as *not on offer* when it would do nothing) set
+`Night.dj_locked`.
 
 ## C7 The view
 
 `MixerView.dj?: MusicDj {locked, bar, pals: [{name, chummy}], last}` read off the
 sim (`musicDjOf`), `null` for a story without `Night.dj_locked`. Pals are the
 programs at or over the bar, the chummiest first, at most 12. A program's name
-only: the view is staff's.
+only: the view is staff's. A host's read leaves a Run persona off (wave 59), Run's
+keeps them.
 
 ## C8 Tests and checks
 
@@ -150,8 +161,8 @@ only: the view is staff's.
   sheet, beside the story's).
 - stagehand: `tests/test_audio_w58.py` (the reconciler over `FakePage`, the
   director, the router's table in C4), the persona and mind pins.
-- play: `test/w58-music.test.tsx`. editor: `lib/house-music-view.test.ts`, the
-  store.
+- play: `test/w58-music.test.tsx`. editor: `lib/house-mixer-view.test.ts`,
+  `components/house/house-views.test.ts`, the store.
 - On a scratch server with a fake router report, both panels in Chrome.
 
 Not tested on the real app: ⏮, ⏸, ⏵ and a hand playlist have run only against
@@ -165,5 +176,7 @@ wait for the first rehearsal on the Desktop (`SIGNOFF-w58-music.md` §2).
 - **The costume's hand** (`AudioHub.musicHand`). A hand playlist and a held ⏸ count
   as a hand, so a MUSIC press on the iPad is refused under them. ⏮ moves no hand,
   like ⏭. A loan is no hand: the router reports `hand` for it, so the hub reads
-  `loan` first, and a press ends it the way any hand does.
+  `loan` first. AFTER PARTY or BACK TO NORMAL ends it; NEXT TRACK only moves the
+  track. A Stop is a hand until a scene is reported again, and ⏵ gives back the
+  hand its ⏸ sat on, so AFTER PARTY's timed return survives a host's pause.
 - **The rooms.** Nothing here names a renamed room.

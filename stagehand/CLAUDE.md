@@ -288,9 +288,9 @@ module docstrings that explain the why).
   real change) and `stop` let go of a pause, and `_tick_live` never reads a paused
   app as a silent cable. **The stereo:** `<cue: music, action: skip | hush | play |
   back>` on the feed (`stereo_of_cue`, never a scene). `_music_loan` marks a hand
-  that is Trabolta's: a director's hand ignores `skip`, `hush` and `play`, `back`
-  touches only a loan, and every hand, live cue, Stop house sounds and restart
-  ends one (`_end_loan`). A guest's `adjust` may carry `them.chummy` only when the
+  that is Trabolta's: a director's hand, a held ⏸ or a Stop ignores `skip`, `hush`
+  and `play`, `back` touches only a loan, and every hand, a host's ⏸, live cue,
+  Stop house sounds and restart ends one (`_end_loan`). A guest's `adjust` may carry `them.chummy` only when the
   request's `them.ranges` offers it (`adjust_names`). Tests:
   `tests/test_audio_w58.py`, `tests/test_player_adjust.py`.
 - **The SFX library is original and deterministic** (C6): no samples,
@@ -518,7 +518,8 @@ module docstrings that explain the why).
   against feed catch-ups until the next live music cue or a story
   restart (so does the mixer's scene / stop, wave 40; its *Follow the
   story* lets go); else the catch-up (`night.music`). Stop house sounds forgets
-  the scene: the beds stay silent until the next music cue or catch-up.
+  the scene and is a hand (ALL STOP): the beds stay silent until the next music
+  cue, *Follow the story* or a restart.
   An empty or dead playlist retries every 10 s (`RETRY_S`).
 - **Three ranks of sound file.** `sounds._best` ranks a file someone put
   there (no tag) over a library stand-in (`loom-sfx v1`, `is_stand_in`)

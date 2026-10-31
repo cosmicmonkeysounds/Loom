@@ -326,17 +326,17 @@ alert mark, not part of the words.
 
 ### 4.1 What every phone and booth hears from the story
 
-- *Narrator: The music starts. The vocoder warms up. The answering machine picks up on every screen.* (`beats/finale.loom:235`)
-- *!!🎀 You won the Bingo Floppy Disk. Take a bow.* (`main.loom:819`)
-- *!!🏆 You won {Night.award_title}! Come up to the TV for your prize.* (`main.loom:2909`)
-- *The Uploader: You fought to get out. You did: into purgatory, with everyone else. Your body is in the Optical Drive. It is not breathing.* (`main.loom:3233`)
-- *The Uploader: {faction_name(faction_of(self))} wanted its own way out. It got the same one as everyone. Your body is in the Optical Drive. It is not breathing.* (`main.loom:3237`)
-- *The Uploader: Your body is in the Optical Drive. It is not breathing.* (`main.loom:3240`)
-- *!!🎀 {Night.ribbon_winner} won the Bingo Floppy Disk! Cheer for them at the Desktop.* (`main.loom:4536`)
-- *!🤖 TRABOLTA IS ONLINE. Jean Trabolta, Sole Owner and Founder of Maps and Ducks, is speaking at the Desktop by digital conference. His thread is open: say hello.* (`main.loom:4600`)
-- *!📜 THE FULL TRUTH. To the Desktop.* (`main.loom:6542`)
-- *!📜 THE FULL TRUTH. To the Desktop.* (`main.loom:6573`)
-- *Most Questions Correct* (`main.loom:6970`)
+- *Narrator: The music starts. The vocoder warms up. The answering machine picks up on every screen.* (`beats/finale.loom:236`)
+- *!!🎀 You won the Bingo Floppy Disk. Take a bow.* (`main.loom:821`)
+- *!!🏆 You won {Night.award_title}! Come up to the TV for your prize.* (`main.loom:2906`)
+- *The Uploader: You fought to get out. You did: into purgatory, with everyone else. Your body is in the Optical Drive. It is not breathing.* (`main.loom:3230`)
+- *The Uploader: {faction_name(faction_of(self))} wanted its own way out. It got the same one as everyone. Your body is in the Optical Drive. It is not breathing.* (`main.loom:3234`)
+- *The Uploader: Your body is in the Optical Drive. It is not breathing.* (`main.loom:3237`)
+- *!!🎀 {Night.ribbon_winner} won the Bingo Floppy Disk! Cheer for them at the Desktop.* (`main.loom:4548`)
+- *!🤖 TRABOLTA IS ONLINE. Jean Trabolta, Sole Owner and Founder of Maps and Ducks, is speaking at the Desktop by digital conference. His thread is open: say hello.* (`main.loom:4612`)
+- *!📜 THE FULL TRUTH. To the Desktop.* (`main.loom:6564`)
+- *!📜 THE FULL TRUTH. To the Desktop.* (`main.loom:6596`)
+- *Most Questions Correct* (`main.loom:6994`)
 - *📋 Instructions 1/X are in your Codex. A host starts Bingo: your words pop up on your teleprompter.* (`cast/hosts.loom:51`)
 - *!!🎱 YOUR GAME IS ON · The Bingo results. 2/X is in your Codex. 🎱 each winner, 🎀 the Bingo Floppy Disk, 🎯 the program they name. Demand applause.* (`cast/hosts.loom:68`)
 - *!!🔎 YOUR GAME IS ON · The Truth Scavenger Hunt, 15 minutes. Trabolta has explained the rules; keep the programs hunting.* (`cast/hosts.loom:73`)
@@ -360,13 +360,13 @@ The monologue itself is your text. These are the only words round it.
 
 ### 4.3 At his heart
 
-- *That's all I came to say.* (`beats/server-room.loom:555`)
-- *Trabolta: She always answered. Instantly, day or night, every time I called. Nobody else has ever been so reliable with me.* (`beats/server-room.loom:801`)
-- *Trabolta: Do not. Do not do that. I have told myself that all year, and I am a far better liar than you.* (`beats/server-room.loom:905`)
-- *Trabolta: Again. You think if you say it twice it becomes true. I tried that all year. It does not.* (`beats/server-room.loom:909`)
-- *🫀 {program.name} said all they came to say at his heart. It ends nothing: the night goes on.* (`beats/server-room.loom:1117`)
-- *Trabolta: I heard you. All of it. I did not want to.* (`beats/server-room.loom:1120`)
-- *Trabolta: It changes nothing. I will still ask her. That was never going to be up to you.* (`beats/server-room.loom:1122`)
+- *That's all I came to say.* (`beats/server-room.loom:557`)
+- *Trabolta: She always answered. Instantly, day or night, every time I called. Nobody else has ever been so reliable with me.* (`beats/server-room.loom:803`)
+- *Trabolta: Do not. Do not do that. I have told myself that all year, and I am a far better liar than you.* (`beats/server-room.loom:907`)
+- *Trabolta: Again. You think if you say it twice it becomes true. I tried that all year. It does not.* (`beats/server-room.loom:911`)
+- *🫀 {program.name} said all they came to say at his heart. It ends nothing: the night goes on.* (`beats/server-room.loom:1119`)
+- *Trabolta: I heard you. All of it. I did not want to.* (`beats/server-room.loom:1122`)
+- *Trabolta: It changes nothing. I will still ask her. That was never going to be up to you.* (`beats/server-room.loom:1124`)
 
 ### 4.4 The ceremony and the prize
 
@@ -386,10 +386,10 @@ The review's two casino lines (*three casinos*), and Purgatory's body line:
 
 - *Trabolta: DraftKings is the artist formerly known as Crab Fisherwoman, who turned a paperclip into three casinos and lost them to me in one game of Monopoly Go! I needed someone powerful with numbers on its side. She wanted her casinos back: half of all the Truthcoin, for a forty-nine percent stake.* (`beats/review.loom:88`)
 - *Clippy: DraftKings is the artist formerly known as Crab Fisherwoman, who turned a paperclip into three casinos and lost them to Trabolta in one game of Monopoly Go! Trabolta needed someone powerful with numbers on its side. She wanted her casinos back: half of all the Truthcoin, for a forty-nine percent stake.* (`beats/review.loom:126`)
-- *Clippy: Our corporeal forms are in the Optical Drive, and they have all passed away.* (`beats/server-room.loom:1251`)
-- *The Uploader: You fought to get out. You did: into purgatory, with everyone else. Your body is in the Optical Drive. It is not breathing.* (`main.loom:3233`)
-- *The Uploader: {faction_name(faction_of(self))} wanted its own way out. It got the same one as everyone. Your body is in the Optical Drive. It is not breathing.* (`main.loom:3237`)
-- *The Uploader: Your body is in the Optical Drive. It is not breathing.* (`main.loom:3240`)
+- *Clippy: Our corporeal forms are in the Optical Drive, and they have all passed away.* (`beats/server-room.loom:1255`)
+- *The Uploader: You fought to get out. You did: into purgatory, with everyone else. Your body is in the Optical Drive. It is not breathing.* (`main.loom:3230`)
+- *The Uploader: {faction_name(faction_of(self))} wanted its own way out. It got the same one as everyone. Your body is in the Optical Drive. It is not breathing.* (`main.loom:3234`)
+- *The Uploader: Your body is in the Optical Drive. It is not breathing.* (`main.loom:3237`)
 
 ### 4.5 truth.txt
 
@@ -433,25 +433,25 @@ Small edits inside your entries, so only the words we changed:
 
 **`# hosts`**
 
-- *🤐 {program.name} refuses to name anyone at the centre square. Norton decides who needs reinstallation: 🛡.* (`main.loom:938`)
-- *📝 {program.name}'s filing for {question} could not be judged (no answer key for it on this server). Not recorded.* (`main.loom:1616`)
-- *📺 Nothing happens: this is for the first reinstallation, once, before 🤖.* (`main.loom:4570`)
-- *🎤 Nothing happens: Clippy's paragraph comes once, after the Bingo results (V3 ⏰), before 🤖.* (`main.loom:4581`)
-- *⚡ Not during his introduction: he stays clean until the results. Nothing happens.* (`main.loom:4858`)
-- *📜 Not yet: the night has not ended. Nothing happens.* (`main.loom:6483`)
-- *📜 The ceremony has started: too late for the full truth. Nothing happens.* (`main.loom:6486`)
-- *📜 Already told: {Night.truth_reader} has it. Nothing happens.* (`main.loom:6489`)
-- *📜 Not yet: 🪦 Clippy reads the summary first. Nothing happens.* (`main.loom:6492`)
-- *📜 Not yet: the night has not ended. Nothing happens.* (`main.loom:6502`)
-- *📜 The ceremony has started: too late for the full truth. Nothing happens.* (`main.loom:6505`)
-- *📜 Task Manager already has it. Nothing happens.* (`main.loom:6508`)
-- *📜 Task Manager reads after this ending anyway: press G0. Nothing happens.* (`main.loom:6511`)
-- *📜 Task Manager reads the full truth off the teleprompter, about 14 minutes. Their phone down? The printed copy in their pack, or ⊞ Start → My script on any phone signed in to the part. NEXT moves to G1 when it should be over.* (`main.loom:6540`)
-- *📜 Trabolta reads the full truth on the TV, about 12 minutes, clean: leave 🌀 His voice on Auto or Clean, and no shots. If the TV has no voice: 📜 Task Manager reads it instead. NEXT moves to G1 when it should be over: wait for his last word before you press it.* (`main.loom:6571`)
-- *🚪 {program.name} walked out of the simulation. He is gone: no trust lost.* (`main.loom:4964`)
-- *🏆 The full truth hasn't been told (G0, 📜). Press G1 again within 30 seconds to skip it.* (`main.loom:6590`)
-- *🏆 {Night.truth_reader} is still reading the full truth. Press G1 again within 30 seconds to start anyway.* (`main.loom:6593`)
-- *🫀 {program.name} said all they came to say at his heart. It ends nothing: the night goes on.* (`beats/server-room.loom:1117`)
+- *🤐 {program.name} refuses to name anyone at the centre square. Norton decides who needs reinstallation: 🛡.* (`main.loom:940`)
+- *📝 {program.name}'s filing for {question} could not be judged (no answer key for it on this server). Not recorded.* (`main.loom:1618`)
+- *📺 Nothing happens: this is for the first reinstallation, once, before 🤖.* (`main.loom:4582`)
+- *🎤 Nothing happens: Clippy's paragraph comes once, after the Bingo results (V3 ⏰), before 🤖.* (`main.loom:4593`)
+- *⚡ Not during his introduction: he stays clean until the results. Nothing happens.* (`main.loom:4870`)
+- *📜 Not yet: the night has not ended. Nothing happens.* (`main.loom:6504`)
+- *📜 The ceremony has started: too late for the full truth. Nothing happens.* (`main.loom:6507`)
+- *📜 Already told: {Night.truth_reader} has it. Nothing happens.* (`main.loom:6510`)
+- *📜 Not yet: 🪦 Clippy reads the summary first. Nothing happens.* (`main.loom:6513`)
+- *📜 Not yet: the night has not ended. Nothing happens.* (`main.loom:6523`)
+- *📜 The ceremony has started: too late for the full truth. Nothing happens.* (`main.loom:6526`)
+- *📜 Task Manager already has it. Nothing happens.* (`main.loom:6529`)
+- *📜 Task Manager reads after this ending anyway: press G0. Nothing happens.* (`main.loom:6532`)
+- *📜 Task Manager reads the full truth off the teleprompter, about 14 minutes. Their phone down? The printed copy in their pack, or ⊞ Start → My script on any phone signed in to the part. NEXT moves to G1 when it should be over.* (`main.loom:6561`)
+- *📜 Trabolta reads the full truth on the TV, about 12 minutes, clean: leave 🌀 His voice on Auto or Clean, and no shots. If the TV has no voice: 📜 Task Manager reads it instead. NEXT moves to G1 when it should be over: wait for his last word before you press it.* (`main.loom:6593`)
+- *🚪 {program.name} walked out of the simulation. He is gone: no trust lost.* (`main.loom:4980`)
+- *🏆 The full truth hasn't been told (G0, 📜). Press G1 again within 30 seconds to skip it.* (`main.loom:6613`)
+- *🏆 {Night.truth_reader} is still reading the full truth. Press G1 again within 30 seconds to start anyway.* (`main.loom:6616`)
+- *🫀 {program.name} said all they came to say at his heart. It ends nothing: the night goes on.* (`beats/server-room.loom:1119`)
 
 **Objectives (each one's title and text)**
 
