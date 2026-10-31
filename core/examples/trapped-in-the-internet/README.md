@@ -917,7 +917,7 @@ orchestrator's reflect for that speaker only) make him candid with a
 program at the server-room terminal (`them.at_the_heart == true`; since
 wave 11 any time he is awake, the door having played The Heart however it
 was unlocked): the Fallout Master in a broom cupboard. Since wave 20 the
-talk itself is the story's (the four layers docked on the terminal), and
+talk itself is the story's (the three layers docked on the terminal), and
 his voice only fills the gaps: *a choice is open* keeps him to one short
 line pointing back at the screen, and **heart to heart** (⟦SPEAK FREELY⟧,
 or after Leave, `them.heart_chat`) lets him talk at length
