@@ -31,12 +31,14 @@ export class AdPlayer {
   private run = 0;
   private unlocked = false;
   private sound: AdSound = "idle";
+  private readonly make: () => AdAudio | null;
+  private readonly told: (s: AdSound, done: boolean) => void;
 
-  constructor(
-    private readonly make: () => AdAudio | null,
-    /** The sound changed, or (`done`) it is over: the track ended, or its file failed. */
-    private readonly told: (s: AdSound, done: boolean) => void,
-  ) {}
+  /** `told`: the sound changed, or (`done`) it is over: the track ended, or its file failed. */
+  constructor(make: () => AdAudio | null, told: (s: AdSound, done: boolean) => void) {
+    this.make = make;
+    this.told = told;
+  }
 
   private audio(): AdAudio | null {
     if (this.el === null) {
@@ -112,6 +114,6 @@ export class AdPlayer {
         /* an element going away is silent anyway */
       }
     }
-    if (this.sound !== "idle") this.sound = "idle";
+    this.sound = "idle";
   }
 }

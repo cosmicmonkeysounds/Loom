@@ -25,6 +25,7 @@
     "./talk-back": "./src/talk-back.ts",
     "./credits": "./src/credits.ts",
     "./voice-fx": "./src/voice-fx.ts",
+    "./audio-ads": "./src/audio-ads.ts",
     "./link-health": "./src/link-health.ts"
   },
   "scripts": {

@@ -122,7 +122,30 @@ export interface ScreenTerminals {
   voiceMuted: boolean
   /** (wave 56) The director's mode for his voice; absent from an older server. */
   voiceFx?: import('@loom/core/voice-fx').VoiceFxMode
+  /** (wave 59a) 📢 The audio ads; absent from an older server. */
+  ads?: import('@loom/core/audio-ads').AdsStatus
   silentMs: number
+}
+
+// DRAFT w59a
+const AD_HOLD_WORDS: Record<import('@loom/core/audio-ads').AdHold, string> = {
+  doors: 'the doors are paused',
+  talk: 'a talk scene',
+  reading: 'someone is reading',
+  announcement: 'an announcement',
+  cutscene: 'a cutscene',
+  blackout: 'a blackout',
+  truther: 'the Truther Download',
+}
+
+/** What 📢's row says about the list. DRAFT w59a */
+export function adsLine(a: import('@loom/core/audio-ads').AdsStatus): string {
+  const count = `${a.aired} of ${a.total}`
+  if (!a.on) return `${count}: off`
+  if (a.playing !== null) return `${count}: playing ${a.playing}`
+  if (a.aired >= a.total) return `${count}: the list is done`
+  if (!a.running) return `${count}: they run through the second hunt`
+  return a.hold !== null ? `${count}: waiting for ${AD_HOLD_WORDS[a.hold]}` : `${count}: next soon`
 }
 
 /** What the editor remembers of a terminal (client epoch ms). */

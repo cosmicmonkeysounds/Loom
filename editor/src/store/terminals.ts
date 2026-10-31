@@ -36,6 +36,8 @@ interface TerminalsState {
   voiceFx: VoiceFxMode | null
   /** (wave 59) The costume's switch and link (null = not known, or an older server). */
   costume: { on: boolean; url: string } | null
+  /** (wave 59a) 📢 The audio ads (null = not known, or an older server). */
+  ads: import('@loom/core/audio-ads').AdsStatus | null
   /** (wave 20) The screen state's `night.door_override`: the story follows
    *  the 🚪 buttons, not the sensor. Read only while a terminal reports a door
    *  sensor (false otherwise, and until the first read). */
@@ -65,6 +67,8 @@ interface TerminalsState {
   setVoiceFx: (mode: VoiceFxMode) => Promise<void>
   /** (wave 59) Flip the costume's kill switch. Never rejects: a failure lands in `muteError`. */
   setCostume: (on: boolean) => Promise<void>
+  /** (wave 59a) 📢 On / Off. Never rejects: a failure lands in `muteError`. */
+  setAds: (on: boolean) => Promise<void>
   /** (wave 56) Break his voice in one flavour, now. */
   fireVoiceShot: (flavour: VoiceFlavour) => Promise<void>
   /** Why the last identify failed; null = fine. */
@@ -118,6 +122,7 @@ export const useTerminals = create<TerminalsState>((set, get) => ({
   muteError: null,
   voiceFx: null,
   costume: null,
+  ads: null,
   identifyError: null,
   reachable: true,
   acked: new Set(),
@@ -133,7 +138,7 @@ export const useTerminals = create<TerminalsState>((set, get) => ({
     memory = eventId === null ? {} : load(eventId)
     lastChime = 0
     ticks = 0
-    set({ eventId, rows: mergeTerminals(memory, null, Date.now()).rows, voiceMuted: null, muteError: null, voiceFx: null, costume: null, identifyError: null, reachable: true, acked: new Set(), map: null, mapRooms: [], doorOverride: false, patchOverride: false })
+    set({ eventId, rows: mergeTerminals(memory, null, Date.now()).rows, voiceMuted: null, muteError: null, voiceFx: null, costume: null, ads: null, identifyError: null, reachable: true, acked: new Set(), map: null, mapRooms: [], doorOverride: false, patchOverride: false })
     if (eventId === null) return
     timer = setInterval(() => void get().tick(), TERMINALS_POLL_MS)
     void get().tick()
@@ -195,6 +200,16 @@ export const useTerminals = create<TerminalsState>((set, get) => ({
     }
   },
 
+  setAds: async (on) => {
+    const { eventId, ads } = get()
+    if (eventId === null || ads === null) return
+    try {
+      const r = await screensApi.setAds(eventId, on)
+      if (get().eventId === eventId) set({ ads: { ...ads, on: r.on }, muteError: null })
+    } catch (e) {
+      if (get().eventId === eventId) set({ muteError: `Couldn’t switch the audio ads ${on ? 'on' : 'off'}: ${e instanceof Error ? e.message : String(e)}` })
+    }
+  },
   setCostume: async (on) => {
     const { eventId, costume } = get()
     if (eventId === null || costume === null) return
@@ -252,7 +267,7 @@ export const useTerminals = create<TerminalsState>((set, get) => ({
       lastChime = now
       playChime()
     }
-    set({ rows, acked, reachable: server !== null, ...(server !== null ? { voiceMuted: server.voiceMuted, voiceFx: server.voiceFx ?? null } : {}) })
+    set({ rows, acked, reachable: server !== null, ...(server !== null ? { voiceMuted: server.voiceMuted, voiceFx: server.voiceFx ?? null, ads: server.ads ?? null } : {}) })
     // Wave 20: the 🚪 override rides the screen state, read only while some
     // terminal bridges the door sensor (no sensor, no badge to colour).
     // Wave 22: the 🔌 override rides the same read.

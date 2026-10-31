@@ -8,7 +8,7 @@ import { CockpitContext, RunBackend, RunMode, nullCockpit, type CockpitState } f
 // see `setState`: the card reads a plain fake instead.
 const fake = vi.hoisted(() => ({ state: {} as Record<string, unknown> }))
 vi.mock('@/store/terminals', () => ({
-  useTerminals: (sel: (s: Record<string, unknown>) => unknown) => sel({ ack: () => {}, forget: () => {}, setVoiceMuted: async () => {}, setVoiceFx: async () => {}, setCostume: async () => {}, fireVoiceShot: async () => {}, identify: async () => {}, loadMap: async () => {}, ...fake.state }),
+  useTerminals: (sel: (s: Record<string, unknown>) => unknown) => sel({ ack: () => {}, forget: () => {}, setVoiceMuted: async () => {}, setVoiceFx: async () => {}, setCostume: async () => {}, setAds: async () => {}, fireVoiceShot: async () => {}, identify: async () => {}, loadMap: async () => {}, ...fake.state }),
 }))
 import { VOICE_FLAVOURS } from '@loom/core/voice-fx'
 import { TerminalStatus, type TerminalRow } from '@/lib/terminals'
@@ -40,7 +40,7 @@ const row = (name: string, spot: string, status: TerminalStatus = TerminalStatus
 })
 
 function render(rows: TerminalRow[], map = MAP, extra: Record<string, unknown> = {}): string {
-  fake.state = { costume: null, ...extra, rows, map, mapRooms: ['The Desktop', 'The Server Room'], reachable: true, voiceMuted: false, acked: new Set(), muteError: null, identifyError: null }
+  fake.state = { costume: null, ads: null, ...extra, rows, map, mapRooms: ['The Desktop', 'The Server Room'], reachable: true, voiceMuted: false, acked: new Set(), muteError: null, identifyError: null }
   const store = create<CockpitState>(() => ({
     ...nullCockpit.getState(),
     run: {
@@ -160,5 +160,18 @@ describe('TerminalsCard (wave 56 his voice)', () => {
   })
   it('shows nothing from an older server, which names no mode', () => {
     expect(render([tv()], MAP, { voiceFx: null })).not.toContain('run-terminals-voicefx')
+  })
+})
+
+describe('📢 the audio ads row', () => {
+  const ads = { on: true, aired: 2, total: 14, playing: 'Adobe', running: true, hold: null }
+  it('shows the switch and the list, with no TV on the card', () => {
+    const html = render([], MAP, { ads })
+    expect(html).toContain('run-terminals-ads-on')
+    expect(html).toContain('run-terminals-ads-off')
+    expect(html).toContain('2 of 14: playing Adobe')
+  })
+  it('is left out for an older server', () => {
+    expect(render([], MAP, { ads: null })).not.toContain('run-terminals-ads')
   })
 })
