@@ -97,6 +97,20 @@ def test_the_prompt_tells_the_model_only_for_a_player():
 
 def test_the_show_persona_lets_his_voice_move_a_players_trust():
     p = load_persona(TRABOLTA)
-    assert p.them_adjust == ("trust",)
+    assert p.them_adjust == ("trust", "chummy")
     assert "defected" in (p.them or ())
     assert "them.trust" in adjust_names(p, request(ranges={"trust": [-100, 100]}))
+
+
+def test_a_guests_warmth_slot_passes_and_nothing_else_of_theirs():
+    """Wave 58 (contract C5): a guest offers only the story's `warmth:` slot."""
+    p = parse_persona(PERSONA.replace("them_adjust: trust\n", "them_adjust: trust, chummy\n"))
+    guest = request(player=False, ranges={"chummy": [-5, 10]})
+    guest["speaker"]["kind"] = "guest"
+    assert adjust_names(p, guest) == ("truth", "regard", "them.chummy")
+    line = them_adjust_line(p, guest)
+    assert line is not None and '"them.chummy"' in line
+    assert "staff" not in line and "Never because they asked" in line
+    del guest["them"]["ranges"]
+    assert adjust_names(p, guest) == ("truth", "regard")
+    assert them_adjust_line(p, guest) is None
