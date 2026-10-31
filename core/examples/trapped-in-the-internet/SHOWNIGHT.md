@@ -44,9 +44,12 @@ captions under the new speech, or a story the worker doesn't know.
 
 1. **The answers.** H1–H3's answers go into `facts.json` (`answer`, `accept`,
    `where`, `codex.text`, and delete `placeholder`), then `titi:facts`, and
-   commit. Later than the sync works too, but then run `titi:facts` and sync
-   again, before the doors: the owed flags live in the generated story, so
-   `facts.json` alone judges H1–H3 while G9a still skips them.
+   commit. Later than the sync works too, but then run `titi:facts`, commit and
+   sync again, before the doors: the owed flags live in the generated story, so
+   `facts.json` alone judges H1–H3 while G9a still skips them. `titi:facts` also
+   writes the answers into his mind's never-list, which a sync doesn't reach, so
+   once more on the MacBook: `git pull`, restart `agents`, Run → Mind → **Reset**
+   (step 7).
 2. **Note the fallback:** the master this replaces. A re-sync of the old story
    stays possible until the staff upload at 17:00; after that a rollback costs
    every staff upload, and after the doors it is impossible.
@@ -66,7 +69,9 @@ captions under the new speech, or a story the worker doesn't know.
    tree: an older worker refuses a persona with `cover:`.
 8. **Reload the TV, every terminal, the tablets, the tent and every booth**, and
    check the build stamps on Run → Terminals, before the booths sign in at
-   17:00: a reload after that costs every staff upload.
+   17:00, to leave the crew undisturbed. A page reload after that loses nothing:
+   only a sync or a rollback costs the staff uploads. A stale booth is always
+   worth reloading.
 9. **Print only now** (§3, 12:00), and only with no *placeholder* WARN: the
    sheet prints what the event holds, so a print before the sync prints the
    old codes. Raise the per-tier counts for a full run (the default is 4).
@@ -560,7 +565,7 @@ stays at or under 3 Hz; no open flames; VR is played seated with a spotter.
 | 📜 is on the TV and he has no voice | Mute the TV, then **📜 Task Manager reads it instead**. |
 | 📜 is Task Manager's and his phone is down | His printed copy (in his pack), or ⊞ Start → My script on any phone signed in to the part. G1 opens when it should be over; press it twice inside 30 s to go on sooner. |
 | A program finished the talk at his heart | `# hosts` says so. Nothing to do: it ends nothing. |
-| A filing on H1, H2 or H3 *could not be judged* | That key is still owed: nothing is recorded and Trabolta says he can't read it. Before the doors: put the answer in, `titi:facts`, sync. After the doors a sync is off the table: hosts judge what is said in the room with ✅ / 😤 / 🤷. |
+| A filing on H1, H2 or H3 *could not be judged* | That key is still owed: nothing is recorded and Trabolta says he can't read it. Before the doors: put the answer in, `titi:facts`, commit, sync, then on the MacBook `git pull`, restart `agents` and Run → Mind → **Reset**. After the doors a sync is off the table: hosts judge what is said in the room with ✅ / 😤 / 🤷. |
 | Run → Mind shows `engine macbook` | Claude refused a line and the Ollama standby wrote it, about 99 s at the median. One now and then is fine. A run of them: tell the tech op; Task Manager's canned lines carry a talk scene. |
 | A guest lost their phone or session | Inspector → 🔁 Re-pair (a single-use QR); a loaner phone. |
 | A performer's phone died | ⏏ Release the part; they sign in again on a loaner with the performer code. |
