@@ -1,15 +1,15 @@
-//! The moments' surfaces (wave 13, the moments lane): each rung of the
-//! interrupt ladder is the Win95 part that does that job — a system-tray
-//! balloon tip, a sticky notification bar, a modal message box with OK, the
-//! blue screen — plus the quiet feedback toast and the glitch that plays
-//! when the story changes the level. Plain markup over `w95-*` primitives
-//! and lane classes (`moments-…`), every colour from a token, so `plain`
-//! renders the same structure flat.
-//!
-//! Wave 18: every rung renders its exits (`exits.ts`: a balloon 1, the
-//! others 2) beside its own close; no Dismiss all anywhere; the blue
-//! screen's fatal-exception boilerplate only on the sign-in's first. The
-//! big moment is `big.tsx`.
+// The moments' surfaces (wave 13, the moments lane): each rung of the
+// interrupt ladder is the Win95 part that does that job — a system-tray
+// balloon tip, a sticky notification bar, a modal message box with OK, the
+// blue screen — plus the quiet feedback toast and the glitch that plays
+// when the story changes the level. Plain markup over `w95-*` primitives
+// and lane classes (`moments-…`), every colour from a token, so `plain`
+// renders the same structure flat.
+//
+// Wave 18: every rung renders its exits (`exits.ts`: a balloon 1, the
+// others 2) beside its own close; no Dismiss all anywhere; the blue
+// screen's fatal-exception boilerplate only on the sign-in's first. The
+// big moment is `big.tsx`.
 
 import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type MouseEvent } from "react";
 import { Icon } from "../chrome/icons.tsx";

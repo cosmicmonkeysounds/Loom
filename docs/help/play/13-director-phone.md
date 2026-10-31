@@ -91,6 +91,12 @@ no acts (or an older server) shows one plain list.
   to the cue; it never fires anything. You still arm and fire on the cue
   itself.
 
+## The teleprompter
+
+While Trabolta is waiting for someone's script, a line at the top of the sheet says
+who and where, with **▶ Let him speak**, which lets every line of his left in the
+scene play now.
+
 ## Who is calling
 
 Every host, the laptop's Run and this phone see the same sheet, and

@@ -108,6 +108,13 @@ director at Run) press the same moment, the server takes one: the other
 phone reads *Cues moved — tap again*, and nothing fires twice. Every
 press is logged as *Booth · your character*.
 
+**📜 The teleprompter (wave 59).** While someone is reading a script, Show has a
+line saying who, where they are, and whether Trabolta is waiting for them. **📜
+Join** puts the script on your phone at the same place: you can move it for them,
+and **✓ Done** there ends it for everyone. **▶ Let him speak** lets every line of
+his left in the scene play now, if the reader is stuck or their phone has died. If
+their phone goes quiet for 12 seconds his lines go on by themselves.
+
 ## The NEXT bar
 
 While another window is open (Chats, the Desk, a room), a slim **NEXT

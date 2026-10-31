@@ -1,15 +1,15 @@
-//! The chrome's icons (wave 13 fix round): small drawn Win95-style icons for
-//! the parts of the frame the app draws itself — the taskbar's Start, Pass
-//! and Scan, the tray's clock / balance / bell, the Start menu's own items —
-//! in place of emoji (the craft floor: emoji are not an icon system). A 16 ×
-//! 16 grid, a 1 px ink outline, flat fills from tokens (`chrome.css`), so
-//! `plain` draws the same shapes in its own colours. Emoji the *story*
-//! authors (a button's "🚻 Bathroom Mode", a cue's glyph) are content and
-//! stay as written.
-//!
-//! The set is shared: the booth and the host draw their chrome from it too
-//! (`Icon`, `IconName`, `ICON_NAMES` — e.g. the booth's 🧾 held transfers
-//! → `receipt`, 🗂 Guests → `cards`, 🛡 → `shield`, 📓 → `codex`).
+// The chrome's icons (wave 13 fix round): small drawn Win95-style icons for
+// the parts of the frame the app draws itself — the taskbar's Start, Pass
+// and Scan, the tray's clock / balance / bell, the Start menu's own items —
+// in place of emoji (the craft floor: emoji are not an icon system). A 16 ×
+// 16 grid, a 1 px ink outline, flat fills from tokens (`chrome.css`), so
+// `plain` draws the same shapes in its own colours. Emoji the *story*
+// authors (a button's "🚻 Bathroom Mode", a cue's glyph) are content and
+// stay as written.
+//
+// The set is shared: the booth and the host draw their chrome from it too
+// (`Icon`, `IconName`, `ICON_NAMES` — e.g. the booth's 🧾 held transfers
+// → `receipt`, 🗂 Guests → `cards`, 🛡 → `shield`, 📓 → `codex`).
 
 import type { ReactElement, ReactNode } from "react";
 

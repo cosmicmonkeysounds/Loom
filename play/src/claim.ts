@@ -1,15 +1,15 @@
-//! Reserved programs (W11, SW-PLAY-01). The featured programs are saved for
-//! their invited guests: the story marks them `reserved: true`, and each
-//! invitation's QR carries that program's claim token —
-//! `…/?code=<guest code>&claim=<token>`. The join screen keeps the claim
-//! through the whole flow (the picker's `/api/identities` and
-//! `/api/guest/register` both carry it), so the invitee's program is open
-//! to them and 🔒 Reserved to everyone else. A register without the right
-//! claim answers 409 `reserved`. The token is a secret: it leaves the
-//! address bar once the guest is in, and is kept in this browser's storage
-//! (keyed by the event code, beside `loom.guest`), so a cut session — a
-//! restart, End → relaunch, Leave — rejoins with it. Pure helpers —
-//! `test/claim.test.ts`.
+// Reserved programs (W11, SW-PLAY-01). The featured programs are saved for
+// their invited guests: the story marks them `reserved: true`, and each
+// invitation's QR carries that program's claim token —
+// `…/?code=<guest code>&claim=<token>`. The join screen keeps the claim
+// through the whole flow (the picker's `/api/identities` and
+// `/api/guest/register` both carry it), so the invitee's program is open
+// to them and 🔒 Reserved to everyone else. A register without the right
+// claim answers 409 `reserved`. The token is a secret: it leaves the
+// address bar once the guest is in, and is kept in this browser's storage
+// (keyed by the event code, beside `loom.guest`), so a cut session — a
+// restart, End → relaunch, Leave — rejoins with it. Pure helpers —
+// `test/claim.test.ts`.
 
 import { ApiError } from "./client.ts";
 import type { SessionStorage } from "./host.ts";
