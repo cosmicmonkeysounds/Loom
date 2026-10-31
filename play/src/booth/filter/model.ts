@@ -94,23 +94,12 @@ export const FILTER_GAME_COPY = {
   },
 } as const;
 
-// DRAFT w48b: the strength window (⊞ Start → 🔑 Filter strength).
+// DRAFT w48b: the strength window's title, and (wave 59: only a screen reader
+// hears these, the window has no words) why a pick didn't land.
 export const FILTER_LEVEL_COPY = {
   start: "Filter strength",
   title: "Filter strength",
   label: "Filter strength",
-  big: (n: number) => `${n}%`,
-  catches: "Catches",
-  /** The legend's slur row: it never names one. */
-  slurs: "Slurs (never shown)",
-  off: "off",
-  less: "◀ Less",
-  more: "More ▶",
-  saving: "Saving…",
-  /** The legend's ⭐ a word. */
-  points: (n: number) => `${n} ⭐`,
-  foot: "It decides what new lines get caught. Lines it no longer catches wait hidden until you raise it again.",
-  stays: (why: string, level: number) => `${why} Still ${level}%.`,
   refused: {
     notCensor: "Not changed: this part isn't the censor tonight.",
     doors: "Not changed: the doors are closed.",
@@ -123,28 +112,6 @@ export const FILTER_LEVEL_COPY = {
 
 /** C7: what stands for a slur, everywhere (`FilterLine.words`, the chip). */
 export const UNSAID_WORD = "[slur]";
-
-/** One band of the strength dial (C7): the lowest strength that catches
- *  it, its key, what it adds (never naming a slur) and its ⭐ a word. */
-export interface FilterBand {
-  tier: FilterTier;
-  key: string;
-  catches: string;
-  points: number;
-}
-
-// DRAFT w48b: the bands' words. Between two tiers a strength catches what
-// the lower one does (40% = 25%).
-export const FILTER_BANDS: readonly FilterBand[] = [
-  { tier: 0, key: "slur", catches: "Slurs only", points: 12 },
-  { tier: 10, key: "worst", catches: "+ fuck, cunt", points: 8 },
-  { tier: 25, key: "strong", catches: "+ shit, asshole, bitch…", points: 5 },
-  { tier: 50, key: "mild", catches: "+ crap, balls, butt, ass…", points: 3 },
-  { tier: 60, key: "soft", catches: "+ hell, heck, darn, fart…", points: 2 },
-  { tier: 75, key: "buried", catches: "+ swears hiding inside words (Scunthorpe)", points: 2 },
-  { tier: 90, key: "buried-mild", catches: "+ mild ones inside words (password, button)", points: 1 },
-  { tier: 100, key: "paranoid", catches: "+ everything (hello, check, Password Manager)", points: 1 },
-];
 
 /** C7: the dial's step and where the night starts. */
 export const FILTER_LEVEL_STEP = 5;
@@ -301,35 +268,13 @@ export function levelOf(view: Pick<FilterView, "level"> | null | undefined): num
   return snapLevel(view?.level ?? FILTER_LEVEL_START);
 }
 
-/** The band a strength is in: the highest tier at or under it (40% is 25%'s). */
-export function bandAt(level: number): FilterBand {
-  const at = snapLevel(level);
-  let out = FILTER_BANDS[0]!;
-  for (const b of FILTER_BANDS) if (b.tier <= at) out = b;
-  return out;
-}
-
-/** Every band, and whether this strength catches it (the legend). */
-export function bandsAt(level: number): Array<{ band: FilterBand; on: boolean }> {
-  const at = snapLevel(level);
-  return FILTER_BANDS.map((band) => ({ band, on: band.tier <= at }));
-}
-
-/** ◀ / ▶: the next band's tier below / above this strength (it stays at the ends). */
-export function stepBand(level: number, dir: -1 | 1): number {
-  const at = snapLevel(level);
-  const tiers = FILTER_BANDS.map((b) => b.tier as number);
-  if (dir < 0) return tiers.filter((t) => t < at).pop() ?? 0;
-  return tiers.find((t) => t > at) ?? 100;
-}
-
 /** The ⊞ Start item that opens the strength window (the censor's booth only;
  *  nothing else points at it: she has to find it). */
 export function filterStartItem(open: () => void): StartItem {
   return { id: "filter-strength", icon: FILTER_COPY.glyph, label: FILTER_LEVEL_COPY.start, onClick: open };
 }
 
-/** A failed strength POST, in plain words (the dial rolls back and says so). */
+/** A failed strength POST, in plain words (the thumb rolls back; a screen reader hears this). */
 export function levelRefusal(e: unknown): string {
   const err = (typeof e === "object" && e !== null ? e : {}) as { status?: unknown; message?: unknown; name?: unknown };
   const status = typeof err.status === "number" ? err.status : null;

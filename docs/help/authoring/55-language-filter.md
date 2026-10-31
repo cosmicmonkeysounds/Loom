@@ -29,7 +29,8 @@ card answer, and never an old line again.
 
 The censor has a **strength** slider, 0–100% in steps of 5, starting at
 100% (on her phone: ⊞ Start → 🔑 Filter strength; she is not told where).
-Each band adds to the ones below it:
+Her window is only the slider: no number and no explanation. Each band adds
+to the ones below it:
 
 | Strength | Adds |
 |---|---|

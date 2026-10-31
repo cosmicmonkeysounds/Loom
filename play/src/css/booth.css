@@ -435,7 +435,7 @@
 .filter-none { padding: 16px 0; text-align: center; }
 
 /* Wave 48b (C13): the bands' colours, one palette for the pop-out's marks,
-   the window's and the strength window's legend (light behind ink, legible
+   and the window's (light behind ink, legible
    on the Win95 face and the white quote; a slur is a black [slur] chip). */
 :root {
   --filter-tier-0: #1b1a17;
@@ -509,11 +509,9 @@
 }
 @keyframes filter-burst-fade { 0% { opacity: 0; } 15% { opacity: 1; } 75% { opacity: 1; } 100% { opacity: 0; } }
 
-/* The strength window (booth/filter/strength.tsx): the big %, the slider
-   (a 44 px track, a 28 × 40 thumb), ◀ Less / More ▶, the legend. */
-.filter-level { display: flex; flex-direction: column; gap: 10px; }
-.filter-level-big { margin: 0; font: 700 48px/1 var(--ui-font); text-align: center; }
-.filter-level-now { margin: 0; padding: 4px 8px; font: 700 15px/1.3 var(--ui-font); text-align: center; overflow-wrap: anywhere; border-radius: var(--radius); }
+/* The strength window (booth/filter/strength.tsx): only the slider (a 44 px
+   track, a 28 × 40 thumb); a refused pick reddens the track. */
+.filter-level { padding: 12px 4px; }
 .filter-level-range { display: block; width: 100%; height: var(--tap); margin: 0; background: none; -webkit-appearance: none; appearance: none; cursor: pointer; touch-action: pan-y; }
 .filter-level-range:focus { outline: none; }
 .filter-level-range:focus-visible { outline: 1px dotted var(--ink); outline-offset: 2px; }
@@ -521,20 +519,8 @@
 .filter-level-range::-moz-range-track { height: 8px; background: var(--white); box-shadow: var(--sunken); border-radius: var(--radius); }
 .filter-level-range::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 28px; height: 40px; margin-top: -16px; border: none; background: var(--face); box-shadow: var(--raised), 0 0 0 1px var(--ink); border-radius: var(--radius); }
 .filter-level-range::-moz-range-thumb { width: 28px; height: 40px; border: none; background: var(--face); box-shadow: var(--raised), 0 0 0 1px var(--ink); border-radius: var(--radius); }
-.filter-level-steps { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; }
-.filter-level-step { min-height: var(--tap); font: 700 14px var(--ui-font); }
-.filter-level-catches { margin: 4px 0 0; font: 700 13px var(--ui-font); }
-.filter-level-refused { color: var(--bad); font-weight: 700; }
-.filter-legend { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; }
-.filter-legend-row { display: flex; align-items: center; gap: 8px; padding: 6px; background: var(--white); box-shadow: var(--sunken); color: var(--dim-ink); font: 13px/1.3 var(--ui-font); }
-.filter-legend-row.on { color: var(--ink); font-weight: 700; }
-.filter-legend-row .filter-swatch { opacity: 0.45; }
-.filter-legend-row.on .filter-swatch { opacity: 1; }
-.filter-swatch { flex: 0 0 auto; min-width: 3.4em; padding: 1px 4px; border-radius: var(--radius); font: 700 12px var(--ui-font); text-align: center; }
-.filter-legend-tier { flex: 0 0 auto; min-width: 2.6em; text-align: right; }
-.filter-legend-text { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
-.filter-legend-off { font-weight: 400; }
-.filter-legend-pts { flex: 0 0 auto; white-space: nowrap; }
+.filter-level-range.refused::-webkit-slider-runnable-track { background: var(--bad); }
+.filter-level-range.refused::-moz-range-track { background: var(--bad); }
 
 /* The CAPTURED rubber stamp: −12°, a double border, static under Reduce Motion. */
 .stamp {
