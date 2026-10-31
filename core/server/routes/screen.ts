@@ -329,6 +329,9 @@ export interface ScreenVoice {
   head: number;
   /** Lines after the poller's `after`, oldest first, the newest `MAX_VOICE_LINES` at most. */
   lines: ScreenVoiceLine[];
+  /** (wave 59) His next line waits for the teleprompter: `head` stops short of
+   *  it, so the cursor stays behind it. A TV polls quicker while it is set. */
+  held?: true;
 }
 
 /** Speakers the TV shows as captions though they aren't its character (Sandy is
@@ -349,6 +352,10 @@ export const MAX_VOICE_BLOCK = 16_000;
  * (pure). Narration, system notices and hidden messages are left out; the
  * poll admits only the TV's character + `SCREEN_TEXT_ONLY`, which leaves out
  * guests' typed chat. `after` null (a screen that just booted) returns no lines.
+ *
+ * Wave 59: `heldFrom` is the first line the teleprompter holds back (null: none).
+ * The timeline ends just before it, `head` included, so a cursor can never pass
+ * a held line and everything behind it plays in order once it is let go.
  */
 export function voiceLinesOf(
   messages: readonly ChatMessage[],
@@ -356,12 +363,15 @@ export function voiceLinesOf(
   after: number | null,
   speaks: (from: string) => boolean,
   max = MAX_VOICE_LINES,
+  heldFrom: number | null = null,
 ): { head: number; lines: ScreenVoiceLine[] } {
-  const head = messages.length === 0 ? -1 : messages[messages.length - 1]!.seq;
+  let end = messages.length;
+  if (heldFrom !== null) while (end > 0 && messages[end - 1]!.seq >= heldFrom) end--;
+  const head = end === 0 ? -1 : messages[end - 1]!.seq;
   const lines: ScreenVoiceLine[] = [];
   if (after === null || after >= head || channel === "") return { head, lines };
   let total = 0;
-  for (let i = messages.length - 1; i >= 0 && lines.length < max; i--) {
+  for (let i = end - 1; i >= 0 && lines.length < max; i--) {
     const m = messages[i]!;
     if (m.seq <= after) break;
     if (m.channel !== channel || m.kind !== "line" || m.hidden || m.from === "" || !speaks(m.from)) continue;
@@ -949,6 +959,8 @@ export interface ScreenPollExtras {
    *  its tally (most first, never a slur), slurs censored, the strength now
    *  and the ⭐ paid. Read only while the Language Report's slide is up. */
   language?: () => { words: ReadonlyArray<{ word: string; n: number }>; unsaid: number; level: number; stars: number };
+  /** (wave 59) The first line of `channel` the teleprompter holds back. */
+  voiceHeldFrom?: (channel: string) => number | null;
 }
 
 /** A filing's public outcome on a screen: `a` accepted (an accurate filing
@@ -1655,6 +1667,12 @@ export class ScreenWatch {
     return this.now();
   }
 
+  /** (wave 59) The room line the TV is saying now, or null. */
+  speakingNow(): number | null {
+    const sp = this.tvSpeech;
+    return sp !== null && sp.chunk !== null && this.now() - sp.at <= TV_SPEECH_FRESH_MS ? sp.seq : null;
+  }
+
   /** Each terminal's last poll, most recent first. */
   seen(): Array<ScreenPoll & { ago: number }> {
     const now = this.now();
@@ -1791,10 +1809,12 @@ export class ScreenWatch {
       // play declared characters too, so "any character" would carry their
       // typed chat onto the TV.
       const speaks = (from: string): boolean => chars?.has(from) === true && (foldName(from) === me || textOnly.has(foldName(from)));
-      const got = voiceLinesOf(messages, room, who.after ?? null, speaks);
+      // Wave 59: his lines wait for the teleprompter (`prompter.ts`).
+      const heldFrom = extras.voiceHeldFrom?.(room) ?? null;
+      const got = voiceLinesOf(messages, room, who.after ?? null, speaks, MAX_VOICE_LINES, heldFrom);
       // The director's mute is the TV's (its button, the Run page's): a room
       // terminal — the server-room one — is never silenced by it.
-      voice = { room, muted: this.voiceMuted && target === "tv", ...got };
+      voice = { room, muted: this.voiceMuted && target === "tv", ...got, ...(heldFrom !== null ? { held: true as const } : {}) };
     }
 
     // The night block: public story vars only; the award only while its slide is up.
@@ -2055,6 +2075,22 @@ export function newestRoomLine(messages: readonly ChatMessage[], channel: string
     if (m.channel === channel && m.kind === "line" && !m.hidden && m.from !== "" && speaks(m.from)) return m.seq;
   }
   return -1;
+}
+
+/**
+ * What the terminals speaking `channel` (`loc:<id>`) are doing, for the
+ * teleprompter (wave 59): the slowest one's `said`, the TV's mute and the line it
+ * is saying. Not `live`: nothing speaks the room, so a hold falls back on time.
+ */
+export function roomVoiceOf(watch: ScreenWatch, model: SimModel | null, channel: string): { live: boolean; muted: boolean; said: number; speaking: number | null } {
+  const now = watch.clock();
+  const on = watch.seen().filter((p) => {
+    if (p.talk === undefined || now - p.at > SPEECH_ONLINE_MS) return false;
+    const r = p.voice !== undefined && p.voice !== "" ? p.voice : (p.room ?? "");
+    return r !== "" && `loc:${locationNamed(model, r)?.id ?? ""}` === channel;
+  });
+  const said = on.length === 0 ? -1 : Math.min(...on.map((p) => p.said ?? -1));
+  return { live: on.length > 0, muted: watch.voiceMuted, said, speaking: watch.speakingNow() };
 }
 
 /** One `speech` step's watch (`DeskSpeechWatch`). */

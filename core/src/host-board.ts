@@ -803,9 +803,30 @@ export interface RejoinAsk {
   at: number;
 }
 
+/** Wave 59: the teleprompter's scene, as a host, a director and Run read it
+ *  (`server/prompter.ts`). */
+export interface PrompterStatus {
+  id: number;
+  title: string;
+  /** Who reads it, by name. */
+  readers: string[];
+  /** Where it is, from 1. */
+  line: number;
+  lines: number;
+  /** His next line is waiting for the script. */
+  held: boolean;
+  /** He is saying a line now. */
+  speaking: boolean;
+  /** Who is pressing it. */
+  holder: string | null;
+}
+
 export interface HostView extends CueSheetView {
   /** `ModView.phase`. */
   runtime: "idle" | "open" | "paused";
+  /** Wave 59: the teleprompter's scene; null with none on, absent from an
+   *  older server. Its ▶ and ✓ Done are `POST /api/mod/aloud`. */
+  prompter?: PrompterStatus | null;
   /** Wave 32: the talk scene that is on (`Night.talk`), its canned lines and
    *  Trabolta's state (`talk-back.ts` `talkView`). Absent from an older
    *  server; null when no talk scene is on. */

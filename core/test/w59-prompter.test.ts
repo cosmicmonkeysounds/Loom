@@ -1,0 +1,351 @@
+// Wave 59: the shared teleprompter. The scene, the hold on his voice, the lock,
+// and every way the night gets past a hold (`docs/loom-w59-prompter-contract.md`).
+
+import { describe, expect, it } from "vitest";
+import type { ChatMessage } from "../server/chat.ts";
+import { HERE_TTL_MS, HOLD_WAIT_MS, HOLDER_TTL_MS, Prompters, readPrompterOp, sceneOf, spokenMs, type PrompterFrame, type RoomVoice } from "../server/prompter.ts";
+import { voiceLinesOf } from "../server/routes/screen.ts";
+
+const CTX = { voiced: (f: string) => f === "Trabolta", ownerOf: (f: string) => (f === "Recycling Bin" ? "@Recycling Bin" : f === "Clippy" ? "@Clippy" : null) };
+
+function row(seq: number, from: string, text: string, extra: Partial<ChatMessage> = {}): ChatMessage {
+  return { seq, channel: "loc:The Desktop", channelKind: "location", title: "The Desktop", from, kind: "line", text, ts: 100, audience: "all", parentSeq: null, hidden: false, beat: "B", ...extra } as ChatMessage;
+}
+const clippy = (seq: number, text = "one two three four"): ChatMessage => row(seq, "Clippy", text, { aloud: { readers: ["@Clippy"], reader: "@Clippy" } });
+const him = (seq: number, text = "five six seven eight"): ChatMessage => row(seq, "Trabolta", text, { aloud: { readers: ["@Clippy"] } });
+const stage = (seq: number, text = "stage direction here now"): ChatMessage => row(seq, "Narrator", text, { kind: "narration", aloud: { readers: ["@Clippy"] } });
+
+function rig(messages: readonly ChatMessage[], o: { online?: boolean } = {}) {
+  let now = 1_000;
+  const frames: PrompterFrame[] = [];
+  const voice: RoomVoice = { live: true, muted: false, said: -1, speaking: null };
+  let changed = 0;
+  const p = new Prompters({
+    now: () => now,
+    send: (f) => frames.push(f),
+    voice: () => voice,
+    online: () => o.online ?? true,
+    name: (w) => w.replace(/^@/u, ""),
+    changed: () => (changed += 1),
+  });
+  const draft = sceneOf(messages, CTX)!;
+  p.land(draft);
+  return {
+    p,
+    id: draft.id,
+    frames,
+    voice,
+    last: () => frames[frames.length - 1]!,
+    changed: () => changed,
+    to: (ms: number) => {
+      now += ms;
+      p.tick();
+    },
+    here: (who = "@Clippy", open = true) => p.op(draft.id, who, false, { op: "here", open }),
+  };
+}
+
+describe("the scene (wave 59)", () => {
+  it("drops a section with no reader's line, so a ceremony he hosted just plays", () => {
+    const m = [him(1), row(2, "Trabolta", "more", { beat: "C", aloud: { readers: ["@Clippy"] } }), clippy(3)];
+    m[2]!.beat = "C";
+    const s = sceneOf(m, CTX)!;
+    expect(s.sections.map((x) => x.title)).toEqual(["C"]);
+    expect(s.sections[0]!.lines.map((l) => [l.seq, l.who, l.his])).toEqual([
+      [2, "", true],
+      [3, "@Clippy", false],
+    ]);
+    // His line in the dropped section comes before the scene, so it isn't held.
+    expect(s.id).toBe(2);
+    expect(sceneOf([him(1)], CTX)).toBeNull();
+  });
+
+  it("gives someone else's line to its owner, and keeps his unmarked lines beside the script", () => {
+    const s = sceneOf([clippy(1), row(2, "Recycling Bin", "Mine.", { aloud: { readers: ["@Clippy"] } }), him(3), row(4, "Trabolta", "Unmarked."), clippy(5)], CTX)!;
+    expect(s.readers).toEqual(["@Clippy"]);
+    expect(s.owners).toEqual(["@Recycling Bin"]);
+    expect(s.after).toEqual([{ seq: 4, text: "Unmarked." }]);
+  });
+
+  it("reads a phone's press, and refuses anything else", () => {
+    expect(readPrompterOp({ op: "move", pos: 3 })).toEqual({ op: "move", pos: 3 });
+    expect(readPrompterOp({ op: "move" })).toBeNull();
+    expect(readPrompterOp({ op: "play", on: true })).toBeNull();
+    expect(readPrompterOp({ op: "nope" })).toBeNull();
+  });
+});
+
+describe("his lines wait for the script", () => {
+  const scene = () => rig([clippy(1), him(2), clippy(3)]);
+
+  it("holds his line until the position reaches it, then locks and scrolls through it", () => {
+    const r = scene();
+    r.here();
+    expect(r.p.heldFrom("loc:The Desktop")).toBe(2);
+    expect(r.p.heldFrom("loc:Elsewhere")).toBeNull();
+    expect(r.last().held).toBe(true);
+    expect(r.p.op(r.id, "@Clippy", false, { op: "press", pos: 0 })).toBeNull();
+    expect(r.p.op(r.id, "@Clippy", false, { op: "move", pos: 2 })).toBeNull();
+    expect(r.p.heldFrom("loc:The Desktop")).toBe(2);
+    r.p.op(r.id, "@Clippy", false, { op: "move", pos: 4 });
+    expect(r.p.heldFrom("loc:The Desktop")).toBeNull();
+    expect(r.last().speaking).toEqual({ name: "Trabolta", seq: 2 });
+    expect(r.last().holder).toBeNull();
+    expect(r.last().rate).toBeGreaterThan(0);
+    expect(r.last().stop).toBe(8);
+  });
+
+  it("frees when the TV has said it, and not before half the time the words allow", () => {
+    const r = scene();
+    r.here();
+    r.p.op(r.id, "@Clippy", false, { op: "jump", pos: 4 });
+    const ms = spokenMs("five six seven eight");
+    r.voice.said = 2;
+    r.to(ms * 0.3);
+    expect(r.last().speaking).not.toBeNull();
+    r.to(ms * 0.3);
+    expect(r.last().speaking).toBeNull();
+    expect(r.last().pos).toBe(8);
+    expect(r.last().rate).toBe(0);
+  });
+
+  it("a dead or a muted TV frees it on the time the words take", () => {
+    for (const v of [{ live: false }, { muted: true }]) {
+      const r = scene();
+      r.here();
+      Object.assign(r.voice, v);
+      r.p.op(r.id, "@Clippy", false, { op: "jump", pos: 4 });
+      const ms = spokenMs("five six seven eight");
+      r.to(ms - 200);
+      expect(r.last().speaking).not.toBeNull();
+      r.to(400);
+      expect(r.last().speaking).toBeNull();
+    }
+  });
+
+  it("a live TV that never finishes can't strand it either", () => {
+    const r = scene();
+    r.here();
+    r.p.op(r.id, "@Clippy", false, { op: "jump", pos: 4 });
+    r.to(spokenMs("five six seven eight") + 500);
+    expect(r.last().speaking).not.toBeNull();
+    r.to(20_000);
+    expect(r.last().speaking).toBeNull();
+  });
+
+  it("scrolls from the moment he opens his mouth", () => {
+    const r = scene();
+    r.here();
+    r.p.op(r.id, "@Clippy", false, { op: "jump", pos: 4 });
+    r.to(1_000);
+    r.voice.speaking = 2;
+    r.to(200);
+    expect(r.last().pos).toBe(4);
+    expect(r.frames.filter((f) => f.speaking !== null).length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("can't be scrolled past: a jump over his line stops on it and fires it", () => {
+    const r = scene();
+    r.here();
+    r.p.op(r.id, "@Clippy", false, { op: "jump", pos: 12 });
+    expect(r.last().pos).toBe(4);
+    expect(r.last().speaking?.seq).toBe(2);
+  });
+
+  it("his line first: it goes as soon as a reader is there", () => {
+    const r = rig([him(1), clippy(2)]);
+    expect(r.p.heldFrom("loc:The Desktop")).toBe(1);
+    r.here();
+    expect(r.p.heldFrom("loc:The Desktop")).toBeNull();
+    expect(r.last().speaking?.seq).toBe(1);
+  });
+
+  it("takes a stage direction with his run: nobody reads it, so nothing would move past it", () => {
+    const r = rig([clippy(1), him(2), stage(3), him(4), clippy(5)]);
+    r.here();
+    r.p.op(r.id, "@Clippy", false, { op: "jump", pos: 4 });
+    expect(r.p.heldFrom("loc:The Desktop")).toBeNull();
+    expect(r.last().stop).toBe(16);
+    expect(r.last().speaking?.seq).toBe(2);
+  });
+
+  it("holds the next run behind the first, with his unmarked lines going with the run before", () => {
+    const r = rig([clippy(1), him(2), row(3, "Trabolta", "The questions, which are long."), clippy(4), him(5)]);
+    r.here();
+    r.p.op(r.id, "@Clippy", false, { op: "jump", pos: 4 });
+    expect(r.p.heldFrom("loc:The Desktop")).toBe(5);
+    // The run ends at 3, so the TV must say 3 before it frees.
+    r.voice.said = 2;
+    r.to(spokenMs("five six seven eight") + spokenMs("The questions, which are long.") + 1_000);
+    expect(r.last().speaking).not.toBeNull();
+    r.voice.said = 3;
+    r.to(200);
+    expect(r.last().speaking).toBeNull();
+  });
+});
+
+describe("one shared position", () => {
+  it("locks to whoever presses, tells everyone who, and frees on letting go", () => {
+    const r = rig([clippy(1, "a b c d e f g h")]);
+    r.p.op(r.id, "@Task Manager", true, { op: "here", open: true });
+    expect(r.p.op(r.id, "@Clippy", false, { op: "press" })).toBeNull();
+    expect(r.last().holder).toEqual({ who: "@Clippy", name: "Clippy" });
+    expect(r.p.op(r.id, "@Task Manager", true, { op: "press" })).toBe("locked");
+    expect(r.p.op(r.id, "@Task Manager", true, { op: "jump", pos: 2 })).toBe("locked");
+    expect(r.p.op(r.id, "@Task Manager", true, { op: "move", pos: 2 })).toBe("locked");
+    r.p.op(r.id, "@Clippy", false, { op: "move", pos: 3 });
+    expect(r.last().pos).toBe(3);
+    r.p.op(r.id, "@Clippy", false, { op: "letgo", pos: 4 });
+    expect(r.last().holder).toBeNull();
+    expect(r.p.op(r.id, "@Task Manager", true, { op: "press" })).toBeNull();
+  });
+
+  it("a finger on a dead phone lets go by itself", () => {
+    const r = rig([clippy(1)]);
+    r.p.op(r.id, "@Clippy", false, { op: "press" });
+    r.to(HOLDER_TTL_MS + 100);
+    expect(r.last().holder).toBeNull();
+    expect(r.p.op(r.id, "@Task Manager", true, { op: "press" })).toBeNull();
+  });
+
+  it("autoscrolls on the server, stops on his line, holds for a finger and carries on", () => {
+    const r = rig([clippy(1, "a b c d e f g h i j"), him(2), clippy(3)]);
+    r.here();
+    r.p.op(r.id, "@Clippy", false, { op: "play", on: true, speed: 1 });
+    expect(r.last().rate).toBeCloseTo(130 / 60);
+    r.to(1_000);
+    r.p.op(r.id, "@Clippy", false, { op: "press" });
+    expect(r.last().rate).toBe(0);
+    expect(r.last().pos).toBeCloseTo(130 / 60);
+    r.p.op(r.id, "@Clippy", false, { op: "letgo" });
+    expect(r.last().rate).toBeCloseTo(130 / 60);
+    r.to(4_000);
+    expect(r.last().speaking?.seq).toBe(2);
+    r.voice.said = 2;
+    r.to(spokenMs("five six seven eight"));
+    // He has finished: the autoscroll picks up where it stopped.
+    expect(r.last().speaking).toBeNull();
+    expect(r.last().rate).toBeCloseTo(130 / 60);
+  });
+
+  it("keeps anyone outside the scene out, and lets a host in", () => {
+    const r = rig([clippy(1)]);
+    expect(r.p.op(r.id, "g-1", false, { op: "press" })).toBe("not in the scene");
+    expect(r.p.op(r.id, "@Task Manager", true, { op: "press" })).toBeNull();
+    expect(r.p.op(999, "@Clippy", false, { op: "press" })).toBe("no scene");
+  });
+});
+
+describe("the night never hangs", () => {
+  it("no reader's stream: nothing is held at all", () => {
+    const r = rig([clippy(1), him(2)], { online: false });
+    expect(r.p.heldFrom("loc:The Desktop")).toBeNull();
+  });
+
+  it("a phone that never reports (an old build, a sim bot) holds him for the wait and no more", () => {
+    const r = rig([clippy(1), him(2)]);
+    expect(r.p.heldFrom("loc:The Desktop")).toBe(2);
+    r.to(HOLD_WAIT_MS - 100);
+    expect(r.p.heldFrom("loc:The Desktop")).toBe(2);
+    r.to(200);
+    expect(r.p.heldFrom("loc:The Desktop")).toBeNull();
+    expect(r.last().held).toBe(false);
+  });
+
+  it("a reader who goes away lets the rest play", () => {
+    const r = rig([clippy(1), him(2)]);
+    r.here();
+    r.to(HERE_TTL_MS - 100);
+    expect(r.p.heldFrom("loc:The Desktop")).toBe(2);
+    r.to(200);
+    expect(r.p.heldFrom("loc:The Desktop")).toBeNull();
+  });
+
+  it("a host's prompter counts as someone there; one not looking at it doesn't", () => {
+    const r = rig([clippy(1), him(2)]);
+    r.here();
+    r.p.op(r.id, "@Task Manager", true, { op: "here", open: false });
+    r.to(HERE_TTL_MS - 100);
+    r.p.op(r.id, "@Task Manager", true, { op: "here", open: false });
+    r.to(200);
+    expect(r.p.heldFrom("loc:The Desktop")).toBeNull();
+    const s = rig([clippy(1), him(2)]);
+    s.here();
+    s.to(HERE_TTL_MS - 100);
+    s.p.op(s.id, "@Task Manager", true, { op: "here", open: true });
+    s.to(200);
+    expect(s.p.heldFrom("loc:The Desktop")).toBe(2);
+  });
+
+  it("▶ lets every line of his go, in order, and the prompter carries on", () => {
+    const r = rig([clippy(1), him(2), clippy(3), him(4)]);
+    r.here();
+    expect(r.p.release()).toBe(true);
+    expect(r.p.heldFrom("loc:The Desktop")).toBeNull();
+    expect(r.p.active).toBe(true);
+    expect(r.p.release()).toBe(false);
+    expect(r.last().stop).toBe(r.last().total);
+  });
+
+  it("✓ Done ends the scene for everyone, and a newer scene ends the older", () => {
+    const r = rig([clippy(1), him(2)]);
+    r.here();
+    expect(r.p.op(r.id, "@Clippy", false, { op: "done" })).toBeNull();
+    expect(r.last().done).toBe(true);
+    expect(r.last().superseded).toBeUndefined();
+    expect(r.p.heldFrom("loc:The Desktop")).toBeNull();
+    const s = rig([clippy(1), him(2)]);
+    s.here();
+    s.p.land(sceneOf([clippy(5), him(6)], CTX));
+    const ended = s.frames.find((f) => f.done === true)!;
+    expect(ended).toMatchObject({ id: 1, superseded: true });
+    expect(s.last().id).toBe(5);
+    expect(s.p.heldFrom("loc:The Desktop")).toBe(6);
+  });
+
+  it("a restart forgets it: nothing is held", () => {
+    const r = rig([clippy(1), him(2)]);
+    r.here();
+    r.p.clear();
+    expect(r.p.heldFrom("loc:The Desktop")).toBeNull();
+    expect(r.p.frame(null)).toBeNull();
+  });
+
+  it("sends the script once, not with every move", () => {
+    const r = rig([clippy(1)]);
+    expect(r.frames[0]!.script?.sections.length).toBe(1);
+    r.p.op(r.id, "@Clippy", false, { op: "jump", pos: 2 });
+    expect(r.last().script).toBeUndefined();
+    expect(r.p.frame("@Clippy")?.script).toBeDefined();
+    expect(r.p.frame("@Nobody")).toBeNull();
+  });
+
+  it("tells a host and a director where it is", () => {
+    const r = rig([clippy(1), him(2), clippy(3)]);
+    r.here();
+    expect(r.p.status()).toMatchObject({ id: 1, readers: ["Clippy"], line: 1, lines: 3, held: true, speaking: false, holder: null });
+    r.p.op(r.id, "@Clippy", false, { op: "jump", pos: 4 });
+    expect(r.p.status()).toMatchObject({ line: 2, speaking: true, held: false });
+  });
+});
+
+describe("the TV's poll stops at a held line", () => {
+  const msgs = [row(1, "Trabolta", "before"), row(2, "Clippy", "c"), row(3, "Trabolta", "held"), row(4, "Trabolta", "after")];
+  const speaks = (f: string) => f === "Trabolta";
+
+  it("ends the timeline, head included, so the cursor can't pass it", () => {
+    const got = voiceLinesOf(msgs, "loc:The Desktop", 0, speaks, 40, 3);
+    expect(got.head).toBe(2);
+    expect(got.lines.map((l) => l.seq)).toEqual([1]);
+  });
+
+  it("lets everything behind it through in order, once it's gone", () => {
+    const got = voiceLinesOf(msgs, "loc:The Desktop", 2, speaks, 40, null);
+    expect(got.head).toBe(4);
+    expect(got.lines.map((l) => l.seq)).toEqual([3, 4]);
+  });
+
+  it("a TV that boots during the hold starts behind the held line", () => {
+    expect(voiceLinesOf(msgs, "loc:The Desktop", null, speaks, 40, 3)).toEqual({ head: 2, lines: [] });
+  });
+});

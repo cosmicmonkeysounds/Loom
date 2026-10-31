@@ -80,6 +80,8 @@ const HOST_POSTS: ReadonlySet<string> = new Set([
   // answers aloud) or fire one of his canned lines, only while a talk scene
   // is on (the route's own 409s).
   "/api/mod/talk",
+  // Wave 59: ▶ his lines may play, ✓ Done the teleprompter's scene is over.
+  "/api/mod/aloud",
   // Wave 40 (the house mixer): balance the house sound and drive the
   // soundtrack from the host's Desk. Never the router's meters post.
   "/api/mod/audio/mix",

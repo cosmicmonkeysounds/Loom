@@ -27,6 +27,7 @@ import { badgesOf, type NameBadge } from "../src/runtime/sim/badges.ts"; // w18b
 import { isPrivateSlot, statsFor, type StatView } from "../src/runtime/sim/stats.ts"; // w21 stats
 import type { ShowClock } from "../src/show-clock.ts";
 import type { TalkView } from "../src/talk-back.ts";
+import type { PrompterStatus } from "./prompter.ts";
 import { CREDITS_AT_PATH, CREDITS_ROLL_PATH } from "../src/credits.ts"; // w44
 
 export type { NameBadge } from "../src/runtime/sim/badges.ts";
@@ -807,6 +808,8 @@ export interface ModView {
    *  state (`talk-back.ts` `talkView`), runtime-filled; null when none is
    *  on; absent from an older server. */
   talk?: TalkView | null;
+  /** Wave 59: the teleprompter's scene (`prompter.ts`), null with none on. */
+  prompter?: PrompterStatus | null;
   theme?: string;
   /** Every declared INTERACTION (the director may fire any of them). */
   interactions?: InteractionSummary[];
