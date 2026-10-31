@@ -645,8 +645,10 @@ preview, before the doors. The owed checks of waves 53–56 still stand on their
     its card's pile line gives way. Measured in Chromium over all 161 cards with macOS's
     system font: no title clips, and no QR or code is cut.
 12. **The hidden room** on a real booth: Task Manager's phone must show the read.
-13. **Not run on the merged tree:** the Godot VR suite, the DB-gated tests, `predeploy.sh`
-    itself and its docker check.
+13. **`predeploy.sh` without `--vr` passed on this branch**, its docker check included, on a
+    dead database, and all seven roads ran 24/24. Not run: the Godot VR suite (this machine
+    has no Godot on its PATH) and the DB-gated tests. Nothing has run on the tree merged with
+    wave 59.
 
 ## 6. What's owed in print
 
