@@ -1,20 +1,20 @@
-//! Profile pictures + the sign-in pickers' data.
-//!
-//! Every view carries `avatars`: folded display name → serving key. The
-//! picture itself is served by the event server at
-//! `/e/:eventId/api/avatar/<key>` (same-origin, so the CSP is untouched);
-//! this module turns a name into that URL, and hands the map to every
-//! avatar tile through a context so a message's sender, a directory row,
-//! and a cast pill all show the same face.
-//!
-//! The pickers: a guest sees the story's unclaimed *programs* (bare
-//! `CHARACTER`s) and may search the program directory (any software on
-//! Wikipedia, antivirus greyed out); a performer sees the unclaimed
-//! *parts*. Both come from `POST /e/:id/api/identities`, resolved from the
-//! code alone — no session yet. Having picked a program, a guest chooses
-//! its *picture* from a few (`/api/identities/pictures`: the story's
-//! hand-picked ones, then the article's logos / box art / screenshots),
-//! and can switch later from their pass (`/api/guest/picture`).
+// Profile pictures + the sign-in pickers' data.
+//
+// Every view carries `avatars`: folded display name → serving key. The
+// picture itself is served by the event server at
+// `/e/:eventId/api/avatar/<key>` (same-origin, so the CSP is untouched);
+// this module turns a name into that URL, and hands the map to every
+// avatar tile through a context so a message's sender, a directory row,
+// and a cast pill all show the same face.
+//
+// The pickers: a guest sees the story's unclaimed *programs* (bare
+// `CHARACTER`s) and may search the program directory (any software on
+// Wikipedia, antivirus greyed out); a performer sees the unclaimed
+// *parts*. Both come from `POST /e/:id/api/identities`, resolved from the
+// code alone — no session yet. Having picked a program, a guest chooses
+// its *picture* from a few (`/api/identities/pictures`: the story's
+// hand-picked ones, then the article's logos / box art / screenshots),
+// and can switch later from their pass (`/api/guest/picture`).
 
 import { createContext, useContext } from "react";
 
