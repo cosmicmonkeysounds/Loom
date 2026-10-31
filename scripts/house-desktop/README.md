@@ -571,6 +571,11 @@ music; a featured track muted somewhere takes nothing over there.
 
 ### 3.7 The soundtrack from the TIDAL app
 
+Hosts run all of this from 🎵 Music (the Desk, Run → House): pause, previous,
+next, and any playlist in the app's sidebar (wave 58,
+`docs/loom-w58-contract.md`). Those buttons work through the same control port,
+so the app must be started as below.
+
 The acts and the ending are John's TIDAL playlists, **played by the TIDAL
 app on this PC** and heard like the TV: through VoiceMeeter, on a bus of
 their own. Custom songs stay MP3s (below). Proven on this PC on 2026-10-30:

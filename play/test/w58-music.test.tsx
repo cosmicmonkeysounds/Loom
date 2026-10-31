@@ -113,7 +113,9 @@ describe("what it says", () => {
 describe("what it draws", () => {
   it("now playing, the deck, the picks, the level and Trabolta", () => {
     const html = body(view());
-    for (const t of ["🎵 Playing from TIDAL", "NOW PLAYING", "TITI - Act 1", "Band - Dial-up Dreams", "⏮", "⏸", "⏭ Skip all", "■ Stop music", "PLAY NOW", "▶ act_1", "Your TIDAL playlists (2)", "Paste a TIDAL playlist link", "🤖 TRABOLTA", "Winamp (4)", "Last: skipped a song for Winamp", "🔒 Keep him off the music"]) expect(html, t).toContain(t);
+    for (const t of ["🎵 Playing from TIDAL", "NOW PLAYING", "TITI - Act 1", "Band - Dial-up Dreams", "⏮", "⏸", "■ Stop music", "PLAY NOW", "▶ act_1", "Your TIDAL playlists (2)", "Paste a TIDAL playlist link", "🤖 TRABOLTA", "Winamp (4)", "Last: skipped a song for Winamp", "🔒 Keep him off the music"]) expect(html, t).toContain(t);
+    // The deck's ⏭ is Skip all here: one bed on one app.
+    expect(html).not.toContain("⏭ Skip all");
     expect(html).toContain('data-testid="host-music-level"');
     expect(html).toMatch(/type="range"/u);
     // The Fan Closet's loop is no music to pick.

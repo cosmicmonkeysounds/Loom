@@ -248,6 +248,7 @@ CHARACTER Trabolta is Person
       else:
         Trabolta: That function is not available in that room.
 
+  // DRAFT w58: every line here (SIGNOFF-w58.md).
   // Wave 58 (docs/loom-w58-contract.md C6). The house music, like the lights,
   // and in the lights' window, but only for a program he is chummy with
   // (`Night.dj_bar`). The moves are allow-listed: he never reaches the rest of

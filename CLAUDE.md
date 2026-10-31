@@ -345,6 +345,17 @@ the TV reloaded, and on the Desktop `git pull` and
 `start-stagehand.ps1 -Restart audio`. Not proven on Windows' voices
 or the house speakers: run `SIGNOFF-w56.md` §3 first.
 
+**The music manager, and Trabolta at the stereo** (wave 58, not merged;
+`docs/loom-w58-contract.md`, show text `DRAFT w58` on `SIGNOFF-w58.md`): Run →
+House → 🎵 Music and the Desk's 🎵 Music (open for Task Manager) hold Now Playing,
+TIDAL's ⏮ ⏸ ⏭, the show's playlists, the app's sidebar, a pasted playlist link
+and the music level. `change_the_music`, like the lights' window, but only for a
+program at `Night.dj_bar` of `chummy` (`warmth: chummy -5 to 10`: the one guest
+slot his reply may move, ±1). His moves are allow-listed and a loan: a live music
+cue ends it, a director's hand refuses it, 🔒 keeps him off. ⏮ ⏸ and a hand
+playlist are unproven on the real app. Help:
+`docs/help/authoring/57-music-manager.md`.
+
 ### Release status
 
 The VPS runs **`w56`** (master `d8223795`, shipped 2026-10-30; rollback `w53b`):

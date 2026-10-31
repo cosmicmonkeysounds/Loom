@@ -469,6 +469,17 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   mode lives beside the mute (`Store.loadVoiceFx`, in the state dir); the shot
   is memory only. `POST /api/mod/screen/voice {fx?, shot?}` is on the host
   allowlist. Tests: `test/voice-fx.test.ts`, `test/trapped-w56-voice.test.ts`.
+- **The music manager** (wave 58,
+  [`docs/loom-w58-contract.md`](../docs/loom-w58-contract.md)). `MusicCommand`
+  gains `previous`, `pause`, `resume`, `playlist`, `tidal`; `MixerMusic` gains
+  `tidal` and `loan`, a bed `live`, each optional (`audioMusicOf`). The words both
+  panels draw are in `src/house-mixer.ts` (`musicSource`, `djLines`, …).
+  `MixerView.dj` is `musicDjOf` over the sim's world, null for a story without
+  `Night.dj_locked`. The header `warmth: <slot> <min> to <max>` (`model.warmth`,
+  ROLE slots keep no range) names the one guest slot an agent's `adjust` may move,
+  `them.<slot>`, by `Math.sign` whatever was asked; `them.ranges` offers it to a
+  guest's request. Every other guest `them.` key is still ignored. Tests:
+  `test/w58-music.test.ts`, `test/trapped-w58-music.test.ts`.
 - **Hub files have one owner at a time.** `event-runtime.ts`,
   `views.ts`, `chat.ts` and `sim.ts` are touched by almost every
   feature; when several agents work in parallel, give each of these to

@@ -3,7 +3,7 @@ title: The Desk: setup and tests
 section: Performers
 order: 20
 role: performer
-keywords: desk window, setup, connect, connected, all connected, what to do, try it, try a look, try a sound, say on the speakers, say it, announcement, play anyway, sound router, router offline, router never connected, no interface, audio interface, layout moved, adat, announcements blocked, dropouts, missing sound, no file, placeholder, no speakers, lights module, lights offline, zigbee2mqtt, pair a bulb, wled, mind, outside mind, no mind connected, holding line, ollama, how the desk works, go, playing, cue list, walking the house, stop all, panic, lately, mixer, mix, levels, balance, fader, volume, louder, quieter, mute, meter, plays at, reset the mix, now playing, soundtrack, music, skip track, skip all, scene, by hand, follow the story, stop music, no router listening
+keywords: music, tidal, playlist, pause, trabolta at the stereo, keep him off the music, desk window, setup, connect, connected, all connected, what to do, try it, try a look, try a sound, say on the speakers, say it, announcement, play anyway, sound router, router offline, router never connected, no interface, audio interface, layout moved, adat, announcements blocked, dropouts, missing sound, no file, placeholder, no speakers, lights module, lights offline, zigbee2mqtt, pair a bulb, wled, mind, outside mind, no mind connected, holding line, ollama, how the desk works, go, playing, cue list, walking the house, stop all, panic, lately, mixer, mix, levels, balance, fader, volume, louder, quieter, mute, meter, plays at, reset the mix, now playing, soundtrack, music, skip track, skip all, scene, by hand, follow the story, stop music, no router listening
 ---
 
 The **Desk** is the house's own control: the speakers, the lights and the
@@ -22,7 +22,9 @@ Top to bottom:
   next act. Use it whenever something is wrong.
 - **▸ How the Desk works**: five lines, folded. Tap to read them.
 - **Setup** (below).
-- **▸ 🎚 Mixer** (below), folded: the house's sound levels and the music.
+- **🎵 Music** (below): what is playing, TIDAL, and Trabolta's hands on it. Open
+  for Task Manager, folded for everyone else.
+- **▸ 🎚 Mixer** (below), folded: the house's sound levels.
 - **STANDBY** and the big **GO**, then **Playing**, then the **Cues**.
 - **Try it** (below), then the **Checks**, then **Lately**: the last few
   things the house did, with what the house Mac said (*played*,
@@ -88,25 +90,43 @@ one of these asks first (*The show is live — guests will hear this.
 Test anyway?* → **Play anyway**): guests hear the sound and see the
 light.
 
+## 🎵 Music
+
+It stays live only while it is open. The line at the top says where the music is
+coming from: **Playing from TIDAL**, **TIDAL is paused**, **Playing files**, or
+what is wrong. *TIDAL isn't answering* means the app needs starting on the
+Desktop with `tidal.ps1`.
+
+- **NOW PLAYING**: the **Scene** picker (picking one plays it by hand). While
+  the music is on TIDAL, **⏮ ⏸ ⏭** are the app's own buttons; a pause holds until
+  you tap ▶ or the scene changes. Then each playlist that is playing, its track
+  and how far in, with **⏭** to skip it. A file playlist has no pause: it has
+  **⏭ Skip all**. **■ Stop music** asks once, then stops it. A playlist with no
+  tracks shows as a warning. *No soundtrack reported yet* means the router hasn't
+  said what it plays.
+- *By hand — the story's music cues are held*: a scene, playlist or stop you
+  picked. The story's own music changes wait until you tap **↺ Follow the
+  story**, which plays the story's scene again at once.
+- **PLAY NOW**: the show's playlists, **Your TIDAL playlists** (everything in the
+  app's sidebar), or paste a TIDAL playlist link. Each plays where the scene's
+  music plays, by hand. An album's or a song's link won't play.
+- **Music**: the level, the same one as in the Mixer.
+- **🤖 TRABOLTA**: he will change the music for a program he has grown chummy
+  with. It shows who, and what he did last. While he has it, *Trabolta has the
+  music*: it goes back by itself, or tap **↺ Take it back**. While you hold the
+  music by hand he can't touch it. **🔒 Keep him off the music** stops him until
+  you let him back, and hands back what he had on.
+
 ## 🎚 Mixer
 
 Tap **▸ 🎚 Mixer** to open it; it stays live only while it is open. It
-moves the live balance of the house sound and steers the music. It never
+moves the live balance of the house sound. It never
 changes the house map's speaker settings, and a speaker test always plays
 at full level, so a muted room can still be walked.
 
 - **No router listening: the mix is kept and applies when it connects**:
   your levels are saved and reach the speakers once the sound router is
   back.
-- **NOW PLAYING**: the **Scene** picker (picking one plays it by hand),
-  then each playlist that is playing, its track and how far in, with
-  **⏭** to skip to its next track. **⏭ Skip all** skips every one;
-  **■ Stop music** asks once, then stops it. A scene picked by hand (or a
-  stop) says *By hand — the story's music cues are held*: the story's own
-  music changes wait until you tap **↺ Follow the story**, which plays
-  the story's scene again at once. A playlist with no tracks shows as a
-  warning. *No soundtrack reported yet* means the router hasn't said
-  what it plays.
 - **Everywhere** and one chip per room pick where the levels apply. Each
   row is a slider from −∞ (silent) to +10 dB, its level, a mute (🔈 /
   🔇) and a thin meter of what is playing. **Master** (or **Room**) moves

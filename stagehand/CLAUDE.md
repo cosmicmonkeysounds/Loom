@@ -278,6 +278,21 @@ module docstrings that explain the why).
   touch it. Two TIDAL beds never crossfade (one app, one cable): the old fades,
   the app changes, the new fades in. `dir` / `files` on such a playlist are
   its fallback (`problem()`, or `SILENT_S`). Tests: `tests/test_audio_tidal.py`.
+- **The Music manager** (wave 58, `../docs/loom-w58-contract.md` C2–C4).
+  `TidalRemote.pause(on)` is a held pause: the reconciler presses ⏸, never ▶.
+  `previous()` clicks `previous`. `library` is the sidebar's `/playlist/` links
+  every `LIBRARY_EVERY_S`, read before the director's first word too, and a failed
+  read keeps the last list. `Director.play_playlist` / `play_tidal` build an ad-hoc
+  scene (`HAND_PREFIX`) from the one in force, the pick in place of every
+  non-looping entry; ad-hoc names stay out of `status()`'s lists. `set_scene` (a
+  real change) and `stop` let go of a pause, and `_tick_live` never reads a paused
+  app as a silent cable. **The stereo:** `<cue: music, action: skip | hush | play |
+  back>` on the feed (`stereo_of_cue`, never a scene). `_music_loan` marks a hand
+  that is Trabolta's: a director's hand ignores `skip`, `hush` and `play`, `back`
+  touches only a loan, and every hand, live cue, Stop house sounds and restart
+  ends one (`_end_loan`). A guest's `adjust` may carry `them.chummy` only when the
+  request's `them.ranges` offers it (`adjust_names`). Tests:
+  `tests/test_audio_w58.py`, `tests/test_player_adjust.py`.
 - **The SFX library is original and deterministic** (C6): no samples,
   no trademarked motifs; each sound's seed comes from its name, so a
   re-render is byte-identical. One-shots are set by loudness (the loudest

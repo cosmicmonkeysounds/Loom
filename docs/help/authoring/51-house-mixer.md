@@ -24,20 +24,8 @@ With no router the mix is kept and applies the moment it connects.
 
 ## Now playing
 
-The soundtrack, as the router last reported it:
-
-- **Scene**: pick one to play it by hand. A hand scene is held: the
-  story's `cue music_*` lines are ignored until you press **Follow the
-  story** (the badge says *by hand*), or until the story's next live
-  music cue.
-- Each **bed** (a playlist playing on some speakers): the rooms it plays
-  in, the track and how far in, and **⏭ Skip** for the next track.
-  **⏭ Skip all** skips every bed.
-- **■ Stop music** stops the soundtrack, held like a hand scene.
-- An empty playlist (no file on the router's machine) shows as a warning.
-
-*No soundtrack reported yet* means the router has no `soundtrack.yaml`,
-or hasn't sent its first report.
+What is playing, the TIDAL buttons and the playlists moved to
+[the Music manager](57-music-manager.md) in **Run → House → 🎵 Music**.
 
 ## The console
 

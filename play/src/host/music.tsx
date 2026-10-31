@@ -157,7 +157,7 @@ function NowPlayingBox({ view, onMusic }: { view: MixerView; onMusic: (cmd: Musi
             </p>
           ))}
           <div className="host-mix-transport">
-            {np.beds.length > 0 && <ActButton className="host-mix-skipall" label="⏭ Skip all" onClick={() => onMusic(musicCalls.next())} />}
+            {np.beds.length > 0 && !np.onApp && <ActButton className="host-mix-skipall" label="⏭ Skip all" onClick={() => onMusic(musicCalls.next())} />}
             <ConfirmButton className="host-mix-stop" label="■ Stop music" ask="Stop the music?" yes="■ Stop" danger onConfirm={() => onMusic(musicCalls.stop())} />
           </div>
         </>

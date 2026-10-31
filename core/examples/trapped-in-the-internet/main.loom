@@ -3773,7 +3773,8 @@ INTERACTION wave_staff_through
   description: Every part still in its upload, or not signed in yet, goes straight to its booth: Clippy, the four Antivirus and the three hosts. For a phone that can't finish it (a dead phone, a part taken over mid-show, a booth a guest is waiting on). Nothing they had left to answer is asked again.
   while: Kernel.staff_uploaded < 8 and Night.ended != true
 
-// Wave 58: the Music manager's switch, on hand all night. Each shows only
+// DRAFT w58 (the labels, and the # hosts lines above). The Music manager's
+// switch, on hand all night. Each shows only
 // when it would do something.
 INTERACTION trabolta_music_lock
   label: 🔒 Keep Trabolta off the music

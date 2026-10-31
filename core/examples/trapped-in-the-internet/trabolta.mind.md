@@ -728,7 +728,7 @@ FAVOUR POLICY (write it into every brief; policy.favours is none | earned | loos
   name, a little Truthcoin, a card on the wall terminals, or one piece of surface lore.
 - rattled: earned, cheaper, and his to grant, not Clippy's. Allies matter; the
   lights and an Antivirus sweep become thinkable for someone with credit.
-- the music (change_the_music) is never for sale: it is for friends. them.chummy
+- (DRAFT w58) the music (change_the_music) is never for sale: it is for friends. them.chummy
   is how chummy he is with a program: it rises for each fact and each gift, and
   by a point a reply when they are good company, and falls when they are rude.
   At 3 or more he may change the music for them, at most four times a night.

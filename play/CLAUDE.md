@@ -611,6 +611,14 @@ bar shows is pure in `host/show-model.ts` (`hostWindowShown`,
   answer's, ≤ 10 / s per key, the last value always sent) and
   `audio/music`. All three routes are on the host allowlist.
 
+Wave 58 adds **🎵 Music** above the Mixer (`host/music.tsx`, contract
+`docs/loom-w58-contract.md`): it took Now Playing from the Mixer and adds TIDAL's
+⏮ ⏸ ⏭, PLAY NOW (the show's playlists, the app's sidebar, a pasted link), the
+`src:music` strip and the 🤖 card, whose lock is the story's cue through
+`calls.cue`. `mixer.tsx` exports `useMixerView`, `useMixPosts` and `StripLine` for
+it. `musicOpen` opens it for Task Manager (`MUSIC_OWNER`), and folded it polls
+nothing. Tests: `test/w58-music.test.tsx`. Help: `docs/help/play/20-house-desk.md`.
+
 Every write is on the server's host allowlist (`core/server/routes/host.ts`;
 any other mod route answers 403 *not from a booth*), typed in `host/api.ts`
 (`HOST_ROUTES`, `HOST_READS`; `test/host-actions.test.ts` checks every
