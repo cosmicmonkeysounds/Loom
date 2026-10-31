@@ -4645,6 +4645,15 @@ export class EventRuntime {
         else sendJson(res, 200, { ok: true });
         return true;
       }
+      case "/api/spatial/reset": {
+        // (wave 59) The run reset: back to the spawn, Gerald somewhere new.
+        // Commits nothing, so it is open while the doors are closed.
+        const out = this.spatial.runReset(token);
+        if (out.kind === "unknown" || out.kind === "over") refuse(out.kind);
+        else if (out.kind === "found") sendJson(res, 409, { error: "already found" });
+        else sendJson(res, 200, { ok: true, spawn: out.spawn, duck: out.duck });
+        return true;
+      }
       case "/api/spatial/suspend": {
         // (wave 40) The headset was doffed, or the web tab hidden: hold the
         // walk so it can resume where it was. Commits nothing, so it is open
