@@ -20,7 +20,7 @@ function night() {
   const watch = new ScreenWatch({ now: () => clock.t });
   const fx = () => watch.poll(sim, WHO, () => false).voiceFx;
   fx(); // the first look only folds the history
-  return { sim, clock, fx };
+  return { sim, clock, fx, flicker: () => watch.poll(sim, WHO, () => false).program.flicker };
 }
 
 /** `Night.phase` + what a late phase carries, without playing the night to it. */
@@ -112,11 +112,12 @@ describe("the major glitches, pressed for real", () => {
   });
 
   it("a flicker in the intro talk is the screens', and his voice stays clean", { timeout: SLOW }, () => {
-    const { sim, clock, fx } = night();
+    const { sim, clock, fx, flicker } = night();
     sim.setVar("Night.step", "4");
     sim.setVar("Night.talk", "intro");
     sim.signal("costume_flicker");
     expect(fx().spike).toBeNull();
+    expect(flicker(), "the screens still flicker").not.toBeNull();
     clock.t += 10_000;
     // The same press in another talk scene is the catch in his throat it always was.
     sim.setVar("Night.talk", "bottle");

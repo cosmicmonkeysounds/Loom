@@ -609,7 +609,9 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   stream's first frames include a `prompter` (null with none). `pushLifecycle` clears
   it. `finished` (the position reached `total`, or a reader's ✓ Done, once a scene) is
   `sceneFinished`: the end of `Clippy On Trabolta` fires `introduce_trabolta` through
-  `deskFire` unless he is already in (the contract's C11). `reading()`, not `status()`,
+  `deskFire` unless he is already in (the contract's C11). Paused doors answer false, so
+  nothing is used up, and a ✓ Done behind them goes in `openDoors`. A newer scene over
+  hers is `superseded`: one alert in `# hosts`, and 🤖 from there. `reading()`, not `status()`,
   is what must not cut across a read asks: a scene nobody has touched in
   `DRIVE_TTL_MS` stays up but isn't being read.
   Tests: `test/w59-prompter.test.ts`, `test/w59-prompter-server.test.ts`.
