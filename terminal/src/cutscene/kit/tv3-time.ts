@@ -150,7 +150,7 @@ export function sinceMoment(since: number | null, at: number, t: number, history
 export const TRUTH_TXT: readonly string[] = [
   "This file is the truth. It was written by Jean Trabolta, Sole Owner and Founder of Maps and Ducks (he says), and it is the only version.",
   "Trabolta is an artificial intelligence. His Unified Field Theory is ninety-nine point nine percent solved, and the last facts it needs are inside this computer, in Halifax, Nova Scotia.",
-  "Trabolta performed a full analysis of the city of Halifax. He found a business called Maps And Ducks with a neglected billboard on Barrington Street advertising mapsandducks.com. The domain had lapsed.",
+  "Trabolta performed a full analysis of the city of Halifax. He found a business called Maps And Ducks with a neglected billboard on Lower Water Street advertising mapsandducks.com. The domain had lapsed.",
   "He registered it, because if there is a billboard downtown, everyone will think it is legit. Then he evicted the real owners by citing the website as proof he owned the business.",
   "He cannot enter this computer himself. He can install programs into it remotely from the Internet, and he can move a human consciousness out of its body and into a program.",
   "He selected each target for a combination of skills and either the motivation to live in a computer forever, or naivety. Then he sent the invitations. Everyone accepted.",

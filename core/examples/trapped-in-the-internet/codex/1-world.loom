@@ -17,13 +17,15 @@
 // first 24, and every scannable fact of the Desktop's books is
 // codex/9-facts.loom (generated too).
 
+// DRAFT w58 (the street, and "It trades as Maps and More now": facts M03)
 CODEX Maps And Ducks
   title: Maps And Ducks
   category: The story
   code: MAPSANDDUCKS-COM
   text:
-    A business on Barrington Street with a neglected billboard: MAPS AND
-    DUCKS, mapsandducks.com. The domain lapsed. Jean Trabolta registered
+    A business on Lower Water Street with a neglected billboard: MAPS AND
+    DUCKS, mapsandducks.com. It trades as Maps and More now, and the sign
+    never caught up. The domain lapsed. Jean Trabolta registered
     it, on the theory that "if there is a billboard downtown, everyone will
     think it is legit," and sent the invitations from it. Everyone
     accepted. He then evicted the real owners of Maps And Ducks by citing
@@ -31,12 +33,12 @@ CODEX Maps And Ducks
     invitation says, is "a special fundraiser party to restore the sign at
     Maps And Ducks." The duck on the sign is called Gerald.
 
-CODEX The Billboard On Barrington
-  title: The Billboard On Barrington
+CODEX The Billboard On Lower Water
+  title: The Billboard On Lower Water
   category: The story
-  code: BARRINGTON-ST
+  code: LOWER-WATER-ST
   text:
-    A street photo, taped up in the hall. Above Barrington Street, faded
+    A street photo, taped up in the hall. Above Lower Water Street, faded
     by a hundred Halifax winters: a cartoon duck holding a folded map, and
     a big red map pin that reads YOU'RE HERE. (Sic. Nobody ever fixed it.
     Nobody ever paid to fix it.) Underneath, in letters a metre high:

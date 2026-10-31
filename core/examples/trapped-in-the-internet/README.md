@@ -22,7 +22,7 @@ A rogue AI, **Trabolta**, has very nearly solved the Unified Field
 Theory. The last facts he needs are on a computer in Halifax: this house.
 He cannot get in, but he can install programs remotely, and he has
 learned to lift a consciousness out of a body and drop it into a program.
-He found a neglected billboard on Barrington Street advertising
+He found a neglected billboard on Lower Water Street advertising
 mapsandducks.com and registered the lapsed domain ("if there is a
 billboard downtown everyone will think it is legit"). Then he sent the
 invitations: *Jean Trabolta's offer will solve a problem in your human
@@ -1194,15 +1194,15 @@ most, in its hardest reachable place). Since wave
 58 one row is hand-written and "already placed" (T5, `GROK-ONLINE`, in the
 room below); the ten facts that used to point at hand-written entries are
 new generated cards with their own QRs. The old hand-written posters stay
-and print unstacked: `MAPSANDDUCKS-COM`, `BARRINGTON-ST`, `COLD-STORAGE`
-keep the rooms below, and `UNIFIED-FIELD`, `TARGET-SELECTION`,
+and print unstacked: `MAPSANDDUCKS-COM`, the Lower Water street photo and
+`COLD-STORAGE` keep the rooms below, and `UNIFIED-FIELD`, `TARGET-SELECTION`,
 `TRUST-CHART`, `SANDY-FILE`, `ALL-FOR-HER` go in the Desktop piles. Room
 check-in QRs are unchanged.
 
 | Where | Codes |
 |---|---|
 | **The Desktop** (living room) | the print stacks above · `MAPSANDDUCKS-COM` (billboard photo) · `CASINO-DEED` (mantel) · `BARKMORE-88` (bookshelf) · `TERMINATION-UO` (printer tray) · `MASTERCLASS-RIP` (DVD stack) |
-| **The Tube** (hall, stairs) | `BARRINGTON-ST` (street photo) · `SAVE-THE-PETS` (protest flyer) · `WHOIS-1999` |
+| **The Tube** (hall, stairs) | the Lower Water street photo · `SAVE-THE-PETS` (protest flyer) · `WHOIS-1999` |
 | **The Start Bar** (kitchen) | `SINKHOLE-4AM` (clipping) · `ALL-IN-BOARDWALK` (fridge magnets) · `GOLD-STANDARD` (thesis by the toaster) · `SALINE-INVOICE` (drawer) |
 | **Disk Cleanup** (either bathroom) | `VALLEY-CUTS` · `FACE-OFF-LIVE` (mirror) |
 | **The Cloud** (backyard) | `SITE-SCHEDULE` (shed clipboard) · `BUGDOM-VR` (singed sketch, in the shed) · `GROK-ONLINE` (fridge sticky note) |

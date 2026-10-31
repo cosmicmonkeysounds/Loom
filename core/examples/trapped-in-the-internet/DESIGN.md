@@ -734,7 +734,7 @@ ROLE hooks and watchers (all in `ROLE Program`; bodies specified in §3):
 | `when self.featured == "draftkings" and self.quest.truthcoin_hustle == "active" and self.score >= 1000:` | update quest Truthcoin Hustle (a progress step) |
 | `when self.featured == "draftkings" and self.quest.truthcoin_hustle == "active" and count([p for p in Persons where p.cleared and p.featured != "draftkings"]) >= 5 and self.score * 2 > sum([p.score for p in Persons]):` | complete quest Truthcoin Hustle: a majority of the coin in circulation (the invitation, C08); the five-program floor keeps a small rehearsal from completing it at the glitch |
 | `when self.featured == "bugdom" and self.quest.master_of_the_bugs == "active" and Night.recount != true and self.codex.miniature_doses and self.codex.the_lamborghini_certificate and self.codex.what_happened_to_hamtaro and self.codex.the_decimal_point:` | complete quest Master Of The Bugs (the four Antivirus secrets). Wave 9 (T10-01): the `quest … == "active"` term makes a goal met before the Truther Download complete the moment the quest starts (a watcher that fired before the quest existed did nothing) — the same for Jeeves' Unscramble (Ten Findings already carried its status; it starts at clearance, not at the download), and Excel Glitch completes Excel Mission ("Virus planted.") when the virus is already in |
-| `when self.featured == "jeeves" and self.quest.unscramble == "active" and count([x for x in [self.codex.maps_and_ducks, self.codex.the_billboard_on_barrington, self.codex.the_data_centre_sinkhole, self.codex.the_pet_cemetery, self.codex.the_server_room, self.codex.the_protest_flyer, self.codex.the_domain_receipt, self.codex.casino_nova_scotia_deed, self.codex.the_valley_library_cuts, self.codex.the_cooling_log] where x]) >= 5:` | complete quest Unscramble (the list-literal comprehension is **[verified, feas f2]**; the ten are the coded originals behind his fragments) |
+| `when self.featured == "jeeves" and self.quest.unscramble == "active" and count([x for x in [self.codex.maps_and_ducks, self.codex.the_billboard_on_lower_water, self.codex.the_data_centre_sinkhole, self.codex.the_pet_cemetery, self.codex.the_server_room, self.codex.the_protest_flyer, self.codex.the_domain_receipt, self.codex.casino_nova_scotia_deed, self.codex.the_valley_library_cuts, self.codex.the_cooling_log] where x]) >= 5:` | complete quest Unscramble (the list-literal comprehension is **[verified, feas f2]**; the ten are the coded originals behind his fragments) |
 | `when self.featured == "jeeves" and Kernel.jeeves_reached > self.jeeves_told:` / `… and self.quest.ten_findings == "active" and count([p for p in Persons where p.cleared and p.featured != "jeeves"]) >= 5 and count([… and p.from_jeeves < 10]) == 0:` | Ten Findings: an update each time one more program holds ten of his findings (`when share:` → `jeeves_shared` → `from_jeeves`; a wallet sale is a share; a repeat or a share to Trabolta never counts), complete once every cleared program does (at least five) |
 | `when self.featured == "mspaint" and Night.signatures > self.paint_told:` / `… and self.quest.the_painting == "active" and count([p for p in Persons where p.cleared and p.featured != "mspaint"]) >= 5 and count([… and p.signed != true]) == 0:` | The Painting: an update per 🖌 signature, complete once every cleared program but her has signed (at least five) |
 | `when Night.resurrected == true and self.cleared and self.resurrected != true:` | G11: `banished = false`, `fire unmarked for self with how: "resurrected"` if marked (both pins down), `unrestrict self`; the `everyone_free` watcher releases the captured |
@@ -1122,8 +1122,8 @@ everyone at the end) · **X** finale artefact · **D** the server-room door code
 
 | Name | title | tier | about | code | holders | Granted by | ✚ | Gist |
 |---|---|---|---|---|---|---|---|---|
-| Maps And Ducks | Maps And Ducks | E | | `MAPSANDDUCKS-COM` | | QR on the framed billboard photo (Desktop) | ✚ | The business whose neglected billboard on Barrington Street advertises mapsandducks.com; Trabolta registered the lapsed domain ("if there is a billboard downtown everyone will think it is legit") and evicted the real owners by citing the website as ownership. Tonight is "a special fundraiser party to restore the sign at Maps And Ducks." |
-| The Billboard On Barrington | The Billboard On Barrington | E | | `BARRINGTON-ST` | | QR on a street photo (The Tube) | ✚ | The billboard: a duck, a map pin that reads YOU'RE HERE (sic). |
+| Maps And Ducks | Maps And Ducks | E | | `MAPSANDDUCKS-COM` | | QR on the framed billboard photo (Desktop) | ✚ | The business whose neglected billboard on Lower Water Street advertises mapsandducks.com; Trabolta registered the lapsed domain ("if there is a billboard downtown everyone will think it is legit") and evicted the real owners by citing the website as ownership. Tonight is "a special fundraiser party to restore the sign at Maps And Ducks." |
+| The Billboard On Lower Water | The Billboard On Lower Water | E | | (see `codex/1-world.loom`) | | QR on a street photo (The Tube) | ✚ | The billboard: a duck, a map pin that reads YOU'RE HERE (sic). |
 | The Data Centre Sinkhole | The Data Centre Sinkhole | E | | `SINKHOLE-4AM` | | QR on a newspaper clipping (The Start Bar) | ✚ | Halifax's first AI Data Centre, built on the site of the Halifax Explosion Memorial Pet Cemetery over everyone's objections; destroyed at dawn on opening day; Mayor Randy Barkmore Jr. arrived at 4 a.m., hours before anyone else, and died in the sinkhole (the text never says how early: that would give away H3). |
 | The Pet Cemetery | The Halifax Explosion Memorial Pet Cemetery | E | | `PET-CEMETERY` | | QR on a memorial pamphlet (The RAM) | ✚ | The cemetery and the protests. |
 | The Halifax Computer | The Halifax Computer | E | | | | The Router prop; Truther Download | ✚ | This house is the computer that holds the last facts Trabolta needs; he can install programs into it remotely and lift a consciousness into a program, but cannot get in himself. |
@@ -1339,7 +1339,7 @@ can put them back. Source entry per fragment:
 | # | Source | # | Source |
 |---|---|---|---|
 | 01 | Maps And Ducks | 11 | The Trust Chart |
-| 02 | The Billboard On Barrington | 12 | The Protest Flyer |
+| 02 | The Billboard On Lower Water | 12 | The Protest Flyer |
 | 03 | The Data Centre Sinkhole | 13 | The Domain Receipt |
 | 04 | The Pet Cemetery | 14 | Casino Nova Scotia Deed |
 | 05 | The Halifax Computer | 15 | Barkmore For Mayor |
@@ -3022,7 +3022,7 @@ wave 8, T6-01: the slide holds while the bobber reads).
   once the verdict is in, *"⚖ Not now…"*.
 - `== Truth Txt` (public; narration as Notepad text; the bobber reads it aloud): Trabolta's
   backstory (the analysis of Halifax; the lapsed mapsandducks.com and the billboard on
-  Barrington; he registered it "because if there is a billboard downtown everyone will think
+  Lower Water; he registered it "because if there is a billboard downtown everyone will think
   it is legit"; he can install programs remotely and move consciousness into them; he chose
   each target for skills plus motivation to live in a computer forever, or naivety; the
   Unified Field Theory; omnipotence; Sandy; force versus earn) and **why each person was
@@ -3885,14 +3885,14 @@ the atlas, …), the 30 **main** facts (green: inside the encyclopaedias, volume
 **trabolta** facts (blue: deep in the print media on the mantel) and the 24 **character** facts
 (red: the back pages of volumes N–Z and the atlas) all hide in the living room's old
 newspapers, encyclopaedias and atlas. The stacks mark twelve hand-written rows "already
-placed" (nine with a code; M06, M13 and M26 have no QR): `MAPSANDDUCKS-COM`, `BARRINGTON-ST`,
-`COLD-STORAGE`, `GROK-ONLINE` keep their rooms below, and the five codes new in wave 4 go in
-the Desktop piles (`UNIFIED-FIELD`, `TARGET-SELECTION`, `TRUST-CHART` green; `SANDY-FILE`,
-`ALL-FOR-HER` blue).
+placed" until wave 58, which made ten of them new generated cards: T5 (`GROK-ONLINE`) stays
+hand-written, and the old posters stay and print unstacked. `MAPSANDDUCKS-COM`, the Lower
+Water street photo and `COLD-STORAGE` keep their rooms below, and `UNIFIED-FIELD`,
+`TARGET-SELECTION`, `TRUST-CHART`, `SANDY-FILE` and `ALL-FOR-HER` go in the Desktop piles.
 
 The other 29 codes, by room (code → entry): **The Desktop** `MAPSANDDUCKS-COM` Maps And Ducks
 (billboard photo) · `CASINO-DEED` (mantel) · `BARKMORE-88` (bookshelf) · `TERMINATION-UO`
-(printer tray) · `MASTERCLASS-RIP` (DVD stack). **The Tube** `BARRINGTON-ST` (street photo) ·
+(printer tray) · `MASTERCLASS-RIP` (DVD stack). **The Tube** the Lower Water street photo ·
 `SAVE-THE-PETS` (protest flyer) · `WHOIS-1999`. **The Start Bar** `SINKHOLE-4AM` (clipping) ·
 `ALL-IN-BOARDWALK` (fridge magnets) · `GOLD-STANDARD` (thesis by the toaster) ·
 `SALINE-INVOICE` (drawer). **Disk Cleanup** `VALLEY-CUTS` · `FACE-OFF-LIVE` (mirror). **The

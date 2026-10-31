@@ -270,7 +270,7 @@ describe("wave 9 — a featured goal met before the Truther Download completes i
     upload(sim, "g8", "Bugdom");
     upload(sim, "g9", "Broken Ask Jeeves");
     for (const code of ["MINIATURE-DOSES", "LAMBORGHINI-CERT", "HAMTARO", "DECIMAL-POINT"]) sim.redeem("g8", code);
-    for (const code of ["MAPSANDDUCKS-COM", "CASINO-DEED", "BARRINGTON-ST", "SAVE-THE-PETS", "WHOIS-1999"]) sim.redeem("g9", code);
+    for (const code of ["MAPSANDDUCKS-COM", "CASINO-DEED", sim.model.codex.get("The Billboard On Lower Water")!.code!, "SAVE-THE-PETS", "WHOIS-1999"]) sim.redeem("g9", code);
     for (const e of ["Miniature Doses", "The Lamborghini Certificate", "What Happened To Hamtaro", "The Decimal Point"]) expect(sim.holdsCodex("g8", e), e).toBe(true);
     toTruth1(sim);
     // Excel brings the virus back in hunt 1 and plants it.
@@ -300,7 +300,7 @@ describe("wave 9 — a featured goal met before the Truther Download completes i
   it("the late order still completes on the goal itself (Jeeves' fifth original after the download)", { timeout: SLOW }, () => {
     const sim = boot();
     upload(sim, "g9", "Broken Ask Jeeves");
-    for (const code of ["MAPSANDDUCKS-COM", "CASINO-DEED", "BARRINGTON-ST", "SAVE-THE-PETS"]) sim.redeem("g9", code);
+    for (const code of ["MAPSANDDUCKS-COM", "CASINO-DEED", sim.model.codex.get("The Billboard On Lower Water")!.code!, "SAVE-THE-PETS"]) sim.redeem("g9", code);
     toTruth1(sim);
     toHunt2(sim);
     expect(sim.questStatus("g9", "Unscramble")).toBe("active");

@@ -146,7 +146,7 @@ point nine percent solved, and the last facts it needs are inside this
 computer, in Halifax, Nova Scotia.
 
 Trabolta performed a full analysis of the city of Halifax. He found a business
-called Maps And Ducks with a neglected billboard on Barrington Street
+called Maps And Ducks with a neglected billboard on Lower Water Street
 advertising mapsandducks.com. The domain had lapsed.
 
 He registered it, because if there is a billboard downtown, everyone will think

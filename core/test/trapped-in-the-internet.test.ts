@@ -1326,7 +1326,7 @@ describe("Trapped in the Internet — the whole night", () => {
     expect(bundle).toEqual(expect.arrayContaining(["Silicon", "His Kind", "The Rival", "Alone At Prom"]));
     for (const id of bundle) expect(sim.holdsCodex("g8", id), id).toBe(true);
     // Wave 58: the hand-written entries no fact names any more, unlocked by hand.
-    for (const id of ["The Unified Field Theory", "Maps And Ducks", "The Billboard On Barrington", "Target Selection", "The Server Room", "The Trust Chart", "The Optical Drive", "The Sandy File", "Omnipotence"]) expect(sim.holdsCodex("g8", id), id).toBe(true);
+    for (const id of ["The Unified Field Theory", "Maps And Ducks", "The Billboard On Lower Water", "Target Selection", "The Server Room", "The Trust Chart", "The Optical Drive", "The Sandy File", "Omnipotence"]) expect(sim.holdsCodex("g8", id), id).toBe(true);
     for (const id of ["Silicon", "Atlas Loon", "His Kind", "Alone At Prom"]) expect(sim.holdsCodex("g9", id), id).toBe(false);
     for (const half of ["Combo A First Half", "Combo A Second Half", "Combo B First Half", "Combo B Second Half"]) expect(sim.holdsCodex("g1", half), half).toBe(true);
     expect(sim.isRevealedTo("The Server Room", "g1")).toBe(true);

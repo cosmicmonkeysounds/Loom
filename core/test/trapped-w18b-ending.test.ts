@@ -410,7 +410,7 @@ describe("wave 18b ending — Recounts and Purgatory read the canonical copy (R8
     expect(c).toContain("The report also lists who everyone really was.");
     expect(c.some((l) => l.startsWith("Microsoft Excel is Randy Barkmore Sr."))).toBe(true);
     expect(c.join("\n")).not.toMatch(/AI helper/u);
-    expect(c).toContain("Here is the backstory. Jean Trabolta, the Sole Owner and Founder of Maps and Ducks, registered the lapsed mapsandducks.com because there was a billboard on Barrington Street, and if there is a billboard downtown everyone thinks it is legit.");
+    expect(c).toContain("Here is the backstory. Jean Trabolta, the Sole Owner and Founder of Maps and Ducks, registered the lapsed mapsandducks.com because there was a billboard on Lower Water Street, and if there is a billboard downtown everyone thinks it is legit.");
     expect(c.at(-1)).toBe("It looks like you're trying to leave. I can't help you with that anymore.");
   });
 });

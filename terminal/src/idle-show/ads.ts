@@ -76,7 +76,7 @@ export interface IdleAd extends Pooled {
 
 export const IDLE_ADS: readonly IdleAd[] = [
   // --- all night ---------------------------------------------------------------
-  { id: "ad-maps-and-ducks", skin: "fundraiser", art: "map", kicker: "TONIGHT'S FUNDRAISER", title: "MAPS AND DUCKS — RESTORE THE SIGN!", body: "Tonight's fundraiser keeps the billboard on Barrington Street glowing. Every program helps. mapsandducks.com", button: "DONATE NOW" },
+  { id: "ad-maps-and-ducks", skin: "fundraiser", art: "map", kicker: "TONIGHT'S FUNDRAISER", title: "MAPS AND DUCKS — RESTORE THE SIGN!", body: "Tonight's fundraiser keeps the billboard on Lower Water Street glowing. Every program helps. mapsandducks.com", button: "DONATE NOW" },
   { id: "ad-protection-expired", skin: "warning", art: "shield", title: "Your protection has expired", body: "Your computer may be at risk. Viruses, worms and other programs could be in this house right now. Renew today to stay protected.", button: "Renew now" },
   { id: "ad-geocities", skin: "geocities", art: "globe", title: "Build your FREE home page!", body: "15 MB of space, a hit counter and a guestbook. Move into the neighbourhood today.", button: "Join now" },
   { id: "ad-y2k", skin: "y2k", art: "clock", title: "Is your PC Y2K ready?", body: "Time is running out. Run the free Year 2000 checker before midnight on December 31, 1999.", button: "Check now" },

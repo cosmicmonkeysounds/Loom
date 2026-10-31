@@ -70,6 +70,19 @@ describe("F1 under the fold", () => {
 
 describe("the monologue's canon", () => {
   const text = (id: string) => MODEL.codex.get(id)!.text.replace(/\s+/gu, " ");
+  it("the billboard is on Lower Water; only OpenOffice's shop stays on Barrington", () => {
+    for (const f of LOOM) {
+      if (f.path === "codex/5-people.loom") continue; // her Urban Outfitters
+      expect(f.source, f.path).not.toContain("Barrington");
+    }
+    expect(text("Dana Anderson")).toContain("Barrington Street Urban Outfitters");
+    expect(text("The Billboard On Lower Water")).toContain("Lower Water Street");
+    expect(MODEL.codex.get("The Billboard On Lower Water")!.title).toBe("The Billboard On Lower Water");
+    expect(text("Maps And Ducks")).toContain("Maps and More");
+    expect(text("Bold And Thrilling")).toContain("Maps and Ducks sign");
+    expect(terminal("idle-show/ads.ts")).not.toContain("Barrington");
+    expect(terminal("cutscene/kit/tv3-time.ts")).not.toContain("Barrington");
+  });
   it("the prom ticket is this year's", () => {
     expect(text("The Prom Ticket")).toContain("HALLOWEEN 2026");
     expect(text("The Prom Ticket")).not.toContain("1999");

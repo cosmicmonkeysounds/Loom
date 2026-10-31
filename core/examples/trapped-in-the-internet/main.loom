@@ -55,7 +55,7 @@ stat: self.covert as 🤫 Quiet favours, while self.covert >= 1
 // The last facts it needs are on a computer in Halifax, Nova Scotia —
 // this house. It cannot get in, but it can install programs remotely,
 // and it has learned to lift a consciousness out of a body and drop it
-// into a program. It found a neglected billboard on Barrington Street
+// into a program. It found a neglected billboard on Lower Water Street
 // advertising mapsandducks.com, registered the lapsed domain ("if there
 // is a billboard downtown everyone will think it is legit"), and sent
 // the invitations. Tonight the guests arrive as those programs. Some of
@@ -2919,7 +2919,7 @@ ROLE Program
   when self.featured == "bugdom" and self.quest.master_of_the_bugs == "active" and Night.recount != true and self.codex.miniature_doses and self.codex.the_lamborghini_certificate and self.codex.what_happened_to_hamtaro and self.codex.the_decimal_point:
     complete quest Master Of The Bugs for self "Four secrets out of the books. You know the Antivirus better than they know themselves."
 
-  when self.featured == "jeeves" and self.quest.unscramble == "active" and count([x for x in [self.codex.maps_and_ducks, self.codex.the_billboard_on_barrington, self.codex.the_data_centre_sinkhole, self.codex.the_pet_cemetery, self.codex.the_server_room, self.codex.the_protest_flyer, self.codex.the_domain_receipt, self.codex.casino_nova_scotia_deed, self.codex.the_valley_library_cuts, self.codex.the_cooling_log] where x]) >= 5:
+  when self.featured == "jeeves" and self.quest.unscramble == "active" and count([x for x in [self.codex.maps_and_ducks, self.codex.the_billboard_on_lower_water, self.codex.the_data_centre_sinkhole, self.codex.the_pet_cemetery, self.codex.the_server_room, self.codex.the_protest_flyer, self.codex.the_domain_receipt, self.codex.casino_nova_scotia_deed, self.codex.the_valley_library_cuts, self.codex.the_cooling_log] where x]) >= 5:
     complete quest Unscramble for self "Five originals found. The fragments are starting to read."
 
   // Ten Findings (his invitation): ten of his findings with every cleared
