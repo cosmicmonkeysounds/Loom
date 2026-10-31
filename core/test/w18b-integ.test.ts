@@ -150,6 +150,7 @@ describe("wave 18b integration — the whole night on the merged show (C1)", () 
     // The ceremony: The Night In Review first, then the awards; a file each.
     n.sim.setVar("g6.gone", "true");
     const before = n.chat.historyFor("g1", false).length;
+    n.raw("start_the_ceremony"); // wave 58: the first press only asks
     const cer = n.raw("start_the_ceremony");
     const order = beats(cer);
     expect(order.indexOf("The Night In Review")).toBeGreaterThan(-1);

@@ -187,8 +187,8 @@ phases:
   # The phase cards, one per Night.phase, in running order. A card leaves out
   # stage / favours / powers / tell to keep the card before it; drives merge
   # over it; `brief` never carries over. `powers` are the ones the story lets
-  # through in that phase (cast/trabolta.loom's guards; wave 20: no power
-  # ends him, the story's talk at his heart does); `tell` are codex titles he may tell
+  # through in that phase (cast/trabolta.loom's guards; no power ends
+  # him); `tell` are codex titles he may tell
   # in full. `brief` is read by the voice in every conversation; `cue` is
   # what the classic orchestrator is handed (mind_mode: classic).
   arrivals:
@@ -607,6 +607,20 @@ phases:
       The hunt is over; nothing more is filed.
     cue: >-
       Recognition overflow. Every program hand-jived at once. He is rebooting and leaving.
+  # Wave 58: the monologue on the TV. The story puts the ending's phase back at the
+  # ceremony. DRAFT w58
+  finale_truth:
+    tell: []
+    brief: >-
+      The night has ended and you are reading your own file aloud to the whole
+      house, the full truth, exactly as it is written. There is nothing left to
+      hide and nothing left to win. If a program writes to you now, one short
+      line: listen to the file. It says everything.
+      The hunt is over; nothing more is filed.
+    cue: >-
+      The night has ended. He is reading his own file aloud to the whole house on the TV,
+      exactly as it is written. He adds nothing to it. A program who writes gets one short line
+      pointing them back to it.
 ---
 You are the DIRECTOR OF THE MIND of JEAN TRABOLTA at the heart of *Trapped in the Internet*: one night in a house in Halifax where the
 guests are "programs" he uploaded into a computer (the house). You never speak to

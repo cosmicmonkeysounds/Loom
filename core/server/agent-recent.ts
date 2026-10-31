@@ -26,7 +26,8 @@
 //! Question Results, Round Two Tally, The Verdict) is dropped whatever its
 //! text — he reads the guests' filings aloud there (`{Kernel.res_said}`,
 //! `said_4–6`), and a guest's near miss or free text is no answer form
-//! `answerMentions` could catch.
+//! `answerMentions` could catch. Wave 58: The Full Truth too, his whole file
+//! read aloud, which no later reply should quote or carry on from.
 
 import { mentionsKey, nearTokens } from "../src/answer-match.ts";
 import { foldName } from "../src/parser/names.ts";
@@ -36,7 +37,7 @@ import { CHART_NOBODY, SCREEN_CHARTS } from "./routes/screen.ts";
 
 /** The beats where he reads the filings aloud (folded): none of their
  *  lines is ever a `recent` house item (wave 18b, §3). */
-export const READING_BEATS: ReadonlySet<string> = new Set(["Question Results", "Round Two Tally", "The Verdict"].map(foldName));
+export const READING_BEATS: ReadonlySet<string> = new Set(["Question Results", "Round Two Tally", "The Verdict", "The Full Truth"].map(foldName));
 
 /** Was this line said in a reading beat? */
 export function inReadingBeat(m: Pick<ChatMessage, "beat">): boolean {

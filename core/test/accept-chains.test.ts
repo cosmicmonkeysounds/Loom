@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 import { Sim } from "../src/runtime/sim/index.ts";
 import { scenarioSource } from "../examples/load.ts";
 import { cueState, notePress, pressRefused } from "../server/views.ts";
-import { CEREMONY, TO_HUNT2, TO_Y2K, Y2K_TO_DESTROYED, Y2K_TO_HEART_END, Y2K_TO_VERDICT, pressChain } from "../../scripts/accept/chains.ts";
+import { CEREMONY, THE_FULL_TRUTH, TO_HUNT2, TO_Y2K, Y2K_TO_DESTROYED, Y2K_TO_DISABLED, Y2K_TO_VERDICT, pressChain } from "../../scripts/accept/chains.ts";
 
 function night() {
   const sim = Sim.fromSources(scenarioSource("trapped-in-the-internet"));
@@ -80,11 +80,14 @@ describe("the chains after the Y2K clock", () => {
     for (let i = 0; i < seconds; i++) sim.tick(1000);
   };
 
-  it("the heart's ending: 🕊 → 🏍, then the ceremony to the resurrection", { timeout: 60_000 }, async () => {
+  it("Combo A's ending without the cables, 📜, then the ceremony to the resurrection", { timeout: 60_000 }, async () => {
     const { sim, aimed, v } = await atY2K();
-    expect(await pressChain(Y2K_TO_HEART_END, aimed, () => {})).toEqual({ ok: true, refused: [] });
+    expect(await pressChain(Y2K_TO_DISABLED, aimed, () => {})).toEqual({ ok: true, refused: [] });
     expect([v("Night.ending"), v("Night.ended"), v("Night.step")]).toEqual(["disabled", true, 19]);
     tick(sim, 15);
+    expect(await pressChain(THE_FULL_TRUTH, aimed, () => {})).toEqual({ ok: true, refused: [] });
+    expect(v("Night.truth_reader")).toBe("Task Manager");
+    tick(sim, 840);
     expect(await pressChain(CEREMONY, aimed, () => {})).toEqual({ ok: true, refused: [] });
     expect([v("Night.ceremony_done"), v("Night.resurrected")]).toEqual([true, true]);
   });
@@ -105,8 +108,10 @@ describe("the chains after the Y2K clock", () => {
 
   it("an aimed award with nobody named is refused (the caller must say who)", { timeout: 60_000 }, async () => {
     const { sim, signal } = await atY2K();
-    await pressChain(Y2K_TO_HEART_END, signal, () => {});
+    await pressChain(Y2K_TO_DISABLED, signal, () => {});
     tick(sim, 15);
+    await pressChain(THE_FULL_TRUTH, signal, () => {});
+    tick(sim, 840);
     expect(await pressChain(CEREMONY, signal, () => {})).toEqual({ ok: false, refused: ["award_most_trusted"] });
   });
 });

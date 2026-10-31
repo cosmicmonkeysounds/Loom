@@ -72,7 +72,7 @@ describe("the monologue's canon", () => {
   const text = (id: string) => MODEL.codex.get(id)!.text.replace(/\s+/gu, " ");
   it("the billboard is on Lower Water; only OpenOffice's shop stays on Barrington", () => {
     for (const f of LOOM) {
-      if (f.path === "codex/5-people.loom") continue; // her Urban Outfitters
+      if (f.path === "codex/5-people.loom" || f.path === "beats/truth.loom") continue; // her Urban Outfitters
       expect(f.source, f.path).not.toContain("Barrington");
     }
     expect(text("Dana Anderson")).toContain("Barrington Street Urban Outfitters");

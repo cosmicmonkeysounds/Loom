@@ -23,8 +23,10 @@ export interface ScriptSection {
   lines: ScriptLine[];
 }
 
-/** A sign-in on a new phone is shown what landed this recently, not the whole night. */
-export const ALOUD_WINDOW_MS = 10 * 60_000;
+/** A sign-in on a new phone is shown what landed this recently, not the whole
+ *  night. Past the longest read (wave 58: the monologue lands at once and takes
+ *  14 minutes at the prompter's pace), so a phone swapped mid-read still gets it. */
+export const ALOUD_WINDOW_MS = 20 * 60_000;
 
 export function scriptOf(messages: Iterable<ChatMessage>, me: string): ScriptSection[] {
   const rows = [...messages].filter((m) => m.hidden !== true && m.aloud?.readers.includes(me) === true).sort((a, b) => a.seq - b.seq);

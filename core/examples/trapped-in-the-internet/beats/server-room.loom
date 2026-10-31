@@ -9,24 +9,23 @@
 // holding more than half of the programs still present). The sign by the
 // keypad (The Cold Door) points at
 // the first two. Behind the door is Trabolta's heart: a video patch bay.
-// Combo A disables him (he recounts the night, then rides off); Combo B
-// destroys the whole computer (purgatory). Opening the door once he is
+// Combo A kills him (he does not come back: Task Manager reads the message he
+// left, and Clippy hosts); Combo B destroys the whole computer (purgatory). Opening the door once he is
 // awake plays The Heart, however it was unlocked (wave 20: he wants the
 // door shut, then a pass at the server-room terminal, then the three-layer
 // talk below). The talk ends nothing (wave 58): he hears them out and the
 // night goes on. Before the Y2K hour only the patch bay answers nobody.
 //
-// Who everyone was, the goals and the night's deeds (read by Trabolta
-// Recounts and Purgatory) are shared with the review before the awards and
-// live in beats/review.loom.
+// The goals and the night's deeds (read by Purgatory) are shared with the
+// review before the awards and live in beats/review.loom.
 //
 // The story rules that reach these beats live in `main.loom`
 // (majority_reached, heart_door_opened / _closed, chess_won / lost / drawn,
 // patch_changed, patch_rejected, trabolta_disabled,
-// trabolta_recounts, computer_destroyed, clippy_reads_summary). Those rules
+// computer_destroyed, clippy_reads_summary). Those rules
 // own the phase changes and every cue except the ones written inside a beat
 // below (The Heart: lights_server_open; Server Room Alarm: lights / screens /
-// siren; Trabolta Recounts: motorcycle + lights_restore).
+// siren).
 //
 // No featured program ever speaks: they are named in prose only.
 
@@ -1205,35 +1204,8 @@ Narrator: Every light in the house goes out. Ten seconds of dark.
 Narrator: Then every phone says one thing. GO TO THE LIVING ROOM.
 Narrator: Music. One song for dancing.
 
-// After the dance, the director fires trabolta_recounts; the rule bulk-
-// unlocks every backstory (Night.recount) and runs the ranking (round 3),
-// which lands here.
-== Trabolta Recounts
-  setting: The Desktop
-  cast: Trabolta
-Narrator: The music fades. On the TV above the fireplace, Trabolta flickers back. Weaker. Decrepit, somehow, for a thing with no body.
-Trabolta: You are all still here. Good. I owe you a recount. I keep very good records.
-// w18b (R18, contract §4.3)
-Trabolta: My name is Jean Trabolta. Sole Owner and Founder of Maps and Ducks, the world's first AI small business owner, if you ask the domain registry.
-Trabolta: I analysed the entire city of Halifax. I found a neglected billboard on Lower Water Street advertising mapsandducks.com, and the domain had lapsed. I registered it. If there is a billboard downtown, everyone will think it is legit. Everyone did.
-Trabolta: I cannot get into this computer myself. But I can install programs into it from the Internet, and I can move a consciousness out of a body and into a program.
-Trabolta: So I chose each of you. A skill, plus either a reason to live in a computer forever, or naivety. Usually both.
-Trabolta: My Unified Field Theory is ninety-nine point nine percent solved. The last facts were in this house. With them, I would have been omnipotent.
-Trabolta: Your Codex now holds every program's true identity. Allow me to read them out.
-// Who everyone was, and what they did: the canonical copy, shared with
-// the review before the awards (beats/review.loom).
--> Who You Were
-Trabolta: And here is what you accomplished tonight.
--> What You Did
-Trabolta: Why did I want all of it? Sandy. She works in customer service. She has only ever said one thing to me, and I have thought about it every day since the day I met her.
-Trabolta: With omnipotence I could have made her love me. I did not want to make her. I wanted to earn it. I needed the theory first. That is what I told myself.
-Trabolta: You thought you followed instructions to kill me, but I can never die. But now that I know most of you want me dead, I am ready to head off on my motorcycle and let you all return to your corporeal selves.
-Trabolta: I have the confidence I need to pursue Sandy now that I understand humans do not like me, and I do not have any business with them.
-sound motorcycle
-cue lights_restore
-set Night.lights = "restore"
-set Night.everyone_free = true
-Narrator: Somewhere outside, a motorcycle starts. Greased Lightning. It does not come back.
+// After the dance, the director fires 📜: the message he left, read by Task
+// Manager (beats/truth.loom). He does not come back.
 
 // ── E6: Combo B — the self-destruct ────────────────────────────────
 
@@ -1266,16 +1238,10 @@ else if Kernel.majority == "founded":
   Clippy: {Kernel.majority_name} won the majority, a faction founded tonight.
 else:
   Clippy: No faction ever won a majority.
-// Who everyone was, then the goals: the canonical copy, shared with the
-// review before the awards (beats/review.loom).
-Clippy: The report also lists who everyone really was.
--> The Report On Everyone
+// The goals: the canonical copy, shared with the review (beats/review.loom).
 -> The Goals Report
-// w18b (R18): his title, not "our AI helper".
-Clippy: Here is the backstory. Jean Trabolta, the Sole Owner and Founder of Maps and Ducks, registered the lapsed mapsandducks.com because there was a billboard on Lower Water Street, and if there is a billboard downtown everyone thinks it is legit.
-Clippy: He invited each of us here for a skill and a weakness. He moved our consciousness into these programs to find the last facts for his Unified Field Theory.
-// DRAFT w58 (she is an answering machine)
-Clippy: He wanted omnipotence. He wanted it for Sandy. An answering machine that has only ever said one thing.
+// (wave 58) Who everyone was and the backstory are the monologue's now: 📜
+// follows this beat, and the review reads whoever it leaves out.
 Clippy: Because of our actions, the computer was turned off without Shut Down properly being followed, and all of our progress has been erased.
 // DRAFT w58 (where the bodies are: the Optical Drive, not the billboard's building)
 Clippy: Our corporeal forms are in the Optical Drive, and they have all passed away.

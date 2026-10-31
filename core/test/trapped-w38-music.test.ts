@@ -11,7 +11,7 @@ import { Sim } from "../src/runtime/sim/index.ts";
 import type { SimEvent } from "../src/runtime/sim/index.ts";
 import { scenarioFiles, scenarioSource } from "../examples/load.ts";
 import { notePress, pressRefused } from "../server/views.ts";
-import { CEREMONY, TO_HUNT2, TO_Y2K, Y2K_TO_DESTROYED, Y2K_TO_HEART_END, Y2K_TO_VERDICT, pressChain, type ChainStep } from "../../scripts/accept/chains.ts";
+import { CEREMONY, THE_FULL_TRUTH, TO_HUNT2, TO_Y2K, Y2K_TO_DESTROYED, Y2K_TO_DISABLED, Y2K_TO_VERDICT, pressChain, type ChainStep } from "../../scripts/accept/chains.ts";
 
 const SCENES = ["doors", "act_1", "malware", "act_2", "act_3", "final", "off", "ceremony", "afterparty"];
 const FILES = scenarioFiles("trapped-in-the-internet");
@@ -104,12 +104,15 @@ describe("the music through a night (the sim)", () => {
     expect(n.music()).toBe("act_3");
   });
 
-  it("the heart's ending, then the ceremony and the resurrection: off, ceremony, afterparty", { timeout: 60_000 }, async () => {
+  it("Combo A, 📜, then the ceremony and the resurrection: off, ceremony, afterparty", { timeout: 60_000 }, async () => {
     const n = night();
     await n.chain(TO_Y2K);
-    await n.chain(Y2K_TO_HEART_END);
+    await n.chain(Y2K_TO_DISABLED);
     expect(n.music()).toBe("off");
     n.tick(15);
+    await n.chain(THE_FULL_TRUTH);
+    expect(n.music()).toBe("off");
+    n.tick(840);
     await n.chain(CEREMONY);
     expect(n.cued.slice(-3)).toEqual(["off", "ceremony", "afterparty"]);
     expect(n.music()).toBe("afterparty");
@@ -146,8 +149,10 @@ describe("the music through a night (the sim)", () => {
   it("a stray `line_accepted` after the ceremony changes nothing (the afterparty keeps playing)", { timeout: 60_000 }, async () => {
     const n = night();
     await n.chain(TO_Y2K);
-    await n.chain(Y2K_TO_HEART_END);
+    await n.chain(Y2K_TO_DISABLED);
     n.tick(15);
+    await n.chain(THE_FULL_TRUTH);
+    n.tick(840);
     await n.chain(CEREMONY);
     const before = { music: n.music(), ending: n.value("Night.ending"), screen: n.value("Night.screen"), lights: n.value("Night.lights"), cued: n.cued.length };
     expect(before.music).toBe("afterparty");

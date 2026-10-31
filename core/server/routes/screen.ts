@@ -207,8 +207,10 @@ export const SCREEN_BASES = ["screensaver", "attract", "trabolta_online", "mirro
  *  The finale's waits are among them (wave 17): the bob until 📄, the advice
  *  poll until its tally, Grok Prom and the banishment until the story's next
  *  screen cue — each one's scene keeps moving the whole time. Wave 44 (C3):
- *  the credits hold their end card until the next cue. */
-const PERSISTENT_SLIDES: ReadonlySet<string> = new Set(["bingo", "y2k", "trust_chart", "truth_txt", "bobbing", "advice", "grok_prom", "banish", "hunt_results", "tally", "ad_hijack", "credits"]);
+ *  the credits hold their end card until the next cue. Wave 58: the recount
+ *  and purgatory stand through Task Manager's reading (attract would follow
+ *  them otherwise, and he is gone: no face to come back to). */
+const PERSISTENT_SLIDES: ReadonlySet<string> = new Set(["bingo", "y2k", "trust_chart", "truth_txt", "bobbing", "advice", "grok_prom", "banish", "hunt_results", "tally", "ad_hijack", "credits", "recount", "purgatory"]);
 export function slidePersists(value: string): boolean {
   return PERSISTENT_SLIDES.has(value) || /^(award|ceremony)/u.test(value);
 }

@@ -69,12 +69,14 @@ export const VOICE_PHASE_LEVEL: Readonly<Record<string, number>> = {
   advice: 0.45,
   finale_song: 0.1,
   finale_rave: 0.5,
-  // The recount: weak, not wrecked. It reads every program's name.
+  // He is gone (wave 58: he does not come back): nothing speaks him here.
   finale_killed: 0.3,
   finale_banish: 1,
   finale_hand_jive: 1,
   finale_shutdown: 1,
   finale_help: 0,
+  // Wave 58: he reads his own file, the whole of it, in his own clean voice.
+  finale_truth: 0,
 };
 
 /** The Y2K hour climbs from its phase's level by this much at midnight. */

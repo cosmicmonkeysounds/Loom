@@ -2884,7 +2884,7 @@ ROLE Program
 
   // The download's blacked-out name comes through only once the story has
   // said it: at the overshare on a scenario-1 night (the only one where
-  // Trabolta names Sandy), else at the recount / truth.txt, which tell
+  // Trabolta names Sandy), else at 📜 / truth.txt, which tell
   // everyone why he did it. The correction names Sandy.
   when self.got_truther == true and ((Night.step >= 13 and Night.scenario == 1) or Night.recount == true):
     unlock The Truther Download Unredacted for self
@@ -2892,7 +2892,7 @@ ROLE Program
   // OpenOffice's dossier: 20 facts she found herself, counted by category
   // since her Featured Briefing (wave 18b, R22: the handouts and her own
   // briefing never count; what she found in hunt 1 does). (Not once the
-  // recount / truth.txt hands everyone every backstory: that is not her
+  // 📜 / truth.txt hands everyone every backstory: that is not her
   // work, and Bugdom's quest likewise.)
   when self.featured == "openoffice" and self.dossier_started and self.dossier_start < 10 and Night.recount != true and Kernel.majority_reached != true and self.codex_in.facts + self.codex_in.files + self.codex_in.people + self.codex_in.trabolta + self.codex_in.places - self.dossier_base >= 10:
     update quest OpenOffice Dossier for self "10 of 20 facts."
@@ -3002,7 +3002,7 @@ ROLE Program
   when not self.captured and self.zip_seen < Night.zip_wave:
     set self.zip_seen = Night.zip_wave
 
-  // The ranking machinery (Trust Chart, Final Assessment, the recount):
+  // The ranking machinery (Trust Chart, Final Assessment, Combo A's last count):
   // the top and bottom cleared programs name themselves into Night.* and
   // fire an unbound event, so the public beats can say their names. The
   // flag is set in the body so a tie goes to the first program, not the
@@ -3101,7 +3101,7 @@ ROLE Program
     else:
       fail quest A Faction Of Your Own for self "Another faction got there first."
 
-  // The recount / truth.txt: every program's true identity, to everyone —
+  // 📜 / truth.txt: every program's true identity, to everyone —
   // the identity entries (codex/5-people.loom) and the two CHARACTER FACTS
   // each invitee has in the books (codex/9-facts.loom).
   when Night.recount == true and self.cleared:
@@ -3499,11 +3499,6 @@ INTERACTION the_hand_jive
 // and the line reads without one). Firing an award again corrects it.
 // After a server-room ending (any time from 🕚, even after 🌑 or 🍎): the
 // ending's own cue, then the ceremony.
-INTERACTION trabolta_recounts
-  label: 🏍 After the dance: weakened Trabolta recounts
-  who: admin
-  while: Night.ending == "disabled" and Night.rank_round != 3
-
 INTERACTION clippy_reads_summary
   label: 🪦 After the dance: Clippy reads the summary (a host calls it)
   who: admin
@@ -3514,13 +3509,29 @@ INTERACTION own_award_lines
   who: admin
   act: G · The awards ceremony
   sequence: false
-  description: For a second director who prepared Trabolta's award lines (job 9.2). Press it once (any time before the awards): each award then plays its fanfare and slide but skips Trabolta's template line, and you post yours as Trabolta in The Desktop right after you fire the award (the TV speaks it). Press again to bring the template lines back. Clippy's lines (after destroyed / rave), the sounds and the slides never change.
+  description: For a second director who prepared Trabolta's award lines (job 9.2). Press it once (any time before the awards): each award then plays its fanfare and slide but skips Trabolta's template line, and you post yours as Trabolta in The Desktop right after you fire the award (the TV speaks it). Press again to bring the template lines back. Clippy's lines (after Combo A, Combo B and the rave), the sounds and the slides never change.
+
+// Wave 58: the monologue, once an ending has had its moment. DRAFT w58
+// (these labels and descriptions).
+INTERACTION tell_the_truth
+  label: G0 · 📜 The full truth: the monologue (after the ending's last beat)
+  who: admin
+  description: Press it once the ending has had its moment: the song, the hand jive, the dance, 🪦 Clippy's summary. After the song, the pickup line, the helped ending and the hand jive Trabolta reads his own file on the TV. After the rave he phones it in from Computer Prom: press ■ Stop house sounds first, or the track plays over him (it never ducks). After Combo A or Combo B Task Manager reads it off the teleprompter, a message he left behind. About 12 minutes on the TV, 14 on the teleprompter, and it is clean: leave 🌀 His voice on Auto or Clean, and no shots. NEXT moves to G1 when it should be over; a press of G1 before then asks first.
+  while: Night.ended == true and Night.truth_told != true and Night.ceremony != true and (Night.ending != "destroyed" or Night.summary_read == true)
+
+INTERACTION task_manager_reads
+  label: 📜 Task Manager reads it instead (the TV's voice failed)
+  who: admin
+  sequence: false
+  description: The fallback for G0 on Trabolta's endings: the TV has no voice, or he has dropped out mid-way (mute the TV so the two don't overlap). Task Manager's teleprompter pops up with the whole monologue. He has a printed copy in his pack, and ⊞ Start → My script reopens it on any phone signed in to the part.
+  while: Night.ended == true and Night.ceremony != true and Night.truth_reader != "Task Manager" and Night.ending != "disabled" and Night.ending != "destroyed"
 
 INTERACTION start_the_ceremony
   label: G1 · 🏆 Start the awards ceremony (after the ending)
   who: admin
-  description: Only once the night has ended. Trabolta hosts; Clippy hosts after destroyed and rave, and reads every line aloud. The three staff awards (G10a–c) come after the programs' awards.
-  while: Night.ended == true and Night.ceremony != true
+  description: Only once the night has ended, and after G0, the full truth. Before it, or while it is being read, a press asks first: a second press within 30 seconds starts anyway. Trabolta hosts; Clippy hosts after Combo A, Combo B and the rave, and reads every line aloud. The three staff awards (G10a–c) come after the programs' awards.
+  // Wave 58: NEXT waits for the monologue, never the press.
+  while: Night.ended == true and Night.ceremony != true and Night.truth_told == true and Time.elapsed >= Night.truth_until
 
 INTERACTION award_most_trusted
   label: G2 · 🥇 Award: Most Trusted (winner = top trust)
@@ -5078,7 +5089,7 @@ when show_the_rankings:
     broadcast "🏆 Once only, during the Trust Chart (📊 first). Nothing happens." to channel(hosts)
 
 // The ranking machinery, shared by the Trust Chart (round 1), the Final
-// Assessment (round 2) and the recount (round 3).
+// Assessment (round 2) and Combo A's last count (round 3, which says nothing).
 when praise_the_top:
   set Night.praised = true
 
@@ -5096,8 +5107,6 @@ when rankings_done:
     -> Print The Certificate
   else if Night.rank_round == 2:
     -> Final Assessment
-  else if Night.rank_round == 3:
-    -> Trabolta Recounts
 
 // D7: the printer (a Zigbee button on it, a reed switch in the lid, or
 // the director's fallback buttons).
@@ -5502,7 +5511,7 @@ when Night.server_door == "open" and Night.heart_opened == true and Night.heart_
   -> Heart Nag
 
 // Her name at his heart follows the story's own unredaction (the overshare
-// on a scenario-1 night, else the recount), like the persona's.
+// on a scenario-1 night, else truth.txt or 📜), like the persona's.
 when Night.her != "Sandy" and ((Night.step >= 13 and Night.scenario == 1) or Night.recount == true):
   set Night.her = "Sandy"
 
@@ -5960,6 +5969,16 @@ when trabolta_disabled:
     set Night.phase = "finale_killed"
     set Night.step = 19
     set Night.final_round = false
+    // Wave 58: he is dead, and he does not come back (no Trabolta Recounts, no
+    // motorcycle): his worker holds and his DMs stop, as after Combo B. The
+    // chart's last count, for the review; round 3 says nothing.
+    set Trabolta.awake = false
+    set Night.rank_round = 3
+    set Night.most_trusted = "none"
+    set Night.least_trusted = "none"
+    set Night.praised = false
+    set Night.shamed = false
+    set Night.ranking = true
     complete quest Find The Exit for everyone
     fail quest The Final Facts for everyone "The night ended in the server room. The final facts were never read."
     complete quest The Exchange for McAfee Anti-Virus "The night ended in the server room. The exchange closes."
@@ -6006,31 +6025,13 @@ when dance_screens:
     set Night.terminals = "screensaver"
 
 // The `!!` pin has no close button: every way out of the server-room
-// endings takes it down (the dance, 🪩, the recount, the summary, the
-// ceremony, the resurrection). Subject-free, so it is the room's one
+// endings takes it down (the dance, 🪩, the summary, 📜, the ceremony, the
+// resurrection). Subject-free, so it is the room's one
 // unkeyed pin whoever pressed the cue; once only.
 when lift_the_takeover:
   if Night.takeover == true:
     set Night.takeover = false
     unpin "💃 Dance."
-
-// After the dance: a weakened Trabolta ranks everyone one last time and
-// recounts (the ranking machinery, round 3 → Trabolta Recounts).
-when trabolta_recounts:
-  if Night.ending == "disabled" and Night.rank_round != 3:
-    fire lift_the_takeover
-    set Night.recount = true
-    cue screens_recount
-    set Night.screen = "recount"
-    set Night.terminals = "recount"
-    set Night.rank_round = 3
-    set Night.most_trusted = "none"
-    set Night.least_trusted = "none"
-    set Night.praised = false
-    set Night.shamed = false
-    set Night.ranking = true
-  else:
-    broadcast "🏍 Only after Combo A or a talk-down, once. Nothing happens." to channel(hosts)
 
 // E6: Combo B — the computer is turned off without Shut Down.
 when computer_destroyed:
@@ -6080,6 +6081,7 @@ when computer_destroyed:
 // E8: after the dance, Clippy reads the summary. Purgatory.
 when clippy_reads_summary:
   if Night.ending == "destroyed":
+    set Night.summary_read = true
     fire lift_the_takeover
     cue lights_purgatory
     set Night.lights = "purgatory"
@@ -6308,18 +6310,129 @@ when the_hand_jive:
   else:
     broadcast "🕺 Only once everyone is banished (⛈). Nothing happens." to channel(hosts)
 
+// ── G0. The full truth (wave 58; beats/truth.loom) ──
+// Always after an ending's last beat, on the director's 📜: a beat is
+// instantaneous, so only a cue can wait for the song or the rave to have had
+// its moment, and G1 waits for the reading on Night.truth_until (its `while:`,
+// and a two-press ask in its rule). Task Manager reads after the two endings
+// that take Trabolta away; he reads for himself after the others.
+when tell_the_truth:
+  if Night.ended != true:
+    // DRAFT w58
+    broadcast "📜 Not yet: the night has not ended. Nothing happens." to channel(hosts)
+  else if Night.ceremony == true:
+    // DRAFT w58
+    broadcast "📜 The ceremony has started: too late for the full truth. Nothing happens." to channel(hosts)
+  else if Night.truth_told == true:
+    // DRAFT w58
+    broadcast "📜 Already told: {Night.truth_reader} has it. Nothing happens." to channel(hosts)
+  else if Night.ending == "destroyed" and Night.summary_read != true:
+    // DRAFT w58
+    broadcast "📜 Not yet: 🪦 Clippy reads the summary first. Nothing happens." to channel(hosts)
+  else if Night.ending == "disabled" or Night.ending == "destroyed":
+    fire the_truth_read
+  else:
+    fire the_truth_spoken
+
+// 📜 on Trabolta's endings when the TV has no voice. Also stands in for G0.
+when task_manager_reads:
+  if Night.ended != true:
+    // DRAFT w58
+    broadcast "📜 Not yet: the night has not ended. Nothing happens." to channel(hosts)
+  else if Night.ceremony == true:
+    // DRAFT w58
+    broadcast "📜 The ceremony has started: too late for the full truth. Nothing happens." to channel(hosts)
+  else if Night.truth_reader == "Task Manager":
+    // DRAFT w58
+    broadcast "📜 Task Manager already has it. Nothing happens." to channel(hosts)
+  else if Night.ending == "disabled" or Night.ending == "destroyed":
+    // DRAFT w58
+    broadcast "📜 Task Manager reads after this ending anyway: press G0. Nothing happens." to channel(hosts)
+  else:
+    fire the_truth_read
+
+// Task Manager, off the teleprompter, in a room no guest has. Everything the
+// reading needs is story state: the voice is his own.
+when the_truth_read:
+  set Night.truth_told = true
+  set Night.truth_reader = "Task Manager"
+  set Night.truth_until = Time.elapsed + 830
+  set Night.alerts = "sticky"
+  // Every identity is out now, whichever road led here (Combo B never set it).
+  set Night.recount = true
+  fire lift_the_takeover
+  if Night.phase == "finale_truth":
+    set Night.phase = Night.truth_phase
+  if Night.ending == "disabled":
+    // He is gone and they may go (it was his recount's last act, before wave
+    // 58). The hung window stands on every screen while the message is read.
+    set Night.everyone_free = true
+    cue lights_restore
+    set Night.lights = "restore"
+    cue screens_recount
+    set Night.screen = "recount"
+    set Night.terminals = "recount"
+  // DRAFT w58
+  broadcast "📜 Task Manager reads the full truth off the teleprompter, about 14 minutes. Their phone down? The printed copy in their pack, or ⊞ Start → My script on any phone signed in to the part. NEXT moves to G1 when it should be over." to channel(hosts)
+  // DRAFT w58
+  broadcast "!📜 THE FULL TRUTH. To the living room." to everyone with go: The Desktop
+  -> The Full Truth Read
+
+// Trabolta, on the TV, clean: a phase of its own (voice-fx reads it 0), and
+// nothing left to floor it. The ceremony puts the ending's phase back. An
+// ending has already ended the dream and every clock, so no shot of the
+// night's can land; only a director's own can (the description says so).
+when the_truth_spoken:
+  set Night.truth_told = true
+  set Night.truth_reader = "Trabolta"
+  set Night.truth_until = Time.elapsed + 720
+  set Night.alerts = "sticky"
+  set Night.truth_phase = Night.phase
+  set Night.phase = "finale_truth"
+  set Night.heart_stage = "done"
+  set Night.alarm_clear_at = 0
+  // His face and his captions, for the whole of it.
+  cue screens_screensaver
+  set Night.screen = "screensaver"
+  set Night.terminals = "screensaver"
+  // A phone call under the rave's look would be read by nobody.
+  if Night.ending == "rave":
+    cue lights_restore
+    set Night.lights = "restore"
+  // DRAFT w58
+  broadcast "📜 Trabolta reads the full truth on the TV, about 12 minutes, clean: leave 🌀 His voice on Auto or Clean, and no shots. If the TV has no voice: 📜 Task Manager reads it instead. NEXT moves to G1 when it should be over." to channel(hosts)
+  // DRAFT w58
+  broadcast "!📜 THE FULL TRUTH. To the living room." to everyone with go: The Desktop
+  -> The Full Truth
+
 // ── G. The awards ceremony (K-25) ──
 // After any final ending (never before: Best Liar would leak). The host
 // follows the ending: Clippy when Trabolta is gone (destroyed: switched
-// off; rave: rode away), Trabolta otherwise, so the TV speaks his lines.
+// off; disabled: dead; rave: rode away), Trabolta otherwise, so the TV speaks
+// his lines.
 // The award events are ROLE hooks (main.loom, ROLE Program); each ends
 // in `present_award`, which shows the award slide and the host's line.
 when start_the_ceremony:
-  if Night.ended == true and Night.ceremony != true:
+  if Night.ended == true and Night.ceremony != true and (Night.truth_told != true or Time.elapsed < Night.truth_until) and (Night._ceremony_ask_at == 0 or Time.elapsed > Night._ceremony_ask_at + 30):
+    // Wave 58: a mis-press until confirmed, like G11's (the lines would queue
+    // behind him on the TV, and the review assumes the monologue was told).
+    set Night._ceremony_ask_at = Time.elapsed + 1
+    if Night.truth_told != true:
+      // DRAFT w58
+      broadcast "🏆 The full truth hasn't been told (G0, 📜). Press G1 again within 30 seconds to skip it." to channel(hosts)
+    else:
+      // DRAFT w58
+      broadcast "🏆 {Night.truth_reader} is still reading the full truth. Press G1 again within 30 seconds to start anyway." to channel(hosts)
+  else if Night.ended == true and Night.ceremony != true:
     set Night.ceremony = true
     set Night.alerts = "sticky"
     fire lift_the_takeover
-    if Night.ending == "destroyed" or Night.ending == "rave":
+    if Night.phase == "finale_truth":
+      set Night.phase = Night.truth_phase
+    // 📜 skipped on Combo A: nobody else says they may go.
+    if Night.ending == "disabled":
+      set Night.everyone_free = true
+    if Night.ending == "destroyed" or Night.ending == "rave" or Night.ending == "disabled":
       set Night.ceremony_host = "Clippy"
     else:
       set Night.ceremony_host = "Trabolta"
@@ -6813,6 +6926,13 @@ set Night.takeover = false
 set Night.resurrected = false
 set Night.ceremony_done = false
 set Night._resurrect_ask_at = 0
+set Night._ceremony_ask_at = 0
+// Wave 58: the full truth (beats/truth.loom).
+set Night.truth_told = false
+set Night.truth_until = 0
+set Night.truth_reader = "none"
+set Night.truth_phase = "none"
+set Night.summary_read = false
 // Wave 44 (C3): the credits' roll count and when the last one started.
 set Night.credits_roll = 0
 set Night.credits_at = 0

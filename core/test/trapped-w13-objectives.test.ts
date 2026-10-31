@@ -112,7 +112,7 @@ export function toCeremony(n: Night): void {
   n.press("the_verdict");
   if (v(n.sim, "Night.phase") === "grok_prom") n.press("no_pickup_line");
   expect(v(n.sim, "Night.ended")).toBe(true);
-  n.press("start_the_ceremony");
+  (n.press("start_the_ceremony"), n.press("start_the_ceremony"));
 }
 
 describe("Trapped in the Internet — wave 13: one home per broadcast", () => {
@@ -200,7 +200,7 @@ describe("Trapped in the Internet — wave 13: the interrupt ladder", () => {
     n.press("the_verdict");
     if (v(n.sim, "Night.phase") === "grok_prom") n.press("no_pickup_line");
     expect(level()).toBe("bsod");
-    n.press("start_the_ceremony");
+    (n.press("start_the_ceremony"), n.press("start_the_ceremony"));
     expect(level()).toBe("sticky");
   }, SLOW);
 });
@@ -494,7 +494,8 @@ function checkpoint(n: Night, label: string): Record<string, string> {
 }
 
 type Step = [string, (n: Night) => void];
-const press = (c: string): Step => [c, (n) => { n.press(c); }];
+// Wave 58: G1's first press only asks while the monologue is untold.
+const press = (c: string): Step => [c, (n) => { n.press(c); if (c === "start_the_ceremony") n.press(c); }];
 const by = (c: string, g: string, who: string): Step => [`${who}: ${c} ${g}`, (n) => { n.signal(c, g, undefined, who); }];
 
 /** The night, cue by cue, with the performer presses and a few guests' own
