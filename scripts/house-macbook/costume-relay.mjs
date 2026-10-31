@@ -40,8 +40,17 @@ const PAGE = new Map([
 const CALLS = new Set(["/api/costume/menu", "/api/costume/fire"]);
 const BODY_MAX = 2048;
 
+/** The request's path, null for a URL that won't parse (a stray `GET //`). */
+const pathOf = (req) => {
+  try {
+    return new URL(req.url, "http://relay").pathname;
+  } catch {
+    return null;
+  }
+};
+
 const relay = async (req, res) => {
-  const path = new URL(req.url, "http://relay").pathname;
+  const path = pathOf(req);
   if (req.method === "GET" && PAGE.has(path)) {
     const up = await fetch(`${link.origin}${PAGE.get(path)}`);
     res.writeHead(up.status, { "content-type": up.headers.get("content-type") ?? "text/plain", "cache-control": "no-cache" });
@@ -73,7 +82,7 @@ const relay = async (req, res) => {
 
 createServer((req, res) => {
   relay(req, res).catch((err) => {
-    console.error(`relay: ${req.method} ${new URL(req.url, "http://relay").pathname}: ${err?.name ?? "error"}`);
+    console.error(`relay: ${req.method} ${pathOf(req) ?? "(bad path)"}: ${err?.name ?? "error"}`);
     if (!res.headersSent) res.writeHead(502);
     res.end();
   });
