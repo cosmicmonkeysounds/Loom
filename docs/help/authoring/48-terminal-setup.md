@@ -2,7 +2,7 @@
 title: Setting up terminals, the door sensor and headsets
 section: Live Shows
 order: 48
-keywords: terminal setup, set up a terminal, provisioning, provisioning link, tablet, tablets, fleet, spot, view, code, mod passcode, moderator passcode, passcode, re-point, ⚙, advanced, door, door sensor, calibrate, calibrate door, door shut, door open, connect door sensor, door=serial, door=sim, fault, keys=0, keyboard, mouse-only, server room, heart terminal, announcements, say the house announcements, announce, house setting, always, never, tent, tent laptop, shed, reinstall, kiosk, chrome, voice link, microphone, mic, voices, mic=0, voices=0, https, fully kiosk, headset, headsets, VR, quest, set up this headset, connect, play offline, forget, lobby, test mic, ask again, build stamp
+keywords: terminal setup, set up a terminal, provisioning, provisioning link, tablet, tablets, fleet, spot, view, code, mod passcode, moderator passcode, passcode, re-point, ⚙, advanced, door, door sensor, calibrate, calibrate door, door shut, door open, connect door sensor, door=serial, door=sim, fault, keys=0, keyboard, mouse-only, server room, heart terminal, announcements, say the house announcements, announce, house setting, always, never, tent, tent laptop, shed, reinstall, kiosk, chrome, voice link, microphone, mic, voices, mic=0, voices=0, https, fully kiosk, headset, headsets, VR, quest, set up this headset, connect, play offline, forget, lobby, test mic, ask again, build stamp, bleeps, ad sounds, no ad sounds, hidden gear, top right corner, camera feed, frames, frames a second, old tablets, blank picture, no picture
 ---
 
 How the crew gets every screen in the house onto the event: the wall

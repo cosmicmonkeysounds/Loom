@@ -4,9 +4,9 @@
 //! the wall where this tablet hangs — a window from the virtual house into
 //! the real room.
 //!
-//! ~3 frames a second at 320 × 240 (a 4:3 centre crop of the camera, JPEG
-//! quality 0.5 — ~10–20 KB each; wave 33b doubled it from 160 × 120 for the
-//! games' 3× terminals), drawn off the page's one camera stream
+//! ~3 frames a second at up to 320 × 240 (a 4:3 centre crop of the camera,
+//! JPEG quality 0.5 — ~10–20 KB each; wave 33b doubled it from 160 × 120 for
+//! the games' 3× terminals), drawn off the page's one camera stream
 //! (`camera.ts`, the scanner's), never while the page is hidden, never more
 //! than one upload in flight. A failure backs off (1 s doubling to 30 s); a
 //! 404 (`no such spot` — the map has no terminal by this id) stops the feed
