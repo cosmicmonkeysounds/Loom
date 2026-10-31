@@ -329,10 +329,13 @@ describe("GO, standby, stop", () => {
     const r = (await call(rt, "POST", "/api/mod/desk/go", { cue: "pa" })).json["run"] as number;
     expect((await call(rt, "POST", "/api/mod/desk/stop", { run: r })).json).toEqual({ ok: true, stopped: 1 });
     await call(rt, "POST", "/api/mod/desk/go", { cue: "hum" });
-    expect((await call(rt, "POST", "/api/mod/desk/stop", { all: true, announce: true })).json).toEqual({ ok: true, stopped: 1 });
+    // The panic says whether anything is there to stop the sounds; a run's stop doesn't.
+    expect((await call(rt, "POST", "/api/mod/desk/stop", { all: true, announce: true })).json).toEqual({ ok: true, stopped: 1, router: { online: false } });
     const audio = (await call(rt, "GET", "/api/mod/audio")).json as unknown as AudioView;
     expect(audio.stops.at(-1)).toMatchObject({ announce: true });
     expect((await call(rt, "POST", "/api/mod/desk/stop", {})).status).toBe(400);
+    expect((await call(rt, "POST", "/api/mod/audio/report", { acks: [] })).status).toBe(200);
+    expect((await call(rt, "POST", "/api/mod/desk/stop", { all: true })).json).toEqual({ ok: true, stopped: 0, router: { online: true } });
     rt.dispose();
   });
 });
@@ -424,6 +427,17 @@ describe("live: when a test asks first", () => {
     expect((await deskView(rt)).live).toBe(false);
     preview = false;
     expect((await deskView(rt)).live).toBe(true);
+  });
+
+  it("wave 59: the doors opening answers a held poll at once, so a Desk on screen asks before it tests", async () => {
+    const rt = runtime({ isPreview: () => false });
+    const held = await deskView(rt);
+    expect(held.live).toBe(false);
+    const polled = call(rt, "GET", `/api/mod/desk?after=${held.rev}&wait=25`);
+    rt.openDoors();
+    const fresh = await Promise.race([polled, new Promise<null>((r) => setTimeout(() => r(null), 2000))]);
+    expect(fresh, "the held poll answered").not.toBeNull();
+    expect((fresh!.json as unknown as DeskView).live).toBe(true);
   });
 });
 

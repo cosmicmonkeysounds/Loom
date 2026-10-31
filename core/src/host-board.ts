@@ -831,6 +831,34 @@ export interface PrompterStatus {
   holder: string | null;
 }
 
+/** What a host's Desk reads of a terminal's heartbeat (wave 59): its health and
+ *  build stamp. Nothing here is a capability, and the patch bay stays out. */
+export interface HostTerminalDevice {
+  version?: string;
+  /** Sound unlocked (false: someone must touch it once). */
+  audio?: boolean;
+  /** The page is on screen. */
+  visible?: boolean;
+  fullscreen?: boolean;
+  battery?: number;
+  charging?: boolean;
+  /** The door sensor it bridges (`open`, `closed`, `fault`, `none`). */
+  door?: string;
+}
+
+/** The device fields of a heartbeat that are set, and only those. */
+export function hostTerminalDevice(t: HostTerminalDevice): HostTerminalDevice {
+  return {
+    ...(t.version !== undefined ? { version: t.version } : {}),
+    ...(t.audio !== undefined ? { audio: t.audio } : {}),
+    ...(t.visible !== undefined ? { visible: t.visible } : {}),
+    ...(t.fullscreen !== undefined ? { fullscreen: t.fullscreen } : {}),
+    ...(t.battery !== undefined ? { battery: t.battery } : {}),
+    ...(t.charging !== undefined ? { charging: t.charging } : {}),
+    ...(t.door !== undefined ? { door: t.door } : {}),
+  };
+}
+
 export interface HostView extends CueSheetView {
   /** `ModView.phase`. */
   runtime: "idle" | "open" | "paused";
@@ -855,7 +883,9 @@ export interface HostView extends CueSheetView {
     stimulus: { uses: number; limit: number };
   } | null;
   king: { hp: number; max: number; fallen: boolean } | null;
-  terminals: { voiceMuted: boolean; voiceFx?: VoiceFxMode; silentMs: number; rows: Array<{ name: string; agoMs: number; room?: string; view: string }> } | null;
+  /** `dream` (wave 59): Clippy's dream is on the terminals now. Each row's
+   *  device health and build stamp come from its heartbeat (`hostTerminalDevice`). */
+  terminals: { voiceMuted: boolean; voiceFx?: VoiceFxMode; dream?: boolean; silentMs: number; rows: Array<{ name: string; agoMs: number; room?: string; view: string } & HostTerminalDevice> } | null;
   agents: Array<{
     id: string;
     online: boolean;
@@ -946,7 +976,8 @@ export interface HostViewInput {
     silentMs: number;
     voiceMuted: boolean;
     voiceFx?: VoiceFxMode;
-    terminals: Array<{ name: string; ago: number; room?: string; view: string }>;
+    dream?: boolean;
+    terminals: Array<{ name: string; ago: number; room?: string; view: string } & HostTerminalDevice>;
   } | null;
   /** Per-guest flags (`guestFlags`), by guest id. */
   flags: ReadonlyMap<string, Array<{ label: string; path: string; value: string; on: boolean }>>;
@@ -1077,7 +1108,7 @@ export function hostView(input: HostViewInput): HostView {
     judging,
     wallet,
     king: input.king === null ? null : { hp: input.king.hp, max: input.king.max, fallen: input.king.fallen },
-    terminals: terminals === null ? null : { voiceMuted: terminals.voiceMuted, ...(terminals.voiceFx !== undefined ? { voiceFx: terminals.voiceFx } : {}), silentMs: terminals.silentMs, rows: terminals.terminals.map((t) => ({ name: t.name, agoMs: t.ago, ...(t.room !== undefined ? { room: t.room } : {}), view: t.view })) },
+    terminals: terminals === null ? null : { voiceMuted: terminals.voiceMuted, ...(terminals.voiceFx !== undefined ? { voiceFx: terminals.voiceFx } : {}), ...(terminals.dream !== undefined ? { dream: terminals.dream } : {}), silentMs: terminals.silentMs, rows: terminals.terminals.map((t) => ({ name: t.name, agoMs: t.ago, ...(t.room !== undefined ? { room: t.room } : {}), view: t.view, ...hostTerminalDevice(t) })) },
     agents,
     parts,
     people,

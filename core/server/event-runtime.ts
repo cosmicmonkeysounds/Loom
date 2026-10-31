@@ -61,7 +61,7 @@ import {
 import { foldName } from "../src/parser/names.ts";
 import { cueSheetView } from "../src/cue-sheet.ts";
 import { showClock, clockChange, CLOCK_SET_TO, CLOCK_SET_AT, type ShowClock } from "../src/show-clock.ts";
-import { ONLINE_GRACE_MS, hostView, type HostView } from "../src/host-board.ts";
+import { ONLINE_GRACE_MS, hostTerminalDevice, hostView, type HostView } from "../src/host-board.ts";
 import { StoryMarks, huntsFor } from "./wanted.ts";
 import { canonicalPlaceArgs } from "./place-args.ts";
 import { CHECKIN_ROUTE, GuestCheckin } from "./routes/k13.ts";
@@ -2059,7 +2059,7 @@ export class EventRuntime {
       mod,
       waiting,
       king: king === null ? null : { hp: king.hp, max: king.max, fallen: king.fallen },
-      terminals: { now: terms.now, silentMs: terms.silentMs, voiceMuted: terms.voiceMuted, voiceFx: terms.voiceFx, terminals: terms.terminals.map((t) => ({ name: t.name, ago: t.ago, ...(t.room !== undefined ? { room: t.room } : {}), view: t.view })) },
+      terminals: { now: terms.now, silentMs: terms.silentMs, voiceMuted: terms.voiceMuted, voiceFx: terms.voiceFx, dream: this.screens.dreamOf(sim) !== null, terminals: terms.terminals.map((t) => ({ name: t.name, ago: t.ago, ...(t.room !== undefined ? { room: t.room } : {}), view: t.view, ...hostTerminalDevice(t) })) },
       flags,
       staffRooms: model === null ? [] : staffRoomChannels(model),
       ...(sim !== null ? { awardOnly: awardOnly(sim) } : {}),
@@ -6101,6 +6101,9 @@ export class EventRuntime {
     // still knows it.
     this.persistMeta();
     this.pushSnapshots();
+    // Wave 59: the desk's `live` moved with no desk change. Tell the held polls now,
+    // or a Desk on screen plays tests to guests unasked for up to 25 s.
+    this.desk.changed();
     // Wave 59: her ✓ Done behind paused doors was his cue, and the scene is gone.
     const owed = this.handoverOwed;
     this.handoverOwed = false;

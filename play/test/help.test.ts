@@ -146,7 +146,7 @@ describe("play help", () => {
   it("wave 30: the Desk's own article covers Setup, Try it and what each setup problem means", async () => {
     const { readFileSync } = await import("node:fs");
     const text = readFileSync(new URL("../../docs/help/play/20-house-desk.md", import.meta.url), "utf8").replace(/\s+/gu, " ");
-    for (const h of ["## Setup", "## Try it", "## STANDBY, GO, Playing and the cues", "## Checks"]) expect(text).toContain(h);
+    for (const h of ["## The top", "## 🎛 Cues", "## 🎵 Music", "## 🎚 Mix", "## 🖥 House", "## Try it", "## 🔌 Setup", "### Setup", "### Checks"]) expect(text).toContain(h);
     for (const t of ["■ STOP ALL", "All connected ✓", "📢 Say on the speakers", "No mind connected", "Zigbee2MQTT doesn't know", "Run → House → Cue designer"]) expect(text).toContain(t);
     expect(readFileSync(new URL("../../docs/help/play/14-hosts.md", import.meta.url), "utf8")).toContain("(house-desk.md)");
     const prime = articlesFor("performer");
@@ -157,12 +157,12 @@ describe("play help", () => {
     for (const q of ["house desk", "setup", "try it", "router offline", "no mind connected", "zigbee2mqtt", "placeholder"]) expect(searchHelp(prime, q)[0]?.article.slug, q).toBe("house-desk");
   });
 
-  it("wave 40: the Desk's article has the 🎚 Mixer, in the panel's own words", async () => {
+  it("wave 40: the Desk's article has the 🎚 Mix tab, in the panel's own words", async () => {
     const { readFileSync } = await import("node:fs");
     const text = readFileSync(new URL("../../docs/help/play/20-house-desk.md", import.meta.url), "utf8").replace(/\s+/gu, " ");
-    expect(text).toContain("## 🎚 Mixer");
+    expect(text).toContain("## 🎚 Mix");
     // The panel's copy (play/src/host/mixer-model.ts, mixer.tsx).
-    for (const t of ["No router listening: the mix is kept and applies when it connects", "By hand — the story's music cues are held", "↺ Follow the story", "⏭ Skip all", "■ Stop music", "No soundtrack reported yet", "Everywhere"]) expect(text).toContain(t);
+    for (const t of ["No router listening: the mix is kept and applies when it connects", "By hand — until the story's next music cue, or ↺ Follow the story", "↺ Follow the story", "⏭ Skip all", "■ Stop music", "No soundtrack reported yet", "Everywhere"]) expect(text).toContain(t);
     const prime = articlesFor("performer");
     for (const q of ["mixer", "follow the story", "skip track", "fader", "now playing"]) expect(searchHelp(prime, q)[0]?.article.slug, q).toBe("house-desk");
   });

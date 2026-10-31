@@ -1,6 +1,6 @@
 //! Run → House (wave 25, `docs/loom-house-desk.md` §6.1): the house desk —
-//! a small QLab for the house. The status strip on top, then three views
-//! (wave 30):
+//! a small QLab for the house. The status strip on top, then six views. A host's
+//! phone groups the same things under its own tabs (`play/src/host/desk-tabs.ts`):
 //!
 //! - **Desk**: the transport and the cue list on the left; on the right
 //!   either the inspector (edit the selected cue) or the checks (walk every

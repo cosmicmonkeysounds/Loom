@@ -33,6 +33,7 @@ import {
   setupView,
   standbyCard,
   testNeedsConfirm,
+  stopAllDone,
   testWords,
   tryDone,
   tryGroups,
@@ -222,7 +223,9 @@ describe("wave 30: Setup", () => {
     expect(setupOpen({ tone: "bad", fix: [] })).toBe(false);
     const mind = setupView(house({ minds: [{ character: "Trabolta", name: "Trabolta", online: false, workers: [] }] })).rows.find((r) => r.id === "mind:Trabolta")!;
     expect(setupOpen(mind)).toBe(true);
-    expect(mind.fix.join(" ")).toMatch(/Ollama/u);
+    expect(mind.fix.join(" ")).toMatch(/agents job/u);
+    expect(mind.fix.join(" ")).toMatch(/Claude/u);
+    expect(mind.fix.join(" ")).toMatch(/Ollama, the standby/u);
   });
   it("the card's tone is its class and its mark", () => {
     expect(setupClass({ tone: "bad" })).toBe("host-desk-setup-card bad");
@@ -260,7 +263,16 @@ describe("wave 30: Try it", () => {
     expect(tryDone("sound", "server_hum", { ok: true, router: { online: true } })).toBe("▶ Playing server_hum");
     expect(tryDone("sound", "server_hum", { ok: true, router: { online: false } })).toMatch(/^▶ Playing server_hum — but the sound router is offline$/u);
     expect(tryDone("say", "", { router: { online: true } })).toBe("📢 Said on the speakers");
+    expect(tryDone("say", "", { router: { online: false } })).toBe("📢 Said on the speakers — but the sound router is offline");
     expect(tryDone("say", "", null)).toBe("📢 Said on the speakers");
+  });
+  it("■ STOP ALL's note: the cues stopped, and the sounds only if a router is there", () => {
+    expect(stopAllDone(false, { ok: true, stopped: 1, router: { online: true } })).toBe("■ Stopped every desk cue and the house sounds");
+    expect(stopAllDone(true, { ok: true, stopped: 1, router: { online: true } })).toBe("■ Stopped every desk cue, the house sounds and the announcement");
+    expect(stopAllDone(false, { ok: true, stopped: 1, router: { online: false } })).toBe("■ Stopped every desk cue — but the sound router is offline");
+    expect(stopAllDone(true, { ok: true, stopped: 1, router: { online: false } })).toBe("■ Stopped every desk cue — but the sound router is offline");
+    // An older server says nothing about the router, so nor does the note.
+    expect(stopAllDone(false, { ok: true, stopped: 1 })).toBe("■ Stopped every desk cue and the house sounds");
   });
   it("Say on the speakers: trimmed, never empty, never past the server's cap", () => {
     expect(sayCall("  The bar is open  ")).toEqual({ route: "/api/mod/audio/play", body: { say: "The bar is open" } });
@@ -278,11 +290,11 @@ describe("wave 30: Try it", () => {
 });
 
 describe("wave 30: How the Desk works", () => {
-  it("five lines: Setup (naming the outside minds), Try it, GO, the checks, where cues are built and STOP ALL", () => {
+  it("five lines, a tab each: the top, Cues, Music and Mix, House, Setup (naming the outside minds)", () => {
     const how = deskHow(allWell());
     expect(how).toHaveLength(5);
-    expect(how[0]).toContain("the sound, the lights and Trabolta");
-    expect(deskHow(deskFixture())[0]).toContain("the sound and the lights are connected");
+    expect(how[4]).toContain("the sound, the lights and Trabolta");
+    expect(deskHow(deskFixture())[4]).toContain("the sound and the lights are connected");
     expect(how.join(" ")).toMatch(/GO plays the cue on STANDBY/u);
     expect(how.join(" ")).toMatch(/walk the house with your phone/u);
     expect(how.join(" ")).toMatch(/Run → House → Cue designer/u);

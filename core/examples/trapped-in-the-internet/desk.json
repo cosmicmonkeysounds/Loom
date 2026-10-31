@@ -7,7 +7,7 @@
       "number": "T1",
       "name": "Speaker sweep",
       "section": "Tech checks",
-      "notes": "Walk the house: each speaker names itself in turn.",
+      "notes": "Walk the house: each speaker but the sub names itself in turn.",
       "steps": [
         { "kind": "say", "text": "Living room, left speaker.", "to": ["living-l"], "chime": false },
         { "kind": "say", "text": "Living room, right speaker.", "to": ["living-r"], "chime": false, "wait": 500 },

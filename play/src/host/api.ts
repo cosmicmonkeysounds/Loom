@@ -11,6 +11,7 @@
 import { ALERT_LEVELS, type AlertLevel } from "../../../core/src/delivery.ts";
 import { verdictCall, type FactsLike, type FactVerdictLike } from "../../../core/src/host-board.ts";
 import type { MixChange, MusicCommand } from "../../../core/src/house-mixer.ts";
+import type { VoiceFlavour } from "../../../core/src/voice-fx.ts";
 
 /** The POST routes the panel may call — the server's host allowlist. */
 export const HOST_ROUTES = [
@@ -203,6 +204,8 @@ export function hostCalls(post: HostPost, alertsPath: () => string) {
     tvMute: (muted: boolean) => post("/api/mod/screen/voice", { muted }),
     /** (wave 56) His voice: follows the night, kept clean, or fully broken. */
     voiceFx: (fx: "auto" | "clean" | "broken") => post("/api/mod/screen/voice", { fx }),
+    /** (wave 59, the Desk's 🖥 House) One flavour on his next words, in any mode. */
+    voiceShot: (shot: VoiceFlavour) => post("/api/mod/screen/voice", { shot }),
     /** 🔇 Stop all house sounds (wave 18b Q7): every story sound and speaker
      *  test fades out; `announce` also cuts the announcement and its queue.
      *  The TV voice (its own mute), the terminals and live mics are untouched. */

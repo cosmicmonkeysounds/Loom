@@ -746,13 +746,33 @@ bar shows is pure in `host/show-model.ts` (`hostWindowShown`,
   answer's, ≤ 10 / s per key, the last value always sent) and
   `audio/music`. All three routes are on the host allowlist.
 
-Wave 58 adds **🎵 Music** above the Mixer (`host/music.tsx`, contract
+**The Desk's sub-tabs** (wave 59; `host/desk-tabs.ts` pure, words `DRAFT w59d`, contract
+`docs/loom-house-desk.md` §6.2). The long scroll above is now a top that never moves
+(`.host-desk-top`: chips, ■ STOP ALL, `playingChip`, the note, the tabs) over one
+scrolling tab: **🎛 Cues** (`CuesTab`) · **🎵 Music** · **🎚 Mix** · **🖥 House** ·
+**🔌 Setup** (How, Setup, the checks). The panel is keyed by tab, so a tab opens at its
+top and nothing of the last one stays mounted: `MusicSection` and `MixerSection` no
+longer fold, and poll only while on screen. `DeskBody` holds what a hop must keep (the
+Say box, the place in the walk, Mix's scope, PLAY NOW's pasted link); `startTab` is the tests'. `firstDeskTab`: this
+device's last tab (`DESK_TAB_KEY`, host storage), else Music for Task Manager (M-2),
+else Cues. The notes float (`pointer-events: none`) so a line never moves a tab or a
+fader under a thumb. **🖥 House** (`host/desk-house.tsx`, `DeskHouseBody` over
+`useHostConsole()`) takes his voice (`calls.voiceFx`, `voiceShot`), the TV's mute, the
+dream (`dreamRow`: the story's `dream_toggle` through `calls.cue`, off behind closed
+doors), ⚡, ■ + the announcement, Try it and the terminals (`terminalLines`: silent
+first, then by name, since the server re-lists a row on every poll; `majorityBuild`; Identify asks once `live`). It reaches nothing a host couldn't already: `RUN_ONLY` says
+where the costume's switch and the descent are. **Landing:** `LandingSlot` in
+`desk-house.tsx` is the one place for 📷 Photos and 📢 Audio ads, and it has `auth` and `calls`. Never on the Desk: Go
+live, Push draft, Restart, End (`test/w59-desk-tabs.test.tsx`). Driven in Chromium at
+390 × 780 by `scripts/sim/desk.spec.ts`.
+
+Wave 58 adds **🎵 Music** (`host/music.tsx`, contract
 `docs/loom-w58-music-contract.md`): it took Now Playing from the Mixer and adds TIDAL's
 ⏮ ⏸ ⏭, PLAY NOW (the show's playlists, the app's sidebar, a pasted link), the
 `src:music` strip and the 🤖 card, whose lock is the story's cue through
 `calls.cue`. `mixer.tsx` exports `useMixerView`, `useMixPosts` and `StripLine` for
-it. `musicOpen` opens it for Task Manager (`MUSIC_OWNER`), and folded it polls
-nothing. Tests: `test/w58-music.test.tsx`. Help: `docs/help/play/20-house-desk.md`.
+it. `musicOpen` makes it Task Manager's first tab (`MUSIC_OWNER`), and off its tab it
+polls nothing. Tests: `test/w58-music.test.tsx`. Help: `docs/help/play/20-house-desk.md`.
 
 Every write is on the server's host allowlist (`core/server/routes/host.ts`;
 any other mod route answers 403 *not from a booth*), typed in `host/api.ts`

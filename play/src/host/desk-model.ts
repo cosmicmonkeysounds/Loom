@@ -411,16 +411,28 @@ export function tryGroups(view: Pick<DeskView, "house" | "marks">): TryGroup[] {
   return [group("looks", "💡 Looks", awayOf(h.lightsModule, "the lights module")), group("sounds", "▶ Story sounds", awayOf(h.router, "the sound router"))].filter((g) => g.rows.length > 0);
 }
 
+/** Did the answer say no router is listening? (No `router` at all: it didn't say.) */
+function routerAway(a: Record<string, unknown>): boolean {
+  const router = a["router"] !== null && typeof a["router"] === "object" ? (a["router"] as { online?: unknown }) : null;
+  return router !== null && router.online === false;
+}
+
 /** The note after a Try it tap: what was sent, and whether anything is
  *  there to play it (the server answers `router` for sound, `module` for
  *  a light). What the house did then shows under *Lately*. */
 export function tryDone(kind: "look" | "sound" | "say", name: string, answer: unknown): string {
   const a = answer !== null && typeof answer === "object" ? (answer as Record<string, unknown>) : {};
   if (kind === "look") return a["module"] === false ? `💡 ${name} sent — but the lights module is offline` : `💡 Playing the look ${name}`;
-  const router = a["router"] !== null && typeof a["router"] === "object" ? (a["router"] as { online?: unknown }) : null;
-  const away = router !== null && router.online === false;
   const what = kind === "say" ? "📢 Said on the speakers" : `▶ Playing ${name}`;
-  return away ? `${what} — but the sound router is offline` : what;
+  return routerAway(a) ? `${what} — but the sound router is offline` : what;
+}
+
+/** The note after ■ STOP ALL. The cues stop whatever happens; the house sounds
+ *  need a router, and with none the line says so. `DRAFT w59d`. */
+export function stopAllDone(announce: boolean, answer: unknown): string {
+  const a = answer !== null && typeof answer === "object" ? (answer as Record<string, unknown>) : {};
+  if (routerAway(a)) return "■ Stopped every desk cue — but the sound router is offline";
+  return announce ? "■ Stopped every desk cue, the house sounds and the announcement" : "■ Stopped every desk cue and the house sounds";
 }
 
 /** The "Say on the speakers" call, or null while there is nothing to say
@@ -438,16 +450,16 @@ export function sayCount(text: string): string {
 
 // --- how the Desk works ----------------------------------------------------------------
 
-/** The folded intro at the top of the window: what each part is for. The
- *  outside minds are named from the view (none on an older server). */
+/** The folded intro on 🔌 Setup: what each tab is for (`DRAFT w59d`). The outside
+ *  minds are named from the view (none on an older server). */
 export function deskHow(view: Pick<DeskView, "house">): string[] {
   const minds = (view.house.minds ?? []).map((m) => m.name);
   const what = minds.length > 0 ? `the sound, the lights and ${minds.join(", ")}` : "the sound and the lights";
   return [
-    `Setup says whether ${what} are connected, and what to do when one isn't.`,
-    "Try it plays one look, one story sound or a line on the speakers: a quick test, nothing is marked.",
-    "GO plays the cue on STANDBY, then stands by the next one. Tap any cue in the list to stand it by.",
-    "Checks: walk the house with your phone, test each speaker, sound and light, and mark ✓ or ✗.",
-    "Cues are built in the editor's Run → House → Cue designer. ■ STOP ALL is the panic: it stops every cue and the house sounds.",
+    "The top never moves: the chips say how the house is, and ■ STOP ALL is the panic: it stops every cue and the house sounds. A cue still playing shows beside it; tap it to go to Cues.",
+    "🎛 Cues: GO plays the cue on STANDBY, then stands by the next one. Tap any cue in the list to stand it by. Cues are built in the editor's Run → House → Cue designer.",
+    "🎵 Music: what is playing and where it comes from. 🎚 Mix: the house's levels. Each is live only while its tab is open.",
+    "🖥 House: his voice, the dream and every terminal. Try it plays one look, one story sound or a line on the speakers: a quick test, nothing is marked.",
+    `🔌 Setup says whether ${what} are connected, and what to do when one isn't. Checks: walk the house with your phone, test each speaker, sound and light, and mark ✓ or ✗.`,
   ];
 }

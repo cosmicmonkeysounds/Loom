@@ -8,8 +8,8 @@ keywords: music, music manager, tidal, playlist, playlists, library, soundtrack,
 The **Music manager** is the night's music in one place. Open it in
 **Run → House → 🎵 Music** (a server project with its rehearsal running, like
 the rest of [the house desk](47-house-desk.md)). A host's phone has the same
-thing in its **Desk** window, open for Task Manager and folded for everyone
-else. Only directors and hosts can use it. The faders stay in
+thing on the 🎵 Music tab of its **Desk** window, the tab Task Manager's phone opens
+on first. Only directors and hosts can use it. The faders stay in
 [the Mixer](51-house-mixer.md).
 
 ## The strip
@@ -21,9 +21,8 @@ the Desktop, and each act plays its fallback folder.
 
 ## Now playing
 
-- **Scene**: pick one to play it by hand. A hand is held: the story's `cue
-  music_*` lines are ignored until you press **Follow the story**, or until the
-  story's next live music cue.
+- **Scene**: pick one to play it by hand. A hand stays until the story's next
+  live `cue music_*` takes over, or until you press **Follow the story**.
 - **⏮ ⏸ ⏭**: the app's own buttons, shown only while a bed is on TIDAL. A file
   bed, like the ceremony, can skip but has no pause and no previous. A pause
   holds until you press ▶ or the scene changes.

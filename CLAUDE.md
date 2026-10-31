@@ -190,6 +190,15 @@ window; `docs/loom-w40-contract.md`). A host's phone has the same Setup and chec
 its **Desk** window. Help: `docs/help/authoring/49-house-setup.md`,
 `50-cue-designer.md`, `47-house-desk.md`.
 
+**The Desk's tabs** (wave 59, not shipped; `docs/loom-house-desk.md` §6.2, words `DRAFT
+w59d`): a host's Desk is no longer one long scroll. The chips, ■ STOP ALL, a chip for a
+running cue and the note stay put over **🎛 Cues · 🎵 Music · 🎚 Mix · 🖥 House · 🔌 Setup**.
+🖥 House gathers what a host could already do: his voice, the TV's mute, the dream's
+switch, Try it, and every terminal with its state and build stamp. 🎭 the costume's
+switch and the descent stay a director's on Run. Music is Task Manager's first tab, a
+phone keeps its last one, and Music and Mix poll only on their tab. Reload every host's
+phone. Help: `docs/help/play/20-house-desk.md`.
+
 **The soundtrack from TIDAL** (wave 52, on master; it runs on the Desktop):
 the acts and the ending are John's TIDAL playlists, played by the app on the
 Desktop (`scripts/house-desktop/tidal.ps1`, which gives it its control port)

@@ -241,6 +241,22 @@ Only the words we changed.
 - *Nobody online.* (`play/src/booth/people.tsx:46`); *Offline ({n})*, *Nobody online.*, *Nobody online matches "…".* (`play/src/host/tab-people.tsx:32`, `:38`)
 - *🔁 1 wants back in* and *🔁 {n} want back in* (`play/src/host/show-model.ts` `asksLine`)
 
+The Desk's tabs, `DRAFT w59d` (`play/src/host/desk-tabs.ts`, `play/src/host/desk-house.tsx`, `deskHow` and `stopAllDone` in `play/src/host/desk-model.ts`, `HAND_NOTE` in `play/src/host/mixer-model.ts`, the hand's badge in `editor/src/components/house/MusicPanel.tsx`; `docs/loom-house-desk.md` §6.2):
+
+- The tabs *Cues*, *Music*, *Mix*, *House*, *Setup*, and the five lines of *How the Desk works*
+- 🖥 House: *Break his next words (8 s)*, *■ Stop + the announcement*, *🌀 Put the terminals back*, *🌀 Bring the dream back*, *It runs from 🕚 until an ending.*
+- His voice under its buttons: *Follows the night: he comes apart by himself.*, *Kept clean: nothing breaks him, whatever the night does.*, *Fully broken, from now until you change it.*
+- A terminal's marks: *🔇 touch it*, *💤 hidden*, *⛶ not full*, *🚪 shut*, *🚪 open*, *🚪 fault*, *old build*
+- The foot of 🖥 House: *A director's, on Run → Terminals and the House map card: 🎭 the costume's switch, and the descent.*
+- The dream's box: the title *🌀 Clippy's dream*, the state *on the terminals*, the asks *Every terminal goes back to its usual screen. Do it?* and *Every terminal goes back into the dream. Do it?*, the button *Do it*
+- The dream's notes, when the story sends no line of its own: *🌀 The terminals are going back*, *🌀 The dream is coming back*, *🌀 Not now — # hosts says why*, *🌀 Cues moved — tap again*
+- The title *⚡ The talk scene*, the waiting line *Reading the house…*, the terminals' head *{n}/{m} live · {k} on another build*, and a flavour's note *🌀 {flavour} on his next words*
+- The stop: the button's title *■ STOP ALL lets an announcement finish. This cuts it and empties its queue.*, the notes *■ Stopped every desk cue, the house sounds and the announcement* and, with no router, *■ Stopped every desk cue — but the sound router is offline*
+- Identify on a terminal that isn't answering: *📟 Sent, but {name} isn't answering, so it may not show*. Once the doors are open Identify asks in the checks' own words, *The show is live — guests will see this. Test anyway?*, so that line is not new
+- The music's hand: *By hand — until the story's next music cue, or ↺ Follow the story* on the Desk, *by hand: until the story’s next music cue, or Follow the story* on Run. These replace *the story's music cues are held*, which wasn't true: a hand holds against catch-ups, and the next live music cue takes over
+
+`desk.json` takes no comments, so T1's note carries no marker: *Walk the house: each speaker but the sub names itself in turn.* The project keeps its own copy until `--replace-desk`.
+
 The refused screen and its neighbours carry no marker, because they are app words, not show text:
 
 - *{name} is already signed in on a phone.* · *Badge {ref} is already signed in on a phone.* · *That badge is already signed in on a phone.* and the hint under them (`play/src/rejoin-calls.ts`)
@@ -271,7 +287,7 @@ The refused screen and its neighbours carry no marker, because they are app word
 
 **Packs.** `cast-packs/performers/clippy.md`: *If a new beat lands over your words, your phone moves on to it: finish from ↑ earlier lines, and a host presses 🤖 on your last line.*, and the shorter line on her Quick card. `cast-packs/crew/director.md` row 4, and `docs/help/play/14-hosts.md`: the same 🤖 cases in crew words.
 
-**Crew text, no markers.** `SHOWNIGHT.md`, `TECH.md`, `INDEX.md`, `show-page/template.html`, `cast-packs/all-crew.md`, `cast-packs/crew/director.md`, `crew/second-director.md`, `crew/house-manager.md`, `crew/tech-operator.md`; `docs/help/play/01-welcome.md`, `07-performers.md`, `08-codex.md`, `09-terminals.md`, `11-reinstallation.md`, `13-director-phone.md`, `14-hosts.md`, `18-getting-back-in.md`; `docs/help/authoring/30-live-shows.md`, `35-codex.md`, `43-run-mode.md`, `48-terminal-setup.md`, `55-language-filter.md`, `56-read-aloud.md`; Run's badges and dialogs (`editor/src/lib/terminals.ts`, `editor/src/components/cockpit/Inspector.tsx`, `editor/src/components/cockpit/director/NightBar.tsx`), `⚙`'s `🔇 No ad sounds or bleeps` and its readout (`terminal/src/Setup.tsx`, `terminal/src/link-stats.ts`, `core/src/link-health.ts`), and the map's Check warning (`reinstall/web/src/map/check.ts`).
+**Crew text, no markers.** `SHOWNIGHT.md`, `TECH.md`, `INDEX.md`, `show-page/template.html`, `cast-packs/all-crew.md`, `cast-packs/crew/director.md`, `crew/second-director.md`, `crew/house-manager.md`, `crew/tech-operator.md`; `docs/help/play/01-welcome.md`, `07-performers.md`, `08-codex.md`, `09-terminals.md`, `11-reinstallation.md`, `13-director-phone.md`, `14-hosts.md`, `18-getting-back-in.md`, `20-house-desk.md`; `docs/help/authoring/30-live-shows.md`, `35-codex.md`, `43-run-mode.md`, `48-terminal-setup.md`, `55-language-filter.md`, `56-read-aloud.md`, `57-music-manager.md`; Run's badges and dialogs (`editor/src/lib/terminals.ts`, `editor/src/components/cockpit/Inspector.tsx`, `editor/src/components/cockpit/director/NightBar.tsx`), `⚙`'s `🔇 No ad sounds or bleeps` and its readout (`terminal/src/Setup.tsx`, `terminal/src/link-stats.ts`, `core/src/link-health.ts`), and the map's Check warning (`reinstall/web/src/map/check.ts`).
 
 ### 4.11 Where every marker is
 
@@ -291,14 +307,20 @@ The refused screen and its neighbours carry no marker, because they are app word
 | `core/server/push.ts` | 290 |
 | `core/src/costume.ts` | 217 |
 | `costume.json` | 2 |
+| `docs/loom-house-desk.md` | 319 |
+| `editor/src/components/house/MusicPanel.tsx` | 6 |
 | `editor/src/lib/print-sheet.ts` | 18 |
 | `main.loom` | 2494, 2558, 2593, 3292, 3309, 3849, 6146, 6148, 6228, 6230, 6288, 6535, 6567, 6607 |
 | `objectives.loom` | 118, 217, 300, 339 |
-| `play/CLAUDE.md` | 597 |
+| `play/CLAUDE.md` | 597, 730 |
 | `play/src/aloud/prompter.tsx` | 71, 459, 523, 577 |
 | `play/src/booth/people.tsx` | 46 |
 | `play/src/director.tsx` | 1374 |
 | `play/src/guest/register.tsx` | 173 |
+| `play/src/host/desk-house.tsx` | 13, 31 |
+| `play/src/host/desk-model.ts` | 431, 453 |
+| `play/src/host/desk-tabs.ts` | 3 |
+| `play/src/host/mixer-model.ts` | 53 |
 | `play/src/host/prompter-strip.tsx` | 22, 28 |
 | `play/src/host/show-model.ts` | 115 |
 | `play/src/host/tab-people.tsx` | 32, 38 |

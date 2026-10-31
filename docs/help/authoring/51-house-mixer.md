@@ -1,5 +1,5 @@
 ---
-title: The Mixer — balance the house sound and steer the soundtrack
+title: The Mixer — balance the house sound
 section: Live Shows
 order: 51
 keywords: mixer, mix, house mix, balance, fader, faders, level, levels, volume, louder, quieter, mute, unmute, dB, decibel, meter, meters, peak, room, rooms, zone, speaker, sub, subwoofer, master, everywhere, source, sources, music, soundtrack, featured tracks, sound effects, sfx, footsteps, steps, announcements, TV, Trabolta's channel, input, CueMix, reset, reset all, plays at, silent, now playing, scene, music scene, by hand, follow the story, skip, skip track, next track, skip all, stop music, playlist, bed, empty playlist, router, Run → House, host, director
@@ -8,7 +8,7 @@ keywords: mixer, mix, house mix, balance, fader, faders, level, levels, volume, 
 The **Mixer** is the live balance of the house sound. Open it in
 **Run → House → 🎚 Mixer** (a server project with its rehearsal running,
 like the rest of [the house desk](47-house-desk.md)). A host's phone has
-the same mixer in its **Desk** window. Only directors and hosts can move
+the same mixer on the 🎚 Mix tab of its **Desk** window. Only directors and hosts can move
 it.
 
 What you move here rides on top of the install: each speaker's gain on

@@ -155,7 +155,7 @@ the routes on the host allowlist (`core/server/routes/host.ts` and
 | `POST /api/mod/desk/project` | → the desk in force becomes the project's `desk.json` (409 `no project`) | |
 | `POST /api/mod/desk/go` | `{cue?, standby?}` → `{ok, run, standby}`. No `cue` means the playhead's cue. `standby` is the playhead the console showed: if it moved, the answer is 409 `{error:"moved", standby}` and nothing fires (two consoles, one GO). 404 for no such cue, 409 `{error:"end"}` at the end of the list. The playhead moves to the cue after the one fired | H |
 | `POST /api/mod/desk/standby` | `{cue: id \| null}` → `{ok, standby}` | H |
-| `POST /api/mod/desk/stop` | `{run}` stops one run; `{all: true, announce?}` stops every run **and** the house sounds (the panic) → `{ok, stopped}` | H |
+| `POST /api/mod/desk/stop` | `{run}` stops one run → `{ok, stopped}`; `{all: true, announce?}` stops every run **and** the house sounds (the panic) → `{ok, stopped, router: {online}}`, since the sounds need a router to stop them | H |
 | `POST /api/mod/desk/check` | `{key, mark: "ok" \| "bad" \| null, note?}` → `{ok}` (404 for a key that isn't a check of this house) | H |
 | `POST /api/mod/desk/check/reset` | → every mark cleared | |
 | `POST /api/mod/audio/play` | `{sound, to?, gain?}` \| `{say, to?, chime?}` → `{ok, seq, router}` (§4) | H |
@@ -316,27 +316,36 @@ reads `Show · Chats · Desk · Scan`.
 - **The slim NEXT bar.** It stays above the taskbar only while another
   window (Chats, a room) is open, so a host can fire without leaving. A tap
   on it opens Show; the drawer is gone.
-- **Desk** (a lazy chunk):
-  - the status chips, ■ STOP ALL, and a folded *How the Desk works*
-    (`deskHow`: Setup, Try it, GO, the checks, where cues are built, STOP
-    ALL);
-  - **Setup** (wave 30), above STANDBY: one card per `deskSetup` row
-    (sound, lights, each outside mind), tone-coloured with its status
-    line and *What to do* (the `fix` steps: open for `bad`, folded for
-    `warn`); one *All connected ✓* line, tap to unfold, when every row is
-    `ok`;
-  - the standby cue with a big **GO** (its story events named), then the
-    running runs;
-  - the cue list (tap to set standby);
-  - **Try it** (wave 30): *Say on the speakers* (`audio/play {say}`, ≤
+- **Desk** (a lazy chunk). Wave 59 (`host/desk-tabs.ts`, new words `DRAFT w59d`) cut
+  the long scroll into sub-tabs. The top never moves: the status chips, ■ STOP ALL,
+  a chip for a running cue (it jumps to Cues), the note, the tabs. A tab is mounted
+  only while it is open, so 🎵 Music and 🎚 Mix poll nothing until then. The first
+  tab is this device's last one, else Music for Task Manager, else Cues.
+  - **🎛 Cues**: the standby cue with a big **GO** (its story events named), the
+    running runs, the cue list (tap to set standby), Lately.
+  - **🎵 Music** (`host/music.tsx`) and **🎚 Mix** (`host/mixer.tsx`).
+  - **🖥 House** (`host/desk-house.tsx`, over the console's host view): 🌀 his voice
+    (modes and a flavour), 🔇 the TV's voice, ■ with the announcement, 🌀 Clippy's
+    dream (the story's `dream_toggle`, read from `terminals.dream`), ⚡ in a talk
+    scene, **Try it**, 📟 every terminal's state and build stamp with Identify. The
+    host view's terminals carry the heartbeat's device fields for it (`hostTerminalDevice`,
+    never the patch bay). Every write was already on the host allowlist. 🎭 the
+    costume's switch and the descent stay a director's, and the tab says so.
+    `LandingSlot` is where 📷 Photos and 📢 Audio ads are wired.
+  - **Try it** (wave 30, on 🖥 House): *Say on the speakers* (`audio/play {say}`, ≤
     `DESK_SAY_MAX`), then the house's looks (`lights/test {look}`) and the
     story's sounds (`audio/play {sound}`) as tap-to-play rows (the checks'
     own tests; no marks). A list says once when its router / lights module
     is away; the note after a tap says what was sent and whether anything
     was there to play it (the answer's `router` / `module`). Once `live`
-    each asks first, as the checks do;
-  - the checks, built for walking: one row at a time with **Test**, **✓
-    Heard it**, **✗ Nothing**, and next.
+    each asks first, as the checks do. Opening the doors wakes the held polls, so a
+    Desk already on screen knows at once;
+  - **🔌 Setup**: a folded *How the Desk works* (`deskHow`, a line per tab), then one
+    card per `deskSetup` row (sound, lights, each outside mind), tone-coloured with
+    its status line and *What to do* (the `fix` steps: open for `bad`, folded for
+    `warn`); one *All connected ✓* line, tap to unfold, when every row is `ok`. Then
+    the checks, built for walking: one row at a time with **Test**, **✓ Heard it**,
+    **✗ Nothing**, and next.
   - No cue editing in Play. The hosts' help: `docs/help/play/20-house-desk.md`.
 
 ## 7. Not in this wave

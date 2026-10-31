@@ -170,7 +170,7 @@ reads after an ending, and his voice comes back whole. That is the payoff, so ne
 
 Nothing he says changes: the captions and his chat lines stay exactly as written,
 so a line that's hard to hear can always be read. If it ever gets in the way of
-the show, a director or a host sets 🌀 His voice to **Clean**.
+the show, a director or a host (Desk → 🖥 House) sets 🌀 His voice to **Clean**.
 
 ## The audio ads
 
@@ -204,8 +204,9 @@ the show, a director or a host sets 🌀 His voice to **Clean**.
   in its corner, and so is the clock.
 - The games' terminals keep showing the real rooms, with spurts of the dream
   breaking through every so often.
-- The director's **🌀 Clippy's dream: on / off** puts everything back (and
-  brings it back) if the wifi struggles or a scene must read clean.
+- The director's **🌀 Clippy's dream: on / off**, or a host's Desk → 🖥 House, puts
+  everything back (and brings it back) if the wifi struggles or a scene must read
+  clean.
 
 ## Terminals and the simulation
 
