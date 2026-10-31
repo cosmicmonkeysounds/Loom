@@ -506,7 +506,7 @@ export interface InteractionDef {
   qr?: string;
   /** `urgent: true` — an in-sequence admin cue the cue sheet suggests as
    *  NEXT ahead of the running order whenever its `while:` holds and it has
-   *  not fired (🕊 while a stand-down waits for the director's sign-off).
+   *  not fired. The show has none since wave 58 took 🕊.
    *  Absent = false. */
   urgent?: true;
   /** `act: B · Act I: the Desktop, Bingo and the first truth` — on an admin

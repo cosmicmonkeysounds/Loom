@@ -18,7 +18,7 @@
 //!   fall (a host corrects a mis-tapped lie) comes off the same way (B11).
 //!   A round-3 DM lie (`lie_q7` / `lie_q8`) counts only once 📄 truth.txt
 //!   settles it (`Night.r3_closed`): in auto mode the counter rises at
-//!   filing, but a server-room ending (Combo A / B, 🕊) never settles round
+//!   filing, but a server-room ending (Combo A / B) never settles round
 //!   3, so that bluff was never accepted and stays out of both lists.
 //! - **questionsRight** (wave 58) — the questions a program got right, live:
 //!   G9a's count (main.loom, ROLE Program), which the story writes only when

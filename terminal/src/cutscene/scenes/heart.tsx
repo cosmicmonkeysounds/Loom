@@ -210,7 +210,7 @@ export { LAYER_TITLES };
 export function layerOf(value: string): number {
   const m = /(\d+)\s*$/u.exec(value);
   const n = m === null ? 1 : Number(m[1]);
-  return Math.max(1, Math.min(4, n));
+  return Math.max(1, Math.min(3, n));
 }
 
 // w29 (signed off): the card's title bar (it read LAYER n / 4).
@@ -371,91 +371,16 @@ function HeartLeave({ t, sfx, reduced }: SceneProps) {
   );
 }
 
-// --- heart_shutdown: the patch bay goes dark, top row first; he stops (25 s) -----------------------------
-
-const DOWN = { save: 0, bay: 4000, top: 4000, bottom: 11_000, face: 2000, faceGone: 19_000, safe: 20_500, end: HEART_SCENE_MS.heart_shutdown } as const;
-const BAY_COLS = 12;
-const SAVE_TEXT = "Saving his settings…";
-
-/** Each LED's light (0..1) at `t`: the top row dies left to right, then the bottom. */
-export function bayLight(row: 0 | 1, i: number, t: number): number {
-  const start = row === 0 ? DOWN.top : DOWN.bottom;
-  const at = start + i * 520;
-  return 1 - progress(t, at, 380);
-}
-
-function ShutdownBay({ t, reduced }: { t: number; reduced: boolean }) {
-  return (
-    <svg className="ht-bay" viewBox={`0 0 ${BAY_COLS * 14 + 16} 58`} aria-hidden="true">
-      <rect x="0" y="0" width={BAY_COLS * 14 + 16} height="58" rx="2" fill="#16181c" stroke="#444" />
-      {([0, 1] as const).map((row) =>
-        Array.from({ length: BAY_COLS }, (_, i) => {
-          const x = 8 + i * 14 + 7;
-          const y = row === 0 ? 18 : 42;
-          const l = bayLight(row, i, t);
-          const flick = !reduced && l > 0 && l < 1 && noise1(row * 31 + i, Math.floor(t / 50)) > 0.5 ? 0.3 : 0;
-          const colour = row === 0 ? "255, 210, 63" : "61, 220, 132";
-          return (
-            <g key={`${row}-${i}`}>
-              <circle cx={x} cy={y} r="4.4" fill="#050505" stroke="#555" strokeWidth="0.8" />
-              <circle cx={x} cy={y} r="3.2" fill={`rgba(${colour}, ${(0.08 + 0.92 * Math.max(0, l - flick)).toFixed(3)})`} />
-              {l > 0.5 && <circle cx={x} cy={y} r="6.5" fill={`rgba(${colour}, ${((l - 0.5) * 0.5).toFixed(3)})`} />}
-            </g>
-          );
-        }),
-      )}
-    </svg>
-  );
-}
-
-function HeartShutdown({ t, sfx, reduced }: SceneProps) {
-  // The heartbeat slows and stops as the lights go.
-  const beats = [600, 1900, 3400, 5200, 7400, 10_000, 13_200, 17_000];
-  useSfxCues(t, sfx, [
-    [DOWN.save, "shutdown"],
-    ...beats.map((at, i) => [at, "heartbeat", { gain: Math.max(0.15, 1 - i * 0.11) }] as const),
-    [DOWN.safe, "click"],
-  ]);
-  const save = progress(t, 400, DOWN.bay - 600);
-  const drain = progress(t, DOWN.face, DOWN.faceGone - DOWN.face);
-  const faceOut = progress(t, DOWN.faceGone, 1200);
-  const safe = t >= DOWN.safe;
-  return (
-    <div className="ht-stage ht-shutdown" style={{ background: safe ? "#000" : `rgb(0, ${Math.round(lerp(10, 0, drain))}, ${Math.round(lerp(26, 0, drain))})` }}>
-      {!safe && (
-        <>
-          <div className="ht-shutdown-face" style={{ ...faceColours(1), filter: `grayscale(${drain.toFixed(2)}) brightness(${lerp(1, 0.35, drain).toFixed(2)})`, opacity: 1 - faceOut, transform: reduced ? undefined : `translateY(${(drain * 4).toFixed(2)}vmin) scale(${lerp(1, 0.94, drain).toFixed(3)})` }}>
-            <AssembleFace t={t + 60_000} start={0} reduced={reduced} />
-          </div>
-          <ShutdownBay t={t} reduced={reduced} />
-          <div className="ht-shutdown-save" style={{ opacity: 1 - progress(t, DOWN.bay, 600) }}>
-            <span>{SAVE_TEXT.slice(0, Math.min(SAVE_TEXT.length, Math.floor((t / typedDuration(SAVE_TEXT, { cps: 20 })) * SAVE_TEXT.length)))}</span>
-            <div className="ht-shutdown-bar">
-              <i style={{ width: `${(save * 100).toFixed(1)}%` }} />
-            </div>
-          </div>
-        </>
-      )}
-      {safe && (
-        <div className="ht-safe" style={{ opacity: progress(t, DOWN.safe, 900) }}>
-          It is now safe to turn off your computer.
-        </div>
-      )}
-    </div>
-  );
-}
-
 // --- the defs -------------------------------------------------------------------------------------------
 
 export const SCENES: readonly SceneDef[] = [
   { id: "heart_wake", when: [{ room: "heart_wake" }], ms: HEART_SCENE_MS.heart_wake, wall: HeartWake, covers: true, face: "alarmed", faceMs: WAKE.cool + 2000 },
   { id: "heart_sealed", when: [{ room: "heart_sealed" }], ms: HEART_SCENE_MS.heart_sealed, wall: HeartSealed, covers: true, face: "attentive" },
   { id: "heart_sealed_present", when: [{ room: "heart_sealed_present" }], ms: HEART_SCENE_MS.heart_sealed_present, wall: HeartSealedPresent, covers: true, face: "attentive" },
-  { id: "heart_layer", when: [{ room: "heart_layer_1" }, { room: "heart_layer_2" }, { room: "heart_layer_3" }, { room: "heart_layer_4" }], ms: HEART_SCENE_MS.heart_layer, wall: HeartLayer, over: true, face: "thinking" },
+  { id: "heart_layer", when: [{ room: "heart_layer_1" }, { room: "heart_layer_2" }, { room: "heart_layer_3" }], ms: HEART_SCENE_MS.heart_layer, wall: HeartLayer, over: true, face: "thinking" },
   { id: "heart_proof", when: [{ room: "heart_proof" }], ms: HEART_SCENE_MS.heart_proof, wall: HeartProof, face: "glitch", faceMs: 3000 },
   { id: "heart_warn", when: [{ room: "heart_warn" }], ms: HEART_SCENE_MS.heart_warn, wall: HeartWarn, over: true, face: "angry" },
   { id: "heart_eject", when: [{ room: "heart_eject" }], ms: HEART_SCENE_MS.heart_eject, wall: HeartEject, covers: true, face: "angry", faceMs: HEART_SCENE_MS.heart_eject },
   { id: "heart_notyet", when: [{ room: "heart_notyet" }], ms: HEART_SCENE_MS.heart_notyet, wall: HeartNotYet, covers: true, face: "pleased" },
   { id: "heart_leave", when: [{ room: "heart_leave" }], ms: HEART_SCENE_MS.heart_leave, wall: HeartLeave, covers: true, face: "neutral" },
-  { id: "heart_shutdown", when: [{ room: "heart_shutdown" }], ms: HEART_SCENE_MS.heart_shutdown, wall: HeartShutdown, covers: true, face: "dying", faceMs: HEART_SCENE_MS.heart_shutdown },
 ];

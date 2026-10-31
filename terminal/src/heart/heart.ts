@@ -123,7 +123,6 @@ export const HEART_SCENE_MS = {
   heart_eject: 8_000,
   heart_notyet: 6_000,
   heart_leave: 3_000,
-  heart_shutdown: 25_000,
 } as const;
 
 /**
@@ -200,11 +199,11 @@ export function doorOverlayOn(doorOpen: boolean | null, stage: string | null): b
 
 /** The heart cards' titles (the `room_heart_layer_n` scene). Never a count or a layer:
  *  the program sees his question, not how far through the talk it is (wave 29). */
-export const LAYER_TITLES = ["WHO ARE YOU", "WHAT I AM", "THE ARGUMENT", "THE ASK"] as const;
+export const LAYER_TITLES = ["WHO ARE YOU", "WHAT I AM", "THE ARGUMENT"] as const;
 
 /** `room_heart_layer_2` → 2; any other cue → null. */
 export function layerOfCue(value: string): number | null {
-  const m = /^room_heart_layer_([1-4])$/u.exec(value);
+  const m = /^room_heart_layer_([1-3])$/u.exec(value);
   return m === null ? null : Number(m[1]);
 }
 
@@ -212,7 +211,7 @@ export function layerOfCue(value: string): number | null {
 export function heartSceneMs(value: string): number | null {
   if (!value.startsWith("room_heart_")) return null;
   const id = value.slice("room_".length);
-  if (/^heart_layer_[1-4]$/u.test(id)) return HEART_SCENE_MS.heart_layer;
+  if (/^heart_layer_[1-3]$/u.test(id)) return HEART_SCENE_MS.heart_layer;
   return (HEART_SCENE_MS as Record<string, number>)[id] ?? null;
 }
 
@@ -349,7 +348,7 @@ export function composerBlocked(o: { cue: { value: string; at: number } | null; 
   if (o.heart && c === null && o.menu !== true && heartWaitingFirstWord(o.stage, o.now - o.since)) return true;
   if (c === null) return false;
   if (c.value === "room_heart_eject") return true;
-  if (c.value === "room_heart_proof" || c.value === "room_heart_shutdown") return heartSceneLeft(c, o.since, o.now) > 0;
+  if (c.value === "room_heart_proof") return heartSceneLeft(c, o.since, o.now) > 0;
   return false;
 }
 

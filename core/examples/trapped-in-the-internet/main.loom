@@ -5548,14 +5548,14 @@ when majority_reached:
 //
 // The heart's stages (Night.heart_stage): sealed → door (The Heart played,
 // he wants the door shut) → scan (shut; he waits for a pass at the
-// terminal) → talk (a program at his heart, the four layers in
-// beats/server-room.loom) → done (he stood down, or an ending). Before he
+// terminal) → talk (a program at his heart, the three layers in
+// beats/server-room.loom) → done (an ending). Before he
 // is awake the door is just a door: # hosts hears of it, nothing else (a
 // curious guest). Inside a 🔧 crew window (crew_through_the_door) an
 // opening is the crew's own: # hosts only, The Heart kept for the
 // programs. Once the verdict is in (📄 truth.txt closed round three) the
 // server room is quiet too: the night ends at the Desktop now, so the
-// door, the patch bay and 🕊 only tell # hosts. Every heart light cue
+// door and the patch bay only tell # hosts. Every heart light cue
 // waits out the patch-bay alarm (the alarm look owns the bulb until the
 // latch's end puts the room back).
 when door_sensor_opened:
