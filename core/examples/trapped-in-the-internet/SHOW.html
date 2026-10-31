@@ -615,8 +615,9 @@ ul.check label { min-width: 0; cursor: pointer; }
     <div class="scroll"><table>
       <thead><tr><th scope="col">Clock</th><th scope="col">What</th><th scope="col">Story timer</th></tr></thead>
       <tbody>
-        <tr><td>10:00</td><td>Weather call (tent or shed), then ⏸ pause, sync, Push draft, Go live in place</td><td></td></tr>
-        <tr><td>15:00</td><td>Tech boot of every machine, keypad test</td><td></td></tr>
+        <tr><td>10:00</td><td>Weather call (tent or shed), then ⏸ pause, sync, Push draft, Go live in place; the worker restarted and every screen reloaded after it</td><td></td></tr>
+        <tr><td>12:00</td><td>Print, only after the sync and with H1–H3's answers in; the cans of water out</td><td></td></tr>
+        <tr><td>15:00</td><td>Tech boot of every machine, the keypad re-set by hand, then its test</td><td></td></tr>
         <tr><td>17:00</td><td>Performer call</td><td></td></tr>
         <tr><td>19:00 / 20:00</td><td>Doors (open question). Power On plays; show clock reads 7:00 PM</td><td></td></tr>
         <tr><td>by 21:00</td><td>C1 📣 Call everyone to the Desktop</td><td></td></tr>
@@ -1233,8 +1234,9 @@ Windows (PowerShell):
 <section class="win" id="deploy">
   <h2><span>Before the night: the pending deploy</span><span class="btns" aria-hidden="true"><i></i><i></i><i></i></span></h2>
   <div class="body">
-    <p class="prose">The VPS still runs <code>w18b-1021</code> (verify: <code>ssh loom-vps 'tail ~/loom-ops/releases.log'</code>). Master holds wave 18b stage B, waves 20, 20b, 21, 22, 23, 24, 25 and 26, all unshipped. Wave 19 is already live. Wave 26 lands in its contract's C14 order: the server, the sync, the reload of every screen, then the Quest APK. In this order:</p>
+    <p class="prose">The VPS runs <code>w56</code> (verify: <code>ssh loom-vps 'tail ~/loom-ops/releases.log'</code>). <strong>Wave 58, the Oct 30 story, is not shipped.</strong> Land it first, as the first box below says, then whatever the older deploys still owe on the house machines.</p>
     <ul class="check" data-list="deploy">
+      <li><input type="checkbox" id="ck-deploy-wave-58-in-this-order-shownight"><label for="ck-deploy-wave-58-in-this-order-shownight"><strong>Wave 58, in this order</strong> (<code>SHOWNIGHT.md</code> §1): H1–H3's answers in <code>facts.json</code> and <code>titi:facts</code>; merge; <code>scripts/ops/predeploy.sh --vr</code>; the roster, in its own step; <code>ship.sh</code>; only then the 10:00 sync, with no <code>--replace-*</code>; the MacBook's <code>git pull</code> and <code>agents</code> restart together, then Run → Mind → Reset (a sync never reaches his persona or mind); reload the TV, every terminal, the tablets, the tent and every booth before 17:00; print only after the sync; re-set the keypad by hand before 15:00.</label></li>
       <li><input type="checkbox" id="ck-deploy-the-sign-off-is-done-2026"><label for="ck-deploy-the-sign-off-is-done-2026"><strong>The sign-off is done</strong> (2026-10-27): waves 13–29 ship as written. Still DRAFT: wave 22's patch-bay lines (no sheet) and wave 32's talk-back lines (<code>SIGNOFF-w32.md</code>; shipping as written).</label></li>
       <li><input type="checkbox" id="ck-deploy-check-the-preview-s-roster-in"><label for="ck-deploy-check-the-preview-s-roster-in"><strong>Check the preview's roster in its own step</strong> (<code>pnpm showctl roster</code>). If anyone is on, ask before shipping: a release restarts the server.</label></li>
       <li><input type="checkbox" id="ck-deploy-on-the-macbook-scripts-ops-predeploy"><label for="ck-deploy-on-the-macbook-scripts-ops-predeploy">On the MacBook: <code>scripts/ops/predeploy.sh --vr</code> (the full gate; stamps the commit). Also <code>pnpm --filter @loom/core show:page --check</code>.</label></li>
@@ -1250,7 +1252,7 @@ Windows (PowerShell):
       <li><input type="checkbox" id="ck-deploy-steph-s-laptop-flash-the-wave"><label for="ck-deploy-steph-s-laptop-flash-the-wave">Steph's laptop: flash the wave 22 firmware from <code>hardware/server-room-m4</code> (door + patch bay; <code>LED_PULSED</code>, the LED on D23), run the bench checks (<code>scripts/accept/N-20.sh</code> for the door, <code>N-21.sh</code> for the bay, then <code>pb save</code>), open the terminal once without <code>--kiosk</code>, grant the camera and the port, <strong>calibrate the door in ⚙ (always after a reflash)</strong>, check the patch bay's live table, relaunch in kiosk.</label></li>
       <li><input type="checkbox" id="ck-deploy-reload-every-terminal-the-tv-and"><label for="ck-deploy-reload-every-terminal-the-tv-and">Reload every terminal, the TV and the tent laptop (mandatory since wave 26: an old bundle refuses the new maps); check every device's build stamp on Run → Terminals. Set the TV's ⚙ pace to <strong>0.92×</strong> (a TV set up before keeps 1.00×; <code>tv-kiosk.ps1 -Setup</code> re-opens its link, which sets it). Touch each tablet once (its 🎤 must not read <em>tap</em>).</label></li>
       <li><input type="checkbox" id="ck-deploy-quest-after-the-server-ships-re"><label for="ck-deploy-quest-after-the-server-ships-re">Quest, after the server ships: re-export and sideload, <code>reinstall/vr/tools/quest.sh build</code> then <code>install</code> (an old APK has no void, heart or disk); allow the microphone in the lobby, check the lobby's build stamp, then HW-TENT-07.</label></li>
-      <li><input type="checkbox" id="ck-deploy-program-the-keypad-by-hand-to"><label for="ck-deploy-program-the-keypad-by-hand-to">Program the keypad by hand to <code>facts.json</code> <code>door.code</code> and test it from outside; the inside handle opens with no code.</label></li>
+      <li><input type="checkbox" id="ck-deploy-re-set-the-keypad-by-hand"><label for="ck-deploy-re-set-the-keypad-by-hand">Re-set the keypad by hand to <code>facts.json</code> <code>door.code</code> (wave 58 changed it) before the 15:00 test, and test it from outside; the inside handle opens with no code.</label></li>
       <li><input type="checkbox" id="ck-deploy-door-test-a-real-open-shut"><label for="ck-deploy-door-test-a-real-open-shut">Door test: a real open → shut → open shows 🚪 on Run → Terminals within a second, no fault, no override; then 🔄 <em>Server room: reset the patch-bay alarm</em> (<code>reset_server_room</code>), and 🚪 <em>Trust the door sensor again</em> (<code>server_door_trust</code>) if anyone pressed a 🚪.</label></li>
       <li><input type="checkbox" id="ck-deploy-reprints-after-the-sign-off-clippy"><label for="ck-deploy-reprints-after-the-sign-off-clippy">Reprints after the sign-off: Clippy, the director and second-director packs, the four Antivirus, the hosts, all-crew, the patch-bay watch card, the emergency card, Excel's and OpenOffice's sheets, every featured card, the Bingo card, Combo A's two halves. Wave 23: the badges (Run → Print sheet → Badges) and the cast cards. Wave 26: Clippy, Task Manager, Norton, McAfee, Password Manager, CRA, the director, the Installation Wizard and Microsoft Excel (<code>SIGNOFF-w26.md</code>).</label></li>
     </ul>
@@ -1439,8 +1441,9 @@ Windows (PowerShell):
       <li><code>SIGNOFF-w29.md</code> (the immersion fixes at his heart and in G11): signed off 2026-10-27.</li>
       <li>Wave 22's patch-bay lines (<code>DRAFT w22</code>) have no sheet.</li>
       <li><code>SIGNOFF-w32.md</code> (the talk scenes: the punched-up beats, the Talk card's canned lines, the ⚡ burst lines, his stage voice): <strong>DRAFT, shipping as written</strong> at the user's word, like <code>DRAFT w22</code>; seven feel questions to confirm.</li>
-      <li>Reprint now: Clippy, Task Manager, Norton, McAfee, Password Manager, CRA, the director, the Installation Wizard, Microsoft Excel, Adobe Acrobat, the Recycling Bin, all-crew and the patch-bay watch card.</li>
-      <li><code>facts.json</code>: all eight questions and 16 of 20 truths are still marked draft.</li>
+      <li><code>SIGNOFF-w58.md</code> (the Oct 30 story): <strong>DRAFT, not shipped.</strong> The discrepancy log, every edit to the delivered text, every word we wrote, the checks and the print list. H1–H3's answers are owed before the print.</li>
+      <li>Reprint now: Clippy, Task Manager, Norton, McAfee, Password Manager, CRA, the director, the second director, the tech op, the house manager, the Mind card, the Installation Wizard, Microsoft Excel, Adobe Acrobat, the Recycling Bin, all-crew and the patch-bay watch card.</li>
+      <li><code>facts.json</code>: all eight questions still carry the draft mark.</li>
     </ul>
   </div>
 </section>

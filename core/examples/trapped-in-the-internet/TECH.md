@@ -50,7 +50,7 @@ The event server itself runs on the VPS at `app.mapsandducks.com`
 | Living room RGB LED strip + WeGoIOT ESP32 controller (WLED) | 6200 LEDs over 10 m (32.8 ft) on a 24 V / 6 A supply; WLED's brightness limiter at about 5500 mA. On the house Wi-Fi; MQTT to the Desktop's broker on `:1884` as `props`, device topic `wled/living` (`lights.json` fixture `living-strip`); stagehand sends `wled/living/api`. No presets. Its chip, pixel count and data GPIO: read off the strip / board at setup. | `scripts/house-desktop/README.md` §6 |
 | Server-room RGB bulb | Zigbee name `server_room_rgb`, `power_on_behavior: on`. The room's only light, so its safety light: `lights.json` never takes it below 80 / 254. 13 `heart_*` looks. Any colour bulb (a Hue or a ZL1). | `scripts/house-desktop/README.md` §5; the map editor's 💡 Lights tab |
 | Grand Central M4 | Door sensor (an LED into an LDR on A14) and the patch bay (16 jacks, 8 live: sources B2 B4 B7 B8, inputs A4–A7 on pins A0–A3). Firmware in `hardware/server-room-m4/`. | `scripts/accept/N-20.sh` (door), `scripts/accept/N-21.sh` (bay) |
-| The keypad lock | Standalone, set by hand, never networked. Outside only: the inside handle always opens with no code. | By hand; the code lives in `facts.json` `door.code` and nowhere else |
+| The keypad lock | Standalone, set by hand, never networked. Outside only: the inside handle always opens with no code. Wave 58 changed the code: nothing carries it to the lock, so it is re-set by hand before the 15:00 test. | By hand; the code lives in `facts.json` `door.code` and nowhere else |
 | Phones | Guests join at `https://app.mapsandducks.com/` (or the join QR). Performers and hosts sign in with the performer code. Android phones and performer booths get push alerts; iPhones only through the Home Screen path when `LOOM_HOMESCREEN=on`. | — |
 | Director phone | The cue sheet on a phone: `https://app.mapsandducks.com/?role=director` (moderator passcode + a name). | `docs/help/play/13-director-phone.md` |
 
@@ -128,6 +128,18 @@ over `:1884` in the fallback) → the speakers. So:
 
 A story `sound X` does not take this path: the router reads the server's
 feed itself.
+
+## What reaches what
+
+Wave 58 touched all four at once, and each path carries only its own part.
+
+| Change | Reaches the show by |
+|---|---|
+| The story, `facts.json`, the project's files | `pnpm sync-show`, with its reload, before the doors |
+| The server, the terminal and phone bundles | `scripts/ops/ship.sh`, first; then reload every screen and booth |
+| Trabolta's persona, his mind, the door code's never-list | The MacBook only: `git pull` and `launchd restart --job agents` together, then Run → Mind → Reset. They load at boot; a sync never touches them |
+| The keypad's code | By hand, before the 15:00 test |
+| Anything printed | After the sync: the print sheet prints what the event holds |
 
 ## The sound router: Desktop (default) or MacBook (fallback)
 
