@@ -49,10 +49,11 @@ describe("K-12 print extras", () => {
   it("the show prints a sign for every room the check-in rule handles", () => {
     const sim = Sim.fromSources(scenarioSource("trapped-in-the-internet"));
     const ids = checkinSigns(sim.model, "https://a", "E", "s3cret").map((s) => s.id);
-    for (const room of ["The Desktop", "The Start Bar", "The CPU", "The Power Supply", "The Tube", "Disk Cleanup", "The Cloud", "The RAM", "The Fan Closet", "The Casino", "The Hard Drive"]) expect(ids).toContain(room);
+    for (const room of ["The Desktop", "The Start Bar", "The CPU", "The Power Supply", "Disk Cleanup", "The Cloud", "The RAM", "The Fan Closet", "The Casino", "The Hard Drive"]) expect(ids).toContain(room);
     expect(ids).not.toContain("The Optical Drive");
     expect(ids).not.toContain("The Internet");
     expect(ids).not.toContain("The Server Room"); // locked: a visit would reveal it early
+    expect(ids).not.toContain("The Tube"); // a way through: nothing opens it, so a card could never work
   });
 
   it("lists a cast card per performer part — never a program, an agent or a prop", () => {

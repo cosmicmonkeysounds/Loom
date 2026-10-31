@@ -43,7 +43,7 @@ describe("the lock", () => {
   });
 
   it("names no code when it reports, for any kind", () => {
-    const moved = diff(edit("LOCATION The Tube", "LOCATION The Tubes"));
+    const moved = diff(edit("LOCATION The RAM", "LOCATION The RAMs"));
     const codes = items(SHOW).filter((i) => i.kind === "codex").map((i) => i.identity);
     expect(lockReport(moved).some((line) => codes.some((c) => line.toLowerCase().includes(c)))).toBe(false);
   });
@@ -60,11 +60,11 @@ describe("what a story edit does to a printed QR", () => {
   });
 
   it("a renamed room is one gone and one new, and nothing else moves", () => {
-    const d = diff(edit("LOCATION The Tube", "LOCATION The Tubes"));
+    const d = diff(edit("LOCATION The RAM", "LOCATION The RAMs"));
     expect(lockBroken(d)).toBe(true);
     expect(d.gone).toEqual({ room: 1 });
     expect(d.moved).toEqual([]);
-    expect(d.added.map((i) => [i.kind, i.name])).toEqual([["room", "The Tubes"]]);
+    expect(d.added.map((i) => [i.kind, i.name])).toEqual([["room", "The RAMs"]]);
   });
 
   it("a printed room the story no longer opens is named: the link is the same, the sign never works", () => {
@@ -80,7 +80,7 @@ describe("what a story edit does to a printed QR", () => {
   });
 
   it("a room that stops taking check-ins breaks its sign", () => {
-    const d = diff(edit("LOCATION The Tube\n", "LOCATION The Tube\n  checkin: false\n"));
+    const d = diff(edit("LOCATION The RAM\n", "LOCATION The RAM\n  checkin: false\n"));
     expect(d.gone).toEqual({ room: 1 });
   });
 

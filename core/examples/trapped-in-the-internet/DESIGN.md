@@ -2255,9 +2255,9 @@ when checked_in for program:
     set program.checked_in = "The Start Bar"
     set program.checked_in_time = Time.elapsed
     reply 📍 Checked in at the Start Bar.
-  … one arm each for The CPU, The Power Supply, The Tube, Disk Cleanup, The Cloud, The RAM,
-    The Fan Closet, The Casino, The Hard Drive (never The Internet, The Optical Drive
-    or The Server Room); the new rooms' replies hint at what is hidden there …
+  … one arm each for The CPU, The Power Supply, Disk Cleanup, The Cloud, The RAM,
+    The Fan Closet, The Casino, The Hard Drive (never The Internet, The Optical Drive,
+    The Tube or The Server Room); the new rooms' replies hint at what is hidden there …
   else:
     reply That check-in point is not in this computer.
 ```

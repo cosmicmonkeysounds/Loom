@@ -1232,13 +1232,13 @@ coat in the Fan Closet, the sketchbook in the Casino, and "nobody is
 supposed to be up here" in the Hard Drive.
 
 **Location check-in posters:** one per house LOCATION except The Internet,
-The Optical Drive and The Server Room (print the Disk Cleanup sign twice,
+The Optical Drive, The Tube, The Script and The Server Room (print the Disk Cleanup sign twice,
 one per bathroom), printed by the Print sheet with a
 `?checkin=` QR (K-13). A guest scans it to check in (`checked_in` with
 `at` = the exact LOCATION name); an Antivirus can still read the room name
 off it. Every room's first check-in has a small surprise (M27): the five
-clue rooms point at their clue, and the other six (the Desktop, the Start
-Bar, the Tube, Disk Cleanup, the Cloud, the RAM) give a one-time 📎 aside,
+clue rooms point at their clue, and the other five (the Desktop, the Start
+Bar, Disk Cleanup, the Cloud, the RAM) give a one-time 📎 aside,
 once per program, with no codex or coin. **Guest passes, performer cards and featured claim
 codes** are software (CHECKLIST); the story needs nothing more.
 

@@ -5957,10 +5957,10 @@ describe("Trapped in the Internet — wave 6 (story lane)", () => {
     ]);
   });
 
-  it("M27: the six plain rooms' first check-in has a one-time aside; no codex, no coin", () => {
+  it("M27: the five plain rooms' first check-in has a one-time aside; no codex, no coin", () => {
     const sim = boot();
     const said = (evs: SimEvent[]) => replies(evs).filter((r) => r.to === "g1").map((r) => r.text);
-    for (const room of ["The Desktop", "The Start Bar", "The Tube", "Disk Cleanup", "The Cloud", "The RAM"]) {
+    for (const room of ["The Desktop", "The Start Bar", "Disk Cleanup", "The Cloud", "The RAM"]) {
       const codex = sim.codexFor("g1").length;
       const score = sim.scoreOf("g1");
       const first = said(fire(sim, "checked_in", "g1", { at: room }));

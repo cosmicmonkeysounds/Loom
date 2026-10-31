@@ -155,10 +155,13 @@ LOCATION The Optical Drive
   ambient: pitch-black
   cutscene: true
 
+// No sign (wave 59): the halls and stairs are a way through, never a stop,
+// and nothing reveals the room, so its card could never work.
 LOCATION The Tube
   label: The Tube (hall + stairs)
   ambient: cable-rattle
   hidden: true
+  checkin: false
 
 LOCATION The Internet
   label: The Internet (Reinstallation — backyard)
@@ -393,7 +396,6 @@ ROLE Program
   escrowed: 0 to 99999 = 0
   aside_desktop: bool = false
   aside_start_bar: bool = false
-  aside_tube: bool = false
   aside_disk_cleanup: bool = false
   aside_cloud: bool = false
   aside_ram: bool = false
@@ -2554,14 +2556,6 @@ ROLE Program
       set program.checked_in_time = Time.elapsed
       // DRAFT w59 (the room was the Steam Room; the tube stays behind the games)
       reply 📍 Checked in at the Power Supply. Everything in here hums like it is one plug away from a blackout. Something is rolled up in a cardboard tube behind the games.
-    else if at == "The Tube":
-      move program to The Tube
-      set program.checked_in = "The Tube"
-      set program.checked_in_time = Time.elapsed
-      reply 📍 Checked in at the Tube.
-      if program.aside_tube != true:
-        set program.aside_tube = true
-        reply 📎 Every light in the Tube blinks once, all together, as if it recognises you.
     else if at == "Disk Cleanup":
       move program to Disk Cleanup
       set program.checked_in = "Disk Cleanup"
