@@ -80,11 +80,11 @@ beats/server-room.loom Act III: Majority Reached · The Whole Truth · The Heart
                        Disabled · Computer Destroyed · Purgatory
                        (wave 18b deleted Back To The Heart); wave 20's heart: Heart Nag ·
                        Heart Door Again · Heart Door Shut · Heart Sealed · Heart Shut It ·
-                       Heart Talk · Heart Layers · Heart Layer One–Four · Heart Evidence ·
+                       Heart Talk · Heart Layers · Heart Layer One–Three · Heart Evidence ·
                        Heart Reasons (wave 27: Layer Three's sub-menus) · Heart Speak ·
                        Heart Pick · Heart Warn · Heart Eject · Heart Mark · Heart Barred ·
-                       Heart Leave · Heart Away · Heart Convinced · Heart Return · Heart
-                       Shutdown (wave 20b deleted Heart Not Yet and Heart Call)
+                       Heart Leave · Heart Away · Heart Heard (wave 20b deleted Heart Not Yet
+                       and Heart Call; wave 58 deleted the talk-down)
 beats/finale.loom      Final Reveal · Bobbing For Truth · The Bag Of Truth · Final Assessment
                        · Truth Txt · The Verdict · Song Ending · Grok Prom · Pickup Line ·
                        Sad Confession · Relationship Advice · Advice Helped · Advice
