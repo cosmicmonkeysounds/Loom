@@ -1,6 +1,6 @@
 // The server-room M4 (Trapped in the Internet, waves 20 + 22): an Adafruit
 // Grand Central M4 on Steph's laptop that reads an LED shining on an LDR
-// across the server-room door (lit = shut) and the patch bay's seven inputs,
+// across the server-room door (lit = shut) and the patch bay's four inputs,
 // and reports both as JSON lines over USB serial, 115200. The server-room
 // terminal page reads them with Web Serial and posts door_sensor_opened /
 // door_sensor_closed and patch_changed {combo} to the event; nothing here

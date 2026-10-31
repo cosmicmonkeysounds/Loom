@@ -99,15 +99,15 @@ struct Probe {
 
 struct Pins {
   virtual void led(bool on) = 0;
-  virtual uint16_t ldr() = 0;    // one 12-bit read of A0
-  virtual uint16_t sense() = 0;  // one 12-bit read of A1 (only with LED_SENSE)
+  virtual uint16_t ldr() = 0;    // one 12-bit read of A14
+  virtual uint16_t sense() = 0;  // one 12-bit read of A4 (only with LED_SENSE)
   virtual void wait(uint32_t ms) = 0;  // blocking; only the boot probe uses it
   virtual ~Pins() {}
 };
 
-// One throwaway read first: since 1.2.0 the bay scans A2–A8 between the
-// door's frames, and the first read after the ADC's mux moves carries the
-// last pin's charge into A0's high-impedance divider (patch.h does the same).
+// One throwaway read first: since 1.2.0 the bay scans its inputs (A0–A3) between
+// the door's frames, and the first read after the ADC's mux moves carries the
+// last pin's charge into A14's high-impedance divider (patch.h does the same).
 inline uint16_t average(Pins& p, uint16_t (Pins::*read)()) {
   (void)(p.*read)();
   uint32_t s = 0;

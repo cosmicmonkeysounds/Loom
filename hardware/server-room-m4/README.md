@@ -45,7 +45,7 @@ test/
 | A bright LED (5 mm) + its resistor | on the door edge or the opposite jamb, aimed at the LDR. Today: switched by **D23** (the pulsed wiring below) |
 | **A shroud tube**: 2–3 cm of black heat-shrink or a black straw | over the LDR, open end toward the LED: keeps room light off the cell (the most important part for a stable reading, and the only defence the steady wiring has) |
 | For the pulsed wiring: an NPN (2N3904 / PN2222 / 2N2222) + 1 kΩ, **or** a red LED + 220 Ω | B below: keeps today's 5 V LED and its resistor; A: a red LED straight off D2 |
-| Optional: 47 Ω | the LED sense resistor (A1), below |
+| Optional: 47 Ω | the LED sense resistor (A4), below |
 | 3-core cable, a long micro-USB cable | the LED and LDR may sit a few metres from the board |
 
 ## Wiring
@@ -130,14 +130,14 @@ wiring**: the beam is gone either way (`lit`, or `lit − dark`, falls), so
 the LDR alone can't tell the two apart. With it, a dead LED is the blocking
 fault `led_dead` (the terminal then posts nothing, and Run shows it).
 
-Put **47 Ω as the last thing before GND** in the LED's path and wire **A1
+Put **47 Ω as the last thing before GND** in the LED's path and wire **A4
 to the top of the 47 Ω**; then set `LED_SENSE 1` in `config.h`. While the
-LED is driven, A1 reads `I · 47 Ω` (≈ 0.2–0.9 V); a dead LED reads 0.
+LED is driven, A4 reads `I · 47 Ω` (≈ 0.2–0.9 V); a dead LED reads 0.
 
-- Steady (5V): `5V ─[its resistor]─►|─┬─[47 Ω]─ GND`, A1 on the `┬`.
-- Pulsed A: `D2 ─[220 Ω]─►|─┬─[47 Ω]─ GND`, A1 on the `┬` (≈ 290).
+- Steady (5V): `5V ─[its resistor]─►|─┬─[47 Ω]─ GND`, A4 on the `┬`.
+- Pulsed A: `D2 ─[220 Ω]─►|─┬─[47 Ω]─ GND`, A4 on the `┬` (≈ 290).
 - Pulsed B: **no sense wire.** With the transistor off the collector floats
-  up toward 5 V, which A1 must never see.
+  up toward 5 V, which A4 must never see.
 
 ### Both
 
