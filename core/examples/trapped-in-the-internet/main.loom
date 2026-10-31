@@ -258,7 +258,7 @@ ROLE Program
   // orders and the virus files are `secret: true` CODEX entries
   // (codex/1-world.loom, 6-missions.loom). Wave 21: `tipped`, `slid` and
   // `slipped` (a player's quiet favour to this program) are secret too.
-  secret: carries_virus, planted_virus, excel_choice, openoffice_choice, dossier_started, dossier_base, dossier_start, left_behind_text, human_problem_text, inbox, video, help_at, help_asks, anti_ai, framed, fact_a1, fact_a2, fact_a3, fact_a4, fact_a5, fact_a6, fact_a7, fact_a8, fact_c1, fact_c2, fact_c3, fact_c4, fact_c5, fact_c6, fact_c7, fact_c8, fact_v1, fact_v2, fact_v3, fact_v4, fact_v5, fact_v6, fact_v7, fact_v8, fact_j1, fact_j2, fact_j3, fact_j4, fact_j5, fact_j6, fact_j7, fact_j8, fact_sure, fact_n, fact_try, fact_waiting, fact_q_round, last_fact_q, fact_label, fact_h1, fact_h2, fact_h3, fact_h4, fact_h5, fact_h6, fact_f1, fact_f2, lie_q1, lie_q2, lie_q3, lie_q4, lie_q5, lie_q6, lie_q7, lie_q8, hunt_lie_q1, hunt_lie_q2, hunt_lie_q3, hunt_lie_q4, hunt_lie_q5, hunt_lie_q6, hunt_lie_q7, hunt_lie_q8, quest.excel_mission, quest.openoffice_dossier, quest.find_the_exit, quest.truthcoin_hustle, quest.master_of_the_bugs, quest.unscramble, quest.ten_findings, from_jeeves, jeeves_told, quest.the_painting, paint_told, quest.the_gold_standard, quest.go_viral, quest.keep_the_ball_in_play, quest.recruit_to_stay, quest.recruit_to_leave, recruits, door_digits, quest.the_cold_door, whole_truth, quest.a_faction_of_your_own, tipped, slid, slipped
+  secret: questions_right, carries_virus, planted_virus, excel_choice, openoffice_choice, dossier_started, dossier_base, dossier_start, left_behind_text, human_problem_text, inbox, video, help_at, help_asks, anti_ai, framed, fact_a1, fact_a2, fact_a3, fact_a4, fact_a5, fact_a6, fact_a7, fact_a8, fact_c1, fact_c2, fact_c3, fact_c4, fact_c5, fact_c6, fact_c7, fact_c8, fact_v1, fact_v2, fact_v3, fact_v4, fact_v5, fact_v6, fact_v7, fact_v8, fact_j1, fact_j2, fact_j3, fact_j4, fact_j5, fact_j6, fact_j7, fact_j8, fact_sure, fact_n, fact_try, fact_waiting, fact_q_round, last_fact_q, fact_label, fact_h1, fact_h2, fact_h3, fact_h4, fact_h5, fact_h6, fact_f1, fact_f2, lie_q1, lie_q2, lie_q3, lie_q4, lie_q5, lie_q6, lie_q7, lie_q8, hunt_lie_q1, hunt_lie_q2, hunt_lie_q3, hunt_lie_q4, hunt_lie_q5, hunt_lie_q6, hunt_lie_q7, hunt_lie_q8, quest.excel_mission, quest.openoffice_dossier, quest.find_the_exit, quest.truthcoin_hustle, quest.master_of_the_bugs, quest.unscramble, quest.ten_findings, from_jeeves, jeeves_told, quest.the_painting, paint_told, quest.the_gold_standard, quest.go_viral, quest.keep_the_ball_in_play, quest.recruit_to_stay, quest.recruit_to_leave, recruits, door_digits, quest.the_cold_door, whole_truth, quest.a_faction_of_your_own, tipped, slid, slipped
   uploaded: bool = false
   cleared: bool = false
   captchas: 0 to 10 = 0
@@ -315,6 +315,11 @@ ROLE Program
   bingo: bool = false
   framed: bool = false
   truths_accepted: 0 to 20 = 0
+  // Wave 58: the questions this program got right (G9a, the special prize).
+  // Written only when G9a is pressed, and secret: a live count beside
+  // truths_accepted would tell Trabolta's worker who lied.
+  questions_right: 0 to 8 = 0
+  prize_seen: 0 to 99 = 0
   judge_q: 0 to 3 = 0
   judged_q1: bool = false
   judged_q2: bool = false
@@ -2871,6 +2876,24 @@ ROLE Program
       reply "!!🏆 You won {Night.award_title}! Come up to the TV for your trophy." with go: The Desktop
       fire present_award
 
+  // Wave 58: G9a, the special prize (SCRIPT: "the program who gets the most
+  // questions correct"). Each press counts every program's own questions,
+  // once a question, whichever way the answer reached the record: a 📝
+  // filing that stands accurate (or is still pending on an accurate
+  // proposal, The Verdict's own rule), or a spoken answer a host ✅ accepted
+  // and no 😤 took back. Never `truths_accepted`: it counts confident lies on
+  // purpose, and Clippy's 🤫 slides. A guess, a lie and a filing settled
+  // `marked` (no cup: Trabolta told them it did not count) score nothing. A
+  // question whose key is still owed (`Night.owed_*`, generated) counts for
+  // nobody, by either road. core/server/recap.ts reads the same, live.
+  when Night.prize_gen > self.prize_seen:
+    set self.prize_seen = Night.prize_gen
+    set self.questions_right = (Night.owed_h1 != true and (self.fact_v1 == "accurate" or (self.fact_v1 == "pending" and self.fact_j1 == "accurate") or (self.judged_q1 == true and self.hunt_lie_q1 != true))) + (Night.owed_h2 != true and (self.fact_v2 == "accurate" or (self.fact_v2 == "pending" and self.fact_j2 == "accurate") or (self.judged_q2 == true and self.hunt_lie_q2 != true))) + (Night.owed_h3 != true and (self.fact_v3 == "accurate" or (self.fact_v3 == "pending" and self.fact_j3 == "accurate") or (self.judged_q3 == true and self.hunt_lie_q3 != true))) + (Night.owed_h4 != true and (self.fact_v4 == "accurate" or (self.fact_v4 == "pending" and self.fact_j4 == "accurate") or (self.judged_q4 == true and self.hunt_lie_q4 != true))) + (Night.owed_h5 != true and (self.fact_v5 == "accurate" or (self.fact_v5 == "pending" and self.fact_j5 == "accurate") or (self.judged_q5 == true and self.hunt_lie_q5 != true))) + (Night.owed_h6 != true and (self.fact_v6 == "accurate" or (self.fact_v6 == "pending" and self.fact_j6 == "accurate") or (self.judged_q6 == true and self.hunt_lie_q6 != true))) + (Night.owed_f1 != true and (self.fact_v7 == "accurate" or (self.fact_v7 == "pending" and self.fact_j7 == "accurate") or (self.judged_q7 == true and self.hunt_lie_q7 != true))) + (Night.owed_f2 != true and (self.fact_v8 == "accurate" or (self.fact_v8 == "pending" and self.fact_j8 == "accurate") or (self.judged_q8 == true and self.hunt_lie_q8 != true)))
+
+  // The winner's phone; on a tie, each of theirs (G9a has no subject). DRAFT w58
+  when Night.award == "most_correct" and Night.prize_top > 0 and self.questions_right == Night.prize_top and self.cleared == true and self.gone != true and self.persona != true:
+    reply "!!🏆 You won {Night.award_title}! Come up to the TV for your prize." with go: The Desktop
+
   // ── Fan-out watchers (one run per program; late arrivals included) ──
   // Every one carries `self.cleared`, so a program still in the Optical Drive
   // hears nothing until an Antivirus scans it in.
@@ -3612,6 +3635,16 @@ INTERACTION award_quest_completionist
   label: G9 · 🎲 Bonus: Quest Completionist (value = quests done)
   who: admin
   while: Night.ceremony == true
+
+// Wave 58: the special prize the opening promises, the last of the programs'
+// scored awards. "G9a" so no G number moves (a cue's # after it moves down
+// one). No subject: the story counts and names the winner, as for the staff
+// awards. DRAFT w58 (the label and the description)
+INTERACTION award_most_correct
+  label: G9a · 🏅 Award: Most Questions Correct (the special prize; the story names the winner)
+  who: admin
+  while: Night.ceremony == true
+  description: The prize Trabolta promises when the hunt opens. The story counts each program's questions right: a filing that matched the key, or a spoken answer a host ✅ accepted, once a question. A confident lie never counts, and a question whose key is still owed counts for nobody. A tie names everyone tied and they share it. If nobody got one right the host says so and the night goes on. Press it again for the newest numbers. Lore Hoarder (G5) stays the prize for the most secrets.
 
 INTERACTION award_the_painting
   label: G10 · 🖌 Bonus: The Million Dollar Painting (winner = MS Paint; value = signatures)
@@ -6843,6 +6876,34 @@ when award_staff_mole:
     set Night.award_title = "The Mole"
     fire staff_award_won
 
+// G9a (wave 58): the special prize. A press has every program count itself
+// (ROLE Program); a pass of the watchers runs the programs' before the
+// story's, so this one reads their new numbers. Ties name everyone tied and
+// share the prize, as the reports do; nobody right is "Nobody", as for The
+// Mole. Read at the party: cleared, not gone, not a Run persona.
+when award_most_correct:
+  if Night.ceremony != true:
+    broadcast "🏆 Start the ceremony (G1) first: nothing was awarded." to channel(hosts)
+  else:
+    set Night.prize_gen += 1
+
+when Night.prize_gen > Night.prize_read:
+  set Night.prize_read = Night.prize_gen
+  set Night.prize_top = 0
+  set Night.prize_tied = 0
+  set Night.award_winner = "Nobody"
+  set Night.award_value = "none"
+  if count([p for p in Persons where p.cleared == true and p.gone != true and p.persona != true]) > 0:
+    set Night.prize_top = max([p.questions_right for p in Persons where p.cleared == true and p.gone != true and p.persona != true])
+  if Night.prize_top > 0:
+    set Night.prize_tied = count([p for p in Persons where p.cleared == true and p.gone != true and p.persona != true and p.questions_right == Night.prize_top])
+    set Night.award_winner = names([p for p in Persons where p.cleared == true and p.gone != true and p.persona != true and p.questions_right == Night.prize_top])
+    set Night.award_value = Night.prize_top
+  set Night.award = "most_correct"
+  set Night.award_title = "Most Questions Correct"
+  set Night.awards_given += 1
+  fire present_award
+
 // The winner's booth pops (TRAIT Player); The Mole is the last award.
 when staff_award_won:
   set Night.awards_given += 1
@@ -7045,6 +7106,11 @@ set Night.award_winner = "none"
 set Night.award_value = "none"
 set Night.awards_given = 0
 set Night.award_lines = "template"
+// Wave 58: the special prize (G9a), filled when it is pressed.
+set Night.prize_gen = 0
+set Night.prize_read = 0
+set Night.prize_top = 0
+set Night.prize_tied = 0
 // Wave 45: the Bathroom Report (G13), filled when it is read.
 set Night.bath_reported = 0
 set Night.bath_programs = 0

@@ -78,7 +78,8 @@ export const ADVICE_TALLY: readonly ChainStep[] = ["advice_tally"];
 
 /** The awards ceremony, after any ending and 📜 (with the reading over; a
  *  caller who won't wait presses G1 once first, the ask): G1, the programs'
- *  awards (each on its winner: the caller names who), the staff awards (no
+ *  awards (each on its winner: the caller names who; G9a's winner is the
+ *  story's), the staff awards (no
  *  subject; The Mole last), then G11. 🖌 The Painting is the caller's to add, on MS Paint,
  *  only when MS Paint is at the party (`Night.painting`). */
 export const CEREMONY: readonly ChainStep[] = [
@@ -91,6 +92,7 @@ export const CEREMONY: readonly ChainStep[] = [
   { name: "award_best_liar", who: "best_liar" },
   { name: "award_duck_speedrun", who: "duck_speedrun" },
   { name: "award_quest_completionist", who: "quest_completionist" },
+  "award_most_correct",
   "award_staff_trusted",
   "award_staff_points",
   "award_staff_mole",
