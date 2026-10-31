@@ -205,7 +205,7 @@ describe("hunt_results reads the filings off the wire", () => {
   it("a consensus shows the answer in a gold banner; nobody filed says so", () => {
     const q = { ...fakeReadQuestion(1, 3), consensus: true, answer: "Placeholder answer" };
     const html = text(draw("hunt_results", "tv", HISTORY_T, { results: { kind: "read", seq: 1, at: AT, questions: [q] }, ...read({ results_q: 1 }) }));
-    expect(html).toContain("CONSENSUS");
+    expect(html).not.toContain("CONSENSUS");
     expect(html).toContain("The answer is: Placeholder answer");
     const none = { ...fakeReadQuestion(3, 0), filed: 0 };
     const empty = text(draw("hunt_results", "tv", HISTORY_T, { results: { kind: "read", seq: 1, at: AT, questions: [none] }, ...read({ results_q: 3 }) }));
@@ -254,10 +254,8 @@ describe("the tally pages H4–H6, then lands its gauge", () => {
     expect(html).not.toContain("CONFIDENCE THAT WE WILL DEFEAT THE MALWARE");
     const g = tallyGauge(gauge);
     const landed = text(draw("round_two_tally", "tv", g.land + 2500, { results, night: { collection_complete: true } }));
-    expect(landed).toContain("61%");
+    expect(landed).toContain("TALLY COMPLETE"); // wave 59a: no number
     expect(landed).not.toContain("QUESTION 6");
-    // History: the number, held.
-    expect(text(draw("round_two_tally", "tv", HISTORY_T, { results, night: { collection_complete: false } }))).toContain("12%");
     // A question nobody filed is a short page that says so.
     const empty = { ...fakeReadQuestion(4, 0), filed: 0 };
     const e = tallyPages([empty]);
@@ -272,7 +270,7 @@ describe("the tally pages H4–H6, then lands its gauge", () => {
     expect(html).toContain("Q6");
     expect(html).toContain("filed");
     for (const r of fakeResults("read", { ns: [4, 5, 6], rows: 3 }).questions[0]!.rows!) expect(html).not.toContain(r.who);
-    expect(text(draw("round_two_tally", "wall", HISTORY_T, { results, night: { collection_complete: true } }))).toContain("61%");
+    expect(text(draw("round_two_tally", "wall", HISTORY_T, { results, night: { collection_complete: true } }))).not.toContain("61%");
   });
 });
 

@@ -162,13 +162,12 @@ describe("act 2's scenes draw", () => {
     const deaf = draw(tally, "tv", 14_000, stateAt(14_000));
     expect(deaf).toContain("TALLY COMPLETE");
     expect(deaf).not.toMatch(/\b(61|12)%/u);
-    // No voice lines (the poll after, a reload): the night's outcome, on the TV and the walls.
+    // Wave 59a: he says no number at the tally, so the night's outcome shows none.
     const night = (complete: boolean) => stateAt(14_000, { night: { ...EMPTY_NIGHT, collection_complete: complete } });
-    expect(draw(tally, "tv", 14_000, night(true))).toContain("61%");
-    expect(draw(tally, "tv", 14_000, night(false))).toContain("12%");
-    expect(draw(tally, "wall", 9000, night(true))).toContain("61%");
-    expect(draw(tally, "wall", 9000, night(false))).toContain("12%");
-    expect(draw(tally, "wall", 3000, night(true))).not.toMatch(/\b(61|12)%/u);
+    for (const complete of [true, false]) {
+      expect(draw(tally, "tv", 14_000, night(complete))).toContain("TALLY COMPLETE");
+      expect(draw(tally, "wall", 9000, night(complete))).not.toMatch(/\b(61|12)%/u);
+    }
     q.mockRestore();
   });
 
@@ -184,7 +183,7 @@ describe("act 2's scenes draw", () => {
     expect(one).toContain("LiveJournal");
     const four = draw(over, "tv", later, stateAt(later, { moments: beat("Overshare Four") }));
     expect(four).not.toContain("VIRUS DETECTED");
-    expect(four).toContain("continued cooperation");
+    expect(four).not.toContain("continued cooperation"); // Scenario 4 says nothing
     // A reload after the moments ring rolled past the beat: the night's scenario.
     const reloaded = stateAt(later, { night: { ...EMPTY_NIGHT, scenario: 1 } });
     expect(draw(over, "tv", later, reloaded)).toContain("VIRUS DETECTED");

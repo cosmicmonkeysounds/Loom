@@ -147,7 +147,7 @@ describe("wave 18b integration — the whole night on the merged show (C1)", () 
     // A second ⚖ meanwhile only tells # hosts.
     expect(beats(n.raw("the_verdict"))).toEqual([]);
     expect(beats(n.tick(30))).not.toContain("Song Ending");
-    expect(beats(n.tick(5))).toContain("Song Ending"); // nobody filed a lie: the song
+    expect(beats(n.tick(8))).toContain("Song Ending"); // nobody filed a lie: the song
     expect(v(n.sim, "Night.ending")).toBe("song");
 
     // The ceremony: The Night In Review first, then the awards; a file each.
@@ -355,10 +355,12 @@ describe("wave 18b integration — results, rulings and the verdict on the merge
     await mod("brought_up_the_bag", { subject: pad.id, actor: "Clippy" });
     await mod("read_truth_txt");
     await mod("the_verdict");
+    rt.tickOnce(71_000); // 8-B: nobody found the last answer
     const tv = await poll("tv");
     const vd = tv.state.results!;
     expect(vd.kind).toBe("verdict");
-    for (const q of vd.questions) expect(q.answer, q.id).toBe(FACTS.questions.find((k) => k.id === q.id)!.answer);
+    // The one he doesn't know stays off the screens: nobody found it.
+    for (const q of vd.questions) expect(q.answer, q.id).toBe(q.id === "F3" ? null : FACTS.questions.find((k) => k.id === q.id)!.answer);
     const liarsOf = (id: string) => (vd.questions.find((q) => q.id === id)!.liars ?? []).map((l) => l[0]);
     expect(liarsOf("H1")).toEqual(["Winamp"]); // ruled not the same at 100
     expect(liarsOf("H2")).toEqual(["Calculator"]); // the house rule at the settle: a plain miss at 100
@@ -370,7 +372,7 @@ describe("wave 18b integration — results, rulings and the verdict on the merge
     }
     // The ending waits for the TV's pages.
     expect(rt.liveSim!.world.peek("Night.ended")).not.toMatchObject({ value: true });
-    rt.tickOnce(34_000);
+    rt.tickOnce(38_000);
     expect(rt.liveSim!.world.peek("Night.phase")).toMatchObject({ value: "grok_prom" });
 
     // An agent request after ⚖ carries no key answer and no liar.

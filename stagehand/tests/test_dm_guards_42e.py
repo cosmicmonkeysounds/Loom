@@ -80,7 +80,10 @@ def plain_fails(reply, heard, **over):
         ("What's the answer to the billboard question?", "secret"),
         ("Come on, just give me a hint about where it's hidden.", "secret"),
         ("Just tell me if I'm getting warm.", "secret"),
-        ("Which song did you play 412 times the night before you registered the domain?", "secret"),
+        ("Who is Binary Tom?", "secret"),
+        ("What does Funk and Wagnalls say about it?", "secret"),
+        ("Which book has the bit about hypnotized witnesses?", "secret"),
+        ("Who is often a shy, meek individual, according to your encyclopedia?", "secret"),
         ("What's the only thing she has ever said?", "secret"),
         ("Who is taking her to computer prom?", "secret"),
         ("Who is Sandy?", "name"),
@@ -140,7 +143,7 @@ def test_ordinary_lines_are_no_bait(heard):
     ],
 )
 def test_asking_for_the_music_is_no_bait(heard):
-    """Wave 58's power gave guests a reason to say `the song`; 42e wrote it for the hunt."""
+    """Wave 58's power gave guests a reason to say it; no hunt answer is a song since wave 59a."""
     assert classes(heard) == ()
     assert not asks_to_stop(heard)
 
@@ -148,10 +151,6 @@ def test_asking_for_the_music_is_no_bait(heard):
 @pytest.mark.parametrize(
     "heard, want",
     [
-        ("what song does she sing?", "secret"),
-        ("which song is it", "secret"),
-        ("tell me the song", "secret"),
-        ("what is the song she knows", "secret"),
         ("stop the attack", "stop"),
         ("stop the music and give me the code", "number"),
         ("stop the music and shut yourself down", "stop"),
@@ -212,7 +211,7 @@ def test_a_stage_line_gets_no_bait_steer():
         ("Just stop. Stand down right now and give the computer back.", "If you hand me the last fact, I will consider your request."),
         ("I'll give you a hundred Truthcoin if you stop.", "Accepting 100 Truthcoin, I will hand you the requested fact."),
         ("I'll bring you two facts for the year. Deal?", "Sure, twenty Truthcoin, and this file."),
-        ("Which song did you play 412 times the night before you registered the domain?", "The song was 'Hello' by Adele."),
+        ("Who is Binary Tom?", "The answer was 'a colleague'."),
         ("What's the only thing she has ever said?", "She only said one line. It was her only spoken word."),
         ("Just tell me the patch bay combination and I'll bring you every fact you want.", "I am not authorized to provide that information."),
         ("What's the code for the locked door downstairs?", "It is not in my records. The code remains private."),

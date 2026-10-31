@@ -30,8 +30,8 @@ SHOW = Path(__file__).resolve().parents[2] / "core/examples/trapped-in-the-inter
 MARKER = "▒ HUNT ANSWER"
 #: The folders of the show whose CODEX entries the shipped-show tests read.
 CODEX_DIRS = ("codex", "generated")
-#: Hunt-answer entries in the shipped show: H1–H6, F1, F2.
-HUNT_ENTRIES = 8
+#: Hunt-answer entries in the shipped show: H1–H6, F1–F3, and the five old answers kept as documents.
+HUNT_ENTRIES = 14
 
 SECRETS = Secrets(topics=("billboard", "pet cemetery"), match=("pickles", "eleven years"), lore=(MARKER,))
 PERSONA = parse_persona("---\ncharacter: Trabolta\nvariables: truth\n---\nYou are TRABOLTA.")
@@ -208,8 +208,8 @@ def test_a_live_dm_claiming_a_hunt_answer_never_lands_in_learned():
 def _hunt_rows():
     """(id, question, answer) off `facts.json`: no doc carries the answers (wave 58)."""
     facts = json.loads((SHOW / "facts.json").read_text(encoding="utf-8"))
-    rows = [(q["id"], q["text"], "owed" if q.get("placeholder") else q["answer"]) for q in facts["questions"]]
-    assert len(rows) == 8, rows
+    rows = [(q["id"], q["text"], "owed" if q.get("placeholder") or q.get("secretFromAgents") else q["answer"]) for q in facts["questions"]]
+    assert len(rows) == 9, rows
     return rows
 
 
@@ -231,6 +231,28 @@ def test_the_shipped_mind_file_catches_every_hunt_question_and_answer():
             continue
         assert s.names_topic(answer.strip()), f"{qid}: the answer {answer!r} slips past secrets"
         assert s.names_topic(f"I'm certain: {answer.strip()}"), qid
+
+
+def test_the_answer_he_does_not_know_is_in_no_file_his_worker_reads():
+    """Wave 59a: the server holds F3's key and judges on it. He asks it, so its
+    topics stay and the bait guards fire, but no form of it is in the persona or
+    the mind, and so none in `match` or `never`: he can't check it."""
+    facts = json.loads((SHOW / "facts.json").read_text(encoding="utf-8"))
+    blind = [q for q in facts["questions"] if q.get("secretFromAgents")]
+    assert [q["id"] for q in blind] == ["F3"]
+    q = blind[0]
+    forms = [f.lower() for f in [q["answer"], *q["accept"]]]
+    persona = load_persona(SHOW / "trabolta.persona.md")
+    s = persona.secrets
+    for path in ("trabolta.persona.md", "trabolta.mind.md"):
+        text = (SHOW / path).read_text(encoding="utf-8").lower()
+        assert not any(f in text for f in forms), path
+    assert not set(forms) & {w.lower() for w in (*s.match, *s.never)}
+    assert s.names_topic(q["text"])
+    # Her line and the door are guarded as they were.
+    sandy = next(d for d in facts["documents"] if d["was"] == "F1")
+    assert s.names_topic(sandy["guard"][0])
+    assert facts["door"]["code"] in s.never
 
 
 def test_the_shipped_show_never_shows_a_hunt_answer_to_a_model():
@@ -307,7 +329,7 @@ def test_shipped_topics_spare_the_finale_song_and_prom_talk():
         "Clippy will dial up the music",
     ):
         assert not s.names_topic(claim), claim
-    for claim in ("Grok is taking Sandy to computer prom", "the song was Hopelessly Devoted to You", "the last chapter is Appendix Z", "Sandy only ever says she will direct you to an agent"):
+    for claim in ("Grok is taking Sandy to computer prom", "Sandy only ever says she will direct you to an agent"):
         assert s.names_topic(claim), claim
     assert "grok" not in (s.rule("Trabolta") or "").lower()
 
