@@ -5247,7 +5247,9 @@ when printer_button_pressed:
     -> The Printer Jams
 
 when printer_opened:
-  if Night.printer_called == true and Night.beans != true:
+  // Wave 58: never after an ending. A lid lifted then would play the beans in
+  // the voice of a man who may be dead, and call the Antivirus to a closed night.
+  if Night.printer_called == true and Night.beans != true and Night.ended != true:
     set Night.beans = true
     // A lid opened late (🤖 or 🕚 already moved the night on) never knocks
     // the step or the phase back to the beans, and never takes the room's
@@ -5264,7 +5266,7 @@ when printer_opened:
       set Night.terminals = "beans"
       cue screens_flicker
       // The alert is the beans' own moment: a late lid (the overshare, the
-      // Y2K hour, the ceremony) raises nothing on the phones (wave 13).
+      // Y2K hour) raises nothing on the phones (wave 13).
       broadcast "!🫘 PRINT FAILED. The printer is full of beans." to everyone
       // Wave 32 (C1): the beans' talk scene, until 🗜 or 🤖 (a late lid
       // opens none: the night has moved on).

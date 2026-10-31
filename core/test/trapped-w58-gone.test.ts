@@ -82,6 +82,26 @@ describe("he does not return (wave 58)", () => {
     expect(said(live.signal("fact answered", "g1", FILING), "Trabolta")).toEqual([expect.stringContaining("The record is closed")]);
   });
 
+  it.each(["patch_combo_a", "patch_combo_b"])("a late lid after %s plays no beans: nobody speaks, and the night stays ended", { timeout: SLOW }, (combo) => {
+    const sim = toY2K(false);
+    expect(v(sim, "Night.printer_called")).toBe(true);
+    expect(v(sim, "Night.beans")).toBe(false);
+    sim.signal(combo);
+    const composure = v(sim, "Trabolta.composure");
+    const e = sim.signal("printer_opened");
+    expect(said(e, "Trabolta")).toEqual([]);
+    expect(said(e, "Clippy")).toEqual([]);
+    expect(v(sim, "Night.beans")).toBe(false);
+    expect(v(sim, "Trabolta.composure")).toBe(composure);
+  });
+
+  it("the lid still plays the beans late, up to the ending", { timeout: SLOW }, () => {
+    const sim = toY2K(false);
+    expect(said(sim.signal("printer_opened"), "Trabolta")).not.toEqual([]);
+    expect(v(sim, "Night.beans")).toBe(true);
+    expect(v(sim, "Night.phase")).toBe("y2k");
+  });
+
   it("the walk still costs before his reveal (R4) and while he lives, in his voice", { timeout: SLOW }, () => {
     const before = boot();
     expect(v(before, "Trabolta.awake")).not.toBe(true);
