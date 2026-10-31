@@ -2348,11 +2348,12 @@ func _test_run_reset() -> void:
 		if str(s["id"]) != str(other["id"]):
 			back = s
 			break
+	var moved_line: String = Game.DUCK_MOVED_TRAIL if game.trail_revealed else Game.DUCK_MOVED
 	link.duck_changed.emit(back)
-	_check(game.hud.notice_text() == "%s %s" % [Game.RESET_DONE, Game.DUCK_MOVED], "reset: its line stays, with Gerald's added (%s)" % game.hud.notice_text())
+	_check(game.hud.notice_text() == "%s %s" % [Game.RESET_DONE, moved_line], "reset: its line stays, with Gerald's added (%s)" % game.hud.notice_text())
 	game._process(Game.NOTICE_TIME + 0.1)
 	link.duck_changed.emit(other)
-	_check(game.hud.notice_text() == Game.DUCK_MOVED, "reset: a later move is the plain line (%s)" % game.hud.notice_text())
+	_check(game.hud.notice_text() == moved_line, "reset: a later move is the plain line (%s)" % game.hud.notice_text())
 
 	link.session_over.emit("test")
 	await process_frame
