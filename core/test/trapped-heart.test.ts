@@ -1084,7 +1084,7 @@ describe("The Heart — secrets and the fiction (wave 20, D29)", () => {
         expect(wordHit(line, w), `${where} ~ ${w}`).toBe(false);
       }
     }
-    expect(PERSONA).toMatch(/fundraiser\nparty to restore the sign/u);
+    expect(PERSONA).toMatch(/fundraiser\nparty to restore the decrepit sign/u);
   });
 
   it("the persona's own spoken lines and the new situations stay inside his world", () => {
@@ -1125,6 +1125,7 @@ describe("The Heart — secrets and the fiction (wave 20, D29)", () => {
       "the bottle",
       "the ad attack",
       "the beans",
+      "your file has been read",
       "heart to heart",
     ]);
     const h2h = front.slice(front.indexOf("  - name: heart to heart"));

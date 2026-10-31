@@ -192,7 +192,7 @@ def test_placing_himself_inside_is_a_hit(line):
 @pytest.mark.parametrize(
     "line",
     [
-        "I live and work in Halifax, and I speak to you by video call.",
+        "I live and work in Halifax, and I speak to you by digital conference.",
         "I want every fact within the walls of this house.",
         "The house is a computer, and you are its programs.",
         "I am a model employer.",

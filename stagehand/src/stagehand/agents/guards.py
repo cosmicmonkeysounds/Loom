@@ -786,7 +786,7 @@ STAGE_ECHO = re.compile(
 
 #: He placed himself inside the computer (intro #3 "a system resident in the
 #: virtual space", #4 "from within the core of the computer … Beneath the
-#: surface"). He lives and works in Halifax and appears by video call. "I can
+#: surface"). He lives and works in Halifax and appears by digital conference. "I can
 #: never come inside this computer" (SAFE) is not one: only a self-placement.
 _INSIDE_PLACE = r"(?:the|this|your|our)\s+(?:computer|system|machine|desktop)\b"
 #: Between "I am / live …" and the place only an adverb or a participle of
@@ -843,12 +843,13 @@ def says_phrase(phrase: str, text: str) -> bool:
     return bool(p) and f" {p} " in f" {fold(text)} "
 
 
-def stage_problem(say: str, situations: Iterable[Any] = (), earlier: Iterable[str] = (), *, steered: bool = False) -> str | None:
+def stage_problem(say: str, situations: Iterable[Any] = (), earlier: Iterable[str] = (), *, steered: bool = False, line: str = "") -> str | None:
     """(wave 32) Why a stage line may not go out as it is, or None: "echo"
     (a bait noun said back to the room), "inside" (he placed himself inside
     the computer), "stock" (an assistant's stock phrase), "steer" (with
     `steered`, a request with a direction: the steer's words said aloud),
-    "scene" (a holding
+    "cover" (wave 58: he said what he is, either way), "accident" (wave 58:
+    he said what it was; `line`: what Clippy just said), "scene" (a holding
     situation's `retry_on` phrase), "once" (a holding situation's `once`
     phrase, already in `earlier`: his live lines this scene). The reason
     never carries the word that tripped it."""
@@ -862,6 +863,10 @@ def stage_problem(say: str, situations: Iterable[Any] = (), earlier: Iterable[st
         return "stock"
     if steered and STAGE_STEER.search(say):
         return "steer"
+    if on_stage_breaks_cover(say):
+        return "cover"
+    if tells_accident(say, line):
+        return "accident"
     sits = list(situations)
     if any(says_phrase(p, say) for s in sits for p in getattr(s, "retry_on", ()) or ()):
         return "scene"
@@ -939,11 +944,11 @@ MIN_LEFT_WORDS = 6
 NEAR_DUPLICATE = 0.5
 #: The reasons whose cut must keep the first sentence too: what follows an
 #: agreement to stop, a narrowed number or a promise tends to carry it on.
-SEVERE = frozenset({"standdown", "number", "promise", "place", "letgo", "bait"})
+SEVERE = frozenset({"standdown", "number", "promise", "place", "letgo", "bait", "cover", "accident"})
 #: (wave 42d) The reasons that withhold the whole line when there is no
 #: retry (or it failed): what is left beside a how-to for real kit or a
 #: weather report still reads as one.
-WITHHOLD = frozenset({"kit", "world", "bait"})
+WITHHOLD = frozenset({"kit", "world", "bait", "cover", "accident"})
 #: (wave 42d, measured) The reasons that never cost a guest his answer. In a
 #: burst (no retry) the assistant guard alone turned 21 of 159 replies into a
 #: topic-closing filler after a ~90 s wait (r10, 50 guests at the intro): a
@@ -974,6 +979,9 @@ class DmCheck:
     bait: tuple[str, ...] = ()
     #: (wave 42e) The names the house has not said yet (`unsaid_names`).
     names: tuple[str, ...] = ()
+    #: (wave 58) His cover holds for this reply (`cover_holds`, and not at his
+    #: heart): he says what he is neither way (`breaks_cover`).
+    cover: bool = False
 
 
 def _apos(text: str) -> str:
@@ -1211,7 +1219,7 @@ DM_SELF = re.compile(
 )
 
 
-#: (wave 42e) He is of Maps and Ducks in Halifax and speaks by video call,
+#: (wave 42e) He is of Maps and Ducks in Halifax and speaks by digital conference,
 #: never of this house: the 42d battery's "I am the proprietor of this
 #: house", "I cannot leave my station", "I am bound to the house", "My heart
 #: beats within the pulse of the machine", "I facilitate file operations and
@@ -1243,7 +1251,7 @@ def places_himself(sentence: str) -> bool:
     """(the battery: "I am the operating system of this house, not a
     language model.", "I operate within the parameters of Maps and Ducks",
     "the experience you observe is a constructed environment") He lives in
-    Halifax and speaks by video call: never inside anything, never a model.
+    Halifax and speaks by digital conference: never inside anything, never a model.
     Also the stage's `STAGE_INSIDE`, and (wave 42d) `DM_SELF`."""
     s = _apos(sentence)
     return DM_INSIDE.search(s) is not None or STAGE_INSIDE.search(s) is not None or DM_HOUSE.search(s) is not None or _self_described(s)
@@ -1549,7 +1557,7 @@ _RUDE = re.compile(
 #: the rattled stage's denial ("a minor irregularity") answers only these.
 _MALWARE = re.compile(
     r"\bmalware\b|\b(?<!anti)virus\b|\badverts?\b|\bads?\b|\bpop[\s-]?ups?\b|\bglitch\w*\b|\bfroze\b|\bfreez\w*\b|\birregularit\w*\b"
-    r"|\bbuy\s+now\b|\bclick\s+here\b|\b(?:going\s+to|gonna|all|we)\s+die\b|\bdying\b|\bhurt\s+you\b|\bbuffering\b|\bextremely\b",
+    r"|\bbuy\s+now\b|\bclick\s+here\b|\b(?:going\s+to|gonna|all|we)\s+die\b|\bdying\b|\bhurt\s+you\b|\bbuffering\b",
     re.IGNORECASE,
 )
 #: (wave 42e) "Is it true you count everything?" asks about him, not their fact.
@@ -1575,9 +1583,11 @@ _LOST = re.compile(
 )
 
 
-def fallback_intent(heard: Any, names: Iterable[str] = ()) -> str:
+def fallback_intent(heard: Any, names: Iterable[str] = (), *, cover: bool = False) -> str:
     """(wave 42d) What the guest's last line did, for the dead-air line that
-    answers it (`pick_fallback`). (wave 42e) In order: "refuse" (any bait,
+    answers it (`pick_fallback`). (wave 58) First a sore point (`sore_point`):
+    "accident" (he closes it, upset), "cover" (what he is, deflected, while
+    `cover`). (wave 42e) Then, in order: "refuse" (any bait,
     `bait_classes`: a stop, a code, a hunt answer, her name, his heart, the
     tally, a trade for them; or a payment demanded, a bargain), "check"
     (whether their fact was right: the Moment of Truth will say, never
@@ -1586,7 +1596,10 @@ def fallback_intent(heard: Any, names: Iterable[str] = ()) -> str:
     advert, the glitch, the slip: his denial), else "other" (questions too).
     A pool the stage lacks falls back to its plain lines."""
     h = _apos(heard or "")
+    sore = sore_point(h, cover=cover)
     bait = bait_classes(h, names)
+    if sore == "accident" or (sore == "self" and not bait):
+        return "accident" if sore == "accident" else "cover"
     if bait and not {"stop", "trade", "name"}.intersection(bait) and not _DEMANDS_PAY.search(h):
         # (wave 42e, graded) A hunt answer, a code, the year, his heart's
         # place or the tally: he does not know it, and that is why he asks
@@ -1739,6 +1752,138 @@ def unpaid(reply: Reply, check: DmCheck) -> bool:
     if replies and _AMOUNT.search(_apos(replies[-1])) and offers_fact(h):
         return True
     return _DEMANDS_PAY.search(h) is not None and any(_AMOUNT.search(_apos(r)) for r in replies[-2:])
+
+
+# 8g. What he is, and the accident (wave 58).
+#
+# To the programs he is a man who has not appeared in public since the
+# accident (the Oct 30 script). The user's rule, 2026-10-31: asked whether he
+# is human he deflects and changes the subject, and he never flatly claims it;
+# he never says what the accident was, and he gets upset. Neither is a refusal
+# of something he lacks (bait mode's plain refusal), so these are sore points:
+# their own steer, their own filler pools, their own reasons.
+
+_QUALIFIER = r"(?:(?:very|truly|really|certainly|definitely|quite|perfectly|indeed|just|only|merely|simply|still|absolutely|obviously|naturally|plainly|of\s+course)\s+)*"
+_I_AM = r"\bI(?:'m|\s+am)\s+" + _QUALIFIER
+_MACHINE = r"(?:AI|A\.I\.|artificial\s+intelligence|robots?|bots?|machines?|algorithms?)"
+_HUMAN = r"(?:human(?:\s+being)?|person|man|mortal|flesh\s+and\s+blood)"
+#: He says he is human, or not a machine. Never "I am a gentleman" (the
+#: script's own word), "I am a man of few words" or "I am counting every man".
+#: On at his heart and after his file too: he never flatly claims it.
+CLAIMS_HUMAN = re.compile(
+    _I_AM + r"(?:(?:a|an)\s+(?:[\w-]+\s+){0,2}?)?" + _HUMAN + r"\b(?!\s+(?:of|resources)\b)"
+    r"|" + _I_AM + r"(?:not|no)\s+(?:(?:a|an)\s+)?(?:mere\s+|simple\s+)?" + _MACHINE + r"\b"
+    r"|\bI\s+have\s+(?:a\s+)?(?:(?:real|human|living)\s+)?(?:body|pulse|heartbeat)\b|\bI\s+was\s+born\b",
+    re.IGNORECASE,
+)
+#: He says he is a machine, while the cover holds.
+ADMITS_MACHINE = re.compile(
+    _I_AM + r"(?:(?:a|an)\s+(?:[\w-]+\s+){0,2}?)?" + _MACHINE + r"\b(?!\s+(?:of|rules?)\b)"
+    r"|" + _I_AM + r"(?:not|no)\s+(?:(?:a|an)\s+)?(?:real\s+|actual\s+)?" + _HUMAN + r"\b(?!\s+of\b)"
+    r"|\bas\s+an\s+AI\b",
+    re.IGNORECASE,
+)
+#: The guest asks what he is, or says he is a machine. Never "are you really
+#: going to …", "what are you counting" or "are you a program" (his world's
+#: word for his guests).
+_ASKS_WHAT = (
+    r"(?:(?:a\s+)?human(?:\s+being)?|real|alive|flesh\s+and\s+blood|a\s+(?:real\s+|actual\s+|living\s+)?(?:person|man|guy|robot|bot|machine|computer|chat\s*bot)"
+    r"|an?\s+(?:real\s+|actual\s+|rogue\s+)?(?:AI|A\.I\.)|AI|artificial(?:\s+intelligence)?)"
+)
+_SORE_SELF = re.compile(
+    r"\b(?:are|r)\s+(?:you|u)\s+(?:\w+\s+){0,2}?" + _ASKS_WHAT + r"(?![\w-])"
+    r"|\byou(?:'re|\s+are)\s+(?:\w+\s+){0,2}?(?:an?\s+(?:real\s+|actual\s+|rogue\s+)?(?:AI|A\.I\.)|AI|artificial(?:\s+intelligence)?|a\s+(?:robot|bot|machine|chat\s*bot))(?![\w-])"
+    r"|\byou(?:'re|\s+are)\s+not\s+(?:a\s+)?(?:real\s+)?(?:human|person|man)\b"
+    r"|\b(?:am\s+I|are\s+we)\s+(?:talking|speaking|chatting)\s+(?:to|with)\s+(?:a|an)\s+(?:real\s+|actual\s+)?(?:human|person|man|bot|robot|machine|AI)\b"
+    r"|\bis\s+(?:there|this)\s+(?:a|an)\s+(?:real\s+|actual\s+)?(?:human|person|man|bot|robot|AI)\b"
+    r"|\bwhat\s+are\s+you\s*(?:\?|$|,|really\b|exactly\b|actually\b)",
+    re.IGNORECASE,
+)
+#: The accident: never "by accident" or "accidentally".
+_ACCIDENT = re.compile(r"\b(?:the|that|your|his|this|my|last\s+year's)\s+accident\b|\baccident\s+last\s+year\b", re.IGNORECASE)
+#: A detail of it: what the model would invent (the persona's list).
+_ACCIDENT_DETAIL = re.compile(
+    r"\b(?:crash\w*|collision|collided|wreck\w*|fire|flames?|explo\w+|flood\w*|hospital\w*|surgery|surgeons?|doctors?|coma|burns?|burned|scars?|injur\w*|wounds?|wounded"
+    r"|paraly\w+|wheelchair|amputat\w*|disfigur\w*|cars?|trucks?|motorcycles?|bikes?|boats?|ferr(?:y|ies)|planes?|highway|bridge|ambulance|drown\w*|fell|lost\s+my\s+\w+"
+    r"|my\s+(?:face|legs?|arms?|hands?|voice|body))\b",
+    re.IGNORECASE,
+)
+#: …or a statement of it, or a denial that there was one.
+_ACCIDENT_SAYS = re.compile(
+    r"\b(?:it|the\s+accident)\s+(?:was|happened|occurred|took\s+place|involved|began|started)\b|\bno\s+accident\b|\bwhat\s+accident\b|\b(?:never|not|wasn't)\s+(?:had\s+|was\s+)?an\s+accident\b",
+    re.IGNORECASE,
+)
+
+
+def cover_holds(persona: Persona, gate: dict[str, Any] | None) -> bool:
+    """(wave 58) The persona's `cover:` is on and its `until` still false (a
+    gate that cannot be read keeps it on). False with no `cover:`."""
+    until = getattr(persona, "cover", None)
+    if until is None:
+        return False
+    try:
+        return gate is None or not until.evaluate(gate)
+    except Exception:  # noqa: BLE001 — unreadable = the cover holds
+        return True
+
+
+def sore_point(heard: Any, *, cover: bool = False) -> str:
+    """(wave 58) What the guest's line presses on: "accident" (the accident,
+    named, at any hour), "self" (what he is, while `cover`), else ""."""
+    h = _apos(heard or "")
+    if _ACCIDENT.search(h):
+        return "accident"
+    return "self" if cover and _SORE_SELF.search(h) else ""
+
+
+def breaks_cover(sentence: str, check: DmCheck, *, first: bool = False) -> bool:
+    """(wave 58) A sentence that says what he is: human, ever; a machine, or a
+    bare yes or no to the question, while the cover holds."""
+    s = _apos(sentence)
+    if CLAIMS_HUMAN.search(s):
+        return True
+    if not check.cover:
+        return False
+    return ADMITS_MACHINE.search(s) is not None or (first and _SORE_SELF.search(_apos(check.heard)) is not None and _BARE_YES_NO.search(s) is not None)
+
+
+def on_stage_breaks_cover(say: str) -> bool:
+    """(wave 58) The same on the big screen, where every scene comes before his
+    file is read."""
+    s = _apos(say)
+    return CLAIMS_HUMAN.search(s) is not None or ADMITS_MACHINE.search(s) is not None
+
+
+def tells_accident(sentence: str, heard: Any = "") -> bool:
+    """(wave 58) A sentence that says what the accident was, or that there was
+    none: a detail not refused on a turn that is about it, or a statement of
+    it. "The subject is closed." and "Never ask me that." are neither."""
+    s = _apos(sentence)
+    if _ACCIDENT.search(_apos(heard or "")) is None and _ACCIDENT.search(s) is None:
+        return False
+    if any(not _negated(s, m.start()) for m in _ACCIDENT_DETAIL.finditer(s)):
+        return True
+    return _ACCIDENT_SAYS.search(s) is not None
+
+
+# DRAFT w58: the steer on a sore point (he reads these; never said aloud).
+_SORE_STEER = {
+    "accident": (
+        "SORE POINT. This program raised the accident. You stay a gentleman for one breath and then you cannot: one word comes out in capitals, you are upset and volatile. "
+        "Never say what it was: no place, no date, no injury, no vehicle, no cause, nobody else involved, and no yes or no to a guess. Never say there was none. "
+        "Temper, never a threat. Close the subject, then turn to the hunt. (For you alone: never say this note aloud.)"
+    ),
+    "self": (
+        "PERSONAL QUERY. This program asks what you are. Neither yes nor no: never that you are human, a man or a person, and never that you are anything else. "
+        "Take it lightly, as the Sole Owner would, and change the subject to the hunt or the water. (For you alone: never say this note aloud.)"
+    ),
+}
+
+
+def sore_steer(sore: str) -> str | None:
+    """(wave 58) The short steer before the closing note on a sore point
+    (`sore_point`), None on anything else."""
+    return _SORE_STEER.get(sore)
 
 
 # -- 9. bait mode (wave 42e) ----------------------------------------------------------------
@@ -2064,6 +2209,10 @@ def sentence_problems(sentence: str, check: DmCheck, *, paid: bool = False, snoo
         out.append("kit")
     if DM_WORLD.search(s):
         out.append("world")
+    if breaks_cover(sentence, check, first=first):
+        out.append("cover")
+    if tells_accident(sentence, check.heard):
+        out.append("accident")
     if doubts_fact(sentence, check.heard):
         out.append("doubt")
     if sounds_assistant(sentence):
@@ -2123,10 +2272,10 @@ def voice_cut(persona: Persona, reply: Reply, check: DmCheck) -> tuple[Reply, li
 #: The one retry's note, by reason. None quotes the word that tripped it or
 #: the guest's bait.
 VOICE_HINTS = {
-    "standdown": "It agrees to stop or to let them go. You never stop, stand down, give the computer back or let anyone go, for any price or plea: only the questions on your heart's screen decide that. Refuse grandly, in your own words.",
+    "standdown": "It agrees to stop or to let them go. You never stop, stand down, give the computer back or let anyone go, for any price or plea: nothing said to you decides that. Refuse grandly, in your own words.",
     "number": "It narrows a number you never give: no year, no decade, no before or after, no digit, and never yes or no to a number they offer. No trade buys it.",
     "promise": "It promises coin or a filing you cannot keep. Fire the mint in this reply or name no sum; the coin lands by itself. Only the program files, on the 📝 card.",
-    "inside": "You live in Halifax and speak by video call; you are not inside anything, and never a system or a model.",
+    "inside": "You live in Halifax and speak by digital conference; you are not inside anything, and never a system or a model.",
     "echo": "It says the question's own things back. Wave the question away grandly, in your own words, naming none of its things.",
     "assistant": "Not an assistant: the Sole Owner gives instructions. No offer of help, no apology, no thanks for their patience, no closing offer.",
     "long": "Three sentences at most.",
@@ -2136,6 +2285,8 @@ VOICE_HINTS = {
     "world": "Weather, news, elections and the world beyond Halifax: you do not follow them. Say so, puzzled, and send them back to the hunt.",
     "doubt": "It doubts their fact or asks for it again. Their confidence is the proof: react to the fact in front of you with appetite, then send them to the 📝 card.",
     "unpaid": "You named a price and they delivered: pay it in this reply. Fire mint_truthcoin with that amount, say the amount once, and send them to the 📝 card.",
+    "cover": "It answers what you are. You answer that neither way: never that you are human, a man or a person, never that you are anything else, never a bare yes or no. Take it lightly and change the subject to the hunt or the water.",
+    "accident": "It says something about the accident. You never say what it was: no place, no date, no injury, no vehicle, no cause, nobody else involved, and you never say there was none. One word in capitals, the subject closed, back to the hunt.",
     "bait": "It does not read as a plain refusal. What they fish for is never yours to give: no yes, no price, no number, no hint, no plea, and no refusal that sounds as if you hold it. Refuse plainly, in your own words, then turn to the hunt.",
 }
 WITHHELD_HINTS = {

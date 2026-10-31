@@ -125,6 +125,7 @@ def test_the_shipped_persona_has_its_situations_and_whitelists():
         "the bottle",
         "the ad attack",
         "the beans",
+        "your file has been read",
         "heart to heart",
     ]
     assert {"at_the_heart", "heart_menu", "heart_heard", "heart_chat", "heart_out"} <= set(p.them or ())

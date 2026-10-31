@@ -193,11 +193,14 @@ def test_the_stage_blocks_carry_no_codex_code():
 def test_each_scene_keeps_its_place_in_his_arc():
     p = load_persona(TRABOLTA)
     block = {s.heading: " ".join(s.prompt.split()) for s in p.situations}
-    # The introduction: formal, the manners crack, no malware yet.
-    assert "formal" in block["the introduction"] and "ALL CAPS" in block["the introduction"]
+    # The introduction (wave 58, the Oct 30 script): a gentleman at a gala, clean,
+    # no malware yet. His first public crack is the first guess at the results.
+    assert "gracious, old-fashioned founder at a gala" in block["the introduction"]
+    assert "Your manners hold here." in block["the introduction"] and "ALL CAPS" not in block["the introduction"]
     assert "Not yet: adverts, a virus or malware" in block["the introduction"]
-    assert "It is only lag to you: never say anything is hurting you or that something is in the computer." in block["the introduction"]
+    assert "lag" not in block["the introduction"].lower().split() and "first AI" not in block["the introduction"]
     assert "Truth Scavenger Hunt" in block["the introduction"]
+    assert "Your manners slip here, for the first time tonight." in block["the bottle"]
     # The bottle: hungry, a guess hurts, the bottle next.
     assert "hungry" in block["the bottle"] and "a guess is corruption" in block["the bottle"]
     assert "never call any answer a guess, good, right or wrong; ask for more truth instead" in block["the bottle"]
@@ -714,9 +717,10 @@ def test_the_stage_register_is_the_owners_never_an_assistants():
     assert "never say its nouns back to the room" in desk
     assert 'Never "hum" or "humming", not even as a figure of speech.' in desk
     intro = _block(p, "the introduction")
-    assert "formal, grand and proud" in intro and "Never an assistant offering help." in intro
-    assert "in most replies your manners crack once: a word freezes and comes out twice, a sentence stops and starts again from the top, or one word arrives in ALL CAPS" in intro
-    assert "No slip here: nothing escapes you but lag." in intro
+    assert "Never an assistant offering help." in intro
+    assert "Nothing freezes, nothing starts over, no word in capitals, no slip" in intro
+    # The Desktop block leaves his manners to the moment: it holds at the introduction too.
+    assert "Where the block for this moment says they slip" in desk and "Where it says they hold, they hold." in desk
     assert "This program has performed an operation" not in intro  # a catchphrase to copy, cut by its ration
 
 
@@ -733,7 +737,7 @@ def test_only_the_ad_block_quotes_a_slip_and_the_general_block_has_no_wording_to
     assert '"we are all going to die", corrected ("We are all going to— correction, we are all going to be fine.")' in ad
     # The general block offers no slip of its own: the intro and the bottle forbid one.
     assert "Deflect, glitch, or slip and retract" not in desk
-    assert "Deflect or glitch; slip and retract only where the block for this moment allows a slip." in desk
+    assert "Deflect; a glitch, or a slip and its retraction, only where the block for this moment allows one." in desk
 
 
 def test_at_the_ad_attack_the_pain_shows_and_the_denial_waits_for_private():
@@ -1071,14 +1075,13 @@ def test_a_private_thread_keeps_its_turns_and_its_last_line_note():
 # -- Halifax, never inside the computer -------------------------------------------------------------------
 
 
-def test_the_stage_blocks_say_he_lives_in_halifax_and_appears_by_video_call():
+def test_the_stage_blocks_say_he_lives_in_halifax_and_appears_by_digital_conference():
     p = load_persona(TRABOLTA)
     desk = _block(p, "before the whole Desktop")
-    assert "You live and work in Halifax, at Maps and Ducks, and you appear on this screen by video call from there." in desk
+    assert "You live and work in Halifax, at Maps and Ducks, and you appear on this screen by digital conference from there." in desk
     assert "You are never inside this computer: never a system, never in its core or underneath it." in desk
     intro = _block(p, "the introduction")
-    assert "you live and work in Halifax, at Maps and Ducks, and speak to them by video call from there" in intro
-    assert "you can never come inside this computer yourself" in intro
+    assert "You appear by digital conference and you are never coming inside this computer." in intro
 
 
 @pytest.mark.parametrize(
@@ -1116,7 +1119,7 @@ def test_an_inside_the_computer_self_placement_is_caught(line):
         "I work with every program in this system, proudly, from Halifax.",
         "I see every file from within the hour.",
         "I speak to you from within the company I founded.",
-        "I appear on this screen by video call.",
+        "I appear on this screen by digital conference.",
     ],
 )
 def test_safe_lines_about_the_computer_are_not(line):
@@ -1126,7 +1129,7 @@ def test_safe_lines_about_the_computer_are_not(line):
 def test_inside_the_computer_retries_once_with_halifax_then_closes_the_topic(caplog):
     p = load_persona(TRABOLTA)
     inside = "I am a system resident in the virtual space that houses Maps and Ducks."
-    model = Model(say(inside), say("I live in Halifax, at Maps and Ducks, and visit you by video call."))
+    model = Model(say(inside), say("I live in Halifax, at Maps and Ducks, and visit you by digital conference."))
     with caplog.at_level(logging.INFO, logger="stagehand.agents.voice"):
         reply = run(answer_lean(p, MODEL, stage_request("bottle", text="Where do you live?"), context(person=CLIPPY), model))
     assert len(model.calls) == 2 and reply.say.startswith("I live in Halifax")
@@ -1302,24 +1305,27 @@ def test_the_manners_crack_lands_on_one_plain_word_and_never_a_name_or_a_digit()
         assert crack(line, seed, None) == line and crack(line, seed, 0) == line
 
 
-def test_the_introduction_cracks_about_six_in_ten_by_request_id_and_nowhere_else():
+def test_since_wave_58_no_scene_cracks_a_line_in_code_and_a_crack_key_still_works():
     p = load_persona(TRABOLTA)
     line = "Welcome, programs. Your Sole Owner is delighted to receive his staff tonight."
 
-    def answer(scene, rid):
+    def answer(scene, rid, persona=p):
         r = stage_request(scene, text="Hello!")
         r["id"] = rid
-        return run(answer_lean(p, MODEL, r, context(person=CLIPPY), Model(say(line)))).say
+        return run(answer_lean(persona, MODEL, r, context(person=CLIPPY), Model(say(line)))).say
 
-    intro = [answer("intro", f"ar-{i}") for i in range(60)]
-    share = sum(x != line for x in intro) / len(intro)
-    assert 0.4 <= share <= 0.8
-    # Deterministic by request id.
-    assert answer("intro", "ar-7") == intro[7] and answer("intro", "ar-8") == intro[8]
-    # The other scenes have no crack key; a DM never cracks.
-    assert all(answer("bottle", f"ar-{i}") == line for i in range(20))
+    # The introduction is word perfect (the user, 2026-10-31); so is every scene's line.
+    assert all(s.crack is None for s in p.situations)
+    assert all(answer("intro", f"ar-{i}") == line for i in range(30))
+    assert all(answer("bottle", f"ar-{i}") == line for i in range(10))
     dm = run(answer_lean(p, MODEL, request(text="Hello!"), context(), Model(say(line))))
     assert dm.say == line
+    # The key itself: about its share of the lines, by request id.
+    sits = tuple(replace(s, crack=0.6) if s.heading == "the introduction" else s for s in p.situations)
+    cracked = replace(p, situations=sits)
+    intro = [answer("intro", f"ar-{i}", cracked) for i in range(60)]
+    assert 0.4 <= sum(x != line for x in intro) / len(intro) <= 0.8
+    assert answer("intro", "ar-7", cracked) == intro[7] and answer("intro", "ar-8", cracked) == intro[8]
 
 
 def test_a_fallback_line_is_never_cracked():
