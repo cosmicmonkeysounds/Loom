@@ -400,7 +400,7 @@ code { font-family: var(--pixel); font-size: 1.15em; background: rgba(255, 255, 
 
 /* --- in-game lines and the void's scare (wave 26) --------------------------------- */
 
-/* Wave 59: a line said in the game sits over everything else on this screen. */
+/* Wave 59: a line said in the game sits over everything else on this screen but the void's scare. */
 .hud-caption {
   position: absolute;
   z-index: 60;
@@ -437,10 +437,11 @@ code { font-family: var(--pixel); font-size: 1.15em; background: rgba(255, 255, 
 .found-line { font-style: italic; }
 .hud-top > .spacer { flex: 1; }
 
+/* Wave 59: the one thing over the lines said in the game (60). A notice left up must not sit on his face. */
 .scare {
   position: absolute;
   inset: 0;
-  z-index: 50;
+  z-index: 70;
   display: grid;
   place-items: center;
   overflow: hidden;

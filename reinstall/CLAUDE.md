@@ -134,7 +134,7 @@ presence rooms and `moment`), `spatial-cams.ts`, `spatial-voice.ts` and the
   in the house, so it works there and leaves the training where it was.
 - **Dialogue is on top** (wave 59). The web game's lines are DOM over the canvas
   (`.hud-caption`, `.talk-window`, `.hud-notice`, z-index 60, the highest on the
-  page: `test/reset.test.ts`). In VR every line is a `no_depth_test` label, and
+  page but the void's `.scare`, 70: `test/reset.test.ts`). In VR every line is a `no_depth_test` label, and
   `TalkPanel` is too, boxes included, under the captions and the HUD
   (`render_priority` 46–48 < 50 HUD < 52 captions), with the pointer's beam at 49.
 
