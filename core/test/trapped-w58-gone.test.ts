@@ -72,6 +72,16 @@ describe("he does not return (wave 58)", () => {
     expect(hosts(e)).toEqual([expect.stringContaining("no trust lost")]);
   });
 
+  it.each(["patch_combo_a", "patch_combo_b"])("a stale 📝 card answered after %s gets no line from him; a live ending still closes the record in his voice", { timeout: SLOW }, (combo) => {
+    const FILING = { question: "F2", answer: "a guess", confidence: 80, verdict: "uncertain" };
+    const dead = toY2K();
+    dead.signal(combo);
+    expect(said(dead.signal("fact answered", "g1", FILING), "Trabolta")).toEqual([]);
+    const live = toY2K();
+    live.setVar("Night.ended", "true");
+    expect(said(live.signal("fact answered", "g1", FILING), "Trabolta")).toEqual([expect.stringContaining("The record is closed")]);
+  });
+
   it("the walk still costs before his reveal (R4) and while he lives, in his voice", { timeout: SLOW }, () => {
     const before = boot();
     expect(v(before, "Trabolta.awake")).not.toBe(true);

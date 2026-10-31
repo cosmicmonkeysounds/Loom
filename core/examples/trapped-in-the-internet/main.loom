@@ -1595,7 +1595,10 @@ ROLE Program
       set program.fact_try = 8
       set program.fact_q_round = 3
     if Night.ended == true:
-      Trabolta: The record is closed, {program.name}. No more filings tonight.
+      // Wave 58: a stale card sent as the blackout lands. The closing card has
+      // folded it on the phone; after Combo A or B nobody answers.
+      if Trabolta.awake == true:
+        Trabolta: The record is closed, {program.name}. No more filings tonight.
     else if program.fact_try == 0 or confidence < 1 or confidence > 100:
       Trabolta: Pick one of tonight's questions, {program.name}, and tell me how sure you are.
     else if verdict != "accurate" and verdict != "lie" and verdict != "uncertain":
