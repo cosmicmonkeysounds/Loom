@@ -61,6 +61,9 @@ const PRIME_ALERTS = "loom.prime.alerts";
  *  and the cards + notes it deals to it. */
 export const INBOX = "__inbox";
 
+/** What the server calls any director on a phone (`unseen-directors.ts`). */
+export const DIRECTOR = "Director";
+
 /** Build the performer's surfaces: a scanner, the character's Readouts
  *  (readouts + cards the story deals to it), the broadcast feed, the
  *  character's own pinned Quest Log / Codex, the staff rooms (pinned just
@@ -110,10 +113,9 @@ export function buildPrimeChannels(messages: Map<number, ChatMessage>, view: Pri
     decision: null,
     lastTs: feedMsgs.length ? feedMsgs[feedMsgs.length - 1]!.ts : 0,
   };
+  const heldBy = (id: string) => all.filter((m) => Array.isArray(m.audience) && m.audience.includes(id)).sort(bySeq);
   const guests: Channel[] = (view?.guests ?? []).map((g) => {
-    const msgs = all
-      .filter((m) => Array.isArray(m.audience) && m.audience.includes(g.id))
-      .sort((a, b) => a.seq - b.seq);
+    const msgs = heldBy(g.id);
     const where = locationLabel(g.location);
     return {
       id: `guest:${g.id}`,
@@ -129,6 +131,30 @@ export function buildPrimeChannels(messages: Map<number, ChatMessage>, view: Pri
       lastTs: msgs.length ? msgs[msgs.length - 1]!.ts : 0,
     };
   });
+  // Wave 59: a Run persona has no row on a booth, so its DM here opens a
+  // thread of its own, by its id and under no name. It reads and answers as
+  // a guest's does.
+  const rowed = new Set((view?.guests ?? []).map((g) => g.id));
+  const unseen = new Set<string>();
+  for (const m of all) {
+    if (m.from !== DIRECTOR || m.channel !== `dm:${me}` || !Array.isArray(m.audience)) continue;
+    for (const id of m.audience) if (!id.startsWith("@") && !rowed.has(id)) unseen.add(id);
+  }
+  for (const id of unseen) {
+    const msgs = heldBy(id);
+    guests.push({
+      id: `guest:${id}`,
+      kind: "guest",
+      title: DIRECTOR,
+      spaceId: "guests",
+      order: 0,
+      people: [{ id, name: DIRECTOR, kind: "guest", group: null }],
+      messages: msgs,
+      unread: 0,
+      decision: null,
+      lastTs: msgs.length ? msgs[msgs.length - 1]!.ts : 0,
+    });
+  }
   // Authored channels (SPACE/CHANNEL) the performer runs — grouped by space.
   const spaceTitles = new Map((view?.spaces ?? []).map((s) => [s.id, s.title]));
   // The staff rooms (`# hosts`, `# quarantine`) sit just under Pinned: the
