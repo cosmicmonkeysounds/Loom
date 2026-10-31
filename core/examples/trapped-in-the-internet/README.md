@@ -1224,7 +1224,7 @@ check-in QRs are unchanged.
 | **The Hard Drive** (crawl space, upstairs) | `TRABOLTA-4EVER` (the LiveJournal, **hidden**) |
 | **The Internet** (tent) | `LOVE-LETTER-FOR-YOU` (under VR station 2) · `FREE-TRIAL-30-DAYS` (tablet stand). These are Excel's virus. |
 | **Server-room door** | `COLD-STORAGE` · `HUMMING-WALL` · the keypad sign beside the keypad (from `generated/print-stacks.md`: four notes or the King, no QR, never the code) · the door terminal (the King's chess) |
-| **The cold door's digit notes** (silver) | one per room, never the server room: `FOGGED-KETTLE` (The Start Bar) · `FROSTED-MIRROR` (The Graphics Card) · `WARM-LINT` (The Fan Closet) · `LOST-PIECE` (The Steam Room); the exact spots are in `generated/print-stacks.md` |
+| **The cold door's digit notes** (silver) | one per room, never the server room: The Start Bar · The Graphics Card · The Fan Closet · The Steam Room (the codes: `door.clues` in `facts.json`); the exact spots are in `generated/print-stacks.md` |
 
 Each room's check-in reply (`when checked_in`, main.loom) hints at what is
 hidden there: the CPU's filing box and binder, the Steam Room's tube, the

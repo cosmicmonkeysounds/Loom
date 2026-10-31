@@ -1149,7 +1149,7 @@ everyone at the end) · **X** finale artefact · **D** the server-room door code
 | The Y2K Clock | The Y2K Clock | E | | | | The Y2K Clock (everyone) | ✚ | System clock reset to 11 p.m., 31 Dec 1999. Midnight: back to 1 Jan 1900 (94 years to wait for Internet in Halifax) or the Y2K Bug. |
 | The Cold Door | The Cold Door | E | | | | with The Y2K Clock (every cleared program, the final round); wave 11: also with the first digit note (`door_digit_found`) | | Wave 7, replaces *The Cold Lock*; `secret: true`, no code. The keypad sign, word for word (`facts.json` `door.clue`; wave 11: "FOUR DIGITS. FOUR NOTES ARE HIDDEN IN THE HOUSE, ONE DIGIT ON EACH. OR BEAT THE KING AT THE TERMINAL BY THIS DOOR.", no riddle), "He plays chess. Only checkmate counts. A draw is not a win. Neither is crying.", and "The patch bay forgives one wrong combination. Not two." |
 | The Door Code | The Door Code | D | | | | a checkmate at the Server Door terminal (`chess_won`, until 📄; wave 11, was from step 14); all four digit notes (`door_digit_found`, until 📄); The Whole Truth (last) | ✚ (last) | Wave 7: generated from `facts.json` `door` into `codex/9-facts.loom`, `secret: true`, no code; its text holds the keypad's four digits. Never held by Trabolta. |
-| Server Room First Digit … Server Room Fourth Digit | Server Room · the first digit … the fourth digit | D | | `FOGGED-KETTLE` · `FROSTED-MIRROR` · `WARM-LINT` · `LOST-PIECE` | | scanned at the Start Bar's kettle · the Graphics Card's mirror · the Fan Closet's dryer · the Steam Room's board-game box (silver, `generated/print-stacks.md`), or shared / sold | | Wave 11: generated from `facts.json` `door.clues` into `codex/9-facts.loom`, `secret: true`; each text names its position in words and the digit; no digit in any id, title or code; four of four → *The Door Code* (§3 E2d). |
+| Server Room First Digit … Server Room Fourth Digit | Server Room · the first digit … the fourth digit | D | | `door.clues` in `facts.json` | | scanned at the Start Bar's kettle · the Graphics Card's mirror · the Fan Closet's dryer · the Steam Room's board-game box (silver, `generated/print-stacks.md`), or shared / sold | | Wave 11: generated from `facts.json` `door.clues` into `codex/9-facts.loom`, `secret: true`; each text names its position in words and the digit; no digit in any id, title or code; four of four → *The Door Code* (§3 E2d). |
 | The Truther Download | TRUTHER DOWNLOAD v0.9 | E | | | | Truther Download Arrives (every program) | | The user's text verbatim (below), `secret: true`, with **Sandy's name blacked out** `█████` (wave 6, decision 5: no Sandy before the overshare). Every holder then gets `The Truther Download Unredacted` (TRUTHER DOWNLOAD v1.0 (correction), `secret: true`: "The name we had to black out: SANDY.") once the story names her: `trabolta_overshares` on a scenario-1 night (`Night.step >= 13`), else the recount / truth.txt. |
 | ILOVEYOU | LOVE-LETTER-FOR-YOU.TXT.vbs | E | | `LOVE-LETTER-FOR-YOU` | | QR taped under VR station 2 (The Internet) | | A virus. Learning it sets `carries_virus`. |
 | Free Antivirus Trial | FREE_ANTIVIRUS_TRIAL.EXE | E | | `FREE-TRIAL-30-DAYS` | | QR on the tablet stand (The Internet) | | "Another antivirus" that turns out to be a virus anyway. Learning it sets `carries_virus`. |
@@ -2832,10 +2832,10 @@ digit"). `facts.json` `door.clues` holds four secret notes, one per digit of `do
 
 | Note | Code | Where |
 |---|---|---|
-| Server Room First Digit | `FOGGED-KETTLE` | The Start Bar (kitchen): wedged behind the kettle |
-| Server Room Second Digit | `FROSTED-MIRROR` | The Graphics Card (bedroom two): taped to the back of the mirror |
-| Server Room Third Digit | `WARM-LINT` | The Fan Closet (laundry): in the dryer's lint-filter slot |
-| Server Room Fourth Digit | `LOST-PIECE` | The Steam Room (game room): inside the lid of a board-game box |
+| Server Room First Digit | in `facts.json` | The Start Bar (kitchen): wedged behind the kettle |
+| Server Room Second Digit | in `facts.json` | The Graphics Card (bedroom two): taped to the back of the mirror |
+| Server Room Third Digit | in `facts.json` | The Fan Closet (laundry): in the dryer's lint-filter slot |
+| Server Room Fourth Digit | in `facts.json` | The Steam Room (game room): inside the lid of a board-game box |
 
 However a note arrives (a scan, a share, a sale), a ROLE hook (`when program learns Server Room
 First Digit:` …) fires `door_digit_found for program`, which sets `program.door_digits` (0 to 4,
