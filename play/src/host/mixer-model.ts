@@ -49,7 +49,9 @@ export const NO_MIXER = "This server has no mixer yet";
 export const NOT_A_MIXER = "Only hosts and directors can mix";
 export const ROUTER_OFFLINE = "No router listening: the mix is kept and applies when it connects";
 export const NO_SOUNDTRACK = "No soundtrack reported yet";
-export const HAND_NOTE = "By hand — the story's music cues are held";
+/** A hand holds against the story's catch-ups, but a live music cue takes over
+ *  (wave 58's contract; the router's `music_scene`). `DRAFT w59d`. */
+export const HAND_NOTE = "By hand — until the story's next music cue, or ↺ Follow the story";
 export const LOAN_NOTE = "Trabolta has the music. It goes back by itself";
 export const BAD_LINK = "That's no TIDAL playlist link";
 

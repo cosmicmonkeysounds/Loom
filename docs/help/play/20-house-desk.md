@@ -60,9 +60,10 @@ Desktop with `tidal.ps1`.
   **⏭ Skip all**. **■ Stop music** asks once, then stops it. A playlist with no
   tracks shows as a warning. *No soundtrack reported yet* means the router hasn't
   said what it plays.
-- *By hand — the story's music cues are held*: a scene, playlist or stop you
-  picked. The story's own music changes wait until you tap **↺ Follow the
-  story**, which plays the story's scene again at once.
+- *By hand — until the story's next music cue, or ↺ Follow the story*: a scene,
+  playlist or stop you picked. It stays until the story's next music cue takes
+  over, or until you tap **↺ Follow the story**, which plays the story's scene
+  again at once.
 - **PLAY NOW**: the show's playlists, **Your TIDAL playlists** (everything in the
   app's sidebar), or paste a TIDAL playlist link. Each plays where the scene's
   music plays, by hand. An album's or a song's link won't play.
@@ -114,9 +115,10 @@ What you can do to the house's machines from your phone:
   until 🕚.
 - **⚡ Glitch**, only during a talk scene that has one.
 - **[Try it](#try-it)**: a line on the speakers, a look or a story sound.
-- **📟 Terminals**: every terminal and the TV, the silent ones first in red, each
-  with its last poll and **Identify** (its name, full screen, on the terminal). A
-  row says what needs a person: **🔇 touch it** (its sound waits for a tap), **💤
+- **📟 Terminals**: every terminal and the TV, the silent ones first in red, then
+  by name, each with its last poll and **Identify** (its name, full screen, on the
+  terminal: once the doors are open it asks first, and a terminal that isn't
+  answering may never show it). A row says what needs a person: **🔇 touch it** (its sound waits for a tap), **💤
   hidden** (the screen is off or something covers it), **⛶ not full**, a low
   battery, **🚪** the door sensor. The last mark is its build: red means it runs
   something other than the rest, so reload it. The head counts them.

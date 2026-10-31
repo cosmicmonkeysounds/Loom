@@ -21,9 +21,8 @@ the Desktop, and each act plays its fallback folder.
 
 ## Now playing
 
-- **Scene**: pick one to play it by hand. A hand is held: the story's `cue
-  music_*` lines are ignored until you press **Follow the story**, or until the
-  story's next live music cue.
+- **Scene**: pick one to play it by hand. A hand stays until the story's next
+  live `cue music_*` takes over, or until you press **Follow the story**.
 - **⏮ ⏸ ⏭**: the app's own buttons, shown only while a bed is on TIDAL. A file
   bed, like the ceremony, can skip but has no pause and no previous. A pause
   holds until you press ▶ or the scene changes.

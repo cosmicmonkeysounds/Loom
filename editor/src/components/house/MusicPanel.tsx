@@ -2,9 +2,10 @@
 //! music in one place.
 //!
 //! - **The strip**: the router, where the music is coming from, the last note.
-//! - **Now playing**: the scene (a picker: picking holds it against the story's
-//!   music cues until **Follow the story**), ⏮ ⏸ ⏭ while a bed is on the TIDAL
-//!   app, each bed (its playlist, rooms, track and progress, **⏭ Skip**),
+//! - **Now playing**: the scene (a picker: picking holds it until the story's next
+//!   music cue or **Follow the story**; the badge's words are `DRAFT w59d`), ⏮ ⏸ ⏭
+//!   while a bed is on the TIDAL app, each bed (its playlist, rooms, track and
+//!   progress, **⏭ Skip**),
 //!   **⏭ Skip all**, **■ Stop music**, the empty playlists.
 //! - **Play now**: the show's playlists, every playlist in the app's sidebar
 //!   and a pasted link. A pick plays where the scene's music plays, by hand.
@@ -115,7 +116,7 @@ function NowPlaying({ view, music }: { view: MixerView; music: MixerMusic | null
             {music.hand === true && (
               <>
                 <span className={clsx('rounded border px-1.5 py-0.5 text-[11px]', TONE_CHIP.warn)} data-testid="mixer-hand">
-                  {music.loan === true ? '🤖 Trabolta has the music: it goes back by itself' : 'by hand: the story’s music cues are held'}
+                  {music.loan === true ? '🤖 Trabolta has the music: it goes back by itself' : 'by hand: until the story’s next music cue, or Follow the story'}
                 </span>
                 <button className={btn} disabled={busy !== null} onClick={() => void send({ action: 'story' }, 'story')} data-testid="mixer-follow">
                   {music.loan === true ? 'Take it back' : 'Follow the story'}

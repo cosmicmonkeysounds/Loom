@@ -235,7 +235,7 @@ describe('the Music manager', () => {
     const v = fixtureMixer()
     fake.mixer = { ...fake.mixer, view: { ...v, music: { ...v.music!, hand: true } } }
     let html = render()
-    expect(html).toContain('by hand: the story’s music cues are held')
+    expect(html).toContain('by hand: until the story’s next music cue, or Follow the story')
     expect(html).toContain('data-testid="mixer-follow"')
     fake.mixer = { ...fake.mixer, view: fixtureMixer({ music: null, router: { online: false, lastSeen: null, name: null }, meters: null }) }
     html = render()

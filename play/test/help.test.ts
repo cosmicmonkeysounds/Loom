@@ -162,7 +162,7 @@ describe("play help", () => {
     const text = readFileSync(new URL("../../docs/help/play/20-house-desk.md", import.meta.url), "utf8").replace(/\s+/gu, " ");
     expect(text).toContain("## 🎚 Mix");
     // The panel's copy (play/src/host/mixer-model.ts, mixer.tsx).
-    for (const t of ["No router listening: the mix is kept and applies when it connects", "By hand — the story's music cues are held", "↺ Follow the story", "⏭ Skip all", "■ Stop music", "No soundtrack reported yet", "Everywhere"]) expect(text).toContain(t);
+    for (const t of ["No router listening: the mix is kept and applies when it connects", "By hand — until the story's next music cue, or ↺ Follow the story", "↺ Follow the story", "⏭ Skip all", "■ Stop music", "No soundtrack reported yet", "Everywhere"]) expect(text).toContain(t);
     const prime = articlesFor("performer");
     for (const q of ["mixer", "follow the story", "skip track", "fader", "now playing"]) expect(searchHelp(prime, q)[0]?.article.slug, q).toBe("house-desk");
   });
