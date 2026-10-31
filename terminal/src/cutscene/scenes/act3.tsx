@@ -767,7 +767,7 @@ function PickupLine({ t, sfx, reduced, target }: SceneProps) {
   );
 }
 
-// --- F4 · the song (Song Ending: "Sandy's chat bubble appears on every screen") -----------------
+// --- F4 · the song (Song Ending: "The answering machine picks up on every screen") --------------
 //
 //   0–1800    a pink sunrise sweeps up, hearts begin, the chat window pops
 //             open, the song's title slides down
@@ -794,7 +794,8 @@ function SongScene({ t, sfx, reduced, target }: SceneProps) {
       <div className="tv3-song-title" style={{ opacity: fade(t, 1000, 600), transform: reduced ? undefined : `translateY(${lerp(-60, 0, eased(t, 1000, 700, ease.outBack)).toFixed(1)}%)` }}>
         ♪ You&apos;re the one that I want ♪
       </div>
-      <ChatWindow title="SandyChat 1.0" buddy="Sandy" chat={chat} names={{ him: "Trabolta", her: "Sandy" }} t={t} open={eased(t, 600, 320, ease.linear)} reduced={reduced} center x={50} y={lite ? 54 : 46} width={lite ? "92%" : "min(64%, 40em)"} className={lite ? "tv3-chat-wall" : "tv3-chat-tv"} />
+      {/* DRAFT w58 (the title: she is the answering machine, not a chat program) */}
+      <ChatWindow title="Answering Machine 1.0" buddy="Sandy" chat={chat} names={{ him: "Trabolta", her: "Sandy" }} t={t} open={eased(t, 600, 320, ease.linear)} reduced={reduced} center x={50} y={lite ? 54 : 46} width={lite ? "92%" : "min(64%, 40em)"} className={lite ? "tv3-chat-wall" : "tv3-chat-tv"} />
       {!lite && (
         <>
           <div className="tv3-song-eq" style={{ opacity: fade(t, 1400, 800) }}>
@@ -1021,7 +1022,8 @@ function AdviceHelped({ t, sfx, reduced, target }: SceneProps) {
         {t >= 5200 && <FloatLayer t={t} start={5200} every={lite ? 420 : 160} life={5200} seed={131} size="5vmin" reduced={reduced} glyph={(i) => <Heart fill={PINK[i % PINK.length]} />} />}
         {!lite && !reduced && t >= 5200 && <Confetti t={t} start={5200} dur={3600} density={0.8} seed={133} colors={PINK} />}
         <div style={{ opacity: 1 - progress(t, 4800, 500) }}>
-          <ChatWindow title="SandyChat 1.0" buddy="Sandy" chat={chat} names={{ him: "Trabolta", her: "Sandy" }} t={t} open={eased(t, 200, 320, ease.linear)} reduced={reduced} center x={50} y={48} width={lite ? "92%" : "min(60%, 38em)"} />
+          {/* DRAFT w58 (the title, as at the song) */}
+          <ChatWindow title="Answering Machine 1.0" buddy="Sandy" chat={chat} names={{ him: "Trabolta", her: "Sandy" }} t={t} open={eased(t, 200, 320, ease.linear)} reduced={reduced} center x={50} y={48} width={lite ? "92%" : "min(60%, 38em)"} />
         </div>
         {t >= 5200 && (
           <div className="tv3-helped-title" style={{ ...slam(t, 5200, reduced), top: "34%" }}>

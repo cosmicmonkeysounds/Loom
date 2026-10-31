@@ -231,7 +231,8 @@ if Night.ending == "song":
   Trabolta: Every fact you gave me was true, and the truth tells me what to say to her. You're the one that I want.
 else:
   Trabolta: Not every fact you gave me was true. But that line was, and it tells me what to say to her. You're the one that I want.
-Narrator: The music starts. The vocoder warms up. Sandy's chat bubble appears on every screen.
+// DRAFT w58 (she is the answering machine, not a chat window)
+Narrator: The music starts. The vocoder warms up. The answering machine picks up on every screen.
 Trabolta: You're the one that I want.
 Sandy: It looks like I didn't understand that. Please wait while I direct you to an agent.
 Trabolta: You. Are. The one. That I want.
