@@ -477,7 +477,8 @@ is on this sheet: they are in `facts.json`, the story and the generated files.
   correct-only Congratulations: *accepted* never said *true*. Not viewed on a page; left alone.
 - **The reveal's order:** the answers can't land while she asks for them, or they would be on every phone
   in the chat, so 🌑 waits for her. A script that holds only the TV would have left them on the phones. If she
-  lets ▶ Scroll run through the room's turn, he starts: ⏸ while they speak (her pack says so).
+  lets ▶ Scroll run through the room's turn, he starts: ⏸ while they speak (her pack says so). A director's
+  second 🌑 is the backup, and a double tap on it starts him at once.
 - **Clippy hosts every ceremony:** he has left. On her, the bathroom rule's lines from him (main.loom,
   *Disk Cleanup, at last* and the never-went line) don't play, and ✍ the second director's award lines changes
   nothing: those replace his template lines, and he reads none. Her opening for 8-A and 8-B is a new line (8.4).
@@ -504,7 +505,8 @@ leave on his motorcycle, which the script says he doesn't.
 
 No real device, voice or model has seen any of this. The TV reading these lines at the room's pace, a
 long line of guesses, the 8-B card on a phone, the song's length, the rave on the house, and a real
-worker in the 8-B window. 🤖 and 🌑 are the longest presses of the night: a poll carries 40 lines and
+worker in the 8-B window. Nor has anyone seen Clippy's arrow start his reading on a real phone, the blank
+on the real TV, or `▒ FILED ▒` on a phone. 🤖 and 🌑 are the longest presses of the night: a poll carries 40 lines and
 16,000 characters, and past that the oldest are dropped. By the arithmetic they fit a house of 40 filing
 short answers; a house of essays would lose his first lines. A guest who tells him the last answer in a DM can still put it in his notes,
 because he holds nothing to catch it with: there are no guards on it but the bait mode. Task Manager's printed

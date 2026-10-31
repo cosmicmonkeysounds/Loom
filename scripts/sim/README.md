@@ -93,7 +93,7 @@ takes `SIM_GUEST_CODE`. It resets the event for each, so run it on a scratch ser
 | 19 | 🫀 Thrown out | Door open → shut; a program flatters, then threatens his cables until he ejects it; 🔄 | marked, then forgiven |
 | 20 | 🫀 The chosen | A featured program: ⟦CHOSEN⟧ → *What weak place* → *I need to go* | Layer 2, not thrown out |
 | 21 | 🫀 The full talk | ⟦PROMISE⟧; every Layer Two question incl. ⟦THE WAY OUT⟧ and ⟦SPEAK FREELY⟧ (a line said); *listen*; Evidence ⟦FORCE⟧ ⟦SMALL TYPE⟧; ⟦PROOF⟧; Reasons ⟦EARN IT⟧, the bluff, ⟦WEAKNESS⟧; *That's all I came to say* | `heart_heard`, Layer 3, the heart not done, the night not ended |
-| 22 | The ending | 🌑 → 🍎 → the bag → 📄 → ⚖ → the full truth → 8-A or 8-B → the song → the rave; or 🔌 → the dance; or 💥 → 🪦 | `Night.ending`, `ended`, `raved` |
+| 22 | The ending | 🌑 → 🌑 (what her last line presses) → 🍎 → the bag → 📄 → ⚖ → the full truth → 8-A or 8-B → the song → the rave; or 🔌 → the dance; or 💥 → 🪦 | `Night.ending`, `ended`, `raved` |
 | 22b | 📜 The full truth | Combo A and B only: `tell_the_truth`, Task Manager, then the rave | `truth_told`, `truth_reader`, `raved` |
 | 23 | 🏆 Ceremony | G1's ask, G1, the eight awards on their winners (from trust, score, quests…), 🖌 on MS Paint, the staff awards, 🎃 | `ceremony_done`, `resurrected`, `Night.talk` none |
 

@@ -60,7 +60,7 @@ export const THE_FULL_TRUTH: readonly ChainStep[] = ["tell_the_truth"];
 
 /** After 🕚, midnight's road: 🌑 (Clippy) → 🌑 again (his readings: her last line
  *  or her ✓ Done presses it on a real night) → 🍎 → the bag (on the bobber) → 📄 → ⚖, which
- *  plays the full truth (830 s, `Night.truth_until`). The last answer then
+ *  plays the full truth (830 s at most, `Night.truth_until`). The last answer then
  *  decides: found, 8-A; nobody found it, 8-B and two minutes of lines. The song
  *  and the rave follow by themselves (finale.loom). */
 export const Y2K_TO_VERDICT: readonly ChainStep[] = [
