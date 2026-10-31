@@ -182,11 +182,13 @@ his messages by hand. Nothing for performers to do except stay in character:
   your program from the list. Featured guests: scan the QR on your
   invitation instead (your program is 🔒 Reserved for you); lost it → a host
   (More → Setup) or the director opens it for two minutes.
-- **I closed the app / my browser lost me.** Don't sign up again. Find the
-  director (or the house manager walks you there): they show a QR that puts
-  you back exactly where you were (N-02).
+- **I closed the app / my browser lost me.** Don't sign up again. Scan your
+  badge or type its code. If it says you're *already signed in on a phone*,
+  tap **🙋 Ask a host** and stay on that page: a host lets you back in as the
+  same program. No badge: find the director (or the house manager walks you
+  there): they show a QR that puts you back exactly where you were (N-02).
 - **My phone died / I have no phone.** Loaner phones are at [[EDIT: where]].
-  The director pairs you onto it with the same QR.
+  Your badge and 🙋 Ask a host on the loaner, or the director's QR.
 - **iPhone alerts:** only if push was called on 10-24 — [[EDIT: paste the Home
   Screen steps here if K-31b passed, else delete this line]].
 - **The Wi-Fi is bad.** Turn Wi-Fi off; the app works on cellular.

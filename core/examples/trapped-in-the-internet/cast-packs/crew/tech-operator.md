@@ -141,7 +141,7 @@ frontend.
 | **NEVER** | `pkill -f "stagehand run"` (it kills every job on that machine) |
 | Ollama slow / evicted | `ollama ps` shows `gpt-oss:20b` (and the qwen model only if Trabolta is on classic); reload; the first reply after a reload takes ≈ 25 s |
 | Trabolta's story mind misbehaves (the directors ask) | the switch ladder in [`trabolta-mind.md`](./trabolta-mind.md): one line in `stagehand/laptop.yaml`, then restart the `agents` job; say in `# hosts` what you changed |
-| the door or the patch bay reads wrong (red 🚪 / 🔌 fault on Run → Terminals) | the watch and the directors use the 🚪 / 🔌 💥 ❌ buttons meanwhile. On Steph's laptop: hold ⚙ 2 s, check the board is connected, calibrate the door again after any reflash; the patch bay's readings and **Learn** are in the same panel |
+| the door or the patch bay reads wrong (red 🚪 / 🔌 fault on Run → Terminals) | the watch and the directors use the 🚪 / 🔌 💥 ❌ buttons meanwhile. On Steph's laptop: hold the top right corner 2 s for ⚙ (hidden since wave 59), check the board is connected, calibrate the door again after any reflash; the patch bay's readings and **Learn** are in the same panel |
 | a terminal hung | tap it; else Fully Kiosk → reload |
 | the TV page stalled | on the Desktop `.\tv-kiosk.ps1 -Close`, then `.\tv-kiosk.ps1`; **click once into it** |
 | the TV is silent | Run → Terminals (muted?), Windows' default output; `M` on the TV page unmutes |

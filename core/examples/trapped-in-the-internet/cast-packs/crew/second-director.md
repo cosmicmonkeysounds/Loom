@@ -162,8 +162,9 @@ keep the bar out of reach, fire **🗳 Force the majority** (stay / leave, or
 Founded factions (from the Truther Download, wave 18b) race beside the two
 sides; Run's glance shows every faction's count against the bar.
 
-**7. Front of house fixes.** Lost guest → Inspector → **re-pair QR** (they
-scan it; same program, same codex). Late arrival after C1 (uploaded, not
+**7. Front of house fixes.** Lost guest → their badge and 🙋 Ask a host, which
+a host answers on Needs; or Inspector → **re-pair QR** (they scan it; same
+program, same codex, and the old phone is signed out). Late arrival after C1 (uploaded, not
 cleared) → Inspector → **scan as Norton**. Performer's phone dead → Inspector
 → **Release** the part.
 

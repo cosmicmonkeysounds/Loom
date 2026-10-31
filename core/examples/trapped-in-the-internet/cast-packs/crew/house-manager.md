@@ -25,9 +25,11 @@ walk them through the Tube. A guest whose app has gone **grey** with ⛔ was
 held by a director (Run → Restrict): send them to the director.
 
 **Loaners + re-pairs.** Loaner phones are at [[EDIT: where]]. A guest who lost
-their session or their phone: walk them to the director, who shows a QR that
-puts them back exactly where they were (never sign up again). Same for a
-performer whose phone died (the director releases the part).
+their session or their phone scans their badge or types its code, then taps
+🙋 Ask a host, and a host lets them back in (never sign up again). No badge:
+walk them to the director, who shows a QR that puts them back exactly where
+they were. Same for a performer whose phone died (the director releases the
+part).
 
 **Charging station:** [[EDIT: where]]. Keep it tidy; label what's charging.
 

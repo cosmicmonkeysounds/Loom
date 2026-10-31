@@ -176,7 +176,7 @@ never from a guest card.
 | `# hosts`: "⛔ Trabolta threw X out of his heart" + "🚨 X is marked for reinstallation" | the Antivirus take it from the Wanted board; 🔄 forgives the heart, 🩹 lifts the mark (a barred re-scan never marks them again) |
 | a dead keypad battery or a jammed lock | the house manager's override key; prop the door; fire **🚪** if the cutscene has not played (W-35) |
 | the patch bay (wave 22: the bay on the server-room terminal judges itself, about 5 s after the fourth cable; Run → Terminals shows it) | nothing. Only when the bay missed one (nothing happened, or a cable runs top to top / bottom to bottom) the watch presses 🔌 / 💥 / ❌ on their booth, or radios A / B / WRONG → you press it. A press puts the bay on the buttons (*Patch bay on buttons* on the glance): the cables are ignored until **🔌 Trust the patch bay again**. A ❌ within a minute of the bay's own rejection is not counted twice |
-| lost guest / new phone | Inspector → **re-pair QR** (never re-register) |
+| lost guest / new phone | Their badge on the new phone, then 🙋 Ask a host: answer it on your phone or a host's Needs. No badge: Inspector → **re-pair QR**, which signs the old phone out (never re-register) |
 | late arrival after C1 | Inspector → **scan as Norton** (clears them) |
 | performer's phone dead | Inspector → **Release** the part; they re-sign on a loaner |
 | lights wrong after a blip | radio **LIGHTS**: the tech op restarts the stagehand `show` task on John's Desktop, which replays the current look on reconnect; failing that they set it by hand (Run → World → `Night.lights` names it). Re-pressing a cue does nothing: phase cues play once |
