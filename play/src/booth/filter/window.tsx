@@ -9,6 +9,8 @@
 // the header gains the ⭐ tonight, the heat meter and, when the strength
 // hides waiting lines, a note; each line shows its worth and its ✂ what it
 // pays now; armed, ✂ says it raises their suspicion. Copy `DRAFT w48b`.
+// Wave 57 (C15): 🛡 under the two, while the view offers it (two taps). It
+// leaves the line here; what came of it is said under the line.
 
 import { useContext, useState, type ReactElement } from "react";
 import { ARM_LINE, useArmButtons } from "../../arm.ts";
@@ -16,7 +18,7 @@ import type { FilterLine } from "../../types.ts";
 import { PersonAvatar } from "../../ui/primitives.tsx";
 import { BoothLayer } from "../layer.tsx";
 import { FilterGameContext, FilterMeter, useGameClock } from "./game.tsx";
-import { FILTER_COPY, FILTER_GAME_COPY, FILTER_LINE_MAX, agoText, clipLine, filterHeader, markSegments, multAt, mutedNote, payOf, whereLine } from "./model.ts";
+import { FILTER_COPY, FILTER_GAME_COPY, FILTER_LINE_MAX, FILTER_SEND_COPY, agoText, clipLine, filterHeader, markSegments, multAt, mutedNote, payOf, whereLine } from "./model.ts";
 import type { FilterApi } from "./use-filter.ts";
 
 /** The line with its stems marked in their bands' colours, a slur as its
@@ -49,10 +51,16 @@ export interface FilterRowProps {
   pay?: number | null;
   onCensor: () => void;
   onLetGo: () => void;
+  /** Wave 57: 🛡 is armed (the second tap sends them). */
+  sendArmed?: boolean;
+  /** Wave 57: what a 🛡 on this line came to. */
+  sent?: string | null;
+  /** Wave 57: 🛡; without it the row has no 🛡. */
+  onSend?: () => void;
 }
 
 /** One waiting line. */
-export function FilterRow({ line, now, armed, busy, refusal, pay = null, onCensor, onLetGo }: FilterRowProps): ReactElement {
+export function FilterRow({ line, now, armed, busy, refusal, pay = null, onCensor, onLetGo, sendArmed = false, sent = null, onSend }: FilterRowProps): ReactElement {
   const name = line.name.trim() !== "" ? line.name : line.guest;
   const sub = [whereLine(line.where), agoText(line.ts, now)].filter((x) => x !== null).join(" · ");
   return (
@@ -79,17 +87,28 @@ export function FilterRow({ line, now, armed, busy, refusal, pay = null, onCenso
         <button type="button" className="w95-btn filter-btn" disabled={busy} onClick={onLetGo}>
           {FILTER_COPY.letGo}
         </button>
+        {line.send !== undefined && onSend !== undefined && (
+          <button type="button" className={`w95-btn filter-btn send${sendArmed ? " armed" : ""}`} disabled={busy} aria-pressed={sendArmed || undefined} onClick={onSend}>
+            {busy ? "…" : sendArmed ? FILTER_SEND_COPY.armed(line.send.label) : line.send.label}
+            {sendArmed && !busy && <span className="filter-arm">{ARM_LINE}</span>}
+          </button>
+        )}
       </div>
       {refusal !== null && (
         <p className="filter-refused" role="status">
           {refusal}
         </p>
       )}
+      {sent !== null && (
+        <p className="filter-sent" role="status">
+          {sent}
+        </p>
+      )}
     </li>
   );
 }
 
-export function FilterWindow({ api, now, onClose }: { api: Pick<FilterApi, "view" | "waiting" | "censor" | "letGo" | "refusal"> & Partial<Pick<FilterApi, "game">>; now: number; onClose: () => void }) {
+export function FilterWindow({ api, now, onClose }: { api: Pick<FilterApi, "view" | "waiting" | "censor" | "letGo" | "refusal"> & Partial<Pick<FilterApi, "game" | "send" | "sent">>; now: number; onClose: () => void }) {
   const arm = useArmButtons();
   const [busy, setBusy] = useState<ReadonlySet<number>>(() => new Set());
   const ctx = useContext(FilterGameContext);
@@ -145,6 +164,17 @@ export function FilterWindow({ api, now, onClose }: { api: Pick<FilterApi, "view
                   })
                 }
                 onLetGo={() => api.letGo(l.seq)}
+                sendArmed={arm.armed === `send:${l.seq}`}
+                sent={api.sent?.(l.seq) ?? null}
+                {...(api.send !== undefined
+                  ? {
+                      onSend: () =>
+                        arm.tap(`send:${l.seq}`, true, () => {
+                          mark(l.seq, true);
+                          void api.send!(l.seq).finally(() => mark(l.seq, false));
+                        }),
+                    }
+                  : {})}
               />
             ))}
           </ul>

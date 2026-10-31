@@ -9,13 +9,16 @@
 // 0–100 in steps of 5, its bands), each highlight in its band's colour (a
 // slur a `[slur]` chip), and the ⭐ mini-game: a line's worth, the heat's
 // live multiplier, what ✂ pays now, the burst on the answer.
+// Wave 57 (C15): 🛡 beside ✂ and Let it go, while the view offers it
+// (`FilterLine.send`): the booth's ordinary press on the line's program.
+// It leaves the line waiting, so ✂ and Let it go still stand.
 // Booth chunk only: nothing the guest entry imports reaches this file.
 
 import type { ReactNode } from "react";
 import type { StartItem } from "../../chrome/start-menu.tsx";
 import type { SessionStorage } from "../../host.ts";
 import type { PopQuotePart } from "../../moments/popout-model.ts";
-import type { CensorResult, FilterCombo, FilterLine, FilterTier, FilterView, PrimeView } from "../../types.ts";
+import type { CensorResult, FilterCombo, FilterLine, FilterTier, FilterView, PrimeActResult, PrimeView } from "../../types.ts";
 import type { Draft } from "../popouts/model.ts";
 
 // DRAFT w48: every word the filter shows is here (SIGNOFF-w48.md); the
@@ -45,6 +48,22 @@ export const FILTER_COPY = {
     noAnswer: "No answer. Try again.",
     offline: "No connection. Try again.",
     other: (why: string) => `Not censored: ${why}`,
+  },
+} as const;
+
+// DRAFT w57: 🛡 on a line (SIGNOFF-w48.md, the wave 57 section). Its own
+// label is the story's.
+export const FILTER_SEND_COPY = {
+  /** Armed (the second tap sends them). */
+  armed: (label: string) => `${label}? Their phone locks.`,
+  /** The story said nothing back. */
+  sent: (name: string) => `${name} is on the way to the Internet.`,
+  refused: {
+    notNow: "Not sent: not right now.",
+    doors: "Not sent: the doors are closed.",
+    notYours: "Not sent: this part can't send them.",
+    offline: "No connection. Try again.",
+    other: (why: string) => `Not sent: ${why}`,
   },
 } as const;
 
@@ -568,9 +587,12 @@ export interface FilterDraftGame {
  * counts this line too), and the shell's Later. Info, below everything
  * else, and it gives way to any pop-out that outranks it (`yields`), so a
  * flood never holds back a mission. Its status line says what ✂ does, or
- * the last refusal. Nothing on it points at the strength dial.
+ * the last refusal or 🛡's answer (`said`). Nothing on it points at the
+ * strength dial. Wave 57 (C15): 🛡 while the view offers it (`line.send`,
+ * two taps). It stays up after, with ✂ and Let it go, the line still to
+ * judge: the view drops 🛡 and the status line says what came of it.
  */
-export function filterDraft(line: FilterLine, waiting: number, refusal: string | null = null, game: FilterDraftGame = {}): Draft {
+export function filterDraft(line: FilterLine, waiting: number, said: string | null = null, game: FilterDraftGame = {}): Draft {
   const clip = clipLine(line.text, line.hits, FILTER_QUOTE_MAX);
   const name = line.name.trim() !== "" ? line.name : line.guest;
   return {
@@ -583,6 +605,7 @@ export function filterDraft(line: FilterLine, waiting: number, refusal: string |
     guest: { id: line.guest, name, avatar: line.avatar ?? null, seen: whereLine(line.where) },
     actions: [
       { id: "censor", label: FILTER_COPY.censor, armedLabel: FILTER_COPY.censorArmed, kind: "primary", arm: true, ...(game.pay !== undefined ? { extra: game.pay } : {}), do: { kind: "censor", seq: line.seq } },
+      ...(line.send !== undefined ? [{ id: "send", label: line.send.label, armedLabel: FILTER_SEND_COPY.armed(line.send.label), arm: true, closes: false, do: { kind: "send" as const, seq: line.seq } }] : []),
       { id: "let", label: FILTER_COPY.letGo, do: { kind: "letGo", seq: line.seq } },
       ...(waiting > 1 ? [{ id: "all", label: FILTER_COPY.all(waiting), do: { kind: "filter" as const } }] : []),
     ],
@@ -590,7 +613,7 @@ export function filterDraft(line: FilterLine, waiting: number, refusal: string |
     yields: true,
     sticky: false,
     priority: FILTER_PRIORITY,
-    status: refusal ?? FILTER_COPY.hint,
+    status: said ?? FILTER_COPY.hint,
     at: typeof line.ts === "number" ? line.ts : 0,
   };
 }
@@ -623,4 +646,28 @@ export function censorRefusal(e: unknown): CensorOutcome {
   if (err.name === "RequestTimeout") return { kind: "refused", text: FILTER_COPY.refused.noAnswer };
   if (status === null) return { kind: "refused", text: FILTER_COPY.refused.offline };
   return { kind: "refused", text: FILTER_COPY.refused.other(why !== "" ? why : `HTTP ${status}`) };
+}
+
+// --- 🛡 ------------------------------------------------------------------------------------
+
+/** What a 🛡 came to, in the story's words where it gave any. */
+export type SendOutcome = { kind: "done"; text: string } | { kind: "refused"; text: string };
+
+/** A 200 from the press: the story's reply to this booth (`refused`: it turned the press down). */
+export function sendDone(r: Partial<PrimeActResult> | null | undefined, name: string): SendOutcome {
+  const reply = (r?.replies ?? []).find((t) => t.trim() !== "");
+  if (r?.refused === true) return { kind: "refused", text: reply ?? FILTER_SEND_COPY.refused.notNow };
+  return { kind: "done", text: reply ?? FILTER_SEND_COPY.sent(name) };
+}
+
+/** A failed 🛡, read from the error the POST threw. */
+export function sendRefusal(e: unknown): SendOutcome {
+  const err = (typeof e === "object" && e !== null ? e : {}) as { status?: unknown; message?: unknown };
+  const status = typeof err.status === "number" ? err.status : null;
+  const why = typeof err.message === "string" ? err.message : "";
+  const r = FILTER_SEND_COPY.refused;
+  if (status === null) return { kind: "refused", text: r.offline };
+  if (status === 409 && /doors/iu.test(why)) return { kind: "refused", text: r.doors };
+  if (status === 403) return { kind: "refused", text: r.notYours };
+  return { kind: "refused", text: r.other(why !== "" ? why : `HTTP ${status}`) };
 }

@@ -562,6 +562,7 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
       filter.censor(seq).then((o) => {
         if (o.kind === "refused") throw new Error(o.text);
       }),
+    send: (seq) => filter.send(seq),
     letGo: (seq) => filter.letGo(seq),
     filter: () => setLayer({ kind: "filter" }),
   };

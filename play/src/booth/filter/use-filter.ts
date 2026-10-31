@@ -10,12 +10,15 @@
 // time, the latest pick wins), the ⭐ game's heat with the wall time its
 // view arrived (`game`, for `game.tsx`'s live meter), and the last ✂'s
 // burst.
+// Wave 57 (C15): 🛡 on a line's program, the booth's ordinary press
+// (`FilterLine.send`); what came of it, per line, until the line leaves.
 
 import { useRef, useState } from "react";
 import type { SessionStorage } from "../../host.ts";
-import type { CensorResult, FilterCombo, FilterLevelResult, FilterLine, FilterView, PrimeView } from "../../types.ts";
+import type { CensorResult, FilterCombo, FilterLevelResult, FilterLine, FilterView, PrimeActResult, PrimeView } from "../../types.ts";
 import {
   FILTER_COPY,
+  FILTER_SEND_COPY,
   censorDone,
   censorRefusal,
   comboOf,
@@ -26,11 +29,14 @@ import {
   pruneDropped,
   remember,
   saveFilterMemory,
+  sendDone,
+  sendRefusal,
   snapLevel,
   waitingLines,
   type CensorOutcome,
   type FilterBurstData,
   type FilterMemory,
+  type SendOutcome,
 } from "./model.ts";
 
 /** The ⭐ game's heat as of a view, and the wall ms that view arrived (C11:
@@ -57,6 +63,10 @@ export interface FilterApi {
   censor: (seq: number) => Promise<CensorOutcome>;
   /** The last refusal for a line, else null. */
   refusal: (seq: number) => string | null;
+  /** Wave 57: 🛡 the line's program (`FilterLine.send`); a refusal is said in place. */
+  send: (seq: number) => Promise<SendOutcome>;
+  /** Wave 57: what a 🛡 on this line came to, else null. */
+  sent: (seq: number) => string | null;
   /** Wave 48b: the strength the dial shows (the pick on its way, else the view's). */
   level: number;
   /** Wave 48b: a strength POST is on its way. */
@@ -78,11 +88,12 @@ export interface FilterSource {
   view: PrimeView | null;
   censor?: (seq: number) => Promise<CensorResult>;
   filterLevel?: (level: number) => Promise<FilterLevelResult>;
+  act?: (name: string, guest?: string | null) => Promise<PrimeActResult>;
 }
 
-/** A line's part of the driver's key: its seq, its worth and its marks
- *  (a new strength re-marks a held pop-out in place). */
-const lineSig = (l: FilterLine) => `${l.seq}.${l.points ?? ""}.${(Array.isArray(l.hits) ? l.hits : []).map((h) => `${h.start}-${h.end}-${h.tier ?? ""}`).join("_")}`;
+/** A line's part of the driver's key: its seq, its worth, its marks (a new
+ *  strength re-marks a held pop-out in place) and whether 🛡 is on offer. */
+const lineSig = (l: FilterLine) => `${l.seq}.${l.points ?? ""}.${(Array.isArray(l.hits) ? l.hits : []).map((h) => `${h.start}-${h.end}-${h.tier ?? ""}`).join("_")}.${l.send?.id ?? ""}`;
 
 export function useFilter(s: FilterSource, storage: SessionStorage): FilterApi {
   const token = s.auth?.token ?? "";
@@ -90,6 +101,7 @@ export function useFilter(s: FilterSource, storage: SessionStorage): FilterApi {
   if (mem.current === null || mem.current.token !== token) mem.current = { token, memory: loadFilterMemory(storage, token) };
   const dropped = useRef(new Set<number>());
   const [refusals, setRefusals] = useState<ReadonlyMap<number, string>>(() => new Map());
+  const [sentNotes, setSentNotes] = useState<ReadonlyMap<number, string>>(() => new Map());
   const [, setVersion] = useState(0);
   const [levelError, setLevelError] = useState<string | null>(null);
   const [burst, setBurst] = useState<FilterBurstData | null>(null);
@@ -157,7 +169,7 @@ export function useFilter(s: FilterSource, storage: SessionStorage): FilterApi {
   };
 
   const waitingSeqs = new Set(waiting.map((l) => l.seq));
-  const shownRefusals = [...refusals].filter(([seq]) => waitingSeqs.has(seq));
+  const shownRefusals = [...refusals, ...sentNotes].filter(([seq]) => waitingSeqs.has(seq));
   return {
     view,
     waiting,
@@ -194,6 +206,23 @@ export function useFilter(s: FilterSource, storage: SessionStorage): FilterApi {
       return out;
     },
     refusal: (seq) => (waitingSeqs.has(seq) ? (refusals.get(seq) ?? null) : null),
+    send: async (seq) => {
+      const line = waiting.find((l) => l.seq === seq);
+      const call = source.current.act;
+      forget(seq);
+      let out: SendOutcome;
+      if (line?.send === undefined || call === undefined) out = { kind: "refused", text: FILTER_SEND_COPY.refused.notNow };
+      else
+        try {
+          out = sendDone(await call(line.send.id, line.guest), line.name);
+        } catch (e) {
+          out = sendRefusal(e);
+        }
+      const { kind, text } = out;
+      (kind === "done" ? setSentNotes : setRefusals)((m) => new Map(m).set(seq, text));
+      return out;
+    },
+    sent: (seq) => (waitingSeqs.has(seq) ? (sentNotes.get(seq) ?? null) : null),
     level: want.current ?? viewLevel,
     saving: posting.current.busy,
     levelError,

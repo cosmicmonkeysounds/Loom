@@ -38,6 +38,8 @@ export interface BoothOpeners {
   tried?: (guest: string) => void;
   /** Wave 48 (C5): ✂ a flagged line; rejects on a refusal (the pop-out stays, saying why). */
   censor?: (seq: number) => Promise<unknown>;
+  /** Wave 57 (C15): 🛡 a flagged line's program; the pop-out stays, saying what came of it. */
+  send?: (seq: number) => Promise<unknown>;
   /** Wave 48 (C5): Let it go (this phone only). */
   letGo?: (seq: number) => void;
   /** Wave 48 (C5): open the filter window. */
@@ -75,6 +77,8 @@ export function bindDraft(d: Draft, open: BoothOpeners, defer: (key: string) => 
         return () => open.mission?.();
       case "censor":
         return () => open.censor?.(x.seq);
+      case "send":
+        return () => open.send?.(x.seq);
       case "letGo":
         return () => open.letGo?.(x.seq);
       case "filter":
@@ -146,6 +150,7 @@ export function useBoothPopOuts({ session, open, now, placeTitle, ownFireAt, tar
       mission: () => openRef.current.mission?.(),
       tried: (g) => tried.current.add(g),
       censor: (seq) => openRef.current.censor?.(seq) ?? Promise.resolve(),
+      send: (seq) => openRef.current.send?.(seq) ?? Promise.resolve(),
       letGo: (seq) => openRef.current.letGo?.(seq),
       filter: () => openRef.current.filter?.(),
     }),
@@ -301,8 +306,9 @@ export function useBoothPopOuts({ session, open, now, placeTitle, ownFireAt, tar
     for (const k of plan.retire) rung.retire(k);
     const n = filter.waiting.length;
     // Wave 48b (C13): each with the ⭐ game's live meter and ✂'s pay now.
-    for (const line of plan.refresh) rung.raise(bind(filterDraft(line, n, filter.refusal(line.seq), filterGameNodes(line))));
-    if (plan.raise !== null) rung.raise(bind(filterDraft(plan.raise, n, filter.refusal(plan.raise.seq), filterGameNodes(plan.raise))));
+    const said = (seq: number) => filter.refusal(seq) ?? filter.sent(seq);
+    for (const line of plan.refresh) rung.raise(bind(filterDraft(line, n, said(line.seq), filterGameNodes(line))));
+    if (plan.raise !== null) rung.raise(bind(filterDraft(plan.raise, n, said(plan.raise.seq), filterGameNodes(plan.raise))));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filterKey, heldFilterKey, filterOpen]);
 
