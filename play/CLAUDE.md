@@ -84,7 +84,8 @@ part and turned the headers of `moments/model.ts`, `moments/provider.tsx`,
 - **Streams reopen.** `client.ts` `openChatFeed` probes a dead
   `EventSource` (a Caddy 502 during a restart) and reopens on a 1 s → 15 s
   jittered backoff; the tray's live dot reads *reconnecting…*.
-- **Deep links.** `?unlock=` (codex), `?checkin=` (room sign), `?act=` (a
+- **Deep links.** `?unlock=` (codex; a guest's session, or wave 58's
+  `booth/unlock-link.ts` on a phone signed in as a booth), `?checkin=` (room sign), `?act=` (a
   sign that presses a guest's button, `act-link.ts`, wave 54: 📷 Scan or the
   session's `pendingAct`, then `/api/guest/act`), `?room=` /
   `?go=` (a push tap or an exit), `?claim=`, `?pair=`, `?badge=`,
@@ -225,6 +226,23 @@ windows), the Desk, the director phone and Help are lazy chunks.
   (`booth/card.tsx`: facts, at most three face buttons from the live
   objectives, the press's replies / said / staff lines). Since wave 21
   no booth has *All buttons…*, earlier readouts or the raw id.
+- **A codex QR** (wave 58, copy `DRAFT w58`). `ScannerScreen`'s `onCode`
+  redeems a wall code with an `unlock` before anything else
+  (`PrimeSession.redeem` → `POST /api/prime/codex/redeem`, typed `RedeemAnswer`):
+  `redeemNote` is the line under the camera, which stays on, `redeemHeld` shows
+  📓 Open my Codex (`onOpenCodex`), and a refusal goes through `scanError`.
+  `lastCode` drops camera re-reads of the code last answered, so a held wrong
+  code never eats the limiter. The typed box (`doTyped`): a `g-…` id goes to
+  `/api/scan` alone; anything else tries `/api/scan` first, since a real code
+  can have a badge's shape, and on *unknown guest* falls through to the redeem
+  (`BOOTH_TYPED_NOTHING`). A wrong code here is no story event: the server's
+  doubt and Password Manager's line are a guest's. `booth/unlock-link.ts`
+  (`useUnlockLink`, `BoothApp`) is the phone camera's `?unlock=`: once signed in
+  with a view, it redeems once, strips the link and opens the Codex. It is in
+  `BoothApp`, so a part on rails keeps the link until the stage has gone. The
+  Codex room stays read-only (no composer); its empty line points at 📷 Scan.
+  Share lore lists every entry held, on purpose. Tests:
+  `test/w58-booth-scan.test.tsx`.
 - Pop-outs (`booth/popouts/`, one at a time, *Later* → the 🔔 Waiting
   window), the 🚨 Wanted posters and board (`booth/wanted/`), the
   confrontation screen (`booth/confront.tsx`), the shared door queue

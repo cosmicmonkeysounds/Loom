@@ -74,7 +74,7 @@ export interface RateLimits {
   register: RateRule;
   /** Failed passcode attempts per IP before the lockout. `LOOM_RL_LOGIN_FAILURES`. */
   loginFailures: RateRule;
-  /** Wrong codex codes per guest (`/api/guest/codex/redeem`). `LOOM_RL_REDEEM_MISSES`. */
+  /** Wrong codex codes per guest or booth part (`/api/guest/codex/redeem`, `/api/prime/codex/redeem`). `LOOM_RL_REDEEM_MISSES`. */
   redeemMisses: RateRule;
   /** Widget answers per guest (`/api/guest/widget`) — a story that re-deals
    *  a card after every answer (📝 File a fact) can't be tapped into a

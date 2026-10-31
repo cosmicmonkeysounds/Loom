@@ -104,6 +104,10 @@ keep the radio away from them. The TV and the tent laptop never send sound.
   buttons your objective needs** (wave 21: no *All buttons…* fold; a player's
   refused press says *Not now*). What the
   press came to shows on the card. **📷 Next guest** brings the camera back.
+- **Codex QRs:** **📷 Scan** reads them too, secret ones included, and the entry
+  lands in your 📓 Codex. A wrong code costs you nothing. No ⭐ for it. **Share
+  lore…** on a guest's card can pass on anything you hold, so mind what you hand
+  over.
 - **Booth readouts** are the 📋/🛡/🃏/🚨 lines for you only. They land in the
   pinned **Readouts** room, newest first, and survive a reload; a readout
   about the guest whose card is open shows on the card. The ones that need

@@ -204,8 +204,8 @@ describe("C1: CAPTURED has no way on but × (and Next guest at the door)", () =>
 
 describe("C3: the camera hint promises a next guest only at the door", () => {
   it("scanHint", () => {
-    expect(scanHint(true)).toBe("Hold a pass up to the camera. It stays on for the next guest.");
-    expect(scanHint(false)).toBe("Hold a pass up to the camera.");
+    expect(scanHint(true)).toBe("Hold a pass or a codex QR up to the camera. It stays on for the next guest.");
+    expect(scanHint(false)).toBe("Hold a pass or a codex QR up to the camera.");
     expect(src("booth/scanner.tsx")).toContain('cam === "live" ? scanHint(queue) : " "');
   });
 });
@@ -306,7 +306,7 @@ describe("C3: Next guest only for door work; one camera glyph", () => {
   it("the caption draws one camera: the title bar's icon, never a 📷 in the words", () => {
     expect(scanTitle("📷 Scan Ada's pass")).toBe("Scan Ada's pass");
     expect(scanTitle("📷 Scan a program to send them to the Internet")).toBe("Scan a program to send them to the Internet");
-    expect(scanTitle(undefined)).toBe("Scan a pass");
+    expect(scanTitle(undefined)).toBe("Scan a pass or a codex QR");
     expect(scanTitle("Scan Ada's pass")).toBe("Scan Ada's pass");
     const html = renderToStaticMarkup(<ScannerScreen session={session()} admin={false} caption="📷 Scan Ada's pass" onClose={() => {}} onOpenThread={() => {}} />);
     expect(html).not.toContain("📷");

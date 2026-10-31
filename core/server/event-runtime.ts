@@ -7094,6 +7094,59 @@ export class EventRuntime {
         sendJson(res, 200, { ok: true, shared: events.some((e) => e.type === "codexUnlocked") });
         return true;
       }
+      case "/api/prime/codex/redeem": {
+        // Wave 58: a booth reads a codex QR (or types its code), so every
+        // coded entry is everyone's to scan, `secret: true` ones too: `secret`
+        // only hides an entry from an agent. Answers `/api/guest/codex/redeem`'s
+        // shape, but a part is no Person: `Sim.redeem` would do nothing, so a
+        // hit is the journaled `unlock` the mod route writes, and a miss is no
+        // story event at all (no `codexMissed`, no `wrong code`, no doubt).
+        // Only the limiter counts it. No ⭐, no award: those read Persons.
+        const character = this.characterOf(tokenOf(req, body));
+        if (!character) {
+          sendJson(res, 403, { error: "no character — sign in" });
+          return true;
+        }
+        if (!open) {
+          sendJson(res, 409, { error: "doors are closed" });
+          return true;
+        }
+        const code = str(body, "code").trim();
+        if (code === "") {
+          sendJson(res, 400, { error: "empty code" });
+          return true;
+        }
+        if (code.length > MAX_CODE_LENGTH) {
+          sendJson(res, 400, { error: "not a code" });
+          return true;
+        }
+        if (!this.redeemMisses.allowed(character)) {
+          sendJson(res, 429, { error: "too many wrong codes — wait a minute" });
+          return true;
+        }
+        const sim = this.sim!;
+        const entry = sim.model.codexCodes.get(foldCode(code));
+        if (entry === undefined) {
+          this.redeemMisses.record(character);
+          sendJson(res, 200, { ok: true, unlocked: null, missed: true });
+          return true;
+        }
+        // An operator playing an agent-voiced part (Run → Players) must not
+        // launder lore into its prompt: the share routes' refusal holds here.
+        const refusal = sim.agentRefusal(character, entry);
+        if (refusal !== null) {
+          sendJson(res, 403, { error: agentRefusalText(refusal) });
+          return true;
+        }
+        const title = sim.model.codex.get(entry)?.title ?? null;
+        if (sim.holdsCodex(character, entry)) {
+          sendJson(res, 200, { ok: true, unlocked: null, already: entry, ...(title !== null ? { title } : {}) });
+          return true;
+        }
+        this.fanout(this.commit("unlock", character, entry));
+        sendJson(res, 200, { ok: true, unlocked: entry, ...(title !== null ? { title } : {}) });
+        return true;
+      }
 
       // --- performer (prime) login: grants the `character` capability ---
       case "/api/prime/login": {

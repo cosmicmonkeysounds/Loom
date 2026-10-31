@@ -204,6 +204,25 @@ A scan fires your character's story for that guest; what the story
 answers shows on the card, and anything it wants you to *say or do*
 arrives as your direction.
 
+## Scanning codex QRs
+
+**📷 Scan** reads a codex QR too: any QR a guest can read, on a wall, in a
+fact stack or on a note, works for your character, the secret ones
+included. The entry lands in your **📓 Codex**, a line under the camera says
+so, and the camera stays on for the next one; **📓 Open my Codex** takes you
+there. A QR held to the lens counts once. The box under the camera takes a
+code as well as a guest's id. Your phone's own camera works too, on a phone
+signed in as your booth: the link opens your Codex.
+
+A wrong code costs your character nothing: you get the line and that's all.
+Eight wrong codes in a minute and the scanner asks you to wait. A scan earns
+no ⭐ and counts toward no award. While the doors are closed or the show is
+paused it waits, as it does for everyone.
+
+What you hold, **Share lore…** on a guest's card can pass on. That means
+anything you hold, and what an entry does to a guest happens for real, so
+mind what you hand over.
+
 ## The guest card
 
 You also open a card from **🗂 Guests** (search by name or id; tabs
@@ -468,7 +487,7 @@ knows what the verdict was.
 Under **Pinned** your booth has the character's own **📜 Quest Log**
 (the story can hand your character quests — a staff brief, step by
 step, in its own thread each), its **📓 Codex** (what your character
-knows, and can share from a guest's card; on a host's or plain booth
+knows, what you've scanned, and what you can share from a guest's card; on a host's or plain booth
 **⊞ Start → What … knows** lists it too), and a **Wallet** when your character audits the story's
 currency (below). The staff rooms, `# hosts` and `# quarantine` at the
 show, sit just under them, marked *staff only*. Cards the story deals
