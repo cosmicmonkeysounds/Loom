@@ -90,7 +90,7 @@ import { forBooth, hostSeen, seenCues, seenName } from "./unseen-directors.ts";
 import { guestSide } from "./routes/sides.ts";
 import { CrewRoutes, answeredInviteCards, crewDrafts } from "./routes/crews.ts"; // w18 crews
 import { isCrewId, isCrewRoom } from "../src/runtime/sim/crews.ts"; // w18 crews
-import { AUDIO_FILE, AudioHub, audioProblems, handleAudioGet, handleAudioPost, handleMixerGet, type AudioContext } from "./audio.ts";
+import { AUDIO_FILE, AudioHub, audioProblems, handleAudioGet, handleAudioPost, handleMixerGet, musicDjOf, type AudioContext } from "./audio.ts";
 import { LIGHTS_FILE, LightsHub, handleLightsGet, handleLightsPost, lightsProblems, type LightTest, type LightsContext } from "./lights.ts";
 import { GameLightsFeed, LightsEstimate, buildGameLights } from "./lights-shown.ts";
 import { DESK_BY, DESK_FILE, DeskHub, deskHouseOf, deskLightFixtures, deskProblems, deskRefsOf, deskSeen, handleDeskGet, handleDeskPost, lookMsOf, type DeskContext, type DeskTimers } from "./desk.ts";
@@ -2415,7 +2415,11 @@ export class EventRuntime {
 
   /** What the audio routes read off this event (`audio.ts`). */
   private audioContext(): AudioContext {
-    return { house: () => this.spatialHouse(), model: () => this.sim?.model ?? this.declaredModel };
+    return {
+      house: () => this.spatialHouse(),
+      model: () => this.sim?.model ?? this.declaredModel,
+      dj: () => (this.sim !== null ? musicDjOf(this.sim.worldEntries(), [...this.sim.persons.values()]) : null),
+    };
   }
 
   /** A reload's fresh snapshot of the project's `lights.json` (`events-api.ts`,
@@ -3356,6 +3360,8 @@ export class EventRuntime {
         codex: codex(speakerId, !recentOn),
         location: performer === null ? sim.locationOf(who) : null,
         ...(speakerDef?.player === true ? { ranges: Object.fromEntries([...speakerDef.ranges].filter(([k]) => !isPrivateSlot(speakerDef, k))) } : {}),
+        // Wave 58 (C5): a guest's one slot the voice may move, when the story names one.
+        ...(performer === null && sim.model.warmth !== null ? { ranges: { [sim.model.warmth.slot]: [sim.model.warmth.min, sim.model.warmth.max] as [number, number] } } : {}),
       },
       world: globals,
       powers: this.agentPowers(),
@@ -3873,25 +3879,36 @@ export class EventRuntime {
     // clamped to them. The story's watchers decide what the numbers mean.
     const ranges = sim.model.characters.get(req.character)?.ranges ?? new Map<string, [number, number]>();
     // Wave 21 (C7): `them.<slot>` moves a player speaker's own declared
-    // range (never a `private:` one); a guest's `them.` keys are ignored.
+    // range (never a `private:` one); a guest's `them.` keys are ignored,
+    // but for the story's `warmth:` slot (wave 58, C5), ±1 whatever was asked.
     const who = req.thread.audience[0] ?? "";
     const them = who.startsWith("@") ? sim.model.characters.get(who.slice(1)) : undefined;
     const applied: Record<string, number> = {};
     for (const [name, delta] of agentAdjustments(body["adjust"])) {
       let range: [number, number] | undefined;
       let path: string;
+      let step = delta;
+      let start: number | undefined;
       if (name.startsWith("them.")) {
         const slot = name.slice("them.".length);
-        if (them === undefined || !them.player || isPrivateSlot(them, slot)) continue;
-        range = them.ranges.get(slot);
-        path = `${them.id}.${slot}`;
+        const warmth = sim.model.warmth;
+        if (them === undefined && warmth !== null && slot === warmth.slot && sim.persons.has(who)) {
+          range = [warmth.min, warmth.max];
+          path = `${who}.${slot}`;
+          step = Math.sign(delta);
+          start = 0;
+        } else {
+          if (them === undefined || !them.player || isPrivateSlot(them, slot)) continue;
+          range = them.ranges.get(slot);
+          path = `${them.id}.${slot}`;
+        }
       } else {
         range = ranges.get(name);
         path = `${req.character}.${name}`;
       }
       if (range === undefined) continue;
-      const current = Number(sim.worldEntries().find((w) => w.path === path)?.value ?? range[0]);
-      const next = Math.max(range[0], Math.min(range[1], (Number.isFinite(current) ? current : range[0]) + delta));
+      const current = Number(sim.worldEntries().find((w) => w.path === path)?.value ?? start ?? range[0]);
+      const next = Math.max(range[0], Math.min(range[1], (Number.isFinite(current) ? current : (start ?? range[0])) + step));
       applied[name] = next;
       this.fanout(this.commit("setVar", path, String(next)));
     }

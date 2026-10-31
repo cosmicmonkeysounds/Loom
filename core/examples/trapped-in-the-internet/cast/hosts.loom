@@ -206,6 +206,7 @@ CHARACTER Clippy is Greeter, Player
     if Night.truther_sent == true and Night.judging == true and program.slid != Night.round and program.cleared == true:
       set program.slid = Night.round
       set program.truths_accepted += 1
+      set program.chummy += 1
       set program.score += 100
       set self.covert += 1
       Self (whispering): That was a guess. I wrote down "accepted". It looks like you owe me one!

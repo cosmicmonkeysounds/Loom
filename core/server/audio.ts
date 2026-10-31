@@ -112,11 +112,17 @@ import {
   mixerRooms,
   mixerSources,
   musicCommandOf,
+  MUSIC_LIBRARY_MAX,
+  MUSIC_PALS_MAX,
+  TIDAL_ID_RE,
   type AudioMix,
   type MixChange,
   type MixerMeters,
   type MixerMusic,
   type MixerMusicBed,
+  type MixerTidal,
+  type MixerTidalPlaylist,
+  type MusicDj,
   type MixerView,
   type MusicCommand,
   type MusicCommandEntry,
@@ -413,6 +419,7 @@ export function audioMusicOf(m: unknown): AudioMusicHealth | null {
       const bed: AudioMusicBed = { playlist, speakers, track, posS: secs(b["posS"] ?? b["pos_s"]) ?? 0 };
       const dur = secs(b["durS"] ?? b["dur_s"]);
       if (dur !== null) bed.durS = dur;
+      if (b["live"] === true) bed.live = true;
       beds.push(bed);
     }
   const out: AudioMusicHealth = { scene, beds, missing: names(m["missing"], AUDIO_HEALTH_BEDS_MAX) };
@@ -428,7 +435,29 @@ export function audioMusicOf(m: unknown): AudioMusicHealth | null {
       out.playlists.push({ name: pname, tracks: clampNum(Math.round(tracks), 0, 100_000), loop: p["loop"] === true });
     }
   }
+  const tidal = audioTidalOf(m["tidal"]);
+  if (tidal !== null) out.tidal = tidal;
+  if (m["loan"] === true) out.loan = true;
   return out;
+}
+
+/** (wave 58) The TIDAL app in a music report, or null when it isn't sound. A
+ *  malformed library entry is skipped. */
+function audioTidalOf(t: unknown): MixerTidal | null {
+  if (!isRecord(t) || typeof t["online"] !== "boolean") return null;
+  const text = (v: unknown, max: number): string | null => (typeof v === "string" && v.trim() !== "" ? v.slice(0, max) : null);
+  const library: MixerTidalPlaylist[] = [];
+  if (Array.isArray(t["library"]))
+    for (const p of t["library"].slice(0, MUSIC_LIBRARY_MAX)) {
+      if (!isRecord(p)) continue;
+      const id = typeof p["id"] === "string" && TIDAL_ID_RE.test(p["id"]) ? p["id"] : null;
+      const title = text(p["title"], 80);
+      if (id === null || title === null) continue;
+      const items = p["items"];
+      library.push({ id, title, ...(typeof items === "number" && Number.isFinite(items) ? { items: clampNum(Math.round(items), 0, 100_000) } : {}) });
+    }
+  const playlist = typeof t["playlist"] === "string" && TIDAL_ID_RE.test(t["playlist"]) ? t["playlist"] : null;
+  return { online: t["online"], playing: t["playing"] === true, paused: t["paused"] === true, track: text(t["track"], 128), problem: text(t["problem"], 200), playlist, library };
 }
 
 /**
@@ -1076,6 +1105,27 @@ export interface AudioContext {
   house: () => HouseMap | null;
   /** The story's model (its sound names and LOCATIONs). */
   model: () => SimModel | null;
+  /** (wave 58) Trabolta at the stereo, for the mixer's view. */
+  dj?: () => MusicDj | null;
+}
+
+/** (wave 58) The music card off the story's world: `Night.dj_locked`,
+ *  `Night.dj_bar`, `Night.dj_last`, `Night.dj_for` and each guest's `chummy`.
+ *  Null for a story that has none of it. */
+export function musicDjOf(world: ReadonlyArray<{ path: string; value: unknown }>, guests: ReadonlyArray<{ id: string; name: string }>): MusicDj | null {
+  const vars = new Map(world.map((w) => [w.path, w.value]));
+  if (!vars.has("Night.dj_locked")) return null;
+  const bar = Number(vars.get("Night.dj_bar") ?? 3);
+  const pals = guests
+    .map((g) => ({ name: g.name, chummy: Number(vars.get(`${g.id}.chummy`) ?? 0) }))
+    .filter((g) => Number.isFinite(g.chummy) && g.chummy >= bar)
+    .sort((a, b) => b.chummy - a.chummy || a.name.localeCompare(b.name))
+    .slice(0, MUSIC_PALS_MAX);
+  const named = (v: unknown): string | null => (typeof v === "string" && v !== "" && v !== "none" ? v : null);
+  const what = named(vars.get("Night.dj_last"));
+  const who = named(vars.get("Night.dj_for"));
+  const locked = vars.get("Night.dj_locked");
+  return { locked: locked === true || locked === "true", bar, pals, last: what !== null ? { what, who: who ?? "" } : null };
 }
 
 /** The GET answer. */
@@ -1193,7 +1243,7 @@ export function mixerView(hub: AudioHub, ctx: AudioContext): MixerView {
     const label = house?.rooms.find((r) => r.id === id)?.label;
     return label !== undefined && label.trim() !== "" ? label : null;
   };
-  return { mix: hub.mix(), sources: mixerSources(audio), rooms: mixerRooms(audio, roomName), meters: hub.liveMeters(), music: hub.nowPlaying(), router: hub.router(), now: hub.clock() };
+  return { mix: hub.mix(), sources: mixerSources(audio), rooms: mixerRooms(audio, roomName), meters: hub.liveMeters(), music: hub.nowPlaying(), dj: ctx.dj?.() ?? null, router: hub.router(), now: hub.clock() };
 }
 
 /**
@@ -1231,6 +1281,16 @@ function musicCommandText(c: MusicCommand): string {
       return "stopped the soundtrack";
     case "story":
       return "let the story's music cues back in";
+    case "previous":
+      return "went back a track";
+    case "pause":
+      return "paused the app";
+    case "resume":
+      return "played the app again";
+    case "playlist":
+      return `played the ${c.playlist} playlist by hand`;
+    case "tidal":
+      return `played ${c.title ?? c.id} from the app by hand`;
   }
 }
 

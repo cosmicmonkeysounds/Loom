@@ -65,6 +65,15 @@ export const MIX_METERS_EVERY_MS = 250;
 /** How long a music command waits for the router (ms): older ones are dropped. */
 export const MUSIC_COMMAND_MS = 60_000;
 export const MUSIC_COMMANDS = 16;
+/** (wave 58) At most this many TIDAL playlists in a report. */
+export const MUSIC_LIBRARY_MAX = 64;
+/** (wave 58) At most this many of Trabolta's pals in a view. */
+export const MUSIC_PALS_MAX = 12;
+/** (wave 58) A TIDAL playlist's id: the end of its share link. */
+export const TIDAL_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u;
+/** (wave 58) The story's cues that keep Trabolta off the music, and let him back. */
+export const DJ_LOCK_CUE = "trabolta_music_lock";
+export const DJ_UNLOCK_CUE = "trabolta_music_unlock";
 
 export interface MixLevel {
   db: number;
@@ -336,12 +345,36 @@ export interface MixerMusicBed {
   posS: number;
   /** The track's length (s), when the router knows it. */
   durS?: number;
+  /** (wave 58) The bed is the TIDAL app's sound, not a file. */
+  live?: boolean;
 }
 
 export interface MixerPlaylist {
   name: string;
   tracks: number;
   loop: boolean;
+}
+
+/** (wave 58) One playlist in the TIDAL app's sidebar. */
+export interface MixerTidalPlaylist {
+  id: string;
+  title: string;
+  items?: number;
+}
+
+/** (wave 58) The TIDAL app, as the router sees it. */
+export interface MixerTidal {
+  /** The app answers on its debug port. */
+  online: boolean;
+  playing: boolean;
+  /** Paused by hand, or by Trabolta: it stays paused until resumed. */
+  paused: boolean;
+  track: string | null;
+  /** Why the app is not doing what it was told, in words (null: all is well). */
+  problem: string | null;
+  /** The playlist the app was told to play (its id), null with none. */
+  playlist: string | null;
+  library: MixerTidalPlaylist[];
 }
 
 /** The soundtrack as the panel shows it (the router's `music` report). */
@@ -355,6 +388,10 @@ export interface MixerMusic {
   hand?: boolean;
   /** (wave 40) Every playlist and its size. */
   playlists?: MixerPlaylist[];
+  /** (wave 58) The app, on a router that has it. */
+  tidal?: MixerTidal;
+  /** (wave 58) The hand is Trabolta's: it ends by itself. */
+  loan?: boolean;
 }
 
 /** What a director or host may tell the soundtrack. */
@@ -366,10 +403,27 @@ export type MusicCommand =
   /** Stop the soundtrack (held, like a hand scene). */
   | { action: "stop" }
   /** Let go of a hand scene: the story's scene again, now. */
-  | { action: "story" };
+  | { action: "story" }
+  /** (wave 58) The app's ⏮. */
+  | { action: "previous" }
+  /** (wave 58) Pause the app; it stays paused until `resume` or a scene change. */
+  | { action: "pause" }
+  /** (wave 58) Play the app again. */
+  | { action: "resume" }
+  /** (wave 58) A show playlist by hand, on the main bed's speakers. */
+  | { action: "playlist"; playlist: string }
+  /** (wave 58) Any TIDAL playlist by hand, the same way. */
+  | { action: "tidal"; id: string; title?: string };
 
 /** A queued command, as the router reads it. */
 export type MusicCommandEntry = MusicCommand & { seq: number; at: number; by: string };
+
+/** (wave 58) The playlist id in a share link or a bare id, or null for
+ *  anything else (an album's or a track's link has none). */
+export function tidalPlaylistId(text: string): string | null {
+  const hit = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/iu.exec(text.trim());
+  return hit !== null ? hit[0].toLowerCase() : null;
+}
 
 /** A post's body as a music command, or the reason it is refused. */
 export function musicCommandOf(raw: unknown): MusicCommand | string {
@@ -391,9 +445,39 @@ export function musicCommandOf(raw: unknown): MusicCommand | string {
       return { action: "stop" };
     case "story":
       return { action: "story" };
+    case "previous":
+      return { action: "previous" };
+    case "pause":
+      return { action: "pause" };
+    case "resume":
+      return { action: "resume" };
+    case "playlist": {
+      const p = r["playlist"];
+      if (typeof p !== "string" || !MIX_ID_RE.test(p)) return "playlist must be a playlist name";
+      return { action: "playlist", playlist: p };
+    }
+    case "tidal": {
+      const id = r["id"];
+      if (typeof id !== "string" || !TIDAL_ID_RE.test(id)) return "id must be a TIDAL playlist id";
+      const title = r["title"];
+      if (typeof title === "string" && title.trim() !== "") return { action: "tidal", id, title: title.trim().slice(0, 80) };
+      return { action: "tidal", id };
+    }
     default:
-      return "action must be next, scene, stop or story";
+      return "action must be next, scene, stop, story, previous, pause, resume, playlist or tidal";
   }
+}
+
+/** (wave 58) Trabolta at the stereo: the panel's card, off the story. */
+export interface MusicDj {
+  /** A host or a director has kept him off the music. */
+  locked: boolean;
+  /** How chummy a program must be before he will do it for them. */
+  bar: number;
+  /** The programs at or over the bar, the chummiest first. */
+  pals: Array<{ name: string; chummy: number }>;
+  /** What he did last, and for whom. */
+  last: { what: string; who: string } | null;
 }
 
 /** `GET /api/mod/audio/mixer`: everything the panel draws. */
@@ -405,6 +489,8 @@ export interface MixerView {
   meters: MixerMeters | null;
   /** The soundtrack, null before the router reports one (or it has none). */
   music: MixerMusic | null;
+  /** (wave 58) Trabolta at the stereo; null for a story without the power. */
+  dj?: MusicDj | null;
   router: { online: boolean; lastSeen: number | null; name: string | null };
   /** Server epoch ms. */
   now: number;

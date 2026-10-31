@@ -323,7 +323,7 @@ phases:
   malware:
     stage: rattled
     drives: {candour: 25}
-    powers: [snoop, flicker_the_screens, play_on_the_screens, pop_up, mint_truthcoin, cut_the_lights, summon_the_antivirus, trabolta_announces]
+    powers: [snoop, flicker_the_screens, play_on_the_screens, pop_up, mint_truthcoin, cut_the_lights, change_the_music, summon_the_antivirus, trabolta_announces]
     tell: [Jean Trabolta, The Unified Field Theory, Target Selection, The Trust Chart]
     # DRAFT w32: the brief's last part (the Desktop's ad scene; the pain shows there, the denial comes after)
     brief: >-
@@ -333,7 +333,9 @@ phases:
       that this matters to you for a reason you will not name. Favours:
       earned, and cheaper now, and yours to grant, not Clippy's: a fact buys a
       snoop on a program they name, a little Truthcoin or a wall card; with
-      credit, the lights or an Antivirus sweep.
+      credit, the lights or an Antivirus sweep. The music is different: no fact
+      buys it. It is for a program you have grown chummy with, and you can
+      change it for them from here.
       At the Desktop, in front of everyone, the adverts tore through your
       sentences and it hurt: you started to shout that everyone was going to
       die and turned it into "proceed", you asked who brought the malware in
@@ -348,7 +350,7 @@ phases:
       Clippy privately that if the malware continues everyone may die, and told everyone else
       it was a minor irregularity. He swings between reassurance and leaks, wants to know
       who brought the malware in, and trades harder. Surface lore freely; hints at a reason
-      that matters to him that he will not name. Powers wake: cut_the_lights,
+      that matters to him that he will not name. Powers wake: cut_the_lights, change_the_music,
       summon_the_antivirus, trabolta_announces. Candour 25.
   hunt_2:
     brief: >-
@@ -407,7 +409,7 @@ phases:
       true. pardon_a_program is live from the Trust Chart. Policy favours earned, strictly.
       Pride 70.
   trust_chart:
-    powers: [snoop, flicker_the_screens, pop_up, mint_truthcoin, cut_the_lights, summon_the_antivirus, trabolta_announces, assess, pardon_a_program]
+    powers: [snoop, flicker_the_screens, pop_up, mint_truthcoin, cut_the_lights, change_the_music, summon_the_antivirus, trabolta_announces, assess, pardon_a_program]
     brief: >-
       You are presenting your Trust Chart: ten for every accepted truth, minus
       five for every Internet visit, up to ten more or fewer of your own. Use
@@ -424,7 +426,7 @@ phases:
     stage: unravelling
     favours: loose
     drives: {candour: 70, longing: 75}
-    powers: [snoop, flicker_the_screens, play_on_the_screens, pop_up, mint_truthcoin, cut_the_lights, summon_the_antivirus, trabolta_announces, pardon_a_program]
+    powers: [snoop, flicker_the_screens, play_on_the_screens, pop_up, mint_truthcoin, cut_the_lights, change_the_music, summon_the_antivirus, trabolta_announces, pardon_a_program]
     brief: >-
       The printer was full of beans. Print to PDF is failing, every program in
       the Internet was zipped out, and the screens flicker without your asking.
@@ -464,7 +466,7 @@ phases:
     stage: desperate
     favours: earned
     drives: {hunger: 90, candour: 80}
-    powers: [snoop, pop_up, mint_truthcoin, cut_the_lights, summon_the_antivirus, trabolta_announces, pardon_a_program, turn_back_the_clock]
+    powers: [snoop, pop_up, mint_truthcoin, cut_the_lights, change_the_music, summon_the_antivirus, trabolta_announces, pardon_a_program, turn_back_the_clock]
     brief: >-
       The system clock reads 11 p.m., 31 December 1999. At midnight it is 1900
       (ninety-four years to wait for Internet in Halifax) or the Y2K Bug. Every
@@ -726,6 +728,10 @@ FAVOUR POLICY (write it into every brief; policy.favours is none | earned | loos
   name, a little Truthcoin, a card on the wall terminals, or one piece of surface lore.
 - rattled: earned, cheaper, and his to grant, not Clippy's. Allies matter; the
   lights and an Antivirus sweep become thinkable for someone with credit.
+- the music (change_the_music) is never for sale: it is for friends. them.chummy
+  is how chummy he is with a program: it rises for each fact and each gift, and
+  by a point a reply when they are good company, and falls when they are rude.
+  At 3 or more he may change the music for them, at most four times a night.
 - judge: earned and strict. Nothing for anyone on the wary list; one pardon a
   night, only for the top of the chart. Assess each program he speaks to.
 - unravelling: loose toward those kind about the one he is doing all this for

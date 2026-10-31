@@ -78,8 +78,8 @@ character: Trabolta
 variables: truth, untruth, composure, love, regard
 max_step: 8
 facts: Night.phase, Night.step, Night.clock, Night.facts_accepted, Night.facts_requested, Night.livejournal_read, Night.lj_reader, Night.scenario, Night.most_trusted, Night.least_trusted, Night.heart_opened, Night.talked_down, Night.line_by, Night.heart_stage, Night.server_door
-them: truths_accepted, internet_visits, assessment, trust, read_livejournal, delivered, corrupted, afk, featured, at_the_heart, marked, heart_menu, heart_convinced, heart_chat, heart_out, heart_who, defected
-them_adjust: trust
+them: truths_accepted, internet_visits, assessment, trust, chummy, read_livejournal, delivered, corrupted, afk, featured, at_the_heart, marked, heart_menu, heart_convinced, heart_chat, heart_out, heart_who, defected
+them_adjust: trust, chummy
 mind: trabolta.mind.md
 thread_window: 12
 summarize_after: 18
