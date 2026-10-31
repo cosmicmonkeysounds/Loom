@@ -241,6 +241,14 @@ Only the words we changed.
 - *Nobody online.* (`play/src/booth/people.tsx:46`); *Offline ({n})*, *Nobody online.*, *Nobody online matches "…".* (`play/src/host/tab-people.tsx:32`, `:38`)
 - *🔁 1 wants back in* and *🔁 {n} want back in* (`play/src/host/show-model.ts` `asksLine`)
 
+The Desk's tabs, `DRAFT w59d` (`play/src/host/desk-tabs.ts`, `play/src/host/desk-house.tsx`, `deskHow` in `play/src/host/desk-model.ts`; `docs/loom-house-desk.md` §6.2):
+
+- The tabs *Cues*, *Music*, *Mix*, *House*, *Setup*, and the five lines of *How the Desk works*
+- 🖥 House: *Break his next words (8 s)*, *■ Stop + the announcement*, *🌀 Put the terminals back*, *🌀 Bring the dream back*, *It runs from 🕚 until an ending.*
+- His voice under its buttons: *Follows the night: he comes apart by himself.*, *Kept clean: nothing breaks him, whatever the night does.*, *Fully broken, from now until you change it.*
+- A terminal's marks: *🔇 touch it*, *💤 hidden*, *⛶ not full*, *🚪 shut*, *🚪 open*, *🚪 fault*, *old build*
+- The foot of 🖥 House: *A director's, on Run → Terminals and the House map card: 🎭 the costume's switch, and the descent.*
+
 The refused screen and its neighbours carry no marker, because they are app words, not show text:
 
 - *{name} is already signed in on a phone.* · *Badge {ref} is already signed in on a phone.* · *That badge is already signed in on a phone.* and the hint under them (`play/src/rejoin-calls.ts`)
@@ -291,6 +299,7 @@ The refused screen and its neighbours carry no marker, because they are app word
 | `core/server/push.ts` | 290 |
 | `core/src/costume.ts` | 217 |
 | `costume.json` | 2 |
+| `docs/loom-house-desk.md` | 319 |
 | `editor/src/lib/print-sheet.ts` | 18 |
 | `main.loom` | 2494, 2558, 2593, 3292, 3309, 3849, 6146, 6148, 6228, 6230, 6288, 6535, 6567, 6607 |
 | `objectives.loom` | 118, 217, 300, 339 |
@@ -299,6 +308,9 @@ The refused screen and its neighbours carry no marker, because they are app word
 | `play/src/booth/people.tsx` | 46 |
 | `play/src/director.tsx` | 1374 |
 | `play/src/guest/register.tsx` | 173 |
+| `play/src/host/desk-house.tsx` | 13, 29 |
+| `play/src/host/desk-model.ts` | 441 |
+| `play/src/host/desk-tabs.ts` | 3 |
 | `play/src/host/prompter-strip.tsx` | 22, 28 |
 | `play/src/host/show-model.ts` | 115 |
 | `play/src/host/tab-people.tsx` | 32, 38 |

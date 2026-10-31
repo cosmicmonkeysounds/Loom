@@ -9,7 +9,8 @@
 //! It reads the console's host view and writes only what the host allowlist
 //! already opens. What the server keeps a director's stays on Run, and the line
 //! at the foot says so: 🎭 the costume's switch and the descent. Nothing here
-//! starts, restarts, reloads or ends a show, and nothing ever should.
+//! starts, restarts, reloads or ends a show, and nothing ever should. New words
+//! here are `DRAFT w59d`.
 
 import { useEffect, useState, type ReactNode } from "react";
 import type { ApiError } from "../client.ts";
@@ -17,7 +18,7 @@ import { VOICE_FLAVOURS, VOICE_FLAVOUR_LABEL, VOICE_FX_MODES, type VoiceFlavour 
 import type { HostView } from "../types.ts";
 import type { HostCalls } from "./api.ts";
 import { useHostConsole } from "./dock.tsx";
-import { DREAM_NOT_NOW, VOICE_MODE_WORD, dreamDone, dreamRow, terminalLines, terminalsAside, voiceModeLine } from "./desk-tabs.ts";
+import { DREAM_CUE, DREAM_NOT_NOW, VOICE_MODE_WORD, dreamDone, dreamRow, terminalLines, terminalsAside, voiceModeLine } from "./desk-tabs.ts";
 import { ActButton, ConfirmButton, HostEmpty, HostSection } from "./kit.tsx";
 import { optimisticValue, tvVoiceLabel, type Optimistic, type VoiceFxMode } from "./model.ts";
 import { glitchText } from "./talk-model.ts";
@@ -73,7 +74,7 @@ export function DeskHouseBody({ view, rows, calls, act, refresh, tryIt }: DeskHo
       </div>
       {dream !== null && (
         <HostSection id="desk-dream" title="🌀 Clippy's dream" aside={dream.state}>
-          <ConfirmButton className="host-desk-wide" testId="host-desk-dream" label={dream.button} ask={dream.ask} yes="Do it" disabled={!dream.live} onConfirm={() => send((a) => dreamDone(dream.on, a), () => calls.cue("dream_toggle", null, null))} />
+          <ConfirmButton className="host-desk-wide" testId="host-desk-dream" label={dream.button} ask={dream.ask} yes="Do it" disabled={!dream.live} onConfirm={() => send((a) => dreamDone(dream.on, a), () => calls.cue(DREAM_CUE, null, null))} />
           {!dream.live && <p className="host-note">{DREAM_NOT_NOW}</p>}
         </HostSection>
       )}
