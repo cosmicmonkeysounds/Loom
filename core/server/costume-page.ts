@@ -318,6 +318,7 @@ const JS = String.raw`(function () {
 
   function onStart(e) {
     e.preventDefault();
+    forget(e);
     var down = false;
     for (var i = 0; i < e.changedTouches.length; i++) {
       var t = e.changedTouches[i];
