@@ -570,6 +570,14 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   unfiltered: a part can pass on anything it holds. Tests:
   `test/w58-booth-scan.test.ts` (all 8 parts over every coded entry of the show,
   every code read from the compiled model).
+- **A room opens on its beat, for the crew too** (wave 59). A `hidden: true` GROUP's
+  `kind: faction` channel is closed to everyone until `reveal`, the members a beat
+  added early included (`canSeeChannel`, `factionUnrevealed`). `Sim.allChannelsFor`,
+  what a booth lists and may post into, now holds only what the story has opened to
+  anyone (`channelOpened`, `locationOpened`: revealed, or someone has stood there), plus
+  where that booth stands. `operatorChannels` uses `channelOpened` for chat rooms and
+  sides, and keeps every LOCATION: a beat can land in a room no phone lists (The
+  Script). Tests: `test/w59-rooms-open.test.ts`, `test/sim-reveal.test.ts`.
 - **The teleprompter** (wave 55, [`docs/loom-w55-contract.md`](../docs/loom-w55-contract.md)).
   A beat's contract line `aloud:` names who reads it: parts
   (`aloud: Clippy, Task Manager`, `@<Character>`) or a program (`aloud:
