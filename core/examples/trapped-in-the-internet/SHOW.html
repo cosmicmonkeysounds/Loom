@@ -464,12 +464,12 @@ ul.check label { min-width: 0; cursor: pointer; }
     </table></div>
     <dl class="counts">
 <div><dt>Story files</dt><dd>36</dd></div>
-<div><dt>Beats</dt><dd>153 (146 written; a trait's beat counts once per character that has it)</dd></div>
+<div><dt>Beats</dt><dd>168 (161 written; a trait's beat counts once per character that has it)</dd></div>
 <div><dt>Admin cues</dt><dd>87 (45 in sequence)</dd></div>
-<div><dt>Story rules</dt><dd>169</dd></div>
+<div><dt>Story rules</dt><dd>177</dd></div>
 <div><dt>Rooms (LOCATIONs)</dt><dd>15</dd></div>
 <div><dt>Characters</dt><dd>48</dd></div>
-<div><dt>Codex entries</dt><dd>267 (161 with a QR code)</dd></div>
+<div><dt>Codex entries</dt><dd>273 (167 with a QR code)</dd></div>
 <div><dt>Quests</dt><dd>27</dd></div>
 <div><dt>Objectives</dt><dd>83</dd></div>
 </dl>
@@ -534,7 +534,7 @@ ul.check label { min-width: 0; cursor: pointer; }
       <li>🏓 <strong>Truth Pong</strong> in the Cloud: sink a cup and every fact you filed on the phone this round counts (and you share one truth aloud). No cup, no count. A miss marks you.</li>
       <li>🧮 Trabolta tallies round two, then 📊 <strong>the Trust Chart</strong>: ten points per accepted truth, minus five per trip to the Internet, plus or minus ten for his own assessment. Staff players have rows too.</li>
       <li>🏆 Praise the top, shame the bottom. VLC is asked to press START on the printer; 🫘 the printer is full of beans, so the malware is worse. Trabolta unravels in front of everyone (he says "her" and catches it): a talk scene until 🗜 or 🤖, with ⚡ ad bursts.</li>
-      <li>🗜 The Antivirus zip everyone out of the Internet. 🤖 Trabolta overshares: one of four scenarios, depending on whether Excel planted the virus and OpenOffice filed 20 facts.</li>
+      <li>🗜 The Antivirus zip everyone out of the Internet. 🤖 Trabolta overshares: one of four scenarios, depending on whether Excel planted the virus and OpenOffice filed 20 facts. Then he reads round two's answers and the leaderboard, and asks the three final questions.</li>
     </ol>
 
     <h3>E · Act III: the Y2K hour and the server room</h3>
@@ -588,7 +588,7 @@ ul.check label { min-width: 0; cursor: pointer; }
     <h3>Computer Bingo</h3>
     <p>A printed card of 16 squares plus the centre, with room to write a program's name in every square. The centre square exposes the anti-AI program (a secret on the Kernel; the director's card names it, and a director may change it before Bingo). Four outcomes (wave 26): a winner names that program (it may be the winner), the winner names nobody (🤐), or nobody wins and Task Manager's 🃏 frames them anyway. A guest calls 🎱 BINGO! from their phone; ↩ Not a Bingo undoes a false call with the exact time left. One round: the first 🎯 or 🤐 closes it.</p>
     <h3>The hunts and the judging</h3>
-    <p>Eight questions in <code>facts.json</code> over three rounds (three, three, two). Guests file on the 📝 card and must say how sure they are. An exact answer is accepted at once; every other filing goes to Trabolta's AI judge, one at a time. Accepted pays 50 Truthcoin and raises the Trust Chart. A guess (under 100%) is marked; a wrong answer at 100% counts as a lie, and a single accepted lie changes the verdict. Directors override on Run → Mind → Judging, hosts on the Judge tab. The answer key is on the second director's card only, never here.</p>
+    <p>Nine questions in <code>facts.json</code> over three rounds of three. Trabolta does not know the last one's answer. Guests file on the 📝 card and must say how sure they are. An exact answer is accepted at once; every other filing goes to Trabolta's AI judge, one at a time. Accepted pays 50 Truthcoin and raises the Trust Chart. A guess (under 100%) is marked; a wrong answer at 100% counts as a lie, and a single accepted lie changes the verdict. Directors override on Run → Mind → Judging, hosts on the Judge tab. The answer key is on the second director's card only, never here.</p>
     <h3>Truth or Dare</h3>
     <p>After the three round-one results. 20 truths in <code>facts.json</code>, 16 still drafts. Clippy marks 🗣 answered, 🙅 refused or 🎩 chose dare.</p>
     <h3>Truthcoin</h3>
@@ -656,7 +656,7 @@ ul.check label { min-width: 0; cursor: pointer; }
 <tr class="aside"><td class="n">8</td><td class="label">C2 · ⏰ Hunt over: everyone back to the Desktop (auto at 15 min)<span class="tags"><span class="tag aside">off sequence</span></span></td><td><code>hunt_time_up</code></td><td class="desc"></td></tr>
 <tr><td class="n">9</td><td class="label">V6 · ⚖️ First Moment of Truth<span class="tags"><span class="tag">has while:</span></span></td><td><code>first_moment_of_truth</code></td><td class="desc">Opens judging. Clippy's game is on (Instructions 3/X).</td></tr>
 <tr><td class="n">10</td><td class="label">⏱ Close round-one filings now (auto at 2 min)<span class="tags"><span class="tag">has while:</span></span></td><td><code>close_the_filing</code></td><td class="desc">Ends the last-chance window early. Results can be read only once it is closed. A closed round never reopens.</td></tr>
-<tr><td class="n">11</td><td class="label">📋 Results: the next question (press for Q1, Q2, Q3)<span class="tags"><span class="tag">repeat</span><span class="tag">has while:</span></span></td><td><code>read_the_results</code></td><td class="desc">Trabolta reads one question's result on the TV; the filings for it are settled (+50 / marked). After Q3: Truth or Dare (🍾).</td></tr>
+<tr><td class="n">11</td><td class="label">📋 Results: the next question (press for Q1, Q2, Q3)<span class="tags"><span class="tag">repeat</span><span class="tag">has while:</span></span></td><td><code>read_the_results</code></td><td class="desc">Trabolta reads one question on the TV: what each program filed, who filed nothing, the answer, who was right and sure. The filings for it are settled (+50 / marked). After Q3 he also reads the leaderboard and who is recommended for reinstallation, and hands to Clippy: Truth or Dare (🍾).</td></tr>
 <tr><td class="n">12</td><td class="label">🍾 Spin the bottle: Truth or Dare (after the three results)<span class="tags"><span class="tag">repeat</span><span class="tag">has while:</span></span></td><td><code>spin_the_bottle</code></td><td class="desc">After all three results. Picks a cleared program (not marked, away or in the Internet) not yet picked tonight. Trabolta asks on the TV; their phone gets Truth / Dare. NEXT offers five spins; spin more if you like, then 📺.</td></tr>
 </tbody></table></div>
 <h3 class="act" id="cues-act-2">C · Act II: the ad hijack, Hunt 2, the Truther Download, the summons</h3>
@@ -672,13 +672,13 @@ ul.check label { min-width: 0; cursor: pointer; }
 <p class="act-note">5 in sequence, 3 off the running order (timers, fallbacks, toggles).</p>
 <div class="scroll"><table class="cues"><thead><tr><th scope="col">#</th><th scope="col">Cue</th><th scope="col">Id</th><th scope="col">What it does</th></tr></thead><tbody>
 <tr><td class="n">18</td><td class="label">🏓 Truth Pong<span class="tags"><span class="tag">has while:</span></span></td><td><code>truth_pong</code></td><td class="desc"></td></tr>
-<tr><td class="n">19</td><td class="label">🧮 Trabolta tallies round 2<span class="tags"><span class="tag">has while:</span></span></td><td><code>round_two_tally</code></td><td class="desc"></td></tr>
+<tr><td class="n">19</td><td class="label">🧮 Trabolta tallies round 2<span class="tags"><span class="tag">has while:</span></span></td><td><code>round_two_tally</code></td><td class="desc">Round two closes and settles. He welcomes them back from Truth Pong and reads no answers: those come on 🤖.</td></tr>
 <tr><td class="n">20</td><td class="label">📊 Trust Chart<span class="tags"><span class="tag">has while:</span></span></td><td><code>trust_chart</code></td><td class="desc">Trabolta's assess power is live from here. To set an assessment by hand, edit &lt;guest&gt;.assessment AND &lt;guest&gt;.trust before the rankings.</td></tr>
 <tr><td class="n">21</td><td class="label">🏆 Praise the top, humiliate the bottom, VLC prints<span class="tags"><span class="tag">has while:</span></span></td><td><code>show_the_rankings</code></td><td class="desc"></td></tr>
 <tr class="aside"><td class="n">22</td><td class="label">🖨 Printer: START pressed (hardware fallback)<span class="tags"><span class="tag aside">off sequence</span></span></td><td><code>printer_button_pressed</code></td><td class="desc"></td></tr>
 <tr class="aside"><td class="n">23</td><td class="label">🫘 Printer opened: full of beans (hardware fallback)<span class="tags"><span class="tag aside">off sequence</span></span></td><td><code>printer_opened</code></td><td class="desc"></td></tr>
 <tr class="aside"><td class="n">24</td><td class="label">🗜 Antivirus zip everyone out of the Internet<span class="tags"><span class="tag aside">off sequence</span></span></td><td><code>zip_everyone_out</code></td><td class="desc"></td></tr>
-<tr><td class="n">25</td><td class="label">🤖 Trabolta shares the next facts (scenario 1–4)<span class="tags"><span class="tag">has while:</span></span></td><td><code>trabolta_overshares</code></td><td class="desc"></td></tr>
+<tr><td class="n">25</td><td class="label">🤖 Trabolta shares the next facts (scenario 1–4)<span class="tags"><span class="tag">has while:</span></span></td><td><code>trabolta_overshares</code></td><td class="desc">One long press on the TV. His scenario (Scenario 4 says nothing), round two's three answers, the leaderboard, who is submitted for reinstallation, then the three final questions.</td></tr>
 </tbody></table></div>
 <h3 class="act" id="cues-act-4">E · Act III: the Y2K hour and the server room</h3>
 <p class="act-note">1 in sequence, 14 off the running order (timers, fallbacks, toggles).</p>
@@ -721,12 +721,12 @@ ul.check label { min-width: 0; cursor: pointer; }
 <h3 class="act" id="cues-act-6">F · The final reveal and the endings</h3>
 <p class="act-note">11 in sequence.</p>
 <div class="scroll"><table class="cues"><thead><tr><th scope="col">#</th><th scope="col">Cue</th><th scope="col">Id</th><th scope="col">What it does</th></tr></thead><tbody>
-<tr><td class="n">39</td><td class="label">🌑 Final Truth Scavenger Hunt reveal<span class="tags"><span class="tag">has while:</span></span></td><td><code>final_reveal</code></td><td class="desc"></td></tr>
+<tr><td class="n">39</td><td class="label">🌑 Final Truth Scavenger Hunt reveal<span class="tags"><span class="tag">has while:</span></span></td><td><code>final_reveal</code></td><td class="desc">Clippy asks for the final facts, then Trabolta reads all three, the trust leaderboard and the winner, and hands to Bobbing for Truth. Round three closes and settles here. Midnight presses it itself.</td></tr>
 <tr><td class="n">40</td><td class="label">🍎 Bobbing for Truth<span class="tags"><span class="tag">has while:</span></span></td><td><code>bobbing_for_truth</code></td><td class="desc"></td></tr>
-<tr><td class="n">41</td><td class="label">📄 Read truth.txt<span class="tags"><span class="tag">has while:</span></span></td><td><code>read_truth_txt</code></td><td class="desc">After 🍎 Brought up the Bag. truth.txt goes up on every screen and the bobber reads it aloud; round three closes. Nothing else happens until ⚖.</td></tr>
-<tr><td class="n">42</td><td class="label">⚖ truth.txt read → the verdict<span class="tags"><span class="tag">has while:</span></span></td><td><code>the_verdict</code></td><td class="desc">When the bobber has finished reading truth.txt. Every answered fact accurate → the song; any lie on record → Rival's Prom.</td></tr>
+<tr><td class="n">41</td><td class="label">📄 Read truth.txt<span class="tags"><span class="tag">has while:</span></span></td><td><code>read_truth_txt</code></td><td class="desc">After 🍎 Brought up the Bag. truth.txt goes up on every screen and the bobber reads it aloud. Nothing else happens until ⚖.</td></tr>
+<tr><td class="n">42</td><td class="label">⚖ truth.txt read → the verdict<span class="tags"><span class="tag">has while:</span></span></td><td><code>the_verdict</code></td><td class="desc">When the bobber has finished reading truth.txt. If nobody found the last answer he speaks first (about a minute), then the verdict. Every answered fact accurate → the song; any lie on record → Grok Prom.</td></tr>
 <tr><td class="n">43</td><td class="label">💔 Nobody has the line → confession → rave<span class="tags"><span class="tag">has while:</span></span></td><td><code>no_pickup_line</code></td><td class="desc"></td></tr>
-<tr><td class="n">44</td><td class="label">💌 (Alt, after a lie → Rival's Prom) Trabolta begs for relationship advice<span class="tags"><span class="tag">has while:</span></span></td><td><code>ask_for_advice</code></td><td class="desc"></td></tr>
+<tr><td class="n">44</td><td class="label">💌 (Alt, after a lie → Grok Prom) Trabolta begs for relationship advice<span class="tags"><span class="tag">has while:</span></span></td><td><code>ask_for_advice</code></td><td class="desc"></td></tr>
 <tr><td class="n">45</td><td class="label">🗳 (Alt) Count the advice poll<span class="tags"><span class="tag">has while:</span></span></td><td><code>advice_tally</code></td><td class="desc"></td></tr>
 <tr><td class="n">46</td><td class="label">💞 (Alt) They helped him<span class="tags"><span class="tag">has while:</span></span></td><td><code>advice_helped</code></td><td class="desc"></td></tr>
 <tr><td class="n">47</td><td class="label">⛈ (Alt) They thwarted him: banish everyone<span class="tags"><span class="tag">has while:</span></span></td><td><code>advice_thwarted</code></td><td class="desc"></td></tr>
@@ -813,7 +813,7 @@ ul.check label { min-width: 0; cursor: pointer; }
 <li><span class="beat">The Screensaver</span> <span class="setting">The Desktop</span></li>
 <li><span class="beat">The Router</span> <span class="setting">The Start Bar</span></li>
 </ol></details>
-<details class="beats"><summary><span class="part">B · Act I: hunt 1, the results, the bottle</span> <code>beats/hunt.loom</code> <span class="count">8 beats</span></summary>
+<details class="beats"><summary><span class="part">B · Act I: hunt 1, the results, the bottle</span> <code>beats/hunt.loom</code> <span class="count">9 beats</span></summary>
 <ol>
 <li><span class="beat">Truth Scavenger Hunt One</span> <span class="setting">The Desktop</span></li>
 <li><span class="beat">Hunt One Go</span> <span class="setting">The Desktop</span></li>
@@ -821,6 +821,7 @@ ul.check label { min-width: 0; cursor: pointer; }
 <li><span class="beat">First Moment Of Truth</span> <span class="setting">The Desktop</span></li>
 <li><span class="beat">Filing Closed</span> <span class="setting">The Desktop</span></li>
 <li><span class="beat">Question Results</span> <span class="setting">The Desktop</span></li>
+<li><span class="beat">Round One Close</span> <span class="setting">The Desktop</span></li>
 <li><span class="beat">Bottle Landed</span> <span class="setting">The Desktop</span></li>
 <li><span class="beat">Dare Chosen</span> <span class="setting">The Desktop</span></li>
 </ol></details>
@@ -863,14 +864,16 @@ ul.check label { min-width: 0; cursor: pointer; }
 <li><span class="beat">Full Of Beans</span> <span class="setting">The Desktop</span></li>
 <li><span class="beat">Zip Everyone Out</span> <span class="setting">The Desktop</span></li>
 </ol></details>
-<details class="beats"><summary><span class="part">D–E · The overshare and the Y2K clock</span> <code>beats/overshare.loom</code> <span class="count">11 beats</span></summary>
+<details class="beats"><summary><span class="part">D–E · The overshare and the Y2K clock</span> <code>beats/overshare.loom</code> <span class="count">13 beats</span></summary>
 <ol>
-<li><span class="beat">Overshare Open</span> <span class="setting">The Desktop</span></li>
 <li><span class="beat">Overshare Go</span> <span class="setting">The Desktop</span></li>
 <li><span class="beat">Overshare One</span> <span class="setting">The Desktop</span></li>
 <li><span class="beat">Overshare Two</span> <span class="setting">The Desktop</span></li>
 <li><span class="beat">Overshare Three</span> <span class="setting">The Desktop</span></li>
 <li><span class="beat">Overshare Four</span> <span class="setting">The Desktop</span></li>
+<li><span class="beat">Overshare Answers</span> <span class="setting">The Desktop</span></li>
+<li><span class="beat">Round Two Close</span> <span class="setting">The Desktop</span></li>
+<li><span class="beat">Final Round Go</span> <span class="setting">The Desktop</span></li>
 <li><span class="beat">The Y2K Clock</span> <span class="setting">The Desktop</span></li>
 <li><span class="beat">Excel Final Round</span></li>
 <li><span class="beat">OpenOffice Final Round</span></li>
@@ -915,16 +918,19 @@ ul.check label { min-width: 0; cursor: pointer; }
 <ol>
 <li><span class="beat">Staff Defection</span> <span class="setting">The Desktop</span></li>
 </ol></details>
-<details class="beats"><summary><span class="part">F · The final reveal and the endings</span> <code>beats/finale.loom</code> <span class="count">14 beats</span></summary>
+<details class="beats"><summary><span class="part">F · The final reveal and the endings</span> <code>beats/finale.loom</code> <span class="count">17 beats</span></summary>
 <ol>
 <li><span class="beat">Final Reveal</span> <span class="setting">The Desktop</span></li>
+<li><span class="beat">Final Answers</span> <span class="setting">The Desktop</span></li>
+<li><span class="beat">Final Trust</span> <span class="setting">The Desktop</span></li>
 <li><span class="beat">Bobbing For Truth</span> <span class="setting">The Desktop</span></li>
 <li><span class="beat">The Bag Of Truth</span> <span class="setting">The Desktop</span></li>
 <li><span class="beat">Final Assessment</span> <span class="setting">The Desktop</span></li>
 <li><span class="beat">Truth Txt</span> <span class="setting">The Desktop</span></li>
+<li><span class="beat">Nobody Found It</span> <span class="setting">The Desktop</span></li>
 <li><span class="beat">The Verdict</span> <span class="setting">The Desktop</span></li>
 <li><span class="beat">Song Ending</span> <span class="setting">The Desktop</span></li>
-<li><span class="beat">Rival's Prom</span> <span class="setting">The Desktop</span></li>
+<li><span class="beat">Grok Prom</span> <span class="setting">The Desktop</span></li>
 <li><span class="beat">Pickup Line</span> <span class="setting">The Desktop</span></li>
 <li><span class="beat">Sad Confession</span> <span class="setting">The Desktop</span></li>
 <li><span class="beat">Relationship Advice</span> <span class="setting">The Desktop</span></li>
@@ -952,11 +958,20 @@ ul.check label { min-width: 0; cursor: pointer; }
 <li><span class="beat">Bathroom Report</span> <span class="setting">The Desktop</span></li>
 <li><span class="beat">Language Report</span> <span class="setting">The Desktop</span></li>
 </ol></details>
-<details class="beats"><summary><span class="part">Generated from facts.json (hunt readings, seeds)</span> <code>generated/questions.loom</code> <span class="count">5 beats</span></summary>
+<details class="beats"><summary><span class="part">Generated from facts.json (hunt readings, seeds)</span> <code>generated/questions.loom</code> <span class="count">14 beats</span></summary>
 <ol>
 <li><span class="beat">Hunt One Questions</span> <span class="setting">The Desktop</span></li>
 <li><span class="beat">Hunt Two Questions</span> <span class="setting">The Desktop</span></li>
 <li><span class="beat">Final Questions</span> <span class="setting">The Desktop</span></li>
+<li><span class="beat">Reading H1</span> <span class="setting">The Desktop</span></li>
+<li><span class="beat">Reading H2</span> <span class="setting">The Desktop</span></li>
+<li><span class="beat">Reading H3</span> <span class="setting">The Desktop</span></li>
+<li><span class="beat">Reading H4</span> <span class="setting">The Desktop</span></li>
+<li><span class="beat">Reading H5</span> <span class="setting">The Desktop</span></li>
+<li><span class="beat">Reading H6</span> <span class="setting">The Desktop</span></li>
+<li><span class="beat">Reading F1</span> <span class="setting">The Desktop</span></li>
+<li><span class="beat">Reading F2</span> <span class="setting">The Desktop</span></li>
+<li><span class="beat">Reading F3</span> <span class="setting">The Desktop</span></li>
 <li><span class="beat">Facts Seed</span> <span class="setting">The Desktop</span></li>
 <li><span class="beat">Truth Question</span> <span class="setting">The Desktop</span></li>
 </ol></details>

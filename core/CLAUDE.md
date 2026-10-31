@@ -114,6 +114,17 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   need H1–H3 judged run on `test/fixtures/hunt-keys.ts`. A question's optional
   `spoken` is what the reader says instead of `text` (a blank, which the voice
   strips); the card, the Quest Log and the slide keep `text`.
+- **A key he doesn't know** (wave 59a, `Question.secretFromAgents`, the show's F3).
+  The server judges filings on it as usual. It is in no file a worker reads
+  (`mindBlock` leaves it out of `secrets.match`), `judgeWidget` and `askRuling` ask
+  no ruling on it, since a `judge` frame carries the key, and `screenResultsOf`
+  holds its answer back until a filing stands accurate. A question's `reading` (and
+  `lead`, and for such a key `unfound`) are his words in the generated `Reading
+  <id>` beat; every reading is in `READING_BEATS`, out of `recent` and of the
+  talk thread's history. `FactsFile.documents` are old answers that ask nothing:
+  the same CODEX entries, and `guard` keeps their words in `secrets.match` and
+  `FactsBook.guards` (the server's leak checks). Tests:
+  `test/trapped-w59-answers.test.ts`, `stagehand/tests/test_secrets.py`.
 - **Directors stay unseen.** No phone but a director's own (Run, the
   director phone) reads a director's name: guests see the hosts, booths
   (hosts included) read parts by name and every director as "Director".
@@ -678,8 +689,8 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   on `awake` alone. Tests: `test/w58-agent-late-reply.test.ts`,
   `test/trapped-w58-gone.test.ts`.
 - **The special prize** (wave 58, the contract's C5, G9a `award_most_correct`). `questions_right`
-  is written per program only when G9a is pressed (a role watcher on
-  `Night.prize_gen`; a watcher pass runs the programs' before the story's, so
+  is written per program only when G9a or a leaderboard asks (a role watcher on
+  `Night.count_gen`; a watcher pass runs the programs' before the story's, so
   the story watcher reads the new numbers) and sits on the role's `secret:`
   list: a live count beside `truths_accepted` would tell the worker who lied.
   `recap.ts` `questionsRight` reads the same rule live, and

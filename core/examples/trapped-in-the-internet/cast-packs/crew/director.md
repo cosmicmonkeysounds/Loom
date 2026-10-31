@@ -59,20 +59,20 @@ does ends the night or needs you; you may read their numbers in Run → World
 | 5 | **V4/V5 🔎** Hunt 1 (15 min) (nothing is said on it) | (auto **C2 ⏰** at 15 min) | *hungry* at C2 |
 | 6 | **V6 ⚖️** First Moment of Truth (two-minute filing window) | the server judges every filing | |
 | 6a | **⏱** Close round-one filings (auto at 2 min) | Clippy hands to Trabolta | |
-| 6b | **📋** Results: the next question (press three times: Q1, Q2, Q3) | Trabolta reads the result on the TV; filings settle (+50 / marked) | |
+| 6b | **📋** Results: the next question (press three times: Q1, Q2, Q3) | Trabolta reads each question on the TV: the guesses, who filed nothing, the answer, who was right and sure; filings settle (+50 / marked). The third press adds the leaderboard and who is recommended for reinstallation, and he hands to Clippy | |
 | 6c | **🍾** Truth or Dare after the third result (NEXT offers five spins; more is fine) | the TV asks Truth or dare; Clippy 🗣 / 🙅; 🤖 talk scene *bottle* from the third 📋 | |
 | 7 | **📺** Preview hunt 2 → the ad hijack | Clippy panics; 🤖 talk scene *ad* until 📓 | *rattled* |
 | 8 | **📓** Hunt 2: disperse for 1 hour | (auto **📥** +2 min · **⏳** 55 min · **🚨** +5 min; the sheet suggests nothing until 🚨 has fired) | |
 | 9 | **🏓** Truth Pong | | *judge* |
-| 10 | **🧮** Trabolta tallies round 2 | | |
-| 11 | **📊** Trust Chart → **🏆** rankings | VLC + the printer | |
+| 10 | **🧮** Trabolta tallies round 2 | filings settle; he welcomes them back and reads **no** answers (those come at 🤖) | |
+| 11 | **📊** Trust Chart → **🏆** rankings | three from each end, then the certificate; VLC + the printer | |
 | 12 | **🫘** printer opened (only if the lid sensor fails; Adobe radios BEANS) | 🤖 talk scene *beans* until 🗜 or 🤖 | *unravelling* |
 | 13 | **🗜** zip everyone out | | |
-| 14 | **🤖** Trabolta shares the next facts (press it; the scenario picks itself) | | |
+| 14 | **🤖** Trabolta shares the next facts (press it; the scenario picks itself) | one long press on the TV: his scenario, round two's three answers, the leaderboard, who is submitted for reinstallation, the three final questions | |
 | 15 | wait for **IN** from the patch-bay watch → **🕚** Y2K clock (60 min) | (auto majority; clock warnings) | *desperate* |
 | 16 | door / patch bay (or the Tier 0 buttons 🚪 🔌 💥 ❌) | blackout → (auto 🪩) | |
-| 17 | **🪦** (after Combo B), else auto **🌑** at midnight | | *last act* at 🌑 |
-| 18 | **🍎** Bobbing for Truth → **📄** Read truth.txt (the slide holds while the bobber reads) → **⚖** the verdict when they finish | | |
+| 17 | **🪦** (after Combo B), else auto **🌑** at midnight | 🌑: Clippy's lines, then all three final answers, the trust leaderboard and the winner on one press; round three closes and settles here | *last act* at 🌑 |
+| 18 | **🍎** Bobbing for Truth → **📄** Read truth.txt (the slide holds while the bobber reads) → **⚖** the verdict when they finish | if nobody found the last answer, ⚖ plays his speech first (about a minute) and the verdict follows by itself | |
 | 19 | Grok Prom only: 💘 from a host, or **💔** / the alt **💌 → 🗳 → 💞 / ⛈ → 🕺** | | |
 | 19b | **G0 📜** The full truth, after the ending's last beat: Trabolta on the TV, or Task Manager on the teleprompter after Combo A or B. ■ Stop house sounds first if a dance track is still up (the rave's never ducks). Leave 🌀 His voice on Auto or Clean, and no shots: a director's own Broken or shot can still break him | | about 12 to 14 minutes |
 | 20 | (**✍** first, only if the second director wrote award lines) → **G1 🏆** ceremony (NEXT once 📜 should be over: wait for his last word; a press sooner asks, a second inside 30 s goes on) → **G2–G9** awards, winner picked from the recap → **G9a 🏅** the special prize (no winner to pick: the story counts the questions right; a tie names everyone in it and they share it) → **G10 🖌** the painting (only if MS Paint came; without her NEXT skips it) → **G10a–c** the three staff awards (no winner to pick: 🛡 Trabolta's Favourite Staff, ⭐ Staff Player Of The Night, 🤫 The Mole, the last) → **G11 🎃** Resurrection (last: ends the show and rolls the credits; **G12 🎬** rolls them again). **G13 🚻** The Bathroom Report: any time between G1 and G11, best before G2 (no winner to pick; programs that never went already lost 5 trust at G1). **G14 🔑** The Language Report: the same, any time between two awards (who cursed the most, the top censored words, her ⭐; the TV shows them all, slurs only as black bars) | | |
@@ -115,8 +115,8 @@ the moment it is filed: accurate (matches the key or an alias), confident
 lie (no match at 100), uncertain (no match below 100). The verdict never
 reaches a guest's phone or Trabolta's worker (`# hosts` logs each filing with
 it, for staff only); credits (+50) land when the round settles (round 1 per
-question at 📋, round 2 at 🧮, the final at 📄); marks for a filed guess land
-only in rounds 1 and 2 — a guess filed for F1/F2 is simply dropped at 📄,
+question at 📋, round 2 at 🧮, the final at 🌑); marks for a filed guess land
+only in rounds 1 and 2 — a guess filed for F1–F3 is simply dropped at 🌑,
 nobody is escorted during the verdict. The Judging card on Run → Mind shows
 the mode: **`auto`** (the default; leave it)
 or **`review`** (every verdict is a proposal in `# hosts` until you confirm
@@ -138,7 +138,7 @@ his ruling. With his laptop off a plain miss is judged at once (a lie at
 100%, a guess below) and a near miss waits; whatever is still waiting when
 the round settles takes its proposal (a near miss accurate). **Judge only
 what he couldn't** (a filing still pending on Run → Mind → Judging) before
-📋. An abbreviation (*Ext. 1978*) is
+📋. An abbreviation (*Mr.* for *Mister*) is
 simply accurate, no ⚠ and nothing asked. A program may file every
 open question, once each; a question not filed when its round closes never
 comes back. Clippy and the hosts still judge what is **said out loud** at

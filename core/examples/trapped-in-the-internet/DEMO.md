@@ -127,9 +127,9 @@ guest's card in that performer's booth (phone C / D), or in Run while you
 | **📓 Hunt 2 → quest logs; disperse for 1 hour** | — | Hunt Two quest; `# clipboard` opens. |
 | **📥 Truther Download (auto at +2 min)** — fire it now | **Phone A (Excel)** answers the choice in *Truther Download* (sabotage or paranoid). | 🔔 "TRUTHER DOWNLOAD received"; `# truthcoin-exchange` opens; each program gets its glitch beat; Excel becomes *Unlimited Power*'s leader (still hidden) with a mission. **Founding opens** (wave 18b): any phone may now found a faction of its own from **⊞ Start → Factions** and sees only its own count (*1 in · N more to win*); the count starts at 🕚. |
 | **⏳ Five-minute warning** → **🚨 Summons closed** → **🏓 Truth Pong** | Norton scans anyone at the Desktop during the warning (a check-in). Clippy: **🏓 Made the cup** + **✅ Q1** on Calculator. | A guest not checked in gets "⏰ You are late" and Norton's booth "Go get them". |
-| **🧮 Trabolta tallies round 2** → **📊 Trust Chart** | — | 🧮: Trabolta reads every round-two filing and the TV pages Q4–Q6 (wave 18b), then the gauge. 📊: **the TV draws the Trust Chart live**: every program, ranked by trust. |
-| **🏆 Praise the top, humiliate the bottom, VLC prints** → **🫘 Printer opened** | — | Praise / shame by name with **MOST / LEAST TRUSTED** called out on the chart, the printer ask ("The media player is not responding" with no VLC here), then *Full Of Beans*. |
-| **🗜 Antivirus zip everyone out** → **🤖 Trabolta shares the next facts** | — | Captives zipped out; an overshare (scenario 1–4 by what Excel / OpenOffice did); The Final Facts quest. |
+| **🧮 Trabolta tallies round 2** → **📊 Trust Chart** | — | 🧮: round two settles and Trabolta welcomes them back; he reads no answers yet (wave 59a). 📊: **the TV draws the Trust Chart live**: every program, ranked by trust. |
+| **🏆 Praise the top, humiliate the bottom, VLC prints** → **🫘 Printer opened** | — | Praise / shame by name with **MOST / LEAST TRUSTED** called out on the chart, the certificate ask, then *Full Of Beans*. |
+| **🗜 Antivirus zip everyone out** → **🤖 Trabolta shares the next facts** | — | Captives zipped out; an overshare (scenario 1–4 by what Excel / OpenOffice did), round two's answers, the leaderboard and the three final questions; The Final Facts quest. |
 | **🕚 System clock → 11 PM, 31 Dec 1999** | **Factions** (⊞ Start → Factions) now lists Unlimited Power and The Way Out beside every founded faction: Phone B can **Join** one or found her own; Excel leads Unlimited Power and stays with it. | 🔔 the clock alert; the TV becomes the Y2K clock; Excel's Final Orders. The count starts now: more than half of the programs still here in one faction wins. |
 
 ### Act III — pick one ending (3–5 min)
@@ -151,7 +151,7 @@ guest's card in that performer's booth (phone C / D), or in Run while you
 **B · The verdict (Grok Prom → the song)**
 
 1. **🎆 Midnight** → the final reveal (lights down). **🍎 Bobbing for Truth** → Adobe Acrobat's or Clippy's **🍎 Brought up the Bag of Truth** on a guest.
-2. **📄 Read truth.txt** (the slide holds while the bobber reads), then **⚖ truth.txt read → the verdict**: Trabolta says the counts, the TV flips the eight tiles and then shows each question's answer and **who lied** in a filing (wave 18b; the walls get the tiles only); about 34 s later, with a lie on record: **Grok Prom** ("You lied to me… give me a pickup line").
+2. **📄 Read truth.txt** (the slide holds while the bobber reads), then **⚖ truth.txt read → the verdict**: Trabolta says the counts, the TV flips the nine tiles and then shows each question's answer and **who lied** in a filing (wave 18b; the walls get the tiles only); about 37 s later, with a lie on record: **Grok Prom** ("You lied to me… give me a pickup line").
 3. Every phone gets Trabolta's DM card *"Give me a pickup line that works on Sandy."* — type **You're the one that I want** and send it (the server judges it) → the **Song Ending**. (Or Clippy: **💘 Said "You're the one that I want"** on whoever says it aloud.)
    (Alternatives: **💔 Nobody has the line** → the rave; **💌 relationship advice** → a poll on every phone → **🗳 Count the advice poll**.)
 

@@ -646,12 +646,12 @@ by someone else's wrong codes. Passes draw their QR on the phone
 | Director fires | Performers do | What happens |
 |---|---|---|
 | **🏓 Truth Pong** (`truth_pong`; refused before 📓; NEXT once 🚨 has fired, and pressed during hunt 2's hour it ends the hour early) | pong judge: **🏓 Made the cup** (may answer) / **🏓 Missed the cup** (marked for reinstallation). Then ✅/😤 Q1–Q3 (= H4–H6) / 🤷 | The folding table is out in the backyard (The Cloud). Round 2 answers spoken in the room need a made cup, and so do the 📝 round-2 filings: at the tally a program with no cup (or marked) is not counted. **Press 🏓 Made the cup for every sink.** Set stage *judge*. |
-| **🧮 Trabolta tallies round 2** (`round_two_tally`; only during Truth Pong, once) | — | Judging closes for good; round two's filings settle (+50 / marked) and the round closes. The story publishes H4–H6 (`do fact_read H4 H5 H6`, `cue screens_tally`): the TV pages each question's filings with his ruling stamps, then the gauge; the walls show the counts. **Round Two Tally**: Trabolta reads every round-two filing (*"Question four. {said}"*, `Kernel.said_4`–`said_6`). The collection is complete if every round-2 question has an accepted answer ("sixty-one percent" vs "twelve percent"). |
+| **🧮 Trabolta tallies round 2** (`round_two_tally`; only during Truth Pong, once) | — | Judging closes for good; round two\'s filings settle (+50 / marked) and the round closes. Wave 59a: he reads no answers here: **Round Two Tally** is TRABOLTA 5 to *"Before we get to the answers for Round 2."* The TV shows the tally window and comes to rest on TALLY COMPLETE, with no number. Complete collection or not still moves his truth and composure. |
 | **📊 Trust Chart** (`trust_chart`; refused before 🧮) | — | *Clippy Instructions 6* unlock and everyone gets *The Trust Chart*: 10 per accepted truth, −5 per Internet visit, ±10 for his assessment. The TV and the terminals draw the chart **live**: every cleared program, ranked (`chart` in `/api/screen/state`), so an assessment moves a name within 2 s. Trabolta's `assess` power is live. To set an assessment by hand, edit `<guest>.assessment` **and** `<guest>.trust` in Run → World. |
-| **🏆 Praise the top, humiliate the bottom, VLC prints** (`show_the_rankings`) | — | Praise The Top → Shame The Bottom → Print The Certificate: *"VLC Player… press the start button on the printer."* The chart stays on the TV and the terminals through all three, with **MOST TRUSTED / LEAST TRUSTED** called out; the *Printing certificate.pdf* slide comes up only at START. VLC and MS Paint get private Truther nudges. If VLC is not here, or is in the Internet, *"The media player is not responding. Any program…"* and nobody is nudged (a VLC released before the beans gets the nudge then). |
+| **🏆 Praise the top, humiliate the bottom, VLC prints** (`show_the_rankings`) | — | Praise The Top → Shame The Bottom → Print The Certificate (wave 59a: the script names three from each end, a line with nobody in it dropping out; ties go to the first program, as they always have; his ask is to *"someone"*, and VLC keeps its DM nudge). The chart stays on the TV and the terminals through all three, with **MOST TRUSTED / LEAST TRUSTED** called out; the *Printing certificate.pdf* slide comes up only at START. VLC and MS Paint get private Truther nudges. If VLC is not here, or is in the Internet, *"The media player is not responding. Any program…"* and nobody is nudged (a VLC released before the beans gets the nudge then). |
 | **🖨 Printer: START pressed** · **🫘 Printer opened** (`printer_button_pressed` / `printer_opened`, hardware fallbacks) | VLC presses START; MS Paint urges them to open it | START: *The Printer Jams* and the *Printing certificate.pdf* slide (the chart comes down). Opened: **Full Of Beans**: Clippy reads it as the malware worsening. Composure −20, and the screens flicker on their own. Set stage *unravelling*. A lid first opened late (after 🤖, or in the Y2K hour) plays only *Full Of Beans*, the spill sound and the −20: the night's step, lights and screens stay where they are (wave 9). **Wave 32:** at the beans' own moment he unravels (he feels every bean, *"for her. For— for the theory"*, a scream) and the **`beans` talk scene** opens until 🗜 or 🤖; a late lid plays only the original lines and opens none. |
 | **🗜 Antivirus zip everyone out of the Internet** (`zip_everyone_out`) | Antivirus bring everyone out of the Internet (the tent, or the shed on a rain night: every booth and phone line says "the Internet") | Every captured program is released and `.zip`ped. Repeatable; refused once the night has ended and during the banishment (the hand jive frees them). Closes the `beans` talk scene (wave 32). |
-| **🤖 Trabolta shares the next facts (scenario 1–4)** (`trabolta_overshares`; refused before 📊 and once 🕚 has reset the clock) | — | He reads F1/F2 (the *Final Facts* quest), then overshares by scenario: **1** Excel planted + 20 facts (Sandy, permanence, the virus, the LiveJournal) · **2** 20 facts only (the LiveJournal) · **3** Excel planted only (the virus) · **4** neither (composed, one slip). Only *Excel's* plant counts. Closes any talk scene (wave 32). |
+| **🤖 Trabolta shares the next facts (scenario 1–4)** (`trabolta_overshares`; refused before 📊 and once 🕚 has reset the clock) | — | Wave 59a, TRABOLTA 6 PARTS 2 and 3, one long press: his scenario first: **1** Excel planted + 20 facts (Sandy, the virus, the LiveJournal) · **2** 20 facts (the LiveJournal) · **3** Excel planted (Sandy, the virus) · **4** neither (he says nothing). Then round two's three readings, the leaderboard, who is submitted for reinstallation, and the three final questions (the *Final Facts* quest). The press is held under `MAX_VOICE_LINES`: at most 40 lines. |
 
 ### The talk scenes and ⚡ (wave 32, across B–D)
 
@@ -722,10 +722,10 @@ Server Room. Never say the code on the radio.
 
 | Director fires | Performers do | What happens |
 |---|---|---|
-| **🌑 Final Truth Scavenger Hunt reveal** (`final_reveal`, or *auto* at midnight) | Clippy (CI 8): *"truth is always in binary"*; judges F1/F2 with ✅/😤 Q1–Q2 / 🤷 | Lights go dark. Set stage *last act*. **The server room stays live** (deliberate): a combo entered before 📄 truth.txt still ends the night. From 📄 on the verdict is in: the patch bay and the door only post a note to `# hosts`. |
-| **🍎 Bobbing for Truth** (`bobbing_for_truth`) | Clippy / Adobe Acrobat: **🍎 Brought up the Bag of Truth** / **🍎 Failed the bob** (marked for reinstallation) | Nothing moves until someone brings up the bag. Then come the Final Assessment and the bobber's truth.txt. |
-| **📄 Read truth.txt** (`read_truth_txt`; only once the bag is up) | the bobber reads it aloud (Adobe Acrobat has the printout; her booth says to wait for ⚖) | truth.txt goes up on every screen and **holds** there while it is read. Everyone gets every backstory; *The Final Facts* completes; the final round closes and its filings settle. Nothing else happens until ⚖. A second 📄 only tells `# hosts` to press ⚖. |
-| **⚖ truth.txt read → the verdict** (`the_verdict`; after 📄, when the bobber has finished) | — | **The Verdict** counts answered questions only (U14): Trabolta says the counts (*"{true} true. {lies} with a lie on record. {none} nobody answered."*; never an answer or a name), and the story publishes each question's truth (`do fact_truth H1` … `F2`, off `Kernel.t1`–`t8`; a pending lie counts). The **TV** flips the eight tiles and then shows, per question, **the key answer and the programs who lied** (wave 18b, O2, the user's answer: a filing at 100 that was wrong); the walls get the tiles and counts only. The story **holds the ending ≈ 34 s** (`Kernel.verdict_wait` / `verdict_end`, story time) while the pages play, then: no lie on record → **Song Ending**; any accepted lie → **Grok Prom**. A second ⚖ in the hold only tells `# hosts`. In **both** branches Trabolta DMs every program an answer card: *"Give me a pickup line that works on Sandy."* (judged by the server against `facts.json` → `answer answered`). Pressed before 📄 it only says so in `# hosts` (*"⚖ Not yet: 📄 Read truth.txt first."*). |
+| **🌑 Final Truth Scavenger Hunt reveal** (`final_reveal`, or *auto* at midnight) | Clippy (CI 8): *"truth is always in binary"*; judges F1–F3 with ✅/😤 Q1–Q3 / 🤷 | Lights go dark. Set stage *last act*. Wave 59a: Trabolta then reads all three final answers (the last one branches on whether anyone found it), the trust leaderboard and the winner, and hands to Clippy. **Round three closes and settles here**, midnight\'s press included. **The server room stays live** (deliberate): a combo entered before 📄 truth.txt still ends the night. From 📄 on the verdict is in: the patch bay and the door only post a note to `# hosts`. |
+| **🍎 Bobbing for Truth** (`bobbing_for_truth`) | Clippy / Adobe Acrobat: **🍎 Brought up the Bag of Truth** / **🍎 Failed the bob** (marked for reinstallation) | Nothing moves until someone brings up the bag. Then the bobber is told to read truth.txt. |
+| **📄 Read truth.txt** (`read_truth_txt`; only once the bag is up) | the bobber reads it aloud (Adobe Acrobat has the printout; her booth says to wait for ⚖) | truth.txt goes up on every screen and **holds** there while it is read. Everyone gets every backstory; *The Final Facts* completes. Nothing else happens until ⚖. A second 📄 only tells `# hosts` to press ⚖. |
+| **⚖ truth.txt read → the verdict** (`the_verdict`; after 📄, when the bobber has finished) | — | If nobody found the last answer, **Nobody Found It** (TRABOLTA 8-B, about a minute) plays first and the verdict follows by itself. **The Verdict** counts answered questions only (U14): Trabolta says the counts (*"{true} true. {lies} with a lie on record. {none} nobody answered."*; never an answer or a name), and the story publishes each question's truth (`do fact_truth H1` … `F3`, off `Kernel.t1`–`t9`; a pending lie counts). The **TV** flips the nine tiles and then shows, per question, **the key answer and the programs who lied** (wave 18b, O2, the user's answer: a filing at 100 that was wrong); the walls get the tiles and counts only. The story **holds the ending ≈ 34 s** (`Kernel.verdict_wait` / `verdict_end`, story time) while the pages play, then: no lie on record → **Song Ending**; any accepted lie → **Grok Prom**. A second ⚖ in the hold only tells `# hosts`. In **both** branches Trabolta DMs every program an answer card: *"Give me a pickup line that works on Sandy."* (judged by the server against `facts.json` → `answer answered`). Pressed before 📄 it only says so in `# hosts` (*"⚖ Not yet: 📄 Read truth.txt first."*). |
 | *(in Grok Prom)* | the first program to type the line on the 💌 card wins (the house judges it against `facts.json` P1, never Trabolta: since 2026-10-19 he has no power to accept a line, and the story tells him who gave it, in their thread and `Night.line_by`); or a host presses **💘 Said "You're the one that I want"** | **Pickup Line** → Song Ending. In the Song branch the first correct line is read before the song (flavour). |
 | **💔 Nobody has the line → confession → rave** (`no_pickup_line`) | — | **Sad Confession** → rave. |
 | *(alt, only in Grok Prom)* **💌 Trabolta begs for relationship advice** → **🗳 Count the advice poll** (or **💞 helped** / **⛈ thwarted**, which only answer in the advice phase) → **🕺 Everyone hand-jived** | after thwarted: every Antivirus booth says they are banished too | Help → he wins Sandy. Thwart → everyone is banished to the Internet and learns *The Hand Jive Exception* (the TV keeps the banish card; the banishment is no reinstallation, and a duck find frees nobody: Gerald only says the way out is the hand jive) → the hand jive crashes him and puts the screensaver back on every screen. |
@@ -1147,41 +1147,45 @@ the name of the program they find (wave 58, the script).
 
 ### The hunt questions (on the TV and in the Quest Log)
 
-The questions, answers, accepted aliases and hiding places are the team's,
-in `facts.json` (rounds 1 / 2 / 3 = H1–H3, H4–H6, F1–F2; every row is a
-`DRAFT` placeholder until the team replaces it). The generated table is
+The questions, answers, accepted aliases and hiding places are the team's, in
+`facts.json` (rounds 1 / 2 / 3 = H1–H3, H4–H6, F1–F3). The generated table is
 `DESIGN.md` §2.11; the print layout is `generated/print-stacks.md` (gold
-stack). Every answer is a document in **The Desktop's** old newspapers,
-encyclopaedias and atlas, carrying the question's codex QR.
+stack). Every answer is a page in one of **The Desktop's** books, carrying the
+question's codex QR. A question's `reading` is what he says for the answer (wave
+59a), read by the generated `Reading H1` … beats.
 
-**H1–H3 are the script's three questions, and their keys are owed** (wave 58).
-`facts.json` marks each `placeholder: true`: `titi:facts` and `loomcheck` WARN
-on it. Until the real answer goes in, a filing on one is not recorded: Trabolta
-says he cannot read it, `# hosts` says so, nobody is credited or marked, and
-Question Results reads *Nobody filed an answer*. To finish one, give it its
-`answer`, `accept`, `where` and `codex.text`, delete `placeholder`, and run
-`titi:facts`.
-
-| # | Question | Answer | Codex (code) |
+| # | Question | Answer | Codex |
 |---|---|---|---|
-| H1 | According to Funk and Wagnalls, what is an example of fraud? | ⚠ owed | Funk And Wagnalls |
-| H2 | According to Forensics For Dummies, finish this sentence: “___ ___ ___ ___ ___ previously hypnotized witnesses.” | ⚠ owed | Forensics For Dummies |
-| H3 | According to Macs for Dummies, finish this sentence: “A similar online _, called pharming, also involves the use of __ ___ __.” | ⚠ owed | Macs For Dummies |
-| H4 | What extension does the Customer Care card tell you to dial? | (in `facts.json`) | The Extension |
-| H5 | Which song did Trabolta play 412 times the night before he registered mapsandducks.com? | (in `facts.json`) | (H5's card) |
-| H6 | What is the title of the last chapter of Trabolta's unfinished Grand Unified Theory? | (in `facts.json`) | The Final Chapter |
-| F1 | What is the only thing Sandy has ever said? | (her one line, in `facts.json`) | What Sandy Says |
-| F2 | Who is taking Sandy to computer prom? | (in `facts.json`) | The prom ticket (F2's card) |
+| H1 | According to Funk and Wagnalls, what is an example of fraud? | (in `facts.json`) | Funk And Wagnalls |
+| H2 | According to Forensics For Dummies, finish this sentence: “___ ___ ___ ___ ___ previously hypnotized witnesses.” | (in `facts.json`) | Forensics For Dummies |
+| H3 | According to Macs for Dummies, finish this sentence: “A similar online _, called pharming, also involves the use of __ ___ __.” | (in `facts.json`) | Macs For Dummies |
+| H4 | What is an example of a Strong Password, cited by a For Dummies book, that starts with Q? | (in `facts.json`) | Computers For Seniors |
+| H5 | What, according to one book, is the traditional objection to romance? | (in `facts.json`) | Grolier On Romance |
+| H6 | According to one encyclopedia, what trend in technological progress will lead to this outcome: “Increased wages and shorter hours will provide the leisure necessary for man’s full cultural development.” | (in `facts.json`) | Funk And Wagnalls Leisure |
+| F1 | Who is Binary Tom? | (in `facts.json`) | Data Structures Outside In |
+| F2 | What is the unlikely condition that will enable you to find your child on a map using Windows 10? | (in `facts.json`) | Windows 10 For Dummies |
+| F3 | According to one encyclopedia, who is: “[...] often a shy, meek individual bothered by feelings of inadequacy and perhaps unsure of his masculinity – while a nuisance, not a serious menace.” | (in `facts.json`; **he doesn't know it**) | Grolier Academic |
+
+**F3 is `secretFromAgents`.** The server judges filings on it as usual, but its
+key is in no file his worker reads, no ruling is asked on it, and no screen
+shows it until someone has found it. If nobody did, his reading says it is not
+correct and the verdict is preceded by **Nobody Found It**.
+
+**The five old answers are documents now** (`documents` in `facts.json`). The
+Extension, The Search History, The Final Chapter, What Sandy Says and The Prom
+Ticket keep their entries, codes, cards and gold pile; anyone can still scan
+them, and they answer no question. Sandy's line and the rival's name stay
+guarded (`guard`).
 
 A filing matches if its folded text equals the answer or one of its
 `accept` aliases (case, accents, apostrophes and punctuation ignored, one
 leading article dropped). A judge pressing ✅ / 😤 for an answer spoken in
 the room presses the question's number **within the round**: round 1 =
-H1–H3, round 2 = H4–H6, round 3 = F1–F2 (Q1–Q2 only).
+H1–H3, round 2 = H4–H6, round 3 = F1–F3.
 
 ### Truth or Dare: the bottle (round 1)
 
-No slips. Between each question's results the director spins the bottle
+No slips. After the third question's results the director spins the bottle
 (🍾, up to five times per question): the server picks a cleared program at
 the Desktop, Trabolta asks *"{name}. Truth or dare?"* on the TV and their
 phone shows **Truth / Dare**. Dare → marked for reinstallation. Truth →
@@ -1251,8 +1255,7 @@ codes** are software (CHECKLIST); the story needs nothing more.
 ## For the user to review
 
 Content invented here (not in the four source docs): Clippy Instructions
-3–9, the placeholder hunt questions and answers in `facts.json` (F2 is the
-source's twist; every row is marked DRAFT for the team), the character facts quoting
+3–9, the character facts quoting
 the invitations' real-world details (the team's call before printing),
 the Truther Download bulletin, Overshares Three and Four, the Installation
 Wizard's backstory, the Hand Jive weakness, the Runescape / MS Paint / VLC

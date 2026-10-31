@@ -565,7 +565,7 @@ in ROLE hooks and story rules.
 |---|---|---|
 | `combo_a: text? = none` | seeded in Power On (`main.loom`) | Combo A (disable Trabolta). Canonical: wire pairs (`V<k>-D<i>`), sorted by V. Wave 57: new, for the panel as built. |
 | `combo_b: text? = none` | seeded in Power On (`main.loom`) | Combo B (self-destruct). |
-| `q1` … `q8: text? = none` | | per-question verdict record: `"accurate"` or `"lie"` (H1–H3 = q1–q3, H4–H6 = q4–q6, F1–F2 = q7–q8). A lie is sticky (§3 B8). |
+| `q1` … `q9: text? = none` | | per-question verdict record: `"accurate"` or `"lie"` (H1–H3 = q1–q3, H4–H6 = q4–q6, F1–F2 = q7–q8). A lie is sticky (§3 B8). |
 | `lies_accepted: 0 to 50 = 0` | | accepted confident-but-false answers |
 | `all_accurate: bool = false` | | the verdict (§3 F3) |
 | `virus_planted: bool = false` | | any program inserted a virus disk (flavour) |
@@ -1057,7 +1057,7 @@ model); the server never refuses an unarmed press.
 | The Bingo Card | Computer Bingo | Clippy | "Mingle and find a program for every square. Don't write names: use your computer memory. The centre square matters." | started at start_the_bingo for everyone (+ catch-up watcher); completed at bingo_time for everyone |
 | Hunt One | The Truth Scavenger Hunt · Round 1 | Trabolta | the 3 questions (§2.11 H1–H3) | start_the_hunt (everyone + catch-up); completed at hunt_time_up |
 | Hunt Two | The Truth Scavenger Hunt · Round 2 | Trabolta | the 3 questions (H4–H6) | start_the_second_hunt (+ catch-up); completed at round_two_tally |
-| The Final Facts | The Final Fact-Finding Round | Trabolta | the 2 questions (F1, F2) | **trabolta_overshares** (he shares the next facts there; + catch-up `Night.step >= 13`); completed at read_truth_txt |
+| The Final Facts | The Final Fact-Finding Round | Trabolta | the 3 questions (F1, F2, F3) | **trabolta_overshares** (he shares the next facts there; + catch-up `Night.step >= 13`); completed at read_truth_txt |
 | Excel Mission | Computers Are Very Confusing | Truther Download | by `excel_choice` — sabotage: "Get the fixers sent for reinstallation. Get yourself sent to the Internet and bring back a virus. Insert it."; paranoid: "Find whoever knows what's happening. Get into the Internet and bring back another antivirus. Install it." | Excel Glitch; step on virus carried (text by choice); complete on plant |
 | OpenOffice Dossier | Facts Are Currency | Truther Download | "Get 20 facts. This will be the foundation of your dossier." | OpenOffice Glitch; complete at +20 codex (wave 18b, R22 / D21: +20 in the categories Facts, Files, People, Trabolta and Places over her holdings at the end of the Featured Briefing, `codex_in.*`) |
 | A Faction Of Your Own | Your Own Faction | Truther Download | wave 18b (R4): found a faction and get more than half of the programs still here through its door | `when founded for program`; ✅ its majority, ✖ another faction's |
@@ -1098,12 +1098,11 @@ where each document hides are in `facts.json` and never in a doc._
 | F3 | 3 | According to one encyclopedia, who is: “[...] often a shy, meek individual bothered by feelings of inadequacy and perhaps unsure of his masculinity – while a nuisance, not a serious menace.” | in `facts.json` |
 <!-- /titi-facts:questions -->
 
-`Night.facts_requested` = 3 after start_the_hunt, 6 after start_the_second_hunt, 8 after
-**trabolta_overshares** (where he reads F1/F2). F2's answer (Grok) is guessable by design:
-it is the source's twist and the moment the motive lands; a guess still has to be delivered
+`Night.facts_requested` = 3 after start_the_hunt, 6 after start_the_second_hunt, 9 after
+**trabolta_overshares** (where he reads F1–F3). A guess still has to be delivered
 confidently to count, and a confident wrong guess poisons the verdict.
 
-Each judged answer is recorded against its question on `Kernel.q1` … `Kernel.q8` (§3 B8):
+Each judged answer is recorded against its question on `Kernel.q1` … `Kernel.q9` (§3 B8):
 the judge presses "question N **of this round**" and the round maps it (round 1 → q1–q3,
 round 2 → q4–q6, round 3 → q7–q8).
 
@@ -1225,11 +1224,11 @@ one as a share — he must never know what he is asking for.
 | Funk And Wagnalls | Funk and Wagnalls | (`facts.json`) | ✚ | H1 answer, owed (wave 58). Ends `▒ HUNT ANSWER H1 ▒` |
 | Forensics For Dummies | Forensics For Dummies | (`facts.json`) | ✚ | H2 answer, owed. `▒ HUNT ANSWER H2 ▒` |
 | Macs For Dummies | Macs for Dummies | (`facts.json`) | ✚ | H3 answer, owed. `▒ HUNT ANSWER H3 ▒` |
-| The Extension | The Extension | `EXT-1978` | ✚ | H4 answer. `▒ HUNT ANSWER H4 ▒` |
-| The Search History | The Search History | `SEARCH-HISTORY` | ✚ | H5 answer ("Hopelessly Devoted to You", 412 plays). `▒ HUNT ANSWER H5 ▒` |
-| The Final Chapter | The Final Chapter | `APPENDIX-Z` | ✚ | H6 answer ("Appendix Z: Loose Ends (Do Not Print)"). `▒ HUNT ANSWER H6 ▒` |
-| What Sandy Says | What Sandy Says | (`facts.json`) | ✚ | F1 answer (Sandy's line verbatim). `▒ HUNT ANSWER F1 ▒` |
-| The Prom Ticket | Grok's Prom Ticket | `COMPUTER-PROM` | ✚ | F2 answer ("Computer Prom, Halloween 2026. Admit two: GROK + SANDY."; the gold print stack: the ticket slipped into the atlas, `facts.json`, DRAFT). `▒ HUNT ANSWER F2 ▒` |
+| The Extension | The Extension | `EXT-1978` | ✚ | Old H4, a document since wave 59a. `▒ HUNT ANSWER H4 ▒` |
+| The Search History | The Search History | `SEARCH-HISTORY` | ✚ | Old H5, a document since wave 59a ("Hopelessly Devoted to You", 412 plays). `▒ HUNT ANSWER H5 ▒` |
+| The Final Chapter | The Final Chapter | `APPENDIX-Z` | ✚ | Old H6, a document since wave 59a ("Appendix Z: Loose Ends (Do Not Print)"). `▒ HUNT ANSWER H6 ▒` |
+| What Sandy Says | What Sandy Says | (`facts.json`) | ✚ | Old F1, a document since wave 59a (Sandy's line verbatim). `▒ HUNT ANSWER F1 ▒` |
+| The Prom Ticket | Grok's Prom Ticket | `COMPUTER-PROM` | ✚ | Old F2, a document since wave 59a ("Computer Prom, Halloween 2026. Admit two: GROK + SANDY."; the gold print stack: the ticket slipped into the atlas, `facts.json`, DRAFT). `▒ HUNT ANSWER F2 ▒` |
 
 #### codex/4-trabolta.loom (T1, T2, L, P, X)
 
@@ -2021,7 +2020,7 @@ tent is captured by the tablet's scan.
     else if Night.round == 2 and program.may_answer != true:
       reply You have not made a cup yet.
     else if Night.round == 3 and program.judge_q == 3:
-      reply There are only two final facts. Press Q1 or Q2.
+      reply Three final facts: press Q1, Q2 or Q3.
     else:
       set program.truths_accepted += 1
       set Night.facts_accepted += 1
@@ -2986,7 +2985,7 @@ to being stuck in a computer.` (`{count(Persons)}` interpolation is **[verified,
 - `== Final Reveal` (public; Clippy, CI 8): lights go dark; anyone who has found the final
   facts speaks up; everyone may say what they learned, what they believe but can't prove, and
   what should happen next; Clippy acknowledges each, then: `There is only one version of the
-  truth. Because truth is always in binary.` (Final facts F1/F2 are judged with ✅ / 😤 Q1–Q2
+  truth. Because truth is always in binary.` (Final facts F1–F3 are judged with ✅ / 😤 Q1–Q3
   / 🤷, round 3.) The server room stays live: a faction can still act until 📄 truth.txt
   (`Night.r3_closed`; from then on the patch bay, the door and 🕊 only post a `# hosts` note,
   and Trabolta's `stand_down` refuses — wave 8, T2-03). This
@@ -3009,7 +3008,7 @@ to being stuck in a computer.` (`{count(Persons)}` interpolation is **[verified,
   program").
 - `when bag_retrieved:` → `-> The Bag Of Truth` (public: `{Night.bobber} surfaces with the
   Bag of Truth.` `Trabolta: Do not read it yet.`) then the ranking machinery with
-  `rank_round = 2` → `-> Final Assessment`.
+  `rank_round = 2` → (wave 59a: at 🌑, `-> Final Trust`).
 - `== Final Assessment` (public, Trabolta): `I have been monitoring your performance, and I am
   ready to make my assessment of trustworthiness.` Most trusted `{Night.most_trusted}`, least
   `{Night.least_trusted}` (his `assess` power is live in `bobbing`). `{Night.bobber}, you may
@@ -3064,7 +3063,7 @@ wave 8, T6-01: the slide holds while the bobber reads).
   follows the correction.
 - **No escorts during the verdict** (wave 6, decision 2): an `uncertain` F1 / F2 filing at
   truth.txt is neither credited nor marked — the marks for a guess fire only in the `truth_1`
-  / `truth_pong` phases. Round three's 📝 cards close at `read_truth_txt` (an unfiled F1 / F2
+  / `truth_pong` phases. Round three's 📝 cards close at `final_reveal` (wave 59a) (an unfiled F1 / F2
   becomes the closing card).
 
 **F4 All accurate — `== Song Ending`** (also reached from the pickup line).

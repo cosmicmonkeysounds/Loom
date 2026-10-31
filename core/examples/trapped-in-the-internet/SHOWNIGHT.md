@@ -564,6 +564,19 @@ electrifying."* → 🔎 (nothing is said on it). ⚖️ brings up her welcome b
 two minutes; ⏱ her hand to him. ⚡ is refused during his introduction, and his
 first public crack is the first guess at the results.
 
+**His readings** (wave 59a, his Oct 31 script). 📋 ×3 reads round one, one
+question a press; the third adds the leaderboard and who he recommends for
+reinstallation, and ends *"Clippy?"*. 🧮 reads **no** answers: he welcomes them
+back from Truth Pong and stops on *"Before we get to the answers for Round 2."*
+📊 opens the chart, 🏆 names three from each end and asks for the certificate. 🫘
+is his three lines about the beans. 🤖 is one long press: his scenario (Scenario 4
+says nothing), round two's answers, the leaderboard, the unconfident list and the
+three final questions. 🕚 is unchanged. 🌑 (by hand, or midnight's) is Clippy's
+lines, then all three final answers, the trust leaderboard and the winner, and
+closes round three there, so a phone can't file after it. 🍎 and 📄 as ever. ⚖ plays
+his speech about the truth first if nobody found the last answer (about a minute,
+and it goes on by itself), then the verdict. A line with nobody in it is left out.
+
 **The teleprompter** (wave 59). A scene on the prompter is one shared position:
 Clippy, anyone with a line in it and every host see the same place, and the
 server owns it.

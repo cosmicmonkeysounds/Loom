@@ -59,14 +59,14 @@ lights up on every Antivirus' **Wanted board**. **🛡, ✅ Mark as reinstalled,
 | 🍾 the bottle | a **🍾 The bottle** pop-out names the program it landed on: **🗣 Truth answered: accepted** (one tap) · **🙅 Truth refused: marked for reinstallation** · **🎩 Chose Dare** (only if their phone is dead; both two taps) | the program the bottle landed on (no scan) |
 | 🏓 Truth Pong (Adobe judges the cup) | the **📋 CI 5** list, one row per cup-maker: **✅ Accurate** · **😤 Wrong but confident** · **🤷**, for the question being judged | only programs who made a cup |
 | 🏓 / 🌑 while judging | **🔢 Now judging question 1 / 2 / 3** (under *Also now* on your Mission) | nobody: it moves ✅ and 😤 to that question (question 1 when judging opens) |
-| 🌑 Final reveal | **✅ / 😤** (question 1 or 2 = F1, F2) · **🤷** | |
+| 🌑 Final reveal | **✅ / 😤** (question 1, 2 or 3 = F1, F2, F3) · **🤷** | |
 | 🍎 Bobbing (with Adobe) | **🍎 Brought up the Bag of Truth** · **🍎 Failed the bob: marked for reinstallation** | |
 | Grok Prom | **💘 Said "You're the one that I want"** | the first program who says it to you |
 | any time | **🖌 Signed the painting** | a program who just signed MS Paint's canvas (once each; only shows when MS Paint is here) |
 | from the Truther Download | **📢 Defect openly** · **🤫 Tip them off** · **🤫 Let their guess slide** | see *Whose side are you on?* |
 
 **Questions are within the round:** round 2's 1–3 = H4–H6 · the final round's
-1–2 = F1–F2. Before you judge an answer to another question, **🔢** to it.
+1–3 = F1–F3. Before you judge an answer to another question, **🔢** to it.
 **Accurate and confident lie look identical in public**: never say which you
 pressed. Each program's answer to a question counts **once**. **😤 meant as
 ✅?** Press ✅ for the same question on the same program: nothing is paid
@@ -288,14 +288,11 @@ Antivirus escort them to the Internet. Then:
 2. **📋 Results, one question at a time** (a host presses 📋 for Q1, then
    Q2, then Q3: nod when the room is ready). **Trabolta reads
    the result on the TV** (the screens show every filing); you react and
-   keep the room with him. Three shapes: **CONSENSUS** (every answer matches
-   and everyone was 100% sure: he accepts it and says the answer) ·
-   **nobody filed** (he has nothing; you: *"That's okay! That's okay."*) ·
-   **no consensus** (he reads what everyone told him, then how many were
-   accepted and how many were guesses: *"A guess is a symptom of
-   corruption. Antivirus, you know what to do."*). When he has finished,
-   you say *"Question two, coming up!"* (or, after the third, *"That's all
-   three! And before the next hunt: TRUTH OR DARE. I have a bottle."*).
+   keep the room with him. He reads the question, what each program
+   submitted, who submitted nothing, the answer, and congratulates whoever was
+   right and sure. After the third he reads the leaderboard and who he
+   recommends for reinstallation, and ends *"Clippy?"*: you say *"That's all
+   three! And before the next hunt: TRUTH OR DARE. I have a bottle."*
    The app settles each filing as he reads: +50 Truthcoin for an accepted
    answer, marked for reinstallation for a guess. **Never say which filings
    were lies**: the room hears "accepted" for every confident answer.
@@ -359,12 +356,14 @@ do not open*).
 not take sides on air.** Keep everyone hunting.
 
 **🌑 Final reveal** (CI 8). Lights dark. Everyone may speak: what they learned,
-what they believe, what should happen next. Judge F1/F2 (✅ / 😤, 🔢 to question 2 for F2; 🤷).
+what they believe, what should happen next. Judge F1–F3 (✅ / 😤, 🔢 to the question; 🤷).
 Then: *"There is only one version of the truth. Because truth is always in
-binary."* Dejectedly introduce **🍎 Bobbing for Truth**: *"we are not worthy
-of the truth unless we are willing to Bob for it and risk our status as a
-program."* Nothing moves until someone brings up the bag (🍎). Let Trabolta
-give his assessment, then the bobber reads truth.txt (📄). When they finish,
+binary."* Trabolta then reads all three final answers, the trust leaderboard
+and the winner on the TV, and hands back to you: *"…our final game of the
+evening – Bobbing For Truth."* Dejectedly introduce **🍎 Bobbing for Truth**:
+*"we are not worthy of the truth unless we are willing to Bob for it and risk
+our status as a program."* Nothing moves until someone brings up the bag (🍎).
+Then the bobber reads truth.txt (📄). When they finish,
 a host (or whoever is calling the show) fires **⚖** for the verdict; right after it, Trabolta DMs every
 program for a pickup line that works on Sandy (an answer card); the server
 judges it.
