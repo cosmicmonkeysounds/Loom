@@ -16,7 +16,7 @@ describe("the door sensor's protocol (§2.9)", () => {
     const parsed = lines.map(parseDoorLine);
     expect(parsed.every((p) => p !== null)).toBe(true);
     expect(parsed.map((p) => p?.t)).toEqual(["hello", "door", "door", "door", "door", "pong", "cfg", "cal", "ok", "err", "patch", "patch", "pbcal", "err"]);
-    expect(parsed[0]).toEqual({ t: "hello", fw: "door-m4 1.2.0", mode: "steady", auto: false, close: 1800, open: 1200, settle: 150, cal: false, sense: false, pbv: 8, pbd: 7 });
+    expect(parsed[0]).toEqual({ t: "hello", fw: "door-m4 1.3.0", mode: "steady", auto: false, close: 1800, open: 1200, settle: 150, cal: false, sense: false, pbv: 4, pbd: 4 });
     expect(parsed[1]).toEqual({ t: "door", seq: 17, open: false, level: 2410, lit: 3020, dark: 610, fault: null, warn: null });
     expect(parsed[3]).toMatchObject({ open: true, fault: null, warn: "ldr_open" });
     expect(parsed[4]).toMatchObject({ open: true, fault: "ldr_saturated", warn: null });
@@ -25,10 +25,10 @@ describe("the door sensor's protocol (§2.9)", () => {
     expect(parsed[7]).toEqual({ t: "cal", which: "closed", ref: 2400, close: 1880, open: 1320 });
     expect(parsed[8]).toEqual({ t: "ok", cmd: "set close 1900" });
     expect(parsed[9]).toEqual({ t: "err", error: "cal span too small", cmd: "cal open" });
-    expect(parsed[6]).toMatchObject({ pbv: 8, pbd: 7 });
-    expect(parsed[10]).toEqual({ t: "patch", seq: 41, pairs: "V3-D1,V5-D4", count: 2, complete: false, raw: [1340, 610, 0, 2251, 3, 0, 1], src: [3, -1, 0, 5, 0, 0, 0], stable: false });
-    expect(parsed[11]).toMatchObject({ t: "patch", count: 4, complete: true, src: [3, 1, 0, 5, 0, 8, 0], stable: true });
-    expect(parsed[12]).toEqual({ t: "pbcal", src: 3, raw: 1405, levels: [441, 917, 1405, 1842, 2240, 2749, 3166, 3619], floor: 150, tol: 120, saved: false });
+    expect(parsed[6]).toMatchObject({ pbv: 4, pbd: 4 });
+    expect(parsed[10]).toEqual({ t: "patch", seq: 41, pairs: "V3-D1,V4-D3", count: 2, complete: false, raw: [2519, 1400, 3741, 3], src: [3, -1, 4, 0], stable: false });
+    expect(parsed[11]).toMatchObject({ t: "patch", count: 4, complete: true, src: [3, 1, 4, 2], stable: true });
+    expect(parsed[12]).toEqual({ t: "pbcal", src: 3, raw: 2531, levels: [1193, 1785, 2531, 3741], floor: 150, tol: 200, saved: false });
     expect(parsed[13]).toEqual({ t: "err", error: "pb: need exactly one cable", cmd: "pb learn V3" });
   });
 

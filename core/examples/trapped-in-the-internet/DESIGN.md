@@ -558,8 +558,8 @@ in ROLE hooks and story rules.
 
 | Slot (exact) | Default | Meaning |
 |---|---|---|
-| `combo_a: text? = none` | seeded in Power On: `set Kernel.combo_a = "V2-D5,V4-D1,V6-D7,V7-D3"` | Combo A (disable Trabolta). Canonical: pairs sorted by V. Wave 22: V6 → D7 (was D8; the M4 bay has 7 inputs). |
-| `combo_b: text? = none` | seeded: `"V1-D6,V3-D2,V5-D7,V8-D4"` | Combo B (self-destruct). |
+| `combo_a: text? = none` | seeded in Power On (`main.loom`) | Combo A (disable Trabolta). Canonical: wire pairs (`V<k>-D<i>`), sorted by V. Wave 57: new, for the panel as built. |
+| `combo_b: text? = none` | seeded in Power On (`main.loom`) | Combo B (self-destruct). |
 | `q1` … `q8: text? = none` | | per-question verdict record: `"accurate"` or `"lie"` (H1–H3 = q1–q3, H4–H6 = q4–q6, F1–F2 = q7–q8). A lie is sticky (§3 B8). |
 | `lies_accepted: 0 to 50 = 0` | | accepted confident-but-false answers |
 | `all_accurate: bool = false` | | the verdict (§3 F3) |
@@ -1236,15 +1236,16 @@ one as a share — he must never know what he is asking for.
 | Omnipotence | Omnipotence | T2 | Trabolta | | | ✚ | What he will do when he is everything: it is all for her. |
 | Oil And Lightning | Oil And Lightning | T2 | Trabolta | | | ✚ | His runtime: the electricity is the lightning, the oil lets it run through him. Mix your oil and fuel and it's catastrophic for the car, "and for my silicon guts." His motorcycle runs on the same mix. Was *Greased Lightning* until 2026-10-19 (the user: "scrub the film from his own files"): no film, song or year; the bay's GREASE / LIGHTNING labels and The Legendary Fact keep the puzzle. |
 | The Legendary Fact | THE LEGENDARY FACT | L | The Server Room | | The Whole Truth (majority members only) | ✚ (last) | "Trabolta's heart is in the server room: a video patch bay, the top row (V) is lightning, the bottom row (D) is grease. Two combinations exist. Combo A takes the grease out of the lightning: it disables Trabolta. Combo B self-destructs the whole computer. The door has a keypad; the patch bay forgives one wrong combination, and the second sets off the alarm." `secret: true` since wave 7. Never held by Trabolta. |
-| Combo A First Half | Combo A — Disable Trabolta, part 1 | P | The Server Room | | The Whole Truth | ✚ | `V2 → D5`, `V4 → D1` (all four halves `secret: true` since wave 7) |
-| Combo A Second Half | Combo A — Disable Trabolta, part 2 | P | The Server Room | | The Whole Truth | ✚ | `V6 → D7`, `V7 → D3` (wave 22, was D8) |
-| Combo B First Half | Combo B — Self-Destruct, part 1 | P | The Server Room | | The Whole Truth | ✚ | `V1 → D6`, `V3 → D2` |
-| Combo B Second Half | Combo B — Self-Destruct, part 2 | P | The Server Room | | The Whole Truth | ✚ | `V5 → D7`, `V8 → D4` |
+| Combo A First Half | Combo A — Disable Trabolta, part 1 | P | The Server Room | | The Whole Truth | ✚ | two cables, in the panel's jack names (all four halves `secret: true` since wave 7) |
+| Combo A Second Half | Combo A — Disable Trabolta, part 2 | P | The Server Room | | The Whole Truth | ✚ | the other two cables |
+| Combo B First Half | Combo B — Self-Destruct, part 1 | P | The Server Room | | The Whole Truth | ✚ | two cables, in the panel's jack names |
+| Combo B Second Half | Combo B — Self-Destruct, part 2 | P | The Server Room | | The Whole Truth | ✚ | the other two cables |
 | The Truth File | truth.txt | X | | | the bobber (The Bag Of Truth), then everyone (read_truth_txt) | | Trabolta's backstory and, for every featured program and performer by role, why he brought them in (§3 F3). |
 | The Hand Jive Exception | The Hand Jive Exception | X | | | Advice Thwarted (every program) | | The NEW weakness he blurts in despair: "If every program performs the hand jive in unison, my motion recognition overflows and I must reboot. Everyone. Together. Antivirus included." |
 
 The combo strings must equal `Kernel.combo_a` / `Kernel.combo_b` (§2.6.2) and the stagehand
-YAML (§2.15). If the patch bay labels change, change all three; the stagehand cross-check
+YAML (§2.15). The sheets print the panel's jacks and the Kernel holds the wire's pairs
+(`titi-facts.ts` `PANEL_JACKS`). If the patch bay labels change, change them all; the stagehand cross-check
 test (§2.15) and §6.1 item 19 fail otherwise. The P titles name what each combo *does*
 ("Disable" / "Self-Destruct"), never "grease" / "lightning", so the Legendary Fact's row names
 (top V = lightning, bottom D = grease; Combo A takes the grease out of the lightning) can't be
@@ -1577,8 +1578,7 @@ Desktop`; **no dialogue lines and no widgets** — the test checks this).
 - Seeds every `Night.*` default in §2.6 / §2.14 (`set Night.phase = "arrivals"`,
   `set Night.step = 0`, `set Kernel.anti_ai = "MS Paint"`, counters 0, flags false,
   strings `"none"`, `set Night.r2_requested = 3`, `set Night.clock = "--:--"`) and the two
-  combos on the Kernel (`set Kernel.combo_a = "V2-D5,V4-D1,V6-D7,V7-D3"`, `set Kernel.combo_b
-  = "V1-D6,V3-D2,V5-D7,V8-D4"`).
+  combos on the Kernel (`set Kernel.combo_a`, `set Kernel.combo_b`, in Power On).
 - `cue lights_screensaver` / `set Night.lights = "screensaver"`; `cue screens_screensaver` /
   `set Night.screen = "screensaver"` / `set Night.terminals = "screensaver"`.
 - One narration line (keep): `The house boots. A screensaver drifts across the TV above the

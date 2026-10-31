@@ -16,8 +16,8 @@
 //! the pure `PatchBridge` (a new complete set of four cables → `patch_changed
 //! {combo}`), when the board says it has a bay (`pbd > 0`) and the config's
 //! `bay` is on (`&bay=0` turns it off). `door=sim` fakes cables too, with
-//! Shift held (a bare digit answers the heart's menu): Shift+1–8 picks a
-//! source, then Shift+1–7 the input it goes into (Shift+0 pulls that
+//! Shift held (a bare digit answers the heart's menu): Shift+1–4 picks a
+//! source, then Shift+1–4 the input it goes into (Shift+0 pulls that
 //! source's cable); Shift+0 on its own pulls them all.
 
 import { baseOf, type TerminalConfig } from "../config.ts";
@@ -139,12 +139,12 @@ interface Sink {
 }
 
 /** The firmware's nominal source levels (`config.h` `PB_NOMINAL`): the sim's readings. */
-export const SIM_LEVELS: readonly number[] = [445, 921, 1338, 1848, 2247, 2757, 3174, 3650];
-const SIM_INPUTS = 7;
+export const SIM_LEVELS: readonly number[] = [1177, 1769, 2488, 3646];
+const SIM_INPUTS = 4;
 
 /** The dev rig: O / C open and shut a pretend door, F toggles a fault; a
  *  `door` line on every change and every second, like the firmware. With a
- *  bay (`bay`, the default) Shift+1–8 picks a source and the next Shift+1–7
+ *  bay (`bay`, the default) Shift+1–4 picks a source and the next Shift+1–4
  *  the input its cable goes into (Shift+0 instead pulls that source's cable;
  *  Shift+0 with nothing picked pulls every cable; Shift, because a bare digit
  *  answers the heart's menu), and a `patch` line goes out on
@@ -166,8 +166,8 @@ export function simSource(sink: Sink, target: Pick<Window, "addEventListener" | 
     const sum = patchSummary(src);
     sink.line({ t: "patch", seq: pseq++, pairs: pairsOf(src), count: sum.count, complete: sum.count === 4 && sum.between === 0 && !sum.dup, raw: src.map((k) => (k > 0 ? levels[k - 1]! : 2)), src, stable: true });
   };
-  const pbcal = (src: number, raw: number): PbcalLine => ({ t: "pbcal", src, raw, levels: [...levels], floor: 150, tol: 120, saved: false });
-  const hello = { fw: "door-sim", mode: "steady" as const, auto: false, close: 1800, open: 1200, settle: 150, cal: false, sense: false, pbv: bay ? 8 : 0, pbd: bay ? SIM_INPUTS : 0 };
+  const pbcal = (src: number, raw: number): PbcalLine => ({ t: "pbcal", src, raw, levels: [...levels], floor: 150, tol: 200, saved: false });
+  const hello = { fw: "door-sim", mode: "steady" as const, auto: false, close: 1800, open: 1200, settle: 150, cal: false, sense: false, pbv: bay ? SIM_LEVELS.length : 0, pbd: bay ? SIM_INPUTS : 0 };
   const onKey = (e: KeyboardEvent) => {
     const el = e.target as { tagName?: string; isContentEditable?: boolean } | null;
     if (e.metaKey || e.ctrlKey || e.altKey || el?.tagName === "INPUT" || el?.tagName === "TEXTAREA" || el?.isContentEditable === true) return;

@@ -3417,7 +3417,7 @@ INTERACTION patch_rejected
   label: ❌ Patch: wrong combination (hardware fallback)
   who: admin
   sequence: false
-  description: The patch bay on the server-room terminal judges its own cables. Press it only when four cables are in, neither combination, and nothing happened, or a cable runs top-to-top or bottom-to-bottom (the bay can't see those). A press inside a minute of the bay's own rejection is not counted twice. In the Y2K hour a press hands the patch bay to the 🔌 💥 ❌ buttons until 🔌 Trust the patch bay.
+  description: The patch bay on the server-room terminal judges its own cables. Press it only when four cables are in, neither combination, and nothing happened, or a cable sits in a dead jack or runs A-to-A or B-to-B (the bay can't see those). A press inside a minute of the bay's own rejection is not counted twice. In the Y2K hour a press hands the patch bay to the 🔌 💥 ❌ buttons until 🔌 Trust the patch bay.
 
 INTERACTION talked_down
   label: 🕊 Trabolta stands down (talked down)
@@ -3980,7 +3980,7 @@ INTERACTION radio_wrong_patch
   by: Norton Anti-Virus, McAfee Anti-Virus, Password Manager, CRA Agent Software
   arm: true
   while: Night.ended != true and Night.step >= 14 and Night.r3_closed != true
-  description: Four cables in that are neither combination and nothing happened 5 s after the fourth, or a cable top-to-top or bottom-to-bottom (the bay can't see those). The first is forgiven; the second trips the alarm. Hands the patch bay to the buttons until a director trusts it again.
+  description: Four cables in that are neither combination and nothing happened 5 s after the fourth, or a cable in a dead jack, A-to-A or B-to-B (the bay can't see those). The first is forgiven; the second trips the alarm. Hands the patch bay to the buttons until a director trusts it again.
 
 INTERACTION radio_door_opened
   label: 🚪 The server-room door opened
@@ -5834,11 +5834,12 @@ when door_digit_found for program:
     else:
       update quest The Cold Door for program "{program.door_digits} of 4."
 
-// E3: the patch bay (wave 22). The bay is 15 jacks on the Grand Central
-// M4 beside the door sensor, plugged into Steph's laptop: the server-room
-// terminal reads it over Web Serial and posts `patch_changed {combo}` for
-// each settled, complete patch (exactly four top-to-bottom cables, in the
-// canonical "V2-D5,…" order) that differs from the last one it posted, so
+// E3: the patch bay (wave 22). The bay is 16 jacks, 8 of them live, on the
+// Grand Central M4 beside the door sensor, plugged into Steph's laptop: the
+// server-room terminal reads it over Web Serial and posts `patch_changed
+// {combo}` for each settled, complete patch (exactly four cables from row B
+// to row A, in the wire's canonical V-then-D order; the firmware's config.h
+// names the panel's jack for each) that differs from the last one it posted, so
 // the same four cables plugged in again never count twice. The story
 // judges it here, against the Kernel's seeds.
 //
@@ -6936,8 +6937,8 @@ set Kernel._patch_paid = "none"
 // and the final reveal, and comes back down at Truth Pong and the ceremony;
 // a host's dial holds until the next of these sets.
 set Night.alerts = "sticky"
-set Kernel.combo_a = "V2-D5,V4-D1,V6-D7,V7-D3"
-set Kernel.combo_b = "V1-D6,V3-D2,V5-D7,V8-D4"
+set Kernel.combo_a = "V1-D4,V2-D3,V3-D1,V4-D2"
+set Kernel.combo_b = "V1-D3,V2-D4,V3-D2,V4-D1"
 set Kernel.anti_ai = "MS Paint"
 // What every program said per question (Clippy reads it at the results):
 // a string from the first filing, so it starts empty, never "none".

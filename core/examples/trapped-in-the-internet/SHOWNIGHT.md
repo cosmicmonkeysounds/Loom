@@ -172,10 +172,10 @@ Quest APK). Verify what runs with
     (retune, Save to project).
     `uv run stagehand check --config trapped.desktop.yaml --only lights` is
     green.
-13. **Steph's laptop:** flash the wave 22 firmware from
+13. **Steph's laptop:** flash `door-m4 1.3.0` from
     `hardware/server-room-m4` (door + patch bay; `LED_PULSED`, the LED on
     D23); `scripts/accept/N-20.sh` (the door) and `N-21.sh` (the bay:
-    learns V1–V8, then `pb save`); open the terminal once without
+    learns the four sources, then `pb save`); open the terminal once without
     `--kiosk`, grant the camera and the port, **calibrate the door in ⚙**
     (always after a reflash), check the patch bay's live table, relaunch in
     kiosk.
@@ -198,8 +198,8 @@ Quest APK). Verify what runs with
 18. **Reprints (the sign-off is done, 2026-10-27):** Clippy, the director and
     second-director packs, the four Antivirus, the hosts, all-crew, the
     patch-bay watch card, the emergency card, Excel's and OpenOffice's
-    sheets, every featured card, the Bingo card, and Combo A's two codex
-    halves (the bay's layout changed in wave 22, and Combo A with it).
+    sheets, every featured card, the Bingo card, and the four Patch Sheets
+    (wave 57: both combinations are new, in the panel's own jack names).
     Wave 54: the badges (Run → Print sheet: a staff badge per part, an invited
     badge per featured program, the numbered blanks), the location cards with
     the 🚻 signs, and the fact cards. Print at 100%.

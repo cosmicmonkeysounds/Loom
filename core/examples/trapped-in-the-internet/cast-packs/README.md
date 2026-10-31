@@ -128,7 +128,7 @@ The old wave-by-wave list is in [`history.md`](./history.md).
   through). A pass at his screen starts a four-layer talk (mouse) or a heart
   to heart (keyboard). A talk-down works at any hour, and the night ends
   only on the director's 🕊. A program he throws out is marked.
-- **The patch bay judges itself** (wave 22): the same M4 reads its 15 jacks,
+- **The patch bay judges itself** (wave 22): the same M4 reads its 16 jacks (8 live),
   and in the Y2K hour the story judges every complete patch about 5 s after
   the fourth cable. The Antivirus watch inside presses 🔌 / 💥 / ❌ only when
   the bay missed one; a press hands the bay to the buttons until the

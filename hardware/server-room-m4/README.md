@@ -45,7 +45,7 @@ test/
 | A bright LED (5 mm) + its resistor | on the door edge or the opposite jamb, aimed at the LDR. Today: switched by **D23** (the pulsed wiring below) |
 | **A shroud tube**: 2–3 cm of black heat-shrink or a black straw | over the LDR, open end toward the LED: keeps room light off the cell (the most important part for a stable reading, and the only defence the steady wiring has) |
 | For the pulsed wiring: an NPN (2N3904 / PN2222 / 2N2222) + 1 kΩ, **or** a red LED + 220 Ω | B below: keeps today's 5 V LED and its resistor; A: a red LED straight off D2 |
-| Optional: 47 Ω | the LED sense resistor (A1), below |
+| Optional: 47 Ω | the LED sense resistor (A4), below |
 | 3-core cable, a long micro-USB cable | the LED and LDR may sit a few metres from the board |
 
 ## Wiring
@@ -130,14 +130,14 @@ wiring**: the beam is gone either way (`lit`, or `lit − dark`, falls), so
 the LDR alone can't tell the two apart. With it, a dead LED is the blocking
 fault `led_dead` (the terminal then posts nothing, and Run shows it).
 
-Put **47 Ω as the last thing before GND** in the LED's path and wire **A1
+Put **47 Ω as the last thing before GND** in the LED's path and wire **A4
 to the top of the 47 Ω**; then set `LED_SENSE 1` in `config.h`. While the
-LED is driven, A1 reads `I · 47 Ω` (≈ 0.2–0.9 V); a dead LED reads 0.
+LED is driven, A4 reads `I · 47 Ω` (≈ 0.2–0.9 V); a dead LED reads 0.
 
-- Steady (5V): `5V ─[its resistor]─►|─┬─[47 Ω]─ GND`, A1 on the `┬`.
-- Pulsed A: `D2 ─[220 Ω]─►|─┬─[47 Ω]─ GND`, A1 on the `┬` (≈ 290).
+- Steady (5V): `5V ─[its resistor]─►|─┬─[47 Ω]─ GND`, A4 on the `┬`.
+- Pulsed A: `D2 ─[220 Ω]─►|─┬─[47 Ω]─ GND`, A4 on the `┬` (≈ 290).
 - Pulsed B: **no sense wire.** With the transistor off the collector floats
-  up toward 5 V, which A1 must never see.
+  up toward 5 V, which A4 must never see.
 
 ### Both
 
@@ -294,7 +294,8 @@ before the terminal page connects: only one program can hold the port.
 - Web Serial needs **desktop Chrome** (or Edge) on **https** (or
   `localhost`). Safari and Firefox have none.
 - The first time, the terminal's ⚙ (hold 2 s) → *Connect door sensor* opens
-  Chrome's port picker: choose the Grand Central. Chrome remembers the
+  Chrome's port picker: click the Grand Central's row, then the picker's
+  **Connect**, which stays grey until a row is picked. Chrome remembers the
   grant per profile, and the page reconnects with `navigator.serial.getPorts()`
   on every later boot, with no prompt.
 - Grant it **in the kiosk's own profile** (`--user-data-dir="$HOME/.loom-terminal"`),
@@ -332,74 +333,89 @@ If the reading drifts on the night (a knocked LED, a bulb on in the hall):
 re-run *Calibrate*, or a director presses 🚪 and the story follows the
 buttons until 🚪 *Trust the door sensor* (D19).
 
-## The patch bay (wave 22)
+## The patch bay (wave 22; the panel as built since wave 57)
 
-Fifteen ¼" **TS** jacks on the server-room patch panel, every one live (no
-decoys): a top row of **8 sources V1–V8** and a bottom row of **7 inputs
-D1–D7**. The board reads the inputs on **A2–A8**, decodes which source each
-is patched to, and sends the bay as a `patch` line; the terminal posts
-`patch_changed {combo}` once four V–D cables settle into a set it hasn't
-just posted, and the **story** judges it (the combinations live only in the
-story: nothing here, in the terminal or on the heartbeat knows them).
+Two rows of eight ¼" **TRS** jacks on the server-room patch panel, A and B, tip
+and sleeve only. **Eight are live and eight are decoys**, wired to nothing. The
+live B jacks are the **sources**, each a fixed voltage; the live A jacks are the
+**inputs**, on pins **A0–A3**. The board decodes which source each input sees
+and sends the bay as a `patch` line; the terminal posts `patch_changed {combo}`
+once four cables settle into a set it hasn't just posted, and the **story**
+judges it (the combinations live only in the story: nothing here, in the
+terminal or on the heartbeat knows them).
+
+| Source | Jack | Volts at the jack | As the board reads it (`PB_NOMINAL`) |
+|---|---|---|---|
+| V1 | B8 | 0.965 | 1177 |
+| V2 | B7 | 1.442 | 1769 |
+| V3 | B4 | 2.033 | 2488 |
+| V4 | B2 | 3.019 | 3646 |
+
+| Input | Jack | Pin |
+|---|---|---|
+| D1 | A5 | A0 |
+| D2 | A7 | A1 |
+| D3 | A6 | A2 |
+| D4 | A4 | A3 |
+
+**People read the panel's names.** The Patch Sheets, the watch's card, ⚙ and
+`N-21.sh` say `B8` and `A5`. `V<k>` and `D<i>` are the wire's: the `patch` line,
+`pb learn V<k>`, `patch_changed {combo}` and the Kernel's seeds. The wire kept
+them so that a new panel needs a flash and a story sync, never a server release.
+The table is in `config.h`, and `core/test/trapped-w22-patchbay.test.ts` fails if
+the firmware, the terminal, `N-21.sh` and `titi-facts.ts` ever disagree on it.
 
 ### Wiring
 
-**Every sleeve to the M4's GND.** Plain (unswitched) TS jacks, or leave the
-switch lugs unconnected; insulate the jacks from a metal panel unless the
-panel is GND too. Everything stays on **3V3**, never 5V.
+**Every sleeve to the M4's GND**, and nothing on the rings. Insulate the jacks
+from a metal panel unless the panel is GND too. Everything stays on **3V3**,
+never 5V.
 
-**Each source is its own divider** off 3V3 (never one shared ladder: a V–V
-cable across a ladder would drag every other tap off its level), then 1 kΩ
-in series to the jack's tip (a tip sliding across a sleeve on insertion
-shorts only through the 1 kΩ):
+**Each source is its own fixed level** (never one shared ladder: a cable from
+one source to another across a ladder would drag every other tap off its level)
+with a series resistor to the jack's tip, so a tip sliding across a sleeve on
+insertion can't short it. The levels only need to stay in order and well apart
+(the closest two, B8 and B7, are 592 counts apart, so `tol` is 200): `pb learn`
+measures the real ones on the bench.
 
-```
-   3V3 ──[top]──┬──[1 kΩ]── V<k> tip
-                │
-             [bottom]
-                │
-               GND
-```
-
-| Source | Top | Bottom | Nominal V | 12-bit counts (`PB_NOMINAL`) |
-|---|---|---|---|---|
-| V1 | 8.2 kΩ | 1.0 kΩ | 0.36 | 445 |
-| V2 | 6.2 kΩ | 1.8 kΩ | 0.74 | 921 |
-| V3 | 6.8 kΩ | 3.3 kΩ | 1.08 | 1338 |
-| V4 | 6.2 kΩ | 5.1 kΩ | 1.49 | 1848 |
-| V5 | 5.1 kΩ | 6.2 kΩ | 1.81 | 2247 |
-| V6 | 3.3 kΩ | 6.8 kΩ | 2.22 | 2757 |
-| V7 | 1.8 kΩ | 6.2 kΩ | 2.56 | 3174 |
-| V8 | 1.0 kΩ | 8.2 kΩ | 2.94 | 3650 |
-
-1 % metal film. The values only need to stay in order and well apart (the
-closest two, V4 and V5, are ≈ 400 counts apart): `pb learn` measures the
-real levels on the bench. The eight dividers draw ≈ 2.5 mA.
-
-**Each input:** tip → **220 kΩ to GND** at the jack (an empty jack reads
-≈ 0) → **1 kΩ** → the ADC pin → **100 nF to GND** at the pin (a stiff source
-for the SAMD51's sample-and-hold, and a little filtering).
+**Each input:** the tip to its pin, with **100–220 kΩ to GND** at the jack. Only the
+four live A jacks take one: on a B jack it would load that source all the time.
 
 ```
-   D<i> tip ──┬──[1 kΩ]──┬── A(1+i)        D1 → A2 … D7 → A8
-              │          │
-          [220 kΩ]    [100 nF]
-              │          │
-             GND        GND
+   D<i> tip ──┬── pin                      D1 → A0 … D4 → A3
+              │
+      [100–220 kΩ]
+              │
+             GND
 ```
 
-A patched input reads within ≈ 2 % of its source (the 220 kΩ against the
-divider's ≈ 1–3 kΩ). The ADC reads against the SAMD51's 3.3 V analog rail,
-the same 3V3 the dividers hang off, so the levels are ratiometric; **check
-on the bench** that V4 into any input reads ≈ 1848 (`N-21.sh` prints it).
+**An empty jack must never float.** A bare pin doesn't sit at 0: on this board,
+with no pull-down, unplugged inputs read 350–780 counts and one climbed while we
+watched, toward B8's band. A phantom cable there would finish a patch of three.
+So there are two guards. The resistors are one. The other is in the firmware:
+the chip's own pull-down works only while a pin is digital (left on through
+`analogRead` it changes nothing, and empty pins still read about 440), so each
+read first drains the pin through it for `PB_DRAIN_US`. On 2026-10-31, before any
+resistor went on, that alone brought empty inputs down to 13–47 counts. It never
+drives the pin, so a source on a cable sees no load to speak of and recovers at
+once.
+
+The ADC reads against the SAMD51's 3.3 V analog rail. **Check on the bench**
+that B2 into any input reads ≈ 3646 (`N-21.sh` prints it). The counts above are
+the middle of both combinations patched with real cables on 2026-10-31, through
+the pull-downs: each level held within about ±40 across its inputs, well inside
+`tol`, so no `pb learn` was needed.
 
 ### What a cable reads
 
-- **V–D:** that source's level on that input: the pair `V<k>-D<i>`.
-- **V–V:** two sources joined: no input sees it.
-- **D–D:** two inputs joined, both pulled to GND: they read empty.
-- So the bay counts **V–D cables only**. Four cables with a top-to-top or
-  bottom-to-bottom one among them read as three pairs: *incomplete*, never a
+- **A live B jack into a live A jack:** that source's level on that input:
+  the pair `V<k>-D<i>`.
+- **A decoy jack:** wired to nothing, so the bay can't see that cable at all.
+- **B to B:** two sources joined: no input sees it.
+- **A to A:** two inputs joined, both pulled to GND: they read empty.
+- So the bay counts **live B-to-A cables only**, and a complete patch fills all
+  four inputs: 24 arrangements, two of them combinations. Four cables with any
+  of the others among them read as three pairs or fewer: *incomplete*, never a
   wrong combination (the watch presses ❌ by hand for those).
 - **Between levels** (a half-seated plug, a dirty tip, a wrong resistor):
   the input reads `-1` and the bay is not complete.
@@ -408,16 +424,16 @@ on the bench** that V4 into any input reads ≈ 1848 (`N-21.sh` prints it).
 
 - Every 50 ms each input is read once (a throwaway read after the ADC's mux
   moves), then 8 times and averaged; each mean is decoded: **empty** under
-  `floor` (150), **V<k>** within `tol` (120) of V<k>'s level, else
+  `floor` (150), **V<k>** within `tol` (200) of V<k>'s level, else
   **between** (`-1`).
-- The decode of all seven inputs must hold **unchanged for 1 s** to become
+- The decode of all four inputs must hold **unchanged for 1 s** to become
   the *settled* bay (a tip brushing the sleeve on its way in, a hand still
   moving cables, never settles).
 - The settled bay's **pairs**: `V<k>-D<i>` per patched input, sorted by
-  source then input, joined by `,` (e.g. `V1-D2,V3-D1,V5-D4,V8-D6`; the same
+  source then input, joined by `,` (e.g. `V1-D2,V2-D4,V3-D1,V4-D3`; the same
   form the old ESP32 scanner sent). **Complete** = exactly four pairs, no
-  input between levels, no source on two inputs (impossible with TS cables:
-  a wiring fault or crosstalk).
+  input between levels, no source on two inputs (impossible with one plug per
+  jack: a wiring fault or crosstalk).
 - A `patch` line goes out on every settled change and at least once a
   second, from boot (so ⚙'s live table shows before anything settles).
 
@@ -425,14 +441,14 @@ on the bench** that V4 into any input reads ≈ 1848 (`N-21.sh` prints it).
 
 | Line | When |
 |---|---|
-| `{"t":"patch","seq","pairs","count","complete","raw":[7],"src":[7],"stable"}` | every settled change, and every 1 s. `pairs` / `count` / `complete`: the settled bay; `raw`: the latest 12-bit mean per input, D1 first; `src`: their decode (0 empty, 1–8, −1 between); `stable`: the latest scan is the settled bay |
-| `{"t":"pbcal","src","raw","levels":[8],"floor","tol","saved"}` | after `pb learn V<k>` (`src` k, `raw` what it read) and every other `pb` command (`src` 0, `raw` 0); `saved`: these are the levels in flash |
+| `{"t":"patch","seq","pairs","count","complete","raw":[4],"src":[4],"stable"}` | every settled change, and every 1 s. `pairs` / `count` / `complete`: the settled bay; `raw`: the latest 12-bit mean per input, D1 first; `src`: their decode (0 empty, 1–4, −1 between); `stable`: the latest scan is the settled bay |
+| `{"t":"pbcal","src","raw","levels":[4],"floor","tol","saved"}` | after `pb learn V<k>` (`src` k, `raw` what it read) and every other `pb` command (`src` 0, `raw` 0); `saved`: these are the levels in flash |
 
-`hello` and `cfg` carry `"pbv":8,"pbd":7` (0 / 0 on a build or rig with no
+`hello` and `cfg` carry `"pbv":4,"pbd":4` (0 / 0 on a build or rig with no
 bay; an older terminal ignores both, and the new lines). `fw` is
-`door-m4 1.2.0`.
+`door-m4 1.3.0`.
 
-Commands: `pb learn V<1-8>` (exactly one cable in, from that source into
+Commands: `pb learn V<1-4>` (exactly one cable in, from that source into
 any input: averages 1 s; refused with `pb: need exactly one cable` for none,
 two or a cable that moves, `pb: too close to V<j>` when the level would sit
 within 2·`tol` of another source's, `pb: too faint`, `pb busy`) · `pb get`
@@ -442,21 +458,23 @@ to flash) · `pb reset` (the nominal table, not saved) · `pb floor <20-1000>`
 tol`). A board with no bay answers every `pb` command `pb: no bay`.
 
 **Flash:** a second record at EEPROM address 16, `{magic 0xBA7E, ver 1,
-sources 8, level ×8, floor, tol}` (24 bytes). The door's 12-byte record at
-0 never moves: `save` and `pb save` each leave the other's bytes alone, and
-a board flashed from 1.1.0 keeps its door calibration.
+sources 4, level ×4, floor, tol}` (16 bytes). A 1.2.0 board's record says
+`sources 8`, so it reads as missing and 1.3.0 boots on the nominal table until
+`pb save`. The door's 12-byte record at 0 never moves: `save` and `pb save` each
+leave the other's bytes alone.
 
 ### Learning the levels on site
 
-`scripts/accept/N-21.sh` (serial only, ~10 minutes): it learns V1–V8 one
-cable at a time, walks a source through every input, prints the table and
+`scripts/accept/N-21.sh` (serial only, ~5 minutes): it learns the four sources
+one cable at a time, walks a source through every input, prints the table and
 checks the floor and the tolerance, then offers `pb save`. By hand, in the
-serial monitor: one cable from V1 into any input, `pb learn V1`, and so on
-to V8, then `pb save`. From the terminal: hold ⚙ 2 s → *patch bay*: the
-live readings per input, **Learn** per source, **Save** / **Reset**.
+serial monitor: one cable from B8 into any live A jack, `pb learn V1`, then B7
+(`V2`), B4 (`V3`) and B2 (`V4`), then `pb save`. From the terminal: hold ⚙ 2 s →
+*patch bay*: the live readings per input, **Learn** per source, **Save** /
+**Reset**.
 
-The crew check before doors: patch V1 into D1, D2 … D7 in turn and see every
-row read V1; then V2 … V8 into one input.
+The crew check before doors: patch B8 into A5, A7, A6 and A4 in turn and see
+every row read B8; then B7, B4 and B2 into one input.
 
 ## What the terminal does with the bay
 
@@ -477,7 +495,7 @@ the story does.
 `hello` says `pbd 0` has none.
 
 **Heartbeat** (Run → Terminals' 🔌 badge, `pnpm showctl terminals`): `pb`
-is the number of V–D cables in the settled bay, or `fault`; `pbc=1` the
+is the number of live B-to-A cables in the settled bay, or `fault`; `pbc=1` the
 bay is complete; `pbx` inputs reading between levels; `pft` the fault
 (`no_port`, `stale` with no `patch` line for a while, `dup` a source on two
 inputs).
@@ -486,9 +504,9 @@ inputs).
 
 | Check | What |
 |---|---|
-| `hardware/server-room-m4/test/run.sh` | the host tests (807 checks on 2026-10-24); `run.sh compile` builds both firmware variants |
+| `hardware/server-room-m4/test/run.sh` | the host tests (464 checks on 2026-10-31); `run.sh compile` builds both firmware variants |
 | `scripts/accept/N-20.sh [port]` | the door sensor on the bench or the real frame (proposes `mode`, `settle`, `close`, `open`) |
-| `scripts/accept/N-21.sh [port]` | the patch bay: learn V1–V8, walk a source through every input, check the tolerance, offer `pb save` |
+| `scripts/accept/N-21.sh [port]` | the patch bay: learn the four sources, walk a source through every input, check the tolerance, offer `pb save` |
 | `M4BAY=1 MOD_CODE=… scripts/accept/K-05.sh` | through the story: the terminal posts the bay's combination in the Y2K hour |
 | `pnpm showctl preflight serverroom` | on Steph's laptop: Chrome, the board on USB, the kiosk link pattern; then by hand the door and one cable |
 

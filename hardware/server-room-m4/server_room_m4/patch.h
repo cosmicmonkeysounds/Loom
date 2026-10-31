@@ -1,17 +1,17 @@
-// The patch bay's logic (wave 22): reading the seven inputs, naming the
+// The patch bay's logic (wave 22): reading the four inputs, naming the
 // source on each, the settle that keeps a cable on its way in from counting,
 // the canonical pairs, and `pb learn`. Pure C++ with no Arduino include: the
 // ADC comes in through `Pins`, so test/test_logic.cpp drives all of it
 // against a modelled bay.
 //
-// Every source V<k> sits at its own voltage (an independent divider off
-// 3V3); a cable from V<k> into input D<i> puts that voltage on D<i>'s pin,
-// and an empty input is pulled to GND. So each input reads one of nine
-// things: empty, one of the eight sources, or something between levels (a
-// half-seated plug, a dirty tip, a wrong resistor). A V–V or a D–D cable
-// moves no input at all: the bay sees V–D cables only, and a patch with one
-// of those among its four cables reads as fewer than four pairs (never as a
-// wrong combination).
+// Every source V<k> sits at its own fixed voltage; a cable from V<k> into
+// input D<i> puts that voltage on D<i>'s pin, and an empty input is pulled to
+// GND. So each input reads one of six things: empty, one of the four sources,
+// or something between levels (a half-seated plug, a dirty tip, a wrong
+// resistor). A V–V or a D–D cable moves no input at all, and neither does one
+// in a decoy jack: the bay sees V–D cables only, and a patch with one of those
+// among its four cables reads as fewer than four pairs (never as a wrong
+// combination). config.h maps V<k> and D<i> to the panel's own jack names.
 //
 // The story judges the pairs (the terminal posts them as `patch_changed
 // {combo}`): nothing here knows which combinations matter.

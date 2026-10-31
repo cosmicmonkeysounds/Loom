@@ -369,14 +369,34 @@ Run tab (an open one keeps the old print sheet); every staff member uploads agai
 (the reload cleared it); sign off `SIGNOFF-w54.md`, `-w55` and `-w56`, with their
 real-device checks. The Desktop does `git pull`, sets up `tidal.ps1`
 (`scripts/house-desktop/README.md` §3.7) and runs `start-stagehand.ps1 -Restart
-audio`. On Steph's laptop, run `scripts/server-room/start-terminal.ps1 -Setup` with
-`LOOM_MOD_CODE` set and a mouse, make every grant in the terminal's own profile
-(`%LOCALAPPDATA%\loom-terminal`, which doesn't exist yet: the kiosk has no way to
-answer a prompt) and check ⚙ reads *whisper is listening*; then run it with no
-switches (`docs/trapped/kiosk.md`, First launch). The old CSP stopped that prompt
-ever coming up there. Steph's laptop has reflashed the M4 and recalibrated the door
-(2026-10-30); a new profile leaves the board's flash alone. It still relearns the
-patch bay once that's wired, and the CRT becomes the only display at 640 × 480.
+audio`.
+
+**Spoken answers work on `w56`** (Steph's laptop, 2026-10-31). `start-terminal.ps1
+-Setup` made every grant in the terminal's own profile (`%LOCALAPPDATA%\loom-terminal`,
+`docs/trapped/kiosk.md`, First launch), and ⚙ read *whisper is listening*. After a
+full Chrome restart the M4 reopened with no click, a recorded clip went from the
+live page to whisper and back word for word, and in the kiosk SPEAK TO HIM said the
+speaker's words back. His reply to a spoken line wasn't checked. The laptop reflashed
+the M4 and recalibrated the door on 2026-10-30, and a new profile leaves the board's
+flash alone, and the door reads shut at ≈ 3650 on those thresholds. Still owed there:
+open and shut the door once and watch 🚪 flip on Run → Terminals, make the CRT the only
+display at 640 × 480, and run `start-terminal.ps1 -InstallTask`, or the kiosk doesn't
+come back after a restart.
+
+**The patch bay as built** (wave 57, no server release needed; the sheets' words are
+`DRAFT w57`): the panel has 16 TRS jacks, 8 live: sources B8 B7 B4 B2 and inputs A5 A7
+A6 A4 on pins A0–A3 (`door-m4 1.3.0`, the table in `config.h`), so a complete patch
+fills all four inputs. Both combinations are new. The wire and the Kernel stay
+`V<k>-D<i>`; the Patch Sheets, the watch's card and ⚙ name the panel's jacks. An empty
+jack floats, so each read drains the pin first, and 100–220 kΩ pull-downs sit on the
+live A jacks. Flashing erases the board's door thresholds: read them with `get` first
+and put them back with `set close` / `set open` + `save`. Steph's laptop is flashed, and
+on 2026-10-31 both combinations, patched with real cables, read back exactly as their
+seeds, with every level inside its band; the measured levels are `PB_NOMINAL`, so no
+`pb learn` is owed. **`sync-show` is owed, with its reload:** until then the live story
+holds the old combinations and every full patch reads as wrong. Then reprint the four
+Patch Sheets and the watch's card. ⚙'s jack names reach the kiosk with the next release;
+until then it shows `V1`–`V4` and `D1`–`D4` (README has the table).
 
 Before it, `w53b` (master `136e656c`, shipped 2026-10-30; rollback `w53`):
 the merged `oct31/trabolta-room` (the server room's CRT, GameCube pad and local
@@ -581,7 +601,7 @@ the glitch on real phones, and the real speakers.
    ~5500 mA, `wled/living`). `lights.json` already places every light; no
    groups, scenes or presets. Then Run → House → 🔌 Setup green, Checks
    walked, and each look ▶ Tested on the house in the 🎨 Cue designer.
-9. Steph's laptop: flash the M4 (`door-m4 1.2.0`), bench with
+9. Steph's laptop: flash the M4 (`door-m4 1.3.0`), bench with
    `scripts/accept/N-20.sh` and `N-21.sh`, then calibrate the door and
    learn the patch bay in the terminal's ⚙ (always after a reflash).
 10. Reload every terminal and the TV (mandatory since wave 26: check each

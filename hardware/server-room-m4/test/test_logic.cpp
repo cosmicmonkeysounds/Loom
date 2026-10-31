@@ -40,7 +40,7 @@ static int failures = 0, checks = 0;
 
 // ── A modelled door ─────────────────────────────────────────────────────────
 // A CdS cell, R = 10 kΩ · (10 lux / E)^0.7 (dark resistance capped at 1 MΩ),
-// from 3V3 to A0 with 10 kΩ to GND: reading = 4095 · 10k / (10k + R). The
+// from 3V3 to A14 with 10 kΩ to GND: reading = 4095 · 10k / (10k + R). The
 // LED puts `ledLux` on the cell through the shroud while the door is shut;
 // `ambient` is the room light that gets into the shroud either way; an open
 // door lets `spill` of the LED reach it. Engineering judgment, not a
@@ -140,7 +140,7 @@ static void test_every_line_matches_the_fixture(const char* path) {
     if (!l.empty()) want.push_back(l);
   char l[proto::kLine];
   std::vector<std::string> got;
-  proto::hello({DOOR_FW, "steady", false, 1800, 1200, 150, false, false, 8, 7}, l, sizeof l);
+  proto::hello({DOOR_FW, "steady", false, 1800, 1200, 150, false, false, 4, 4}, l, sizeof l);
   got.push_back(l);
   proto::door(17, false, 2410, 3020, 610, nullptr, nullptr, l, sizeof l);
   got.push_back(l);
@@ -152,7 +152,7 @@ static void test_every_line_matches_the_fixture(const char* path) {
   got.push_back(l);
   proto::pong(123456, l, sizeof l);
   got.push_back(l);
-  proto::cfg({DOOR_FW, "mod", false, 1800, 1200, 150, true, false, 8, 7}, true, l, sizeof l);
+  proto::cfg({DOOR_FW, "mod", false, 1800, 1200, 150, true, false, 4, 4}, true, l, sizeof l);
   got.push_back(l);
   proto::cal("closed", 2400, 1880, 1320, l, sizeof l);
   got.push_back(l);
@@ -163,16 +163,16 @@ static void test_every_line_matches_the_fixture(const char* path) {
   // The patch bay (wave 22): a bay settling with D2 between levels, a
   // complete one (four V–D pairs; none of them a combination the story
   // knows), learnt levels, and a refused learn.
-  const uint16_t raw1[] = {1340, 610, 0, 2251, 3, 0, 1};
-  const int8_t src1[] = {3, -1, 0, 5, 0, 0, 0};
-  proto::patch(41, "V3-D1,V5-D4", 2, false, raw1, src1, 7, false, l, sizeof l);
+  const uint16_t raw1[] = {2519, 1400, 3741, 3};
+  const int8_t src1[] = {3, -1, 4, 0};
+  proto::patch(41, "V3-D1,V4-D3", 2, false, raw1, src1, 4, false, l, sizeof l);
   got.push_back(l);
-  const uint16_t raw2[] = {1336, 444, 2, 2249, 0, 3648, 0};
-  const int8_t src2[] = {3, 1, 0, 5, 0, 8, 0};
-  proto::patch(42, "V1-D2,V3-D1,V5-D4,V8-D6", 4, true, raw2, src2, 7, true, l, sizeof l);
+  const uint16_t raw2[] = {2521, 1194, 3744, 1786};
+  const int8_t src2[] = {3, 1, 4, 2};
+  proto::patch(42, "V1-D2,V2-D4,V3-D1,V4-D3", 4, true, raw2, src2, 4, true, l, sizeof l);
   got.push_back(l);
-  const uint16_t levels[] = {441, 917, 1405, 1842, 2240, 2749, 3166, 3619};
-  proto::pbcal(3, 1405, levels, 8, 150, 120, false, l, sizeof l);
+  const uint16_t levels[] = {1193, 1785, 2531, 3741};
+  proto::pbcal(3, 2531, levels, 4, 150, 200, false, l, sizeof l);
   got.push_back(l);
   proto::err("pb: need exactly one cable", "pb learn V3", l, sizeof l);
   got.push_back(l);
@@ -813,9 +813,9 @@ static void test_every_command_and_its_reply() {
     return r.out.last();
   };
   CHECK_STR(reply("ping"), "{\"t\":\"pong\",\"up\":" + std::to_string(r.d.now) + "}");
-  CHECK(reply("version").find("{\"t\":\"hello\",\"fw\":\"door-m4 1.2.0\"") == 0);
+  CHECK(reply("version").find("{\"t\":\"hello\",\"fw\":\"door-m4 1.3.0\"") == 0);
   CHECK_STR(reply("get"),
-            "{\"t\":\"cfg\",\"fw\":\"door-m4 1.2.0\",\"mode\":\"steady\",\"auto\":true,\"close\":1800,\"open\":1200,"
+            "{\"t\":\"cfg\",\"fw\":\"door-m4 1.3.0\",\"mode\":\"steady\",\"auto\":true,\"close\":1800,\"open\":1200,"
             "\"settle\":150,\"cal\":false,\"sense\":false,\"pbv\":0,\"pbd\":0,\"saved\":false}");
   CHECK_STR(reply("set close 1900"), "{\"t\":\"ok\",\"cmd\":\"set close 1900\"}");
   CHECK_STR(reply("  set close 1950 \r"), "{\"t\":\"ok\",\"cmd\":\"set close 1950\"}");
@@ -832,7 +832,7 @@ static void test_every_command_and_its_reply() {
   CHECK_STR(reply("set settle 200"), "{\"t\":\"ok\",\"cmd\":\"set settle 200\"}");
   CHECK(r.e.settings().settle == 200 && r.e.settings().close == 1950 && r.e.settings().open == 1300);
   CHECK_STR(reply("save"),
-            "{\"t\":\"cfg\",\"fw\":\"door-m4 1.2.0\",\"mode\":\"steady\",\"auto\":false,\"close\":1950,\"open\":1300,"
+            "{\"t\":\"cfg\",\"fw\":\"door-m4 1.3.0\",\"mode\":\"steady\",\"auto\":false,\"close\":1950,\"open\":1300,"
             "\"settle\":200,\"cal\":false,\"sense\":false,\"pbv\":0,\"pbd\":0,\"saved\":true}");
   CHECK(reply("get").find("\"saved\":true}") != std::string::npos);
   CHECK_STR(reply("reset"), "{\"t\":\"ok\",\"cmd\":\"reset\"}");
@@ -969,28 +969,25 @@ static void test_the_flash_record() {
 }
 
 // ── The patch bay (wave 22) ────────────────────────────────────────────────
-// A modelled bay: each source an E24 divider off 3V3 (the README's table),
-// 1 kΩ in series to its jack; each input 220 kΩ to GND, 1 kΩ to the pin.
-// A cable V<k> → D<i> reads V<k>'s open-circuit voltage less the droop
-// across its Thevenin resistance into the 220 kΩ, plus a little noise; an
-// empty input reads a few counts. `forced` injects a reading (a half-seated
-// plug, a wiring fault); `bounce` a tip brushing the sleeve on its way in.
+// A modelled bay: each source a fixed voltage (config.h's table) behind about
+// 2 kΩ; each input 100 kΩ to GND at the jack. A cable V<k> → D<i> reads
+// V<k>'s voltage less the droop into the 100 kΩ, plus a little noise; an empty
+// input reads a few counts. `forced` injects a reading (a half-seated plug, a
+// wiring fault); `bounce` a tip brushing the sleeve on its way in.
 
 struct Bay : pb::Pins {
-  static constexpr double kTop[8] = {8.2, 6.2, 6.8, 6.2, 5.1, 3.3, 1.8, 1.0};  // kΩ, 3V3 → tap
-  static constexpr double kBot[8] = {1.0, 1.8, 3.3, 5.1, 6.2, 6.8, 6.2, 8.2};  // kΩ, tap → GND
+  static constexpr double kVolts[4] = {0.965, 1.442, 2.033, 3.019};  // at the jack
+  static constexpr double kRth = 2.0;                                // kΩ
   int plug[pb::kMaxInputs] = {};    // input → source (0: empty)
   int forced[pb::kMaxInputs];       // ≥ 0: the input reads exactly this
   bool bounce[pb::kMaxInputs] = {}; // the tip touches the sleeve: reads 0
-  double scale[8] = {1, 1, 1, 1, 1, 1, 1, 1};  // a resistor off its value
+  double scale[4] = {1, 1, 1, 1};   // a source off its level
   uint32_t reads = 0;
   Bay() {
     for (int& f : forced) f = -1;
   }
   static double counts(int k, double scale = 1.0) {
-    double t = kTop[k - 1], b = kBot[k - 1];
-    double vs = 3.3 * b / (t + b) * scale, rth = t * b / (t + b);
-    return vs * 220.0 / (220.0 + rth + 1.0) / 3.3 * 4095.0;
+    return kVolts[k - 1] * scale * 100.0 / (100.0 + kRth) / 3.3 * 4095.0;
   }
   uint16_t adc(int i) override {
     reads++;
@@ -999,7 +996,7 @@ struct Bay : pb::Pins {
     if (plug[i] == 0 || bounce[i]) return (uint16_t)(noise < 0 ? -noise : noise);
     return (uint16_t)lround(counts(plug[i], scale[plug[i] - 1]) + noise);
   }
-  // A cable between two jacks ("V3", "D5"). Only a V–D cable moves an input:
+  // A cable between two jacks ("V3", "D2"). Only a V–D cable moves an input:
   // V–V joins two sources (no input sees it), D–D two pulled-down inputs.
   void cable(const char* a, const char* b) {
     const char* v = a[0] == 'V' ? a : b[0] == 'V' ? b : nullptr;
@@ -1012,8 +1009,8 @@ struct Bay : pb::Pins {
     for (int& p : plug) p = 0;
   }
 };
-constexpr double Bay::kTop[8];
-constexpr double Bay::kBot[8];
+constexpr double Bay::kVolts[4];
+constexpr double Bay::kRth;
 
 // The door rig with a bay on the same engine.
 struct M4 {
@@ -1083,20 +1080,19 @@ static void test_a_reading_between_levels_is_never_a_source() {
     CHECK(pb::classify((uint16_t)(s.level[k - 1] + s.tol + 1), s) == pb::kBetween);
   }
   CHECK(pb::classify(4095, s) == pb::kBetween);
-  // Four good cables and a fifth input between levels: never complete.
+  // Three good cables and a fourth between levels: never complete.
   Bay b;
   b.cable("V1", "D2");
   b.cable("V3", "D1");
-  b.cable("V5", "D4");
-  b.cable("V8", "D6");
-  b.forced[6] = (s.level[5] + s.level[6]) / 2;
+  b.cable("V2", "D4");
+  b.forced[2] = (s.level[2] + s.level[3]) / 2;
   pb::Summary sum = pb::summarise(decode(b));
-  CHECK(sum.count == 4 && sum.between == 1 && !sum.complete);
+  CHECK(sum.count == 3 && sum.between == 1 && !sum.complete);
 }
 
 static void test_four_pairs_are_complete_in_one_canonical_order() {
-  const char* want = "V1-D2,V3-D1,V5-D4,V8-D6";
-  const char* cables[4][2] = {{"V8", "D6"}, {"D1", "V3"}, {"V1", "D2"}, {"D4", "V5"}};
+  const char* want = "V1-D2,V2-D4,V3-D1,V4-D3";
+  const char* cables[4][2] = {{"V4", "D3"}, {"D1", "V3"}, {"V1", "D2"}, {"D4", "V2"}};
   int orders[3][4] = {{0, 1, 2, 3}, {3, 2, 1, 0}, {2, 0, 3, 1}};
   for (auto& o : orders) {
     Bay b;
@@ -1108,24 +1104,20 @@ static void test_four_pairs_are_complete_in_one_canonical_order() {
     CHECK(pb::summarise(got).complete);
   }
   Bay three;
-  three.cable("V2", "D7");
+  three.cable("V2", "D4");
   three.cable("V4", "D3");
-  three.cable("V6", "D5");
+  three.cable("V3", "D2");
   char text[64];
   pb::Bay got = decode(three);
   CHECK(pb::pairsText(got, text, sizeof text) == 3 && !pb::summarise(got).complete);
-  CHECK_STR(text, "V2-D7,V4-D3,V6-D5");
-  three.cable("V7", "D1");
-  three.cable("V1", "D2");
-  got = decode(three);
-  CHECK(pb::pairsText(got, text, sizeof text) == 5 && !pb::summarise(got).complete);  // five is not four
-  CHECK_STR(text, "V1-D2,V2-D7,V4-D3,V6-D5,V7-D1");
-  // One source on two inputs can't happen with TS cables: a wiring fault, never complete.
+  CHECK_STR(text, "V2-D4,V3-D2,V4-D3");
+  // One source on two inputs can't happen with one cable per jack: a wiring
+  // fault, never complete.
   Bay dup;
   dup.cable("V1", "D2");
   dup.cable("V3", "D1");
-  dup.cable("V5", "D4");
-  dup.plug[5] = 3;
+  dup.cable("V4", "D4");
+  dup.plug[2] = 3;
   pb::Summary sum = pb::summarise(decode(dup));
   CHECK(sum.dup && sum.count == 4 && !sum.complete);
   pb::Bay none;
@@ -1137,24 +1129,22 @@ static void test_v_to_v_and_d_to_d_cables_read_as_nothing() {
   Bay b;
   b.cable("V1", "D2");
   b.cable("V3", "D1");
-  b.cable("V5", "D4");
-  b.cable("V6", "V8");  // top to top
+  b.cable("V2", "V4");  // B to B
   pb::Summary sum = pb::summarise(decode(b));
-  CHECK(sum.count == 3 && !sum.complete && sum.between == 0);
+  CHECK(sum.count == 2 && !sum.complete && sum.between == 0);
   b.clear();
   b.cable("V1", "D2");
   b.cable("V3", "D1");
-  b.cable("V5", "D4");
-  b.cable("D6", "D7");  // bottom to bottom
+  b.cable("D3", "D4");  // A to A
   sum = pb::summarise(decode(b));
-  CHECK(sum.count == 3 && !sum.complete);
+  CHECK(sum.count == 2 && !sum.complete);
 }
 
 static void test_the_bay_settles_for_a_second_before_it_counts() {
   erase();
   M4 m;
   m.begin();
-  CHECK(m.out.all[0].find("\"pbv\":8,\"pbd\":7}") != std::string::npos);
+  CHECK(m.out.all[0].find("\"pbv\":4,\"pbd\":4}") != std::string::npos);
   m.run(1100);
   // The empty bay settles at boot: one line with nothing, then one a second.
   CHECK(m.pairs() == "" && m.out.lastOf("patch").find("\"stable\":true") != std::string::npos);
@@ -1168,14 +1158,14 @@ static void test_the_bay_settles_for_a_second_before_it_counts() {
   m.run(500);
   m.bay.cable("V3", "D1");
   m.run(500);
-  m.bay.cable("V5", "D4");
+  m.bay.cable("V2", "D4");
   m.run(500);
-  m.bay.cable("V8", "D6");
+  m.bay.cable("V4", "D3");
   for (int i = 0; i < 6; i++) {
-    m.bay.bounce[5] = i % 2 == 0;
+    m.bay.bounce[2] = i % 2 == 0;
     m.run(50);
   }
-  m.bay.bounce[5] = false;
+  m.bay.bounce[2] = false;
   // No settled change yet: every line so far carries the empty bay.
   for (auto& l : m.patches()) CHECK(l.find("\"pairs\":\"\"") != std::string::npos);
   CHECK(m.out.lastOf("patch").find("\"stable\":false") != std::string::npos);
@@ -1183,9 +1173,9 @@ static void test_the_bay_settles_for_a_second_before_it_counts() {
   m.run(1100);  // the last cable has held a second
   auto lines = m.patches();
   int complete = 0;
-  for (auto& l : lines) complete += l.find("\"pairs\":\"V1-D2,V3-D1,V5-D4,V8-D6\",\"count\":4,\"complete\":true") != std::string::npos;
+  for (auto& l : lines) complete += l.find("\"pairs\":\"V1-D2,V2-D4,V3-D1,V4-D3\",\"count\":4,\"complete\":true") != std::string::npos;
   CHECK(complete == 1);
-  CHECK(m.out.lastOf("patch").find("\"src\":[3,1,0,5,0,8,0],\"stable\":true}") != std::string::npos);
+  CHECK(m.out.lastOf("patch").find("\"src\":[3,1,4,2],\"stable\":true}") != std::string::npos);
   // Then once a second, the same bay.
   m.out.clear();
   m.run(3000);
@@ -1196,14 +1186,14 @@ static void test_the_bay_settles_for_a_second_before_it_counts() {
   m.out.clear();
   m.bay.pull("D4");
   m.run(500);
-  m.bay.cable("V5", "D4");
+  m.bay.cable("V2", "D4");
   m.run(1500);
   for (auto& l : m.patches()) CHECK(l.find("\"count\":4,\"complete\":true") != std::string::npos);
   CHECK(m.out.lastOf("patch").find("\"stable\":true") != std::string::npos);
   // Pulled for good: three pairs after a second, not complete.
   m.bay.pull("D4");
   m.run(1100);
-  CHECK(m.pairs() == "V1-D2,V3-D1,V8-D6");
+  CHECK(m.pairs() == "V1-D2,V3-D1,V4-D3");
   CHECK(m.out.lastOf("patch").find("\"count\":3,\"complete\":false") != std::string::npos);
 }
 
@@ -1214,11 +1204,11 @@ static void test_the_door_keeps_working_beside_the_bay() {
   m.say("get");
   m.run(1500);
   CHECK(m.out.count("{\"t\":\"door\"") >= 1 && !m.e.open());
-  m.bay.cable("V2", "D7");
+  m.bay.cable("V2", "D4");
   m.d.shut = false;
   m.run(1500);
   CHECK(m.e.open());
-  CHECK(m.pairs() == "V2-D7");
+  CHECK(m.pairs() == "V2-D4");
   m.d.shut = true;
   m.run(1500);
   CHECK(!m.e.open() && m.e.status() == door::kShut);
@@ -1227,7 +1217,7 @@ static void test_the_door_keeps_working_beside_the_bay() {
 // One ADC behind one mux: the first read after the mux moves carries the
 // last channel's charge (the worst case: all of it). The bay's own reads
 // throw one away; the door's must too, or a bay scan of a high source on
-// A8 drags a door in its band over `close`.
+// A3 drags a door in its band over `close`.
 struct SharedAdc {
   bool moved = false;
   uint16_t carry = 0;
@@ -1269,7 +1259,7 @@ static void test_a_bay_scan_never_bleeds_into_the_door_reads() {
       e.tick(d.now);
     }
   };
-  bay.cable("V8", "D7");  // the highest source on the last input scanned
+  bay.cable("V4", "D4");  // the highest source on the last input scanned
   d.forced = 600;         // open
   run(1500);
   CHECK(e.open());
@@ -1292,14 +1282,14 @@ static void test_pb_learn_takes_one_cable_and_refuses_the_rest() {
       if (it->find("{\"t\":\"patch\"") != 0 && it->find("{\"t\":\"door\"") != 0) return *it;
     return std::string();
   };
-  // V3's divider reads 5 % high: still V3 by the nominal table, and learnt exactly.
+  // V3 reads 5 % high: still V3 by the nominal table, and learnt exactly.
   m.bay.scale[2] = 1.05;
-  m.bay.cable("V3", "D5");
+  m.bay.cable("V3", "D3");
   std::string l = reply("pb learn V3", 1100);
   long want = lround(Bay::counts(3, 1.05));
   CHECK(l.find("{\"t\":\"pbcal\",\"src\":3,\"raw\":") == 0);
   CHECK(labs((long)m.e.baySettings().level[2] - want) <= 4);
-  CHECK(l.find("\"floor\":150,\"tol\":120,\"saved\":false}") != std::string::npos);
+  CHECK(l.find("\"floor\":150,\"tol\":200,\"saved\":false}") != std::string::npos);
   CHECK(!m.e.learning());
 
   m.bay.clear();
@@ -1331,6 +1321,7 @@ static void test_pb_learn_takes_one_cable_and_refuses_the_rest() {
   CHECK_STR(reply("pb reset"), "{\"t\":\"err\",\"error\":\"pb busy\",\"cmd\":\"pb reset\"}");
   m.run(1100);
   CHECK(m.out.lastOf("pbcal").find("{\"t\":\"pbcal\",\"src\":2,") == 0);
+  CHECK_STR(reply("pb learn V5"), "{\"t\":\"err\",\"error\":\"bad value\",\"cmd\":\"pb learn V5\"}");
   CHECK_STR(reply("pb learn V9"), "{\"t\":\"err\",\"error\":\"bad value\",\"cmd\":\"pb learn V9\"}");
   CHECK_STR(reply("pb learn V0"), "{\"t\":\"err\",\"error\":\"bad value\",\"cmd\":\"pb learn V0\"}");
   CHECK_STR(reply("pb learn D3"), "{\"t\":\"err\",\"error\":\"bad value\",\"cmd\":\"pb learn D3\"}");
@@ -1350,12 +1341,14 @@ static void test_pb_floor_tol_get_save_and_reset() {
     m.say(cmd);
     return m.out.last();
   };
-  CHECK(reply("pb floor 200").find("\"floor\":200,\"tol\":120,\"saved\":false}") != std::string::npos);
+  CHECK(reply("pb floor 200").find("\"floor\":200,\"tol\":200,\"saved\":false}") != std::string::npos);
   CHECK(reply("pb tol 90").find("\"floor\":200,\"tol\":90,") != std::string::npos);
   CHECK_STR(reply("pb floor 10"), "{\"t\":\"err\",\"error\":\"out of range\",\"cmd\":\"pb floor 10\"}");
   CHECK_STR(reply("pb tol 5000"), "{\"t\":\"err\",\"error\":\"out of range\",\"cmd\":\"pb tol 5000\"}");
-  // A floor that would swallow V1 (445): refused.
-  CHECK_STR(reply("pb floor 400"), "{\"t\":\"err\",\"error\":\"out of range\",\"cmd\":\"pb floor 400\"}");
+  // A floor that would swallow V1 (1177, less the tolerance): refused.
+  CHECK(reply("pb tol 400").find("\"tol\":400,") != std::string::npos);
+  CHECK_STR(reply("pb floor 900"), "{\"t\":\"err\",\"error\":\"out of range\",\"cmd\":\"pb floor 900\"}");
+  CHECK(reply("pb tol 90").find("\"floor\":200,\"tol\":90,") != std::string::npos);
   CHECK_STR(reply("pb tol x"), "{\"t\":\"err\",\"error\":\"bad value\",\"cmd\":\"pb tol x\"}");
   // `pb get`: the bay now, then its levels.
   m.out.clear();
@@ -1370,7 +1363,7 @@ static void test_pb_floor_tol_get_save_and_reset() {
   CHECK(reply("pb save").find("\"floor\":200,\"tol\":90,\"saved\":true}") != std::string::npos);
   CHECK(memcmp(door, EEPROM.data, 12) == 0);
   CHECK(EEPROM.data[store::kBayAddr] == 0x7E && EEPROM.data[store::kBayAddr + 1] == 0xBA);
-  CHECK(store::kBayMagic == 0xBA7E && sizeof(store::BayRecord) == 24);
+  CHECK(store::kBayMagic == 0xBA7E && sizeof(store::BayRecord) == 16);
   // A reboot loads both.
   M4 again;
   again.begin();
@@ -1379,8 +1372,7 @@ static void test_pb_floor_tol_get_save_and_reset() {
   // `pb reset`: the nominal table, not saved; the door untouched.
   m.out.clear();
   m.say("pb reset");
-  CHECK(m.out.last().find("\"levels\":[445,921,1338,1848,2247,2757,3174,3650],\"floor\":150,\"tol\":120,\"saved\":false}") !=
-        std::string::npos);
+  CHECK(m.out.last().find("\"levels\":[1177,1769,2488,3646],\"floor\":150,\"tol\":200,\"saved\":false}") != std::string::npos);
   CHECK(m.e.settings().close == 2000);
   // The door's `save` leaves the bay's record too.
   CHECK(reply("save").find("\"saved\":true}") != std::string::npos);
@@ -1389,7 +1381,7 @@ static void test_pb_floor_tol_get_save_and_reset() {
   CHECK(third.e.baySettings().floor == 200);
   // A record from another layout boots with the nominal table.
   store::BayRecord bad = store::toRecord(pb::Settings());
-  bad.sources = 7;
+  bad.sources = 8;  // the 1.2.0 board's record: this build boots on the nominal table
   pb::Settings out;
   CHECK(!store::fromRecord(bad, out));
   bad = store::toRecord(pb::Settings());
@@ -1420,7 +1412,7 @@ static void test_a_full_patch_line_fits() {
   pb::Bay worst;
   for (int i = 0; i < pb::kInputs; i++) worst.src[i] = (int8_t)(i + 1);
   char text[64];
-  CHECK(pb::pairsText(worst, text, sizeof text) == 7);
+  CHECK(pb::pairsText(worst, text, sizeof text) == pb::kInputs);
   uint16_t raw[pb::kMaxInputs];
   int8_t src[pb::kMaxInputs];
   for (int i = 0; i < pb::kInputs; i++) {
@@ -1428,7 +1420,7 @@ static void test_a_full_patch_line_fits() {
     src[i] = -1;
   }
   char l[proto::kLine];
-  int n = proto::patch(4294967295ul, text, 7, false, raw, src, pb::kInputs, false, l, sizeof l);
+  int n = proto::patch(4294967295ul, text, pb::kInputs, false, raw, src, pb::kInputs, false, l, sizeof l);
   CHECK(n > 0 && (size_t)n < sizeof l);
   CHECK(std::string(l).back() == '}');
 }
