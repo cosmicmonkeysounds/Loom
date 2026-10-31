@@ -193,7 +193,7 @@ function main(args: readonly string[]): number {
   const diff = diffLock(lock, items);
   for (const line of lockReport(diff)) process.stdout.write(`${line}\n`);
   if (!lockBroken(diff)) {
-    process.stdout.write(`✓ every printed QR still works (${Object.keys(lock.items).length} locked)\n`);
+    process.stdout.write(`✓ nothing printed has moved (${Object.keys(lock.items).length} locked)\n`);
     return 0;
   }
   if (process.env[QR_MOVED_ENV] === "1") {

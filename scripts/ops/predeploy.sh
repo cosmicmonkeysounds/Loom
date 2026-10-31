@@ -57,7 +57,7 @@ run "story: facts.json → generated files" pnpm --filter @loom/core titi:facts 
 owed="$(pnpm --silent --filter @loom/core titi:facts --check 2>/dev/null | grep 'still a placeholder' || true)"
 if [ -n "$owed" ]; then echo "$owed" | sed 's/^WARN  /   ⚠ /'; fi
 if [ -f core/examples/trapped-in-the-internet/qr-lock.json ]; then
-  run "story: the printed QRs still work" pnpm --filter @loom/core titi:qr-lock --check
+  run "story: nothing printed has moved" pnpm --filter @loom/core titi:qr-lock --check
 fi
 run "ops scripts" bash scripts/ops/test/run.sh
 run "accept-script helpers + the sim" node --no-warnings --test scripts/accept/live-guard.test.ts scripts/accept/burst.test.ts scripts/sim/test/sim.test.ts scripts/sim/test/load.test.ts
