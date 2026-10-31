@@ -272,6 +272,130 @@ test("a director's phone shows the hold, and ▶ lets him speak", async ({ brows
   await clippy.ctx.close();
 });
 
+/** ✓ Done from anywhere in the script: two taps, short of its last line. */
+async function doneNow(p: Page): Promise<void> {
+  const done = p.locator(".aloud-row > .aloud-done");
+  await done.click();
+  if ((await p.locator(".aloud-prompter").count()) > 0 && (await done.innerText()).includes("Skip")) await done.click();
+}
+
+test("a beat landing mid-read keeps what it took off the phone: a chip, a sheet, and the pop-up again", async ({ browser }) => {
+  test.skip(BASE === "" || MOD === "" || PRIME === "", "set SIM_BASE, SIM_MOD_CODE and SIM_PRIME_CODE");
+  test.setTimeout(90_000);
+  const mod = await modLogin();
+  await mod.post("/api/mod/start", {});
+  await mod.post("/api/mod/signal", { name: "wave_staff_through" });
+  await mod.post("/api/mod/aloud", { action: "done" });
+  await mod.post("/api/mod/prime/release", { character: "Clippy" });
+  const { ctx, page: p } = await phone(browser, "Clippy");
+  await p.waitForTimeout(2_500);
+  const alert = p.locator(".aloud-alert");
+  // A new phone counts back 20 minutes: an earlier test's lines come first.
+  if (await alert.isVisible()) {
+    await alert.click();
+    await doneNow(p);
+    await expect(alert).toHaveCount(0);
+  }
+
+  const cutShort = async () => {
+    await mod.post("/api/mod/beat", { name: "Winning Line" });
+    await alert.click({ timeout: 8_000 });
+    await expect(p.locator("[data-line]")).toHaveCount(4);
+    await p.waitForTimeout(500);
+    await mod.post("/api/mod/beat", { name: "Corrupted Code" });
+    await expect(p.locator("[data-line]")).toHaveCount(2, { timeout: 5_000 });
+  };
+  const chip = p.getByRole("button", { name: /earlier lines?$/u });
+
+  // Left alone: ✓ Done brings the pop-up back for them, and the whole script opens.
+  await cutShort();
+  await expect(chip).toHaveText("↑ 3 earlier lines");
+  await doneNow(p);
+  await expect(alert).toBeVisible({ timeout: 5_000 });
+  await alert.click();
+  await expect(p.locator(".aloud-line.now").first()).toContainText("centre square");
+  await doneNow(p);
+  await expect(alert).toHaveCount(0);
+
+  // Read on the sheet: nothing more is owed.
+  await cutShort();
+  await chip.click();
+  await expect(p.locator(".aloud-sheet-text .aloud-line")).toHaveCount(3);
+  await p.screenshot({ path: join(SHOTS, "earlier-lines.png") });
+  await p.getByRole("button", { name: "✓ Read them" }).click();
+  await expect(chip).toHaveCount(0);
+  await doneNow(p);
+  await p.waitForTimeout(800);
+  await expect(alert).toHaveCount(0);
+  await expect(p.locator(".aloud-prompter")).toHaveCount(0);
+
+  // Read to the end, no ✓ Done: the newer beat owes nothing.
+  await mod.post("/api/mod/beat", { name: "Winning Line" });
+  await alert.click({ timeout: 8_000 });
+  await p.waitForTimeout(500);
+  const end = await swipe(p, ctx, 3_000);
+  await end.lift();
+  await expect(p.locator(".aloud-bar-title")).toContainText("line 4 of 4", { timeout: 5_000 });
+  await p.waitForTimeout(800);
+  await mod.post("/api/mod/beat", { name: "Corrupted Code" });
+  await expect(p.locator("[data-line]")).toHaveCount(2, { timeout: 5_000 });
+  await expect(chip).toHaveCount(0);
+  await ctx.close();
+});
+
+test("the story going on lets a hold go, and a host who only watches doesn't keep one", async ({ browser }) => {
+  test.skip(BASE === "" || MOD === "" || PRIME === "", "set SIM_BASE, SIM_MOD_CODE and SIM_PRIME_CODE");
+  test.setTimeout(90_000);
+  const mod = await modLogin();
+  await mod.post("/api/mod/start", {});
+  await mod.post("/api/mod/signal", { name: "wave_staff_through" });
+  await mod.post("/api/mod/aloud", { action: "done" });
+  for (const part of ["Clippy", "Task Manager"]) await mod.post("/api/mod/prime/release", { character: part });
+  const tv = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+  const tvPage = await tv.newPage();
+  const said: string[] = [];
+  const seen = new Set<number>();
+  tvPage.on("response", async (res) => {
+    if (!res.url().includes("/api/screen/state")) return;
+    const body = (await res.json().catch(() => null)) as { voice?: { lines?: Array<{ seq: number; from: string; text: string }> } } | null;
+    for (const l of body?.voice?.lines ?? []) {
+      if (l.from !== "Trabolta" || seen.has(l.seq)) continue;
+      seen.add(l.seq);
+      said.push(l.text);
+    }
+  });
+  await tvPage.goto(`${BASE}/terminal/?code=${encodeURIComponent(MOD)}&view=tv&name=TV&character=Trabolta&room=The%20Desktop&engine=silent`);
+  await tvPage.waitForTimeout(3_000);
+  const clippy = await phone(browser, "Clippy");
+  const host = await phone(browser, "Task Manager");
+  await clippy.page.waitForTimeout(2_500);
+
+  // Her pop-up is up, and the next scripted beat of his in the room lands.
+  said.length = 0;
+  await mod.post("/api/mod/beat", { name: "Full Of Beans" });
+  await clippy.page.locator(".aloud-alert").first().click({ timeout: 8_000 });
+  await tvPage.waitForTimeout(3_000);
+  expect(said, "he waits for her").toEqual([]);
+  await mod.post("/api/mod/beat", { name: "Overshare Four" });
+  await expect.poll(() => said.length, { timeout: 8_000 }).toBeGreaterThanOrEqual(3);
+  expect(said[0], "what she held goes first").toContain("Antivirus.");
+  expect(said.findIndex((t) => t.includes("That is all.")), "and the later beat after it").toBeGreaterThan(0);
+  await expect(clippy.page.locator(".aloud-text")).toBeVisible();
+
+  // A host joins, and the reader's phone dies: watching doesn't keep him waiting.
+  await mod.post("/api/mod/beat", { name: "Ad Hijack" });
+  await expect(host.page.getByRole("button", { name: "📜 Join" })).toBeVisible({ timeout: 15_000 });
+  await host.page.getByRole("button", { name: "📜 Join" }).click();
+  await expect(host.page.locator(".aloud-text")).toBeVisible();
+  await expect.poll(async () => (await heldNow(mod)).held, { timeout: 5_000 }).toBe(true);
+  await clippy.ctx.close();
+  const gone = Date.now();
+  await expect.poll(async () => (await heldNow(mod)).held, { timeout: 20_000, intervals: [500] }).toBe(false);
+  process.stdout.write(`\nreader gone, a host only watching → the hold lets go: ${Date.now() - gone} ms\n`);
+  await host.ctx.close();
+  await tv.close();
+});
+
 const LINES_STORY = `
 TITLE: Lines
 

@@ -28,7 +28,10 @@ needed. Build `play` and `terminal` first if you want to watch in a browser.
 `prompter.spec.ts` (wave 59) drives Clippy's phone, a host's phone and the real TV
 page over `Second Hunt` and `Ad Hijack`: she scrolls, he waits, she reaches his line,
 he speaks, it locks and scrolls for both, and the other phone is locked out. It
-prints how long a scroll takes to reach the TV. Build `play` and `terminal` first.
+prints how long a scroll takes to reach the TV. It also lands a newer beat mid-read
+(the *↑ n earlier lines* chip, its sheet, the pop-up coming back), a scripted beat of
+his over a hold, and a reader's phone dying under a host who is only watching. Build
+`play` and `terminal` first.
 
 ```bash
 SIM_BASE=http://127.0.0.1:7391 SIM_MOD_CODE=<mod> SIM_PRIME_CODE=<prime> SIM_SHOTS=<dir> \
