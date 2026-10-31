@@ -332,11 +332,11 @@ alert mark, not part of the words.
 - *The Uploader: You fought to get out. You did: into purgatory, with everyone else. Your body is in the Optical Drive. It is not breathing.* (`main.loom:3222`)
 - *The Uploader: {faction_name(faction_of(self))} wanted its own way out. It got the same one as everyone. Your body is in the Optical Drive. It is not breathing.* (`main.loom:3226`)
 - *The Uploader: Your body is in the Optical Drive. It is not breathing.* (`main.loom:3229`)
-- *!!🎀 {Night.ribbon_winner} won the Bingo Floppy Disk! Cheer for them at the Desktop.* (`main.loom:4507`)
-- *!🤖 TRABOLTA IS ONLINE. Jean Trabolta, Sole Owner and Founder of Maps and Ducks, is speaking at the Desktop by digital conference. His thread is open: say hello.* (`main.loom:4571`)
-- *!📜 THE FULL TRUTH. To the living room.* (`main.loom:6513`)
-- *!📜 THE FULL TRUTH. To the living room.* (`main.loom:6544`)
-- *Most Questions Correct* (`main.loom:6920`)
+- *!!🎀 {Night.ribbon_winner} won the Bingo Floppy Disk! Cheer for them at the Desktop.* (`main.loom:4508`)
+- *!🤖 TRABOLTA IS ONLINE. Jean Trabolta, Sole Owner and Founder of Maps and Ducks, is speaking at the Desktop by digital conference. His thread is open: say hello.* (`main.loom:4572`)
+- *!📜 THE FULL TRUTH. To the living room.* (`main.loom:6514`)
+- *!📜 THE FULL TRUTH. To the living room.* (`main.loom:6545`)
+- *Most Questions Correct* (`main.loom:6921`)
 - *📋 Instructions 1/X are in your Codex. A host starts Bingo: your words pop up on your teleprompter.* (`cast/hosts.loom:51`)
 - *!!🎱 YOUR GAME IS ON · The Bingo results. 2/X is in your Codex. 🎱 each winner, 🎀 the Bingo Floppy Disk, 🎯 the program they name. Demand applause.* (`cast/hosts.loom:68`)
 - *!!🔎 YOUR GAME IS ON · The Truth Scavenger Hunt, 15 minutes. Trabolta has explained the rules; keep the programs hunting.* (`cast/hosts.loom:73`)
@@ -435,22 +435,22 @@ Small edits inside your entries, so only the words we changed:
 
 - *🤐 {program.name} refuses to name anyone at the centre square. Norton decides who needs reinstallation: 🛡.* (`main.loom:930`)
 - *📝 {program.name}'s filing for {question} could not be judged (no answer key for it on this server). Not recorded.* (`main.loom:1606`)
-- *📺 Nothing happens: this is for the first reinstallation, once, before 🤖.* (`main.loom:4541`)
-- *🎤 Nothing happens: Clippy's paragraph comes once, after the Bingo results (V3 ⏰), before 🤖.* (`main.loom:4552`)
-- *⚡ Not during his introduction: he stays clean until the results. Nothing happens.* (`main.loom:4829`)
-- *📜 Not yet: the night has not ended. Nothing happens.* (`main.loom:6454`)
-- *📜 The ceremony has started: too late for the full truth. Nothing happens.* (`main.loom:6457`)
-- *📜 Already told: {Night.truth_reader} has it. Nothing happens.* (`main.loom:6460`)
-- *📜 Not yet: 🪦 Clippy reads the summary first. Nothing happens.* (`main.loom:6463`)
-- *📜 Not yet: the night has not ended. Nothing happens.* (`main.loom:6473`)
-- *📜 The ceremony has started: too late for the full truth. Nothing happens.* (`main.loom:6476`)
-- *📜 Task Manager already has it. Nothing happens.* (`main.loom:6479`)
-- *📜 Task Manager reads after this ending anyway: press G0. Nothing happens.* (`main.loom:6482`)
-- *📜 Task Manager reads the full truth off the teleprompter, about 14 minutes. Their phone down? The printed copy in their pack, or ⊞ Start → My script on any phone signed in to the part. NEXT moves to G1 when it should be over.* (`main.loom:6511`)
-- *📜 Trabolta reads the full truth on the TV, about 12 minutes, clean: leave 🌀 His voice on Auto or Clean, and no shots. If the TV has no voice: 📜 Task Manager reads it instead. NEXT moves to G1 when it should be over: wait for his last word before you press it.* (`main.loom:6542`)
-- *🚪 {program.name} walked out of the simulation. He is gone: no trust lost.* (`main.loom:4935`)
-- *🏆 The full truth hasn't been told (G0, 📜). Press G1 again within 30 seconds to skip it.* (`main.loom:6561`)
-- *🏆 {Night.truth_reader} is still reading the full truth. Press G1 again within 30 seconds to start anyway.* (`main.loom:6564`)
+- *📺 Nothing happens: this is for the first reinstallation, once, before 🤖.* (`main.loom:4542`)
+- *🎤 Nothing happens: Clippy's paragraph comes once, after the Bingo results (V3 ⏰), before 🤖.* (`main.loom:4553`)
+- *⚡ Not during his introduction: he stays clean until the results. Nothing happens.* (`main.loom:4830`)
+- *📜 Not yet: the night has not ended. Nothing happens.* (`main.loom:6455`)
+- *📜 The ceremony has started: too late for the full truth. Nothing happens.* (`main.loom:6458`)
+- *📜 Already told: {Night.truth_reader} has it. Nothing happens.* (`main.loom:6461`)
+- *📜 Not yet: 🪦 Clippy reads the summary first. Nothing happens.* (`main.loom:6464`)
+- *📜 Not yet: the night has not ended. Nothing happens.* (`main.loom:6474`)
+- *📜 The ceremony has started: too late for the full truth. Nothing happens.* (`main.loom:6477`)
+- *📜 Task Manager already has it. Nothing happens.* (`main.loom:6480`)
+- *📜 Task Manager reads after this ending anyway: press G0. Nothing happens.* (`main.loom:6483`)
+- *📜 Task Manager reads the full truth off the teleprompter, about 14 minutes. Their phone down? The printed copy in their pack, or ⊞ Start → My script on any phone signed in to the part. NEXT moves to G1 when it should be over.* (`main.loom:6512`)
+- *📜 Trabolta reads the full truth on the TV, about 12 minutes, clean: leave 🌀 His voice on Auto or Clean, and no shots. If the TV has no voice: 📜 Task Manager reads it instead. NEXT moves to G1 when it should be over: wait for his last word before you press it.* (`main.loom:6543`)
+- *🚪 {program.name} walked out of the simulation. He is gone: no trust lost.* (`main.loom:4936`)
+- *🏆 The full truth hasn't been told (G0, 📜). Press G1 again within 30 seconds to skip it.* (`main.loom:6562`)
+- *🏆 {Night.truth_reader} is still reading the full truth. Press G1 again within 30 seconds to start anyway.* (`main.loom:6565`)
 - *🫀 {program.name} said all they came to say at his heart. It ends nothing: the night goes on.* (`beats/server-room.loom:1117`)
 
 **Objectives (each one's title and text)**
@@ -582,7 +582,7 @@ Packs and help carry no `DRAFT` marks, the repo's way, and none of it is said in
 | `codex/4-trabolta.loom` | 45, 83, 109, 207 |
 | `codex/7-clippy.loom` | 20, 37, 97 |
 | `codex/85-ties.loom` | 264 |
-| `main.loom` | 810, 929, 1605, 2896, 3221, 3225, 3228, 3294, 3303, 3311, 3317, 3580, 3645, 3939, 3947, 4506, 4540, 4551, 4570, 4828, 4934, 6453, 6456, 6459, 6462, 6472, 6475, 6478, 6481, 6510, 6512, 6541, 6543, 6560, 6563, 6919 |
+| `main.loom` | 810, 929, 1605, 2896, 3221, 3225, 3228, 3294, 3303, 3311, 3317, 3580, 3645, 3757, 3940, 3948, 4507, 4541, 4552, 4571, 4829, 4935, 6454, 6457, 6460, 6463, 6473, 6476, 6479, 6482, 6511, 6513, 6542, 6544, 6561, 6564, 6920 |
 | `objectives.loom` | 128, 418, 609, 639, 657, 668, 782, 793 |
 | `quests.loom` | 30, 181 |
 | `trabolta.mind.md` | 242, 558, 624 |

@@ -710,8 +710,8 @@ export function mindBlock(f: FactsFile, combos: string[] = []): string {
   return out.join("\n");
 }
 
-/** The H1–F2 table. The first four columns keep the shape
- *  `stagehand/tests/test_secrets.py` parses: `| id | round | question | answer |`. */
+/** The H1–F2 table: the questions only. Since wave 58 no doc states a key, so
+ *  `stagehand/tests/test_secrets.py` reads the answers from `facts.json`. */
 export function designBlock(f: FactsFile): string {
   const out: string[] = [
     "_Generated from `facts.json` by `core/scripts/titi-facts.ts` — DO NOT EDIT this block;",

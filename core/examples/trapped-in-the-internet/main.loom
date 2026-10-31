@@ -3754,6 +3754,7 @@ INTERACTION trust_patch_bay
 // Escape Attempt and Heart In The Simulation beats) or the codex unlock's
 // usual Truther Download line.
 // w26 (the button's label and description)
+// DRAFT w58 (the description's last sentence)
 INTERACTION simulation escape attempt
   label: Reinstallation: walked out into the void (server)
   who: admin

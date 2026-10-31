@@ -16,7 +16,7 @@ import "./heart.css";
 import type { CSSProperties, ReactNode } from "react";
 import type { SceneDef, SceneProps } from "../types.ts";
 import { HEART_SCENE_MS, LAYER_TITLES } from "../../heart/heart.ts";
-import { Bsod, Glitch, Noise, Typewriter, Win98Dialog, blink, clamp01, ease, eased, lerp, loop, noise1, progress, pulse, typedDuration, useSfxCues } from "../kit/index.ts";
+import { Bsod, Glitch, Noise, Typewriter, Win98Dialog, blink, clamp01, ease, eased, lerp, loop, noise1, progress, pulse, useSfxCues } from "../kit/index.ts";
 import { AssembleFace } from "../kit/tv1-parts.tsx";
 
 const fade = (t: number, a: number, din: number, b = Number.POSITIVE_INFINITY, dout = 500) => progress(t, a, din) * (1 - progress(t, b, dout));
