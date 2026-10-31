@@ -19,7 +19,7 @@ import type { HostView } from "../types.ts";
 import type { HostCalls } from "./api.ts";
 import type { HostAuth } from "./client.ts";
 import { useHostConsole } from "./dock.tsx";
-import { liveAsk } from "./desk-model.ts";
+import { liveAsk, stopAllDone } from "./desk-model.ts";
 import { DREAM_CUE, DREAM_NOT_NOW, VOICE_MODE_WORD, dreamDone, dreamRow, identifyDone, terminalLines, terminalsAside, voiceModeLine } from "./desk-tabs.ts";
 import { ActButton, ConfirmButton, HostEmpty, HostSection } from "./kit.tsx";
 import { optimisticValue, tvVoiceLabel, type Optimistic, type VoiceFxMode } from "./model.ts";
@@ -75,7 +75,7 @@ export function DeskHouseBody({ view, rows, auth, calls, act, live, refresh, try
       {t !== null && t.voiceFx !== undefined && <VoiceBox fx={t.voiceFx} calls={calls} send={send} />}
       <div className="host-desk-pair">
         {t !== null && <TvVoice muted={t.voiceMuted} calls={calls} send={send} />}
-        <ActButton label="■ Stop + the announcement" title="■ STOP ALL lets an announcement finish. This cuts it and empties its queue." onClick={() => send("■ Stopped every desk cue, the house sounds and the announcement", () => calls.deskStopAll(true))} />
+        <ActButton label="■ Stop + the announcement" title="■ STOP ALL lets an announcement finish. This cuts it and empties its queue." onClick={() => send((a) => stopAllDone(true, a), () => calls.deskStopAll(true))} />
       </div>
       {dream !== null && (
         <HostSection id="desk-dream" title="🌀 Clippy's dream" aside={dream.state}>

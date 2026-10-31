@@ -37,7 +37,8 @@
 //!   `run` is the new run's number); 409 `{error: "moved", standby}` on a
 //!   stale playhead, 404 no such cue, 409 `{error: "end"}`;
 //! - `POST /api/mod/desk/standby {cue}` → `{ok, standby}` (H);
-//! - `POST /api/mod/desk/stop {run} | {all: true, announce?}` → `{ok, stopped}` (H);
+//! - `POST /api/mod/desk/stop {run} | {all: true, announce?}` → `{ok, stopped}` (H),
+//!   and `router {online}` for `{all}`: the sounds need a router to stop them;
 //! - `POST /api/mod/desk/check {key, mark, note?}` → `{ok}` (H; 404 for a
 //!   key that isn't one of this house's checks);
 //! - `POST /api/mod/desk/check/reset` → every mark cleared.
@@ -643,6 +644,11 @@ export class DeskHub {
     return n;
   }
 
+  /** Is anything there to stop the house sounds? (The panic's answer says.) */
+  routerOnline(): boolean {
+    return this.deps.routerOnline();
+  }
+
   /** A router ack (`/api/mod/audio/report`): a desk play's length or its end,
    *  and the activity's result. */
   ack(a: AudioAck): void {
@@ -1077,7 +1083,7 @@ export async function handleDeskPost(hub: DeskHub, ctx: DeskContext, path: strin
         }
         const stopped = hub.stopAll(announce === true, by);
         process.stdout.write(`  🎛  desk: ${by} STOP ALL (${stopped} run${stopped === 1 ? "" : "s"})\n`);
-        sendJson(res, 200, { ok: true, stopped });
+        sendJson(res, 200, { ok: true, stopped, router: { online: hub.routerOnline() } });
         return true;
       }
       const run = body["run"];

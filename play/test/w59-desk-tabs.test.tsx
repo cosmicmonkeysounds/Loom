@@ -167,6 +167,57 @@ describe("the window", () => {
   });
 });
 
+describe("the note says what the server said", () => {
+  type Element = ReturnType<typeof elements>[number];
+  const named = (e: Element, name: string) => (e.type as { name?: string }).name === name;
+  const propsOf = (e: Element) => e.props as Record<string, unknown>;
+
+  const mount = (answer: unknown, startTab: "cues" | "house") => {
+    const sent: Array<{ route: HostRoute; body: Record<string, unknown> }> = [];
+    const calls = hostCalls(async (route, body) => {
+      sent.push({ route, body });
+      return answer;
+    }, () => "");
+    const h = mountHooks(DeskBody as (p: Parameters<typeof DeskBody>[0]) => unknown, { view: deskFixture(), calls, client, me: "Installation Wizard", mixer, startTab });
+    const note = () => {
+      h.act(() => {});
+      return propsOf(elements(h.output).find((e) => propsOf(e)["data-testid"] === "host-desk-note")!)["children"];
+    };
+    return { h, sent, note };
+  };
+
+  const stopAll = async (answer: unknown) => {
+    const d = mount(answer, "cues");
+    const button = elements(d.h.output).find((e) => named(e, "ActButton") && propsOf(e)["label"] === "■ STOP ALL")!;
+    await (propsOf(button)["onClick"] as () => Promise<unknown>)();
+    return d;
+  };
+
+  const sayIt = async (answer: unknown) => {
+    const d = mount(answer, "house");
+    const house = elements(d.h.output).find((e) => named(e, "DeskHouse"))!;
+    const tryIt = propsOf(house)["tryIt"] as Element;
+    const panel = mountHooks(tryIt.type as (p: unknown) => unknown, { ...(tryIt.props as object), say: "The bar is open" });
+    const button = elements(panel.output).find((e) => propsOf(e)["label"] === "📢 Say it")!;
+    await (propsOf(button)["onClick"] as () => Promise<unknown>)();
+    return d;
+  };
+
+  it("Say it reads the answer: with no router it doesn't claim the speakers said it", async () => {
+    const away = await sayIt({ ok: true, seq: 1, router: { online: false } });
+    expect(away.sent).toEqual([{ route: "/api/mod/audio/play", body: { say: "The bar is open" } }]);
+    expect(away.note()).toBe("📢 Said on the speakers — but the sound router is offline");
+    expect((await sayIt({ ok: true, seq: 1, router: { online: true } })).note()).toBe("📢 Said on the speakers");
+  });
+
+  it("■ STOP ALL reads the answer: with no router it claims only the cues", async () => {
+    const away = await stopAll({ ok: true, stopped: 1, router: { online: false } });
+    expect(away.sent).toEqual([{ route: "/api/mod/desk/stop", body: { all: true } }]);
+    expect(away.note()).toBe("■ Stopped every desk cue — but the sound router is offline");
+    expect((await stopAll({ ok: true, stopped: 1, router: { online: true } })).note()).toBe("■ Stopped every desk cue and the house sounds");
+  });
+});
+
 describe("🖥 House: the terminals", () => {
   it("the build most terminals run, or none on a tie", () => {
     expect(majorityBuild(terminals().rows)).toBe("b2");

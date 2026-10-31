@@ -329,10 +329,13 @@ describe("GO, standby, stop", () => {
     const r = (await call(rt, "POST", "/api/mod/desk/go", { cue: "pa" })).json["run"] as number;
     expect((await call(rt, "POST", "/api/mod/desk/stop", { run: r })).json).toEqual({ ok: true, stopped: 1 });
     await call(rt, "POST", "/api/mod/desk/go", { cue: "hum" });
-    expect((await call(rt, "POST", "/api/mod/desk/stop", { all: true, announce: true })).json).toEqual({ ok: true, stopped: 1 });
+    // The panic says whether anything is there to stop the sounds; a run's stop doesn't.
+    expect((await call(rt, "POST", "/api/mod/desk/stop", { all: true, announce: true })).json).toEqual({ ok: true, stopped: 1, router: { online: false } });
     const audio = (await call(rt, "GET", "/api/mod/audio")).json as unknown as AudioView;
     expect(audio.stops.at(-1)).toMatchObject({ announce: true });
     expect((await call(rt, "POST", "/api/mod/desk/stop", {})).status).toBe(400);
+    expect((await call(rt, "POST", "/api/mod/audio/report", { acks: [] })).status).toBe(200);
+    expect((await call(rt, "POST", "/api/mod/desk/stop", { all: true })).json).toEqual({ ok: true, stopped: 0, router: { online: true } });
     rt.dispose();
   });
 });

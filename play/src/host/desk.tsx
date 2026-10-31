@@ -69,6 +69,7 @@ import {
   setupOpen,
   setupView,
   standbyCard,
+  stopAllDone,
   testNeedsConfirm,
   testWords,
   tryDone,
@@ -229,7 +230,7 @@ export function DeskBody({ view, calls, client, me, mixer, startTab }: { view: D
           {!client.connected && <span className="host-desk-chip bad">⚠ {client.error ?? "Reconnecting…"}</span>}
         </div>
         <div className="host-desk-topline">
-          <ActButton className="host-desk-stopall" label="■ STOP ALL" title="Stop every desk cue and the house sounds" onClick={() => act("■ Stopped every desk cue and the house sounds", () => calls.deskStopAll())} />
+          <ActButton className="host-desk-stopall" label="■ STOP ALL" title="Stop every desk cue and the house sounds" onClick={() => act((a) => stopAllDone(false, a), () => calls.deskStopAll())} />
           {playing !== null && (
             <button
               type="button"
@@ -488,7 +489,7 @@ function TryIt({ view, calls, act, say, setSay }: { view: DeskView; calls: HostC
   };
   const sayIt = async () => {
     if (said === null) return;
-    if (await act(() => tryDone("say", "", null), () => calls.deskTest(said))) setSay("");
+    if (await act((a) => tryDone("say", "", a), () => calls.deskTest(said))) setSay("");
   };
   return (
     <section className="host-desk-part host-desk-tryit" aria-label="Try it" data-testid="host-desk-tryit">

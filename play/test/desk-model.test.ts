@@ -33,6 +33,7 @@ import {
   setupView,
   standbyCard,
   testNeedsConfirm,
+  stopAllDone,
   testWords,
   tryDone,
   tryGroups,
@@ -262,7 +263,16 @@ describe("wave 30: Try it", () => {
     expect(tryDone("sound", "server_hum", { ok: true, router: { online: true } })).toBe("▶ Playing server_hum");
     expect(tryDone("sound", "server_hum", { ok: true, router: { online: false } })).toMatch(/^▶ Playing server_hum — but the sound router is offline$/u);
     expect(tryDone("say", "", { router: { online: true } })).toBe("📢 Said on the speakers");
+    expect(tryDone("say", "", { router: { online: false } })).toBe("📢 Said on the speakers — but the sound router is offline");
     expect(tryDone("say", "", null)).toBe("📢 Said on the speakers");
+  });
+  it("■ STOP ALL's note: the cues stopped, and the sounds only if a router is there", () => {
+    expect(stopAllDone(false, { ok: true, stopped: 1, router: { online: true } })).toBe("■ Stopped every desk cue and the house sounds");
+    expect(stopAllDone(true, { ok: true, stopped: 1, router: { online: true } })).toBe("■ Stopped every desk cue, the house sounds and the announcement");
+    expect(stopAllDone(false, { ok: true, stopped: 1, router: { online: false } })).toBe("■ Stopped every desk cue — but the sound router is offline");
+    expect(stopAllDone(true, { ok: true, stopped: 1, router: { online: false } })).toBe("■ Stopped every desk cue — but the sound router is offline");
+    // An older server says nothing about the router, so nor does the note.
+    expect(stopAllDone(false, { ok: true, stopped: 1 })).toBe("■ Stopped every desk cue and the house sounds");
   });
   it("Say on the speakers: trimmed, never empty, never past the server's cap", () => {
     expect(sayCall("  The bar is open  ")).toEqual({ route: "/api/mod/audio/play", body: { say: "The bar is open" } });

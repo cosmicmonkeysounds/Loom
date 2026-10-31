@@ -411,16 +411,28 @@ export function tryGroups(view: Pick<DeskView, "house" | "marks">): TryGroup[] {
   return [group("looks", "💡 Looks", awayOf(h.lightsModule, "the lights module")), group("sounds", "▶ Story sounds", awayOf(h.router, "the sound router"))].filter((g) => g.rows.length > 0);
 }
 
+/** Did the answer say no router is listening? (No `router` at all: it didn't say.) */
+function routerAway(a: Record<string, unknown>): boolean {
+  const router = a["router"] !== null && typeof a["router"] === "object" ? (a["router"] as { online?: unknown }) : null;
+  return router !== null && router.online === false;
+}
+
 /** The note after a Try it tap: what was sent, and whether anything is
  *  there to play it (the server answers `router` for sound, `module` for
  *  a light). What the house did then shows under *Lately*. */
 export function tryDone(kind: "look" | "sound" | "say", name: string, answer: unknown): string {
   const a = answer !== null && typeof answer === "object" ? (answer as Record<string, unknown>) : {};
   if (kind === "look") return a["module"] === false ? `💡 ${name} sent — but the lights module is offline` : `💡 Playing the look ${name}`;
-  const router = a["router"] !== null && typeof a["router"] === "object" ? (a["router"] as { online?: unknown }) : null;
-  const away = router !== null && router.online === false;
   const what = kind === "say" ? "📢 Said on the speakers" : `▶ Playing ${name}`;
-  return away ? `${what} — but the sound router is offline` : what;
+  return routerAway(a) ? `${what} — but the sound router is offline` : what;
+}
+
+/** The note after ■ STOP ALL. The cues stop whatever happens; the house sounds
+ *  need a router, and with none the line says so. `DRAFT w59d`. */
+export function stopAllDone(announce: boolean, answer: unknown): string {
+  const a = answer !== null && typeof answer === "object" ? (answer as Record<string, unknown>) : {};
+  if (routerAway(a)) return "■ Stopped every desk cue — but the sound router is offline";
+  return announce ? "■ Stopped every desk cue, the house sounds and the announcement" : "■ Stopped every desk cue and the house sounds";
 }
 
 /** The "Say on the speakers" call, or null while there is nothing to say

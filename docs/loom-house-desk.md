@@ -155,7 +155,7 @@ the routes on the host allowlist (`core/server/routes/host.ts` and
 | `POST /api/mod/desk/project` | → the desk in force becomes the project's `desk.json` (409 `no project`) | |
 | `POST /api/mod/desk/go` | `{cue?, standby?}` → `{ok, run, standby}`. No `cue` means the playhead's cue. `standby` is the playhead the console showed: if it moved, the answer is 409 `{error:"moved", standby}` and nothing fires (two consoles, one GO). 404 for no such cue, 409 `{error:"end"}` at the end of the list. The playhead moves to the cue after the one fired | H |
 | `POST /api/mod/desk/standby` | `{cue: id \| null}` → `{ok, standby}` | H |
-| `POST /api/mod/desk/stop` | `{run}` stops one run; `{all: true, announce?}` stops every run **and** the house sounds (the panic) → `{ok, stopped}` | H |
+| `POST /api/mod/desk/stop` | `{run}` stops one run → `{ok, stopped}`; `{all: true, announce?}` stops every run **and** the house sounds (the panic) → `{ok, stopped, router: {online}}`, since the sounds need a router to stop them | H |
 | `POST /api/mod/desk/check` | `{key, mark: "ok" \| "bad" \| null, note?}` → `{ok}` (404 for a key that isn't a check of this house) | H |
 | `POST /api/mod/desk/check/reset` | → every mark cleared | |
 | `POST /api/mod/audio/play` | `{sound, to?, gain?}` \| `{say, to?, chime?}` → `{ok, seq, router}` (§4) | H |
