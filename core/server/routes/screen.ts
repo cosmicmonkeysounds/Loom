@@ -90,7 +90,7 @@
 //! injected clock for tests.
 
 import { isVoiceFlavour, isVoiceFxMode, voiceFxOf, type VoiceFlavour, type VoiceFx, type VoiceFxMode, type VoiceShot } from "../../src/voice-fx.ts";
-import { adTerminal, type AdHold, type AdOnAir, type AdsStatus } from "../../src/audio-ads.ts";
+import { AD_STANDING_SLIDE_HOLD_MS, adTerminal, type AdHold, type AdOnAir, type AdsStatus } from "../../src/audio-ads.ts";
 import { isLinkError, type LinkError } from "../../src/link-health.ts";
 import type { CamRate } from "../spatial-cams.ts";
 import type { ShowClock } from "../../src/show-clock.ts";
@@ -972,8 +972,8 @@ export interface ScreenPollExtras {
   language?: () => { words: ReadonlyArray<{ word: string; n: number }>; unsaid: number; level: number; stars: number };
   /** (wave 59) The first line of `channel` the teleprompter holds back. */
   voiceHeldFrom?: (channel: string) => number | null;
-  /** (wave 59a) The audio ad on the air. */
-  ad?: () => AdOnAir | null;
+  /** (wave 59a) The audio ad on the air, if this pop picked the wall of this name. */
+  ad?: (name: string) => AdOnAir | null;
 }
 
 /** A filing's public outcome on a screen: `a` accepted (an accurate filing
@@ -1280,7 +1280,8 @@ export interface ScreenState {
   voice?: ScreenVoice;
   /** (wave 56) How broken his voice is now, for everything that speaks him. */
   voiceFx: VoiceFx;
-  /** (wave 59a) The audio ad on the air, for a terminal that may play one (`adTerminal`). */
+  /** (wave 59a) The audio ad on the air, for a wall this pop picked. Absent on a
+   *  terminal that may never play one (`adTerminal`). */
   ad?: AdOnAir | null;
   /** Only when the poll names a `room` (wave 7). */
   room?: ScreenRoom;
@@ -1651,7 +1652,8 @@ export class ScreenWatch {
 
   /** (wave 59a) What is up on the walls that holds the audio ads, or null: a
    *  blackout, an overlay, the glitch, or a story slide for as long as the walls
-   *  hold it (`SLIDE_HOLD_MS` on the terminal). History never holds them. */
+   *  hold it (`SLIDE_HOLD_MS` on the terminal), a standing one for
+   *  `AD_STANDING_SLIDE_HOLD_MS`. History never holds them. */
   adsHold(sim: Sim | null): Extract<AdHold, "blackout" | "cutscene"> | null {
     if (sim === null) return null;
     this.sync(sim);
@@ -1661,7 +1663,7 @@ export class ScreenWatch {
     const live = (s: ScreenShot | null, ms: number): boolean => s !== null && s.at > 0 && now - s.at < ms;
     if (p.overlay?.value === "blackout" || live(p.blackout, AD_BLACKOUT_MS)) return "blackout";
     if (p.overlay !== null || live(p.glitch, AD_GLITCH_MS)) return "cutscene";
-    return p.slide?.kind === "slide" && live(p.slide, p.slide.persist ? Infinity : AD_SLIDE_MS) ? "cutscene" : null;
+    return p.slide?.kind === "slide" && live(p.slide, p.slide.persist ? AD_STANDING_SLIDE_HOLD_MS : AD_SLIDE_MS) ? "cutscene" : null;
   }
 
   /** Remember a terminal's poll (unnamed polls aren't recorded). */
@@ -2004,7 +2006,7 @@ export class ScreenWatch {
         // in the intro talk (the costume's) is the screens' alone.
         { now: this.now(), glitch: program.glitch ?? null, flicker: peek(SCREEN_NIGHT_VARS.talk) === "intro" ? null : program.flicker, dreamAt: this.dreamOf(sim)?.at ?? null, shot: this.voiceShot },
       ),
-      ...(extras.ad !== undefined && adTerminal({ view: who.view, spot: who.spot, room: who.room ?? who.voice }) ? { ad: extras.ad() } : {}),
+      ...(extras.ad !== undefined && adTerminal({ view: who.view, spot: who.spot, room: who.room || who.voice }) ? { ad: extras.ad(clip(who.name)) } : {}),
       ...(room !== undefined ? { room } : {}),
       identify: identifyLeft > 0,
       identifyLeft,
@@ -2202,7 +2204,7 @@ export interface ScreenTerminals {
   voiceFx: VoiceFxMode;
   /** The server's silence threshold (ms). */
   silentMs: number;
-  /** (wave 59a) 📢 The audio ads: the switch and where the list has got to. */
+  /** (wave 59a) 📢 The audio ads: the switch and what they are waiting for. */
   ads?: AdsStatus;
 }
 

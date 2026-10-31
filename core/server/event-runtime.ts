@@ -89,8 +89,8 @@ import { CREDITS_FILE } from "../src/credits.ts"; // w44
 import { COSTUME_FIRE_ROUTE, COSTUME_MENU_ROUTE, COSTUME_MOD_ROUTE, CostumeDesk, CostumeSource, costumeFixtures, costumeLookSafe, costumeMoved, costumeRoomOutRestore, sendCostumeFire, sendCostumeMenu, type CostumeTimers } from "./costume.ts"; // w59
 import { COSTUME_BY, COSTUME_FILE, COSTUME_SIGNAL, COSTUME_TOKEN_LABEL, STAGE_CHARS_PER_S, costumeCue, hijackPlaying, saidBy, type CostumeAction, type CostumeFacts, type CostumeFile, type CostumeItem } from "../src/costume.ts"; // w59
 import { DESCENT_FILE, DescentSource } from "./descent.ts"; // w49
-import { AdsHub, ADS_MOD_ROUTE, AD_BUSY_ROUTE } from "./audio-ads.ts"; // w59a
-import { ADS_PHASE, ADS_SWITCH_SIGNAL, AD_AIRED_SIGNAL, AD_ANNOUNCE_HOLD_MS, AD_READING_HOLD_MS, type AdFrame, type AdHold } from "../src/audio-ads.ts"; // w59a
+import { AdsHub, ADS_MOD_ROUTE, AD_BUSY_ROUTE, adsGapOf } from "./audio-ads.ts"; // w59a
+import { ADS_FROM_STEP, ADS_SWITCH_SIGNAL, ADS_UNTIL_STEP, AD_AIRED_SIGNAL, AD_ANNOUNCE_HOLD_MS, AD_WALL_ONLINE_MS, adTerminal, type AdHold, type AdsStatus } from "../src/audio-ads.ts"; // w59a
 import { SWEAR_CENSORED, SWEAR_FILTER, SWEAR_FLAGGED, decodeHits, encodeHits, filterHits, hitList, isFilterLevel, maskText, maskUnsaid, type FilterHit } from "../src/language-filter.ts"; // w48, w48b
 import { FilterBook, type FilterView } from "./language-filter.ts"; // w48
 import { NO_ONE, directorIds, directorNames, forBooth, hostSeen, seenCrews, seenCues, seenFrom, seenName, seenPeople, seenRows, type PeopleRound } from "./unseen-directors.ts";
@@ -924,12 +924,10 @@ export class EventRuntime {
   readonly cams: CamStore;
   /** Clippy's dream on the games' terminals (wave 50). */
   readonly dreamFeed: DreamFeed;
-  /** The audio ads (wave 59a): the list, its switch, what is on the air. */
-  readonly ads = new AdsHub();
+  /** The audio ads (wave 59a): the pass, its switch, what is on the air. */
+  readonly ads = new AdsHub(Math.random, adsGapOf(process.env.LOOM_ADS_GAP_S));
   /** When the house last said an announcement (memory only). */
   private adsAnnouncedAt = -Infinity;
-  /** Since when the teleprompter has been in use (memory only). */
-  private adsReadingSince: number | null = null;
   /** The voice link (wave 19): terminal mics ⇄ headsets, routed by pose, memory only. */
   readonly voice: VoiceRelay;
   private readonly houseFile: string;
@@ -2575,10 +2573,19 @@ export class EventRuntime {
     if (newest !== null) sseSend(newest.res, "ad", frame);
   }
 
-  /** Every phone stops. Only a phone that was told one ever hears of it, but a
-   *  stream that reopened mid-ad is no longer on any list. */
+  /** The walls that could play one now: `adTerminal`, and polling. */
+  private adWalls(): string[] {
+    const now = this.screens.clock();
+    return this.screens
+      .seen()
+      .filter((p) => now - p.at <= AD_WALL_ONLINE_MS && adTerminal({ view: p.view, spot: p.spot, room: p.room ?? p.voice }))
+      .map((p) => p.name);
+  }
+
+  /** Every phone stops, whatever the server thinks is on the air: a phone it
+   *  forgot in a restart, or one that woke late, is on nobody's list. */
   private adStopAll(): void {
-    const frame: AdFrame = { stop: true };
+    const frame = { stop: true as const, now: this.clock() };
     for (const c of this.clients) if (c.role !== "mod" && c.lean !== true) sseSend(c.res, "ad", frame);
   }
 
@@ -2589,62 +2596,66 @@ export class EventRuntime {
     return t === "" || t === "none" ? null : t;
   }
 
-  /** The second hunt's hour: from 📓 until the summons, Truth Pong or an ending. */
+  /** The window: from 📓 until the final reveal or an ending, read off the story. */
   private adsRunning(): boolean {
-    return this.adWord("Night.phase") === ADS_PHASE && this.adWord("Night.hunt2_on") === "true" && this.adWord("Night.summons_open") !== "true" && this.adWord("Night.ended") !== "true";
+    const step = Number(this.adWord("Night.step"));
+    return step >= ADS_FROM_STEP && step < ADS_UNTIL_STEP && this.adWord("Night.ended") !== "true";
   }
 
-  /** Is someone reading on the teleprompter? A phone left on a finished script
-   *  counts for `AD_READING_HOLD_MS`, no longer. */
-  private adsReading(): boolean {
-    if (!this.prompters.inUse) {
-      this.adsReadingSince = null;
-      return false;
-    }
-    this.adsReadingSince ??= this.clock();
-    return this.clock() - this.adsReadingSince < AD_READING_HOLD_MS;
+  /** Is he speaking on the TV? Its own word while it polls, else how long the
+   *  story's lines in the room take to say, so a dead TV can't hold anything long. */
+  private tvSpeaking(): boolean {
+    const storyMs = this.sim?.elapsed() ?? 0;
+    const now = this.screens.clock();
+    if (this.screens.seen().some((p) => p.view === "tv" && p.talk === true && now - p.at <= SPEECH_ONLINE_MS)) return true;
+    return saidBy(this.chat.all().filter((m) => !m.hidden && storyMs - m.ts < COSTUME_LOOKBACK_MS && m.channel === `loc:${TALK_ROOM}` && m.kind === "line" && typeof m.beat === "string"), STAGE_CHARS_PER_S) > storyMs;
   }
 
   /** What holds the ads now: nothing starts, and what is on the air stops. */
   private adsHold(): AdHold | null {
-    const reading = this.adsReading();
     const sim = this.sim;
     if (sim === null || this.phase !== "open") return "doors";
     if (this.talkNight() !== null) return "talk";
-    // The Truther Download lands two minutes in and takes the screens: the first
-    // ad waits for it rather than being cut off a minute into itself.
-    const truther = Number(this.adWord("Night.truther_at"));
-    if (Number.isFinite(truther) && sim.elapsed() / 1000 < truther) return "truther";
     const screens = this.screens.adsHold(sim);
     if (screens !== null) return screens;
     if (this.clock() - this.adsAnnouncedAt < AD_ANNOUNCE_HOLD_MS) return "announcement";
-    return reading ? "reading" : null;
+    // No time cap: `inUse` already lets go of a phone that died.
+    if (this.prompters.inUse) return "reading";
+    return this.tvSpeaking() ? "speaking" : null;
+  }
+
+  /** What Run → Terminals reads, worked out when it asks. */
+  private adsStatus(): AdsStatus {
+    const running = this.adsRunning();
+    return this.ads.status(running, running ? this.adsHold() : null);
   }
 
   /** The ads' beat, from the ticker. */
   private tickAds(): void {
     const sim = this.sim;
     if (sim === null) return;
-    const step = this.ads.tick({ now: this.clock(), story: sim.elapsed(), running: this.adsRunning(), hold: this.adsHold() });
+    const running = this.adsRunning();
+    const step = this.ads.tick({ now: this.clock(), story: sim.elapsed(), running, hold: running ? this.adsHold() : null, walls: running ? this.adWalls() : [], phones: running ? this.adPhones() : [] });
     if (step === null) return;
     if (step.kind === "stop") {
       this.adStopAll();
       return;
     }
     this.fanout(this.commit("signal", AD_AIRED_SIGNAL, `${step.ad.n}. ${step.ad.name}`, { n: step.ad.n }, null));
-    for (const who of this.ads.pick(this.adPhones())) this.adOffer(who);
+    for (const who of step.phones) this.adOffer(who);
   }
 
-  /** Stop what is on the air now (the doors, a lifecycle change). */
+  /** Stop what is on the air, everywhere (the doors, ■, a lifecycle change). */
   private adsCut(): void {
-    if (this.ads.cut() !== null) this.adStopAll();
+    this.ads.cut();
+    this.adStopAll();
   }
 
   /** The director's 📢 On / Off: journaled, so a restart keeps it. */
   private adsSwitch(on: boolean): void {
-    const step = this.ads.setOn(on);
+    this.ads.setOn(on);
     this.fanout(this.commit("signal", ADS_SWITCH_SIGNAL, on ? "on" : "off", null, null));
-    if (step !== null) this.adStopAll();
+    if (!on) this.adStopAll();
   }
 
   /** Wave 53: did this part answer the upload's inbox card? (The story's
@@ -3392,15 +3403,13 @@ export class EventRuntime {
     };
     const storyMs = sim?.elapsed() ?? 0;
     const nowS = storyMs / 1000;
-    const recent = this.chat.all().filter((m) => !m.hidden && storyMs - m.ts < COSTUME_LOOKBACK_MS);
-    const tvTalking = this.screens.seen().some((p) => p.view === "tv" && p.talk === true && this.screens.clock() - p.at <= SPEECH_ONLINE_MS);
     const burst = num("Night.burst_last");
     return {
       doors: sim !== null && this.phase === "open" && this.entryPlayed,
       ended: word("Night.ended") === "true",
       ceremony: word("Night.ceremony") === "true",
       step: num("Night.step"),
-      speaking: tvTalking || saidBy(recent.filter((m) => m.channel === `loc:${TALK_ROOM}` && m.kind === "line" && typeof m.beat === "string"), STAGE_CHARS_PER_S) > storyMs,
+      speaking: this.tvSpeaking(),
       prompter: this.prompters.inUse,
       lights: word("Night.lights"),
       alarm: word("Night.alarm_on") === "true",
@@ -6269,7 +6278,7 @@ export class EventRuntime {
             if (typeof e.a[1] === "string" && typeof card === "number") this.answeredWidgets.add(`${card}:${e.a[1]}`);
             // Wave 48 (C2, C8): the filter's strength, flags and censors, from the journal.
             if (e.a[0] === SWEAR_FLAGGED || e.a[0] === SWEAR_CENSORED || e.a[0] === SWEAR_FILTER) this.replayFilter(e.a);
-            // Wave 59a: where the list had got to, and its switch.
+            // Wave 59a: what this pass has played, and the switch.
             if (e.a[0] === AD_AIRED_SIGNAL) this.ads.replayAired(Number((e.a[2] as { n?: unknown } | null | undefined)?.n), this.sim!.elapsed());
             if (e.a[0] === ADS_SWITCH_SIGNAL) this.ads.replaySwitched(e.a[1] === "on");
             // An agent's own use of a power counts against its `limit:` again.
@@ -6446,6 +6455,8 @@ export class EventRuntime {
         // Wave 59: and where the prompter is. A scene that has gone reads null.
         const member = role === "guest" ? id : role === "prime" && client.host !== true && client.admin !== true ? `@${id}` : null;
         sseSend(res, "prompter", this.prompters.frame(member));
+        // Wave 59a: the server's time for the ads, and a stop if nothing is on the air.
+        if (role !== "mod") sseSend(res, "ad", this.ads.hello(this.clock()));
       }
       if (!fullMod) this.pushPresence();
       const ping = setInterval(() => {
@@ -6739,7 +6750,7 @@ export class EventRuntime {
           // Wave 59: his lines wait for the teleprompter.
           voiceHeldFrom: (channel) => this.prompters.heldFrom(channel),
           // Wave 59a: the audio ad on the air.
-          ad: () => this.ads.air,
+          ad: (name) => this.ads.onWall(name),
         },
       );
     }
@@ -6776,7 +6787,7 @@ export class EventRuntime {
       else sendJson(res, 200, { on: !this.store.loadCostumeOff(), url: this.costumeLink() });
       return true;
     }
-    if (method === "GET" && path === "/api/mod/screen/terminals") return handleScreenTerminalsGet(this.screens, req, res, url, (t) => opts.moderator === true || this.sessions.canModerate(t), (spot) => this.cams.rate(spot), () => this.ads.status());
+    if (method === "GET" && path === "/api/mod/screen/terminals") return handleScreenTerminalsGet(this.screens, req, res, url, (t) => opts.moderator === true || this.sessions.canModerate(t), (spot) => this.cams.rate(spot), () => this.adsStatus());
     // A host booth may mute the TV and identify a terminal (§2.7). Both are
     // host-visible writes handled before the generic body parse, so they
     // drop the host panel's cached build themselves (recheck item 8: the
@@ -7053,7 +7064,7 @@ export class EventRuntime {
           this.noteDeskAudio(path, res, by);
           // Wave 53 (C5): 🔇 + the announcement cuts the phones too.
           if (path === "/api/mod/audio/stop" && body["announce"] === true && res.statusCode === 200) this.phoneAnnounce({ stop: true });
-          // Wave 59a: ■ Stop house sounds cuts the ad on the air too (📢 Off stops the list).
+          // Wave 59a: ■ Stop house sounds cuts the ad on the air too (📢 Off stops them all).
           if (path === "/api/mod/audio/stop" && res.statusCode === 200) this.adsCut();
           return true;
         }

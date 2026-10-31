@@ -1,19 +1,25 @@
 //! The audio ads on the server (wave 59a, `docs/loom-w59-ads-contract.md`):
-//! transport-free, clock injected, so tests drive it with no HTTP. It answers
-//! what goes on the air and when; `EventRuntime` journals the answer, carries it
-//! to the phones (the `ad` stream frame) and to the walls (the screen state).
+//! transport-free, clock and dice injected, so tests drive it with no HTTP. It
+//! answers what goes on the air, when, and who gets it; `EventRuntime` journals the
+//! answer, carries it to the phones (the `ad` stream frame) and to the walls (the
+//! screen state's `ad`, to the walls this pop picked).
 //!
-//! What is journaled: each ad that goes on the air and each 📢 On / Off, as
-//! `signal`s no story hook hears, so a server restart resumes the list (the
-//! replay calls `aired` / `switched`) and a story reload clears it (`reset`).
-//! Memory only: what is on the air (a restart cuts it; the next comes at its
-//! pace), the phones' rotation (a restart starts it again) and the announcement
-//! and reading holds.
+//! Random three ways: which ad (none repeats until all 14 have played), the gap to
+//! the next (3 to 10 minutes, drawn fresh), and who hears it (1 to 3 walls, a quarter
+//! of the phones, drawn fresh). A pop that can't start waits and starts as soon as it
+//! can; it doesn't skip a gap.
 //!
-//! Story time paces the list: it stops with the doors, and it is what a replay
-//! lands on. Nothing here reaches the story, Trabolta's worker or the chat.
+//! What is journaled: each ad that goes on the air and each 📢 On / Off, as `signal`s
+//! no story hook hears, so a server restart keeps the pass and the switch (the replay
+//! calls `replayAired` / `replaySwitched`) and a story reload clears them (`reset`).
+//! Memory only: what is on the air and who got it (a restart cuts it, and a stop goes
+//! to each stream as it reopens), the drawn gap (a restart draws again from the last
+//! pop) and the announcement hold.
+//!
+//! Story time paces it: it stops with the doors, and it is what a replay lands on.
+//! Nothing here reaches the story, Trabolta's worker or the chat.
 
-import { ADS_EVERY_MS, ADS_FIRST_MS, AD_LEAD_MS, AD_MEDIA_BASE, AD_REPLACE_LEFT_MS, AUDIO_ADS, adPhoneCount, type AdFrame, type AdHold, type AdOnAir, type AdsStatus } from "../src/audio-ads.ts";
+import { ADS_GAP_MAX_MS, ADS_GAP_MIN_MS, AD_LEAD_MS, AD_MEDIA_BASE, AD_REPLACE_LEFT_MS, AUDIO_ADS, adPhoneCount, adWallCount, type AdFrame, type AdHold, type AdOffer, type AdOnAir, type AdsStatus, type AudioAd } from "../src/audio-ads.ts";
 
 /** A phone says it can't take the ad it was offered. */
 export const AD_BUSY_ROUTE = "/api/ad/busy";
@@ -25,70 +31,125 @@ export interface AdsNow {
   now: number;
   /** The story clock (ms). */
   story: number;
-  /** The second hunt's hour is on, before the summons. */
+  /** The window is open: the second hunt on, before the final reveal or an ending. */
   running: boolean;
   /** What holds them now, or null. */
   hold: AdHold | null;
+  /** The walls that could play one now, by name. */
+  walls: readonly string[];
+  /** The phones that could take one now. */
+  phones: readonly string[];
 }
 
-export type AdStep = { kind: "start"; ad: AdOnAir } | { kind: "stop" } | null;
+export type AdStep = { kind: "start"; ad: AdOnAir; phones: string[] } | { kind: "stop" } | null;
+
+export interface AdsGap {
+  min: number;
+  max: number;
+}
+
+/** `LOOM_ADS_GAP_S=20-40`: a scratch server's short gaps, so `scripts/sim/ads.spec.ts`
+ *  can see several pops. Anything else, or nothing, is the show's 3 to 10 minutes. */
+export function adsGapOf(env: string | undefined): AdsGap {
+  const m = /^(\d+)-(\d+)$/u.exec(env ?? "");
+  const [min, max] = [Number(m?.[1]), Number(m?.[2])];
+  return m !== null && min >= 1 && max >= min ? { min: min * 1000, max: max * 1000 } : { min: ADS_GAP_MIN_MS, max: ADS_GAP_MAX_MS };
+}
+
+/** `k` of `list`, at random, in no order. */
+function sample<T>(list: readonly T[], k: number, rand: () => number): T[] {
+  const pool = [...list];
+  const out: T[] = [];
+  while (out.length < k && pool.length > 0) out.push(pool.splice(Math.floor(rand() * pool.length), 1)[0]!);
+  return out;
+}
 
 export class AdsHub {
   /** The kill switch. */
   on = true;
-  /** How many have gone out: the next is `AUDIO_ADS[aired]`. */
+  /** How many have gone out tonight. */
   aired = 0;
   /** What is on the air now. */
   air: AdOnAir | null = null;
+  /** What has played in this pass: none repeats until all 14 have. */
+  private readonly played = new Set<number>();
+  /** The last one played, so a new pass doesn't open on it. */
+  private lastN: number | null = null;
   /** The story clock at the last start. */
   private lastAt: number | null = null;
-  /** The story clock when this process first saw the hour running. */
+  /** The story clock when this process first saw the window open. */
   private openedAt: number | null = null;
-  /** Each phone's last turn: the ad's `n`. A phone that never had one goes first. */
-  private readonly turns = new Map<string, number>();
+  /** The story clock the next is due at: drawn once, from the last pop. */
+  private dueAt: number | null = null;
+  /** The walls this pop picked. */
+  private readonly walls = new Set<string>();
   /** Who has been offered the ad on the air. */
   private readonly offered = new Set<string>();
-  private last: { running: boolean; hold: AdHold | null } = { running: false, hold: null };
+
+  constructor(
+    private readonly rand: () => number = Math.random,
+    private readonly gap: AdsGap = { min: ADS_GAP_MIN_MS, max: ADS_GAP_MAX_MS },
+  ) {}
 
   /** One beat of the clock: what changes on the air now. */
   tick(n: AdsNow): AdStep {
-    this.last = { running: n.running, hold: n.hold };
     if (this.air !== null && n.now >= this.air.until) this.clearAir();
     if (!n.running) {
       this.openedAt = null;
+      this.dueAt = null;
       return this.cut();
     }
     this.openedAt ??= n.story;
     if (n.hold !== null || !this.on) return this.cut();
-    if (this.air !== null || this.aired >= AUDIO_ADS.length) return null;
-    const due = this.lastAt === null ? this.openedAt + ADS_FIRST_MS : this.lastAt + ADS_EVERY_MS;
-    if (n.story < due) return null;
-    const ad = AUDIO_ADS[this.aired]!;
-    const at = n.now + AD_LEAD_MS;
-    this.aired += 1;
-    this.lastAt = n.story;
-    this.air = { seq: at, n: ad.n, name: ad.name, url: `${AD_MEDIA_BASE}${ad.file}`, at, until: at + Math.round(ad.seconds * 1000) };
-    return { kind: "start", ad: this.air };
+    if (this.air !== null) return null;
+    this.dueAt ??= (this.lastAt ?? this.openedAt) + this.gap.min + this.rand() * (this.gap.max - this.gap.min);
+    if (n.story < this.dueAt || (n.walls.length === 0 && n.phones.length === 0)) return null;
+    return this.start(n);
   }
 
-  /** Stop what is on the air. It stays spent: the list moves on. */
+  private start(n: AdsNow): AdStep {
+    const ad = this.nextAd();
+    const at = n.now + AD_LEAD_MS;
+    this.note(ad.n, n.story);
+    this.air = { seq: at, n: ad.n, name: ad.name, url: `${AD_MEDIA_BASE}${ad.file}`, at, until: at + Math.round(ad.seconds * 1000) };
+    for (const w of sample(n.walls, adWallCount(n.walls.length, this.rand()), this.rand)) this.walls.add(w);
+    const phones = sample(n.phones, adPhoneCount(n.phones.length), this.rand);
+    for (const p of phones) this.offered.add(p);
+    return { kind: "start", ad: this.air, phones };
+  }
+
+  /** At random from what this pass hasn't played; a new pass, once all have. */
+  private nextAd(): AudioAd {
+    const left = AUDIO_ADS.filter((a) => !this.played.has(a.n));
+    const pool = left.length > 0 ? left : AUDIO_ADS.filter((a) => a.n !== this.lastN);
+    return pool[Math.floor(this.rand() * pool.length)]!;
+  }
+
+  private note(n: number, story: number): void {
+    if (this.played.size >= AUDIO_ADS.length) this.played.clear();
+    this.played.add(n);
+    this.aired += 1;
+    this.lastN = n;
+    this.lastAt = story;
+    this.dueAt = null;
+  }
+
+  /** Stop what is on the air. It stays spent. */
   cut(): AdStep {
     if (this.air === null) return null;
     this.clearAir();
     return { kind: "stop" };
   }
 
-  /** The director's switch (`on` = the next in the list, at its pace). */
-  setOn(on: boolean): AdStep {
+  /** The director's switch. On: the next as soon as its time has come. */
+  setOn(on: boolean): void {
     this.on = on;
-    return on ? null : this.cut();
+    if (!on) this.cut();
   }
 
-  /** A journaled ad, replayed: `n` is out, at story time `at`. */
+  /** A journaled ad, replayed: `n` went out at story time `at`. */
   replayAired(n: number, at: number): void {
-    if (!Number.isInteger(n) || n < 1 || n > AUDIO_ADS.length) return;
-    this.aired = Math.max(this.aired, n);
-    this.lastAt = at;
+    if (Number.isInteger(n) && n >= 1 && n <= AUDIO_ADS.length) this.note(n, at);
   }
 
   /** A journaled switch, replayed. */
@@ -96,62 +157,58 @@ export class AdsHub {
     this.on = on;
   }
 
-  /** A story reload: the list starts over, switched on. */
+  /** A story reload: a new night, switched on. */
   reset(): void {
     this.on = true;
     this.aired = 0;
+    this.played.clear();
+    this.lastN = null;
     this.lastAt = null;
     this.openedAt = null;
-    this.turns.clear();
-    this.last = { running: false, hold: null };
+    this.dueAt = null;
     this.clearAir();
   }
 
-  /** The phones whose turn it is, out of `phones` (those that can take one now). */
-  pick(phones: readonly string[]): string[] {
-    const air = this.air;
-    if (air === null) return [];
-    const order = phones.map((id, i) => ({ id, i, turn: this.turns.get(id) ?? 0 })).sort((a, b) => a.turn - b.turn || a.i - b.i);
-    const chosen = order.slice(0, adPhoneCount(phones.length)).map((p) => p.id);
-    for (const id of chosen) this.give(id, air);
-    return chosen;
+  /** The ad on the air, if this pop picked this wall. */
+  onWall(name: string): AdOnAir | null {
+    return this.walls.has(name) ? this.air : null;
   }
 
   /**
-   * `who` can't take the ad on the air: it keeps its place in the line, and
-   * the next phone that hasn't been offered this one takes over. Null: none
-   * left, it is too late, or `who` was never offered this ad (`seq`).
+   * `who` can't take the ad on the air: another phone at random, not yet offered
+   * this one, takes over. Null: none left, it is too late, or `who` was never
+   * offered this ad (`seq`).
    */
   replace(who: string, seq: number, phones: readonly string[], now: number): string | null {
     const air = this.air;
-    if (air === null || air.seq !== seq || !this.offered.has(who)) return null;
-    this.turns.set(who, 0);
-    if (air.until - now < AD_REPLACE_LEFT_MS) return null;
-    const next = phones.filter((id) => !this.offered.has(id)).sort((a, b) => (this.turns.get(a) ?? 0) - (this.turns.get(b) ?? 0))[0];
+    if (air === null || air.seq !== seq || !this.offered.has(who) || air.until - now < AD_REPLACE_LEFT_MS) return null;
+    const next = sample(phones.filter((id) => !this.offered.has(id)), 1, this.rand)[0];
     if (next === undefined) return null;
-    this.give(next, air);
+    this.offered.add(next);
     return next;
   }
 
-  /** The frame that hands the ad on the air to a phone now. */
-  frame(now: number): AdFrame | null {
+  /** The frame that hands the ad on the air to a phone. */
+  frame(now: number): AdOffer | null {
     const a = this.air;
-    if (a === null) return null;
-    return { seq: a.seq, n: a.n, name: a.name, url: a.url, in: Math.max(0, a.at - now), from: Math.max(0, now - a.at) / 1000, left: Math.max(0, a.until - Math.max(now, a.at)) };
+    return a === null ? null : { seq: a.seq, n: a.n, name: a.name, url: a.url, at: a.at, until: a.until, now };
   }
 
-  /** Run → Terminals. */
-  status(): AdsStatus {
-    return { on: this.on, aired: this.aired, total: AUDIO_ADS.length, playing: this.air?.name ?? null, running: this.last.running, hold: this.last.hold };
+  /** The frame a stream opens on: the server's time, and with nothing on the air a
+   *  stop, so a phone a restart forgot about falls silent. */
+  hello(now: number): AdFrame {
+    return this.air === null ? { stop: true, now } : { now };
   }
 
-  private give(id: string, air: AdOnAir): void {
-    this.offered.add(id);
-    this.turns.set(id, air.n);
+  /** Run → Terminals. The window and the hold are read when it asks: nothing ticks
+   *  behind paused doors. */
+  status(running: boolean, hold: AdHold | null): AdsStatus {
+    return { on: this.on, aired: this.aired, total: AUDIO_ADS.length, playing: this.air?.name ?? null, running, hold };
   }
 
   private clearAir(): void {
     this.air = null;
     this.offered.clear();
+    this.walls.clear();
   }
 }
