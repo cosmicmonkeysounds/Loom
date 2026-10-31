@@ -56,8 +56,9 @@ describe("the scene (wave 59)", () => {
       [3, "@Clippy", false],
     ]);
     // His line in the dropped section comes before the scene, so it isn't held.
-    expect(s.id).toBe(2);
+    expect(s.id).toBe(3);
     expect(sceneOf([him(1)], CTX)).toBeNull();
+    expect(sceneOf([clippy(0)], CTX)?.id, "a fresh run's first line is seq 0, and a scene id is never 0").toBe(1);
   });
 
   it("gives someone else's line to its owner, and keeps his unmarked lines beside the script", () => {
@@ -133,15 +134,23 @@ describe("his lines wait for the script", () => {
     expect(r.last().speaking).toBeNull();
   });
 
-  it("scrolls from the moment he opens his mouth", () => {
+  it("times his line from the moment he opens his mouth, and never steps back", () => {
     const r = scene();
+    r.voice.live = false;
     r.here();
     r.p.op(r.id, "@Clippy", false, { op: "jump", pos: 4 });
+    r.voice.live = true;
     r.to(1_000);
+    const before = r.last().pos;
     r.voice.speaking = 2;
     r.to(200);
-    expect(r.last().pos).toBe(4);
-    expect(r.frames.filter((f) => f.speaking !== null).length).toBeGreaterThanOrEqual(2);
+    expect(r.last().pos).toBeGreaterThanOrEqual(before);
+    r.voice.muted = true;
+    const ms = spokenMs("five six seven eight");
+    r.to(ms - 300);
+    expect(r.last().speaking).not.toBeNull();
+    r.to(400);
+    expect(r.last().speaking).toBeNull();
   });
 
   it("can't be scrolled past: a jump over his line stops on it and fires it", () => {
@@ -298,8 +307,8 @@ describe("the night never hangs", () => {
     s.here();
     s.p.land(sceneOf([clippy(5), him(6)], CTX));
     const ended = s.frames.find((f) => f.done === true)!;
-    expect(ended).toMatchObject({ id: 1, superseded: true });
-    expect(s.last().id).toBe(5);
+    expect(ended).toMatchObject({ id: 2, superseded: true });
+    expect(s.last().id).toBe(6);
     expect(s.p.heldFrom("loc:The Desktop")).toBe(6);
   });
 
@@ -323,7 +332,7 @@ describe("the night never hangs", () => {
   it("tells a host and a director where it is", () => {
     const r = rig([clippy(1), him(2), clippy(3)]);
     r.here();
-    expect(r.p.status()).toMatchObject({ id: 1, readers: ["Clippy"], line: 1, lines: 3, held: true, speaking: false, holder: null });
+    expect(r.p.status()).toMatchObject({ id: 2, readers: ["Clippy"], line: 1, lines: 3, held: true, speaking: false, holder: null });
     r.p.op(r.id, "@Clippy", false, { op: "jump", pos: 4 });
     expect(r.p.status()).toMatchObject({ line: 2, speaking: true, held: false });
   });

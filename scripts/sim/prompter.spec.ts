@@ -1,0 +1,273 @@
+// The shared teleprompter (wave 59), on real pages: Clippy's phone, a host's
+// phone and the real TV terminal against a scratch server. It plays `Second
+// Hunt`, the show's first beat where her lines and his alternate.
+//
+//   # a scratch server on a free port (scripts/sim/README.md), play + terminal built
+//   SIM_BASE=http://127.0.0.1:7105 SIM_MOD_CODE=<mod> SIM_PRIME_CODE=<prime> SIM_SHOTS=<dir> \
+//     pnpm --filter loom-app exec playwright test -c ../scripts/sim/playwright.config.ts prompter
+//
+// The codes stay in the environment, never in a screenshot's name. Rehearsal
+// servers only: it restarts nothing, but it fires story beats.
+import { mkdirSync } from "node:fs";
+import { join } from "node:path";
+import { test, expect } from "../../editor/node_modules/@playwright/test/index.mjs";
+import type { Browser, BrowserContext, Page } from "../../editor/node_modules/@playwright/test/index.mjs";
+
+const BASE = (process.env["SIM_BASE"] ?? "").replace(/\/$/u, "");
+const MOD = process.env["SIM_MOD_CODE"] ?? "";
+const PRIME = process.env["SIM_PRIME_CODE"] ?? "";
+const SHOTS = process.env["SIM_SHOTS"] ?? "test-results/prompter";
+const EVENT = "default";
+const API = `${BASE}/e/${EVENT}`;
+
+interface Mod {
+  token: string;
+  post(path: string, body: unknown): Promise<Record<string, unknown>>;
+  get(path: string): Promise<Record<string, unknown>>;
+}
+
+async function modLogin(): Promise<Mod> {
+  const r = await fetch(`${API}/api/mod/login`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ passcode: MOD }) });
+  const { token } = (await r.json()) as { token: string };
+  return {
+    token,
+    post: async (path, body) => {
+      const res = await fetch(`${API}${path}`, { method: "POST", headers: { "content-type": "application/json", "x-loom-token": token }, body: JSON.stringify(body) });
+      return (await res.json().catch(() => ({}))) as Record<string, unknown>;
+    },
+    get: async (path) => {
+      const res = await fetch(`${API}${path}${path.includes("?") ? "&" : "?"}token=${encodeURIComponent(token)}`, { headers: { "x-loom-token": token } });
+      return (await res.json().catch(() => ({}))) as Record<string, unknown>;
+    },
+  };
+}
+
+/** A real booth session, seeded where a phone keeps it: past the sign-in. */
+async function phone(browser: Browser, part: string): Promise<{ ctx: BrowserContext; page: Page }> {
+  const r = await fetch(`${API}/api/prime/login`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ passcode: PRIME, character: part }) });
+  const auth = (await r.json()) as { token?: string; admin?: boolean; host?: boolean; error?: string };
+  expect(auth.token, `signing in as ${part}: ${auth.error ?? ""}`).toBeTruthy();
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 780 }, hasTouch: true, isMobile: true });
+  await ctx.addInitScript(
+    ([key, value]) => {
+      localStorage.setItem(key as string, value as string);
+    },
+    ["loom.prime", JSON.stringify({ token: auth.token, character: part, admin: auth.admin === true, host: auth.host === true, eventId: EVENT })],
+  );
+  const page = await ctx.newPage();
+  await page.goto(`${BASE}/?role=performer`);
+  return { ctx, page };
+}
+
+const scrollOf = (p: Page) => p.locator(".aloud-text").evaluate((e) => e.scrollTop);
+const nowLine = (p: Page) => p.locator(".aloud-line.now").first().innerText();
+
+/** Press and scroll like a finger: the pointer goes down on the text, the text moves. */
+async function press(p: Page, to: "start" | number): Promise<void> {
+  await p.locator(".aloud-text").dispatchEvent("pointerdown", { pointerType: "touch", pointerId: 7, bubbles: true });
+  if (to !== "start") await p.locator(".aloud-text").evaluate((e, y) => void (e.scrollTop = y as number), to);
+}
+const letGo = (p: Page) => p.locator(".aloud-text").dispatchEvent("pointerup", { pointerType: "touch", pointerId: 7, bubbles: true });
+
+/** The y that puts line `i` on the reading mark. */
+const yOf = (p: Page, i: number) =>
+  p.locator(".aloud-text").evaluate((e, n) => {
+    const rows = [...e.querySelectorAll<HTMLElement>("[data-line]")];
+    return rows[n as number]!.offsetTop - Math.round(e.clientHeight * 0.3);
+  }, i);
+
+test("she scrolls, he waits; she reaches his line, he speaks, it scrolls, a host sees it all", async ({ browser }) => {
+  test.skip(BASE === "" || MOD === "" || PRIME === "", "set SIM_BASE, SIM_MOD_CODE and SIM_PRIME_CODE");
+  test.setTimeout(180_000);
+  mkdirSync(SHOTS, { recursive: true });
+  const mod = await modLogin();
+  await mod.post("/api/mod/start", {});
+  // Past the staff upload, and him online before the TV opens, so it has no backlog.
+  await mod.post("/api/mod/signal", { name: "wave_staff_through" });
+  await mod.post("/api/mod/var", { path: "Night.step", value: "3" });
+  await mod.post("/api/mod/signal", { name: "introduce_trabolta" });
+
+  const tv = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+  const tvPage = await tv.newPage();
+  await tvPage.goto(`${BASE}/terminal/?code=${encodeURIComponent(MOD)}&view=tv&name=TV&character=Trabolta&room=The%20Desktop&engine=silent`);
+  // Every line the TV is told to say, as the page's own polls carry it.
+  const said: Array<{ seq: number; at: number }> = [];
+  const polls: number[] = [];
+  tvPage.on("response", async (res) => {
+    if (!res.url().includes("/api/screen/state")) return;
+    polls.push(Date.now());
+    const body = (await res.json().catch(() => null)) as { voice?: { lines?: Array<{ seq: number; from: string }> } } | null;
+    for (const l of body?.voice?.lines ?? []) if (l.from === "Trabolta" && !said.some((s) => s.seq === l.seq)) said.push({ seq: l.seq, at: Date.now() });
+  });
+  await tvPage.waitForTimeout(3_000);
+
+  // A run before this one still holds the parts.
+  for (const part of ["Clippy", "Task Manager"]) await mod.post("/api/mod/prime/release", { character: part });
+  const clippy = await phone(browser, "Clippy");
+  const host = await phone(browser, "Task Manager");
+  await clippy.page.waitForTimeout(2_500);
+
+  const fired = said.length;
+  await mod.post("/api/mod/beat", { name: "Second Hunt" });
+
+  // The pop-up: nothing of his on the TV yet.
+  const alert = clippy.page.locator(".aloud-alert");
+  await expect(alert).toBeVisible({ timeout: 8_000 });
+  await tvPage.waitForTimeout(6_500);
+  expect(said.length, "he waits for the script past the wait for a phone").toBe(fired);
+  await clippy.page.screenshot({ path: join(SHOTS, "1-popup.png") });
+
+  await alert.click();
+  await expect(clippy.page.locator(".aloud-text")).toBeVisible();
+  await tvPage.waitForTimeout(1_000);
+  expect(said.length, "opening it fires nothing").toBe(fired);
+
+  // The host joins from Show.
+  const joinIt = host.page.getByRole("button", { name: "📜 Join" });
+  await expect(joinIt).toBeVisible({ timeout: 15_000 });
+  await host.page.screenshot({ path: join(SHOTS, "2-host-show.png") });
+  await joinIt.click();
+  await expect(host.page.locator(".aloud-text")).toBeVisible();
+
+  // She scrolls to her second line: the host follows, and he still waits.
+  await press(clippy.page, await yOf(clippy.page, 1));
+  await expect(host.page.getByTestId("aloud-lock")).toContainText("Clippy has it", { timeout: 5_000 });
+  await expect(host.page.locator(".aloud-text")).toHaveClass(/locked/u);
+  await clippy.page.waitForTimeout(600);
+  await expect.poll(() => nowLine(host.page), { timeout: 5_000 }).toContain("We are going to proceed");
+  await host.page.screenshot({ path: join(SHOTS, "3-host-locked.png") });
+
+  // The other phone can't take it while she holds it.
+  const hostTop = await scrollOf(host.page);
+  await host.page.locator(".aloud-text").evaluate((e) => void (e.scrollTop = e.scrollTop + 300));
+  await host.page.waitForTimeout(400);
+  expect(Math.abs((await scrollOf(host.page)) - hostTop), "a locked phone snaps back").toBeLessThan(20);
+  await letGo(clippy.page);
+  await expect(host.page.getByTestId("aloud-lock")).toHaveCount(0, { timeout: 5_000 });
+
+  // She reaches his line: the time from the scroll to the TV having it.
+  const y = await yOf(clippy.page, 2);
+  await press(clippy.page, y);
+  const reached = Date.now();
+  await expect.poll(() => said.length, { timeout: 8_000 }).toBeGreaterThan(fired);
+  const heard = said[fired]!.at - reached;
+  await letGo(clippy.page);
+  // Locked for both, and scrolling by itself.
+  for (const p of [clippy.page, host.page]) await expect(p.getByTestId("aloud-lock")).toContainText("Trabolta is speaking", { timeout: 5_000 });
+  await clippy.page.screenshot({ path: join(SHOTS, "4-speaking.png") });
+  const a = await scrollOf(host.page);
+  await host.page.waitForTimeout(5_000);
+  expect(await scrollOf(host.page), "it autoscrolls through his line for everyone").toBeGreaterThan(a + 2);
+
+  // The real TV page has the line up.
+  await expect.poll(() => tvPage.locator(".tv-caption").first().innerText().catch(() => ""), { timeout: 8_000 }).toMatch(/Thank you, Clippy|Programs\. The presentation|Round two|routine/u);
+
+  // ✓ Done ends it on both phones, and the rest of his lines come.
+  await expect(clippy.page.getByTestId("aloud-lock")).toHaveCount(0, { timeout: 90_000 });
+  await clippy.page.getByRole("button", { name: /✓ Done|Skip the rest/u }).first().click();
+  const armed = clippy.page.getByRole("button", { name: /Skip the rest/u });
+  if ((await armed.count()) > 0) await armed.first().click();
+  await expect(clippy.page.locator(".aloud-prompter")).toHaveCount(0, { timeout: 5_000 });
+  await expect(host.page.locator(".aloud-prompter")).toHaveCount(0, { timeout: 5_000 });
+  process.stdout.write(`\nscroll → TV has the line: ${heard} ms; TV polls during the hold: ${polls.length}\n`);
+  await tv.close();
+  await clippy.ctx.close();
+  await host.ctx.close();
+});
+
+/** How many lines of his a poll has released, read as a TV reads them. */
+async function heldNow(mod: Mod): Promise<{ lines: number; held: boolean; head: number }> {
+  const r = (await mod.get(`/api/screen/state?name=probe&view=tv&character=Trabolta&voice=The%20Desktop&after=0`)) as { voice?: { lines: unknown[]; held?: boolean; head: number } };
+  return { lines: r.voice?.lines.length ?? 0, held: r.voice?.held === true, head: r.voice?.head ?? -1 };
+}
+
+test("autoscroll and jumps stay shared; a host's ▶ and a reader leaving both let him speak", async ({ browser }) => {
+  test.skip(BASE === "" || MOD === "" || PRIME === "", "set SIM_BASE, SIM_MOD_CODE and SIM_PRIME_CODE");
+  test.setTimeout(120_000);
+  const mod = await modLogin();
+  await mod.post("/api/mod/start", {});
+  for (const part of ["Clippy", "Task Manager"]) await mod.post("/api/mod/prime/release", { character: part });
+  const clippy = await phone(browser, "Clippy");
+  const host = await phone(browser, "Task Manager");
+  await clippy.page.waitForTimeout(2_500);
+  await mod.post("/api/mod/beat", { name: "Ad Hijack" });
+  const takeover = clippy.page.locator(".aloud-alert");
+  await expect(takeover).toBeVisible({ timeout: 8_000 });
+  await takeover.click();
+  await host.page.getByRole("button", { name: "📜 Join" }).click({ timeout: 15_000 });
+  await expect(host.page.locator(".aloud-text")).toBeVisible();
+
+  // ▶ Scroll on one phone moves both, and stops on his line by itself.
+  await clippy.page.getByRole("button", { name: "▶ Scroll" }).click();
+  await expect(host.page.getByRole("button", { name: "⏸ Pause" })).toBeVisible({ timeout: 5_000 });
+  const a = await scrollOf(host.page);
+  await host.page.waitForTimeout(2_000);
+  expect(await scrollOf(host.page), "autoscroll reaches the other phone").toBeGreaterThan(a + 5);
+  await host.page.getByRole("button", { name: "⏸ Pause" }).click();
+  await expect(clippy.page.getByRole("button", { name: "▶ Scroll" })).toBeVisible({ timeout: 5_000 });
+
+  // ≡ Jump to a section, and the back-a-line arrow, from the other phone.
+  await host.page.getByRole("button", { name: "Back a line" }).click();
+  await expect.poll(() => nowLine(clippy.page), { timeout: 5_000 }).toContain("Okay, programs");
+  expect((await heldNow(mod)).held, "nothing of his has gone").toBe(true);
+
+  // A host's ▶ from Show lets every line go, and the prompter carries on.
+  await host.page.getByRole("button", { name: "Close the teleprompter" }).click();
+  await host.page.getByTestId("host-prompter-release").click({ timeout: 15_000 });
+  await expect.poll(async () => (await heldNow(mod)).held, { timeout: 5_000 }).toBe(false);
+  await expect(clippy.page.locator(".aloud-text")).toBeVisible();
+
+  // A newer beat: the reader goes away, and the rest plays by itself.
+  await mod.post("/api/mod/beat", { name: "Second Hunt" });
+  await expect.poll(async () => (await heldNow(mod)).held, { timeout: 5_000 }).toBe(true);
+  await clippy.page.waitForTimeout(1_000);
+  await clippy.ctx.close();
+  const gone = Date.now();
+  await expect.poll(async () => (await heldNow(mod)).held, { timeout: 20_000, intervals: [500] }).toBe(false);
+  process.stdout.write(`\nreader gone → the hold lets go: ${Date.now() - gone} ms\n`);
+  await host.ctx.close();
+});
+
+const LINES_STORY = `
+TITLE: Lines
+
+CHARACTER Clippy
+
+CHARACTER Recycling Bin
+  admin: true
+
+LOCATION The Desktop
+
+== Start
+  setting: The Desktop
+
+== Bingo Lines
+  setting: The Desktop
+  aloud: Clippy
+Clippy: The first line is mine.
+Recycling Bin: The second line is yours.
+Clippy: The last line is mine again.
+`;
+
+test("someone else's line is a small card: they can say it, or join", async ({ browser }) => {
+  test.skip(BASE === "" || MOD === "" || PRIME === "" || process.env["SIM_LINES"] !== "1", "set SIM_LINES=1 too: it loads a tiny story over the event");
+  test.setTimeout(60_000);
+  const mod = await modLogin();
+  const loaded = await mod.post("/api/mod/load", { source: LINES_STORY, name: "Lines" });
+  expect(loaded["error"]).toBeUndefined();
+  await mod.post("/api/mod/start", {});
+  for (const part of ["Clippy", "Recycling Bin"]) await mod.post("/api/mod/prime/release", { character: part });
+  const clippy = await phone(browser, "Clippy");
+  const bin = await phone(browser, "Recycling Bin");
+  await clippy.page.waitForTimeout(2_000);
+  await mod.post("/api/mod/beat", { name: "Bingo Lines" });
+  const card = bin.page.getByTestId("aloud-card");
+  await expect(card).toBeVisible({ timeout: 8_000 });
+  await expect(card).toContainText("The second line is yours.");
+  await expect(bin.page.locator(".aloud-prompter"), "a line never takes the phone over").toHaveCount(0);
+  await bin.page.screenshot({ path: join(SHOTS, "5-card.png") });
+  await card.getByRole("button", { name: /Join the teleprompter/u }).click();
+  await expect(bin.page.locator(".aloud-line.mine")).toContainText("The second line is yours.");
+  await clippy.ctx.close();
+  await bin.ctx.close();
+});

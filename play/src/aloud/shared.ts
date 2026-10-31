@@ -58,7 +58,8 @@ export class PrompterStore {
   /** A frame, or null: no scene is on. */
   set(f: PrompterFrame | null): void {
     if (f === null || f.done === true) {
-      if (this.frame !== null) this.ended = { id: this.frame.id, superseded: f?.superseded === true };
+      // Gone with no word (null: a restart forgot it) is not read: only a ✓ Done is.
+      if (this.frame !== null) this.ended = { id: this.frame.id, superseded: f?.done !== true || f.superseded === true };
       this.frame = null;
       this.script = null;
     } else {

@@ -139,7 +139,8 @@ export function sceneOf(messages: readonly ChatMessage[], ctx: SceneContext): Sc
   const after = messages
     .filter((m) => m.seq > first.seq && !inScript.has(m.seq) && m.channel === channel && m.kind === "line" && m.hidden !== true && ctx.voiced(m.from))
     .map((m) => ({ seq: m.seq, text: m.text }));
-  return { id: first.seq, channel, sections, readers: [...readers], owners: [...owners], after };
+  // Never 0, which a phone reads as no scene: a fresh run's first line is seq 0.
+  return { id: first.seq + 1, channel, sections, readers: [...readers], owners: [...owners], after };
 }
 
 /** One press of the prompter, as a phone sends it. */
@@ -517,14 +518,14 @@ export class Prompters {
     const v = s.speaking;
     if (v !== null) {
       const t = this.deps.voice(s.draft.channel);
-      // The TV started the run late (the poll, its queue's gap): the words
-      // scroll from the moment he opens his mouth.
+      // The TV started the run late (the poll, its queue's gap): the time
+      // runs from the moment he opens his mouth. Never a step back on screen.
       if (!v.started && t.live && t.speaking !== null && t.speaking >= v.run.firstSeq) {
         v.started = true;
         v.at = now;
         v.until = now + v.run.ms;
-        s.pos = v.run.from;
-        s.at = now;
+        this.sync(s, now);
+        s.rate = ((v.run.to - s.pos) / v.run.ms) * 1000;
         this.emit(s);
       }
       if (!this.spoken(v, t, now)) return false;

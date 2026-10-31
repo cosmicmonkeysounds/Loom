@@ -257,9 +257,10 @@ export function Prompter({ a, storage, sound }: PrompterProps) {
         if (f.speaking !== null || (f.holder !== null && f.holder.who !== sh.me)) held.current = false;
         const now = performance.now();
         if (held.current) {
-          shown.current = el.scrollTop;
-          if (now - sentAt.current >= STILL_HERE_MS) {
+          const moved = Math.abs(el.scrollTop - shown.current) >= 1;
+          if (now - sentAt.current >= (moved ? MOVE_MS : STILL_HERE_MS)) {
             sentAt.current = now;
+            shown.current = el.scrollTop;
             void sh.post({ scene: sh.id, op: "move", pos: sharedPos() }).catch(() => {});
           }
         } else {
@@ -307,12 +308,6 @@ export function Prompter({ a, storage, sound }: PrompterProps) {
     setAt(lineAt(tops.current, el.scrollTop + markY() + 1));
     setEnded(el.scrollTop >= el.scrollHeight - el.clientHeight - 2);
     if (held.current) pos.current = el.scrollTop;
-    const s = shRef.current;
-    const now = performance.now();
-    if (s !== null && held.current && now - sentAt.current >= MOVE_MS) {
-      sentAt.current = now;
-      void s.post({ scene: s.id, op: "move", pos: sharedPos() }).catch(() => {});
-    }
   };
   const hold = () => {
     window.clearTimeout(release.current);
@@ -321,6 +316,7 @@ export function Prompter({ a, storage, sound }: PrompterProps) {
       if (bitsRef.current.locked) return;
       if (!held.current) {
         sentAt.current = performance.now();
+        shown.current = box.current?.scrollTop ?? 0;
         void s.post({ scene: s.id, op: "press", pos: sharedPos() }).catch(() => {
           held.current = false;
         });
