@@ -198,7 +198,7 @@ Found while building. All Default unless it says otherwise: yours to overrule.
 | N-44 | The README's hunt table spelled H4–H6's and F2's answers and codes | Taken out: it points at `facts.json`, as F1's row already did | |
 | N-45 | The README's QR placement table still prints about 30 codex codes, and `OCT31.md` quotes a culled code and the digit notes' codes. All long predate this wave | Left, but for the digit notes: README and DESIGN now name those by room and point at `facts.json`, and a test holds it. The set crew uses the table at 12:00, and history docs stay | Against your rule, read strictly. Say the word and the table moves to entry titles |
 | N-46 | A session's notes named two values that are a codex code and a hunt answer, as ordinary words that had matched a scan | In that transcript only: not in any file, commit or report | Named here so you know |
-| N-47 | `oct31-w58/play-fullscreen` is not on this branch; it reached `oct31-w59/base` | Not merged here | Merge order is yours; re-run the first-load gate after it |
+| N-47 | `oct31-w58/play-fullscreen` is not on this branch; it reached `oct31-w59/base` | It lands with wave 59: Play takes the whole screen on a first tap wherever the browser lets it. An iPhone's Safari can't; there only a Home Screen app loses the bars | The first-load gate ran again on the merged tree |
 | N-48 | Stale facts fixed on the way through: the crew docs had the VPS on `w27` and `w18b`, `ad_burst` at cue 77 (79), 20 truths (17), and Clippy's hand-off line differed from her chip | Fixed | |
 | N-49 | A program mid-talk at his heart when the cables came out could tap the docked menu and get *It is over. Go upstairs.* from a dead man. Combo B the same, already on master | After Combo A or B the pick ends the menu and nobody answers: the phone shows their own pick and nothing back | |
 | N-50 | After an ending that took him, a walk out of the games' map still played his three lines and took 5 trust | Silent and free once `Night.ended` and he is not awake, with a new `# hosts` line. The game still puts them back. Not `awake` alone, as the review suggested: wave 26 keeps the walk in his voice before his reveal, your call then | |
@@ -646,9 +646,9 @@ preview, before the doors. The owed checks of waves 53–56 still stand on their
     system font: no title clips, and no QR or code is cut.
 12. **The hidden room** on a real booth: Task Manager's phone must show the read.
 13. **`predeploy.sh` without `--vr` passed on this branch**, its docker check included, on a
-    dead database, and all seven roads ran 24/24. Not run: the Godot VR suite (this machine
-    has no Godot on its PATH) and the DB-gated tests. Nothing has run on the tree merged with
-    wave 59.
+    dead database, and all seven roads ran 24/24. The Godot VR suite and the DB-gated tests
+    passed too, on their own. The tree merged with wave 59 has its own record on
+    `SIGNOFF-w59.md`.
 
 ## 6. What's owed in print
 
