@@ -185,14 +185,17 @@ test("Task Manager opens on Music, and the top stays put on every tab", async ({
 test("another host opens on Cues; Music and Mix poll only on their tab; a device keeps its tab", async ({ browser }) => {
   const { ctx, page } = await phone(browser, "Adobe Acrobat");
   const mixerCalls: string[] = [];
+  const photoCalls: string[] = [];
   page.on("request", (r) => {
     if (r.url().includes("/api/mod/audio/mixer")) mixerCalls.push(r.url());
+    if (r.url().includes("/api/mod/photos")) photoCalls.push(r.url());
   });
   await openDesk(page, mod, "Adobe Acrobat");
   expect(await selected(page)).toBe("host-desk-tab-cues");
   await expect(page.getByTestId("host-desk-standby")).toBeVisible();
   await page.waitForTimeout(2500);
   expect(mixerCalls, "Cues polls no mixer").toEqual([]);
+  expect(photoCalls, "Cues polls no photos").toEqual([]);
   await tab(page, "mix");
   await expect.poll(() => mixerCalls.length).toBeGreaterThan(1);
   await tab(page, "house");
@@ -200,6 +203,7 @@ test("another host opens on Cues; Music and Mix poll only on their tab; a device
   const n = mixerCalls.length;
   await page.waitForTimeout(2500);
   expect(mixerCalls.length, "House stops the mixer's poll").toBe(n);
+  await expect.poll(() => photoCalls.length, { message: "House polls the photos" }).toBeGreaterThan(0);
   await tab(page, "music");
   await expect.poll(() => mixerCalls.length).toBeGreaterThan(n);
   await tab(page, "setup");
@@ -279,6 +283,22 @@ test("🖥 House: his voice, a flavour, the TV, Identify, the terminals, and wha
   await expect(page.getByTestId("host-desk-note")).toContainText("Casino shows its name");
   await page.getByRole("button", { name: /Stop \+ the announcement/u }).click();
   await expect(page.getByTestId("host-desk-note")).toContainText("and the announcement");
+
+  // 📷 and 📢 live here, fit the phone, and 📢 is Run's own switch.
+  await expect(page.getByTestId("host-photos")).toContainText("Terminal photos");
+  const ads = page.locator("#host-desk-ads");
+  await ads.scrollIntoViewIfNeeded();
+  await expect(ads).toContainText("📢 Audio ads");
+  await expect(page.getByTestId("host-desk-ads-line")).toContainText("played");
+  await shot(page, "house-photos-ads");
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), "no sideways scroll").toBe(true);
+  const adsOn = async () => ((await (await fetch(`${API}/api/mod/screen/terminals`, { headers: { "x-loom-token": mod } })).json()) as { ads: { on: boolean } }).ads.on;
+  await ads.getByRole("button", { name: "Off", exact: true }).click();
+  await expect.poll(adsOn).toBe(false);
+  await expect(page.getByTestId("host-desk-note")).toContainText("Audio ads off");
+  await expect(page.getByTestId("host-desk-ads-line")).toContainText("off");
+  await ads.getByRole("button", { name: "On", exact: true }).click();
+  await expect.poll(adsOn).toBe(true);
 
   // The server keeps these a director's, and the page says where they are.
   await expect(page.getByTestId("host-desk-run-only")).toContainText("🎭 the costume's switch");

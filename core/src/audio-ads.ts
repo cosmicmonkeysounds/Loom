@@ -141,3 +141,23 @@ export interface AdsStatus {
   /** Why nothing may start now, or null. */
   hold: AdHold | null;
 }
+
+// DRAFT w59a
+const AD_HOLD_WORDS: Record<AdHold, string> = {
+  doors: "the doors",
+  talk: "a talk scene",
+  reading: "someone reading on the teleprompter",
+  speaking: "Trabolta speaking on the TV",
+  announcement: "an announcement",
+  cutscene: "a cutscene",
+  blackout: "a blackout",
+};
+
+/** What 📢's row says, on Run and on the Desk: how many have played, and why the next waits. DRAFT w59a */
+export function adsLine(a: AdsStatus): string {
+  const count = `${a.aired} played`;
+  if (!a.on) return `${count}: off`;
+  if (a.playing !== null) return `${count}: playing ${a.playing}`;
+  if (!a.running) return `${count}: they run from the second hunt to the final reveal`;
+  return a.hold !== null ? `${count}: waiting for ${AD_HOLD_WORDS[a.hold]}` : `${count}: the next within 10 minutes`;
+}

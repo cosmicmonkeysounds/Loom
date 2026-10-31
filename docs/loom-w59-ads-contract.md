@@ -71,7 +71,7 @@ sound and no error.
   event's Restart. `pause` does too, since the ticker stops.
 
 **Holds** (`AdHold`): nothing starts, and what is on the air stops at once and stays
-spent. Run → Terminals says which, read when it asks (nothing ticks behind paused doors).
+spent. Run → Terminals and the Desk's 🖥 House say which, read when they ask (nothing ticks behind paused doors).
 
 | Hold | What |
 |---|---|
@@ -162,8 +162,10 @@ Nothing reaches Trabolta's worker: no chat line, no `recent`, no `say`.
 
 ## C6. The kill switch
 
-Run → Terminals, **📢 Audio ads: On / Off**, with how many have played and what the
-next waits for. `POST /api/mod/screen/ads {on}`: a director's, off the host allowlist.
+Run → Terminals and a host's Desk → 🖥 House, **📢 Audio ads: On / Off**, with how many
+have played and what the next waits for (`adsLine`, core's, so both say the same; a host
+reads `HostView.terminals.ads`). `POST /api/mod/screen/ads {on}`: a director's or a host's,
+on the host allowlist like the TV's mute. The switch is `DRAFT w59d` on the Desk.
 Off stops what is playing everywhere, with a stop to every stream whatever is on the
 air, and no more start. On lets the next go, at once if its time has passed. It holds
 through a restart. `GET /api/mod/screen/terminals` carries `ads` (`AdsStatus`).

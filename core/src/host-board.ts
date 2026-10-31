@@ -9,6 +9,7 @@
 //! them. Dependency-free (the play app imports it by path): nothing here
 //! may reach `node:*`, `server/*` or the sim.
 
+import type { AdsStatus } from "./audio-ads.ts";
 import type { VoiceFxMode } from "./voice-fx.ts";
 import { cueRows, cueSheetView, onDeck, type CueSheetView, type CueInteraction, type CueMarks, type WorldLine, type CuePerson } from "./cue-sheet.ts";
 import type { AlertLevel } from "./delivery.ts";
@@ -883,9 +884,10 @@ export interface HostView extends CueSheetView {
     stimulus: { uses: number; limit: number };
   } | null;
   king: { hp: number; max: number; fallen: boolean } | null;
-  /** `dream` (wave 59): Clippy's dream is on the terminals now. Each row's
-   *  device health and build stamp come from its heartbeat (`hostTerminalDevice`). */
-  terminals: { voiceMuted: boolean; voiceFx?: VoiceFxMode; dream?: boolean; silentMs: number; rows: Array<{ name: string; agoMs: number; room?: string; view: string } & HostTerminalDevice> } | null;
+  /** `dream` (wave 59): Clippy's dream is on the terminals now. `ads` (wave 59a): the
+   *  audio ads' state, for the Desk's 📢. Each row's device health and build stamp
+   *  come from its heartbeat (`hostTerminalDevice`). */
+  terminals: { voiceMuted: boolean; voiceFx?: VoiceFxMode; dream?: boolean; ads?: AdsStatus; silentMs: number; rows: Array<{ name: string; agoMs: number; room?: string; view: string } & HostTerminalDevice> } | null;
   agents: Array<{
     id: string;
     online: boolean;
@@ -977,6 +979,7 @@ export interface HostViewInput {
     voiceMuted: boolean;
     voiceFx?: VoiceFxMode;
     dream?: boolean;
+    ads?: AdsStatus;
     terminals: Array<{ name: string; ago: number; room?: string; view: string } & HostTerminalDevice>;
   } | null;
   /** Per-guest flags (`guestFlags`), by guest id. */
@@ -1108,7 +1111,7 @@ export function hostView(input: HostViewInput): HostView {
     judging,
     wallet,
     king: input.king === null ? null : { hp: input.king.hp, max: input.king.max, fallen: input.king.fallen },
-    terminals: terminals === null ? null : { voiceMuted: terminals.voiceMuted, ...(terminals.voiceFx !== undefined ? { voiceFx: terminals.voiceFx } : {}), ...(terminals.dream !== undefined ? { dream: terminals.dream } : {}), silentMs: terminals.silentMs, rows: terminals.terminals.map((t) => ({ name: t.name, agoMs: t.ago, ...(t.room !== undefined ? { room: t.room } : {}), view: t.view, ...hostTerminalDevice(t) })) },
+    terminals: terminals === null ? null : { voiceMuted: terminals.voiceMuted, ...(terminals.voiceFx !== undefined ? { voiceFx: terminals.voiceFx } : {}), ...(terminals.dream !== undefined ? { dream: terminals.dream } : {}), ...(terminals.ads !== undefined ? { ads: terminals.ads } : {}), silentMs: terminals.silentMs, rows: terminals.terminals.map((t) => ({ name: t.name, agoMs: t.ago, ...(t.room !== undefined ? { room: t.room } : {}), view: t.view, ...hostTerminalDevice(t) })) },
     agents,
     parts,
     people,

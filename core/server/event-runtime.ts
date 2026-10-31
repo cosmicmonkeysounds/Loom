@@ -2059,7 +2059,7 @@ export class EventRuntime {
       mod,
       waiting,
       king: king === null ? null : { hp: king.hp, max: king.max, fallen: king.fallen },
-      terminals: { now: terms.now, silentMs: terms.silentMs, voiceMuted: terms.voiceMuted, voiceFx: terms.voiceFx, dream: this.screens.dreamOf(sim) !== null, terminals: terms.terminals.map((t) => ({ name: t.name, ago: t.ago, ...(t.room !== undefined ? { room: t.room } : {}), view: t.view, ...hostTerminalDevice(t) })) },
+      terminals: { now: terms.now, silentMs: terms.silentMs, voiceMuted: terms.voiceMuted, voiceFx: terms.voiceFx, dream: this.screens.dreamOf(sim) !== null, ads: this.adsStatus(), terminals: terms.terminals.map((t) => ({ name: t.name, ago: t.ago, ...(t.room !== undefined ? { room: t.room } : {}), view: t.view, ...hostTerminalDevice(t) })) },
       flags,
       staffRooms: model === null ? [] : staffRoomChannels(model),
       ...(sim !== null ? { awardOnly: awardOnly(sim) } : {}),
@@ -2643,7 +2643,7 @@ export class EventRuntime {
     return this.tvSpeaking() ? "speaking" : null;
   }
 
-  /** What Run → Terminals reads, worked out when it asks. */
+  /** What Run → Terminals and a host's view read, worked out when they ask. */
   private adsStatus(): AdsStatus {
     const running = this.adsRunning();
     return this.ads.status(running, running ? this.adsHold() : null);
@@ -9268,7 +9268,7 @@ export class EventRuntime {
         return true;
       }
       case ADS_MOD_ROUTE: {
-        // Wave 59a: the audio ads' kill switch (a director's; off the host allowlist).
+        // Wave 59a: the audio ads' kill switch, a director's and a host's (the Desk's 🖥 House).
         if (typeof body["on"] !== "boolean") {
           sendJson(res, 400, { error: "send {on}" });
           return true;

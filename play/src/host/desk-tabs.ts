@@ -9,8 +9,9 @@
 //!   else, changes nothing.
 //! - A run still going is a chip in the part of the Desk that never moves, so it
 //!   stays in sight from every tab.
-//! - 🖥 House reads the host view: each terminal's state and build stamp. It widens
-//!   nothing: every write it makes was already on the host allowlist.
+//! - 🖥 House reads the host view: each terminal's state and build stamp. Every write
+//!   it makes is on the host allowlist; the one it added is 📢, a kill switch like the
+//!   TV's mute (`/api/mod/screen/ads`).
 
 import type { HostView } from "../types.ts";
 import type { DeskRun } from "../../../core/src/house-desk.ts";
@@ -193,6 +194,16 @@ export function dreamRow(rows: readonly { id: string; live: boolean }[], on: boo
 
 /** Why the dream's switch is off. */
 export const DREAM_NOT_NOW = "It runs from 🕚 until an ending.";
+
+// --- 🖥 House: 📢 the audio ads --------------------------------------------------------
+
+/** Under 📢's switch, for a host who has never seen it. `DRAFT w59d`. */
+export const ADS_NOTE = "On random walls and phones, from the second hunt to the final reveal. Never the TV, the tent or the server room. Off stops what's playing, everywhere, until someone turns them On.";
+
+/** The note after the switch. `DRAFT w59d`. */
+export function adsDone(on: boolean): string {
+  return on ? "📢 Audio ads on" : "📢 Audio ads off: nothing is playing";
+}
 
 /** What the note says after the switch: the story's own line to the hosts. */
 export function dreamDone(on: boolean, answer: unknown): string {

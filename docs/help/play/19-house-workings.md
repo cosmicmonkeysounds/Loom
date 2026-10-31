@@ -189,7 +189,8 @@ the show, a director or a host (Desk → 🖥 House) sets 🌀 His voice to **Cl
   playing stops. The next one starts as soon as whatever held it is over.
 - A phone nobody has tapped yet shows **▶ Play** in place of sound. Tap it. A wall
   does the same until its first touch.
-- Directors: Run → Terminals → **📢 Audio ads**, On / Off.
+- Directors: Run → Terminals → **📢 Audio ads**, On / Off. Hosts: Desk → 🖥 House, the
+  same switch.
 
 ## Clippy's dream
 
@@ -221,7 +222,7 @@ the show, a director or a host (Desk → 🖥 House) sets 🌀 His voice to **Cl
   standing in the Desktop in either game, the tent's included, hears it
   from the TV, with no 🎤 anywhere to say so. Anything said into it is
   heard, between scenes too: use the pack's mute.
-- **📷 Terminal photos** (Desk, a host's phone): when it reads **ARMED**, in red,
+- **📷 Terminal photos** (Desk → 🖥 House, a host's phone): when it reads **ARMED**, in red,
   each terminal with a working camera takes a photo every 15 s, and nothing shows on
   its screen. Never the Tent or the TV, and the Server Room only while a program is at his
   heart. A press makes it **SAFE**, and every terminal

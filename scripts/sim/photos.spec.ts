@@ -250,6 +250,7 @@ test("the Desk on a phone: ARMED in red, a thumbnail, and a press makes it safe"
     const phone = await pctx.newPage();
     await phone.goto(`${BASE}/?role=performer`);
     await phone.getByRole("button", { name: /Desk/u }).first().click({ timeout: 20_000 });
+    await phone.getByTestId("host-desk-tab-house").click({ timeout: 15_000 });
     const panel = phone.getByTestId("host-photos");
     await panel.scrollIntoViewIfNeeded({ timeout: 15_000 });
     await expect(panel.getByRole("button", { name: /ARMED/u })).toBeVisible();

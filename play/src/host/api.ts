@@ -26,6 +26,8 @@ export const HOST_ROUTES = [
   "/api/mod/wallet/stimulus",
   "/api/mod/spatial/king",
   "/api/mod/screen/voice",
+  // Wave 59: 📢 the audio ads' kill switch, journaled: Off stops what is playing.
+  "/api/mod/screen/ads",
   // Stop every house sound (wave 18b Q7): one-shot, not journaled.
   "/api/mod/audio/stop",
   "/api/mod/screen/identify",
@@ -204,6 +206,8 @@ export function hostCalls(post: HostPost, alertsPath: () => string) {
     tvMute: (muted: boolean) => post("/api/mod/screen/voice", { muted }),
     /** (wave 56) His voice: follows the night, kept clean, or fully broken. */
     voiceFx: (fx: "auto" | "clean" | "broken") => post("/api/mod/screen/voice", { fx }),
+    /** 📢 The audio ads on or off, everywhere: the same switch as Run → Terminals. */
+    adsSwitch: (on: boolean) => post("/api/mod/screen/ads", { on }),
     /** (wave 59, the Desk's 🖥 House) One flavour on his next words, in any mode. */
     voiceShot: (shot: VoiceFlavour) => post("/api/mod/screen/voice", { shot }),
     /** 🔇 Stop all house sounds (wave 18b Q7): every story sound and speaker

@@ -72,6 +72,7 @@ describe("the host calls", () => {
     await calls.kingHp(15);
     await calls.tvMute(true);
     await calls.identify("Kitchen");
+    await calls.adsSwitch(false);
     const codes = await calls.codes();
     await calls.unlockClaim("Excel");
     expect(sent.map((s) => [s.route, s.body])).toEqual([
@@ -90,6 +91,7 @@ describe("the host calls", () => {
       ["/api/mod/spatial/king", { hp: 15 }],
       ["/api/mod/screen/voice", { muted: true }],
       ["/api/mod/screen/identify", { name: "Kitchen" }],
+      ["/api/mod/screen/ads", { on: false }],
       ["/api/mod/codes", {}],
       ["/api/mod/claim/unlock", { character: "Excel", minutes: 2 }],
     ]);

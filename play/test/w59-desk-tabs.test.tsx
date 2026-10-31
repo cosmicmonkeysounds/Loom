@@ -8,10 +8,11 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
-import { HOST_ROUTES, hostCalls, type HostRoute } from "../src/host/api.ts";
+import { HOST_READS, HOST_ROUTES, hostCalls, type HostRoute } from "../src/host/api.ts";
 import { DeskBody } from "../src/host/desk.tsx";
 import { DeskHouseBody, RUN_ONLY, type Act } from "../src/host/desk-house.tsx";
 import {
+  ADS_NOTE,
   DESK_TAB_KEY,
   DREAM_CUE,
   DREAM_NOT_NOW,
@@ -31,6 +32,7 @@ import {
   identifyDone,
   voiceModeLine,
 } from "../src/host/desk-tabs.ts";
+import type { AdsStatus } from "../../core/src/audio-ads.ts";
 import type { HostView } from "../src/types.ts";
 import { deskFixture } from "./desk-fixture.ts";
 import { elements, mountHooks } from "./hooks-harness.ts";
@@ -380,6 +382,48 @@ describe("🖥 House: the switches", () => {
     ]);
     expect(HOST_ROUTES).toContain("/api/mod/screen/voice");
   });
+
+  it("📷 Photos is mounted in 🖥 House and nowhere else, so off that tab it polls nothing", () => {
+    const src = (f: string) => readFileSync(new URL(`../src/host/${f}`, import.meta.url), "utf8");
+    expect(src("desk-house.tsx")).toContain("<PhotosSection auth={auth} calls={calls} />");
+    expect(src("desk.tsx")).not.toMatch(/import .*PhotosSection|<PhotosSection/u);
+    expect(HOST_READS as readonly string[]).toContain("/api/mod/photos");
+    const house = (auth?: { token: string; eventId: string }) => {
+      const { calls } = recorder();
+      return renderToStaticMarkup(createElement(DeskHouseBody, { view: view(), rows: [], ...(auth !== undefined ? { auth } : {}), calls, act, live: false, refresh: () => {}, tryIt: null }));
+    };
+    expect(house(mixer)).toContain('data-testid="host-photos"');
+    expect(house()).not.toContain('data-testid="host-photos"');
+  });
+
+  const adsOn: AdsStatus = { on: true, aired: 3, total: 14, playing: null, running: true, hold: null };
+
+  it("📢 says how it stands, what the next one waits on, and what it is", () => {
+    const with_ = (ads: Partial<AdsStatus> = {}) => body(view({ terminals: terminals({ ads: { ...adsOn, ...ads } }) }));
+    expect(with_()).toContain("📢 Audio ads");
+    expect(with_()).toContain("3 played: the next within 10 minutes");
+    expect(with_()).toContain(ADS_NOTE.replace("'", "&#x27;"));
+    expect(with_({ hold: "talk" })).toContain("3 played: waiting for a talk scene");
+    expect(with_({ running: false })).toContain("they run from the second hunt to the final reveal");
+    expect(with_({ on: false })).toContain("3 played: off");
+    expect(body(view())).not.toContain("📢 Audio ads");
+  });
+
+  it("📢's two buttons are Run's route, and pressing the one already on sends nothing", async () => {
+    const box = (ads: AdsStatus, calls: unknown) => {
+      const h = mountHooks(DeskHouseBody as (p: Parameters<typeof DeskHouseBody>[0]) => unknown, { view: view({ terminals: terminals({ ads }) }), rows: [], calls: calls as never, act, live: false, refresh: () => {}, tryIt: null });
+      const el = elements(h.output).find((e) => (e.type as { name?: string }).name === "AdsBox") as unknown as { type: (p: unknown) => unknown; props: unknown };
+      return elements(mountHooks(el.type, el.props).output).filter((e) => (e.type as { name?: string }).name === "ActButton");
+    };
+    const r = recorder();
+    const [on, off] = box(adsOn, r.calls);
+    expect((on!.props as { pressed: boolean }).pressed).toBe(true);
+    await (on!.props as { onClick: () => Promise<unknown> }).onClick();
+    expect(r.sent).toEqual([]);
+    await (off!.props as { onClick: () => Promise<unknown> }).onClick();
+    expect(r.sent).toEqual([{ route: "/api/mod/screen/ads", body: { on: false } }]);
+    expect(HOST_ROUTES).toContain("/api/mod/screen/ads");
+  });
 });
 
 describe("what the Desk may never do", () => {
@@ -397,13 +441,6 @@ describe("what the Desk may never do", () => {
     expect(RUN_ONLY).toContain("Run → Terminals");
     expect(HOST_ROUTES as readonly string[]).not.toContain("/api/mod/costume");
     expect(HOST_ROUTES as readonly string[]).not.toContain("/api/mod/spatial/descent");
-  });
-
-  it("a named place waits for 📷 Photos and 📢 Audio ads", () => {
-    const s = src("desk-house.tsx");
-    expect(s).toContain("LANDING SLOT");
-    expect(s).toContain("function LandingSlot(");
-    expect(s).toContain("<LandingSlot auth={auth} calls={calls} />");
   });
 
   it("the tabs are thumb-sized and fit a phone with no sideways scroll", () => {

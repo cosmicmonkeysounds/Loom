@@ -677,7 +677,7 @@ describe("the night", () => {
   );
 
   it(
-    "📢 Off is journaled, a director's alone, stops every phone even with nothing on the air, and a restart keeps it",
+    "📢 Off is journaled, a director's or a host's, stops every phone even with nothing on the air, and a restart keeps it",
     async () => {
       const n = new Night();
       const g = await n.guest("Ada");
@@ -687,6 +687,14 @@ describe("the night", () => {
       await n.untilAired(1);
       const played = n.rt.ads.air!.n;
       expect((await n.post("/api/mod/screen/ads", { on: false })).status).toBe(403);
+      expect((await n.post("/api/mod/screen/ads", { on: false, token: g.token })).status).toBe(403);
+      const task = (await n.post("/api/prime/login", { character: "Task Manager", passcode: CODES.prime })).json.token as string;
+      const hostAds = async () => JSON.parse((await n.get(`/api/state?role=mod&host=1&token=${encodeURIComponent(task)}`)).body) as { terminals: { ads: { on: boolean; aired: number; total: number; running: boolean } } };
+      expect((await hostAds()).terminals.ads).toMatchObject({ on: true, aired: 1, total: 14, running: true });
+      expect((await n.post("/api/mod/screen/ads", { on: false, token: task })).json).toMatchObject({ on: false });
+      expect((await hostAds()).terminals.ads.on).toBe(false);
+      expect((await n.post("/api/mod/screen/ads", { on: true, token: task })).json).toMatchObject({ on: true });
+      expect((await hostAds()).terminals.ads.on).toBe(true);
       expect((await n.post("/api/mod/screen/ads", {}, true)).status).toBe(400);
       expect((await n.post("/api/mod/screen/ads", { on: false }, true)).json).toMatchObject({ on: false });
       expect(adFrames(g.stream).at(-1)).toEqual(STOP);

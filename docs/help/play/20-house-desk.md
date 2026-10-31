@@ -114,6 +114,15 @@ What you can do to the house's machines from your phone:
   usual screens, and **Bring the dream back** undoes it. It asks first. It is off
   until 🕚.
 - **⚡ Glitch**, only during a talk scene that has one.
+- **📷 Terminal photos**: **SAFE** takes none. Press it and it reads **ARMED**, in
+  red: each terminal with a working camera takes a photo every 15 s and shows
+  nothing. A row with a ⚠ should be shooting and isn't. These are pictures of
+  people, so keep it off a guest's eyeline. The download and Delete all are on Run.
+- **📢 Audio ads**: **Off** stops whatever is playing, on every wall and phone, and
+  no more start until someone presses **On**. It survives a restart. The line under
+  it says how many have played and what the next one is waiting for. If it says
+  *someone reading on the teleprompter*, a phone left open there is holding them
+  until its ✓ Done.
 - **[Try it](#try-it)**: a line on the speakers, a look or a story sound.
 - **📟 Terminals**: every terminal and the TV, the silent ones first in red, then
   by name, each with its last poll and **Identify** (its name, full screen, on the

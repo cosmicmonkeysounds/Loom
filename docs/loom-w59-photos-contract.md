@@ -105,7 +105,7 @@ on receipt. Files 0600, folders 0700.
 
 ## C4. The panels
 
-- **The Desk** (`play/src/host/photos.tsx`, `PhotosSection`): ARMED / SAFE, big, red when armed;
+- **The Desk's 🖥 House** (`play/src/host/photos.tsx`, `PhotosSection`, mounted only on that tab): ARMED / SAFE, big, red when armed;
   the count; each terminal's count, last shot and thumbnail; a note for any terminal that should
   be shooting and isn't. It polls every 5 s while mounted and visible. A thumbnail is the real
   still, so a phone fetches one a terminal every 30 s at most. Its own stylesheet, in the Desk's

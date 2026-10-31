@@ -39,6 +39,8 @@ const HOST_POSTS: ReadonlySet<string> = new Set([
   "/api/mod/spatial/king",
   "/api/mod/screen/voice",
   "/api/mod/screen/identify",
+  // Wave 59: 📢 the audio ads' kill switch, from the Desk, like the TV's mute.
+  "/api/mod/screen/ads",
   "/api/mod/codes",
   "/api/mod/claim/unlock",
   "/api/mod/guest/gone",

@@ -327,11 +327,13 @@ reads `Show · Chats · Desk · Scan`.
   - **🖥 House** (`host/desk-house.tsx`, over the console's host view): 🌀 his voice
     (modes and a flavour), 🔇 the TV's voice, ■ with the announcement, 🌀 Clippy's
     dream (the story's `dream_toggle`, read from `terminals.dream`), ⚡ in a talk
-    scene, **Try it**, 📟 every terminal's state and build stamp with Identify. The
-    host view's terminals carry the heartbeat's device fields for it (`hostTerminalDevice`,
-    never the patch bay). Every write was already on the host allowlist. 🎭 the
-    costume's switch and the descent stay a director's, and the tab says so.
-    `LandingSlot` is where 📷 Photos and 📢 Audio ads are wired.
+    scene, 📷 Terminal photos (`PhotosSection`, mounted only here, since it polls while
+    mounted), 📢 Audio ads (On / Off, `terminals.ads` and core's `adsLine`), **Try it**,
+    📟 every terminal's state and build stamp with Identify. The host view's terminals
+    carry the heartbeat's device fields for it (`hostTerminalDevice`, never the patch
+    bay). `/api/mod/screen/ads` is the one route the tab added to the host allowlist, a
+    kill switch like the TV's mute. 🎭 the costume's switch and the descent stay a
+    director's, and the tab says so.
   - **Try it** (wave 30, on 🖥 House): *Say on the speakers* (`audio/play {say}`, ≤
     `DESK_SAY_MAX`), then the house's looks (`lights/test {look}`) and the
     story's sounds (`audio/play {sound}`) as tap-to-play rows (the checks'

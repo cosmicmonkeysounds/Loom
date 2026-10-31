@@ -732,7 +732,7 @@ bar shows is pure in `host/show-model.ts` (`hostWindowShown`,
   Nothing, next). Once `live`, every test and Try it asks first
   (`ConfirmButton`, `liveAsk`). It never edits a cue. The hosts' help
   article is `docs/help/play/20-house-desk.md`. Wave 59p adds
-  **📷 Terminal photos** (`host/photos.tsx`, pure `host/photos-model.ts`, its own
+  **📷 Terminal photos**, on **🖥 House** since the tabs (`host/photos.tsx`, pure `host/photos-model.ts`, its own
   `photos.css` in this chunk): `PhotosSection` is self-contained: the arm, the counts, each
   terminal's thumbnail (a blob URL, fetched with the booth's token) and note. Never the
   download or Delete all (`docs/loom-w59-photos-contract.md`). Wave 40 adds a folded
@@ -759,10 +759,12 @@ else Cues. The notes float (`pointer-events: none`) so a line never moves a tab 
 fader under a thumb. **🖥 House** (`host/desk-house.tsx`, `DeskHouseBody` over
 `useHostConsole()`) takes his voice (`calls.voiceFx`, `voiceShot`), the TV's mute, the
 dream (`dreamRow`: the story's `dream_toggle` through `calls.cue`, off behind closed
-doors), ⚡, ■ + the announcement, Try it and the terminals (`terminalLines`: silent
-first, then by name, since the server re-lists a row on every poll; `majorityBuild`; Identify asks once `live`). It reaches nothing a host couldn't already: `RUN_ONLY` says
-where the costume's switch and the descent are. **Landing:** `LandingSlot` in
-`desk-house.tsx` is the one place for 📷 Photos and 📢 Audio ads, and it has `auth` and `calls`. Never on the Desk: Go
+doors), ⚡, ■ + the announcement, `PhotosSection` (mounted here and nowhere else: it polls
+every 5 s while mounted, and the panel is keyed by tab), 📢 `AdsBox` (`calls.adsSwitch`, Run's
+own route and the one write this tab added to the allowlist; `HostView.terminals.ads` and core's
+`adsLine`, so Run and the phone say the same), Try it and the terminals (`terminalLines`: silent
+first, then by name, since the server re-lists a row on every poll; `majorityBuild`; Identify asks once `live`). `RUN_ONLY` says
+where the costume's switch and the descent are. Never on the Desk: Go
 live, Push draft, Restart, End (`test/w59-desk-tabs.test.tsx`). Driven in Chromium at
 390 × 780 by `scripts/sim/desk.spec.ts`.
 

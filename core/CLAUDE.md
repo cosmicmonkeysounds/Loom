@@ -662,7 +662,7 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   server's `now`; a stream opens on one (a stop with nothing on the air, so a restart
   reaches a phone it forgot), and 📢 Off and ■ stop every stream whatever is on the air.
   A phone that can't take one posts `/api/ad/busy` and another takes its place. `POST
-  /api/mod/screen/ads {on}` is a director's, off the host allowlist; `GET
+  /api/mod/screen/ads {on}` is a director's or a host's (the Desk's 🖥 House, on the host allowlist like the TV's mute, and `HostView.terminals.ads` is what it reads); `GET
   /api/mod/screen/terminals` carries `ads`, read when it asks. `LOOM_ADS_GAP_S=20-30` is
   a scratch server's pace. The MP3s are never in git or an image:
   `scripts/ops/ads-media.sh`. Tests: `test/w59-audio-ads.test.ts`.

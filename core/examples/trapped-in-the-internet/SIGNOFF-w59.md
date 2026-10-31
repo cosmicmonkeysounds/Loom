@@ -248,6 +248,7 @@ The Desk's tabs, `DRAFT w59d` (`play/src/host/desk-tabs.ts`, `play/src/host/desk
 - His voice under its buttons: *Follows the night: he comes apart by himself.*, *Kept clean: nothing breaks him, whatever the night does.*, *Fully broken, from now until you change it.*
 - A terminal's marks: *🔇 touch it*, *💤 hidden*, *⛶ not full*, *🚪 shut*, *🚪 open*, *🚪 fault*, *old build*
 - The foot of 🖥 House: *A director's, on Run → Terminals and the House map card: 🎭 the costume's switch, and the descent.*
+- 📢 on 🖥 House: the buttons *On* and *Off*, the state *On* / *Off*, the note *On random walls and phones, from the second hunt to the final reveal. Never the TV, the tent or the server room. Off stops what's playing, everywhere, until someone turns them On.*, and the notes after a press, *📢 Audio ads on* and *📢 Audio ads off: nothing is playing*. Its line of what the next waits for is Run's, `DRAFT w59a` (§8)
 - The dream's box: the title *🌀 Clippy's dream*, the state *on the terminals*, the asks *Every terminal goes back to its usual screen. Do it?* and *Every terminal goes back into the dream. Do it?*, the button *Do it*
 - The dream's notes, when the story sends no line of its own: *🌀 The terminals are going back*, *🌀 The dream is coming back*, *🌀 Not now — # hosts says why*, *🌀 Cues moved — tap again*
 - The title *⚡ The talk scene*, the waiting line *Reading the house…*, the terminals' head *{n}/{m} live · {k} on another build*, and a flavour's note *🌀 {flavour} on his next words*
@@ -444,8 +445,8 @@ sacred."* Built on `oct31-w59/audio-ads`, not shipped. The contract is
 `docs/loom-w59-ads-contract.md`, with the ship order and what no real device has seen.
 
 - **The words we added:** `▶ Play` (`play/src/ad-slot.tsx`, `terminal/src/AdSpot.tsx`), which a
-  phone or a wall shows until it may make a sound, and the crew's lines on Run's 📢 row
-  (`editor/src/lib/terminals.ts`). The ads' names are the files'. Root `CLAUDE.md` names the marker.
+  phone or a wall shows until it may make a sound, and the crew's lines on 📢's row, on Run and on a
+  host's Desk → 🖥 House (`core/src/audio-ads.ts`). The ads' names are the files'. Root `CLAUDE.md` names the marker.
 - **Calls to check:** a reader's phone left open on the teleprompter holds the ads until ✓ Done,
   with no time limit, and Run says so. A slide the walls keep up, such as the Y2K clock, holds them
   for 5 minutes from its cue and no longer, or the final hour would have none. A wall the draw

@@ -193,8 +193,9 @@ its **Desk** window. Help: `docs/help/authoring/49-house-setup.md`,
 **The Desk's tabs** (wave 59, not shipped; `docs/loom-house-desk.md` §6.2, words `DRAFT
 w59d`): a host's Desk is no longer one long scroll. The chips, ■ STOP ALL, a chip for a
 running cue and the note stay put over **🎛 Cues · 🎵 Music · 🎚 Mix · 🖥 House · 🔌 Setup**.
-🖥 House gathers what a host could already do: his voice, the TV's mute, the dream's
-switch, Try it, and every terminal with its state and build stamp. 🎭 the costume's
+🖥 House gathers what a host can do to the machines: his voice, the TV's mute, the dream's
+switch, 📷 Terminal photos, 📢 Audio ads (the one write it added to the host allowlist), Try
+it, and every terminal with its state and build stamp. 🎭 the costume's
 switch and the descent stay a director's on Run. Music is Task Manager's first tab, a
 phone keeps its last one, and Music and Mix poll only on their tab. Reload every host's
 phone. Help: `docs/help/play/20-house-desk.md`.
@@ -277,7 +278,7 @@ server room or the Server Door, the reinstall games, or a terminal with no spot.
 phone is skipped and another takes its place. They give way to a talk scene, a read
 (with no time limit, so a phone left on the prompter holds them until ✓ Done), Trabolta
 on the TV, an announcement, a cutscene, a blackout and paused doors. Run → Terminals →
-📢 is the kill switch, journaled. No
+📢, or a host's Desk → 🖥 House, is the kill switch, journaled. No
 story change and no `sync-show`: `scripts/ops/ads-media.sh upload` (`~/loom-media/ads`,
 never in git or an image), then the release, then reload every phone and terminal. Not
 proven on a real iPhone, Android phone or old tablet. Help:
@@ -510,7 +511,7 @@ the commands are logged as unknown. ⏮ ⏸ and a hand playlist are unproven on 
 real app. Help: `docs/help/authoring/57-music-manager.md`.
 
 **The terminals' photos** (wave 59p, not shipped; `docs/loom-w59-photos-contract.md`, words
-`DRAFT w59p` on `SIGNOFF-w59.md` §4.12): armed from the Desk or Run → Terminals, each terminal
+`DRAFT w59p` on `SIGNOFF-w59.md` §4.12): armed from the Desk's 🖥 House or Run → Terminals, each terminal
 with a working camera takes one still every 15 s, invisibly, off the camera the games' feed
 already holds, so arming opens nothing and prompts nothing. Never the Tent or the TV; the Server
 Room only while a program is at his heart (the server decides, from `Night.heart_stage` and

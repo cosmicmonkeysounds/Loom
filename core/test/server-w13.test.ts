@@ -326,6 +326,7 @@ describe("the host allowlist (§2.7)", () => {
       ["POST", "/api/mod/spatial/king", { hp: 3 }],
       ["POST", "/api/mod/screen/voice", { muted: true }],
       ["POST", "/api/mod/screen/identify", { name: "Kitchen" }],
+      ["POST", "/api/mod/screen/ads", { on: true }],
       ["POST", "/api/mod/codes", {}],
       ["POST", "/api/mod/claim/unlock", { character: "Nobody" }],
       ["POST", "/api/mod/guest/gone", { id: g.id, gone: true }],

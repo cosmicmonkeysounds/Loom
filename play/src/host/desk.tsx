@@ -14,9 +14,11 @@
 //! - **🎵 Music** (wave 58, `music.tsx`) and **🎚 Mix** (wave 40, `mixer.tsx`):
 //!   mounted only while on screen, so they poll nothing until then. Music is
 //!   Task Manager's first tab.
-//! - **🖥 House** (`desk-house.tsx`): his voice, the dream, the terminals, and
-//!   Try it (wave 30): tap a look or a story sound to play it, or say a line on
-//!   the speakers. No marks; once the doors are open each one asks first.
+//! - **🖥 House** (`desk-house.tsx`): his voice, the dream, 📷 Terminal photos
+//!   (wave 59p, `photos.tsx`, mounted only here, so it polls nothing off this tab),
+//!   📢 Audio ads (wave 59a), the terminals, and Try it (wave 30): tap a look or a
+//!   story sound to play it, or say a line on the speakers. No marks; once the doors
+//!   are open each one asks first.
 //! - **🔌 Setup.** *How the Desk works*, folded. Setup (wave 30, `deskSetup`): a
 //!   card per system, tone-coloured, with what to do (open when it is down); one
 //!   *All connected ✓* line when every one is fine. The checks, built for walking
