@@ -59,7 +59,7 @@ describe("the show's generated files", () => {
   });
   it("the reader says the spoken form; the card, the Quest Log and the slide keep the blanks", () => {
     const loom = read("generated/questions.loom");
-    for (const q of SHOW.questions.filter((x) => x.spoken !== undefined)) {
+    for (const q of SHOW.questions.filter((x) => x.spoken !== undefined && x.round === 1)) {
       expect(q.text, q.id).toContain("_");
       expect(q.spoken, q.id).not.toContain("_");
       expect(loom, q.id).toContain(`Trabolta: Question ${q.id === "H2" ? "two" : "three"}. ${q.spoken}`);

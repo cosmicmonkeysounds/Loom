@@ -17,7 +17,7 @@ cd core && LOOM_PORT=7391 LOOM_HOST=127.0.0.1 LOOM_STATE_DIR=$(mktemp -d) \
 
 # the night (from the repo root)
 pnpm sim --base http://127.0.0.1:7391 --code <mod>
-node --experimental-strip-types --no-warnings scripts/sim/evening.ts --base … --code … --ending verdict --lie
+node --experimental-strip-types --no-warnings scripts/sim/evening.ts --base … --code … --ending unfound
 ```
 
 The server plays the show's story from disk (event `default`); no sync is
@@ -99,8 +99,8 @@ takes `SIM_GUEST_CODE`. It resets the event for each, so run it on a scratch ser
 | `--event <id>` | Skip `/api/resolve-code` |
 | `--guests 12` | Guest bots, featured included (at least 4) |
 | `--featured "Microsoft Excel,MS Paint,Pong"` | Featured programs, registered on their invitation's claim |
-| `--ending verdict\|disabled\|destroyed\|song_pickup\|help\|hand_jive\|rave` | Which ending (default `verdict`: the song, or with `--lie` the advice poll; the last four imply `--lie` and take that road). Every road then presses 📜 and takes G1's ask |
-| `--lie` | One confident wrong filing: the verdict goes to Grok Prom, then the advice poll |
+| `--ending verdict\|unfound\|disabled\|destroyed` | Which ending (default `verdict`: someone finds the last answer, 8-A; `unfound`: nobody does, 8-B and the pickup lines). Every road ends in the rave; the bots move the story's timed waits on (`/api/mod/var`), so a run skips the 14-minute monologue |
+| `--lie` | One confident wrong filing. It stays on the record and decides nothing |
 | `--facts <path>\|none` | The answer keys for accurate filings (default the show's `facts.json`; read, never printed) |
 | `--pace <ms>` | Wait after each beat (and a third of it after each action), to watch |
 | `--watch` | Print the URLs to open: a guest phone, the director phone, the heart terminal, the TV (they carry codes) |
@@ -135,8 +135,8 @@ takes `SIM_GUEST_CODE`. It resets the event for each, so run it on a scratch ser
 | 19 | 🫀 Thrown out | Door open → shut; a program flatters, then threatens his cables until he ejects it; 🔄 | marked, then forgiven |
 | 20 | 🫀 The chosen | A featured program: ⟦CHOSEN⟧ → *What weak place* → *I need to go* | Layer 2, not thrown out |
 | 21 | 🫀 The full talk | ⟦PROMISE⟧; every Layer Two question incl. ⟦THE WAY OUT⟧ and ⟦SPEAK FREELY⟧ (a line said); *listen*; Evidence ⟦FORCE⟧ ⟦SMALL TYPE⟧; ⟦PROOF⟧; Reasons ⟦EARN IT⟧, the bluff, ⟦WEAKNESS⟧; *That's all I came to say* | `heart_heard`, Layer 3, the heart not done, the night not ended |
-| 22 | The ending | 🌑 → 🍎 → the bag → 📄 → ⚖ (song, or Grok Prom → 💌 → the poll → 🗳, or the road `--ending` names); or 🔌 → the dance; or 💥 → 🪦 | `Night.ending`, `ended` |
-| 22b | 📜 The full truth | `tell_the_truth`, read by Trabolta or Task Manager by the ending | `truth_told`, `truth_reader`, `finale_truth` on his |
+| 22 | The ending | 🌑 → 🌑 (what her last line presses) → 🍎 → the bag → 📄 → ⚖ → the full truth → 8-A or 8-B → the song → the rave; or 🔌 → the dance; or 💥 → 🪦 | `Night.ending`, `ended`, `raved` |
+| 22b | 📜 The full truth | Combo A and B only: `tell_the_truth`, Task Manager, then the rave | `truth_told`, `truth_reader`, `raved` |
 | 23 | 🏆 Ceremony | G1's ask, G1, the eight awards on their winners (from trust, score, quests…), 🖌 on MS Paint, the staff awards, 🎃 | `ceremony_done`, `resurrected`, `Night.talk` none |
 
 The wave 32 beats say only the show's own canned lines (`lib/talk.ts`

@@ -70,12 +70,12 @@ function boot(programs: Array<[string, string]> = PROGRAMS): Sim {
   for (const [id, name] of programs) upload(sim, id, name);
   return sim;
 }
-/** Wave 18b: ⚖'s ending follows The Verdict's TV pages (34 s of story
- *  time, the `verdict_wait` rule), so a press of it here ticks past them. */
-const VERDICT_PAGES_S = 34;
+/** Wave 59a: ⚖ plays the full truth, then 8-A or 8-B follow by themselves, so a
+ *  press of it here ticks past them to the song. */
+const VERDICT_PAGES_S = [831, 88]; // the full truth, then 8-A, to the song
 const pastTheVerdict = (sim: Sim, name: string): SimEvent[] => {
   const out: SimEvent[] = [];
-  if (name === "the_verdict") for (let i = 0; i < VERDICT_PAGES_S; i++) out.push(...sim.tick(1000));
+  if (name === "the_verdict") for (const seconds of VERDICT_PAGES_S) out.push(...sim.tick(seconds * 1000));
   return out;
 };
 const fire = (sim: Sim, name: string, subject: string | null = null, args: Args | null = null, actor?: string) => [...sim.signal(name, subject ?? undefined, args, actor), ...pastTheVerdict(sim, name)];
@@ -130,6 +130,7 @@ function toBobbing(sim: Sim, opts: { lie?: boolean; retract?: boolean } = {}) {
   expect(v(sim, "Night.phase")).toBe("final_reveal");
   fire(sim, "accurate_q1", "g1", null, "Clippy");
   fire(sim, "accurate_q2", "g2", null, "Clippy");
+  fire(sim, "final_reveal");
   fire(sim, "bobbing_for_truth");
   fire(sim, "failed_the_bob", "g5", null, "Adobe Acrobat");
   fire(sim, "send to the internet", "g5", null, "Norton Anti-Virus");
@@ -209,7 +210,8 @@ describe("wave 9 — only the advice card votes in the advice poll (T2-facts-03)
   it("a late tap on a bottle card left on the phone votes nothing and keeps the program's real vote", { timeout: SLOW }, () => {
     const sim = boot();
     toBobbing(sim, { lie: true });
-    truthTxt(sim);
+    fire(sim, "read_truth_txt");
+    sim.fireBeat("Grok Prom"); // off the night since wave 59a: its rules are still held
     fire(sim, "ask_for_advice");
     expect(v(sim, "Night.poll")).toBe("advice");
     // The bottle's Truth | Dare card, never tapped in round 1, tapped now.
@@ -320,7 +322,8 @@ describe("wave 9 — a King win after truth.txt gives no door code (R2-diff-clie
     toBobbing(sim, { lie: true });
     // The King plays for the code all night, until 📄.
     expect(v(sim, "Night.king_armed")).toBe(1);
-    truthTxt(sim);
+    fire(sim, "read_truth_txt");
+    sim.fireBeat("Grok Prom"); // off the night since wave 59a: its rules are still held
     expect(v(sim, "Night.r3_closed")).toBe(true);
     expect(v(sim, "Night.ended")).not.toBe(true);
     expect(v(sim, "Night.king_armed")).toBe(0);
@@ -627,11 +630,11 @@ describe("wave 9 — ✅ takes back a 😤 pressed for the same answer (T2-facts
     expect([v(sim, "Kernel.q1"), v(sim, "Kernel.q2"), v(sim, "Kernel.q3")]).toEqual(["accurate", "accurate", "accurate"]);
   });
 
-  it("the verdict after a taken-back 😤 is the Song Ending", { timeout: SLOW }, () => {
+  it("the record after a taken-back 😤 is clean", { timeout: SLOW }, () => {
     const sim = boot();
     toBobbing(sim, { retract: true });
     expect(["q1", "q2", "q3", "q4", "q5", "q6", "q7", "q8"].map((q) => v(sim, `Kernel.${q}`))).toEqual(Array(8).fill("accurate"));
-    expect(beats(truthTxt(sim))).toContain("Song Ending");
+    expect(beats(truthTxt(sim))).toContain("Verdict Record");
   });
 });
 

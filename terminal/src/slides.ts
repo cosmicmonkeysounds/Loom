@@ -593,14 +593,14 @@ export const SLIDE_COPY: Readonly<Record<string, SlideCopy>> = {
   trivia_2: {
     title: "TRABOLTA TRIVIA · ROUND 2",
     lines: [
-      "Q1. What extension does the Customer Care card tell you to dial?",
-      "Q2. Which song did Trabolta play 412 times the night before he registered mapsandducks.com?",
-      "Q3. What is the title of the last chapter of Trabolta's unfinished Grand Unified Theory?",
+      "Q1. What is an example of a Strong Password, cited by a For Dummies book, that starts with Q?",
+      "Q2. What, according to one book, is the traditional objection to romance?",
+      "Q3. According to one encyclopedia, what trend in technological progress will lead to this outcome: “Increased wages and shorter hours will provide the leisure necessary for man’s full cultural development.”",
     ],
   },
   return: { title: "RETURN TO THE DESKTOP", lines: ["Time is up."] },
   hunt_results: { title: "THE RESULTS", lines: ["The First Moment of Truth."] },
-  tally: { title: "THE TALLY", lines: ["The second collection is closed.", "Trabolta is reading every fact you filed."] },
+  tally: { title: "THE TALLY", lines: ["The second collection is closed."] },
   truth_or_dare: { title: "TRUTH OR DARE", lines: ["The bottle is spinning."] },
   ad_hijack: { title: "000. 000. 000.", lines: ["A special offer for you."] },
   truther: { title: "TRUTHER DOWNLOAD", lines: ["Downloading… do not turn off your computer."] },

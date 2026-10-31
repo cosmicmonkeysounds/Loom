@@ -44,8 +44,6 @@ Run → Players and a terminal piloting that program are refused the same
 way. Release lifts it on the next update; nobody needs to unlock it by
 hand.
 
-- A **banished** night (everyone in the Internet at once) is not a
-  reinstallation and never locks.
 - A player's booth (Clippy, an Antivirus) is never locked.
 - A locked guest's Codex is refused, so the tent's printed QR works only
   after release, or through Run's codex grant.
@@ -77,9 +75,6 @@ restricted*.
   open to every program: *🎉 Party favour unlocked*, nobody is captured
   by starting, and runs after the end never count for the duck speedrun
   award.
-- **A banished night.** A find shows **GERALD CAN'T HELP** (no egg, no
-  fanfare) on the tablet, the headset and the walls. The way out is the
-  hand jive, together.
 - **Headsets and terminals** are set up from the editor's help (*Setting
   up terminals, the door sensor and headsets*), never from a guest's Help.
 
@@ -280,14 +275,13 @@ the show, a director or a host (Desk → 🖥 House) sets 🌀 His voice to **Cl
 
 **The full truth comes first** (wave 58). Every ending plays out, and then a host
 or a director presses **G0 📜 The full truth**: the whole story of the night, in
-the living room, 12 to 14 minutes. Trabolta reads his own file on the TV after the
-song, the pickup line, the helped ending and the hand jive; he phones it in from
-the prom after the rave; Task Manager reads it off the teleprompter after
+the living room, 12 to 14 minutes. Trabolta reads his own file on the TV on the
+verdict (⚖ plays it, and the ending and the rave follow by themselves); Task Manager reads it off the teleprompter after
 Combo A (a message he left before he died) and Combo B (the last thing the
 computer saved). His voice stays clean through it, unless a director breaks it.
 
 - **A dance track never ducks under him.** Press ■ Stop house sounds before 📜 if
-  the rave's, the hand jive's or the dance song is still up.
+  the dance song is still up, and before G1 on every ending.
 - **No voice on the TV?** Mute it, then **📜 Task Manager reads it instead**. His
   phone down? His printed copy, or ⊞ Start → My script on any phone signed in to
   the part.

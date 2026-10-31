@@ -371,9 +371,11 @@ describe("Trabolta never knows what he is asking for", () => {
 
     for (const n of ["five_minute_warning", "summons_closed", "truth_pong", "round_two_tally", "trust_chart", "show_the_rankings", "printer_opened"]) await mod(n);
     await look("the beans");
-    await mod("trabolta_overshares"); // he asks the final two facts
-    expect(v("Night.facts_requested")).toBe(8);
-    for (const g of guests) for (const q of ["F1", "F2"]) await call(rt, "POST", "/api/guest/codex/redeem", { code: codeOf(q) }, { token: g.token });
+    await mod("trabolta_overshares"); // he asks the final three facts
+    expect(v("Night.facts_requested")).toBe(9);
+    for (const g of guests) for (const q of ["F1", "F2", "F3"]) await call(rt, "POST", "/api/guest/codex/redeem", { code: codeOf(q) }, { token: g.token });
+    // The old answers, documents now (wave 59a): still scanned by anyone, still his to refuse.
+    for (const g of guests) for (const d of FACTS.documents!) await call(rt, "POST", "/api/guest/codex/redeem", { code: d.codex.code }, { token: g.token });
     await look("the overshare (the final facts asked, found)");
     for (const e of ["What Sandy Says", "The Prom Ticket"]) {
       expect((await call(rt, "POST", "/api/guest/codex/share", { entry: e, to: "Trabolta" }, { token: pad.token })).status, e).toBe(403);
@@ -390,6 +392,7 @@ describe("Trabolta never knows what he is asking for", () => {
     rt.tickOnce(3_600_000); // midnight: the final reveal
     expect(v("Night.phase")).toBe("final_reveal");
     await look("the final reveal");
+    await mod("final_reveal");
     await mod("bobbing_for_truth");
     expect(v("Night.phase")).toBe("bobbing");
     await look("the bob (before truth.txt is read)");
@@ -400,31 +403,31 @@ describe("Trabolta never knows what he is asking for", () => {
     expect(v("Night.bag_up")).toBe(true);
     await mod("read_truth_txt");
     await mod("the_verdict");
-    rt.tickOnce(34_000); // wave 18b: the ending follows the verdict's TV pages
-    expect(v("Night.phase")).toBe("grok_prom");
+    rt.tickOnce(831_000); // the full truth, then 8-B: nobody found the last answer
+    rt.tickOnce(106_000); // his pause, and the card
+    expect(v("Night.lines_open")).toBe(true);
     expect(rt.liveSim!.model.interactions.has("the_line_works")).toBe(false); // no power to accept it himself
     const AFTER = AFTER_THE_VERDICT_SCAN;
-    const asked = await look("Grok Prom (he asks for the line)", calc, AFTER);
+    const asked = await look("8-B (he asks for a line)", calc, AFTER);
     expect(asked.powers.map((p) => p.id)).not.toContain("the_line_works");
     // The 💌 card went to every program's thread (a widget: not a line of his history).
     for (const g of guests) expect(rt.chatHistoryFor(g.id).some((m) => m.channel === "dm:Trabolta" && m.widget?.kind === "answer" && m.widget.params["question"] === "P1"), g.name).toBe(true);
     // A program types the line to him: theirs to say, never his to keep or pass on.
-    const typed = await look("Grok Prom (a program typed the line)", pad, AFTER, FACTS.answers[0]!.answer);
+    const typed = await look("8-B (a program typed the line)", pad, AFTER, FACTS.answers[0]!.answer);
     expect(typed.text).toBe(FACTS.answers[0]!.answer);
-    await look("Grok Prom (another program asks after)", calc, AFTER);
-    // A wrong line on the 💌 card: the house says no, in that program's thread.
+    await look("8-B (another program asks after)", calc, AFTER);
+    // Lines on the card: nothing judges them, and the old line wins nothing.
     const cardOf = (g: Guest) => rt.chatHistoryFor(g.id).filter((m) => m.kind === "widget" && m.widget?.kind === "answer").at(-1)!;
     expect((await call(rt, "POST", "/api/guest/widget", { seq: cardOf(amp).seq, result: { text: "Hey girl, are you a router?" } }, { token: amp.token })).status).toBe(200);
-    const no = await look("Grok Prom (a wrong line on the card)", amp, AFTER);
-    expect(no.history.some((l) => l.text === "The house says no. That is not the line.")).toBe(true);
-    expect(v("Night.line_by")).toBe("none");
-    // The right line on the card: the house tells him who, never what.
     expect((await call(rt, "POST", "/api/guest/widget", { seq: cardOf(calc).seq, result: { text: FACTS.answers[0]!.accept[0] } }, { token: calc.token })).status).toBe(200);
-    expect(v("Night.line_by")).toBe("Calculator");
+    expect(v("Night.line_by")).toBe("none");
+    expect(v("Night.ending")).toBe("none");
+    expect(v("Kernel.lines_n")).toBe(2);
+    await mod("no_pickup_line"); // he reads them all out
+    await look("8-B (the lines read)", calc, AFTER);
+    rt.tickOnce(60_000);
+    rt.tickOnce(2_000); // the blank's second
     expect(v("Night.ending")).toBe("song_pickup");
-    const yes = await look("the line accepted (the Song Ending)", calc, AFTER);
-    expect(yes.world["Night.line_by"]).toBe("Calculator");
-    expect(yes.history.some((l) => l.text === "The house says YES. That is the line, Calculator.")).toBe(true);
 
     expect(leaks).toEqual([]);
     rt.dispose();
@@ -526,8 +529,7 @@ describe("Trabolta never knows what he is asking for", () => {
     for (const q of FACTS.questions) {
       const c = q.codex!;
       expect(sim.model.codexCodes.get(foldCode(c.code)), q.id).toBe(c.id);
-      // A key still owed (facts.json `placeholder`) has no answer to find yet.
-      if (q.placeholder !== true) expect(answersIn(sim.model.codex.get(c.id)!.text), q.id).toContain(`${q.id}: ${q.answer}`);
+      expect(sim.model.codex.get(c.id)!.text.replace(/\s+/gu, " "), q.id).toContain(c.text.replace(/\s+/gu, " "));
     }
     // The LiveJournal still describes the rival ("says whatever anyone wants
     // to hear"), and The Rival names him.

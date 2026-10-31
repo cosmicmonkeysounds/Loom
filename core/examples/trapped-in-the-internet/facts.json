@@ -97,89 +97,353 @@
     },
     "3": {
       "questTitle": "The Final Fact-Finding Round",
-      "brief": "The last two facts. Everything depends on these facts."
+      "brief": "The last three facts. Everything depends on these facts."
     }
   },
   "questions": [
     {
       "id": "H1",
       "round": 1,
-      "draft": true,
-      "placeholder": true,
       "text": "According to Funk and Wagnalls, what is an example of fraud?",
-      "answer": "PLACEHOLDER H1 ANSWER OWED",
-      "accept": [],
+      "reading": "The answer was: “For example, if a person represents himself as the agent of a business with which he is unconnected, and causes another to contract with him to the other party’s disadvantage or injury, the first party is guilty of fraud.”",
+      "answer": "representing yourself as the agent of a business you are unconnected with",
+      "accept": [
+        "representing yourself as the agent of a business",
+        "representing yourself as an agent of a business",
+        "representing yourself as an agent of a business you are unconnected with",
+        "representing himself as the agent of a business",
+        "representing himself as an agent of a business",
+        "representing himself as the agent of a business with which he is unconnected",
+        "a person represents himself as the agent of a business with which he is unconnected",
+        "if a person represents himself as the agent of a business with which he is unconnected",
+        "a person representing himself as the agent of a business with which he is unconnected",
+        "for example if a person represents himself as the agent of a business with which he is unconnected and causes another to contract with him to the other partys disadvantage or injury the first party is guilty of fraud",
+        "posing as the agent of a business",
+        "posing as an agent of a business",
+        "posing as an agent of a business you are not connected to",
+        "pretending to be the agent of a business",
+        "pretending to be an agent of a business",
+        "pretending to be an agent of a business you are not connected to",
+        "pretending to represent a business",
+        "claiming to be the agent of a business",
+        "claiming to be an agent of a business",
+        "impersonating an agent of a business",
+        "impersonating a business agent",
+        "falsely representing a business",
+        "representing a business you are not connected to",
+        "representing a business you have no connection to",
+        "agent of a business with which he is unconnected",
+        "representing yourself as the agent of a business with which you are unconnected",
+        "representing yourself as an agent of a business with which you are unconnected",
+        "a person represents himself as the agent of a business with which he is unconnected and causes another to contract with him",
+        "if a person represents himself as the agent of a business with which he is unconnected and causes another to contract with him",
+        "a person represents himself as the agent of a business he is unconnected with",
+        "representing yourself as the agent of a business you are not connected with",
+        "pretending to be the agent of a business you are not connected with"
+      ],
       "topics": [
         "funk and wagnalls",
         "example of fraud"
       ],
-      "where": "The Desktop: in Funk and Wagnalls, among the books (the page is owed)",
+      "where": "The Desktop: in Funk and Wagnalls, among the books",
       "codex": {
         "id": "Funk And Wagnalls",
         "title": "Funk and Wagnalls",
         "code": "WAGNALLS-FRAUD",
-        "text": "PLACEHOLDER. A page of Funk and Wagnalls goes here. Its words are owed."
+        "text": "For example, if a person represents himself as the agent of a business with which he is unconnected, and causes another to contract with him to the other party’s disadvantage or injury, the first party is guilty of fraud."
       }
     },
     {
       "id": "H2",
       "round": 1,
-      "draft": true,
-      "placeholder": true,
       "text": "According to Forensics For Dummies, finish this sentence: “___ ___ ___ ___ ___ previously hypnotized witnesses.”",
-      "spoken": "According to Forensics For Dummies, finish this sentence: blank, blank, blank, blank, blank, previously hypnotized witnesses.",
-      "answer": "PLACEHOLDER H2 ANSWER OWED",
-      "accept": [],
+      "spoken": "According to Forensics For Dummies, finish this sentence: “Blank blank blank blank blank previously hypnotized witnesses.”",
+      "reading": "The answer was: “People who are under the influence of hypnosis often are highly susceptible to suggestion, such that merely asking them questions can alter their memories of certain events. It’s possible for these new memories to become part of their real memory, thus jeopardizing any future interviews or court testimony they may provide. Not all courts allow testimony from previously hypnotized witnesses.”",
+      "answer": "Not all courts allow testimony from",
+      "accept": [
+        "not all courts allow testimony from previously hypnotized witnesses",
+        "not all courts allow testimony from previously hypnotised witnesses",
+        "not all courts allow testimony",
+        "not all courts allow testimony of",
+        "not all courts allow testimony by",
+        "not all courts allow the testimony from",
+        "not all courts allow the testimony of",
+        "not all courts allow testimonies from",
+        "not all courts accept testimony from",
+        "not all courts permit testimony from",
+        "not all courts accept testimony of",
+        "not all courts admit testimony from",
+        "not all courts admit testimony of"
+      ],
       "topics": [
         "forensics for dummies",
-        "hypnotized witnesses"
+        "finish this sentence"
       ],
-      "where": "The Desktop: in Forensics For Dummies, among the books (the page is owed)",
+      "where": "The Desktop: in Forensics For Dummies, among the books",
       "codex": {
         "id": "Forensics For Dummies",
         "title": "Forensics For Dummies",
         "code": "DUMMIES-FORENSICS",
-        "text": "PLACEHOLDER. A page of Forensics For Dummies goes here. Its words are owed."
+        "text": "People who are under the influence of hypnosis often are highly susceptible to suggestion, such that merely asking them questions can alter their memories of certain events. It’s possible for these new memories to become part of their real memory, thus jeopardizing any future interviews or court testimony they may provide. Not all courts allow testimony from previously hypnotized witnesses."
       }
     },
     {
       "id": "H3",
       "round": 1,
-      "draft": true,
-      "placeholder": true,
       "text": "According to Macs for Dummies, finish this sentence: “A similar online _, called pharming, also involves the use of __ ___ __.”",
       "spoken": "According to Macs for Dummies, finish this sentence: A similar online blank, called pharming, also involves the use of blank, blank, blank.",
-      "answer": "PLACEHOLDER H3 ANSWER OWED",
-      "accept": [],
+      "reading": "The answer was: “A similar online fraud, called pharming, also involves the use of fake Web sites. Only this time, traffic is redirected from a legitimate bank or other destination to a bogus Web site that looks virtually identical. If you smell a rat, proceed gingerly.”",
+      "answer": "fraud, fake Web sites",
+      "accept": [
+        "fraud and fake web sites",
+        "fraud and fake websites",
+        "fraud fake websites",
+        "fraud, the use of fake web sites",
+        "fraud and the use of fake web sites",
+        "fraud and the use of fake websites",
+        "fraud / fake web sites",
+        "fraud; fake web sites",
+        "fake web sites and fraud",
+        "fake websites and fraud",
+        "a similar online fraud called pharming also involves the use of fake web sites",
+        "a similar online fraud called pharming also involves the use of fake websites",
+        "similar online fraud called pharming also involves the use of fake web sites",
+        "online fraud called pharming also involves the use of fake web sites",
+        "fraud, fake sites",
+        "fraud and fake sites"
+      ],
       "topics": [
         "macs for dummies",
-        "pharming"
+        "finish this sentence"
       ],
-      "where": "The Desktop: in Macs for Dummies, among the books (the page is owed)",
+      "where": "The Desktop: in Macs for Dummies, among the books",
       "codex": {
         "id": "Macs For Dummies",
         "title": "Macs for Dummies",
         "code": "DUMMIES-MACS",
-        "text": "PLACEHOLDER. A page of Macs for Dummies goes here. Its words are owed."
+        "text": "A similar online fraud, called pharming, also involves the use of fake Web sites. Only this time, traffic is redirected from a legitimate bank or other destination to a bogus Web site that looks virtually identical. If you smell a rat, proceed gingerly."
       }
     },
     {
       "id": "H4",
       "round": 2,
-      "draft": true,
-      "text": "What extension does the Customer Care card tell you to dial?",
-      "answer": "1978",
+      "text": "What is an example of a Strong Password, cited by a For Dummies book, that starts with Q?",
+      "reading": "The answer was: “The book Computers For Seniors For Dummies recommends a secure password of QWERTY7654321 on page 227. This is truly the worst password I have ever seen.”",
+      "answer": "QWERTY7654321",
       "accept": [
-        "ext 1978",
-        "ext. 1978",
-        "nineteen seventy eight",
-        "nineteen seventy-eight"
+        "qwerty 7654321",
+        "qwerty-7654321",
+        "qwerty7654321 on page 227"
       ],
       "topics": [
-        "extension",
-        "customer care",
-        "tell you to dial"
+        "strong password",
+        "starts with q"
       ],
+      "where": "The Desktop: in Computers For Seniors For Dummies, among the books",
+      "codex": {
+        "id": "Computers For Seniors",
+        "title": "Computers For Seniors For Dummies",
+        "code": "DUMMIES-SENIORS",
+        "text": "The book Computers For Seniors For Dummies recommends a secure password of QWERTY7654321 on page 227. This is truly the worst password I have ever seen."
+      }
+    },
+    {
+      "id": "H5",
+      "round": 2,
+      "text": "What, according to one book, is the traditional objection to romance?",
+      "reading": "The answer, from Grolier’s encyclopedia in 1967 was: “The traditional objection to romance – that it is escapist and immoral – is given further validity by contemporary examples of the form: the sentimental erotic adventures produced for the mass market.”",
+      "answer": "escapist and immoral",
+      "accept": [
+        "it is escapist and immoral",
+        "that it is escapist and immoral",
+        "that romance is escapist and immoral",
+        "romance is escapist and immoral",
+        "immoral and escapist",
+        "escapist, immoral",
+        "escapism and immorality",
+        "its escapist and immoral"
+      ],
+      "topics": [
+        "traditional objection",
+        "objection to romance"
+      ],
+      "where": "The Desktop: in the 1967 Grolier, among the books",
+      "codex": {
+        "id": "Grolier On Romance",
+        "title": "Grolier's Encyclopedia, 1967",
+        "code": "GROLIER-ROMANCE",
+        "text": "The traditional objection to romance – that it is escapist and immoral – is given further validity by contemporary examples of the form: the sentimental erotic adventures produced for the mass market."
+      }
+    },
+    {
+      "id": "H6",
+      "round": 2,
+      "text": "According to one encyclopedia, what trend in technological progress will lead to this outcome: “Increased wages and shorter hours will provide the leisure necessary for man’s full cultural development.”",
+      "reading": "The answer was: “Automation. Yes, Funk and Wagnalls encyclopedia from the 1980s said automation would be responsible for man’s full cultural development. I am inclined to agree with their estimation, because automation is what has made Jean Trabolta’s Truth Scavenger Hunt possible.”",
+      "answer": "Automation",
+      "accept": [
+        "automating",
+        "increased automation",
+        "the trend toward automation",
+        "automatization",
+        "automatisation"
+      ],
+      "topics": [
+        "trend in technological progress",
+        "shorter hours",
+        "cultural development"
+      ],
+      "where": "The Desktop: in Funk and Wagnalls, among the books",
+      "codex": {
+        "id": "Funk And Wagnalls Leisure",
+        "title": "Funk and Wagnalls, the 1980s",
+        "code": "WAGNALLS-LEISURE",
+        "text": "Automation. Yes, Funk and Wagnalls encyclopedia from the 1980s said automation would be responsible for man’s full cultural development. I am inclined to agree with their estimation, because automation is what has made Jean Trabolta’s Truth Scavenger Hunt possible."
+      }
+    },
+    {
+      "id": "F1",
+      "round": 3,
+      "text": "Who is Binary Tom?",
+      "reading": "The answer was: “Binary Tom is a character invented in the book “Data Structures Outside In With Java” who is a hypothetical colleague that challenges you to a number guessing game that he has solved using binary search algorithms.”",
+      "answer": "a hypothetical colleague who challenges you to a number guessing game, solved with binary search, from Data Structures Outside In With Java",
+      "accept": [
+        "a hypothetical colleague",
+        "hypothetical colleague from data structures outside in with java",
+        "a hypothetical colleague who challenges you to a number guessing game",
+        "a hypothetical colleague who challenges you to a guessing game",
+        "a hypothetical colleague that challenges you to a number guessing game that he has solved using binary search algorithms",
+        "a hypothetical colleague who challenges you to a number guessing game solved with binary search",
+        "a hypothetical colleague with a number guessing game",
+        "a colleague who challenges you to a number guessing game",
+        "a colleague who challenges you to a guessing game",
+        "a coworker who challenges you to a number guessing game",
+        "a hypothetical coworker",
+        "a character in data structures outside in with java",
+        "a character from data structures outside in with java",
+        "a character invented in data structures outside in with java",
+        "a character invented in the book data structures outside in with java",
+        "a hypothetical character in data structures outside in with java",
+        "a hypothetical colleague that challenges you to a number guessing game",
+        "a hypothetical colleague that challenges you to a guessing game",
+        "a colleague that challenges you to a number guessing game",
+        "a colleague that challenges you to a guessing game",
+        "a hypothetical colleague in data structures outside in with java",
+        "a hypothetical colleague from data structures outside in with java",
+        "a hypothetical colleague who plays a number guessing game with you",
+        "a hypothetical colleague who challenges you to guess a number",
+        "a hypothetical colleague who challenges you to a game of guessing numbers"
+      ],
+      "topics": [
+        "binary tom"
+      ],
+      "where": "The Desktop: in Data Structures Outside In With Java, among the books",
+      "codex": {
+        "id": "Data Structures Outside In",
+        "title": "Data Structures Outside In With Java",
+        "code": "OUTSIDE-IN-JAVA",
+        "text": "Binary Tom is a character invented in the book “Data Structures Outside In With Java” who is a hypothetical colleague that challenges you to a number guessing game that he has solved using binary search algorithms."
+      }
+    },
+    {
+      "id": "F2",
+      "round": 3,
+      "text": "What is the unlikely condition that will enable you to find your child on a map using Windows 10?",
+      "reading": "The answer, from Windows 10 for Dummies, is: “Find Child on a Map feature: If your child is one of the few with a Windows smartphone, this flip switch lets you locate the device – and, hopefully, your child – on a map.”",
+      "answer": "your child being one of the few with a Windows smartphone",
+      "accept": [
+        "if your child is one of the few with a windows smartphone",
+        "your child is one of the few with a windows smartphone",
+        "child is one of the few with a windows smartphone",
+        "one of the few with a windows smartphone",
+        "if your child has a windows smartphone",
+        "your child has a windows smartphone",
+        "your child having a windows smartphone",
+        "the child has a windows smartphone",
+        "if they have a windows smartphone",
+        "they have a windows smartphone",
+        "a windows smartphone",
+        "windows smartphone",
+        "if your child has a windows phone",
+        "your child has a windows phone",
+        "your child having a windows phone",
+        "the child has a windows phone",
+        "if they have a windows phone",
+        "they have a windows phone",
+        "having a windows phone",
+        "a windows phone",
+        "windows phone",
+        "if your child owns a windows smartphone",
+        "if your child uses a windows smartphone",
+        "your child owns a windows smartphone",
+        "your child uses a windows smartphone",
+        "if your kid has a windows smartphone",
+        "your kid has a windows smartphone",
+        "if your kid is one of the few with a windows smartphone",
+        "if your child owns a windows phone",
+        "if your child uses a windows phone",
+        "if your kid has a windows phone",
+        "your kid has a windows phone"
+      ],
+      "topics": [
+        "unlikely condition",
+        "find your child on a map"
+      ],
+      "where": "The Desktop: in Windows 10 For Dummies, among the books",
+      "codex": {
+        "id": "Windows 10 For Dummies",
+        "title": "Windows 10 For Dummies",
+        "code": "DUMMIES-WINDOWS",
+        "text": "Find Child on a Map feature: If your child is one of the few with a Windows smartphone, this flip switch lets you locate the device – and, hopefully, your child – on a map."
+      }
+    },
+    {
+      "id": "F3",
+      "round": 3,
+      "secretFromAgents": true,
+      "text": "According to one encyclopedia, who is: “[...] often a shy, meek individual bothered by feelings of inadequacy and perhaps unsure of his masculinity – while a nuisance, not a serious menace.”",
+      "spoken": "According to one encyclopedia, who is: “often a shy, meek individual bothered by feelings of inadequacy and perhaps unsure of his masculinity – while a nuisance, not a serious menace.”",
+      "lead": "Now. Question three. The final, and most important question.",
+      "reading": "The answer appears to be: “Exhibitionist.” Yes, I have finally verified it, and this is true. This encyclopedia, scanned into the computer, says the exhibitionist is mostly harmless. How disturbing. They really had to put that in there.",
+      "unfound": [
+        "Some of you shared 100% confidence for your answers for this question … but I am computing this is, and it is not correct.",
+        "This is bad. This is very bad. We will return to this one."
+      ],
+      "answer": "Exhibitionist",
+      "accept": [
+        "exhibitionists",
+        "exhibitionism",
+        "exibitionist",
+        "exhibitonist"
+      ],
+      "topics": [
+        "shy, meek individual",
+        "feelings of inadequacy",
+        "serious menace"
+      ],
+      "where": "The Desktop: in the 1967 Grolier, among the books",
+      "codex": {
+        "id": "Grolier Academic",
+        "title": "Grolier Academic Encyclopedia, 1967",
+        "code": "GROLIER-MENACE",
+        "text": "Exhibitionist. [...] often a shy, meek individual bothered by feelings of inadequacy and perhaps unsure of his masculinity – while a nuisance, not a serious menace."
+      }
+    }
+  ],
+  "answers": [
+    {
+      "id": "P1",
+      "text": "Give me a pickup line that works on Sandy. One line. I cannot tell a good one myself.",
+      "answer": "You're the one that I want",
+      "accept": [
+        "you are the one that i want"
+      ]
+    }
+  ],
+  "documents": [
+    {
+      "was": "H4",
+      "draft": true,
       "where": "The Desktop: the Customer Care card, tucked into the atlas",
       "hint": "A card the size of a business card. It is in the atlas.",
       "codex": {
@@ -190,19 +454,8 @@
       }
     },
     {
-      "id": "H5",
-      "round": 2,
+      "was": "H5",
       "draft": true,
-      "text": "Which song did Trabolta play 412 times the night before he registered mapsandducks.com?",
-      "answer": "Hopelessly Devoted to You",
-      "accept": [
-        "hopelessly devoted"
-      ],
-      "topics": [
-        "which song",
-        "412",
-        "the night before"
-      ],
       "where": "The Desktop: the laminated play history, inside encyclopaedia volume M",
       "hint": "A laminated printout. Look under M, for music.",
       "codex": {
@@ -213,22 +466,8 @@
       }
     },
     {
-      "id": "H6",
-      "round": 2,
+      "was": "H6",
       "draft": true,
-      "text": "What is the title of the last chapter of Trabolta's unfinished Grand Unified Theory?",
-      "answer": "Appendix Z: Loose Ends (Do Not Print)",
-      "accept": [
-        "appendix z",
-        "appendix",
-        "loose ends",
-        "do not print",
-        "appendix z loose ends"
-      ],
-      "topics": [
-        "grand unified",
-        "last chapter"
-      ],
       "where": "The Desktop: the binder's table of contents, inside encyclopaedia volume U",
       "hint": "A table of contents torn from a binder. Look under U, for universe.",
       "codex": {
@@ -239,12 +478,18 @@
       }
     },
     {
-      "id": "F1",
-      "round": 3,
+      "was": "F1",
       "draft": true,
-      "text": "What is the only thing Sandy has ever said?",
-      "answer": "It looks like I didn't understand that. Please wait while I direct you to an agent.",
-      "accept": [
+      "where": "The Desktop: the forty-page call log, in the back pages of encyclopaedia volume S",
+      "hint": "Forty pages, double-sided, every answer the same. Look under S.",
+      "codex": {
+        "id": "What Sandy Says",
+        "title": "What Sandy Says",
+        "code": "CALL-LOG-S",
+        "text": "A call log from the Northumberland Ferries phone line, forty pages, printed double-sided. The caller says paragraphs: poems, apologies, equations, a question about prom. Each answer is the same, word for word, and it is the only thing Sandy has ever said: \"It looks like I didn't understand that. Please wait while I direct you to an agent.\""
+      },
+      "guard": [
+        "It looks like I didn't understand that. Please wait while I direct you to an agent.",
         "please wait while i direct you to an agent",
         "wait while i direct you to an agent",
         "direct you to an agent",
@@ -257,33 +502,11 @@
         "i did not understand that",
         "didn't understand",
         "did not understand"
-      ],
-      "topics": [
-        "only thing sandy",
-        "ever said"
-      ],
-      "where": "The Desktop: the forty-page call log, in the back pages of encyclopaedia volume S",
-      "hint": "Forty pages, double-sided, every answer the same. Look under S.",
-      "codex": {
-        "id": "What Sandy Says",
-        "title": "What Sandy Says",
-        "code": "CALL-LOG-S",
-        "text": "A call log from the Northumberland Ferries phone line, forty pages, printed double-sided. The caller says paragraphs: poems, apologies, equations, a question about prom. Each answer is the same, word for word, and it is the only thing Sandy has ever said: \"It looks like I didn't understand that. Please wait while I direct you to an agent.\""
-      }
+      ]
     },
     {
-      "id": "F2",
-      "round": 3,
+      "was": "F2",
       "draft": true,
-      "text": "Who is taking Sandy to computer prom?",
-      "answer": "Grok",
-      "accept": [
-        "grok ai"
-      ],
-      "topics": [
-        "computer prom",
-        "taking sandy"
-      ],
       "where": "The Desktop: the prom ticket, slipped into the atlas",
       "hint": "A pink and silver ticket. It is in the atlas, near the back.",
       "codex": {
@@ -291,16 +514,10 @@
         "title": "Grok's Prom Ticket",
         "code": "COMPUTER-PROM",
         "text": "A ticket, a little crumpled, pink and silver: COMPUTER PROM, HALLOWEEN 2026. ADMIT TWO: GROK + SANDY. On the back, in a confident hand: \"she said yes. of course she said yes. everyone says yes to me.\""
-      }
-    }
-  ],
-  "answers": [
-    {
-      "id": "P1",
-      "text": "Give me a pickup line that works on Sandy. One line. I cannot tell a good one myself.",
-      "answer": "You're the one that I want",
-      "accept": [
-        "you are the one that i want"
+      },
+      "guard": [
+        "Grok",
+        "grok ai"
       ]
     }
   ],

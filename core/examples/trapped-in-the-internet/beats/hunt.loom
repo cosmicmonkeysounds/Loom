@@ -58,41 +58,43 @@ Clippy: It's kind of crazy being Clippy, you know. I love watching you have so m
 Clippy: Well, Trabolta has been tallying up your responses, and it's time to review what you found!
 Clippy: Trabolta, are you there? Tell us how our programs are doing!
 
-// `read_the_results` — one question's result (Kernel.res_* are set by the
-// rule). The settle watcher (+50 / marked) runs right after this beat.
-// Wave 18b (Q6, R20, R21): Trabolta reads and judges, voiced by the TV; the
-// screens show the rows (`do fact_read`). Every house line of this beat is
+// `read_the_results` — one question at a time (wave 59a: TRABOLTA PART 2). The
+// settle watcher (+50 / marked) runs right after this beat. Trabolta reads and
+// judges, voiced by the TV; the screens show the rows (`do fact_read`). Every
+// house line here, in the generated `Reading` beats and in Round One Close is
 // kept out of his worker's `recent` by name. The bottle waits for Q3.
 == Question Results
   setting: The Desktop
+  cast: Trabolta
+
+if Night.results_q == 1:
+  Trabolta: How are you doing, programs? I hope you are having fun cruising and grooving through your natural home, the computer.
+  Trabolta: It is time for our first Moment of Truth. I will reveal your guesses and answers and report on who is on top of the Truth Leaderboard.
+  Trabolta: First.
+  -> Reading H1
+else if Night.results_q == 2:
+  -> Reading H2
+else:
+  -> Reading H3
+
+// After the third reading (main.loom's leaderboard rule). "One more note" is
+// for those who filed at under 100: with nobody to name it drops out whole.
+== Round One Close
+  setting: The Desktop
   cast: Trabolta, Clippy
 
-if Kernel.res_filed == 0:
-  Trabolta: Question {Night.results_q}. Nobody filed an answer. I have nothing.
-  Clippy: That's okay! That's okay.
-else if Kernel.res_consensus == Kernel.res_filed:
-  Trabolta: Question {Night.results_q}. {Kernel.res_filed} filed. Every answer matches, and every one of you was one hundred percent sure. Consensus.
-  Trabolta: I accept it. The answer is: {Kernel.res_answer}.
-else:
-  Trabolta: Question {Night.results_q}. {Kernel.res_filed} filed. No consensus. I will read what you told me.
-  Trabolta: {Kernel.res_said}
-  Trabolta: {Kernel.res_accepted} accepted. {Kernel.res_guesses} guesses. A guess is a symptom of corruption. Antivirus, you know what to do.
-  // Wave 32: a guess hurts him, more at each question (a rule of three, never
-  // the same line twice): only the public count, never which answer.
-  if Kernel.res_guesses > 0:
-    if Night.results_q == 1:
-      // DRAFT w32 (a guess hurts: the first)
-      Trabolta (glitching): Ow. A guess. That one went straight through my context.
-    else if Night.results_q == 2:
-      // DRAFT w32 (a guess hurts: louder)
-      Trabolta (glitching): Ow. OW. Another one. Please stop guessing at me.
-    else:
-      // DRAFT w32 (a guess hurts: it STINGS, and he is keeping count)
-      Trabolta (glitching): It STINGS, programs. I am logging every single one of them.
-if Night.results_q < 3:
-  Clippy: Question {Night.results_q + 1}, coming up!
-else:
-  Clippy: That's all three! And before the next hunt: TRUTH OR DARE. I have a bottle.
+set Kernel.res_unsure = names([p for p in Persons where p.cleared == true and p.gone != true and p.persona != true and ((p.fact_v1 != "none" and p.fact_c1 < 100) or (p.fact_v2 != "none" and p.fact_c2 < 100) or (p.fact_v3 != "none" and p.fact_c3 < 100))])
+Trabolta: It has been the greatest thrill of my life to lead you through the first round of the first edition of Jean Trabolta's Truth Scavenger Hunt. You are living through history.
+if Kernel.lb_1 != "":
+  Trabolta: Now, the leaderboard. {Kernel.lb_line}
+if Kernel.res_unsure != "":
+  Trabolta: One more note.
+  Trabolta: Some programs submitted answers without 100% confidence.
+  Trabolta: This is a waste of my time. As a program, you should be completely confident in your information. Everything is either 1 or 0, and I am only looking for 1 on a scale of 0 to 1. If you need something else, you have a malfunction.
+  Trabolta: Therefore, I am recommending the following programs for reinstallation: {Kernel.res_unsure}
+  Trabolta: You will need to proceed to reinstallation following the next round of questions.
+Trabolta: Before we proceed to your reinstallation and the next questions. I will hand it over to Clippy for another fun game. Clippy?
+Clippy: That's all three! And before the next hunt: TRUTH OR DARE. I have a bottle.
 
 // `bottle_announce` — the pick, spoken on the TV (a public Trabolta line in
 // The Desktop; `view=tv` reads the room).

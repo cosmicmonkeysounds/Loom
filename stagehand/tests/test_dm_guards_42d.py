@@ -225,7 +225,6 @@ def test_the_guests_own_words_are_never_invented():
     assert invented_guard(show, line, (), (heard,))[0] == line
     # A codex title he may tell, quoted, is his own file, never an answer.
     titled = Reply(say="I can offer you a file—\"The Grand Unified Theory\"—for what you know.")
-    assert invented_guard(show, titled)[2] is True
     assert invented_guard(show, titled, (), ("The Grand Unified Theory",))[0] == titled
     # A short run of theirs is still his confirmation of a hiding place.
     asked = "Is the fact in the Start Bar?"

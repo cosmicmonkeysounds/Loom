@@ -514,7 +514,7 @@ countdown): a click opens the Director page and never fires.
   in the Internet* NEXT is empty while a timer runs the night — all of
   hunt 1, hunt 2's hour, the summons, and the Y2K hour (midnight fires 🌑
   itself); after the dance it is the ending's own cue, after an ending's
-  last beat it is G0 📜, and G1 once the reading is over, and G10 is only suggested when MS Paint was cleared. A `while:` never stops you pressing a cue; the story's rule
+  last beat it is G0 📜 (after Combo A or B; on the verdict ⚖ plays it), and G1 once the rave is on, and G10 is only suggested when MS Paint was cleared. A `while:` never stops you pressing a cue; the story's rule
   decides what happens. Acts never change NEXT: they only group the page.
 - A `repeat: true` cue **stays NEXT** while you keep pressing it and its
   `while:` holds (📋 once per question, until the third).

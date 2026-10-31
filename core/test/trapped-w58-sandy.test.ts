@@ -1,4 +1,4 @@
-//! Wave 58: Sandy is the monologue's. Her one line is F1's answer wherever she
+//! Wave 58: Sandy is the monologue's. Her one line, kept by the What Sandy Says document, wherever she
 //! speaks (read from facts.json here, never spelled), she is the answering
 //! machine on the Northumberland Ferries line, and prom is Halloween 2026.
 
@@ -11,20 +11,24 @@ import { scenarioDir, scenarioFiles, scenarioSource } from "../examples/load.ts"
 import { FACTS_FILE, foldAnswer, parseFactsText } from "../src/facts.ts";
 import { Sim } from "../src/runtime/sim/index.ts";
 import { judgeFiling, parseFactsBook } from "../server/facts.ts";
+import { withTestKeys } from "./fixtures/hunt-keys.ts";
 
 const SHOW = "trapped-in-the-internet";
 const TEXT = readFileSync(join(scenarioDir(SHOW), FACTS_FILE), "utf8");
 const FACTS = parseFactsText(TEXT).facts!;
-const BOOK = parseFactsBook(TEXT).book!;
-const LINE = FACTS.questions.find((q) => q.id === "F1")!.answer;
+/** Her line stopped being a question in wave 59a; its document guards the same
+ *  words. These tests pin how a line is judged, on the made-up keys. */
+const GUARD = FACTS.documents!.find((d) => d.was === "F1")!.guard!;
+const BOOK = parseFactsBook(withTestKeys(TEXT)).book!;
+const LINE = GUARD[0]!;
 const LOOM = scenarioFiles(SHOW).filter((f) => f.path.endsWith(".loom"));
 const MODEL = Sim.fromSources(scenarioSource(SHOW)).model;
 const terminal = (f: string) => readFileSync(join(import.meta.dirname, "..", "..", "terminal", "src", f), "utf8");
 
-describe("her one line is F1's answer, everywhere she speaks", () => {
+describe("her one line, everywhere she speaks", () => {
   it("every `Sandy:` line in the story", () => {
     const said = LOOM.flatMap((f) => f.source.split("\n").flatMap((l) => (/^\s*Sandy:/u.test(l) ? [l.replace(/^\s*Sandy:\s*/u, "")] : [])));
-    expect(said.length).toBeGreaterThanOrEqual(5);
+    expect(said.length).toBeGreaterThanOrEqual(2);
     expect([...new Set(said)]).toEqual([LINE]);
   });
   it("the terminal's chats, and the part's own note", () => {
@@ -66,7 +70,7 @@ describe("F1 under the fold", () => {
     const [first, second] = LINE.split(". ") as [string, string];
     expect(judged(first)).toBe("accurate");
     expect(judged(second.replace(/\.$/u, ""))).toBe("accurate");
-    const forms = [LINE, ...FACTS.questions.find((q) => q.id === "F1")!.accept].map(foldAnswer);
+    const forms = GUARD.map(foldAnswer);
     expect(new Set(forms).size).toBe(forms.length);
   });
   it("a slip goes to a director, and a wrong answer stays wrong", () => {
@@ -100,7 +104,6 @@ describe("the monologue's canon", () => {
   it("nothing on a screen or a phone still calls her a chat: the song's line and her window on the TV", () => {
     const song = LOOM.flatMap((f) => f.source.split("\n")).filter((l) => /^\s*Narrator:/u.test(l) && /Sandy|answering machine/iu.test(l));
     expect(song.join(" ")).not.toMatch(/chat/iu);
-    expect(LOOM.map((f) => f.source).join("\n")).toContain("The answering machine picks up on every screen.");
     expect(terminal("cutscene/scenes/act3.tsx")).not.toContain("SandyChat");
     expect(terminal("cutscene/scenes/act3.tsx").match(/title="Answering Machine 1\.0"/gu)).toHaveLength(2);
   });

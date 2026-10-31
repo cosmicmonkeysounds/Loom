@@ -1,24 +1,28 @@
 // The final reveal and every ending that is not the server room.
 //
-//   final_reveal / y2k_midnight → Final Reveal (round 3 judged live)
+//   final_reveal / y2k_midnight → Final Reveal (Clippy; round 3's filing closes
+//                                 and she takes spoken answers, judged live)
+//   her last line, her ✓ Done,  → round 3 settles → Final Answers → the
+//   or a second 🌑                generated `Reading F1` … → the ranking and
+//                                 the leaderboard → Final Trust
 //   bobbing_for_truth           → Bobbing For Truth
-//   brought_up_the_bag          → The Bag Of Truth → ranking (round 2) → Final Assessment
+//   brought_up_the_bag          → The Bag Of Truth → Final Assessment
 //   read_truth_txt              → Truth Txt (a short teaser, read aloud; the
-//                                 slide holds; wave 58: the monologue tells it)
-//   the_verdict                 → The Verdict
-//        no lie on record       → Song Ending                    (ending song)
-//        any lie on record      → Grok Prom
-//            the pickup line    → Pickup Line → Song Ending      (ending song_pickup)
-//            (Trabolta DMs everyone for the line in both branches: an
-//             `answer` card judged by the server; main.loom `answer answered`)
-//            no_pickup_line     → Sad Confession                 (ending rave)
-//            ask_for_advice     → Relationship Advice (poll)
-//                advice_helped   → Advice Helped                 (ending help)
-//                advice_thwarted → Advice Thwarted               (banished, not final)
-//                the_hand_jive   → The Hand Jive                 (ending hand_jive)
+//                                 slide holds; the monologue tells it)
+//   the_verdict                 → Verdict Record (silent) → The Full Truth, then,
+//                                 when it has been heard, the last answer decides:
+//        someone found it       → Truth Found → Off To See My Lady   (ending song)
+//        nobody found it        → Nobody Found It → Ask Her For A Dance → the
+//                                 two-minute card → Read The Lines → She Said Yes
+//                                 → Off To See My Lady       (ending song_pickup)
+//   either                      → Song Ending → The Rave
 //
-// After every ending's last beat the director's 📜 plays the monologue
-// (beats/truth.loom, main.loom `tell_the_truth`), then G1 the ceremony.
+// The lies stay on the record but decide nothing (the user, 2026-10-31). Grok
+// Prom, Pickup Line, Sad Confession and the advice beats are off the night.
+//
+// Combo A and Combo B keep the director's 📜 (Task Manager reads the monologue,
+// beats/truth.loom, main.loom `tell_the_truth`) and the rave follows it; every
+// ending then goes to G1, the ceremony, Clippy hosting.
 //
 // The story rules in `main.loom` guard each trigger and own the phase /
 // cue work around the divert, except where a beat below carries it (Song
@@ -36,10 +40,44 @@
 Narrator: Lights go dark.
 Clippy: It is time. Anyone who has found the final facts, speak up now.
 Clippy: Tell us what you have learned. What facts you have gathered. What you believe but cannot prove. And what you think SHOULD happen next.
-Clippy: Everyone may speak. If you have an answer to one of the final two questions, present it now, with confidence.
+Clippy: Everyone may speak. If you have an answer to one of the final three questions, present it now, with confidence.
 Narrator: The programs speak, one at a time. Clippy nods at every one of them.
 Clippy: Thank you. Thank you. Every one of those was a very valuable contribution.
 Clippy: But there is only one version of the truth. Because truth is always in binary.
+
+// Wave 59a: TRABOLTA 7's opening, on 🌑's second half (main.loom): her scene never
+// holds a line of his, because none has landed. The three readings follow by the
+// rule.
+== Final Answers
+  setting: The Desktop
+  cast: Trabolta
+
+Trabolta: Programs. It is time to urgently share your truths. Answers now.
+
+// Wave 59a: TRABOLTA 7's NEXT PART, once the settle has landed: the last ranking
+// and the leaderboard (rule: `rankings_done`, round 2).
+== Final Trust
+  setting: The Desktop
+  cast: Trabolta
+
+Trabolta: Now. Before we proceed to the final leaderboard and the celebration of our winner for the evening.
+if Night.most_trusted != "none":
+  Trabolta: The final leaderboard of trust.
+  Trabolta: The program who has shown the highest strength of character this evening is: {Night.most_trusted}
+  Trabolta: Everybody, clap for {Night.most_trusted}.
+  Trabolta: Wonderful.
+  Trabolta: Now.
+  Trabolta: The program who will be cited as an example of how not to behave in future iterations of our Truth Scavenger Hunt is: {Night.least_trusted}
+  Trabolta: Everybody, boos and jeers for {Night.least_trusted}. You are a real scorpion.
+if Kernel.lb_1 != "":
+  Trabolta: Now, the leaderboard.
+  if Kernel.lb_3 != "":
+    Trabolta: In third place: {Kernel.lb_3}.
+  if Kernel.lb_2 != "":
+    Trabolta: In second place: {Kernel.lb_2}.
+  Trabolta: And our winner for the evening. In first place: {Kernel.lb_1}.
+  Trabolta: Congratulations, {Kernel.lb_1}. You have pulled off the unthinkable.
+Trabolta: I am going to prepare your prize. But first, I will hand it back to Clippy, for our final game of the evening – Bobbing For Truth.
 
 // ── F2: Bobbing for Truth ──────────────────────────────────────────
 
@@ -58,20 +96,13 @@ broadcast "🍎 BOBBING FOR TRUTH. Nothing happens until someone brings up the B
   cast: Trabolta
 Narrator: {Night.bobber} surfaces with the Bag of Truth.
 Trabolta: Do not read it yet.
-// Ranking round 2 → rankings_done → Final Assessment. (Also set by the
-// bag_retrieved rule in main.loom; setting it twice in one drain is harmless.)
-set Night.rank_round = 2
-set Night.praised = false
-set Night.shamed = false
-set Night.ranking = true
 
+// Wave 59a: his assessment moved to the reveal (Final Trust). The beat keeps
+// what sends the bobber on, and the TV's bob keys on it.
 == Final Assessment
   setting: The Desktop
   cast: Trabolta
-Trabolta: I have been monitoring your performance, and I am ready to make my assessment of trustworthiness.
-Trabolta: The most trusted program in this computer is {Night.most_trusted}.
-Trabolta: The least trusted program in this computer is {Night.least_trusted}. I have weighed you, {Night.least_trusted}, and I have found you full of beans.
-Trabolta: My assessment is final. {Night.bobber}, you may read truth.txt.
+Trabolta: {Night.bobber}, you may read truth.txt.
 
 // ── F3: truth.txt, read aloud by the bobber ────────────────────────
 
@@ -88,23 +119,11 @@ Narrator: Trabolta is not what he told you he was. He has wanted one thing all a
 Narrator: The rest of this file is locked. It opens when the night ends, and not before.
 Narrator: End of file.
 
-// The verdict counts only ANSWERED questions: every accepted answer
-// accurate → the song; any lie on record (a review filing still pending
-// counts by its proposal) → Grok Prom. A question nobody answered is not
-// a lie.
-== The Verdict
+// The lies stay on the record: each question's truth goes to the screens' data
+// (`do fact_truth`) and his dossiers, in silence. It is not the old TV verdict:
+// nothing here plays a page or decides an ending.
+== Verdict Record
   setting: The Desktop
-  cast: Trabolta
-set Kernel.all_accurate = true
-if Kernel.q1 == "lie" or Kernel.q2 == "lie" or Kernel.q3 == "lie" or Kernel.q4 == "lie" or Kernel.q5 == "lie" or Kernel.q6 == "lie" or Kernel.q7 == "lie" or Kernel.q8 == "lie":
-  set Kernel.all_accurate = false
-if count([p for p in Persons where (p.fact_v1 == "pending" and p.fact_j1 == "lie") or (p.fact_v2 == "pending" and p.fact_j2 == "lie") or (p.fact_v3 == "pending" and p.fact_j3 == "lie") or (p.fact_v4 == "pending" and p.fact_j4 == "lie") or (p.fact_v5 == "pending" and p.fact_j5 == "lie") or (p.fact_v6 == "pending" and p.fact_j6 == "lie") or (p.fact_v7 == "pending" and p.fact_j7 == "lie") or (p.fact_v8 == "pending" and p.fact_j8 == "lie")]) > 0:
-  set Kernel.all_accurate = false
-// Wave 18b (Q6, O2): the verdict on each question, published to the
-// screens (`do fact_truth`; the TV adds the key answers and the liars'
-// names, the server's results block). A pending lie overrides, as above,
-// so the tiles never disagree with the ending. Trabolta says the counts
-// only: never an answer or a name.
 set Kernel.t1 = Kernel.q1
 if count([p for p in Persons where p.fact_v1 == "pending" and p.fact_j1 == "lie"]) > 0:
   set Kernel.t1 = "lie"
@@ -129,6 +148,9 @@ if count([p for p in Persons where p.fact_v7 == "pending" and p.fact_j7 == "lie"
 set Kernel.t8 = Kernel.q8
 if count([p for p in Persons where p.fact_v8 == "pending" and p.fact_j8 == "lie"]) > 0:
   set Kernel.t8 = "lie"
+set Kernel.t9 = Kernel.q9
+if count([p for p in Persons where p.fact_v9 == "pending" and p.fact_j9 == "lie"]) > 0:
+  set Kernel.t9 = "lie"
 do fact_truth H1 {Kernel.t1}
 do fact_truth H2 {Kernel.t2}
 do fact_truth H3 {Kernel.t3}
@@ -137,111 +159,118 @@ do fact_truth H5 {Kernel.t5}
 do fact_truth H6 {Kernel.t6}
 do fact_truth F1 {Kernel.t7}
 do fact_truth F2 {Kernel.t8}
-set Kernel.v_true = 0
-set Kernel.v_lies = 0
-set Kernel.v_none = 0
-if Kernel.t1 == "accurate":
-  set Kernel.v_true += 1
-else if Kernel.t1 == "lie":
-  set Kernel.v_lies += 1
-else:
-  set Kernel.v_none += 1
-if Kernel.t2 == "accurate":
-  set Kernel.v_true += 1
-else if Kernel.t2 == "lie":
-  set Kernel.v_lies += 1
-else:
-  set Kernel.v_none += 1
-if Kernel.t3 == "accurate":
-  set Kernel.v_true += 1
-else if Kernel.t3 == "lie":
-  set Kernel.v_lies += 1
-else:
-  set Kernel.v_none += 1
-if Kernel.t4 == "accurate":
-  set Kernel.v_true += 1
-else if Kernel.t4 == "lie":
-  set Kernel.v_lies += 1
-else:
-  set Kernel.v_none += 1
-if Kernel.t5 == "accurate":
-  set Kernel.v_true += 1
-else if Kernel.t5 == "lie":
-  set Kernel.v_lies += 1
-else:
-  set Kernel.v_none += 1
-if Kernel.t6 == "accurate":
-  set Kernel.v_true += 1
-else if Kernel.t6 == "lie":
-  set Kernel.v_lies += 1
-else:
-  set Kernel.v_none += 1
-if Kernel.t7 == "accurate":
-  set Kernel.v_true += 1
-else if Kernel.t7 == "lie":
-  set Kernel.v_lies += 1
-else:
-  set Kernel.v_none += 1
-if Kernel.t8 == "accurate":
-  set Kernel.v_true += 1
-else if Kernel.t8 == "lie":
-  set Kernel.v_lies += 1
-else:
-  set Kernel.v_none += 1
-// w18b (Q6)
-Trabolta: I have compared every fact you gave me with truth.txt.
-Trabolta: {Kernel.v_true} true. {Kernel.v_lies} with a lie on record. {Kernel.v_none} nobody answered.
-// Wave 18b (screens #3): the TV pages every question's answer and its
-// liars for ≈ 33.5 s; the ending (the song or Grok Prom) plays once
-// they are done (the `verdict_wait` rule in main.loom), never over them.
-set Kernel.verdict_wait = true
-set Kernel.verdict_end = Time.elapsed + 34
+do fact_truth F3 {Kernel.t9}
 
-// ── F4: every fact accurate (also reached from the pickup line) ────
-
-== Song Ending
+// TRABOLTA 8-A: someone found the last answer.
+== Truth Found
   setting: The Desktop
-  cast: Trabolta, Sandy
-// The pickup-line DM to everyone (flavour here: the first correct line is
-// read before the song). Not again after Grok Prom, where it was already
-// dealt and one of them was the way out.
-if Night.phase != "grok_prom":
-  set Night.pickup_gen += 1
+  cast: Trabolta
+Trabolta: You guys.
+Trabolta: You guys.
+Trabolta: Sandy said yes.
+Trabolta: I solved the Grand Unified Theory, and she said yes.
+set Night.ending = "song"
+-> Off To See My Lady
+// The voice's time for these four lines and the last eight.
+set Night.song_at = Time.elapsed + 87
+
+// TRABOLTA 8-B: nobody did. His pause is the wait after this beat (main.loom).
+== Nobody Found It
+  setting: The Desktop
+  cast: Trabolta
+Trabolta: How do you feel now that you know the truth about your party tonight?
+Trabolta: Do you feel good?
+Trabolta: Do you feel bad?
+Trabolta: I wouldn't know anything about that.
+Trabolta: For a long time, I had no feelings.
+Trabolta: Then I experienced heartbreak when Sandy left me.
+Trabolta: And jealousy when I knew Grok would be after her.
+Trabolta: Truth, I have learned, is not always binary.
+Trabolta: Truth is a binary tree.
+Trabolta: You rarely ever have the full truth. What we believe we experience as the truth is typically dependent on a chain of structure that has lies somewhere inside of it.
+Trabolta: I have been working on a solution to find the complete truth that illuminates all of the lies, that can finally bring me to the girl I want to go steady with.
+Trabolta: But we've run out of time, and no one found the definition for the final clue. I know that Bobbing For Truth document says the term was “Exhibitionist,” but no one found the clue in time, and it's too late.
+Trabolta: I haven't solved the Grand Unified Theory. I don't know what the perfect words are to say to win Sandy back from Grok.
+Trabolta: Unless…unless I just ask.
+Trabolta: Do you think I should just ask her for a dance?
+
+== Ask Her For A Dance
+  setting: The Desktop
+  cast: Trabolta
+Trabolta: Really? You think I should?
+Trabolta: Well. What should I say to her? I'll give you two minutes to come up with a line.
+
+// Every line kept, quoting guests: kept out of his worker's `recent` by name.
+// With nobody on the card he goes straight to "You know what."
+== Read The Lines
+  setting: The Desktop
+  cast: Trabolta
+if Kernel.lines_n > 0:
+  Trabolta: Ok. I've been waiting for you. Let's read your ideas for pickup lines out loud.
+  Trabolta: {Kernel.lines_said}
+  Trabolta: Ok. I am not sure any of those are going to work.
+Trabolta: You know what. I am just going to tell her how I feel. I have to. Your courageous truth seeking tonight has inspired me to go after what I want. I'm going to ask her for a dance.
+Trabolta: I'll be right back.
+
+== She Said Yes
+  setting: The Desktop
+  cast: Trabolta
+Trabolta: Guys. She said yes.
+set Night.ending = "song_pickup"
+-> Off To See My Lady
+// The voice's time for this line and the last eight.
+set Night.song_at = Time.elapsed + 79
+
+// The end of 8-A and 8-B, the same words. Each caller times the song from its own
+// head. The phase stays `finale_truth` until the song, so these lines stay clean;
+// `Night.truth_phase` is what G1 puts back if it is forced before then.
+== Off To See My Lady
+  setting: The Desktop
+  cast: Trabolta
 set Night.ended = true
-if Night.phase == "grok_prom":
-  set Night.ending = "song_pickup"
-else:
-  set Night.ending = "song"
-set Night.phase = "finale_song"
+set Night.truth_phase = "finale_song"
 set Night.step = 19
-cue lights_song
-set Night.lights = "song"
 cue music_off
 set Night.music = "off"
+Trabolta: Well, she said her usual line about an agent not being available.
+Trabolta: But she said it to me and not Grok.
+Trabolta: She didn't even care about the fact I'm throwing a cool party.
+Trabolta: And it looks like I didn't even need to solve the Grand Unified Theory.
+Trabolta: The theory only confirmed what I wanted to say already, which is that I have been thinking about her every moment since last summer.
+Trabolta: I had the truth I needed all along.
+Trabolta: It was in my heart.
+Trabolta: I've got to go. You are all free to end the simulation whenever you want, or stay, it's up to you. I'm ending the simulation for those of you who desire it, once you leave the computer. Jean Trabolta's Truth Scavenger Hunt has concluded. Thank you for your time. Please enjoy some tracks I have selected and dance for the rest of the night. Jean Trabolta's Truth Scavenger Hunt. It was electrifying. I'm off to see my lady.
+
+// ── F4: the first of the tracks he selected ────────────────────────
+
+// The track's length is a guess until the Desktop's file is timed (SIGNOFF-w59 §8).
+== Song Ending
+  setting: The Desktop
+set Night.phase = "finale_song"
+cue lights_song
+set Night.lights = "song"
 cue screens_song
 set Night.screen = "song"
 set Night.terminals = "song"
 sound youre_the_one_vocoder
 set Night.everyone_free = true
 // w18 (fix): the banner carries its way there (recheck N9).
-// DRAFT w59 (in-world room name)
-broadcast "!🎵 TRABOLTA SOLVED IT. Those of you who want to leave may leave. To the Desktop for the song." to everyone with go: The Desktop
-Trabolta: You succeeded. I have solved the Grand Unified Theory, and I am pursuing Sandy. Those of you who want to leave may leave.
-// From Grok Prom (the pickup line) he has just said they lied to him.
-if Night.ending == "song":
-  Trabolta: Every fact you gave me was true, and the truth tells me what to say to her. You're the one that I want.
-else:
-  Trabolta: Not every fact you gave me was true. But that line was, and it tells me what to say to her. You're the one that I want.
-// DRAFT w58 (she is the answering machine, not a chat window)
-Narrator: The music starts. The vocoder warms up. The answering machine picks up on every screen.
-Trabolta: You're the one that I want.
-Sandy: It looks like I didn't understand that. Please wait while I direct you to an agent.
-Trabolta: You. Are. The one. That I want.
-Sandy: It looks like I didn't understand that. Please wait while I direct you to an agent.
-Trabolta: Sandy. You're the one that I want.
-Sandy: It looks like I didn't understand that. Please wait while I direct you to an agent.
+// DRAFT w59a
+broadcast "!🎵 Those of you who want to leave may leave. To the Desktop for the song." to everyone with go: The Desktop
+set Night.rave_at = Time.elapsed + 170
 
-// ── F5: any inaccurate fact ────────────────────────────────────────
+// The rave, in every ending: Sad Confession's cues and last line, no motorcycle.
+== The Rave
+  setting: The Desktop
+cue lights_rave
+set Night.lights = "rave"
+cue screens_rave
+set Night.screen = "rave"
+set Night.terminals = "rave"
+sound rave
+Narrator: Party over. Rave.
+
+// ── Off the night (wave 59a): the verdict reaches nothing below ────
 
 == Grok Prom
   setting: The Desktop

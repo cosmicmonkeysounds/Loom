@@ -190,8 +190,6 @@ program he throws out of his heart (a blue screen) **is marked for
 reinstallation** (wave 20b): their poster lands on your Wanted board like
 any mark. They stay barred from his heart until the director's 🔄; a barred
 re-scan never marks them again.
-- **If Trabolta thwarted gets everyone banished:** you are banished too. Go to
-  the Internet; then everyone does the hand jive together.
 
 ## Props
 

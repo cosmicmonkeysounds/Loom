@@ -102,23 +102,28 @@ against the final verdict for good; that is the point. A typo the key did
 not know → override that one filing, and tell John to add the alias to
 `facts.json`. Clippy's own mis-tap (😤 meant as ✅) is undone by Clippy
 pressing ✅ for the same question on the same program. The key, for reference
-(H1–H3 are the Oct 30 script's and owed: fill them in from
-`facts.json` before you print this card):
+(fill them in from `facts.json` before you print this card: none is written
+here):
 
 | | Accurate answer |
 |---|---|
-| H1 | ⚠ owed before the print |
-| H2 | ⚠ owed before the print |
-| H3 | ⚠ owed before the print |
-| H4 | 1978 (the extension on the Customer Care card) |
-| H5 | "Hopelessly Devoted to You" |
-| H6 | "Appendix Z: Loose Ends (Do Not Print)" |
-| F1 | "It looks like I didn't understand that. Please wait while I direct you to an agent." |
-| F2 | Grok |
+| H1 | |
+| H2 | |
+| H3 | |
+| H4 | |
+| H5 | |
+| H6 | |
+| F1 | |
+| F2 | |
+| F3 | |
+
+F3 is the one Trabolta doesn't know: no ruling is asked on it, so a near miss
+waits for you on Run → Mind → Judging, and anything else stands as the house
+judged it.
 
 The judge folds case, punctuation and one leading article and matches the
-answer or any alias in `facts.json` exactly ("appendix z" is an alias), then
-again with abbreviations spelled out ("ext 1978" is accurate, no ⚠); anything
+answer or any alias in `facts.json` exactly, then
+again with abbreviations spelled out (*Mr.* for *Mister* is accurate, no ⚠); anything
 else goes to Trabolta, whose ruling decides: not the same at 100% is a lie, below 100% a
 guess (marked).
 
@@ -201,10 +206,10 @@ queued.
    turns it off, so the ✓ only means it was pressed: read `# hosts` to see
    which is on (press ✍ again for the template). Without ✍ the template lines play on their own (and a
    line you post would be spoken as well, on top).
-3. **If Trabolta is gone** (Combo A, Combo B, the rave): Clippy hosts and reads each line
+3. **Trabolta is gone on every ending** (he leaves for Sandy, or Combo A or B): Clippy hosts and reads each line
    aloud; the TV shows the award slide.
-4. Fire **G0 📜** once the ending has had its moment: after the song, the hand
-   jive, the dance, 🪦. ■ Stop house sounds first if a dance track is up (the
+4. After Combo A or B, fire **G0 📜** once the dance or 🪦 has had its moment; on the
+   verdict ⚖ has already played it. ■ Stop house sounds first if a dance track is up (the
    rave's never ducks), and leave 🌀 His voice on Auto or Clean with no shots:
    a director's Broken still breaks him. It takes about 12 minutes on the TV and
    14 at the teleprompter. **📜 Task Manager reads it instead** is the way out if

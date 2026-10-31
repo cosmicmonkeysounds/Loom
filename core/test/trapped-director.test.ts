@@ -195,6 +195,9 @@ describe("Trapped in the Internet — wave 10 (the Director page's acts and boar
     advance(sim, 3600);
     // Midnight fires 🌑 itself.
     expect(cueState(sim).lastBy).toBe("story");
+    // Clippy has the room; 🌑 again (no reader) is next, then 🍎.
+    expect(sheet(sim)).toMatchObject({ last: 39, next: 39, focus: "F" });
+    press(sim, "final_reveal");
     expect(sheet(sim)).toMatchObject({ last: 39, next: 40, focus: "F" });
   });
 

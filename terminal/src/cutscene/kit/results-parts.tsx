@@ -106,7 +106,6 @@ export function CountsBoard({ q, t, start, label }: { q: Pick<ScreenResultQuesti
           </div>
         ))}
       </div>
-      {q.consensus && q.filed > 0 && t >= start + cells.length * 350 + 600 && <div className="res-board-consensus">CONSENSUS</div>}
     </div>
   );
 }

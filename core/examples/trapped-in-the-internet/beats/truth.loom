@@ -2,9 +2,10 @@
 // Draft 2", word for word but for the fixes logged in
 // core/test/trapped-monologue.test.ts, which compares both versions below with
 // the delivered file so the two can never drift. It always comes after an
-// ending's last beat, on the director's 📜 (`tell_the_truth`, main.loom).
+// ending's last beat on the director's 📜 (`tell_the_truth`, main.loom), or
+// ahead of 8-A and 8-B on ⚖ (wave 59a, `Night.truth_first`).
 //
-//   song, song_pickup, help, hand_jive, rave  → The Full Truth       (Trabolta)
+//   the verdict                               → The Full Truth       (Trabolta)
 //   disabled, destroyed, or 📜 Task Manager   → The Full Truth Read  (Task Manager)
 //
 // Trabolta's is 18 merged lines, because the TV keeps the newest

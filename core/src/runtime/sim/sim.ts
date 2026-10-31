@@ -2995,8 +2995,17 @@ export class Sim {
       }
       case "count":
       case "len": {
+        // Wave 59a: `len` of a string is its length (the story times the voice by it).
         const v = args[0]?.value;
+        if (name === "len" && v !== undefined && v.kind === "string") return vNumber(v.value.length);
         return vNumber(v !== undefined && v.kind === "list" ? v.items.length : 0);
+      }
+      case "sentences": {
+        // Wave 59a: `sentences([… for p in Persons …])`: the items in a row, for
+        // speech. "" for an empty list; `names` is the same with commas and "and".
+        const v = args[0]?.value;
+        const items = v !== undefined && v.kind === "list" ? v.items : [];
+        return vString(items.map(display).filter((w) => w !== "").join(" "));
       }
       case "sum":
       case "max": {

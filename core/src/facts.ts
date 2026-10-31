@@ -86,12 +86,43 @@ export interface Question {
   hint?: string;
   /** The printed document carrying the answer (generated as a CODEX). */
   codex?: QuestionCodex;
+  /** What the reader says for the answer, lead-in included (`The answer was:
+   *  …`): the generated reading beat's line (wave 59a). Required of the show's
+   *  questions. */
+  reading?: string;
+  /** What the reader says before the question in a reading, instead of the
+   *  generated `Now. Question two.` */
+  lead?: string;
+  /** With `secretFromAgents`: the lines he says when nobody found it, in place
+   *  of `reading`. The first only if anyone filed at 100, the rest always. */
+  unfound?: string[];
+  /** The reader doesn't know this one (wave 59a, the show's F3). The server
+   *  holds the key and judges filings on it as usual, but it never goes near a
+   *  worker: not in the mind's generated block, not in a `judge` frame (no
+   *  ruling is asked), and the screens show it only once someone has found it. */
+  secretFromAgents?: true;
   /** Placeholder content the team must replace. */
   draft?: true;
   /** The key isn't in yet: `answer` is a stand-in (it carries
    *  `PLACEHOLDER_MARK`). Nothing is judged on it: a filing is not recorded,
    *  and no screen shows it. Delete this with the real answer. */
   placeholder?: true;
+}
+
+/** A printed document that stopped being a question (wave 59a): its card, its
+ *  code and its stack stay exactly as they were, generated as the same CODEX
+ *  entry, and everyone can still scan it. */
+export interface DocumentCard {
+  /** The id it had as a question: the entry's mark, kept. */
+  was: string;
+  /** Where it hides (print stacks). */
+  where: string;
+  hint?: string;
+  codex: QuestionCodex;
+  /** Words the reader must still never be able to check (`secrets.match`, the
+   *  server's leak checks), though no question asks for them. */
+  guard?: string[];
+  draft?: true;
 }
 
 /** A free-text answer key (an `answer` card), never listed on a card. */
@@ -195,6 +226,8 @@ export interface FactsFile {
   rounds?: Record<string, RoundMeta>;
   questions: Question[];
   answers: Answer[];
+  /** Documents that are no longer questions (wave 59a). */
+  documents?: DocumentCard[];
   facts: Fact[];
   truths: Truth[];
   /** The server-room keypad (the show's; optional for any other project). */
@@ -288,6 +321,9 @@ export function validateFacts(raw: unknown): ValidatedFacts {
       for (const k of ["where", "hint"] as const) if (x[k] !== undefined && !isStr(x[k])) problems.push(`${label}: ${k} must be a string`);
       if (x["spoken"] !== undefined && (!isStr(x["spoken"]) || x["spoken"].trim() === "")) problems.push(`${label}: spoken must be a non-empty string`);
       if (x["placeholder"] !== undefined && x["placeholder"] !== true) problems.push(`${label}: placeholder must be true when present`);
+      if (x["secretFromAgents"] !== undefined && x["secretFromAgents"] !== true) problems.push(`${label}: secretFromAgents must be true when present`);
+      for (const k of ["reading", "lead"] as const) if (x[k] !== undefined && (!isStr(x[k]) || x[k].trim() === "")) problems.push(`${label}: ${k} must be a non-empty string`);
+      if (x["unfound"] !== undefined && (!Array.isArray(x["unfound"]) || !x["unfound"].every(isStr) || x["unfound"].length === 0)) problems.push(`${label}: unfound must be a non-empty array of strings`);
       if (x["codex"] !== undefined) checkCodex(x["codex"], `${label}: codex`, problems, false);
     }
     return { ...x, accept } as Question | Answer;
@@ -295,6 +331,19 @@ export function validateFacts(raw: unknown): ValidatedFacts {
 
   const questions = list("questions").map((x, i) => key("questions", x, i)).filter((q): q is Question => q !== null);
   const answers = list("answers").map((x, i) => key("answers", x, i)).filter((a): a is Answer => a !== null);
+
+  for (const [i, x] of list("documents").entries()) {
+    const at = `documents[${i}]`;
+    if (!isRec(x)) {
+      problems.push(`${at} must be an object`);
+      continue;
+    }
+    if (!isStr(x["was"]) || !ID.test(x["was"])) problems.push(`${at}: was must match ${ID.source}`);
+    if (!isStr(x["where"]) || x["where"] === "") problems.push(`${at}: where must be a non-empty string`);
+    if (x["hint"] !== undefined && !isStr(x["hint"])) problems.push(`${at}: hint must be a string`);
+    if (x["guard"] !== undefined && (!Array.isArray(x["guard"]) || !x["guard"].every(isStr))) problems.push(`${at}: guard must be an array of strings`);
+    checkCodex(x["codex"], `${at}: codex`, problems, false);
+  }
 
   const factIds = new Set<string>();
   const facts = list("facts").flatMap((x, i): Fact[] => {
@@ -430,7 +479,7 @@ export function factsProblems(text: string): string[] {
 
 // ───────────────────────── the show's rules ─────────────────────────
 
-/** The hunt's shape: three rounds of 3 / 3 / 2, in this order. */
+/** The hunt's shape: three rounds of 3 / 3 / 3, in this order. */
 export const SHOW_QUESTION_LAYOUT: ReadonlyArray<{ id: string; round: number }> = [
   { id: "H1", round: 1 },
   { id: "H2", round: 1 },
@@ -440,6 +489,7 @@ export const SHOW_QUESTION_LAYOUT: ReadonlyArray<{ id: string; round: number }> 
   { id: "H6", round: 2 },
   { id: "F1", round: 3 },
   { id: "F2", round: 3 },
+  { id: "F3", round: 3 },
 ];
 
 /** At least this many Truth-or-Dare questions. */
@@ -485,8 +535,8 @@ export function placeholderQuestions(f: Pick<FactsFile, "questions">): Question[
 const BAD_TEXT = /["{}|]/u;
 
 /** The rules the generator and its test apply to the show's file (on top
- *  of `validateFacts`): exactly the 8 questions H1–H6 / F1–F2 in rounds
- *  3 / 3 / 2, each with a `where`, a `codex` and ≥ 1 topic that occurs
+ *  of `validateFacts`): exactly the 9 questions H1–H6 / F1–F3 in rounds
+ *  3 / 3 / 3, each with a `where`, a `reading`, a `codex` and ≥ 1 topic that occurs
  *  in its text and in no answer or alias of any question; every round and
  *  category used is declared; `show.title` present; ≥ 15 truths; every
  *  codex id and every code (questions', facts', the codes recorded on
@@ -528,6 +578,9 @@ export function showFactsProblems(f: FactsFile): string[] {
   for (const q of f.questions) {
     const by = `question ${q.id}`;
     if (BAD_TEXT.test(q.text)) problems.push(`${by}: text must not contain " { } or |`);
+    for (const line of [q.reading ?? "", q.lead ?? "", ...(q.unfound ?? [])]) if (BAD_TEXT.test(line) || line.includes("_")) problems.push(`${by}: a reading line must not contain " { } | or a blank`);
+    if (q.reading === undefined) problems.push(`${by}: reading is missing`);
+    if (q.secretFromAgents === true && q.unfound === undefined) problems.push(`${by}: secretFromAgents needs the unfound lines`);
     if (q.spoken !== undefined && BAD_TEXT.test(q.spoken)) problems.push(`${by}: spoken must not contain " { } or |`);
     if (q.spoken !== undefined && q.spoken.includes("_")) problems.push(`${by}: spoken must not contain a blank (the voice strips _)`);
     if (q.text.includes("_") && q.spoken === undefined) problems.push(`${by}: a blank needs a spoken form (the voice strips _)`);
@@ -554,6 +607,12 @@ export function showFactsProblems(f: FactsFile): string[] {
         for (const a of keys[i]!) if (a.includes(needle)) problems.push(`${by}: topic ${JSON.stringify(t)} occurs in an answer of ${other.id} (${JSON.stringify(a)})`);
       });
     }
+  }
+
+  for (const d of f.documents ?? []) {
+    const by = `document ${d.was}`;
+    claim(codexIds, d.codex.id, by, "codex id");
+    checkCode(d.codex.code, by);
   }
 
   const categories = f.categories ?? {};

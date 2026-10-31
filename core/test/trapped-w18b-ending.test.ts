@@ -250,7 +250,7 @@ const review = (sim: Sim) => sim.fireBeat("The Night In Review");
 
 describe("wave 18b ending — The Night In Review (R8)", () => {
   it("names who everyone was, the pool by problem group, the goals and the deeds, then hands over to The Ceremony", { timeout: SLOW }, () => {
-    const sim = ceremony("song");
+    const sim = ceremony("help");
     sim.setVar("Night.facts_accepted", "2");
     const evs = review(sim);
     const t = lines(evs, "Trabolta");
@@ -281,7 +281,7 @@ describe("wave 18b ending — The Night In Review (R8)", () => {
     for (const [slug, name] of Object.entries(FEATURED)) upload(sim, `f-${slug}`, name);
     ["Calculator", "WinZip", "GarageBand", "LimeWire"].forEach((n, i) => upload(sim, `p-${PROBLEMS[i]}`, n, i));
     // Every deed line, and a goal met and missed.
-    for (const [k, v] of [["Night.facts_accepted", "7"], ["Night.first_reinstall", "WinZip"], ["Kernel.virus_planter", "Microsoft Excel"], ["Night.lj_reader", "VLC"], ["Night.most_trusted", "Pong"], ["Night.least_trusted", "WinZip"], ["f-pong.quest.keep_the_ball_in_play", "done"], ["Night.ending", "song"], ["Night.ended", "true"]] as const) sim.setVar(k, v);
+    for (const [k, v] of [["Night.facts_accepted", "7"], ["Night.first_reinstall", "WinZip"], ["Kernel.virus_planter", "Microsoft Excel"], ["Night.lj_reader", "VLC"], ["Night.most_trusted", "Pong"], ["Night.least_trusted", "WinZip"], ["f-pong.quest.keep_the_ball_in_play", "done"], ["Night.ending", "help"], ["Night.ended", "true"]] as const) sim.setVar(k, v);
     sim.signal("start_the_ceremony"); // wave 58: the first press only asks
     const msgs = composeGuestMessages(sim, sim.signal("start_the_ceremony")).map((m, i) => ({ ...m, seq: 1000 + i, hidden: false }));
     const his = msgs.filter((m) => m.channel === "loc:The Desktop" && m.from === "Trabolta" && m.kind === "line");
@@ -294,7 +294,7 @@ describe("wave 18b ending — The Night In Review (R8)", () => {
   });
 
   it("joins a problem group's names for speech, and leaves out gone programs and Run personas", { timeout: SLOW }, () => {
-    const sim = ceremony("song");
+    const sim = ceremony("help");
     upload(sim, "p-debt-2", "3D Pinball", 0);
     upload(sim, "p-debt-3", "RollerCoaster Tycoon", 0);
     upload(sim, "p-gone", "MSN Messenger", 0);
@@ -349,7 +349,7 @@ describe("wave 18b ending — The Night In Review (R8)", () => {
     expect(hj[0]!.manner).toBe("weakly");
     const t = hj.map((e) => e.text);
     expect(t.indexOf("That is the review. Your own file is on your phone. Now, the awards.")).toBeLessThan(t.findIndex((l) => l.startsWith("Reboot complete.")));
-    expect(opener(ceremony("song"))[0]!.manner).toBeUndefined();
+    expect(opener(ceremony("help"))[0]!.manner).toBeUndefined();
   });
 
   it("after `destroyed` (Clippy hosts) skips who the monologue told, the goals and the deeds (Purgatory just read them)", { timeout: SLOW }, () => {
@@ -373,7 +373,7 @@ describe("wave 18b ending — The Night In Review (R8)", () => {
   });
 
   it("Trabolta's review lines never interpolate a faction name or a guest's typed text (§3)", { timeout: SLOW }, () => {
-    const sim = ceremony("song");
+    const sim = ceremony("help");
     sim.setVar("Kernel.majority", "founded");
     sim.setVar("Kernel.majority_name", "The Pickle Club");
     sim.setVar("f-excel.left_behind_text", "my grandmother's ring");
@@ -400,7 +400,7 @@ describe("wave 18b ending — Purgatory (R8; wave 58)", () => {
 
 describe("wave 18b ending — Your File (R8)", () => {
   it("quotes what a program typed at the deposit box only to that program, in its Uploader thread", { timeout: SLOW }, () => {
-    const sim = ceremony("song");
+    const sim = ceremony("help");
     sim.setVar("p-debt.left_behind_text", "my grandmother's ring");
     const evs = yourFile(sim, "p-debt");
     const msgs = composeGuestMessages(sim, evs);
@@ -416,7 +416,7 @@ describe("wave 18b ending — Your File (R8)", () => {
   });
 
   it("reads the night in singular forms where they apply", { timeout: SLOW }, () => {
-    const sim = ceremony("song");
+    const sim = ceremony("help");
     for (const [k, x] of [["p-career.internet_visits", "1"], ["p-career.truths_accepted", "1"], ["p-career.score", "1"]] as const) sim.setVar(k, x);
     const u = lines(yourFile(sim, "p-career"), "The Uploader");
     expect(u[0]).toBe("Your file, WinZip. Closing it for the night.");

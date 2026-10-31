@@ -549,7 +549,7 @@ function TruthTxt({ t, sfx, reduced, target }: SceneProps) {
 // lied (names only).
 //
 //   0–800     black; the scales swing in
-//   800–6400  eight tiles flip, one every 700 ms (a tick each): Q{n}, its round,
+//   800–7100  nine tiles flip, one every 700 ms (a tick each): Q{n}, its round,
 //             ✔ TRUE / ✘ LIE / — NOBODY ANSWERED, "f filed · a accepted"
 //   7000      x TRUE · y LIES · z UNANSWERED
 //   8400      EVERY ANSWERED FACT IS TRUE (sparks) or A LIE IS ON RECORD (static)
@@ -557,7 +557,7 @@ function TruthTxt({ t, sfx, reduced, target }: SceneProps) {
 //             key answer, who lied ("Lied: A, B 🤖" — 🤖 where his ruling made the
 //             lie; "+N more"; "Nobody lied."); it holds on the last page to its end
 //   walls     the tiles, the totals and the stamp only (no answers, no names), then out
-// No `results` (an older server): the old picture — the eight bits settle to ■,
+// No `results` (an older server): the old picture — the nine bits settle to ■,
 // THE VERDICT IS IN, never a result.
 
 const VERDICT_BARE = { check: 800, stamp: 4400, out: 5900, end: 6500 } as const;
@@ -691,7 +691,7 @@ function VerdictBare({ t, sfx, reduced, target, done }: SceneProps) {
   useSfxCues(t, sfx, [
     [200, "whoosh"],
     [VERDICT_BARE.check, "drumroll", { gain: 0.7 }],
-    ...Array.from({ length: 8 }, (_, i) => [VERDICT_BARE.check + 600 + i * 300, "tick", { gain: 0.4 }] as const),
+    ...Array.from({ length: 9 }, (_, i) => [VERDICT_BARE.check + 600 + i * 300, "tick", { gain: 0.4 }] as const),
     [VERDICT_BARE.stamp, "boom"],
   ]);
   const bar = fakeProgress(t - VERDICT_BARE.check, VERDICT_BARE.stamp - VERDICT_BARE.check - 300, 47, 2);
@@ -702,7 +702,7 @@ function VerdictBare({ t, sfx, reduced, target, done }: SceneProps) {
           <Scales t={t} reduced={reduced} />
         </div>
         <div className="tv3-verdict-qs">
-          {Array.from({ length: 8 }, (_, i) => {
+          {Array.from({ length: 9 }, (_, i) => {
             const settle = VERDICT_BARE.check + 600 + i * 300;
             const shown = t >= VERDICT_BARE.check + i * 80;
             const settled = t >= settle;

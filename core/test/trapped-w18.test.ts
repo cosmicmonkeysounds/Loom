@@ -132,7 +132,7 @@ describe("Trapped in the Internet — wave 18: big moments with their exits (C12
     const bottle = n.signal("bottle_landed", "g2");
     expect(bigFor(bottle, "g2").find((m) => m.kind === "widget")).toMatchObject({ widget: { kind: "poll" }, channel: "dm:Trabolta", go: [{ kind: "dm", id: "dm:Trabolta" }] });
     n.signal("truth_answered", "g2", undefined, "Clippy");
-    for (const c of ["second_hunt_preview", "start_the_second_hunt", "five_minute_warning", "summons_closed", "truth_pong", "round_two_tally", "trust_chart", "show_the_rankings", "trabolta_overshares", "y2k_clock", "final_reveal", "bobbing_for_truth"]) n.press(c);
+    for (const c of ["second_hunt_preview", "start_the_second_hunt", "five_minute_warning", "summons_closed", "truth_pong", "round_two_tally", "trust_chart", "show_the_rankings", "trabolta_overshares", "y2k_clock", "final_reveal", "final_reveal", "bobbing_for_truth"]) n.press(c);
     n.signal("brought_up_the_bag", "g1", undefined, "Clippy");
     n.press("read_truth_txt");
     const grok = n.take(n.sim.fireBeat("Grok Prom"));

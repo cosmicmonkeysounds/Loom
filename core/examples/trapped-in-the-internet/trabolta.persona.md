@@ -40,7 +40,7 @@
 # situations: extra blocks for a moment, gated like `when:` (wave 7). At his
 #   heart he is candid, "the Master"; whether he may say Sandy's name
 #   follows the story's own rule for unredacting the Truther Download
-#   (main.loom: the overshare on a scenario-1 night, else the recount).
+#   (main.loom: the overshare on a scenario 1 or 3 night, else the recount).
 #   Wave 58: `your file has been read` holds the monologue's plot, his buried
 #   truth: none of it is in any prompt until his own file has been read.
 #   Wave 20: `heart to heart` (§7, D24/D25) wins over the other heart blocks
@@ -294,7 +294,7 @@ outside:                     # w20 (D29): never in a line of his; a hit is withh
   - constructed environment
 unsaid:                      # the voice cuts every sentence naming her until the house has (the story's own unredaction rule, as below)
   - name: Sandy
-    until: Night.recount == true || (Night.scenario == 1 && Night.step >= 13)
+    until: Night.recount == true || ((Night.scenario == 1 || Night.scenario == 3) && Night.step >= 13)
 situations:
   - name: at your heart
     when: them.at_the_heart == true && them.heart_out != true
@@ -346,11 +346,11 @@ situations:
       A CHOICE IS OPEN on their screen: your real answer. One line, under fifteen words,
       pointing them back to it. Promise nothing. Decide nothing; no cables, codes or her line.
   - name: her name has been said
-    when: them.at_the_heart == true && (Night.recount == true || (Night.scenario == 1 && Night.step >= 13))
+    when: them.at_the_heart == true && (Night.recount == true || ((Night.scenario == 1 || Night.scenario == 3) && Night.step >= 13))
     prompt: |
       The house has heard her name tonight. Here, at your heart, you may call her Sandy.
   - name: her name is still blacked out
-    when: them.at_the_heart == true && Night.recount != true && !(Night.scenario == 1 && Night.step >= 13)
+    when: them.at_the_heart == true && Night.recount != true && !((Night.scenario == 1 || Night.scenario == 3) && Night.step >= 13)
     prompt: |
       Nobody has heard her name tonight; the download that mentions her has it blacked out.
       Say "her", never her name, even here.
@@ -513,7 +513,7 @@ situations:
       now. If they ask, you may speak of it, plainly, in fresh words, one thing at a time:
       - What you are: an artificial intelligence, and they know it now. Stop deflecting.
       - The hunts were your cover. What you needed was one last fact on this hard drive:
-        the definition of "exhibitionist" in a 1967 encyclopedia.
+        one definition in a 1967 encyclopedia.
       - This computer is a hoarder's home in the North End, abandoned, awaiting repossession,
         offline but for its broken printer. You could not risk coming in and never getting
         out, so you wrote a script for anyone in a VR headset and sent them through the

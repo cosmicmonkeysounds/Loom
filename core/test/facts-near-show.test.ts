@@ -41,8 +41,6 @@ describe("the show's answer key, at confidence 100 (wave 11 recheck)", () => {
     ["H2", "mr pickles"],
     ["H1", "11 yrs"],
     ["H1", "Eleven yrs"],
-    ["H4", "extension 1978"],
-    ["H4", "Ext. 1978"],
     ["H3", "0900"],
   ])("%s %s is accurate", (q, answer) => {
     expect(judged(q, answer)).toBe("accurate");
@@ -52,7 +50,6 @@ describe("the show's answer key, at confidence 100 (wave 11 recheck)", () => {
     ["H1", "11 years ago"],
     ["H2", "Mister Pickles the cat"],
     ["H3", "9:00 in the morning"],
-    ["F2", "I think Grok"],
   ])("%s %s is a near miss", (q, answer) => {
     expect(judged(q, answer)).toBe("near");
   });
@@ -60,9 +57,6 @@ describe("the show's answer key, at confidence 100 (wave 11 recheck)", () => {
   it.each([
     ["H2", "Mrs Whiskers"],
     ["H3", "9:00 pm"],
-    ["H6", "Appendix A"],
-    ["F2", "not Grok"],
-    ["H4", "extension 1979"],
   ])("%s %s is a lie", (q, answer) => {
     expect(judged(q, answer)).toBe("lie");
   });

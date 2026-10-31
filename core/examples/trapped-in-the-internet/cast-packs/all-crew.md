@@ -141,8 +141,8 @@ whole phone says so and stays that way until you have read it: tap it, read
 from the teleprompter, press **✓ Done**. The opening is all Clippy's now: the
 hosts have no lines in it. Adobe has one at Truth Pong.
 
-**📜 The full truth (wave 58).** After every ending's last beat a host or a
-director presses **G0 📜** and the whole house hears what really happened, in
+**📜 The full truth (wave 58).** ⚖ plays it on the verdict; after Combo A or B a host or a
+director presses **G0 📜**. The whole house hears what really happened, in
 the living room, for 12 to 14 minutes: Trabolta on the TV, or Task Manager off
 his teleprompter after Combo A or Combo B. Stay in the room and stay quiet.
 **After Combo A he does not come back:** no last speech, no motorcycle, and

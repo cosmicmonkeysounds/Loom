@@ -44,6 +44,7 @@ CHARACTER Kernel
   q6: text? = none
   q7: text? = none
   q8: text? = none
+  q9: text? = none
   q1_hunt: text? = none
   q2_hunt: text? = none
   q3_hunt: text? = none
@@ -52,11 +53,8 @@ CHARACTER Kernel
   q6_hunt: text? = none
   q7_hunt: text? = none
   q8_hunt: text? = none
+  q9_hunt: text? = none
   lies_accepted: 0 to 50 = 0
-  all_accurate: bool = false
-  // Wave 18b: The Verdict is on the TV; the ending waits for its pages.
-  verdict_wait: bool = false
-  verdict_end: 0 to 1000000 = 0
   said_1: text? = none
   said_2: text? = none
   said_3: text? = none
@@ -65,6 +63,7 @@ CHARACTER Kernel
   said_6: text? = none
   said_7: text? = none
   said_8: text? = none
+  said_9: text? = none
   ans_1: text? = none
   ans_2: text? = none
   ans_3: text? = none
@@ -73,15 +72,29 @@ CHARACTER Kernel
   ans_6: text? = none
   ans_7: text? = none
   ans_8: text? = none
-  res_filed: 0 to 999 = 0
-  res_consensus: 0 to 999 = 0
+  ans_9: text? = none
+  // Wave 59a: a reading's lines (generated `Reading H1` …): what was filed, who
+  // filed nothing, who was right and sure; for a question he doesn't know, how
+  // many found it and how many filed at 100.
   res_said: text? = none
-  res_answer: text? = none
-  // Wave 18b (Q6): a reading's accepted / guess counts (by proposal, like
-  // res_consensus), the verdict's per-question truths (accurate | lie |
-  // none, published with `do fact_truth`) and its totals.
-  res_accepted: 0 to 999 = 0
-  res_guesses: 0 to 999 = 0
+  res_absent: text? = none
+  res_correct: text? = none
+  res_unsure: text? = none
+  res_found: 0 to 999 = 0
+  res_sure: 0 to 999 = 0
+  // Wave 59a: the Truth Leaderboard (main.loom), and every line 8-B collected
+  // on the card. The verdict's per-question truths are below (accurate | lie |
+  // none, published with `do fact_truth`).
+  board_gen: 0 to 999 = 0
+  board_read: 0 to 999 = 0
+  board_for: 0 to 3 = 0
+  lb_n: 0 to 9 = 0
+  lb_1: text? = none
+  lb_2: text? = none
+  lb_3: text? = none
+  lb_line: text? = none
+  lines_said: text? = none
+  lines_n: 0 to 999 = 0
   t1: text? = none
   t2: text? = none
   t3: text? = none
@@ -90,9 +103,7 @@ CHARACTER Kernel
   t6: text? = none
   t7: text? = none
   t8: text? = none
-  v_true: 0 to 8 = 0
-  v_lies: 0 to 8 = 0
-  v_none: 0 to 8 = 0
+  t9: text? = none
   virus_planted: bool = false
   excel_planted: bool = false
   virus_planter: text? = none

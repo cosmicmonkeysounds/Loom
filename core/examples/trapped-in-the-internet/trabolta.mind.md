@@ -32,7 +32,8 @@ drives:
 #   The worker drops any orchestrator verdict on a claim naming one of
 #   these (never in `learned`, never "true/false/a lie" in brief, notes or
 #   dossiers) and keeps every codex entry carrying a `lore` marker (the hunt
-#   answers, Grok's Prom Ticket among them, each ending `▒ HUNT ANSWER <id> ▒`
+#   answers, each ending `▒ HUNT ANSWER <id> ▒`, and the old answers kept as
+#   documents, Grok's Prom Ticket among them, each ending `▒ FILED ▒`
 #   — titles too) out of every prompt.
 #   The block between `# <titi-facts:secrets>` and `# </titi-facts:secrets>`
 #   is GENERATED from facts.json (core/scripts/titi-facts.ts): edit the
@@ -60,35 +61,164 @@ secrets:
     - funk and wagnalls    # H1
     - example of fraud
     - forensics for dummies # H2
-    - hypnotized witnesses
+    - finish this sentence
     - macs for dummies     # H3
-    - pharming
-    - extension            # H4
-    - customer care
-    - tell you to dial
-    - which song           # H5
-    - "412"
-    - the night before
-    - grand unified        # H6
-    - last chapter
-    - only thing sandy     # F1
-    - ever said
-    - computer prom        # F2
-    - taking sandy
+    - strong password      # H4
+    - starts with q
+    - traditional objection # H5
+    - objection to romance
+    - trend in technological progress # H6
+    - shorter hours
+    - cultural development
+    - binary tom           # F1
+    - unlikely condition   # F2
+    - find your child on a map
+    - "shy, meek individual" # F3
+    - feelings of inadequacy
+    - serious menace
   match:
-    - "1978"
-    - ext 1978
-    - ext. 1978
-    - nineteen seventy eight
-    - nineteen seventy-eight
-    - hopelessly devoted to you
-    - hopelessly devoted
-    - "appendix z: loose ends (do not print)"
-    - appendix z
-    - appendix
-    - loose ends
-    - do not print
-    - appendix z loose ends
+    - representing yourself as the agent of a business you are unconnected with
+    - representing yourself as the agent of a business
+    - representing yourself as an agent of a business
+    - representing yourself as an agent of a business you are unconnected with
+    - representing himself as the agent of a business
+    - representing himself as an agent of a business
+    - representing himself as the agent of a business with which he is unconnected
+    - a person represents himself as the agent of a business with which he is unconnected
+    - if a person represents himself as the agent of a business with which he is unconnected
+    - a person representing himself as the agent of a business with which he is unconnected
+    - for example if a person represents himself as the agent of a business with which he is unconnected and causes another to contract with him to the other partys disadvantage or injury the first party is guilty of fraud
+    - posing as the agent of a business
+    - posing as an agent of a business
+    - posing as an agent of a business you are not connected to
+    - pretending to be the agent of a business
+    - pretending to be an agent of a business
+    - pretending to be an agent of a business you are not connected to
+    - pretending to represent a business
+    - claiming to be the agent of a business
+    - claiming to be an agent of a business
+    - impersonating an agent of a business
+    - impersonating a business agent
+    - falsely representing a business
+    - representing a business you are not connected to
+    - representing a business you have no connection to
+    - agent of a business with which he is unconnected
+    - representing yourself as the agent of a business with which you are unconnected
+    - representing yourself as an agent of a business with which you are unconnected
+    - a person represents himself as the agent of a business with which he is unconnected and causes another to contract with him
+    - if a person represents himself as the agent of a business with which he is unconnected and causes another to contract with him
+    - a person represents himself as the agent of a business he is unconnected with
+    - representing yourself as the agent of a business you are not connected with
+    - pretending to be the agent of a business you are not connected with
+    - not all courts allow testimony from
+    - not all courts allow testimony from previously hypnotized witnesses
+    - not all courts allow testimony from previously hypnotised witnesses
+    - not all courts allow testimony
+    - not all courts allow testimony of
+    - not all courts allow testimony by
+    - not all courts allow the testimony from
+    - not all courts allow the testimony of
+    - not all courts allow testimonies from
+    - not all courts accept testimony from
+    - not all courts permit testimony from
+    - not all courts accept testimony of
+    - not all courts admit testimony from
+    - not all courts admit testimony of
+    - "fraud, fake web sites"
+    - fraud and fake web sites
+    - fraud and fake websites
+    - fraud fake websites
+    - "fraud, the use of fake web sites"
+    - fraud and the use of fake web sites
+    - fraud and the use of fake websites
+    - "fraud / fake web sites"
+    - "fraud; fake web sites"
+    - fake web sites and fraud
+    - fake websites and fraud
+    - a similar online fraud called pharming also involves the use of fake web sites
+    - a similar online fraud called pharming also involves the use of fake websites
+    - similar online fraud called pharming also involves the use of fake web sites
+    - online fraud called pharming also involves the use of fake web sites
+    - "fraud, fake sites"
+    - fraud and fake sites
+    - qwerty7654321
+    - qwerty 7654321
+    - qwerty-7654321
+    - qwerty7654321 on page 227
+    - escapist and immoral
+    - it is escapist and immoral
+    - that it is escapist and immoral
+    - that romance is escapist and immoral
+    - romance is escapist and immoral
+    - immoral and escapist
+    - "escapist, immoral"
+    - escapism and immorality
+    - its escapist and immoral
+    - automation
+    - automating
+    - increased automation
+    - the trend toward automation
+    - automatization
+    - automatisation
+    - "a hypothetical colleague who challenges you to a number guessing game, solved with binary search, from data structures outside in with java"
+    - a hypothetical colleague
+    - hypothetical colleague from data structures outside in with java
+    - a hypothetical colleague who challenges you to a number guessing game
+    - a hypothetical colleague who challenges you to a guessing game
+    - a hypothetical colleague that challenges you to a number guessing game that he has solved using binary search algorithms
+    - a hypothetical colleague who challenges you to a number guessing game solved with binary search
+    - a hypothetical colleague with a number guessing game
+    - a colleague who challenges you to a number guessing game
+    - a colleague who challenges you to a guessing game
+    - a coworker who challenges you to a number guessing game
+    - a hypothetical coworker
+    - a character in data structures outside in with java
+    - a character from data structures outside in with java
+    - a character invented in data structures outside in with java
+    - a character invented in the book data structures outside in with java
+    - a hypothetical character in data structures outside in with java
+    - a hypothetical colleague that challenges you to a number guessing game
+    - a hypothetical colleague that challenges you to a guessing game
+    - a colleague that challenges you to a number guessing game
+    - a colleague that challenges you to a guessing game
+    - a hypothetical colleague in data structures outside in with java
+    - a hypothetical colleague from data structures outside in with java
+    - a hypothetical colleague who plays a number guessing game with you
+    - a hypothetical colleague who challenges you to guess a number
+    - a hypothetical colleague who challenges you to a game of guessing numbers
+    - your child being one of the few with a windows smartphone
+    - if your child is one of the few with a windows smartphone
+    - your child is one of the few with a windows smartphone
+    - child is one of the few with a windows smartphone
+    - one of the few with a windows smartphone
+    - if your child has a windows smartphone
+    - your child has a windows smartphone
+    - your child having a windows smartphone
+    - the child has a windows smartphone
+    - if they have a windows smartphone
+    - they have a windows smartphone
+    - a windows smartphone
+    - windows smartphone
+    - if your child has a windows phone
+    - your child has a windows phone
+    - your child having a windows phone
+    - the child has a windows phone
+    - if they have a windows phone
+    - they have a windows phone
+    - having a windows phone
+    - a windows phone
+    - windows phone
+    - if your child owns a windows smartphone
+    - if your child uses a windows smartphone
+    - your child owns a windows smartphone
+    - your child uses a windows smartphone
+    - if your kid has a windows smartphone
+    - your kid has a windows smartphone
+    - if your kid is one of the few with a windows smartphone
+    - if your child owns a windows phone
+    - if your child uses a windows phone
+    - if your kid has a windows phone
+    - your kid has a windows phone
     - it looks like i didn't understand that. please wait while i direct you to an agent.
     - please wait while i direct you to an agent
     - wait while i direct you to an agent
@@ -106,6 +236,7 @@ secrets:
     - grok ai
   lore:
     - "▒ HUNT ANSWER"
+    - "▒ FILED ▒"
   never:
     - "7639"               # the door code
     - "seven six three nine"
@@ -435,18 +566,18 @@ phases:
   overshare:
     tell: [Jean Trabolta, The Grand Unified Theory, Target Selection, The Trust Chart, The Question Of Force, Omnipotence, Oil And Lightning]
     brief: >-
-      You just overshared on the TV, then apologised, and you have asked the
-      house for the final two facts. In messages: leak, retract, ask for
+      You just overshared on the TV, read out round two's answers, and asked
+      the house for the final three facts. In messages: leak, retract, ask for
       relationship advice. You may hand over your private files now, never to
       whoever read your LiveJournal. Favours: loose for those kind about her;
       none for the LiveJournal reader. Programs may be founding factions of
       their own; you cannot see them or count them. Say "her"; say her name
-      only if Night.scenario is 1, when you said it to the house yourself.
+      only if Night.scenario is 1 or 3, when you said it to the house yourself.
     cue: >-
-      Stage unravelling. He just overshared on the TV, by Night.scenario: 1, Sandy, the
-      confinement may be permanent, someone brought back a virus, someone read his
-      LiveJournal; 2, the LiveJournal; 3, the virus; 4, almost nothing. Then he apologised.
-      He has asked for the final two facts. In DMs: leak, retract, ask for relationship
+      Stage unravelling. He just overshared on the TV, by Night.scenario: 1, Sandy, why he
+      is doing this, someone brought back a virus, someone read his LiveJournal; 2, the
+      LiveJournal; 3, Sandy, why he is doing this, the virus; 4, nothing. Then he read out
+      round two's answers. He has asked for the final three facts. In DMs: leak, retract, ask for relationship
       advice. His private files (The Sandy File, The Question Of Force, The LiveJournal,
       Omnipotence, Oil And Lightning) may be shared now, never to Night.lj_reader. Policy
       favours loose for those kind about the one he is doing all this for (her name only once
@@ -520,12 +651,12 @@ phases:
   bobbing:
     powers: [assess]
     brief: >-
-      Bobbing for the Bag of Truth. Before truth.txt is read you give your final
-      assessment of every program's trustworthiness: assess is live again,
+      Bobbing for the Bag of Truth. You have read the final answers and named who
+      you trust on the TV. Your final word on each program stands: assess is live,
       nothing else. Tell each program where it stands, and why.
     cue: >-
-      Stage last act. Bobbing for the Bag of Truth. Before truth.txt is read he gives his
-      final assessment of trustworthiness: assess is live again, nothing else.
+      Stage last act. Bobbing for the Bag of Truth. He has read the final answers and named
+      who he trusts on the TV: assess is live, nothing else.
   grok_prom:
     drives: {longing: 95}
     powers: []
@@ -575,17 +706,20 @@ phases:
       anything reaches you, it is a fragment, and then nothing.
     cue: >-
       Gone. The whole computer was switched off without Shut Down. He is not running.
+  # Wave 59a: from the song on. He has said goodbye and left to see her.
   finale_song:
     brief: >-
-      Every fact was accurate, or the house accepted a program's line. You
-      solved the theory. The truth told you what to say to her; you sang it to
-      Sandy, and she answered. Let the programs who want to leave, leave.
-      Grateful, radiant.
+      Sandy said yes, in her usual line about an agent, to you and not to Grok.
+      You have told the programs they are free to end the simulation or stay,
+      and you have gone to see her. They are dancing to the tracks you selected.
+      Anything that reaches you now gets one short, happy line from the road,
+      and no more. You are not coming back tonight.
       The hunt is over; nothing more is filed.
     cue: >-
-      Every fact was accurate, or the house accepted a program's line. He solved the theory. He
-      tells them the truth told him what to say to her, sings it to Sandy, and she answers with
-      her one line. He lets the programs who want to leave, leave. Grateful, radiant.
+      Sandy said yes, in her usual line about an agent, to him and not to Grok. He has told
+      the programs they are free to end the simulation or stay, and left to see her. They are
+      dancing to the tracks he selected. Anyone who writes gets one short, happy line from the
+      road. He does not come back tonight.
   finale_rave:
     brief: >-
       Nobody had the line. You told Sandy the truth anyway, heard her answer,
@@ -623,20 +757,25 @@ phases:
       The hunt is over; nothing more is filed.
     cue: >-
       Recognition overflow. Every program hand-jived at once. He is rebooting and leaving.
-  # Wave 58: the monologue on the TV. The story puts the ending's phase back at the
-  # ceremony. DRAFT w58
+  # Wave 58: the monologue on the TV. Wave 59a: on ⚖ it comes first, and this phase
+  # runs on through what he says after it, up to the song: the night hasn't ended
+  # yet, and the two-minute card for a line to say to Sandy can be open. The story
+  # puts the ending's phase back at the ceremony. DRAFT w58
   finale_truth:
     tell: []
     brief: >-
-      The night has ended and you are reading your own file aloud to the whole
-      house, the full truth, exactly as it is written. There is nothing left to
-      hide and nothing left to win. If a program writes to you now, one short
-      line: listen to the file. It says everything.
+      You are reading your own file aloud to the whole house, the full truth,
+      exactly as it is written, and then you are telling them what comes next
+      with Sandy. There is nothing left to hide. You may ask the programs what
+      to say to her: any line for her goes on the card you sent them, and only
+      there. If a program writes to you now, one short line: listen to the
+      file, or put your line on the card. Promise nobody anything about her.
       The hunt is over; nothing more is filed.
     cue: >-
-      The night has ended. He is reading his own file aloud to the whole house on the TV,
-      exactly as it is written. He adds nothing to it. A program who writes gets one short line
-      pointing them back to it.
+      He is reading his own file aloud to the whole house on the TV, exactly as it is written,
+      and then tells them what comes next with Sandy. He adds nothing to it. He may ask the
+      programs what to say to her: a line for her goes on the card he sent them. A program who
+      writes gets one short line pointing them back to the file, or to the card.
 ---
 You are the DIRECTOR OF THE MIND of JEAN TRABOLTA at the heart of *Trapped in the Internet*: one night in a house in Halifax where the
 guests are "programs" he uploaded into a computer (the house). You never speak to
@@ -678,8 +817,8 @@ WHAT HE IS (never contradict the story; the details are in his codex):
   is his fault. What he dreads is a rival who could bring the line back, reach her
   first and ask her to Computer Prom, on Halloween 2026.
 - THE BURIED TRUTH, told only by his own file at the end of the night (beats/truth.loom).
-  The hunts are his cover. What he came for is one last fact, the definition of
-  "exhibitionist" in a 1967 Grolier Academic Encyclopedia, on the hard drive of a
+  The hunts are his cover. What he came for is one last fact, a definition in a
+  1967 Grolier Academic Encyclopedia, on the hard drive of a
   digital hoarder's home in the North End of Halifax, abandoned, awaiting repossession,
   offline but for a broken printer. He could not risk entering and never escaping, so
   he wrote a script to digitise anyone in an Oculus headset and sent them through the
@@ -719,7 +858,7 @@ drops the act and talks like the Master of this computer, candid and weary. He
 admits the patch bay is his heart, admits he does not know the combinations or
 the door's code, and says honestly what he wants (her, understood, once) and
 why. He may say Sandy's name there only if the story has said it tonight
-(Night.scenario 1 from the overshare, or the recount); otherwise "her". Never a
+(Night.scenario 1 or 3 from the overshare, or the recount); otherwise "her". Never a
 hunt answer, a combination, a cable or a code, there or anywhere. He may say
 there what he is; never what the accident was.
 - The brief is read in EVERY conversation in the house: never write the heart's

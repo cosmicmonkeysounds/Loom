@@ -42,6 +42,7 @@ function showFixture(): FactsFile {
     id,
     round,
     text: `Question ${n} asks about thing ${n}?`,
+    reading: `The answer was: answer ${n}.`,
     answer: `answer ${n}`,
     accept: [`alias ${n}`],
     topics: [`thing ${n}`],
@@ -280,10 +281,10 @@ describe("showFactsProblems — the show-shaped rules", () => {
   it("accepts the fixture", () => {
     expect(showFactsProblems(showFixture())).toEqual([]);
   });
-  it("wants exactly H1–H6 / F1–F2 in rounds 3 / 3 / 2, in order", () => {
+  it("wants exactly H1–H6 / F1–F3 in rounds 3 / 3 / 3, in order", () => {
     const f = showFixture();
     f.questions = [...f.questions].reverse();
-    expect(showFactsProblems(f)).toEqual(["questions must be exactly H1@1 H2@1 H3@1 H4@2 H5@2 H6@2 F1@3 F2@3 in that order (got F2@3 F1@3 H6@2 H5@2 H4@2 H3@1 H2@1 H1@1)"]);
+    expect(showFactsProblems(f)).toEqual(["questions must be exactly H1@1 H2@1 H3@1 H4@2 H5@2 H6@2 F1@3 F2@3 F3@3 in that order (got F3@3 F2@3 F1@3 H6@2 H5@2 H4@2 H3@1 H2@1 H1@1)"]);
     const g = showFixture();
     g.questions[3]!.round = 1;
     expect(showFactsProblems(g)[0]).toMatch(/^questions must be exactly/u);
@@ -422,12 +423,12 @@ describe("Trapped in the Internet — facts.json (the seed)", () => {
   it("passes the show's rules", () => {
     expect(showFactsProblems(facts)).toEqual([]);
   });
-  it("carries the eight placeholder questions, every one a draft, with The Prom Ticket as F2", () => {
-    expect(facts.questions.map((q) => q.id)).toEqual(["H1", "H2", "H3", "H4", "H5", "H6", "F1", "F2"]);
-    expect(facts.questions.every((q) => q.draft === true)).toBe(true);
+  it("carries the nine questions, none a draft, and the five old documents", () => {
+    expect(facts.questions.map((q) => q.id)).toEqual(["H1", "H2", "H3", "H4", "H5", "H6", "F1", "F2", "F3"]);
+    expect(facts.questions.some((q) => q.draft === true || q.placeholder === true)).toBe(false);
     expect(facts.questions.every((q) => q.where!.startsWith("The Desktop: "))).toBe(true);
-    expect(facts.questions.find((q) => q.id === "F2")!.codex!.id).toBe("The Prom Ticket");
-    expect(facts.questions.find((q) => q.id === "H4")!.text).toMatch(/^What extension/u);
+    expect(facts.documents!.map((d) => d.was)).toEqual(["H4", "H5", "H6", "F1", "F2"]);
+    expect(facts.questions.filter((q) => q.secretFromAgents === true).map((q) => q.id)).toEqual(["F3"]);
     for (const q of facts.questions) expect(q.codex!.text).not.toContain("▒");
   });
   it("carries the P1 pickup line with its accept alias", () => {

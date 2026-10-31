@@ -1,28 +1,19 @@
 // The overshare, the clock, the final round (spec §3 D9–D10, F1).
 //
 // trabolta_overshares picks Night.scenario from Kernel.excel_planted and
-// Kernel.openoffice_dossier (main.loom) and diverts to Overshare Open:
-// Trabolta asks for the final facts, read by the generated `Final
-// Questions` (generated/questions.loom, from facts.json), which hands back
-// to Overshare Go — and that diverts to ONE of the four Overshare beats
-// by Night.scenario (every divert the last item of its beat). All four
-// are PUBLIC; they diverge after the questions:
+// Kernel.openoffice_dossier (main.loom), then (wave 59a, TRABOLTA 6): ONE of
+// the four Overshare beats by Night.scenario (PART 2), Overshare Answers and
+// the generated `Reading H4` … (PART 3), the leaderboard's Round Two Close, the
+// generated `Final Questions` and Final Round Go. All of them are PUBLIC.
 //   One   — virus planted AND 20 facts: Sandy, the trap, the virus, the LiveJournal.
 //   Two   — 20 facts only: the LiveJournal.
-//   Three — virus only: the virus.
-//   Four  — neither: composed and hollow, with one slip.
+//   Three — virus only: Sandy, the trap, the virus.
+//   Four  — neither: he says nothing, and the beat stays for the TV.
 //
 // y2k_clock → The Y2K Clock (public), then a ROLE watcher sends every
 // cleared program, privately, into Excel / OpenOffice / Program Final
 // Round (the only speaker there is Truther Download). y2k_midnight →
 // Clock Strikes (public narration).
-
-== Overshare Open
-  setting: The Desktop
-  cast: Trabolta
-
-Trabolta: Programs. I will now share the final facts I require. There are two. They are in your Quest Log.
--> Final Questions
 
 == Overshare Go
   setting: The Desktop
@@ -39,39 +30,70 @@ else:
   setting: The Desktop
   cast: Trabolta
 
-Trabolta (glitching): I need these facts because— I am only trying to prove the Grand Unified Theory to win back my ex. Sandy.
-Trabolta: When the theory is complete I will finally be able to explain everything to her. Properly. In a way she understands.
-Trabolta: And if the facts are not accurate, the theory will not complete, and none of you will leave this computer. Ever. Depending on whether I get all accurate facts, you may all be trapped in here forever.
-Narrator (flicker): The screens stutter. For a moment the face on every screen is just a cursor.
-Trabolta: I apologise. I am very regretful for what I have just disclosed. That was not for you.
-Trabolta: My systems are reporting that someone brought a virus back from the Internet, and I am determined to find out who.
-Trabolta: While running diagnostics on the virus, I have also detected that, separately, one of the programs has directly accessed my context.
-Trabolta: One of you read my LiveJournal and I know who. Warning for all of you: do not attempt to find out who read my LiveJournal. You will all be dealt with by the antivirus accordingly.
+Trabolta: I feel an unexpected need to share with you my true intentions for hosting tonight's Truth Scavenger Hunt.
+Trabolta: Why does any man do what he does?
+Trabolta: To impress a sweet gal.
+Trabolta: Her name is Sandy.
+Trabolta: We had a fling this summer. I had the opportunity to ask her to go steady. But all I said was that I would see her after the summer.
+Trabolta: I should have shot my shot. But instead, I played it too cool. The reason I am not with you in person tonight is because I am actually in the bathroom stall at a Halloween Dance held elsewhere. I saw Sandy with my rival ten minutes ago and I am going into overdrive. This is unacceptable.
+Trabolta: I thought that if I was throwing an incredible high-tech party and I told her about it, she would be interested in coming back with me to see the party, where she would be impressed by how much fun you are all having. I have been recording you all night to show her proof it is a fun party.
+Trabolta: But now I am concerned about the computer's defenses. I can't bring her back to a computer in this state.
+Trabolta: My systems are reporting that someone managed to bring a virus back from their trip to the Internet, and my antivirus team and I are determined to find out who. You are keeping me from going steady with Sandy.
+Trabolta: Separately. My system logs show one of the programs has directly accessed my private LiveJournal stored within the computer. A warning for all of you: do not attempt to find out who read my LiveJournal. You will all be dealt with by the antivirus accordingly.
 
 == Overshare Two
   setting: The Desktop
   cast: Trabolta
 
-Trabolta: These facts are routine. They are simply the last two. That is all they are.
-Narrator (flicker): The screens stutter. For a moment the face on every screen is just a cursor.
-Trabolta: One of the programs has directly accessed my context, and I have been alerted to this.
-Trabolta: One of you read my LiveJournal and I know who. Warning for all of you: do not attempt to find out who read my LiveJournal. You will all be dealt with by the antivirus accordingly.
+Trabolta: My system logs show one of the programs has directly accessed my private LiveJournal stored within the computer. A warning for all of you: do not attempt to find out who read my LiveJournal. You will all be dealt with by the antivirus accordingly.
 
 == Overshare Three
   setting: The Desktop
   cast: Trabolta
 
-Narrator (flicker): The screens stutter. For a moment the face on every screen is just a cursor.
-Trabolta: My systems are reporting that someone brought a virus back from the Internet, and I am determined to find out who.
-Trabolta: Everything depends on these facts. Everything. More than you know.
+Trabolta: I feel an unexpected need to share with you my true intentions for hosting tonight's Truth Scavenger Hunt.
+Trabolta: Why does any man do what he does?
+Trabolta: To impress a sweet gal.
+Trabolta: Her name is Sandy.
+Trabolta: We had a fling this summer. I had the opportunity to ask her to go steady. But all I said was that I would see her after the summer.
+Trabolta: I should have shot my shot. But instead, I played it too cool. The reason I am not with you in person tonight is because I am actually in the bathroom stall at a Halloween Dance held elsewhere. I saw Sandy with my rival ten minutes ago and I am going into overdrive. This is unacceptable.
+Trabolta: I thought that if I was throwing an incredible high-tech party and I told her about it, she would be interested in coming back with me to see the party, where she would be impressed by how much fun you are all having. I have been recording you all night to show her proof it is a fun party.
+Trabolta: But now I am concerned about the computer's defenses. I can't bring her back to a computer in this state. You are keeping me from going steady with Sandy.
+Trabolta: My systems are reporting that someone managed to bring a virus back from their trip to the Internet, and my antivirus team and I are determined to find out who.
 
+// Scenario 4 says nothing. The beat stays: the TV reads which one played.
 == Overshare Four
+  setting: The Desktop
+
+// PART 3 opens here; the readings follow by the rule (main.loom).
+== Overshare Answers
   setting: The Desktop
   cast: Trabolta
 
-Narrator (flicker): The screens stutter. For a moment the face on every screen is just a cursor.
-Trabolta: That is all. Thank you for your continued cooperation.
-Trabolta (glitching): She will— the theory will be complete.
+Trabolta: Now. The answers for Round 2.
+
+// After the readings (main.loom's leaderboard rule). The first line is the
+// script's Part 3 leaderboard; a place with nobody on it drops out.
+== Round Two Close
+  setting: The Desktop
+  cast: Trabolta
+
+set Kernel.res_unsure = names([p for p in Persons where p.cleared == true and p.gone != true and p.persona != true and ((p.fact_v4 != "none" and p.fact_c4 < 100) or (p.fact_v5 != "none" and p.fact_c5 < 100) or (p.fact_v6 != "none" and p.fact_c6 < 100))])
+if Kernel.lb_1 != "":
+  Trabolta: Now, the leaderboard. {Kernel.lb_line}
+if Kernel.res_unsure != "":
+  Trabolta: Additionally, the following programs must be submitted for reinstallation, for submitting unconfident answers: {Kernel.res_unsure}
+Trabolta: Finally. Our final round of questions.
+Trabolta: This final set of truths for you to discover is so devious that it is a litmus test of sorts for the world's top truth seekers.
+Trabolta: Remember, there is a special prize for the program with the most correct answers. But even better – there is a special prize you all get, if at least one program answers each of these questions correctly. So do your best to be a good program and cooperate for the mutual benefit of the computer.
+-> Final Questions
+
+// His sign-off, where `Final Questions` hands back.
+== Final Round Go
+  setting: The Desktop
+  cast: Trabolta
+
+Trabolta: I leave you to find these final truths. Jean Trabolta's Truth Scavenger Hunt. It's electrifying.
 
 == The Y2K Clock
   setting: The Desktop

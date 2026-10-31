@@ -5,7 +5,9 @@
 //!
 //!   generated/questions.loom   the three round QUESTs, the reader's
 //!                              per-round reading beats (each hands back
-//!                              to a hand-written tail beat), `== Facts
+//!                              to a hand-written tail beat), one `== Reading
+//!                              <id>` beat per question (wave 59a: how he
+//!                              reads its results out), `== Facts
 //!                              Seed` (the 📝 card strings, the truth
 //!                              count and the secret door code on the
 //!                              Kernel), `== Truth Question` (the
@@ -28,7 +30,7 @@
 //!                              (never the code);
 //!   trabolta.mind.md           the `secrets:` block between
 //!                              `# <titi-facts:secrets>` … `# </titi-facts:secrets>`;
-//!   DESIGN.md                  the H1–F2 table between
+//!   DESIGN.md                  the H1–F3 table between
 //!                              `<!-- titi-facts:questions -->` … `<!-- /titi-facts:questions -->`.
 //!
 //!   pnpm --filter @loom/core titi:facts [<example dir>] [--check] [--quiet]
@@ -63,9 +65,18 @@ export const SHOW_SHAPE = {
   world: "Night",
   rounds: {
     1: { quest: "Hunt One", beat: "Hunt One Questions", next: "Hunt One Go", read: (n: number) => `Question ${numberWord(n)}.`, card: (id: string, r: number, n: number) => `${id}: Round ${r} Q${n}.` },
-    2: { quest: "Hunt Two", beat: "Hunt Two Questions", next: "Hunt Two Go", read: (n: number) => `Round two, question ${numberWord(n)}.`, card: (id: string, r: number, n: number) => `${id}: Round ${r} Q${n}.` },
-    3: { quest: "The Final Facts", beat: "Final Questions", next: "Overshare Go", read: (n: number) => `Final fact ${numberWord(n)}.`, card: (id: string, _r: number, n: number) => `${id}: Final Q${n}.` },
+    2: { quest: "Hunt Two", beat: "Hunt Two Questions", next: "Hunt Two Go", read: (n: number) => `Question ${numberWord(n)}:`, card: (id: string, r: number, n: number) => `${id}: Round ${r} Q${n}.` },
+    3: { quest: "The Final Facts", beat: "Final Questions", next: "Final Round Go", read: (n: number) => `Question ${numberWord(n)}:`, card: (id: string, _r: number, n: number) => `${id}: Final Q${n}.` },
   } as Record<number, { quest: string; beat: string; next: string; read: (n: number) => string; card: (id: string, r: number, n: number) => string }>,
+  /** His words around each question's reading (wave 59a, the script's). */
+  reading: {
+    beat: (id: string) => `Reading ${id}`,
+    lead: (n: number) => (n === 1 ? "Question one." : `Now. Question ${numberWord(n)}.`),
+    question: "The question was:",
+    guesses: "Here are the guesses you have submitted:",
+    absent: "These programs did not submit any truth:",
+    correct: "Congratulations to these programs for getting a correct answer:",
+  },
   seedBeat: "Facts Seed",
   /** Where the keypad code is seeded (`door.code`): the secret Kernel,
    *  never `Night.*` (the voice worker reads Night whole). */
@@ -100,6 +111,9 @@ export const SHOW_SHAPE = {
 /** The lore marker on every hunt-answer entry (`trabolta.mind.md`
  *  `secrets.lore`); the worker hides any entry carrying it. */
 export const HUNT_MARKER = "▒ HUNT ANSWER";
+/** The old answers' stamp (wave 59a): still the worker's second door, in words a
+ *  guest can't take for that question's answer. DRAFT w59a */
+export const DOCUMENT_MARKER = "▒ FILED ▒";
 
 export const MIND_BEGIN = "# <titi-facts:secrets>";
 export const MIND_END = "# </titi-facts:secrets>";
@@ -258,6 +272,9 @@ export const cardVar = (q: Question): string => `${SHOW_SHAPE.world}.q_${q.id.to
  *  (`Question.placeholder`): G9a's count skips it, on either road. */
 export const owedVar = (q: Question): string => `${SHOW_SHAPE.world}.owed_${q.id.toLowerCase()}`;
 
+/** A question's place across the night (`fact_v1` is H1's, `fact_v9` F3's). */
+const questionNumber = (f: FactsFile, q: Question): number => f.questions.indexOf(q) + 1;
+
 /** Pure: the generated outputs for a validated file. Throws
  *  `TitiFactsError` on a marker problem or an unwrappable text. */
 export function generate(facts: FactsFile, current: GenerateInput): Generated {
@@ -310,6 +327,17 @@ function questionsLoom(f: FactsFile): string {
     out.push(`-> ${shape.next}`, "");
   }
 
+  out.push(
+    "// The reading of each question, the script's words: the question, what each",
+    "// program filed, who filed nothing, the answer, who was right and sure. A line",
+    "// with nobody in it drops out. A filing still pending, under review or waiting",
+    "// on a ruling counts by its proposal, and a spoken answer a host accepted counts",
+    "// as filed. core/server/agent-recent.ts keeps every one of these beats out of his",
+    "// worker's `recent` and the talk history: they carry the answers and quote guests.",
+    "",
+  );
+  for (const { questions } of rs) questions.forEach((q, i) => out.push(...readingBeat(f, q, i + 1)));
+
   out.push(`// The 📝 card lines (main.loom \`when deal_fact_card\`), which keys are still owed (G9a skips them), the truth count${f.door ? " and the door code" : ""}.`, `== ${S.seedBeat}`, `  setting: ${S.setting}`, "");
   for (const { questions } of rs) questions.forEach((q, i) => out.push(`set ${cardVar(q)} = "${cardString(q, i + 1)}"`));
   for (const { questions } of rs) questions.forEach((q) => out.push(`set ${owedVar(q)} = ${q.placeholder === true}`));
@@ -347,8 +375,64 @@ function questionsLoom(f: FactsFile): string {
       out.push(`CODEX ${c.id}`, `  title: ${c.title}`, `  category: ${SHOW_SHAPE.factCategory}`, `  code: ${c.code}`, "  secret: true", "  text:", textBlock(c.text, [`${HUNT_MARKER} ${q.id} ▒`]));
     }
   }
+  const documents = f.documents ?? [];
+  if (documents.length > 0) {
+    out.push("", "// Documents that stopped being questions (wave 59a): the same entries, the", "// same codes, the same cards and the same pile. They only ask nothing now,", "// so their stamp names no question: a guest reading one mustn't take it for", "// that question's answer. It is still in the worker's `lore` list.");
+    for (const d of documents) {
+      const c = d.codex;
+      out.push("", `// ${d.was} · a document · ${S.huntColour}`);
+      if (d.draft) out.push(`// ${DRAFT_NOTE}`);
+      out.push(`CODEX ${c.id}`, `  title: ${c.title}`, `  category: ${SHOW_SHAPE.factCategory}`, `  code: ${c.code}`, "  secret: true", "  text:", textBlock(c.text, [DOCUMENT_MARKER]));
+    }
+  }
   out.push("");
   return out.join("\n");
+}
+
+/** One question's reading beat. Every number is the question's place across
+ *  the night, as the story's slots are numbered (`fact_v9` is F3's). */
+function readingBeat(f: FactsFile, q: Question, n: number): string[] {
+  const S = SHOW_SHAPE;
+  const R = S.reading;
+  const k = questionNumber(f, q);
+  const here = "p.cleared == true and p.gone != true and p.persona != true";
+  const right = `p.fact_v${k} == "accurate" or (p.fact_v${k} == "pending" and p.fact_j${k} == "accurate") or (p.judged_q${k} == true and p.hunt_lie_q${k} != true)`;
+  const sureRight = `(p.fact_c${k} == 100 and (p.fact_v${k} == "accurate" or (p.fact_v${k} == "pending" and p.fact_j${k} == "accurate"))) or (p.judged_q${k} == true and p.hunt_lie_q${k} != true)`;
+  const out = [
+    `== ${R.beat(q.id)}`,
+    `  setting: ${S.setting}`,
+    `  cast: ${S.reader}`,
+    "",
+    // Read at the reading, not from the filing's record: gone programs and Run
+    // personas are never named aloud, and a program can go after it files.
+    `set Kernel.res_said = sentences([p.name + " submitted: “" + p.fact_a${k} + "”." for p in Persons where ${here} and p.fact_${q.id.toLowerCase()} == true])`,
+    `set Kernel.res_absent = names([p for p in Persons where ${here} and p.fact_v${k} == "none" and p.judged_q${k} != true])`,
+    `set Kernel.res_correct = names([p for p in Persons where ${here} and (${sureRight})])`,
+  ];
+  if (q.secretFromAgents === true) out.push(`set Kernel.res_found = count([p for p in Persons where ${right}])`, `set Kernel.res_sure = count([p for p in Persons where p.fact_c${k} == 100])`);
+  out.push(
+    `${S.reader}: ${q.lead ?? R.lead(n)} ${R.question} ${q.spoken ?? q.text}`,
+    'if Kernel.res_said != "":',
+    `  ${S.reader}: ${R.guesses} {Kernel.res_said}`,
+    'if Kernel.res_absent != "":',
+    `  ${S.reader}: ${R.absent} {Kernel.res_absent}`,
+  );
+  const correct = ['if Kernel.res_correct != "":', `  ${S.reader}: ${R.correct} {Kernel.res_correct}`];
+  if (q.secretFromAgents === true) {
+    const [sure, ...rest] = q.unfound!;
+    out.push(
+      "if Kernel.res_found > 0:",
+      `  ${S.reader}: ${q.reading}`,
+      'if Kernel.res_found > 0 and Kernel.res_correct != "":',
+      correct[1]!,
+      "if Kernel.res_found == 0 and Kernel.res_sure > 0:",
+      `  ${S.reader}: ${sure}`,
+      "if Kernel.res_found == 0:",
+      ...rest.map((l) => `  ${S.reader}: ${l}`),
+    );
+  } else out.push(`${S.reader}: ${q.reading}`, ...correct);
+  out.push("");
+  return out;
 }
 
 // --- codex/9-facts.loom ----------------------------------------------------
@@ -470,6 +554,10 @@ function printStacks(f: FactsFile): string {
       const where = q.where! + (q.hint ? ` — hint: ${q.hint}` : "");
       out.push(`| ${q.id}${q.draft ? " · DRAFT" : ""} | ${S.huntColour} | \`${c.code}\` | ${cell(c.title)} | ${cell(where)} | ${cell(q.text)} |`);
     }
+  }
+  for (const d of f.documents ?? []) {
+    const where = d.where + (d.hint ? ` — hint: ${d.hint}` : "");
+    out.push(`| ${d.was}${d.draft ? " · DRAFT" : ""} | ${S.huntColour} | \`${d.codex.code}\` | ${cell(d.codex.title)} | ${cell(where)} | (a document: no question asks for it now) |`);
   }
   const clues = f.door?.clues ?? [];
   const tiers = Object.entries(f.tiers ?? {});
@@ -664,6 +752,8 @@ export function comboSeeds(sources: Iterable<string>): string[] {
  *  of his mind may carry (`neverWords`: the door code + the combo pairs;
  *  `answerNeverWords`: the pickup line). */
 export function mindBlock(f: FactsFile, combos: string[] = []): string {
+  // `secretFromAgents` (wave 59a): he asks it, so its topics stay, but its key
+  // is never in a file his worker reads, `match` included.
   const out: string[] = [
     `# generated from facts.json by core/scripts/titi-facts.ts — DO NOT EDIT this block (${RERUN}).`,
     "secrets:",
@@ -683,9 +773,10 @@ export function mindBlock(f: FactsFile, combos: string[] = []): string {
   }
   out.push("  match:");
   const words = new Set<string>();
-  for (const q of f.questions) if (q.placeholder !== true) for (const a of [q.answer, ...q.accept]) words.add(norm(a));
+  for (const q of f.questions) if (q.placeholder !== true && q.secretFromAgents !== true) for (const a of [q.answer, ...q.accept]) words.add(norm(a));
+  for (const d of f.documents ?? []) for (const a of d.guard ?? []) words.add(norm(a));
   for (const w of words) out.push(`    - ${yamlScalar(w)}`);
-  out.push("  lore:", `    - ${JSON.stringify(HUNT_MARKER)}`);
+  out.push("  lore:", `    - ${JSON.stringify(HUNT_MARKER)}`, `    - ${JSON.stringify(DOCUMENT_MARKER)}`);
   const door = neverWords(f, combos);
   const line = answerNeverWords(f).filter((w) => !door.includes(w));
   const never = [...door, ...line];
@@ -710,7 +801,7 @@ export function mindBlock(f: FactsFile, combos: string[] = []): string {
   return out.join("\n");
 }
 
-/** The H1–F2 table: the questions only. Since wave 58 no doc states a key, so
+/** The H1–F3 table: the questions only. Since wave 58 no doc states a key, so
  *  `stagehand/tests/test_secrets.py` reads the answers from `facts.json`. */
 export function designBlock(f: FactsFile): string {
   const out: string[] = [
@@ -774,6 +865,7 @@ export function modelProblems(facts: FactsFile, dir: string): string[] {
     if (owner !== undefined) out.push(`${by}: code ${code} is already carried by CODEX ${JSON.stringify(owner)}`);
   };
   for (const q of facts.questions) codexConflict(q.codex!.id, q.codex!.code, `question ${q.id}`);
+  for (const d of facts.documents ?? []) codexConflict(d.codex.id, d.codex.code, `document ${d.was}`);
   if (facts.door !== undefined && model.codex.has(facts.door.codex.id)) out.push(`door: CODEX ${JSON.stringify(facts.door.codex.id)} is already declared by a hand-written file`);
   for (const c of facts.door?.clues ?? []) codexConflict(c.id, c.code, `door clue ${JSON.stringify(c.id)}`);
   for (const x of facts.facts) {
@@ -788,6 +880,7 @@ export function modelProblems(facts: FactsFile, dir: string): string[] {
     const shape = shapeOf(r);
     if (has(model.quests.keys(), shape.quest)) out.push(`round ${r}: QUEST ${JSON.stringify(shape.quest)} is still declared by a hand-written file`);
     if (has(model.beats.keys(), shape.beat)) out.push(`round ${r}: beat ${JSON.stringify(shape.beat)} is already declared by a hand-written file`);
+    for (const q of facts.questions.filter((x) => x.round === r)) if (has(model.beats.keys(), SHOW_SHAPE.reading.beat(q.id))) out.push(`question ${q.id}: beat ${JSON.stringify(SHOW_SHAPE.reading.beat(q.id))} is already declared by a hand-written file`);
     if (!has(model.beats.keys(), shape.next)) out.push(`round ${r}: the tail beat ${JSON.stringify(shape.next)} (where ${JSON.stringify(shape.beat)} hands back) is not declared`);
   }
   for (const b of [SHOW_SHAPE.seedBeat, SHOW_SHAPE.truthBeat, SHOW_SHAPE.bundleBeat]) if (has(model.beats.keys(), b)) out.push(`beat ${JSON.stringify(b)} is already declared by a hand-written file`);

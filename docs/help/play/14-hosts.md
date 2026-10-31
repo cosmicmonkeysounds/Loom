@@ -143,7 +143,7 @@ phone on the teleprompter, after a server restart, or on her last line when `# h
 says *A new beat cut Clippy off* (a 🛡 lands the next beat over her paragraph, and her
 phone moves on to it). Pressed before or after, it does no harm. His speech runs about
 three minutes before the 🤖 Talk card is wanted. After an
-ending, **G0 📜 The full truth** is NEXT: press it once the ending has had its
+ending, ⚖ has played the full truth; after Combo A or B **G0 📜 The full truth** is NEXT: press it once the ending has had its
 moment, with ■ Stop house sounds first if a dance track is up. **G1** asks first
 if the monologue hasn't finished. [How the house works](house-workings.md) has
 the rest.

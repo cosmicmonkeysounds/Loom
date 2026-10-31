@@ -523,7 +523,7 @@ ul.check label { min-width: 0; cursor: pointer; }
       <li>🏓 <strong>Truth Pong</strong> in the Cloud: sink a cup and every fact you filed on the phone this round counts (and you share one truth aloud). No cup, no count. A miss marks you.</li>
       <li>🧮 Trabolta tallies round two, then 📊 <strong>the Trust Chart</strong>: ten points per accepted truth, minus five per trip to the Internet, plus or minus ten for his own assessment. Staff players have rows too.</li>
       <li>🏆 Praise the top, shame the bottom. VLC is asked to press START on the printer; 🫘 the printer is full of beans, so the malware is worse. Trabolta unravels in front of everyone (he says "her" and catches it): a talk scene until 🗜 or 🤖, with ⚡ ad bursts.</li>
-      <li>🗜 The Antivirus zip everyone out of the Internet. 🤖 Trabolta overshares: one of four scenarios, depending on whether Excel planted the virus and OpenOffice filed 20 facts.</li>
+      <li>🗜 The Antivirus zip everyone out of the Internet. 🤖 Trabolta overshares: one of four scenarios, depending on whether Excel planted the virus and OpenOffice filed 20 facts. Then he reads round two's answers and the leaderboard, and asks the three final questions.</li>
     </ol>
 
     <h3>E · Act III: the Y2K hour and the server room</h3>
@@ -536,7 +536,7 @@ ul.check label { min-width: 0; cursor: pointer; }
     </ol>
 
     <h3>F · The final reveal and the endings</h3>
-    <p>If nothing has ended by midnight: 🌑 the final reveal in the dark, 🍎 Bobbing for Truth for the Bag of Truth, 📄 truth.txt read aloud by the bobber, then ⚖ the verdict on the TV. No lie on record gives the song. Any accepted lie sends Sandy to the prom with Trabolta's rival, and the night continues down the Prom branch (see Endings). On the cue sheet and in the beat list that branch's beat is <em>Rival's Prom</em>: its real name holds a hunt answer.</p>
+    <p>If nothing has ended by midnight: 🌑 the final reveal in the dark, where Clippy takes spoken answers before Trabolta reads the last three; 🍎 Bobbing for Truth for the Bag of Truth; 📄 truth.txt read aloud by the bobber; then ⚖, the full truth on the TV. The last answer then decides, by itself: someone found it, 8-A; nobody did, 8-B. Either way he leaves, the first of his tracks plays, and the rave follows. Lies stay on the record and decide nothing. The Prom branch, the advice poll and the hand jive are off the night; on the cue sheet and in the beat list the Prom beat is <em>Rival's Prom</em>: its real name holds a hunt answer.</p>
 
     <h3>G · The awards ceremony</h3>
     <p>🏆 The Night In Review, then the awards: most and least trusted, frequent flyer, lore hoarder, Truthcoin tycoon, best liar, duck speedrun, quest completionist, the painting (only if MS Paint came), then three staff awards with The Mole last. 🎃 The Resurrection: everyone is human again.</p>
@@ -554,18 +554,14 @@ ul.check label { min-width: 0; cursor: pointer; }
 <section class="win" id="endings">
   <h2><span>Endings</span><span class="btns" aria-hidden="true"><i></i><i></i><i></i></span></h2>
   <div class="body">
-    <p class="prose">The Prom branch is the beat the cue sheet calls <em>Rival's Prom</em>. Exactly one final ending plays (<code>Night.ending</code>). <em>banished</em> is not final. Midnight with nothing ended goes to the final reveal.</p>
+    <p class="prose">Exactly one final ending plays (<code>Night.ending</code>). Midnight with nothing ended goes to the final reveal. The night can reach these four, and each ends in the rave.</p>
     <div class="scroll"><table>
       <thead><tr><th scope="col"><code>Night.ending</code></th><th scope="col">How it is reached</th><th scope="col">What happens</th></tr></thead>
       <tbody>
         <tr><td><code>disabled</code></td><td>Combo A patched in the Y2K hour</td><td>He dies and does not come back. 10 s blackout, every phone says GO TO THE LIVING ROOM, one dance song, then 📜 Task Manager reads the message he left. Clippy hosts the ceremony.</td></tr>
-        <tr><td><code>destroyed</code></td><td>Combo B patched in the Y2K hour</td><td>Blackout and dance, then 🪦 Clippy reads the summary: purgatory forever. Then 📜 Task Manager reads the last thing the computer saved. Clippy hosts the ceremony.</td></tr>
-        <tr><td><code>song</code></td><td>⚖ verdict with no lie on record</td><td>The duet with Sandy. Leavers may leave. Then 📜 he reads the full truth on the TV.</td></tr>
-        <tr><td><code>song_pickup</code></td><td>Prom branch: someone gives Trabolta the pickup line that works on Sandy (the house judges it), or a host presses 💘</td><td>The song, then 📜.</td></tr>
-        <tr><td><code>rave</code></td><td>Prom branch: 💔 nobody has the line</td><td>A sad confession, he rides away, everyone stays trapped: a rave. Then 📜 he phones the full truth in from the prom (■ Stop house sounds first). Clippy hosts the ceremony.</td></tr>
-        <tr><td><code>help</code></td><td>Prom branch: 💌 he begs for relationship advice, 🗳 the poll, 💞 they helped</td><td>He wins Sandy, then 📜.</td></tr>
-        <tr><td><code>banished</code> (not final)</td><td>Advice poll: ⛈ they thwarted him</td><td>Everyone, Antivirus included, to the Internet.</td></tr>
-        <tr><td><code>hand_jive</code></td><td>🕺 everyone hand-jives while banished</td><td>Recognition overflow: he crashes, reboots and leaves, then 📜.</td></tr>
+        <tr><td><code>destroyed</code></td><td>Combo B patched in the Y2K hour</td><td>Blackout and dance, then 🪦 Clippy reads the summary: purgatory forever. Then 📜 Task Manager reads the last thing the computer saved, and the rave. Clippy hosts the ceremony.</td></tr>
+        <tr><td><code>song</code></td><td>⚖, someone found the last answer</td><td>📜 he reads the full truth on the TV, then his news. Leavers may leave. The song, then the rave.</td></tr>
+        <tr><td><code>song_pickup</code></td><td>⚖, nobody found the last answer</td><td>📜 the full truth, then his speech, two minutes of lines on every phone, he reads them all, and his news. The song, then the rave.</td></tr>
       </tbody>
     </table></div>
   </div>
@@ -577,7 +573,7 @@ ul.check label { min-width: 0; cursor: pointer; }
     <h3>Computer Bingo</h3>
     <p>A printed card of 16 squares plus the centre, with room to write a program's name in every square. The centre square exposes the anti-AI program (a secret on the Kernel; the director's card names it, and a director may change it before Bingo). Four outcomes (wave 26): a winner names that program (it may be the winner), the winner names nobody (🤐), or nobody wins and Task Manager's 🃏 frames them anyway. A guest calls 🎱 BINGO! from their phone; ↩ Not a Bingo undoes a false call with the exact time left. One round: the first 🎯 or 🤐 closes it.</p>
     <h3>The hunts and the judging</h3>
-    <p>Eight questions in <code>facts.json</code> over three rounds (three, three, two). Guests file on the 📝 card and must say how sure they are. An exact answer is accepted at once; every other filing goes to Trabolta's AI judge, one at a time. Accepted pays 50 Truthcoin and raises the Trust Chart. A guess (under 100%) is marked; a wrong answer at 100% counts as a lie, and a single accepted lie changes the verdict. Directors override on Run → Mind → Judging, hosts on the Judge tab. The answer key is on the second director's card only, never here.</p>
+    <p>Nine questions in <code>facts.json</code> over three rounds of three. Trabolta does not know the last one's answer. Guests file on the 📝 card and must say how sure they are. An exact answer is accepted at once; every other filing goes to Trabolta's AI judge, one at a time. Accepted pays 50 Truthcoin and raises the Trust Chart. A guess (under 100%) is marked; a wrong answer at 100% counts as a lie, and a single accepted lie changes the verdict. Directors override on Run → Mind → Judging, hosts on the Judge tab. The answer key is on the second director's card only, never here.</p>
     <h3>Truth or Dare</h3>
     <p>After the three round-one results. 20 truths in <code>facts.json</code>, 16 still drafts. Clippy marks 🗣 answered, 🙅 refused or 🎩 chose dare.</p>
     <h3>Truthcoin</h3>
@@ -605,7 +601,7 @@ ul.check label { min-width: 0; cursor: pointer; }
       <thead><tr><th scope="col">Clock</th><th scope="col">What</th><th scope="col">Story timer</th></tr></thead>
       <tbody>
         <tr><td>10:00</td><td>Weather call (tent or shed), then ⏸ pause, sync, Push draft, Go live in place; the worker restarted and every screen reloaded after it</td><td></td></tr>
-        <tr><td>12:00</td><td>Print, only after the sync and with H1–H3's answers in; the cans of water out</td><td></td></tr>
+        <tr><td>12:00</td><td>Print, only after the sync, with Clippy's, Adobe's and the second director's answer keys filled in from <code>facts.json</code>; the cans of water out</td><td></td></tr>
         <tr><td>15:00</td><td>Tech boot of every machine, the keypad re-set by hand, then its test</td><td></td></tr>
         <tr><td>17:00</td><td>Performer call</td><td></td></tr>
         <tr><td>19:00 / 20:00</td><td>Doors (open question). Power On plays; show clock reads 7:00 PM</td><td></td></tr>
@@ -859,7 +855,7 @@ Windows (PowerShell):
   <div class="body">
     <p class="prose">The VPS runs <code>w56</code> (verify: <code>ssh loom-vps 'tail ~/loom-ops/releases.log'</code>). <strong>Waves 58 (the Oct 30 story) and 59 (the notes from the live run) are not shipped.</strong> They land together, as the first box below says, then whatever the older deploys still owe on the house machines.</p>
     <ul class="check" data-list="deploy">
-      <li data-ck><strong>Waves 58 and 59, in this order</strong> (<code>SHOWNIGHT.md</code> §1): H1–H3's answers in <code>facts.json</code> and <code>titi:facts</code>; merge; <code>scripts/ops/predeploy.sh --vr</code>; the roster, in its own step; <code>ship.sh</code>; only then the 10:00 sync, with <code>--replace-maps</code> and no other <code>--replace-*</code>; the MacBook's <code>git pull</code> and <code>agents</code> restart together, then Run → Mind → Reset (a sync never reaches his persona or mind); reload the TV, every terminal, the tablets, the tent, every phone and booth and any open Run tab before 17:00; re-export and sideload the Quest's APK; print only after the sync, then <code>titi:qr-lock</code> and commit <code>qr-lock.json</code>; re-set the keypad by hand before 15:00; set up the iPad early (<code>docs/trapped/costume.md</code>).</li>
+      <li data-ck><strong>Waves 58 and 59, in this order</strong> (<code>SHOWNIGHT.md</code> §1): merge; <code>scripts/ops/predeploy.sh --vr</code>; the roster, in its own step; <code>ship.sh</code>; only then the 10:00 sync, with <code>--replace-maps</code> and no other <code>--replace-*</code>; the MacBook's <code>git pull</code> and <code>agents</code> restart together, then Run → Mind → Reset (a sync never reaches his persona or mind); reload the TV, every terminal, the tablets, the tent, every phone and booth and any open Run tab before 17:00; re-export and sideload the Quest's APK; print only after the sync, then <code>titi:qr-lock</code> and commit <code>qr-lock.json</code>; re-set the keypad by hand before 15:00; set up the iPad early (<code>docs/trapped/costume.md</code>).</li>
       <li data-ck><strong>The sign-off is done</strong> (2026-10-27): waves 13–29 ship as written. Still DRAFT: wave 22's patch-bay lines (no sheet) and wave 32's talk-back lines (<code>SIGNOFF-w32.md</code>; shipping as written).</li>
       <li data-ck><strong>Check the preview's roster in its own step</strong> (<code>pnpm showctl roster</code>). If anyone is on, ask before shipping: a release restarts the server.</li>
       <li data-ck>On the MacBook: <code>scripts/ops/predeploy.sh --vr</code> (the full gate; stamps the commit). Also <code>pnpm --filter @loom/core show:page --check</code>.</li>
@@ -1031,7 +1027,7 @@ Windows (PowerShell):
         <tr><td>Crew must enter the server room</td><td>🔧 <em>Crew going through the server-room door</em> (<code>crew_through_the_door</code>) first: a 2-minute window.</td></tr>
         <tr><td>Forgiven wrong patch, or a rehearsal left the room set</td><td>🔄 <em>Server room: reset the patch-bay alarm</em> (<code>reset_server_room</code>), then 💡 <em>Restore the house lights</em> (<code>restore_the_lights</code>) if the house is still red.</td></tr>
         <tr><td>Keypad dead or jammed</td><td>House manager's override key; prop the door; press 🚪 <code>server_door_opened</code> if The Heart did not play.</td></tr>
-        <tr><td>The ending's last beat has played</td><td><strong>G0 📜 The full truth</strong> (<code>tell_the_truth</code>) is NEXT once it has had its moment. A dance track still up never ducks: ■ Stop house sounds first.</td></tr>
+        <tr><td>Combo A or B has played</td><td><strong>G0 📜 The full truth</strong> (<code>tell_the_truth</code>) once it has had its moment: Task Manager reads, and the rave follows. On the verdict ⚖ plays it. <strong>■ Stop house sounds</strong> before G1, on every ending.</td></tr>
         <tr><td>📜 on the TV and he has no voice</td><td>Mute the TV, then 📜 <em>Task Manager reads it instead</em> (<code>task_manager_reads</code>). His printed copy is in his pack.</td></tr>
         <tr><td>A guest lost their phone or session</td><td>They scan or type their badge on the new phone and tap 🙋 Ask a host; a host presses <strong>Let them in</strong> on Needs. Or ⏏ Release in People (tick <strong>Offline (n)</strong>), or Inspector → 🔁 Re-pair (a single-use QR); a loaner phone.</td></tr>
         <tr><td>A performer's phone died</td><td>Ask a host from their staff badge on the loaner, or ⏏ Release the part and they sign in again with the badge or the performer code.</td></tr>
@@ -1076,10 +1072,9 @@ Windows (PowerShell):
       <li><code>SIGNOFF-w29.md</code> (the immersion fixes at his heart and in G11): signed off 2026-10-27.</li>
       <li>Wave 22's patch-bay lines (<code>DRAFT w22</code>) have no sheet.</li>
       <li><code>SIGNOFF-w32.md</code> (the talk scenes: the punched-up beats, the Talk card's canned lines, the ⚡ burst lines, his stage voice): <strong>DRAFT, shipping as written</strong> at the user's word, like <code>DRAFT w22</code>; seven feel questions to confirm.</li>
-      <li><code>SIGNOFF-w58.md</code> (the Oct 30 story): <strong>DRAFT, not shipped.</strong> The discrepancy log, every edit to the delivered text, every word we wrote, the checks and the print list. H1–H3's answers are owed before the print.</li>
+      <li><code>SIGNOFF-w58.md</code> (the Oct 30 story): <strong>DRAFT, not shipped.</strong> The discrepancy log, every edit to the delivered text, every word we wrote, the checks and the print list.</li>
       <li>Reprint now: Clippy, Task Manager, Norton, McAfee, Password Manager, CRA, the director, the second director, the tech op, the house manager, the Mind card, the Installation Wizard, Microsoft Excel, Adobe Acrobat, the Recycling Bin, all-crew and the patch-bay watch card.</li>
       <li><code>SIGNOFF-w59.md</code> (the notes from the live run): <strong>DRAFT, not shipped.</strong> The decisions and their costs, every new word by place, the checks owed on real devices and the print list.</li>
-      <li><code>facts.json</code>: all eight questions still carry the draft mark.</li>
     </ul>
   </div>
 </section>

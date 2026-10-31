@@ -485,22 +485,13 @@ Acrobat's only, at the printer.
 
 ## After 📄 truth.txt
 
-Once the bobber has read truth.txt (📄, `Night.r3_closed`) the verdict
-is in and the night ends at the Desktop (⚖, then the prom, the advice
-poll or the banishment). The server room goes quiet: the door, the patch
+Once the bobber has read truth.txt (📄, `Night.r3_closed`) the night ends
+at the Desktop (⚖, then 8-A or 8-B, the song and the rave). The server room
+goes quiet: the door, the patch
 bay (Combo A, Combo B, a wrong combination), the King's chess and the digit
 notes each post a `# hosts` note and do nothing else. A
 combination plugged during the final reveal or the bob, before 📄,
 still ends the night.
-
-During the **banishment** (the advice ending) nobody is reinstalled: a
-duck found on the tent laptop says only *"Gerald cannot help you:
-everyone is banished. The way out is the hand jive, together."* — no
-golden egg, no Golden Duck in the Codex. The tablet and the headset
-show **GERALD CAN'T HELP** instead of the reinstallation, the wall
-terminals' window the same with no egg, and the TV keeps the banish
-card. The hand jive frees everyone and puts the idle show back on
-every screen.
 
 ## When the keypad itself fails
 

@@ -90,6 +90,8 @@ openers end with `:` and indent their body.
 | `[x for x in C where cond]` | list comprehension |
 | `sum([p.score for p in Persons])` `max(list)` `len(list)` | add up / top / count a list |
 | `names([p for p in Persons where p.slow == true])` | their names for speech: "A, B and C" ("" for nobody) |
+| `sentences([p.name + " said no." for p in Persons where p.no == true])` | the strings in a row, for speech ("" for nobody) |
+| `len(Kernel.lines)` | a list's length, or a string's |
 | `30s` `2m` `1h` | durations |
 
 **Variety**

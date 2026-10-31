@@ -294,25 +294,27 @@ The refused screen and its neighbours carry no marker, because they are app word
 
 | File | Lines |
 |---|---|
-| `CLAUDE.md` | 378 |
-| `INDEX.md` | 57 |
+| `CLAUDE.md` | 377 |
+| `INDEX.md` | 58 |
 | `atmosphere.loom` | 14 |
-| `beats/finale.loom` | 227 |
+| `beats/ceremony.loom` | 55 |
+| `beats/finale.loom` | 258 |
 | `beats/internet.loom` | 23 |
 | `beats/pong.loom` | 18 |
 | `beats/server-room.loom` | 36, 150, 1210, 1223 |
 | `codex/1-world.loom` | 36, 115, 176 |
 | `codex/2-files.loom` | 106 |
+| `core/scripts/titi-facts.ts` | 115 |
 | `core/server/costume-page.ts` | 101 |
-| `core/server/event-runtime.ts` | 357 |
+| `core/server/event-runtime.ts` | 359, 367 |
 | `core/server/push.ts` | 290 |
 | `core/src/costume.ts` | 217 |
 | `costume.json` | 2 |
 | `docs/loom-house-desk.md` | 319 |
 | `editor/src/components/house/MusicPanel.tsx` | 6 |
-| `editor/src/lib/print-sheet.ts` | 18 |
-| `main.loom` | 2494, 2558, 2593, 3292, 3309, 3849, 6146, 6148, 6228, 6230, 6288, 6535, 6567, 6607 |
-| `objectives.loom` | 118, 217, 300, 339 |
+| `editor/src/lib/print-sheet.ts` | 18, 131 |
+| `main.loom` | 2618, 2682, 2717, 3425, 3442, 3645, 3988, 6350, 6352, 6432, 6434, 6516, 6521, 6558, 6607, 6850, 6882, 6885, 6908, 6929 |
+| `objectives.loom` | 118, 217, 300, 319, 340 |
 | `play/CLAUDE.md` | 597, 730 |
 | `play/src/aloud/prompter.tsx` | 71, 459, 523, 577 |
 | `play/src/booth/people.tsx` | 46 |
@@ -323,7 +325,7 @@ The refused screen and its neighbours carry no marker, because they are app word
 | `play/src/host/desk-tabs.ts` | 3 |
 | `play/src/host/mixer-model.ts` | 53 |
 | `play/src/host/prompter-strip.tsx` | 22, 28 |
-| `play/src/host/show-model.ts` | 115 |
+| `play/src/host/show-model.ts` | 115, 123 |
 | `play/src/host/tab-people.tsx` | 32, 38 |
 | `reinstall/vr/game/game.gd` | 145 |
 | `reinstall/vr/game/hud.gd` | 41 |
@@ -332,7 +334,7 @@ The refused screen and its neighbours carry no marker, because they are app word
 | `reinstall/web/src/game/reset.ts` | 13 |
 | `reinstall/web/src/game/tutorial.ts` | 142 |
 | `terminal/src/cutscene/scenes/act1.tsx` | 118, 155 |
-| `terminal/src/cutscene/scenes/act2.tsx` | 1387 |
+| `terminal/src/cutscene/scenes/act2.tsx` | 1383 |
 | `terminal/src/idle-show/ads.ts` | 100, 131 |
 | `terminal/src/slides.ts` | 608 |
 
@@ -436,7 +438,129 @@ phone, terminal, the TV, the tablets, the tent and any open Run tab before 17:00
 APK → the iPad → print → `titi:qr-lock`, committed → the keypad before 15:00. No release, sync or
 restart has happened: nothing on this sheet is live.
 
-## 8. The audio ads (wave 59a)
+## 8. The answers (wave 59a)
+
+The user's whole updated Trabolta script and the nine questions, on 2026-10-31 (the paste is the
+authority for his words), then the newer script and two decisions: *"[the last answer] decides, but
+we're still doing the rave in every ending"*, and the monologue goes before 8-A and 8-B. No answer
+is on this sheet: they are in `facts.json`, the story and the generated files.
+
+### 8.1 What changed
+
+- **Nine questions, 3 + 3 + 3.** H1 to H6, F1 to F3, each with the words he reads (`reading`). Round
+  1's keys are in at last. Each has a new gold card; `titi:facts` writes no WARN.
+- **The five old answers are documents** (`documents` in `facts.json`): the same entries, codes,
+  cards and gold pile, scannable by everyone, asking nothing. Her line and the rival's name stay
+  guarded; the song's guard is gone from the bait mode, because no answer is a song now.
+- **F3: he doesn't know it** (`secretFromAgents`). It is in no file his worker reads, no ruling is
+  asked on it, and the TV shows it only once someone has found it. A near miss on it waits for a
+  director on Run → Mind → Judging. A correct filing scores like any other.
+- **The rows are the same 87.** Only what a press plays, and some labels and descriptions. `no_pickup_line`
+  is now *💬 Close the pickup lines now (auto at 2 min)*.
+- 📋 ×3 reads round 1, 🧮 reads nothing, 📊 opens the chart, 🏆 names three from each end, 🫘 is his three
+  lines, 🤖 is his scenario, round 2's answers and the final questions. **🌑 is two halves:** filing
+  closes and Clippy asks the room, with ✅ and 😤 live on what's said; her arrow past her last line or her
+  ✓ Done (a second 🌑 with no reader; ten minutes with nobody at all) settles round three and he reads the
+  three final answers, the trust leaderboard and the winner. So a spoken answer is in the reading, the
+  leaderboard and the ranking. ✅ stays live until 🍎, as it always has, but one pressed after he starts only
+  pays: ⚖ goes by what Reading F3 said.
+- **⚖ is the full truth, then the last answer decides.** 8-A or 8-B follows by itself when the read is
+  over. Then his last line, the song, and the rave in every ending. Lies stay on the record, for trust,
+  the recap and the screens, and decide nothing. The spoken verdict and its TV pages are gone.
+- **The prom branch, the advice poll, the hand jive and the motorcycle** are off the night: their rows stay,
+  greyed by their `while:`. Their beats stay in the file, unreached.
+- A guest's filing or pickup line has its **slurs** starred before it's stored, as every guest's line does: he
+  reads them aloud now. Only slurs: a curse is read on the TV as typed. These lines don't reach the Password
+  Manager's filter, so she can't ✂ them.
+
+### 8.2 Where the script and the lists disagreed
+
+- Round 1's answers are shifted in the list of nine (Q2 shows Q3's, Q3 shows round 2's). The script has
+  them right, and that is what's in.
+- *"Everybody, boos and jeers for [PROGRAM WITH MOST TRUST]"*: he names the **least** trusted.
+- *"but I am computing this is, and it is not correct"* stays word for word: **check it isn't a typo.**
+- Stray quote marks aren't spoken. A title in the Binary Tom answer keeps its pair of quotes.
+- The first version of the paste had 8-A blank and 8-B cut off. The newer one is what's in.
+
+### 8.3 Calls we made
+
+- **Every question reads the same.** The script's third questions have no *"Here are the guesses"* or
+  Congratulations line; they read like the others. A line with nobody in it drops out, with no words added.
+- **"Some of you shared 100% confidence"** plays only if someone did. *"This is bad…"* always plays.
+- **The unconfident lists name anyone who filed under 100**, as the script says. Marks work as they did, so a
+  right answer at 90% is named and not marked.
+- **The leaderboard** is questions right so far, ties sharing a place, nobody on nought. An empty board
+  drops *"Now, the leaderboard."*
+- **The Trust Chart:** a tie goes to the first program, as it always has, nobody is named twice, and the
+  top three fill first.
+- **Greeting:** his three questions keep *"Question one."* (SIGNOFF-w58 logged it: a list number can't be
+  heard). The new paste has no numbers; say if you want them gone.
+- **🕚 is unchanged:** the script doesn't mention it.
+- **The ad:** 📺 still fires the takeover on the press, so his four lines of TRABOLTA 3 play over it. The ⚡
+  talk scene stays open behind it, though the script turns him off: hosts should leave 🤖 alone until 📓.
+- **The song before the rave**, as the first of *"some tracks I have selected"*. The rave starts **170 s** after
+  the song does, a guess until the Desktop's real file is timed: `Night.rave_at`, in `Song Ending`. The TV's
+  song picture still draws its chat, though nobody speaks it.
+- **The waits are the voice's arithmetic:** 8-A's speech 87 s, 8-B's after *"She said yes"* 79 s, 8-B's first
+  speech 99 s plus the **6 s** pause, his reading of the lines 33 s plus the lines' own length (19 s with none).
+  The full truth is 592 s plus 34 for each of the seven programs with a part who came, on either voice, 830 s
+  with all seven. A slow TV only queues; a fast one waits.
+- **His disappearing** is a second of true black on the TV alone (`tv_blackout`), lifted by his face as he
+  speaks. The TV polls once a second, so it can read a little over or under a second, and very rarely not at
+  all. The flicker that was here dips over his face and breaks his voice.
+- **The dream ends at ⚖:** his face and captions take the TV and the walls for the read. 🌀 still works.
+- **The lines are unjudged.** Every one is kept and read. The old pickup line wins nothing.
+- **The old documents end `▒ FILED ▒`, not ▒ HUNT ANSWER.** That mark is on the phone's copy, with the same ids
+  as the new questions, so an old document told a guest it answered H4. The entry's other words, its code, its
+  card and its pile are as they were, and the new stamp keeps it from his worker as the old one did.
+- **The results slide's totals** still count a wrong filing at 100 as ACCEPTED, as they always have, beside his
+  correct-only Congratulations: *accepted* never said *true*. Not viewed on a page; left alone.
+- **The reveal's order:** the answers can't land while she asks for them, or they would be on every phone
+  in the chat, so 🌑 waits for her. A script that holds only the TV would have left them on the phones. If she
+  lets ▶ Scroll run through the room's turn, he starts: ⏸ while they speak (her pack says so). A director's
+  second 🌑 is the backup, and a double tap on it starts him at once.
+- **Clippy hosts every ceremony:** he has left. On her, the bathroom rule's lines from him (main.loom,
+  *Disk Cleanup, at last* and the never-went line) don't play, and ✍ the second director's award lines changes
+  nothing: those replace his template lines, and he reads none. Her opening for 8-A and 8-B is a new line (8.4).
+- **"The prize you all get"** is said, and nothing is built: nobody gets anything for it, and the last answer
+  is what decides. Say what it should be if you want one.
+
+### 8.4 New words of ours
+
+Crew only, but for the first four. **The first is new, read out by Clippy on 8-A and 8-B:** the old line had him
+leave on his motorcycle, which the script says he doesn't.
+
+- `// DRAFT w59a` Clippy: Trabolta has gone to see his lady. He left the awards behind. Somebody has to read them. It might as well be me.
+- `DRAFT w59a` stamp, on the phone's copy of the five old documents: ▒ FILED ▒
+- `// DRAFT w59a` objective: *What should he say to her?* · *The card is in his thread. One line. Two minutes.*
+- `// DRAFT w59a` banner: !🎵 Those of you who want to leave may leave. To the Desktop for the song.
+- `// DRAFT w59a` # hosts: ⚖ The full truth is being read; the ending follows by itself. Nothing happens.
+- `// DRAFT w59a` # hosts: 🏆 The rave hasn't started. Press G1 again within 30 seconds to start anyway.
+- `// DRAFT w59a` # hosts: 🌑 Clippy has the room. ✅ and 😤 judge what they say. Trabolta starts when her arrow passes her last line or she presses ✓ Done; with no reader, 🌑 again.
+- `// DRAFT w59a` # hosts: 🍎 Not yet: Trabolta hasn't read the final answers. 🌑 again when Clippy has finished. Nothing happens.
+- `// DRAFT w59a` # hosts, if a beat cuts her off: 🌑 A new beat cut Clippy off: press 🌑 on her last line
+- `// DRAFT w59a` # hosts: 📜 Trabolta reads the full truth on the TV, about 14 minutes, clean: leave 🌀 His voice on Auto or Clean, and no shots. If the TV has no voice: 📜 Task Manager reads it instead. The ending follows by itself when it is over.
+
+### 8.5 What nothing has seen
+
+No real device, voice or model has seen any of this. The TV reading these lines at the room's pace, a
+long line of guesses, the 8-B card on a phone, the song's length, the rave on the house, and a real
+worker in the 8-B window. Nor has anyone seen Clippy's arrow start his reading on a real phone, the blank
+on the real TV, or `▒ FILED ▒` on a phone. 🤖 and 🌑 are the longest presses of the night: a poll carries 40 lines and
+16,000 characters, and past that the oldest are dropped. By the arithmetic they fit a house of 40 filing
+short answers; a house of essays would lose his first lines. A guest who tells him the last answer in a DM can still put it in his notes,
+because he holds nothing to catch it with: there are no guards on it but the bait mode. Task Manager's printed
+pack holds the monologue, and the monologue names that answer, as it always has: keep the pack face down.
+
+### 8.6 Print
+
+**Reprint:** all nine gold cards (Run → 🖨 Print sheet); the five old documents' cards are unchanged. Packs:
+`crew/director`, `crew/second-director`, `performers/clippy`, `performers/task-manager`,
+`performers/adobe-acrobat`, `performers/norton`, `performers/installation-wizard`, `performers/recycling-bin`,
+`all-crew`. Before printing, fill in from `facts.json` the second director's answer table, Clippy's answer key
+and Adobe Acrobat's round-2 line: none is written in the files. A right answer judged from an old copy gets 😤.
+
+## 9. The audio ads (wave 59a)
 
 Your notes: *"after the 2nd round of questions, there should be audio ads that pop up on the
 terminals and peoples' phones"*, then *"the audio ads should be totally random, and pop up every

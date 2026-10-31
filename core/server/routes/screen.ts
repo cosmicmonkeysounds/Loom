@@ -1005,7 +1005,7 @@ export type ScreenLiar = [who: string, ruled: 0 | 1];
 
 /** One question in a results block. */
 export interface ScreenResultQuestion {
-  /** The key id (`H1` … `F2`). */
+  /** The key id (`H1` … `F3`). */
   id: string;
   /** 1-based place in the book's questions. */
   n: number;

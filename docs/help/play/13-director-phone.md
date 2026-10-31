@@ -143,7 +143,7 @@ default). With nobody calling, nothing asks.
   a person waits **10 s** for that tap, not 4 s, while the list scrolls
   back to its row. Only an **award** with a winner to pick (G2–G10, never G9a) also has a **Value** box above the
   list (optional: lies accepted, the duck time, quests done).
-- **G0 📜** is NEXT once an ending's last beat has played: press it when the
+- ⚖ plays the full truth on the verdict. **G0 📜** is NEXT after Combo A or B: press it when the
   ending has had its moment, with ■ Stop house sounds first if a dance track is
   up. **G1** then asks once if the monologue should still be going; a second
   press inside 30 s goes on.

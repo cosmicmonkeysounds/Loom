@@ -133,19 +133,20 @@ describe("wave 18b integration — the whole night on the merged show (C1)", () 
     // Midnight → the bob → truth.txt → ⚖: the ending waits for the TV's pages.
     n.tick(3601);
     expect(v(n.sim, "Night.phase")).toBe("final_reveal");
+    n.raw("final_reveal");
     n.raw("bobbing_for_truth");
     n.raw("brought_up_the_bag", "g5", undefined, "Clippy");
     n.raw("read_truth_txt");
-    const verdict = n.raw("the_verdict");
-    expect(beats(verdict)).toContain("The Verdict");
-    expect(lines(verdict, "Trabolta").some((l) => /true\. .* with a lie on record\./u.test(l))).toBe(true);
-    expect(beats(verdict)).not.toContain("Song Ending");
-    expect(v(n.sim, "Night.ended")).not.toBe(true);
+    // Wave 59a: ⚖ is the full truth; nobody found the last answer, so 8-B follows.
+    expect(beats(n.raw("the_verdict"))).toContain("The Full Truth");
     // A second ⚖ meanwhile only tells # hosts.
     expect(beats(n.raw("the_verdict"))).toEqual([]);
-    expect(beats(n.tick(30))).not.toContain("Song Ending");
-    expect(beats(n.tick(5))).toContain("Song Ending"); // nobody filed a lie: the song
-    expect(v(n.sim, "Night.ending")).toBe("song");
+    const read = Math.ceil((v(n.sim, "Night.truth_until") as number) - n.sim.elapsed() / 1000);
+    expect(beats(n.tick(read + 1))).toContain("Nobody Found It");
+    expect(v(n.sim, "Night.ended")).not.toBe(true);
+    for (const s of [106, 121, 35, 2]) n.tick(s);
+    expect(beats(n.tick(80))).toContain("Song Ending");
+    expect(v(n.sim, "Night.ending")).toBe("song_pickup");
 
     // The ceremony: The Night In Review first, then the awards; a file each.
     n.sim.setVar("g6.gone", "true");
@@ -337,20 +338,23 @@ describe("wave 18b integration — results, rulings and the verdict on the merge
     expect(wall.questions.find((q) => q.id === "H1")).not.toHaveProperty("rows");
     for (const c of ["read_the_results", "read_the_results"]) await mod(c);
 
-    // Hunt 2 → 🧮 reads H4–H6.
+    // Hunt 2 → 🧮, which reads nothing now (wave 59a).
     for (const c of ["second_hunt_preview", "start_the_second_hunt"]) await mod(c);
     rt.tickOnce(120_000); // 📥
     for (const g of guests) for (const q of ["H4", "H5", "H6"]) await call(rt, "POST", "/api/guest/codex/redeem", { code: codeOf(q) }, { token: g.token });
     expect((await file(rt, calc, "H4", FACTS.questions.find((q) => q.id === "H4")!.answer, 100)).status).toBe(200);
     for (const c of ["five_minute_warning", "summons_closed", "truth_pong", "round_two_tally"]) await mod(c);
-    const tally = (await poll("tv")).state.results!;
-    expect(tally.kind).toBe("read");
-    expect(tally.questions.map((q) => q.id)).toEqual(["H4", "H5", "H6"]);
-    expect(tally.questions[0]!.rows!.map((r) => r[0])).toContain("Calculator");
+    expect((await poll("tv")).state.results).toBeUndefined();
 
     // On to ⚖: every key answer and the liars, on the TV only.
     for (const c of ["trust_chart", "show_the_rankings", "trabolta_overshares", "y2k_clock"]) await mod(c);
+    // Wave 59a: the key he doesn't know: a plain miss on it asks him no ruling.
+    const rulings = judges().length;
+    await file(rt, calc, "F3", "somebody else", 100);
+    expect(judges()).toHaveLength(rulings);
+    expect(JSON.stringify(judges())).not.toContain(FACTS.questions.find((q) => q.id === "F3")!.answer);
     rt.tickOnce(3_600_000); // midnight
+    await mod("final_reveal");
     await mod("bobbing_for_truth");
     await mod("brought_up_the_bag", { subject: pad.id, actor: "Clippy" });
     await mod("read_truth_txt");
@@ -358,7 +362,8 @@ describe("wave 18b integration — results, rulings and the verdict on the merge
     const tv = await poll("tv");
     const vd = tv.state.results!;
     expect(vd.kind).toBe("verdict");
-    for (const q of vd.questions) expect(q.answer, q.id).toBe(FACTS.questions.find((k) => k.id === q.id)!.answer);
+    // The one he doesn't know stays off the screens: nobody found it.
+    for (const q of vd.questions) expect(q.answer, q.id).toBe(q.id === "F3" ? null : FACTS.questions.find((k) => k.id === q.id)!.answer);
     const liarsOf = (id: string) => (vd.questions.find((q) => q.id === id)!.liars ?? []).map((l) => l[0]);
     expect(liarsOf("H1")).toEqual(["Winamp"]); // ruled not the same at 100
     expect(liarsOf("H2")).toEqual(["Calculator"]); // the house rule at the settle: a plain miss at 100
@@ -368,10 +373,9 @@ describe("wave 18b integration — results, rulings and the verdict on the merge
       expect(q.answer, q.id).toBeNull();
       expect(q, q.id).not.toHaveProperty("liars");
     }
-    // The ending waits for the TV's pages.
+    // Nothing ends here: he reads the full truth first.
     expect(rt.liveSim!.world.peek("Night.ended")).not.toMatchObject({ value: true });
-    rt.tickOnce(34_000);
-    expect(rt.liveSim!.world.peek("Night.phase")).toMatchObject({ value: "grok_prom" });
+    expect(rt.liveSim!.world.peek("Night.phase")).toMatchObject({ value: "finale_truth" });
 
     // An agent request after ⚖ carries no key answer and no liar.
     expect((await call(rt, "POST", "/api/guest/say", { channel: "dm:Trabolta", text: "What now?" }, { token: pad.token })).status).toBe(200);

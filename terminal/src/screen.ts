@@ -474,7 +474,7 @@ export interface ResultLiar {
 }
 
 export interface ScreenResultQuestion {
-  /** The facts book id (`H1` … `F2`). */
+  /** The facts book id (`H1` … `F3`). */
   id: string;
   /** 1-based position in the book. */
   n: number;
@@ -511,7 +511,7 @@ export interface ScreenResults {
   questions: ScreenResultQuestion[];
 }
 
-/** Caps on a parsed block (the server's are lower: 8 questions, 40 rows / names). */
+/** Caps on a parsed block (the server's are lower: 9 questions, 40 rows / names). */
 export const RESULTS_MAX_QUESTIONS = 16;
 export const RESULTS_MAX_ROWS = 60;
 const RESULT_TEXT_MAX = 400;

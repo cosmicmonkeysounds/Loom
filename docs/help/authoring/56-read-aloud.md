@@ -67,8 +67,9 @@ go at any time. His next scripted line in that room lets them go too: the held o
 play first, then it, so a later beat is never lost behind a reader who stopped.
 
 A beat can hand over by itself: in *Trapped in the Internet*, Clippy's paragraph
-about Trabolta fires his entrance when her arrow passes her last line, or she
-presses **✓ Done**. The cue's button stays as the backup.
+about Trabolta fires his entrance, and her lines at the reveal fire his final
+answers, when her arrow passes her last line, or she presses **✓ Done**. The
+cue's button stays as the backup.
 
 ## Other people's lines
 

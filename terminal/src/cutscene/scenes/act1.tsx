@@ -900,7 +900,7 @@ function QuestionReading({ t, n, q, sfx, reduced }: { t: number; n: number; q: S
       )}
       {done && q.consensus && q.answer !== null && (
         <div className="a1-read-consensus" style={{ opacity: progress(t, plan.summary + 300, 400), transform: reduced ? undefined : `scale(${(1.4 - 0.4 * eased(t, plan.summary + 300, 400, ease.outBack)).toFixed(3)})` }}>
-          <span className="a1-read-consensus-tag">CONSENSUS</span> The answer is: {q.answer}
+          The answer is: {q.answer}
         </div>
       )}
       {t >= plan.next && (

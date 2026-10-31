@@ -98,12 +98,12 @@ describe("the chains after the Y2K clock", () => {
     expect([v("Night.ending"), v("Night.ended")]).toEqual(["destroyed", true]);
   });
 
-  it("midnight's road: no lie on record → the song after the verdict's wait", { timeout: 60_000 }, async () => {
+  it("midnight's road: the full truth, then nobody found it → 8-B", { timeout: 60_000 }, async () => {
     const { sim, v, aimed } = await atY2K();
     expect(await pressChain(Y2K_TO_VERDICT, aimed, () => {})).toEqual({ ok: true, refused: [] });
-    expect(v("Night.phase")).toBe("bobbing");
-    tick(sim, 40);
-    expect([v("Night.ending"), v("Night.ended")]).toEqual(["song", true]);
+    expect(v("Night.phase")).toBe("finale_truth");
+    for (const s of [831, 106, 121, 35]) tick(sim, s); // nobody found the last answer: 8-B
+    expect([v("Night.ending"), v("Night.ended")]).toEqual(["song_pickup", true]);
   });
 
   it("an aimed award with nobody named is refused (the caller must say who)", { timeout: 60_000 }, async () => {

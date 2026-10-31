@@ -13,6 +13,7 @@ import { sceneOf, type PrompterFrame, type SceneDraft } from "../server/prompter
 import { Store } from "../server/store.ts";
 import { isHostRoute } from "../server/routes/host.ts";
 import { Sim } from "../src/runtime/sim/sim.ts";
+import { TO_Y2K } from "../../scripts/accept/chains.ts";
 
 const CODES = { event: "GUEST1", prime: "PRIME1", mod: "MOD111" };
 const SRC = scenarioSource("trapped-in-the-internet");
@@ -175,7 +176,7 @@ describe("over the real runtime", () => {
     const to = lines.slice(0, lines.findIndex((l) => l.his)).reduce((n, l) => n + l.text.split(/\s+/u).length, 0);
     expect((await post(rt, "/api/aloud", { scene: scene.id, op: "jump", pos: to }, { token: clippy })).status).toBe(200);
     const said = await poll(rt, before);
-    expect(said.voice.lines[0]!.text).toContain("Thank you, Clippy");
+    expect(said.voice.lines[0]!.text).toContain("Hello? Can you hear me?");
     expect(frames(res).at(-1)!.speaking?.name).toBe("Trabolta");
 
     expect((await post(rt, "/api/mod/aloud", { action: "release" }, { moderator: true })).json).toMatchObject({ ok: true });
@@ -237,7 +238,7 @@ describe("over the real runtime", () => {
     const after = await poll(rt, before);
     expect(after.voice.held).toBeUndefined();
     const said = after.voice.lines.map((l) => l.text);
-    const held = said.findIndex((t) => t.startsWith("Antivirus."));
+    const held = said.findIndex((t) => t.startsWith("This is a problem."));
     const y2k = said.findIndex((t) => t.includes("the Y2K BUG."));
     expect(held, "the beat's own line goes first").toBeGreaterThanOrEqual(0);
     expect(y2k).toBeGreaterThan(held);
@@ -356,6 +357,58 @@ describe("her last line is his cue", () => {
     await third.aloud({ op: "move", pos: third.scene.total }, driver);
     expect(online(third.rt)).toBe(1);
     third.rt.dispose();
+  });
+
+  /** Wave 59a: Clippy on the reveal's script, with the walk to it done on the story. */
+  async function atTheReveal() {
+    const rt = runtime();
+    const clippy = await booth(rt, "Clippy");
+    const res = await stream(rt, "prime", clippy);
+    const sim = rt["sim"] as unknown as Sim;
+    const walk = (name: string) => rt["fanout"](rt["commit"]("signal", name, undefined, null, null));
+    for (const cue of TO_Y2K) walk(cue);
+    expect((await press(rt, "final_reveal")).status).toBe(200);
+    const scene = frames(res).at(-1)!;
+    expect(scene.script?.sections[0]!.title).toBe("Final Reveal");
+    await post(rt, "/api/aloud", { scene: scene.id, op: "here", open: true }, { token: clippy });
+    const aloud = (op: Record<string, unknown>) => post(rt, "/api/aloud", { scene: scene.id, ...op }, { token: clippy });
+    const reading = () => said(rt).some((m) => m.from === "Trabolta" && m.text.startsWith("Programs. It is time to urgently share your truths."));
+    return { rt, sim, scene, aloud, reading };
+  }
+
+  it("🌑: his answers wait for her last line, and her arrow past it starts them, once", async () => {
+    const { rt, sim, scene, aloud, reading } = await atTheReveal();
+    expect(reading()).toBe(false);
+    await aloud({ op: "press", pos: 0 });
+    await aloud({ op: "move", pos: scene.total - 1 });
+    expect(reading()).toBe(false);
+    await aloud({ op: "move", pos: scene.total });
+    expect(reading()).toBe(true);
+    expect(sim.world.peek("Night.reveal_owed")).toMatchObject({ value: false });
+    await aloud({ op: "letgo", pos: scene.total });
+    await aloud({ op: "done" });
+    expect(said(rt).filter((m) => m.text.startsWith("Programs. It is time to urgently"))).toHaveLength(1);
+    rt.dispose();
+  });
+
+  it("🌑: her ✓ Done starts them too, and a host's second 🌑 is the backup", async () => {
+    const first = await atTheReveal();
+    await first.aloud({ op: "done" });
+    expect(first.reading()).toBe(true);
+    first.rt.dispose();
+    const second = await atTheReveal();
+    expect((await press(second.rt, "final_reveal")).json).toMatchObject({ ok: true });
+    expect(second.reading()).toBe(true);
+    await second.aloud({ op: "done" });
+    expect(said(second.rt).filter((m) => m.text.startsWith("Programs. It is time to urgently"))).toHaveLength(1);
+    second.rt.dispose();
+  });
+
+  it("🌑: a newer beat over her lines tells # hosts to press 🌑", async () => {
+    const { rt } = await atTheReveal();
+    expect((await post(rt, "/api/mod/beat", { name: "Following The Reinstallation" }, { moderator: true })).status).toBe(200);
+    expect(said(rt).filter((m) => m.channel === "room:hosts" && m.text === "🌑 A new beat cut Clippy off: press 🌑 on her last line")).toHaveLength(1);
+    rt.dispose();
   });
 
   const CUT_OFF = "🤖 A new beat cut Clippy off: press 🤖 on her last line";

@@ -28,7 +28,6 @@
 | any time | **🎀 Award a ribbon** (announced as *from the hosts*, Q28) · **🤝 Vouch for this program** · **🩹 Unmark: not going to the Internet** (on a marked program's card face) |
 | any time | **🖌 Signed the painting** (a program who just signed MS Paint's canvas; once each) |
 | the summons (⏳ → 🚨) | nothing to scan: programs check themselves in with the Desktop's QR. **📍 They're here** on your NOW card's *Still missing* list only for a dead or lost phone |
-| Grok Prom | **💘 Said "You're the one that I want"** |
 | any time, until 📄 | **♟ They beat the machine** (only if the door terminal could not report it and you **saw** the checkmate) |
 
 **Bathroom Mode:** the 🚻 button in every program's ⊞ Start menu (the bottom
@@ -126,9 +125,9 @@ The house deals the programs files about **who they are connected to** (Codex �
 - **All night:** Disk Cleanup is your domain. Keep the line moving, keep it
   clean, keep the Bathroom Mode joke alive. There is a hunt clue in there
   (the customer-service card): never point at it.
-- **📜 The full truth (G0):** once the ending has had its moment, any host or
-  director may fire it (■ Stop house sounds first if a dance track is up). It
-  runs 12 to 14 minutes in the living room, and G1 waits for it.
+- **📜 The full truth (G0):** on the verdict ⚖ plays it. After Combo A or B a host or
+  director fires it when the moment has passed. G1 waits for the rave; ■ Stop house
+  sounds first: the rave's never ducks.
 - **At each summons** (C1, C2, ⏳): nudge anyone lingering in Disk Cleanup.
   Anyone who left Bathroom Mode on by mistake: **🚻 End Bathroom Mode** on
   their row in your console's People tab (or tell the director, W-10).
