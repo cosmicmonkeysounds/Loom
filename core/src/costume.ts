@@ -28,8 +28,8 @@ export const COSTUME_RESTORE_S = 6;
 export const COSTUME_ITEMS_MAX = 6;
 /** A sub-list keeps one button for Cancel. */
 export const COSTUME_SUBITEMS_MAX = COSTUME_ITEMS_MAX - 1;
-/** The longest label a button takes. */
-export const COSTUME_LABEL_MAX = 24;
+/** The longest label a button takes, in portrait. */
+export const COSTUME_LABEL_MAX = 16;
 /** The longest line of his. */
 export const COSTUME_LINE_MAX = 200;
 /** The story's `ad_burst` says "too soon" this close to the last one. */
@@ -176,6 +176,10 @@ function itemsOf(raw: unknown, at: string, max: number, seen: Set<string>, probl
     }
     seen.add(id);
     const items = list === undefined ? null : itemsOf(list, `${where}.items`, COSTUME_SUBITEMS_MAX, seen, problems, depth + 1);
+    if (items !== null && items.length === 0) {
+      problems.push(`${where} (${id}) opens an empty list`);
+      continue;
+    }
     out.push({ id, label: label.trim().slice(0, COSTUME_LABEL_MAX), cooldownS: seconds(r["cooldownS"]) ?? 0, action, items });
   }
   return out;

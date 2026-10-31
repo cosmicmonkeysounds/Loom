@@ -3034,7 +3034,7 @@ export class EventRuntime {
     const actingBy = this.actingBy;
     this.actingBy = COSTUME_BY;
     try {
-      this.fanout(this.commit("signal", COSTUME_SIGNAL, undefined, { item: item.id, label: item.label }, null));
+      this.fanout(this.commit("signal", COSTUME_SIGNAL, item.label, null, null));
     } finally {
       this.actingBy = actingBy;
     }
