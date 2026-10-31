@@ -21,6 +21,7 @@
 //! Wave 59: 🎭 the Task Manager costume's switch, which is the crew's kill
 //! switch, and its link (`docs/trapped/costume.md`). The link carries the
 //! costume's narrow token: copy it, never post it.
+//! Wave 59p: 📷 the terminals' photos (`PhotosCard.tsx`).
 
 import { VOICE_FLAVOURS, VOICE_FLAVOUR_LABEL, VOICE_FX_MODES, type VoiceFxMode } from '@loom/core/voice-fx'
 import type { AdsStatus } from '@loom/core/audio-ads'
@@ -30,6 +31,7 @@ import { useTerminals } from '@/store/terminals'
 import { ROOM_TERMINAL_SPOT, TerminalStatus, adsLine, formatSilence, isTvView, majorityVersion, strayRoom, terminalBadges } from '@/lib/terminals'
 import { SpotClaim, doubleClaims, spotClaim, unclaimedSpots, viewOption } from '@/lib/terminal-setup'
 import { TerminalSetup } from './TerminalSetup'
+import { PhotosCard } from './PhotosCard'
 
 /** `📟 5/6` in the stage header — red while any terminal is silent; click → Run. */
 export function TerminalsPill() {
@@ -311,6 +313,7 @@ export function TerminalsCard() {
           ))}
         </p>
       )}
+      <PhotosCard />
       <TerminalSetup />
       {silent && (
         <p className="mt-2 text-xs text-zinc-500">

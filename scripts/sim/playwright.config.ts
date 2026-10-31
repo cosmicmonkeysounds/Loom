@@ -5,7 +5,7 @@ import { defineConfig, devices } from "../../editor/node_modules/@playwright/tes
 
 export default defineConfig({
   testDir: ".",
-  testMatch: ["ads.spec.ts", "browser.spec.ts", "handover.spec.ts", "heart.spec.ts", "prompter.spec.ts"],
+  testMatch: ["ads.spec.ts", "browser.spec.ts", "handover.spec.ts", "heart.spec.ts", "photos.spec.ts", "prompter.spec.ts"],
   fullyParallel: false,
   workers: 1,
   reporter: "list",

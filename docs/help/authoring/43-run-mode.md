@@ -185,7 +185,16 @@ Front of house: getting people in.
   running. **📢 Audio ads** is the kill switch for the fourteen random ads that run from the
   second hunt to the final reveal: **Off** stops whatever is playing everywhere and no
   more start, **On** lets the next one go, and it holds through a restart. Beside it
-  the card says how many have played and what the next one waits for. Each row
+  the card says how many have played and what the next one waits for. **📷 Photos**
+  is the terminals' photos: **SAFE** takes none; press it
+  and it reads **ARMED**, in red, and each terminal with a working camera takes one
+  every 15 s, showing nothing on its screen. Never the Tent or the TV, and the Server
+  Room only while a program is at his heart, so its row reads *only at the heart*. A terminal
+  that should be shooting and isn't says why under its thumbnail. **⬇ Download all**
+  saves a tar, one folder per terminal; **🗑 Delete all** asks on the page first. Do
+  both before End, which leaves the files on the server with no button to reach
+  them. These are pictures of people: the upload's 🎥 card only asked about video,
+  and a photo can't leave out someone who opted out. Each row
   shows what the tablet reports: **🔇** nobody has touched it yet so it
   can't speak, **💤** its screen is off or another app is on top, **⛶**
   it is not full screen (on a tablet, touch it once: it asks again on

@@ -57,10 +57,11 @@ function dim(v: unknown): number | null {
 
 /**
  * Validate `{spot, jpeg, w, h}` (jpeg = base64, no `data:` prefix). 400 a
- * bad body, 413 a JPEG over `CAM_MAX_BYTES` decoded. The JPEG must start
+ * bad body, 413 a JPEG over `maxBytes` decoded (the feed's `CAM_MAX_BYTES`,
+ * or a still's own cap, `photos.ts`). The JPEG must start
  * with the SOI marker (FF D8) — nothing else is ever served as image/jpeg.
  */
-export function parseCamUpload(body: Record<string, unknown>): CamUpload {
+export function parseCamUpload(body: Record<string, unknown>, maxBytes: number = CAM_MAX_BYTES): CamUpload {
   const spot = typeof body["spot"] === "string" ? body["spot"].trim() : "";
   const b64 = typeof body["jpeg"] === "string" ? body["jpeg"] : "";
   const w = dim(body["w"]);
@@ -69,10 +70,10 @@ export function parseCamUpload(body: Record<string, unknown>): CamUpload {
     return { ok: false, status: 400, error: "a frame is {spot, jpeg (base64), w, h}" };
   }
   // Decoded size ≈ 3/4 of the text: refuse the obviously oversized before decoding.
-  if (Math.floor((b64.length * 3) / 4) - 2 > CAM_MAX_BYTES) return { ok: false, status: 413, error: `frame too large (max ${CAM_MAX_BYTES} bytes)` };
+  if (Math.floor((b64.length * 3) / 4) - 2 > maxBytes) return { ok: false, status: 413, error: `frame too large (max ${maxBytes} bytes)` };
   if (!BASE64.test(b64)) return { ok: false, status: 400, error: "jpeg is not base64" };
   const jpeg = Buffer.from(b64, "base64");
-  if (jpeg.length > CAM_MAX_BYTES) return { ok: false, status: 413, error: `frame too large (max ${CAM_MAX_BYTES} bytes)` };
+  if (jpeg.length > maxBytes) return { ok: false, status: 413, error: `frame too large (max ${maxBytes} bytes)` };
   if (jpeg.length < 4 || jpeg[0] !== 0xff || jpeg[1] !== 0xd8) return { ok: false, status: 400, error: "jpeg is not a JPEG" };
   return { ok: true, spot, jpeg, w, h };
 }

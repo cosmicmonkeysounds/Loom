@@ -26,6 +26,9 @@ camera, tablet, iPad, Quest, TV or voice.
 | **story** | The two rooms renamed and their lore rewritten, the Act II heading, chat rooms opening on their beat, The Tube's card, `costume_flicker`, the handover, the guest-facing words | `main.loom`, `beats/`, `objectives.loom`, `codex/`, `house.json`, `house.shed.json`, `trabolta.persona.md`, `terminal/src/`; `core/CLAUDE.md`, *A room opens on its beat* | `ship.sh`, then `sync-show --replace-maps`; the MacBook's restart for his persona and guard |
 | **fullscreen** | Play fills the screen on the first tap (`oct31-w58/play-fullscreen`, on `oct31-w59/base`) | `play/src/fullscreen.ts`; `play/CLAUDE.md` | `ship.sh`; a reload of every phone |
 
+The terminals' photos landed after these lanes, with their own contract:
+[`loom-w59-photos-contract.md`](./loom-w59-photos-contract.md).
+
 ## The rules between lanes
 
 - **A typed code takes the scan's road.** `printedHit` turns a code back into the link

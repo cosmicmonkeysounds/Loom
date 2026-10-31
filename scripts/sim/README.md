@@ -40,6 +40,20 @@ SIM_BASE=http://127.0.0.1:7600 SIM_MOD_CODE=<mod> SIM_GUEST_CODE=<guest> SIM_PRI
   pnpm --filter loom-app exec playwright test -c ../scripts/sim/playwright.config.ts 'ads\.spec'
 ```
 
+## The terminals' photos, on real pages
+
+`photos.spec.ts` (wave 59p) starts its own scratch server, because a restart is part of the
+test: Chromium's fake camera on a wall page, one with its camera setting off, the Server Room's kiosk
+link, the Tent and the TV. It arms from a host's token, sees the stills land 15 s apart, walks the
+Server Room through a talk at his heart (none before it, stills inside it, none after it, none
+disarmed in the middle of one), disarms, restarts, refuses a guest from every route, reads the tar,
+and opens the Desk on a phone. About three minutes. Build `play` and `terminal` first.
+
+```bash
+SIM_PHOTOS_PORT=7701 SIM_PHOTOS_STATE=<a scratch dir> SIM_SHOTS=<dir> \
+  pnpm --filter loom-app exec playwright test -c ../scripts/sim/playwright.config.ts photos.spec
+```
+
 ## The teleprompter, on real pages
 
 `prompter.spec.ts` (wave 59) drives Clippy's phone, a host's phone and the real TV

@@ -500,6 +500,17 @@ the landing: the Desktop's `git pull` and `start-stagehand.ps1 -Restart audio`, 
 the commands are logged as unknown. ⏮ ⏸ and a hand playlist are unproven on the
 real app. Help: `docs/help/authoring/57-music-manager.md`.
 
+**The terminals' photos** (wave 59p, not shipped; `docs/loom-w59-photos-contract.md`, words
+`DRAFT w59p` on `SIGNOFF-w59.md` §4.12): armed from the Desk or Run → Terminals, each terminal
+with a working camera takes one still every 15 s, invisibly, off the camera the games' feed
+already holds, so arming opens nothing and prompts nothing. Never the Tent or the TV; the Server
+Room only while a program is at his heart (the server decides, from `Night.heart_stage` and
+`Night.heart_talker`, and refuses a late still). Files are on the VPS under the state dir, at most 3 GB and
+never within 2 GB of a full disk, in no backup. Pictures of people: directors and hosts only, and
+⬇ Download all and 🗑 Delete all are Run's alone. **Download before End.** The upload's 🎥 card
+says *video*, and a still can't leave out a guest who opted out. Needs a release and every
+terminal reloaded, no `sync-show`.
+
 **Mic 1 is the TV's sound in the games** (wave 59, not shipped;
 `docs/loom-w59-mic-contract.md`): the Desktop's router sends the 828x's Mic 1
 (Clippy's wireless) to both reinstallation games, where it plays from the TV to a

@@ -731,7 +731,11 @@ bar shows is pure in `host/show-model.ts` (`hostWindowShown`,
   checks walked one row at a time (Test / colours, ✓ Heard it / ✗
   Nothing, next). Once `live`, every test and Try it asks first
   (`ConfirmButton`, `liveAsk`). It never edits a cue. The hosts' help
-  article is `docs/help/play/20-house-desk.md`. Wave 40 adds a folded
+  article is `docs/help/play/20-house-desk.md`. Wave 59p adds
+  **📷 Terminal photos** (`host/photos.tsx`, pure `host/photos-model.ts`, its own
+  `photos.css` in this chunk): `PhotosSection` is self-contained: the arm, the counts, each
+  terminal's thumbnail (a blob URL, fetched with the booth's token) and note. Never the
+  download or Delete all (`docs/loom-w59-photos-contract.md`). Wave 40 adds a folded
   **🎚 Mixer** under Setup (`host/mixer.tsx`, pure `host/mixer-model.ts`
   over core's `house-mixer.ts`, `docs/loom-w40-contract.md` C5): it polls
   `GET /api/mod/audio/mixer` every second only while open and visible,

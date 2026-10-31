@@ -24,6 +24,7 @@
 //!   Manager, folded for every other host; it polls only while open.
 //! - 🎚 Mixer (wave 40, `mixer.tsx`), folded: the house's live balance,
 //!   polled only while open.
+//! - 📷 Terminal photos (wave 59p, `photos.tsx`): the arm and each terminal's count.
 //!
 //! The view is a long poll (`GET /api/mod/desk?after=<rev>&wait=25`) with
 //! the booth's token, parked while the page is hidden (`startPoll`).
@@ -38,6 +39,7 @@ import { browserPollDeps, eventBase, fetchHostPost, type HostAuth } from "./clie
 import { ActButton, ConfirmButton, HostEmpty, failText } from "./kit.tsx";
 import { MixerSection } from "./mixer.tsx";
 import { MusicSection } from "./music.tsx";
+import { PhotosSection } from "./photos.tsx";
 import {
   DESK_POLL_TIMEOUT_MS,
   DESK_REPOLL_MS,
@@ -219,6 +221,7 @@ export function DeskBody({ view, calls, client, me, mixer }: { view: DeskView; c
         <Setup view={view} />
         {mixer !== undefined && <MusicSection auth={mixer} calls={calls} me={me} />}
         {mixer !== undefined && <MixerSection auth={mixer} calls={calls} />}
+        {mixer !== undefined && <PhotosSection auth={mixer} calls={calls} />}
 
         <fieldset className={`host-box host-desk-standby${card.running ? " running" : ""}`} data-testid="host-desk-standby">
           <legend>STANDBY</legend>

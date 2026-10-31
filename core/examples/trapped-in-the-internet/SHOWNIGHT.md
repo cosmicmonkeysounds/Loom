@@ -679,6 +679,25 @@ doctor`, *Clippy's dream*); the show goes on. 🌀 **Clippy's dream: on / off**
 before something on the TV must read clean (truth.txt, say). A blackout stays
 black, and a guest on a line, a board or a walk is never disturbed.
 
+### The terminals' photos
+
+Pictures of the room, one every 15 s from each terminal with a working camera, while **📷 ARMED**
+(the Desk, a host's phone, or Run → Terminals). Nothing shows on a terminal. Never the Tent or the
+TV; the Server Room only while a program is at his heart (`docs/loom-w59-photos-contract.md`).
+
+- **Arm it** as the doors open, unless the director says otherwise, and **SAFE it** at the end of the
+  night. An arm holds through a restart and a story reload: only a press changes it, so look at it before
+  the doors, and 🗑 Delete all if a rehearsal left any.
+- **The panel** names any terminal that should be shooting and isn't: not heard from, page hidden, no
+  camera, *reload it* (an old build). The Server Room's row reads *only at the heart*: no photos and no
+  warning there between talks is right. If a press says it couldn't be saved, it's still SAFE, but tell
+  the tech op: a restart would arm it again.
+- **Where they go:** the VPS, `/data/photos/<event>/<spot>/`. 3 GB is the stop (about 400 MB a night
+  is the sum), and it stops sooner if the disk gets within 2 GB of full. The panel says which. Nothing
+  else breaks: Download all, Delete all, carry on. They're in no backup.
+- **Who sees them:** directors and hosts. Never post one, and never hand a phone with the panel open to
+  a guest. Delete them when they're done with.
+
 ## 7. Emergencies and fixes
 
 **911** for fire, injury or someone unresponsive. The house manager calls
@@ -774,6 +793,12 @@ stays at or under 3 Hz; no open flames; VR is played seated with a spotter.
    again. The card
    says Send is off when the VPS has no `LOOM_RESEND_API_KEY` /
    `LOOM_WEBMASTER_FROM`. Help: `docs/help/authoring/52-letters.md`.
+   **The terminals' photos, before End too** (wave 59p): 📷 SAFE, then Run → Terminals → ⬇ Download
+   all: a tar, one folder per terminal, on the machine that presses it, so that needs the room (about
+   400 MB). Check it unpacks, then 🗑 Delete all. Missed it? End leaves the files on the VPS with no button
+   to reach them: `ssh loom-vps 'cd ~/loom && docker compose exec -T loom tar cf - -C /data/photos .' >
+   photos.tar`, then delete `/data/photos` the same way. The Run → 🎥 list says who opted out of video,
+   and a photo can't leave anyone out: whoever goes through them keeps that list beside them.
 5. **The credits** (wave 44). G11 🎃 rolls them by itself on the TV,
    every wall terminal and every phone, after any ending; G12 🎬 rolls
    them again. The names are the project's `credits.json` (Writing; a

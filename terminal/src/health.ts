@@ -22,6 +22,8 @@ import type { MicReport } from "./voice/roles.ts";
 import { micHeartbeat } from "./voice/status.ts";
 import { doorHeartbeat } from "./serial/door-status.ts";
 import { linkQuery, linkStats } from "./link-stats.ts";
+import { photoStatus } from "./photo-status.ts";
+import type { PhotoReport } from "../../core/src/photos.ts";
 
 declare const __BUILD__: string | undefined;
 
@@ -49,6 +51,8 @@ export interface DeviceHealth {
   /** (wave 59) The link to the games: `cs` `cr` `cd` frames per second, `ce`
    *  the last error (`link-stats.ts`). Absent keys: not on this page. */
   link?: Record<string, string>;
+  /** (wave 59p) While the photos are armed, how this terminal's are going (`ph=`). */
+  photo?: PhotoReport | null;
 }
 
 /** The poll's query fields: `audio=1|0`, `vis=v|h`, `bat=<0-100>[c]`, `fs=1|0`, `ann=1|0`, `mic=<state>`, `ver=<build>`. */
@@ -61,6 +65,7 @@ export function deviceQuery(h: DeviceHealth): Record<string, string> {
   if (h.mic !== undefined && h.mic !== null) q["mic"] = h.mic;
   if (h.door !== undefined) for (const k of ["door", "dlv", "dft", "dwn", "pb", "pbc", "pbx", "pft"]) if (h.door[k] !== undefined) q[k] = h.door[k]!;
   if (h.link !== undefined) for (const k of ["cs", "cr", "cd", "ce"]) if (h.link[k] !== undefined) q[k] = h.link[k]!;
+  if (h.photo !== undefined && h.photo !== null) q["ph"] = h.photo;
   if (h.battery !== null && Number.isFinite(h.battery)) q["bat"] = `${Math.max(0, Math.min(100, Math.round(h.battery)))}${h.charging === true ? "c" : ""}`;
   return q;
 }
@@ -130,5 +135,6 @@ export function deviceHealth(announce: boolean | null = null): DeviceHealth {
     mic: safe(() => micHeartbeat(), null),
     door: safe(() => doorHeartbeat(), {}),
     link: safe(() => linkQuery(linkStats.snapshot(Date.now())), {}),
+    photo: safe(() => photoStatus.report, null),
   };
 }

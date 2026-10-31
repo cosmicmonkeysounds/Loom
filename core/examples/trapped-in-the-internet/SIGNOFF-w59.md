@@ -313,6 +313,18 @@ The refused screen and its neighbours carry no marker, because they are app word
 | `terminal/src/idle-show/ads.ts` | 100, 131 |
 | `terminal/src/slides.ts` | 608 |
 
+### 4.12 The terminals' photos (`DRAFT w59p`, `docs/loom-w59-photos-contract.md`)
+
+What the crew reads. No guest sees any of it, and neither does a terminal in use.
+
+| Where | Words |
+|---|---|
+| `core/src/photos.ts` | **ARMED** · **SAFE** · *n photos · n MB of 3.0 GB* · *only at the heart* · *Stopped: the 3.0 GB cap is reached. Download them and delete them on Run → Terminals to carry on.* · *Stopped: the server's disk is nearly full. Nothing more is being kept.* · *Safe now, but the server couldn't save that: a restart would arm the photos again.* · *The server couldn't save that, so the photos are still safe.* |
+| `core/server/photos.ts` | *Not heard from: is it on?* · *Its page is hidden: the screen is off, or another app is up.* · *No camera: it's off in ⚙, refused, or missing.* · *Camera on, but no picture yet.* · *Its photos aren't getting through.* · *Reports fine, but no recent photo.* · *Not reporting: reload it (an old build).* |
+| `play/src/host/photos-model.ts` | *Press to arm* · *Press to make safe* · *This server takes no photos yet.* |
+| `terminal/src/photo-status.ts` (⚙ only) | *photos armed — one every 15 s* and its four other states |
+| `editor/src/components/run/PhotosCard.tsx` | 📷 Photos · ⬇ Download all · 🗑 Delete all · *Delete all n photos from the server, for good?* · *Yes, delete them* · *Keep them* · *Download before End: End stops the event, and the files stay on the server with no button to reach them.* |
+
 ## 5. Real-device checks owed
 
 None of this could be done from the MacBook's tests. Scratch server first, then the
@@ -364,6 +376,11 @@ preview, before the doors. The owed checks of waves 53–58 still stand on their
 18. **The two gates that aren't device checks:** `ship.sh` refuses any commit `predeploy.sh` didn't
     stamp, and `predeploy.sh` doesn't run the Postgres-gated core tests. Run those on the same
     commit with `DATABASE_URL` set. Any change to the story after that needs both again.
+19. **The terminals' photos** (`docs/loom-w59-photos-contract.md`): 📷 armed on the preview, one real
+    tablet, a still that shows the room in its real light, then disarmed. The Server Room in a real talk:
+    stills from the C310 inside it, none before or after it. The VPS's
+    free space too (`df -h` on it), since under 2 GB free the panel stops at once. Only Chromium's fake
+    camera has run it. Run's card, with its ⬇ and 🗑, has never been opened, like the rest of Run.
 
 ## 6. What's owed in print
 

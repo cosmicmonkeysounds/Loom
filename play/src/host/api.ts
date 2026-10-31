@@ -73,13 +73,17 @@ export const HOST_ROUTES = [
   // own meters route.
   "/api/mod/audio/mix",
   "/api/mod/audio/music",
+  // Wave 59p: arm or disarm the terminals' photos. Never the download or
+  // Delete all, which are Run's.
+  "/api/mod/photos/arm",
 ] as const;
 export type HostRoute = (typeof HOST_ROUTES)[number];
 
 /** The GET reads: the host view (`?role=mod&host=1`), the recap, (wave
- *  25) the house desk (`?after=<rev>&wait=<s>` long-polls it) and (wave
- *  40) the mixer, polled each second while the Desk's 🎚 Mixer is open. */
-export const HOST_READS = ["/api/state?role=mod&host=1", "/api/mod/recap", "/api/mod/desk", "/api/mod/audio/mixer"] as const;
+ *  25) the house desk (`?after=<rev>&wait=<s>` long-polls it), (wave
+ *  40) the mixer, polled each second while the Desk's 🎚 Mixer is open, and
+ *  (wave 59p) the terminals' photos and a thumbnail. */
+export const HOST_READS = ["/api/state?role=mod&host=1", "/api/mod/recap", "/api/mod/desk", "/api/mod/audio/mixer", "/api/mod/photos", "/api/mod/photos/thumb"] as const;
 
 /** A desk check's test (`house-desk.ts` `DeskTestCall`): one of the three
  *  test routes and its body. */
@@ -253,6 +257,8 @@ export function hostCalls(post: HostPost, alertsPath: () => string) {
     /** ■ STOP ALL: every desk run and the house sounds (`announce`: the
      *  announcement too). */
     deskStopAll: (announce = false) => post("/api/mod/desk/stop", { all: true, ...(announce ? { announce: true } : {}) }),
+    /** Wave 59p: 📷 ARMED / SAFE. Answers the panel's view. */
+    photosArm: (armed: boolean) => post("/api/mod/photos/arm", { armed }),
     /** A check's mark: ✓ (`ok`), ✗ (`bad`) or cleared (null). */
     deskMark: (key: string, mark: "ok" | "bad" | null, note?: string) => post("/api/mod/desk/check", { key, mark, ...(note !== undefined && note.trim() !== "" ? { note: note.trim() } : {}) }),
     /** Play a story sound (`{sound, to?, gain?}`) or an announcement (`{say, to?, chime?}`) on the house speakers. */

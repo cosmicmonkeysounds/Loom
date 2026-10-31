@@ -102,7 +102,9 @@ import { LIGHTS_FILE, LightsHub, handleLightsGet, handleLightsPost, lightsProble
 import { GameLightsFeed, LightsEstimate, buildGameLights } from "./lights-shown.ts";
 import { DESK_BY, DESK_FILE, DeskHub, deskHouseOf, deskLightFixtures, deskProblems, deskRefsOf, deskSeen, handleDeskGet, handleDeskPost, lookMsOf, type DeskContext, type DeskTimers } from "./desk.ts";
 import { DESK_SPEECH_GRACE_MS } from "../src/house-desk.ts";
-import { ANNOUNCE_VERB, SPEECH_ONLINE_MS, ScreenWatch, announceTextOf, roomVoiceOf, speechWatchOf, spokenAnnounce, handleScreenGet, handleScreenTerminalsGet, handleScreenVoicePost, screenKingOf, screenTerminals } from "./routes/screen.ts";
+import { PHOTO_HEART_SPOT, PhotoBook, heartTalkOn, type PhotoSpot } from "./photos.ts";
+import { PHOTO_DELETE_ROUTE, PHOTO_ARM_ROUTE, PHOTO_SHOT_ROUTE, handlePhotoShot, handlePhotosGet, handlePhotosPost, type PhotoRoutes } from "./routes/photos.ts";
+import { ANNOUNCE_VERB, SPEECH_ONLINE_MS, TERMINAL_SILENT_MS, ScreenWatch, announceTextOf, roomVoiceOf, speechWatchOf, spokenAnnounce, handleScreenGet, handleScreenTerminalsGet, handleScreenVoicePost, screenKingOf, screenTerminals } from "./routes/screen.ts";
 import { handleScreenIdentifyPost } from "./routes/screen.ts";
 import { CAM_BODY_LIMIT, CamStore, parseCamUpload } from "./spatial-cams.ts";
 import { DreamFeed } from "./dream-feed.ts";
@@ -598,6 +600,8 @@ export interface EventRuntimeInit {
   eventId: string;
   /** Durable per-event state (journal / sessions / hidden). */
   store: Store;
+  /** (wave 59p) Where this event's photos and their arm live; absent: a folder in the store. */
+  photosDir?: string;
   /** Wave 41: how Trabolta's letters go out. Absent → the environment's
    *  (`LOOM_RESEND_API_KEY` + `LOOM_WEBMASTER_FROM`); null → mail off. */
   lettersMailer?: LettersMailer | null;
@@ -922,6 +926,9 @@ export class EventRuntime {
   readonly spatial: SpatialHub;
   /** The wall terminals' camera feeds (wave 14): the latest frame per spot, memory only. */
   readonly cams: CamStore;
+  /** (wave 59p) The terminals' stills and their arm, on disk. */
+  private readonly photos: PhotoBook;
+  private heartTalkFrom: number | null = null;
   /** Clippy's dream on the games' terminals (wave 50). */
   readonly dreamFeed: DreamFeed;
   /** The audio ads (wave 59a): the pass, its switch, what is on the air. */
@@ -1261,6 +1268,7 @@ export class EventRuntime {
     });
     this.spatial.setOpen(false); // idle until the doors open
     this.cams = new CamStore({ now: () => this.clock() });
+    this.photos = new PhotoBook({ dir: init.photosDir ?? init.store.folder("photos"), now: () => this.clock() });
     this.dreamFeed = new DreamFeed({ dir: init.mediaDir !== undefined ? init.mediaDir : (process.env.LOOM_MEDIA_DIR ?? null), now: () => this.clock() });
     this.voice = new VoiceRelay({
       now: () => this.clock(),
@@ -1361,6 +1369,7 @@ export class EventRuntime {
     if (voiceMuted) process.stderr.write(`  🔇 event ${this.eventId}: the TV voice is muted (kept from before this start) — unmute it on Run → Terminals\n`);
     const voiceFx = this.store.loadVoiceFx();
     if (voiceFx !== "auto") process.stderr.write(`  🌀 event ${this.eventId}: Trabolta's voice is on ${voiceFx} (kept from before this start) — put it back on Run → Terminals\n`);
+    if (this.photos.armed) process.stderr.write(`  📷 event ${this.eventId}: the terminals' photos are armed (kept from before this start) — disarm them on the Desk or Run → Terminals\n`);
     this.prompters = new Prompters({
       now: () => (init.now !== undefined ? init.now() : Date.now()),
       send: (frame, members) => this.prompterSend(frame, members),
@@ -4910,6 +4919,42 @@ export class EventRuntime {
     return new Set((this.spatialHouse()?.terminals ?? []).filter((t) => t.view !== "reinstall").map((t) => t.id));
   }
 
+  /** (wave 59p) The map's terminals that take stills: never the tent's (it
+   *  sends no camera) and never the TV's (it has none). */
+  private photoSpots(): PhotoSpot[] {
+    return (this.spatialHouse()?.terminals ?? []).filter((t) => t.view !== "reinstall" && t.view !== "tv").map((t) => ({ id: t.id, name: t.name ?? t.id, ...(t.id === PHOTO_HEART_SPOT ? { heart: true } : {}) }));
+  }
+
+  /** (wave 59p) When the talk at his heart began, by the first read that saw it;
+   *  null: none is on. It only starts the panel's grace. Memory only. */
+  private heartTalkSince(): number | null {
+    const sim = this.sim;
+    if (sim === null || !heartTalkOn((path) => worldString(sim.world.peek(path)))) this.heartTalkFrom = null;
+    else this.heartTalkFrom ??= this.clock();
+    return this.heartTalkFrom;
+  }
+
+  /** (wave 59p) Should the terminal at this spot take stills now? */
+  private photoShoots(spot: string): boolean {
+    if (!this.photos.armed) return false;
+    const t = this.photoSpots().find((s) => s.id === spot);
+    return t !== undefined && (t.heart !== true || this.heartTalkSince() !== null);
+  }
+
+  /** (wave 59p) What the photo routes need; `moderator`: the caller's author session. */
+  private photoRoutes(moderator: boolean): PhotoRoutes {
+    return {
+      book: this.photos,
+      spots: () => this.photoSpots(),
+      polls: () => this.screens.seen(),
+      talkSince: () => this.heartTalkSince(),
+      now: () => this.clock(),
+      silentMs: TERMINAL_SILENT_MS,
+      host: (t) => moderator || this.canHostToken(t),
+      moderator: (t) => moderator || this.sessions.canModerate(t),
+    };
+  }
+
   /** `POST /api/mod/spatial/cam {spot, jpeg, w, h}` — a terminal's frame
    *  (§2.3). Read under its own body cap, before the generic parse. */
   private async handleCamUpload(req: IncomingMessage, res: ServerResponse, moderator: boolean): Promise<boolean> {
@@ -6761,6 +6806,8 @@ export class EventRuntime {
           voiceHeldFrom: (channel) => this.prompters.heldFrom(channel),
           // Wave 59a: the audio ad on the air.
           ad: (name) => this.ads.onWall(name),
+          // Wave 59p: the photos' arm, for the terminals that may shoot now.
+          photosFor: (spot) => this.photoShoots(spot),
         },
       );
     }
@@ -6797,6 +6844,7 @@ export class EventRuntime {
       else sendJson(res, 200, { on: !this.store.loadCostumeOff(), url: this.costumeLink() });
       return true;
     }
+    if (method === "GET" && path.startsWith("/api/mod/photos") && (await handlePhotosGet(this.photoRoutes(opts.moderator === true), req, res, path, url))) return true;
     if (method === "GET" && path === "/api/mod/screen/terminals") return handleScreenTerminalsGet(this.screens, req, res, url, (t) => opts.moderator === true || this.sessions.canModerate(t), (spot) => this.cams.rate(spot), () => this.adsStatus());
     // A host booth may mute the TV and identify a terminal (§2.7). Both are
     // host-visible writes handled before the generic body parse, so they
@@ -6835,6 +6883,8 @@ export class EventRuntime {
     }
     // --- a terminal's camera frame (~3/s, ≤ 96 KB): its own cap, too ---
     if (path === "/api/mod/spatial/cam") return this.handleCamUpload(req, res, opts.moderator === true);
+    // --- a terminal's still (wave 59p, one a spot every 15 s, ≤ 400 KB): the same ---
+    if (path === PHOTO_SHOT_ROUTE) return handlePhotoShot(this.photoRoutes(opts.moderator === true), req, res);
 
     const body = await readBody(req);
 
@@ -6848,6 +6898,7 @@ export class EventRuntime {
     }
     this.noteHostWrite(path, tokenOf(req, body), res);
 
+    if ((path === PHOTO_ARM_ROUTE || path === PHOTO_DELETE_ROUTE) && handlePhotosPost(this.photoRoutes(opts.moderator === true), req, res, path, body)) return true;
     if (this.pushRoutes.handlePost(req, res, path, body)) return true;
     if (path === RESUME_ROUTE) {
       if (this.throttled(req, res)) return true;

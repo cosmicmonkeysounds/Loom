@@ -49,6 +49,7 @@ export default defineConfig({
       '@loom/core/voice-fx': path.resolve(__dirname, '../core/src/voice-fx.ts'),
       '@loom/core/audio-ads': path.resolve(__dirname, '../core/src/audio-ads.ts'),
       '@loom/core/link-health': path.resolve(__dirname, '../core/src/link-health.ts'),
+      '@loom/core/photos': path.resolve(__dirname, '../core/src/photos.ts'),
       '@loom/core': path.resolve(__dirname, '../core/src/index.ts'),
       // The house model (wave 30): the Cue designer edits, plans and
       // previews `lights.json` looks with the server's own rules. `/three`

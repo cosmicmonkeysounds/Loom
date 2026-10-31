@@ -1,0 +1,12 @@
+/* The Desk's 📷 Terminal photos: part of the Desk's lazy chunk, never the guest's. */
+.host-photos-state {
+  display: block; width: 100%; min-height: 64px; padding: 8px 10px; margin: 2px 0 6px;
+  font: 800 26px var(--ui-font); letter-spacing: 2px; text-align: center;
+}
+.host-photos-state.armed { background: var(--bad); color: var(--white); }
+.host-photos-hint { display: block; font: 700 12px var(--ui-font); letter-spacing: 0; }
+.host-photos-list { list-style: none; margin: 4px 0 0; padding: 0; }
+.host-photos-row { display: flex; align-items: center; min-width: 0; padding: 4px 0; border-top: 1px solid var(--face-shadow, #808080); }
+.host-photos-thumb { flex: 0 0 auto; width: 64px; height: 48px; margin-right: 8px; object-fit: cover; background: #000; }
+.host-photos-body { flex: 1 1 auto; min-width: 0; font: 12px/1.35 var(--ui-font); overflow-wrap: anywhere; }
+.host-photos-name { display: block; font-weight: 700; }

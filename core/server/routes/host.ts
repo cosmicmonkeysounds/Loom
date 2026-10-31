@@ -88,6 +88,9 @@ const HOST_POSTS: ReadonlySet<string> = new Set([
   // soundtrack from the host's Desk. Never the router's meters post.
   "/api/mod/audio/mix",
   "/api/mod/audio/music",
+  // Wave 59p: arm or disarm the terminals' photos from the Desk. Never a
+  // still's own upload, the download or Delete all.
+  "/api/mod/photos/arm",
 ]);
 
 /** The facts judge's mode path (wave 18, C8: hosts switch auto ⇄ review). */
@@ -117,7 +120,8 @@ export function isHostRoute(
     if (path === "/api/state") return (field(body, "role") || "mod") === "mod" && field(body, "host") === "1" && field(body, "as") === "" && field(body, "cues") !== "1";
     // Wave 25: the house desk's view (the host's Desk window); wave 40: the
     // house mixer's (never the router's own `/api/mod/audio`).
-    return path === "/api/mod/recap" || path === "/api/mod/desk" || path === "/api/mod/audio/mixer";
+    // Wave 59p: the photos' panel and its thumbnails (never the download).
+    return path === "/api/mod/recap" || path === "/api/mod/desk" || path === "/api/mod/audio/mixer" || path === "/api/mod/photos" || path === "/api/mod/photos/thumb";
   }
   if (method !== "POST") return false;
   if (HOST_POSTS.has(path)) return true;
