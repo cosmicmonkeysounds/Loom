@@ -28,10 +28,12 @@ import {
   terminalLine,
   terminalLines,
   terminalsAside,
+  identifyDone,
   voiceModeLine,
 } from "../src/host/desk-tabs.ts";
 import type { HostView } from "../src/types.ts";
 import { deskFixture } from "./desk-fixture.ts";
+import { elements, mountHooks } from "./hooks-harness.ts";
 
 type Terminals = NonNullable<HostView["terminals"]>;
 
@@ -190,11 +192,22 @@ describe("🖥 House: the terminals", () => {
   });
 
   it("silent ones lead, and the head counts them and the odd builds", () => {
-    expect(terminalLines(terminals()).map((l) => l.name)).toEqual(["Casino", "Hall", "CPU", "Server Room"]);
+    expect(terminalLines(terminals()).map((l) => l.name)).toEqual(["Casino", "CPU", "Hall", "Server Room"]);
     expect(silentTerminals(terminals())).toBe(1);
     expect(silentTerminals(null)).toBe(0);
     expect(terminalsAside(terminals())).toBe("3/4 live · 1 on another build");
     expect(terminalsAside(terminals({ rows: [] }))).toBe("0/0 live");
+  });
+
+  it("a poll that re-lists the terminals moves no row: the order never follows the server's", () => {
+    const rows = terminals().rows;
+    const shuffles = [rows, [...rows].reverse(), [rows[2]!, rows[0]!, rows[3]!, rows[1]!], [rows[1]!, rows[3]!, rows[2]!, rows[0]!]];
+    for (const shuffled of shuffles) expect(terminalLines(terminals({ rows: shuffled })).map((l) => l.name)).toEqual(["Casino", "CPU", "Hall", "Server Room"]);
+  });
+
+  it("Identify's note is honest about a terminal that isn't answering", () => {
+    expect(identifyDone({ name: "Hall", quiet: false })).toBe("📟 Hall shows its name");
+    expect(identifyDone({ name: "Hall", quiet: true })).toBe("📟 Sent, but Hall isn't answering, so it may not show");
   });
 });
 
@@ -205,10 +218,34 @@ describe("🖥 House: the switches", () => {
     return true;
   };
   const view = (over: Partial<HostView> = {}) => ({ terminals: terminals(), talk: null, ...over }) as HostView;
-  const body = (v: HostView | null, rows: ReadonlyArray<{ id: string; live: boolean }> = [{ id: DREAM_CUE, live: true }]) => {
+  const body = (v: HostView | null, rows: ReadonlyArray<{ id: string; live: boolean }> = [{ id: DREAM_CUE, live: true }], live = false) => {
     const { calls } = recorder();
-    return renderToStaticMarkup(createElement(DeskHouseBody, { view: v, rows, calls, act, refresh: () => {}, tryIt: createElement("div", { "data-testid": "try" }) }));
+    return renderToStaticMarkup(createElement(DeskHouseBody, { view: v, rows, calls, act, live, refresh: () => {}, tryIt: createElement("div", { "data-testid": "try" }) }));
   };
+
+  it("Identify covers a terminal's screen: once the doors are open it asks first, and only then posts", async () => {
+    type Tree = { props: { terminals: Terminals; live: boolean; calls: unknown; send: Act } };
+    const box = (live: boolean, calls: unknown) => {
+      const h = mountHooks(DeskHouseBody as (p: Parameters<typeof DeskHouseBody>[0]) => unknown, { view: view(), rows: [], calls: calls as never, act, live, refresh: () => {}, tryIt: null });
+      const el = elements(h.output).find((e) => (e.type as { name?: string }).name === "TerminalsBox") as unknown as Tree;
+      return mountHooks((el as unknown as { type: (p: Tree["props"]) => unknown }).type, el.props);
+    };
+    const asked = (live: boolean, calls: unknown) => elements(box(live, calls).output).filter((e) => (e.props as { label?: unknown }).label === "Identify");
+
+    const closed = recorder();
+    const before = asked(false, closed.calls);
+    expect(before.map((e) => (e.type as { name?: string }).name)).toEqual(["ActButton", "ActButton", "ActButton", "ActButton"]);
+    await (before[0]!.props as { onClick: () => Promise<unknown> }).onClick();
+    expect(closed.sent).toEqual([{ route: "/api/mod/screen/identify", body: { name: "Casino" } }]);
+
+    const open = recorder();
+    const after = asked(true, open.calls);
+    expect(after.map((e) => (e.type as { name?: string }).name)).toEqual(["ConfirmButton", "ConfirmButton", "ConfirmButton", "ConfirmButton"]);
+    expect((after[0]!.props as { ask: string }).ask).toMatch(/The show is live — guests will see this/u);
+    expect(open.sent).toEqual([]);
+    await (after[0]!.props as { onConfirm: () => Promise<unknown> }).onConfirm();
+    expect(open.sent).toEqual([{ route: "/api/mod/screen/identify", body: { name: "Casino" } }]);
+  });
 
   it("his voice, the TV, the dream, Try it, the terminals, and what stays on Run", () => {
     const html = body(view());

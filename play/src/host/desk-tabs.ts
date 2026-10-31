@@ -136,11 +136,19 @@ export function terminalLine(r: TerminalRow, silentMs: number, majority: string 
   return { name: r.name, quiet, sub: [r.view, r.room, agoText(r.agoMs)].filter((x) => x !== undefined && x !== "").join(" · "), badges };
 }
 
-/** The terminals, silent first (a row that needs a walk leads), then as they polled. */
+/** The terminals, silent first (a row that needs a walk leads), each part by name:
+ *  the server re-lists a terminal on every poll, and a row with a button on it must
+ *  not move under a thumb. */
 export function terminalLines(t: Terminals): TerminalLine[] {
   const majority = majorityBuild(t.rows);
-  const lines = t.rows.map((r) => terminalLine(r, t.silentMs, majority));
+  const lines = t.rows.map((r) => terminalLine(r, t.silentMs, majority)).sort((a, b) => a.name.localeCompare(b.name));
   return [...lines.filter((l) => l.quiet), ...lines.filter((l) => !l.quiet)];
+}
+
+/** The note after Identify. A terminal reads it off its next poll, so a silent one
+ *  may never show it. */
+export function identifyDone(line: Pick<TerminalLine, "name" | "quiet">): string {
+  return line.quiet ? `📟 Sent, but ${line.name} isn't answering, so it may not show` : `📟 ${line.name} shows its name`;
 }
 
 export function silentTerminals(t: Pick<Terminals, "rows" | "silentMs"> | null | undefined): number {

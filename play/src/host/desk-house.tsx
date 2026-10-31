@@ -19,7 +19,8 @@ import type { HostView } from "../types.ts";
 import type { HostCalls } from "./api.ts";
 import type { HostAuth } from "./client.ts";
 import { useHostConsole } from "./dock.tsx";
-import { DREAM_CUE, DREAM_NOT_NOW, VOICE_MODE_WORD, dreamDone, dreamRow, terminalLines, terminalsAside, voiceModeLine } from "./desk-tabs.ts";
+import { liveAsk } from "./desk-model.ts";
+import { DREAM_CUE, DREAM_NOT_NOW, VOICE_MODE_WORD, dreamDone, dreamRow, identifyDone, terminalLines, terminalsAside, voiceModeLine } from "./desk-tabs.ts";
 import { ActButton, ConfirmButton, HostEmpty, HostSection } from "./kit.tsx";
 import { optimisticValue, tvVoiceLabel, type Optimistic, type VoiceFxMode } from "./model.ts";
 import { glitchText } from "./talk-model.ts";
@@ -43,9 +44,9 @@ function LandingSlot(_slot: { auth: HostAuth | undefined; calls: HostCalls }) {
 }
 
 /** The console's view over the body. Outside a console (the tests) it is empty. */
-export function DeskHouse({ auth, calls, act, tryIt }: { auth: HostAuth | undefined; calls: HostCalls; act: Act; tryIt: ReactNode }) {
+export function DeskHouse({ auth, calls, act, live, tryIt }: { auth: HostAuth | undefined; calls: HostCalls; act: Act; live: boolean; tryIt: ReactNode }) {
   const c = useHostConsole();
-  return <DeskHouseBody view={c?.view ?? null} rows={c?.rows ?? []} auth={auth} calls={calls} act={act} refresh={() => c?.client.refresh()} tryIt={tryIt} />;
+  return <DeskHouseBody view={c?.view ?? null} rows={c?.rows ?? []} auth={auth} calls={calls} act={act} live={live} refresh={() => c?.client.refresh()} tryIt={tryIt} />;
 }
 
 export interface DeskHouseBodyProps {
@@ -55,13 +56,15 @@ export interface DeskHouseBodyProps {
   auth?: HostAuth | undefined;
   calls: HostCalls;
   act: Act;
+  /** The doors are open: what guests would see asks first (`testNeedsConfirm`). */
+  live: boolean;
   /** A fresh host view after a write. */
   refresh: () => void;
   tryIt: ReactNode;
 }
 
 /** The tab over one view (the tests render it with a fixture). */
-export function DeskHouseBody({ view, rows, auth, calls, act, refresh, tryIt }: DeskHouseBodyProps) {
+export function DeskHouseBody({ view, rows, auth, calls, act, live, refresh, tryIt }: DeskHouseBodyProps) {
   const send: Act = (done, call, refusal) => act(done, call, refusal).finally(refresh);
   const t = view?.terminals ?? null;
   const dream = dreamRow(rows, t?.dream, view === null || view.doorsClosed === true || view.runtime === "idle");
@@ -87,7 +90,7 @@ export function DeskHouseBody({ view, rows, auth, calls, act, refresh, tryIt }: 
       )}
       <LandingSlot auth={auth} calls={calls} />
       {tryIt}
-      {t !== null && <TerminalsBox terminals={t} calls={calls} send={send} />}
+      {t !== null && <TerminalsBox terminals={t} live={live} calls={calls} send={send} />}
       <p className="host-note" data-testid="host-desk-run-only">
         {RUN_ONLY}
       </p>
@@ -149,8 +152,9 @@ function TvVoice({ muted, calls, send }: { muted: boolean; calls: HostCalls; sen
   );
 }
 
-/** 📟 Every terminal at a glance: silent ones first. */
-function TerminalsBox({ terminals, calls, send }: { terminals: NonNullable<HostView["terminals"]>; calls: HostCalls; send: Act }) {
+/** 📟 Every terminal at a glance: silent ones first. Identify covers the terminal's
+ *  whole screen, so once the doors are open it asks, like every test on the Desk. */
+function TerminalsBox({ terminals, live, calls, send }: { terminals: NonNullable<HostView["terminals"]>; live: boolean; calls: HostCalls; send: Act }) {
   const lines = terminalLines(terminals);
   return (
     <HostSection id="desk-terminals" title="📟 Terminals" aside={terminalsAside(terminals)}>
@@ -173,7 +177,7 @@ function TerminalsBox({ terminals, calls, send }: { terminals: NonNullable<HostV
                   </span>
                 )}
               </span>
-              <ActButton label="Identify" onClick={() => send(`📟 ${l.name} shows its name`, () => calls.identify(l.name))} />
+              {live ? <ConfirmButton label="Identify" ask={liveAsk("look")} yes="Test anyway" onConfirm={() => send(identifyDone(l), () => calls.identify(l.name))} /> : <ActButton label="Identify" onClick={() => send(identifyDone(l), () => calls.identify(l.name))} />}
             </li>
           ))}
         </ul>
