@@ -361,7 +361,9 @@ preview, before the doors. The owed checks of waves 53–58 still stand on their
     --battery`. No model has seen them. Read `SIGNOFF-w58.md` §5, check 6, first.
 16. **The in-world door signs in the house:** a guest finds each room from its sign alone.
 17. **Fullscreen** on a real Android phone. Driven in Chromium as a Pixel 7 and on a laptop only.
-18. **What was not run on the merged tree:** `predeploy.sh` and the Postgres-gated core tests.
+18. **The two gates that aren't device checks:** `ship.sh` refuses any commit `predeploy.sh` didn't
+    stamp, and `predeploy.sh` doesn't run the Postgres-gated core tests. Run those on the same
+    commit with `DATABASE_URL` set. Any change to the story after that needs both again.
 
 ## 6. What's owed in print
 
