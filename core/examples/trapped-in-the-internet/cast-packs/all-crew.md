@@ -7,7 +7,7 @@
 
 | Word | Means | Who usually says it |
 |---|---|---|
-| **INTRO** | Clippy is about to introduce Trabolta. Julia (the tent): let the first reinstalled program start the game now | director → the tent, Clippy |
+| **INTRO** | The first program is on its way to the tent and Clippy is about to introduce Trabolta. Julia (the tent): let them start the game now | director → the tent, Clippy |
 | **BEANS** | The printer lid is open and the room heard nothing (Adobe Acrobat presses 🫘 on their booth first; the radio call is for when they can't). A host or the director: press 🫘 | Adobe Acrobat |
 | **LATE** | The late marks are coming (after 🚨 Summons closed): they land on every Antivirus' Wanted board | whoever is calling → Antivirus |
 | **IN** | The patch-bay watch is inside the server room with the door shut: whoever is calling may fire 🕚 (once Trabolta is awake the first opening plays The Heart, crew or not: press 🔧 before the crew go through) | server-room Antivirus → director |
@@ -140,6 +140,14 @@ keep the radio away from them. The TV and the tent laptop never send sound.
 whole phone says so and stays that way until you have read it: tap it, read
 from the teleprompter, press **✓ Done**. The opening is all Clippy's now: the
 hosts have no lines in it. Adobe has one at Truth Pong.
+
+**📜 The full truth (wave 58).** After every ending's last beat a host or a
+director presses **G0 📜** and the whole house hears what really happened, in
+the living room, for 12 to 14 minutes: Trabolta on the TV, or Task Manager off
+his teleprompter after Combo A or Combo B. Stay in the room and stay quiet.
+**After Combo A he does not come back:** no last speech, no motorcycle, and
+Clippy hosts the ceremony. The talk at his heart still happens, but nothing a program
+says there ends the night.
 
 ## The blackout rule (Combo A or Combo B)
 

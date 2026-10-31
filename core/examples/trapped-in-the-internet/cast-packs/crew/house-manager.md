@@ -35,7 +35,9 @@ performer whose phone died (the director releases the part).
 handle always opens with no code. You carry its **override key** and its
 spare batteries all night. A dead battery or a jam: open it with the key,
 prop the door, and radio the director (who fires 🚪 if the cutscene hasn't
-played). Never say the code on the radio.
+played). Never say the code on the radio. Wave 58 changed it: the tech op
+re-sets the keypad by hand before the 15:00 test, so any note of the old one
+goes in the bin.
 
 **Blackout (Combo A or B) and ALL STOP: you lead.**
 
@@ -73,4 +75,5 @@ backyard down, and let John know.
 | 20:00–20:30 | Float: help Recycling Bin at the door. |
 | ≈ 20:30 → end | The door + everything above. |
 | Late (≈ 23:30) | The backyard goes quiet (Truth Pong is the last thing out there). |
+| After the ending | **📜 The full truth:** everyone in the living room for 12 to 14 minutes, then the ceremony. On a night they were told they may leave, leavers may still go: keep the way out clear and quiet, and don't send anyone back in. |
 | End | Rides home: transit is thin after 01:00 and **the clock falls back at 02:00**. Nobody drives who shouldn't. |

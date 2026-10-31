@@ -39,6 +39,12 @@ standby wrote it: tell the tech op if they come in a run, because nobody has
 yet heard this persona on Claude. Never type the plot of the monologue (what
 he came for, how they got in) into a nudge or a brief before it is read.
 
+**After an ending (wave 58).** During 📜 his phase reads `finale_truth`: he is
+clean, and his own lines stay out of what his worker sees. Then the ending's
+phase comes back at G1. After Combo A or B he is gone: his worker holds, his
+DMs get the *unavailable* line, and a director answers nothing for him unless
+you choose to. Letters still go out afterwards, written as from a backup.
+
 **A quiet Mind page is a healthy one.** On an empty house the trace does
 not move for minutes. Check instead:
 
@@ -123,6 +129,9 @@ To come back, set `mind_mode: new` and restart the job again.
 
 **Before doors** (with the tech op):
 
+0. The worker runs the final merge: `git pull`, then `uv run stagehand launchd
+   restart --job agents`, together (`sync-show` never reaches him, and an older
+   worker refuses a persona with `cover:`).
 1. `uv run stagehand check --config laptop.yaml --only agents` prints
    `mind: NEW (one voice call per line) …` and `28 phase card(s), 8 stage
    card(s)`.
@@ -131,6 +140,10 @@ To come back, set `mind_mode: new` and restart the job again.
    `ollama stop tobestyledintro/qwen3.8-9b-distill:q8_0`).
 4. One DM to him from a test persona: one voice row, a memo on the
    persona's file, then Reset again.
+5. **Owed, wave 58:** the battery on a scratch server, on Claude:
+   `pnpm sim:trabolta --base <scratch> --code <mod> --battery
+   scripts/sim/trabolta-battery-54.json`. Read the `w58-*` transcripts first,
+   and watch for `engine macbook`.
 
 **Rehearse on 10-25:** flip rung 6 and back once, time each restart, and
 note the times here: classic [[EDIT: s]] · back to new [[EDIT: s]].
