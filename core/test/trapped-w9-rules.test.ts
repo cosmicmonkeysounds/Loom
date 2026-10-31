@@ -72,7 +72,7 @@ function boot(programs: Array<[string, string]> = PROGRAMS): Sim {
 }
 /** Wave 18b: ⚖'s ending follows The Verdict's TV pages (34 s of story
  *  time, the `verdict_wait` rule), so a press of it here ticks past them. */
-const VERDICT_PAGES_S = 34;
+const VERDICT_PAGES_S = 110;
 const pastTheVerdict = (sim: Sim, name: string): SimEvent[] => {
   const out: SimEvent[] = [];
   if (name === "the_verdict") for (let i = 0; i < VERDICT_PAGES_S; i++) out.push(...sim.tick(1000));

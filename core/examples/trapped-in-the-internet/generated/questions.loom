@@ -219,11 +219,11 @@ if Kernel.res_absent != "":
   Trabolta: These programs did not submit any truth: {Kernel.res_absent}
 if Kernel.res_found > 0:
   Trabolta: The answer appears to be: “Exhibitionist.” Yes, I have finally verified it, and this is true. This encyclopedia, scanned into the computer, says the exhibitionist is mostly harmless. How disturbing. They really had to put that in there.
-  if Kernel.res_correct != "":
-    Trabolta: Congratulations to these programs for getting a correct answer: {Kernel.res_correct}
-else:
-  if Kernel.res_sure > 0:
-    Trabolta: Some of you shared 100% confidence for your answers for this question … but I am computing this is, and it is not correct.
+if Kernel.res_found > 0 and Kernel.res_correct != "":
+  Trabolta: Congratulations to these programs for getting a correct answer: {Kernel.res_correct}
+if Kernel.res_found == 0 and Kernel.res_sure > 0:
+  Trabolta: Some of you shared 100% confidence for your answers for this question … but I am computing this is, and it is not correct.
+if Kernel.res_found == 0:
   Trabolta: This is bad. This is very bad. We will return to this one.
 
 // The 📝 card lines (main.loom `when deal_fact_card`), which keys are still owed (G9a skips them), the truth count and the door code.

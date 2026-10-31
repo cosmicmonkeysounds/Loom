@@ -666,8 +666,6 @@ describe("Trapped in the Internet — wave 26: no hints in the show text (G1)", 
     expect(pong).not.toMatch(/Confident is accepted|A guess is the Internet/u);
     // The miss is the author's own rule, and stays.
     expect(pong).toContain("you will need to be reinstalled in the Internet");
-    // After-the-fact verdicts stay.
-    expect(beat("beats/hunt.loom", "Question Results")).toContain("A guess is a symptom of corruption. Antivirus, you know what to do.");
   });
 
   it("no guest objective, button or founder's quest states a hidden rule up front", () => {

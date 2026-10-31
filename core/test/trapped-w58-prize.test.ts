@@ -201,7 +201,7 @@ describe("wave 58: a key still owed", () => {
   it("the show's own flags are facts.json's, and clear themselves when a key arrives", { timeout: SLOW }, () => {
     const sim = Sim.fromSources(SRC);
     sim.fireBeat("Power On");
-    expect(facts.questions).toHaveLength(8);
+    expect(facts.questions).toHaveLength(9);
     for (const q of facts.questions) expect(v(sim, `Night.owed_${q.id.toLowerCase()}`), q.id).toBe(q.placeholder === true);
   });
 

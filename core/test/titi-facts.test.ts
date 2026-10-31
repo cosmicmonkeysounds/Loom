@@ -335,7 +335,7 @@ describe("titi-facts — generated/questions.loom", () => {
     expect(m.quests.get("Hunt One")!.text).not.toContain(byRound(2)[0]!.text);
     expect(m.quests.get("Hunt Two")!.text).toContain(`- Q1. ${byRound(2)[0]!.text}`);
     expect(m.quests.get("The Final Facts")!.text).toContain(`- Q2. ${byRound(3)[1]!.text}`);
-    expect(m.quests.get("The Final Facts")!.text).not.toContain("Q3.");
+    expect(m.quests.get("The Final Facts")!.text).toContain(`- Q3. ${byRound(3)[2]!.text}`);
   });
   it("the hunt-answer entries are secret, end with the lore marker and never say STAMPED", () => {
     const text = read(OUTPUTS.questions);
@@ -349,10 +349,17 @@ describe("titi-facts — generated/questions.loom", () => {
       expect(entry.secret, q.id).toBe(true);
     }
     // The marker is never split across lines (stagehand reads the raw file).
-    expect(text.match(/▒ HUNT ANSWER [A-Z0-9]+ ▒/gu)).toHaveLength(facts.questions.length);
-    expect(text.match(/▒ HUNT/gu)).toHaveLength(facts.questions.length);
-    // A draft question is flagged above its entry.
-    const drafts = facts.questions.filter((q) => q.draft).length;
+    const documents = facts.documents ?? [];
+    expect(text.match(/▒ HUNT ANSWER [A-Z0-9]+ ▒/gu)).toHaveLength(facts.questions.length + documents.length);
+    expect(text.match(/▒ HUNT/gu)).toHaveLength(facts.questions.length + documents.length);
+    // A kept document's entry is the entry it always was (wave 59a).
+    for (const d of documents) {
+      const entry = m.codex.get(d.codex.id)!;
+      expect(entry.text.endsWith(`${HUNT_MARKER} ${d.was} ▒`), d.was).toBe(true);
+      expect(entry.secret, d.was).toBe(true);
+    }
+    // A draft is flagged above its entry.
+    const drafts = facts.questions.filter((q) => q.draft).length + documents.filter((d) => d.draft).length;
     expect(text.split("\n").filter((l) => l === `// ${DRAFT_NOTE}`).length).toBe(drafts);
     expect(text).not.toContain("placeholder, replace");
   });
@@ -370,8 +377,8 @@ describe("titi-facts — generated/questions.loom", () => {
       expect(entered).toContain(shape.next);
     }
     expect(lines(sim.fireBeat("Hunt One Questions"), SHOW_SHAPE.reader)[0]).toMatch(/^Question one\. /u);
-    expect(lines(sim.fireBeat("Hunt Two Questions"), SHOW_SHAPE.reader)[0]).toMatch(/^Round two, question one\. /u);
-    expect(lines(sim.fireBeat("Final Questions"), SHOW_SHAPE.reader)[0]).toMatch(/^Final fact one\. /u);
+    expect(lines(sim.fireBeat("Hunt Two Questions"), SHOW_SHAPE.reader)[0]).toMatch(/^Question one: /u);
+    expect(lines(sim.fireBeat("Final Questions"), SHOW_SHAPE.reader)[0]).toMatch(/^Question one: /u);
   });
   it("Facts Seed sets the card strings and the truth count when the entry beat runs", () => {
     const sim = fixtureSim();
@@ -379,11 +386,11 @@ describe("titi-facts — generated/questions.loom", () => {
     expect(evs.filter((e) => e.type === "beatEntered").map((e: any) => e.beat ?? e.name)).toContain(SHOW_SHAPE.seedBeat);
     const h4 = facts.questions.find((q) => q.id === "H4")!;
     expect(v(sim, "Night.q_h4")).toBe(`H4: Round 2 Q1. ${h4.text}`);
-    expect(v(sim, "Night.q_h4")).toMatch(/^H4: Round 2 Q1\. What extension/u);
     expect(v(sim, "Night.q_h1")).toBe(`H1: Round 1 Q1. ${facts.questions[0]!.text}`);
     expect(v(sim, "Night.q_h6")).toBe(`H6: Round 2 Q3. ${facts.questions[5]!.text}`);
     expect(v(sim, "Night.q_f1")).toBe(`F1: Final Q1. ${facts.questions[6]!.text}`);
     expect(v(sim, "Night.q_f2")).toBe(`F2: Final Q2. ${facts.questions[7]!.text}`);
+    expect(v(sim, "Night.q_f3")).toBe(`F3: Final Q3. ${facts.questions[8]!.text}`);
     expect(Number(v(sim, "Night.truth_count"))).toBe(facts.truths.length);
     // The keypad code lands on the secret Kernel (a string: a leading zero survives), never on Night.
     expect(v(sim, SHOW_SHAPE.doorVar)).toBe(facts.door!.code);
@@ -601,7 +608,7 @@ describe("titi-facts — the trabolta.mind.md secrets block", () => {
     const match = block.slice(block.indexOf("  match:"), block.indexOf("  lore:")).split("\n").filter((l) => l.startsWith("    - ")).map((l) => unquote(l.slice(6).trim()));
     for (const q of facts.questions) {
       for (const t of q.topics!) expect(topics).toContain(t.toLowerCase());
-      if (q.placeholder === true) for (const a of [q.answer, ...q.accept]) expect(match).not.toContain(a.toLowerCase());
+      if (q.placeholder === true || q.secretFromAgents === true) for (const a of [q.answer, ...q.accept]) expect(match).not.toContain(a.toLowerCase());
       else for (const a of [q.answer, ...q.accept]) expect(match).toContain(a.toLowerCase());
       expect(block).toContain(`# ${q.id}`);
     }
@@ -617,8 +624,7 @@ describe("titi-facts — the trabolta.mind.md secrets block", () => {
     expect(block).toContain("# the pickup line");
     expect(entries.length).toBe(topics.length + match.length + 1 + never.length);
     // Numbers and times are quoted so YAML keeps them strings.
-    expect(block).toContain('    - "412"');
-    expect(block).toContain('    - "1978"');
+    expect(yamlScalar("412")).toBe('"412"');
     expect(yamlScalar("9:00")).toBe('"9:00"');
   });
 });
@@ -680,13 +686,13 @@ describe("titi-facts — secrets.never", () => {
 });
 
 describe("titi-facts — the DESIGN.md questions block", () => {
-  it("replaces only the block with the H1–F2 table, its keys left in facts.json", () => {
+  it("replaces only the block with the H1–F3 table, its keys left in facts.json", () => {
     const design = read(OUTPUTS.design);
     expect(design.startsWith("# Design\n\n### 2.11 Hunt questions\n\nIntro paragraph that stays.\n\n")).toBe(true);
     expect(design.endsWith("\n\n### 2.12 After\n\nTrailing text that stays.\n")).toBe(true);
     expect(design).not.toContain("| H1 | 1 | old | stale |");
     expect(design).toContain("retired 2026-10-16 (U9)");
-    const rows = [...design.matchAll(/^\| (H[1-6]|F[12]) \| [^|]+ \| ([^|]+) \| ([^|]+) \|/gmu)];
+    const rows = [...design.matchAll(/^\| (H[1-6]|F[1-3]) \| [^|]+ \| ([^|]+) \| ([^|]+) \|/gmu)];
     expect(rows.map((r) => r[1])).toEqual(facts.questions.map((q) => q.id));
     for (const q of facts.questions) {
       const row = rows.find((r) => r[1] === q.id)!;

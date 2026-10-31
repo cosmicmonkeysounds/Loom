@@ -418,10 +418,11 @@ function readingBeat(f: FactsFile, q: Question, n: number): string[] {
     out.push(
       "if Kernel.res_found > 0:",
       `  ${S.reader}: ${q.reading}`,
-      ...correct.map((l) => `  ${l}`),
-      "else:",
-      "  if Kernel.res_sure > 0:",
-      `    ${S.reader}: ${sure}`,
+      'if Kernel.res_found > 0 and Kernel.res_correct != "":',
+      correct[1]!,
+      "if Kernel.res_found == 0 and Kernel.res_sure > 0:",
+      `  ${S.reader}: ${sure}`,
+      "if Kernel.res_found == 0:",
       ...rest.map((l) => `  ${S.reader}: ${l}`),
     );
   } else out.push(`${S.reader}: ${q.reading}`, ...correct);

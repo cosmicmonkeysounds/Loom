@@ -925,9 +925,8 @@ export interface ScreenBathroom {
 export const RESULTS_READ_VERB = "fact_read";
 /** `do fact_truth H1 accurate|lie|none`: the verdict on one question. */
 export const RESULTS_TRUTH_VERB = "fact_truth";
-/** The slides a `read` block rides (the reading's own scene). Wave 59a: the
- *  tally reads nothing now, so round one's last rows must not ride it. */
-export const RESULTS_SLIDES: readonly string[] = ["hunt_results"];
+/** The slides a `read` block rides (the reading's own scenes). */
+export const RESULTS_SLIDES: readonly string[] = ["hunt_results", "tally"];
 /** How long the verdict stays on the screens after its first `fact_truth`. */
 export const RESULTS_VERDICT_MS = 120_000;
 export { MAX_RESULT_ROWS } from "../facts.ts";

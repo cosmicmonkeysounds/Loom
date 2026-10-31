@@ -145,7 +145,8 @@ describe.skipIf(!existsSync(DELIVERED))("wave 58: every edit to the delivered fa
     const log = SHEET.slice(SHEET.indexOf("### 3.3 The facts"), SHEET.indexOf("## 4. Every word we wrote"));
     const shape = (r: Row) => JSON.stringify([r.text, r.answer, r.existing, r.codex?.id, r.codex?.text, r.codex?.title, r.codex?.secret]);
     const changed: string[] = [];
-    for (const [a, b] of [[ours.facts, theirs.facts], [ours.questions, theirs.questions]] as const) {
+    // The questions moved on in wave 59a, on SIGNOFF-w59 §8: the log is the facts'.
+    for (const [a, b] of [[ours.facts, theirs.facts]] as const) {
       const delivered = new Map(b.map((r) => [r.id, r]));
       for (const r of a) if (shape(r) !== shape(delivered.get(r.id)!)) changed.push(r.id);
     }

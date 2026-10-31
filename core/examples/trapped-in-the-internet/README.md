@@ -61,7 +61,7 @@ facts.json             the one file the team edits: the hunt questions + answer 
                        two files below (`--check` only reports; the predeploy gate)
 generated/questions.loom  GENERATED: the 3 hunt QUESTs, Trabolta's reading beats (Hunt
                        One/Two Questions · Final Questions), Facts Seed, Truth Question,
-                       the 8 hunt-answer CODEX entries
+                       the 9 hunt-answer and 5 document CODEX entries
 beats/login.loom       arrival: Login · Login Incorrect · Upload · Orientation · Re-upload ·
                        Featured Briefing
 beats/desktop.loom     Act I: Call To The Desktop · Computer Bingo · Bingo Time · Corrupted
@@ -117,7 +117,7 @@ cast/props.loom        The Uploader · The Router · The Screensaver · The Tabl
                        hidden secret state)
 cast/trabolta.loom     the AI: his vars, hooks, and 11 agent powers (wave 20 deleted stand_down: the
                        heart's talk ends nothing since wave 58; the_line_works retired 2026-10-19)
-codex/1-world.loom …   267 CODEX entries: 259 in nine numbered files + the 8 hunt answers
+codex/1-world.loom …   273 CODEX entries: 259 in nine numbered files + the 9 hunt answers and the 5 kept documents
                        in generated/questions.loom (9-facts.loom is GENERATED from
                        facts.json; 3-hunt.loom is gone; 85-ties.loom holds the 16
                        Connections ties and Program Briefing, which deals them at
@@ -202,7 +202,7 @@ These rules matter when you edit. Break one and something fails silently.
 
 As of 2026-10-22 (the wave 18b integration) the project compiles clean, both
 per file and concatenated the way the server joins them (`loomcheck`):
-**36 files, 0 errors, 3 warnings (the three hunt keys still owed); 112 beats, 267 codex entries (161 with codes; wave 58's Oct 30 facts counted), 27
+**36 files, 0 errors, 0 warnings; 112 beats, 273 codex entries (167 with codes; wave 58's Oct 30 facts counted), 27
 quests, 117 rules, 123 INTERACTIONs**. Wave 18b added `beats/review.loom`
 (The Night In Review, Your File and their shared beats) and
 `codex/85-ties.loom` (the 16 Connections ties + Program Briefing), The DSL
@@ -785,7 +785,7 @@ but not used".
 ## Knowledge is the currency: the Codex
 
 Every `CODEX` entry is a piece of lore a participant can **hold**. There
-are **267**, and **161** of them carry a code (the 115 generated from
+are **273**, and **167** of them carry a code (the 115 generated from
 `facts.json` included: wave 11 added the cold door's four digit notes,
 wave 35 the tiered facts, and wave 58 replaced the file with the Oct 30
 delivery). An entry reaches a holder in one of five ways:
@@ -1190,7 +1190,7 @@ Trabolta asks the next personal question from `facts.json` `truths[]`
 and posted in The Desktop; Clippy presses 🗣 *Truth answered* (+50) or 🙅
 *Truth refused* (marked). 🎩 *Chose Dare* is the dead-phone fallback.
 
-### QR placements (the 161 coded entries)
+### QR placements (the 167 coded entries)
 
 Print each as a QR of its `?code=&unlock=` link (from `POST
 /api/mod/codes`) **plus** the typed code: Run → Join → **🖨 Print sheet…**

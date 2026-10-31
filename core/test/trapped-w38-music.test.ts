@@ -123,7 +123,7 @@ describe("the music through a night (the sim)", () => {
     await n.chain(TO_Y2K);
     await n.chain(Y2K_TO_VERDICT);
     expect(n.music()).toBe("final");
-    n.tick(40);
+    n.tick(110); // 8-B, then the verdict's pages
     expect(n.music()).toBe("off");
     expect(n.cued.slice(-2)).toEqual(["final", "off"]);
   });

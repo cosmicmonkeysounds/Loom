@@ -59,7 +59,7 @@ export const Y2K_TO_DESTROYED: readonly ChainStep[] = ["patch_combo_b", "clippy_
 export const THE_FULL_TRUTH: readonly ChainStep[] = ["tell_the_truth"];
 
 /** After 🕚, midnight's road: 🌑 → 🍎 → the bag (on the bobber) → 📄 → ⚖.
- *  The verdict then waits ~34 s (finale.loom): every answered fact accurate
+ *  The verdict then waits ~37 s (finale.loom), after about 70 s of 8-B if nobody found the last answer: every answered fact accurate
  *  → the song (`song`); any lie on record → Grok Prom (below). */
 export const Y2K_TO_VERDICT: readonly ChainStep[] = [
   "final_reveal",

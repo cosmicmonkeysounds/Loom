@@ -207,7 +207,7 @@ async function road(which: Road) {
   } else {
     if (which !== "song") sim.setVar("Kernel.q1", '"lie"');
     await chain(Y2K_TO_VERDICT);
-    tick(40);
+    tick(110); // 8-B, then the verdict's pages
     if (which === "song_pickup") log.push(...sim.signal("pickup_line_works", "g-pool", null, "Clippy"));
     if (which === "rave") await press("no_pickup_line");
     if (which === "help") await chain(["ask_for_advice", "advice_helped"]);
@@ -416,9 +416,9 @@ describe.each(ROAD_NAMES)("the full truth on the road to %s", (which) => {
 });
 
 describe("the full truth: the frames and the fallbacks", () => {
-  it("Sandy's line is the file's, the story's and F1's; Grok finds her tonight", { timeout: SLOW }, async () => {
+  it("Sandy's line is the file's, the story's and her document's; Grok finds her tonight", { timeout: SLOW }, async () => {
     const line = /"(.+)"/u.exec(delivered().get(19)!)![1]!;
-    expect(FACTS.questions.find((q) => q.id === "F1")!.answer).toBe(line);
+    expect(FACTS.documents!.find((d) => d.was === "F1")!.guard![0]).toBe(line);
     for (const which of ["song", "help", "rave"] as const) {
       const n = await road(which);
       const hers = said(n.log, "Sandy");

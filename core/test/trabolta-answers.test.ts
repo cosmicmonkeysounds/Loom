@@ -371,9 +371,11 @@ describe("Trabolta never knows what he is asking for", () => {
 
     for (const n of ["five_minute_warning", "summons_closed", "truth_pong", "round_two_tally", "trust_chart", "show_the_rankings", "printer_opened"]) await mod(n);
     await look("the beans");
-    await mod("trabolta_overshares"); // he asks the final two facts
-    expect(v("Night.facts_requested")).toBe(8);
-    for (const g of guests) for (const q of ["F1", "F2"]) await call(rt, "POST", "/api/guest/codex/redeem", { code: codeOf(q) }, { token: g.token });
+    await mod("trabolta_overshares"); // he asks the final three facts
+    expect(v("Night.facts_requested")).toBe(9);
+    for (const g of guests) for (const q of ["F1", "F2", "F3"]) await call(rt, "POST", "/api/guest/codex/redeem", { code: codeOf(q) }, { token: g.token });
+    // The old answers, documents now (wave 59a): still scanned by anyone, still his to refuse.
+    for (const g of guests) for (const d of FACTS.documents!) await call(rt, "POST", "/api/guest/codex/redeem", { code: d.codex.code }, { token: g.token });
     await look("the overshare (the final facts asked, found)");
     for (const e of ["What Sandy Says", "The Prom Ticket"]) {
       expect((await call(rt, "POST", "/api/guest/codex/share", { entry: e, to: "Trabolta" }, { token: pad.token })).status, e).toBe(403);
@@ -526,8 +528,7 @@ describe("Trabolta never knows what he is asking for", () => {
     for (const q of FACTS.questions) {
       const c = q.codex!;
       expect(sim.model.codexCodes.get(foldCode(c.code)), q.id).toBe(c.id);
-      // A key still owed (facts.json `placeholder`) has no answer to find yet.
-      if (q.placeholder !== true) expect(answersIn(sim.model.codex.get(c.id)!.text), q.id).toContain(`${q.id}: ${q.answer}`);
+      expect(sim.model.codex.get(c.id)!.text.replace(/\s+/gu, " "), q.id).toContain(c.text.replace(/\s+/gu, " "));
     }
     // The LiveJournal still describes the rival ("says whatever anyone wants
     // to hear"), and The Rival names him.

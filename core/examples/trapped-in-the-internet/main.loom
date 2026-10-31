@@ -5334,6 +5334,8 @@ when round_two_tally:
     set Night.settle_round = 2
     set Night.settle_gen += 1
     // Wave 59a: he reads no answers here. They come on 🤖, Overshare Answers.
+    // `none` names no question, so round one's last rows don't ride the slide.
+    do fact_read none
     cue screens_tally
     set Night.screen = "tally"
     set Night.terminals = "tally"

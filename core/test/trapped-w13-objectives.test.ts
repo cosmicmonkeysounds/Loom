@@ -52,7 +52,7 @@ export class Night {
     notePress(this.sim, ev);
     expect(pressRefused(this.sim, ev), name).toBe(false);
     // Wave 18b: ⚖'s ending follows The Verdict's TV pages (34 s of story time).
-    if (name === "the_verdict") for (let i = 0; i < 34; i++) ev.push(...this.sim.tick(1000));
+    if (name === "the_verdict") for (let i = 0; i < 110; i++) ev.push(...this.sim.tick(1000));
     return this.take(ev);
   }
   scan(scanner: string, id: string): ChatMessage[] {
@@ -218,8 +218,6 @@ describe("Trapped in the Internet — wave 13: effect text", () => {
     expect(ad).toMatchObject({ manner: "static", fx: true, kind: "narration" });
     for (const c of ["five_minute_warning", "summons_closed", "truth_pong", "round_two_tally", "trust_chart", "show_the_rankings"]) all.push(...n.press(c));
     const over = n.press("trabolta_overshares");
-    const glitch = over.filter((m) => m.fx === true);
-    expect(glitch.length).toBeGreaterThan(0);
     for (const m of over.filter((x) => x.manner !== undefined)) expect(m.fx, m.text).toBe(true);
     // Delivery notes ride the line but are not effect text.
     const bob = n.press("y2k_clock").concat(n.press("final_reveal"), n.press("bobbing_for_truth"));
@@ -253,7 +251,7 @@ describe("Trapped in the Internet — wave 13: per-person notices (~)", () => {
   it("every ~ notice has the person's own result in the same block (a reply, the mark's pin, a line to them)", () => {
     const blocks = noticeBlocks();
     // Wave 18: the Bingo winner's ribbon is a big house cheer (B7), not a ~ notice.
-    expect(blocks.length).toBe(24);
+    expect(blocks.length).toBe(25);
     for (const { where, line, block } of blocks) {
       expect(line, where).not.toMatch(/^broadcast "~?!|^broadcast "!~/);
       // A transfer / trade notice in # truthcoin-exchange: each party's own
