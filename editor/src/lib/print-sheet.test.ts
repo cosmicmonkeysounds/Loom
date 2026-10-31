@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { BADGE_DEFAULT_COUNT, BADGE_KINDS, badgeRange, buildBadgeItems, buildPrintItems, defaultFactCount, DIGIT_CLUE_STACK, doorWording, factLine, factStacks, isDigitClue, limitFacts, LOCATION_KINDS, nextBadgeFrom, printBaseProblem, PrintKind, qrSvg, SHEET_3X2, SHEET_FACTS, sheetsOf, SIGN_DEFAULT_COPIES, STACK_ORDER, stackInk, stackRank, unlockButton, unlockOpenUntil, UnlockPhase, type PrintBadge, type PrintCodes } from './print-sheet'
+import { BADGE_DEFAULT_COUNT, BADGE_KINDS, badgeRange, buildBadgeItems, buildPrintItems, defaultFactCount, DIGIT_CLUE_STACK, doorWording, factLine, factStacks, isDigitClue, limitFacts, LOCATION_KINDS, LOST_PHONE, nextBadgeFrom, printBaseProblem, PrintKind, qrSvg, SHEET_3X2, SHEET_FACTS, sheetsOf, SIGN_DEFAULT_COPIES, STACK_ORDER, stackInk, stackRank, unlockButton, unlockOpenUntil, UnlockPhase, type PrintBadge, type PrintCodes } from './print-sheet'
 
 const CODES: PrintCodes = {
   eventPass: 'EVT777',
@@ -93,7 +93,7 @@ describe('print sheet', () => {
       ['P01', 'Clippy', '', 'https://app.example.com/?code=EVT777&part=pc-clippy'],
       ['P02', 'Task Manager', '', 'https://app.example.com/?code=EVT777&part=pc-task'],
     ])
-    expect(cast[0]!.hint).toMatch(/Lost your phone/)
+    expect(cast[0]!.hint).toContain(LOST_PHONE)
     expect(cast[0]!.note).toMatch(/Clippy/)
     for (const c of cast) expect([c.title, c.hint, c.code].join(' ')).not.toMatch(/pc-|PERF9/)
     // no moderator or performer code anywhere on any card
@@ -190,6 +190,21 @@ describe('print sheet', () => {
     expect(LOCATION_KINDS).toEqual([PrintKind.Room, PrintKind.Sign])
   })
 
+  it('wave 59: no badge promises that the card alone gets a lost phone back: a host moves it', () => {
+    const items = buildPrintItems({
+      ...CODES,
+      castLinks: [{ character: 'Clippy', part: 'p', url: 'https://app.example.com/?code=EVT777&part=p' }],
+      claims: [{ character: 'Microsoft Excel', claim: 'c', ref: 'F01', code: 'AAAA-BBBB', url: 'https://app.example.com/?code=EVT777&claim=c&badge=aaaabbbb' }],
+    })
+    const badges = [...items.filter((i) => i.kind === PrintKind.Cast || i.kind === PrintKind.Invite), ...buildBadgeItems([{ n: 1, ref: 'B001', code: 'CODE-0001', url: 'https://app.example.com/?code=EVT777&badge=c1', holder: null, name: null }])]
+    expect(badges.map((i) => i.kind)).toEqual([PrintKind.Cast, PrintKind.Invite, PrintKind.Badge])
+    for (const b of badges) {
+      expect(b.hint).toContain(LOST_PHONE)
+      expect(b.hint).toMatch(/a host/)
+      expect(b.hint).not.toMatch(/Do it again\.$/)
+    }
+  })
+
   it('wave 54: every badge kind prints on the one 3 × 2 run: staff, invited, blank', () => {
     expect(BADGE_KINDS).toEqual([PrintKind.Cast, PrintKind.Invite, PrintKind.Badge])
   })
@@ -257,7 +272,7 @@ describe('badges (wave 23)', () => {
     expect(items[1]!.note).toBe('linked to Microsoft Excel')
     expect(items[2]!.note).toBe('linked to g-9')
     expect(items[0]!.hint).toMatch(/Scan to start/)
-    expect(items[0]!.hint).toMatch(/Lost your phone/)
+    expect(items[0]!.hint).toContain(LOST_PHONE)
     expect(buildBadgeItems([])).toEqual([])
   })
 
