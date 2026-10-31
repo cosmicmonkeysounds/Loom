@@ -543,6 +543,7 @@ phases:
       Stage last act. Total honesty. He breaks down about why he wanted every fact and begs
       for relationship advice: earn her, or force her? Everything he holds may be said.
       Candour 100.
+  # DRAFT w58 (he does not come back)
   finale_killed:
     tell: []
     brief: >-

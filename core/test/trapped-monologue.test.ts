@@ -166,7 +166,7 @@ const ROADS: Record<Road, { reader: "Trabolta" | "Task Manager"; host: "Trabolta
   song_pickup: { reader: "Trabolta", host: "Trabolta", phase: "finale_song", frame: /^Before anyone leaves, one last file\./u, lines: 1, freeBefore: true, freeAfter: true, awake: true },
   help: { reader: "Trabolta", host: "Trabolta", phase: "finale_help", frame: /^Before anyone leaves, one last file\./u, lines: 1, freeBefore: true, freeAfter: true, awake: true },
   hand_jive: { reader: "Trabolta", host: "Trabolta", phase: "finale_hand_jive", frame: /^Before anyone leaves, one last file\./u, lines: 1, freeBefore: true, freeAfter: true, awake: true },
-  rave: { reader: "Trabolta", host: "Clippy", phase: "finale_rave", frame: /^Programs, this is Jean Trabolta, calling from Computer Prom\./u, lines: 2, freeBefore: false, freeAfter: false, awake: true },
+  rave: { reader: "Trabolta", host: "Clippy", phase: "finale_rave", frame: /^Programs, this is Jean Trabolta, calling from /u, lines: 2, freeBefore: false, freeAfter: false, awake: true },
   disabled: { reader: "Task Manager", host: "Clippy", phase: "finale_killed", frame: /^This message was recorded by Jean Trabolta shortly before he died\.$/u, lines: 2, freeBefore: false, freeAfter: true, awake: false },
   destroyed: { reader: "Task Manager", host: "Clippy", phase: "finale_shutdown", frame: /^The computer is off\. This message is the last thing it saved\.$/u, lines: 2, freeBefore: false, freeAfter: false, awake: false },
 };

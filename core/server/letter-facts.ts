@@ -47,6 +47,7 @@ export const LETTER_ENDINGS: Readonly<Record<string, string>> = {
   help: "you asked the programs for relationship advice; they voted to help you win Sandy",
   banished: "you asked the programs for relationship advice; they voted to thwart you and banished you",
   hand_jive: "the programs voted to thwart you and banished you; the night ended in the hand jive",
+  // DRAFT w58 (he does not come back)
   disabled: "the programs found the combination in the server room and pulled your cables; you died; you write from a backup",
   destroyed: "the programs ran the self-destruct in the server room; the computer went off without Shut Down; you write from a backup",
 };
