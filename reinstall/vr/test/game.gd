@@ -83,6 +83,7 @@ func _run() -> void:
 	await _test_heart_pickup()
 	await _test_autopilot_physics()
 	await _test_room_scale()
+	await _test_stair_sides()
 	await _test_intro_game()
 	_test_house_lights()
 	_test_house_lights_link()
@@ -1436,6 +1437,54 @@ func _test_refresh_rate() -> void:
 	_check(r.want == 72.0 and r.step(72.0, 0.011) == 0.0, "refresh: one rate on offer, nothing to ask")
 
 
+## The show map's flights have no wall beside their lower half, and rails only
+## from the upper floor: without [method HouseBuilder._ramp_side] a body walks off.
+func _test_stair_sides() -> void:
+	var house: Dictionary = _read_json("res://house/house.json")
+	var link: LinkBase = preload("res://test/fake_link.gd").new()
+	link.config = StationConfig.merge(StationConfig.defaults(), {"name": "Stairs", "intro": false})
+	link.house = house
+	link.house_version = "test"
+	var main: Node = load("res://main.tscn").instantiate()
+	main.set("link", link)
+	root.add_child(main)
+	main.add_child(link)
+	await process_frame
+	await physics_frame
+	var game: Game = main.get("game")
+	var player := game.player
+	var b := game.builder
+	player.set_process(false)
+	player.set_physics_process(false)
+	player.read_input = false
+	player.set_xr(true)
+	link.assignment_received.emit(_assignment(house, "s-st", true))
+	await physics_frame
+	await physics_frame
+	var dt := 1.0 / 90.0
+	var ramps: Array = HouseGeometry.build_ramps(house)
+	_check(ramps.size() >= 2, "stairs: the show map has its flights")
+	for ramp: Dictionary in ramps:
+		var r: Array = ramp["rect"]
+		var half_w := (float(r[2]) - float(r[0])) / 2.0
+		var rise := float(ramp["high"]) - float(ramp["low"])
+		# Low on the flight, where nothing else stands beside it.
+		var spot := [float(r[0]) + half_w, float(ramp["low"]) + 0.3 * rise + 0.03, float(r[3]) - 0.3 * (float(r[3]) - float(r[1]))]
+		for stick: float in [1.0, -1.0]:
+			player.teleport(b.to_world(spot), b.yaw_to_world(0.0))
+			for i in 6:
+				player.step(dt)
+			var at := b.to_house(player.feet())
+			player.left_stick = Vector2(stick, 0.0)
+			for i in 120:
+				player.step(dt)
+			player.left_stick = Vector2.ZERO
+			var now := b.to_house(player.feet())
+			_check(absf(now[0] - at[0]) < half_w + 0.1 and at[1] - now[1] < 0.5, "stairs: walking sideways off %s stays on it (%.2f m aside, %.2f m down)" % [ramp["stair"], absf(now[0] - at[0]), at[1] - now[1]])
+	main.queue_free()
+	await process_frame
+
+
 func _test_trail_stays() -> void:
 	var path: Array = [[0.0, 0.0, 0.0], [10.0, 0.0, 0.0], [10.0, 0.0, 10.0]]
 	var near: Array = [[3.2, 0.0, 0.0], [10.0, 0.0, 0.0], [10.0, 0.0, 10.0]]
@@ -1626,19 +1675,9 @@ func _test_room_scale() -> void:
 	player.global_position.y -= 0.4
 	for i in 45:
 		player.step(dt)
-	# A flight's open sides hold a body in, both ways: 40% up its first ramp.
 	var ramp: Dictionary = HouseGeometry.build_ramps(house)[0]
 	var r: Array = ramp["rect"]
 	var on_flight := [(float(r[0]) + float(r[2])) / 2.0, float(ramp["low"]) + 0.4 * (float(ramp["high"]) - float(ramp["low"])) + 0.03, float(r[3]) - 0.4 * (float(r[3]) - float(r[1]))]
-	for stick: float in [1.0, -1.0]:
-		player.teleport(b.to_world(on_flight), b.yaw_to_world(0.0))
-		var at := b.to_house(player.feet())
-		player.left_stick = Vector2(stick, 0.0)
-		for i in 150:
-			player.step(dt)
-		player.left_stick = Vector2.ZERO
-		var now := b.to_house(player.feet())
-		_check(absf(now[0] - at[0]) < 0.5 and now[1] > at[1] - 0.5, "stairs: walking sideways on a flight stays on it (%.2f m aside, %.2f m down)" % [absf(now[0] - at[0]), at[1] - now[1]])
 	player.teleport(b.to_world(on_flight), b.yaw_to_world(0.0))
 	for i in 10:
 		player.step(dt)
