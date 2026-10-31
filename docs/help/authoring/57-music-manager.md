@@ -8,8 +8,8 @@ keywords: music, music manager, tidal, playlist, playlists, library, soundtrack,
 The **Music manager** is the night's music in one place. Open it in
 **Run → House → 🎵 Music** (a server project with its rehearsal running, like
 the rest of [the house desk](47-house-desk.md)). A host's phone has the same
-thing in its **Desk** window, open for Task Manager and folded for everyone
-else. Only directors and hosts can use it. The faders stay in
+thing on the 🎵 Music tab of its **Desk** window, the tab Task Manager's phone opens
+on first. Only directors and hosts can use it. The faders stay in
 [the Mixer](51-house-mixer.md).
 
 ## The strip

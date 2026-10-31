@@ -11,7 +11,8 @@ speakers, an announcement, a lights look, one light colour, stop the
 house sounds, a story event, wait for a room's lines to be spoken, or
 plain time. You build it, test it and press **GO** in **Run → House**;
 hosts can press GO and walk the checks from their phone's **Desk**
-window; and the story plays a desk cue by name.
+window, in the same grouping under its own tabs (🎛 Cues, 🎵 Music, 🎚 Mix, 🖥 House,
+🔌 Setup); and the story plays a desk cue by name.
 
 It is also where you **connect and test** the house: every speaker,
 every output of the interface, every story sound, every light and every
@@ -20,7 +21,7 @@ look, one row at a time.
 The desk lives on the event server, so Run → House works on a server
 project with a run. On a local folder it explains that it needs one.
 
-Run → House has five views, under the status strip:
+Run → House has six views, under the status strip:
 
 - **🎛 Desk** — the cue list, GO and the checks (this page).
 - **🎨 Cue designer** — design lighting looks with a live preview,
@@ -30,10 +31,11 @@ Run → House has five views, under the status strip:
   mind connected, and what to do when not (a ✗ on the tab says something
   is down). The full runbooks are in
   [Setting up the house](49-house-setup.md).
+- **🎵 Music** — what is playing and where it comes from, TIDAL's transport and
+  your playlists, a scene by hand, Trabolta's hands on it ([The Music
+  manager](57-music-manager.md)).
 - **🎚 Mixer** — the live balance of the house sound, everywhere and per
-  room, and the soundtrack's transport: skip a track, pick a scene by
-  hand, stop the music ([The Music manager](57-music-manager.md)); the faders are
-  [The Mixer](51-house-mixer.md).
+  room ([The Mixer](51-house-mixer.md)).
 - **🗺 Map** — the house map editor itself: rooms, doors, props, terminals,
   speakers and lights ([The house map](39-house-map.md)). The desk's keys
   are off while it shows; the map has its own.

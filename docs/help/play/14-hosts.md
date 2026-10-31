@@ -44,8 +44,8 @@ every phone, guests' included.
   (below).
 - **Chats** is the room list: the staff rooms, Readouts, guests'
   messages (the number on it counts guests waiting on a reply).
-- **Desk** is the house desk: its cues, ■ STOP ALL, and the speaker and
-  light checks (below).
+- **Desk** is the house desk, in tabs under ■ STOP ALL: 🎛 Cues, 🎵 Music, 🎚 Mix,
+  🖥 House (his voice, the dream, the terminals) and 🔌 Setup with the checks (below).
 - **📷 Scan** opens the scanner, as in any booth: passes, and codex QRs into
   your own Codex (**⊞ Start → What … knows**). Every guest, with their
   card, is in Show's **People**.
@@ -214,8 +214,8 @@ the rest.
     **🔇 + the announcement** also cuts what the house is saying and the
     ones queued behind it. It never touches the TV's voice (its mute is
     above), the terminals or the live mics, and stopping the dance song
-    doesn't move the story's clock. If nothing is listening (the house
-    Mac's audio job is down) it says so.
+    doesn't move the story's clock. If nothing is listening (the Desktop's
+    audio job is down) it says so.
   - **🎟 Codes and invitations**: **Show the codes** (the guests' and the
     performers'), **▦ Show the join QR** for a guest to scan off your
     screen, and each invitation's **▦ QR** and **🔓 Open 2 min** for a
@@ -234,10 +234,11 @@ Anything you can't take back asks in place first (*…? Yes / No*).
 
 The house's own cue list, built in the editor's Run → House: sounds on
 the house speakers, announcements, light looks, waits, and story events.
-Play fires and tests it; it never edits a cue. Its **Setup** (is the
-sound, the lights and each outside mind connected, and what to do when
-one isn't) and **Try it** (play a look, a story sound or a line on the
-speakers) are in [The Desk: setup and tests](house-desk.md).
+Play fires and tests it; it never edits a cue. Its tabs sit under a top that
+stays put. **🖥 House** has **Try it** (play a look, a story sound or a line
+on the speakers), and **🔌 Setup** says whether the sound, the lights and each
+outside mind are connected, and what to do when one isn't. All of it is in
+[The Desk: setup and tests](house-desk.md).
 
 - **The status chips**: the house sound router (*🔊 router online*, or
   offline), sound files missing or still placeholders, the lights module,
@@ -263,7 +264,7 @@ output, story sound, light and look, one at a time:
 
 1. The row on screen names it and where it is (*Living L · Living room ·
    out 1*), with any reason it may not work before you listen (*no file
-   on the house Mac*, *the lights module is offline*).
+   on the router's machine*, *the lights module is offline*).
 2. Tap the big **Test** (*🔊 Test tone*, *▶ Play it*, *💡 Flash it*, *💡
    Play the look*). A colour bulb has a button per colour: Red, Green,
    Blue, White, Dim, Off.

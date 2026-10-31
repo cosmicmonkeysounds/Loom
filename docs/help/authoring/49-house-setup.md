@@ -2,7 +2,7 @@
 title: Setting up the house: sound, lights and Trabolta
 section: Live Shows
 order: 49
-keywords: house setup, setup, set up the house, Setup pane, Run → House, sound, speakers, router, audio, audio job, MOTU, 828x, ADAT, ASIO, sound files, placeholder, lights, lights job, Zigbee, Zigbee2MQTT, Z2M, Hue, Philips Hue, ThirdReality, ZL1, bulb, pair a bulb, WLED, LED strip, Mosquitto, broker, props, Trabolta, mind, Ollama, gpt-oss, agents, worker, laptop.yaml, Desktop, MacBook, Windows, macOS, fallback, which machine, bring up, order, connected, offline, preflight, showctl, runbook, stagehand
+keywords: house setup, setup, set up the house, Setup pane, Run → House, sound, speakers, router, audio, audio job, MOTU, 828x, ADAT, ASIO, Claude, Haiku, sound files, placeholder, lights, lights job, Zigbee, Zigbee2MQTT, Z2M, Hue, Philips Hue, ThirdReality, ZL1, bulb, pair a bulb, WLED, LED strip, Mosquitto, broker, props, Trabolta, mind, Ollama, gpt-oss, agents, worker, laptop.yaml, Desktop, MacBook, Windows, macOS, fallback, which machine, bring up, order, connected, offline, preflight, showctl, runbook, stagehand
 ---
 
 The story only *asks* for a sound, a lights look or a line from Trabolta.
@@ -17,7 +17,7 @@ below); this is the map.
 | | Runs | Runbook |
 |---|---|---|
 | **John's Desktop** (Windows) | 🔊 **Sound**: the speaker router (stagehand `audio`) on the MOTU 828x's own outputs (no ADAT expander). 💡 **Lights**: Zigbee2MQTT with the Philips Hue and ThirdReality ZL1 bulbs, the living room's WLED LED strip, and stagehand `lights`. Also the house broker (Mosquitto), stagehand `show` (the cues and the announcements) and the living-room TV. | `scripts/house-desktop/README.md` |
-| **John's MacBook** (macOS) | 🧠 **Trabolta**: Ollama with `gpt-oss:20b` and stagehand `agents`. Also the director's Run console and the deploy scripts. | `scripts/house-macbook/trabolta.md` |
+| **John's MacBook** (macOS) | 🧠 **Trabolta**: stagehand `agents`, on Claude Haiku with Ollama `gpt-oss:20b` standing by. Also the director's Run console and the deploy scripts. | `scripts/house-macbook/trabolta.md`, `stagehand/docs/agents.md` |
 
 The MacBook can take the sound router instead, if the MOTU misbehaves on
 Windows: `scripts/house-macbook/audio.md`, and the Desktop README's
@@ -61,8 +61,9 @@ folder. Every stagehand job and config: `stagehand/README.md`.
    **safety lights**; move one only if it hangs elsewhere, then **Save to
    project**. (Another show places its own: each bulb as a *Zigbee bulb*
    with its Zigbee2MQTT name, a strip as a *WLED strip* with its topic.)
-6. **Trabolta on the MacBook**: Ollama running with the model loaded, then
-   the `agents` job, then Run → Mind → **Reset**.
+6. **Trabolta on the MacBook**: Claude's key in `~/.config/loom/anthropic.key`,
+   Ollama running with the model loaded as the standby, then the `agents` job, then
+   Run → Mind → **Reset**.
 
 ## How to know it's connected
 
@@ -80,7 +81,8 @@ when it is up and otherwise a short list of what to do next:
   Zigbee2MQTT doesn't know (pair it, then give it exactly that name); 🔗
   **Pair a bulb** opens joining for a new one.
 - **🧠 Trabolta**: his mind online and on which worker. Red means guests
-  get his holding line: check Ollama, then restart the `agents` job.
+  get his holding line: restart the `agents` job, then check Claude's key and
+  that Ollama, the standby, is running.
 
 Then walk the **Checks** pane (every speaker, every output, every sound,
 every light and look, with a Test button and a ✓ / ✗ mark each) and play

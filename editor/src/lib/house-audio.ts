@@ -194,7 +194,7 @@ export const StopOutcome = {
   /** The server took it and a router is listening: it fades out now. */
   Stopped: 'stopped',
   /** The server took it, but no router is listening: the stop reaches nothing.
-   *  The house Mac may still be playing (its uplink down mid-song). */
+   *  The router's machine may still be playing (its uplink down mid-song). */
   NoRouter: 'noRouter',
   /** The request itself failed (signed out, the server down, a 5xx, an
    *  older server with no stop route): nothing was stopped. */
@@ -202,12 +202,12 @@ export const StopOutcome = {
 } as const
 export type StopOutcome = (typeof StopOutcome)[keyof typeof StopOutcome]
 
-/** The by-hand stop on the house Mac, for when the server can't reach it. */
+/** The by-hand stop on the router's machine, for when the server can't reach it. */
 export const STOP_BY_HAND = 'stop it there: `stagehand sounds stop`, or MQTT `show/audio/stop`'
 
 /** What a stop the server took came to, for the button's moment of feedback. */
 export function stopResultText(answer: AudioStopAnswer, announce: boolean): string {
-  if (!answer.router.online) return `No router is listening, so the stop can’t reach the house Mac: ${STOP_BY_HAND}`
+  if (!answer.router.online) return `No router is listening, so the stop can’t reach the Desktop: ${STOP_BY_HAND}`
   return announce ? '■ Stopped the house sounds and the announcement' : '■ Stopped the house sounds'
 }
 
@@ -227,7 +227,7 @@ export function stopButtonLabel(outcome: StopOutcome): string {
     case StopOutcome.Stopped:
       return '■ Stopped'
     case StopOutcome.NoRouter:
-      return '■ No router: stop it on the house Mac'
+      return '■ No router: stop it on the Desktop'
     case StopOutcome.Failed:
       return '■ Stop failed: retry'
   }

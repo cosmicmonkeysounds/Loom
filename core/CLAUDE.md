@@ -625,6 +625,13 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   mode lives beside the mute (`Store.loadVoiceFx`, in the state dir); the shot
   is memory only. `POST /api/mod/screen/voice {fx?, shot?}` is on the host
   allowlist. Tests: `test/voice-fx.test.ts`, `test/trapped-w56-voice.test.ts`.
+- **A host's Desk reads the terminals** (wave 59). `HostView.terminals` gains
+  `dream` (`ScreenWatch.dreamOf`) and, per row, the heartbeat's health and build
+  stamp (`hostTerminalDevice`, `host-board.ts`), never the patch bay. It is a read of
+  what the view already listed and opens no route: `GET /api/mod/screen/terminals`
+  stays a director's. `openDoors` calls `desk.changed()`: the desk's `live` moves
+  with no desk change, and a held poll must hear it at once. Tests:
+  `test/server-desk.test.ts`.
 - **The full truth** (wave 58, [`docs/loom-w58-contract.md`](../docs/loom-w58-contract.md)
   C2, `examples/.../beats/truth.loom`, story only but for three small reads). The monologue plays on the director's 📜
   `tell_the_truth`, after an ending's last beat: `The Full Truth` (Trabolta, 18

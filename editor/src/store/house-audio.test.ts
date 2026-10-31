@@ -132,12 +132,12 @@ describe('the house sound store', () => {
     expect(useHouseAudio.getState().stopNote).toMatchObject({ outcome: 'stopped', text: '■ Stopped the house sounds and the announcement' })
   })
 
-  it('a stop with no router says it can’t reach the house Mac; a failed stop says nothing was stopped', async () => {
+  it('a stop with no router says it can’t reach the Desktop; a failed stop says nothing was stopped', async () => {
     await bound()
     stopAnswer = { status: 200, body: { ok: true, seq: 4, router: { online: false, lastSeen: 1, name: 'house-mac' } } }
     await useHouseAudio.getState().stop(false)
     expect(useHouseAudio.getState().stopNote).toMatchObject({ outcome: 'noRouter' })
-    expect(useHouseAudio.getState().stopNote?.text).toMatch(/can’t reach the house Mac/u)
+    expect(useHouseAudio.getState().stopNote?.text).toMatch(/can’t reach the Desktop/u)
     stopAnswer = { status: 401, body: { error: 'Unauthorized' } }
     await useHouseAudio.getState().stop(false)
     expect(useHouseAudio.getState().stopNote).toMatchObject({ outcome: 'failed' })

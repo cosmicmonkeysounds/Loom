@@ -76,8 +76,8 @@ describe('the card lines', () => {
     expect(stopResultText(online, false)).toBe('■ Stopped the house sounds')
     expect(stopResultText(online, true)).toBe('■ Stopped the house sounds and the announcement')
     const deaf = { ...online, router: { online: false, lastSeen: null, name: null } }
-    // No router: the stop can't reach the house Mac, which may still be playing.
-    expect(stopResultText(deaf, false)).toMatch(/^No router is listening, so the stop can’t reach the house Mac: stop it there/u)
+    // No router: the stop can't reach the Desktop, which may still be playing.
+    expect(stopResultText(deaf, false)).toMatch(/^No router is listening, so the stop can’t reach the Desktop: stop it there/u)
     expect(stopResultText(deaf, false)).toContain('stagehand sounds stop')
     expect(stopResultText(deaf, false)).not.toMatch(/nothing was playing/u)
     expect(stopOutcomeOf(online)).toBe(StopOutcome.Stopped)

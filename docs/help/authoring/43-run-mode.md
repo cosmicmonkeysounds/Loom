@@ -294,8 +294,8 @@ Front of house: getting people in.
   are journaled under your name ([the server room](38-server-room.md)).
   When the event has house lights placed (the map's 💡 Lights tab)
   or the lights module has ever checked in, a **💡** row follows:
-  *💡 lights module online · N fixtures* (amber *offline* when the house
-  Mac's lights module stopped checking in, so light cues play nowhere;
+  *💡 lights module online · N fixtures* (amber *offline* when the
+  Desktop's lights module stopped checking in, so light cues play nowhere;
   *never connected* when it hasn't since the server started), a
   **pairing … s** countdown while a director has opened Zigbee pairing
   from the map (just **pairing open** from a server that doesn't say

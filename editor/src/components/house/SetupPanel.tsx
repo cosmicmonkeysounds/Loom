@@ -41,13 +41,13 @@ export function SetupPanel({ view, now, onChecks, onDesigner }: { view: DeskView
           <div className={heading}>Bring the house up, in this order</div>
           <ol className="list-decimal space-y-1.5 pl-5 text-xs text-zinc-300">
             <li>
-              <b>The audio machine</b>: the interface (and its ADAT expander) powered and plugged in, then stagehand’s <code>audio</code> job. 🔊 Sound turns green with the interface’s name.
+              <b>The audio machine</b>: the interface powered and plugged in, then stagehand’s <code>audio</code> job. 🔊 Sound turns green with the interface’s name.
             </li>
             <li>
               <b>The lights machine</b>: the broker (Mosquitto), Zigbee2MQTT on the USB stick, then stagehand’s <code>show</code> and <code>lights</code> jobs. WLED strips join over Wi-Fi to the same broker. 💡 Lights turns green.
             </li>
             <li>
-              <b>The mind’s machine</b>: Ollama with the model pulled, then stagehand’s <code>agents</code> job with this event’s id. 🧠 turns green, and Run → Mind shows his thinking.
+              <b>The mind’s machine</b>: stagehand’s <code>agents</code> job with this event’s id, on Claude with its key in place and Ollama standing by. 🧠 turns green, and Run → Mind shows his thinking.
             </li>
             <li>
               <b>New bulbs</b>:{' '}
