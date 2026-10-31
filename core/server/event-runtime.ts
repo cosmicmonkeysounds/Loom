@@ -2602,13 +2602,23 @@ export class EventRuntime {
     return step >= ADS_FROM_STEP && step < ADS_UNTIL_STEP && this.adWord("Night.ended") !== "true";
   }
 
-  /** Is he speaking on the TV? Its own word while it polls, else how long the
-   *  story's lines in the room take to say, so a dead TV can't hold anything long. */
-  private tvSpeaking(): boolean {
+  /** When the room's scripted lines have been said by, on their length (story ms). */
+  private stageLinesUntil(): number {
     const storyMs = this.sim?.elapsed() ?? 0;
+    return saidBy(this.chat.all().filter((m) => !m.hidden && storyMs - m.ts < COSTUME_LOOKBACK_MS && m.channel === `loc:${TALK_ROOM}` && m.kind === "line" && typeof m.beat === "string"), STAGE_CHARS_PER_S);
+  }
+
+  /** Are the TVs saying his lines? Null: none is polling and reporting. */
+  private tvTalking(): boolean | null {
     const now = this.screens.clock();
-    if (this.screens.seen().some((p) => p.view === "tv" && p.talk === true && now - p.at <= SPEECH_ONLINE_MS)) return true;
-    return saidBy(this.chat.all().filter((m) => !m.hidden && storyMs - m.ts < COSTUME_LOOKBACK_MS && m.channel === `loc:${TALK_ROOM}` && m.kind === "line" && typeof m.beat === "string"), STAGE_CHARS_PER_S) > storyMs;
+    const tvs = this.screens.seen().filter((p) => p.view === "tv" && p.talk !== undefined && now - p.at <= SPEECH_ONLINE_MS);
+    return tvs.length === 0 ? null : tvs.some((p) => p.talk === true);
+  }
+
+  /** Is he speaking on the TV? Its own word while it reports, so it goes as soon as
+   *  he stops and a TV that dies lets go; with no TV, how long his lines take. */
+  private tvSpeaking(): boolean {
+    return this.tvTalking() ?? this.stageLinesUntil() > (this.sim?.elapsed() ?? 0);
   }
 
   /** What holds the ads now: nothing starts, and what is on the air stops. */
@@ -3409,7 +3419,7 @@ export class EventRuntime {
       ended: word("Night.ended") === "true",
       ceremony: word("Night.ceremony") === "true",
       step: num("Night.step"),
-      speaking: this.tvSpeaking(),
+      speaking: this.tvTalking() === true || this.stageLinesUntil() > storyMs,
       prompter: this.prompters.inUse,
       lights: word("Night.lights"),
       alarm: word("Night.alarm_on") === "true",

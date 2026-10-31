@@ -1,15 +1,16 @@
-// The audio ads (wave 59a), on real pages: guest phones, a wall terminal, the TV,
-// the server-room kiosk and a host's phone against a scratch server with the real
-// MP3s behind `/media/`. Headless Chromium isn't an iPhone and lets anything play,
-// so the phones carry a stand-in for iOS's rule (`IOS_RULE`): an element that has
-// never played inside a tap is refused. Nothing here proves a real iPhone.
+// The audio ads (wave 59a), on real pages: guest phones, walls, every sacred terminal
+// and a host's phone against a scratch server with the real MP3s behind `/media/`.
+// Headless Chromium isn't an iPhone and lets anything play, so the phones carry a
+// stand-in for iOS's rule (`IOS_RULE`): an element that has never played inside a tap
+// is refused. Nothing here proves a real iPhone.
 //
-//   # a scratch server (scripts/sim/README.md) with LOOM_MEDIA_DIR=~/loom-media
+//   # a scratch server (scripts/sim/README.md) with LOOM_MEDIA_DIR=~/loom-media and
+//   # LOOM_ADS_GAP_S=20-30, or each pop takes 3 to 10 minutes
 //   SIM_BASE=http://127.0.0.1:7600 SIM_MOD_CODE=<mod> SIM_GUEST_CODE=<guest> SIM_PRIME_CODE=<prime> SIM_SHOTS=<dir> \
-//     pnpm --filter loom-app exec playwright test -c ../scripts/sim/playwright.config.ts ads
+//     pnpm --filter loom-app exec playwright test -c ../scripts/sim/playwright.config.ts 'ads\.spec'
 //
-// About six minutes: the ads keep their real pace. It resets the event at the
-// end, so run it on a scratch server you can throw away.
+// About five minutes. It resets the event at the end, so run it on a scratch server
+// you can throw away.
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { test, expect } from "../../editor/node_modules/@playwright/test/index.mjs";
@@ -36,12 +37,18 @@ const SPY = () => {
   } as unknown as typeof Audio;
 };
 
-/** The stand-in: an element may play by itself only once a tap has played it. */
+/** The stand-in: an element may play by itself only once a tap has played it. It
+ *  watches for trusted taps itself: Playwright's own `evaluate` counts as a gesture to
+ *  `navigator.userActivation`, so every look at a page would unlock it. */
 const IOS_RULE = () => {
   const real = HTMLMediaElement.prototype.play;
   const unlocked = new WeakSet<HTMLMediaElement>();
+  let tapped = 0;
+  for (const kind of ["touchend", "click"]) {
+    window.addEventListener(kind, (e) => void (e.isTrusted && (tapped = Date.now())), { capture: true, passive: true });
+  }
   HTMLMediaElement.prototype.play = function (this: HTMLMediaElement) {
-    if ((navigator as unknown as { userActivation?: { isActive: boolean } }).userActivation?.isActive === true) unlocked.add(this);
+    if (Date.now() - tapped < 1000) unlocked.add(this);
     if (!unlocked.has(this)) return Promise.reject(new DOMException("no gesture", "NotAllowedError"));
     return real.call(this);
   };
@@ -110,9 +117,7 @@ async function screen(browser: Browser, query: string): Promise<Page> {
 /** A real tap on nothing: the phone's first gesture. */
 const tap = (p: Page) => p.touchscreen.tap(195, 6);
 
-const TO_HUNT2 = ["call_to_the_desktop", "start_the_bingo", "bingo_time", "clippy_on_trabolta", "introduce_trabolta", "start_the_hunt", "hunt_time_up", "first_moment_of_truth", "close_the_filing", "read_the_results", "read_the_results", "read_the_results", "second_hunt_preview", "start_the_second_hunt"];
-
-test("the list on real pages: the sound, the ×, the ▶, a busy phone, Off and On, the end of a track, the doors", async ({ browser }) => {
+test("on real pages: random walls and phones, the sacred terminals never, the sound, the ×, the ▶, a busy phone, Off and On, the end of a track, the doors", async ({ browser }) => {
   test.skip(BASE === "" || MOD === "" || GUEST === "" || PRIME === "", "set SIM_BASE, SIM_MOD_CODE, SIM_GUEST_CODE and SIM_PRIME_CODE");
   test.setTimeout(600_000);
   mkdirSync(SHOTS, { recursive: true });
@@ -126,109 +131,117 @@ test("the list on real pages: the sound, the ×, the ▶, a busy phone, Off and 
   expect(whole.headers.get("content-type")).toBe("audio/mpeg");
   expect((await whole.arrayBuffer()).byteLength).toBe(1024);
 
+  // Seven phones: two a pop. Ada stays in the scanner, so she never pops.
   const phones: Page[] = [];
   for (const n of ["Ada", "Bea", "Cy", "Dot", "Eve", "Fay", "Gus"]) phones.push(await guest(browser, n, mod.token));
-  const [scanning, untapped, ...rest] = phones as [Page, Page, ...Page[]];
+  const [scanning, ...free] = phones as [Page, ...Page[]];
   const booth = await fetch(`${API}/api/prime/login`, { method: "POST", headers: json, body: JSON.stringify({ passcode: PRIME, character: "Task Manager" }) }).then((r) => r.json() as Promise<{ token: string; admin?: boolean; host?: boolean }>);
   const hostCtx = await browser.newContext({ viewport: { width: 390, height: 780 }, hasTouch: true, isMobile: true });
   await hostCtx.addInitScript(([k, v]) => localStorage.setItem(k as string, v as string), ["loom.prime", JSON.stringify({ token: booth.token, character: "Task Manager", admin: booth.admin === true, host: booth.host === true, eventId: EVENT })]);
   const host = await hostCtx.newPage();
   await host.goto(`${BASE}/?role=performer`);
 
-  const wall = await screen(browser, "spot=start-bar&name=Wall");
-  const quiet = await screen(browser, "spot=cpu&name=QuietWall&bleeps=0");
-  const tv = await screen(browser, "view=tv&spot=desktop-tv&name=TV&character=Trabolta&room=The%20Desktop&engine=silent");
-  const room = await screen(browser, "spot=server-room&name=ServerRoom&room=The%20Server%20Room&engine=silent");
+  const walls = [await screen(browser, "spot=start-bar&name=WallA"), await screen(browser, "spot=cpu&name=WallB"), await screen(browser, "spot=hall&name=WallC"), await screen(browser, "spot=ram&name=WallD"), await screen(browser, "spot=backyard&name=WallE")];
+  // Every sacred terminal, each with the keys that once let an ad through.
+  const sacred = [
+    await screen(browser, "view=tv&spot=desktop-tv&name=TV&character=Trabolta&room=The%20Desktop&engine=silent&bleeps=1"),
+    await screen(browser, "spot=server-room&name=ServerRoom&room=The%20Server%20Room&engine=silent&bleeps=1"),
+    await screen(browser, "spot=server-room-door&name=ServerDoor&bleeps=1"),
+    await screen(browser, "spot=tent&name=Tent&announce=1&bleeps=1"),
+    await screen(browser, "view=reinstall&spot=hall&name=Kiosk&bleeps=1"),
+    await screen(browser, "name=Anon&bleeps=1"),
+  ];
   const bad: string[] = [];
-  for (const p of [...phones, wall]) {
+  for (const p of [...phones, ...walls]) {
     p.on("console", (m) => {
       if (/Content.Security|Refused to/iu.test(m.text())) bad.push(m.text());
     });
     p.on("pageerror", (e) => bad.push(String(e)));
   }
-  for (const p of [wall, quiet]) await p.mouse.click(300, 300);
+  for (const p of walls) await p.mouse.click(300, 300);
 
-  for (const name of TO_HUNT2) await mod.post("/api/mod/signal", { name });
-  // Past the Truther Download, for a shorter wait: the rule itself is in core's test.
-  await mod.post("/api/mod/var", { path: "Night.truther_sent", value: "true" });
-  await mod.post("/api/mod/var", { path: "Night.truther_at", value: "0" });
+  const up = async (list: Page[]): Promise<Page[]> => (await Promise.all(list.map(async (p) => ((await p.locator(".ad-spot").count()) > 0 ? p : null)))).filter((p): p is Page => p !== null);
+  const noSacred = async () => {
+    expect((await up(sacred)).length).toBe(0);
+    for (const p of sacred) expect((await sound(p)).playing).toEqual([]);
+    await expect(host.locator(".ad-spot")).toHaveCount(0);
+    await expect(scanning.locator(".ad-spot")).toHaveCount(0);
+  };
+  /** The next pop to reach a wall or a phone: who has it. */
+  const nextPop = async (timeout: number) => {
+    await expect.poll(async () => (await up([...walls, ...free])).length, { timeout, intervals: [250] }).toBeGreaterThan(0);
+    await walls[0]!.waitForTimeout(4000); // every picked wall has polled
+    return { w: await up(walls), p: await up(free) };
+  };
 
-  for (const p of rest) await tap(p);
+  // The window opens on the story's step. The real chain would land minutes of his
+  // lines at once, and the ads wait for those (core's test walks the real show).
+  await mod.post("/api/mod/var", { path: "Night.step", value: "8" });
   await scanning.locator('.taskbar [data-tour="scan"]').click();
   await expect(scanning.locator(".scan-layer")).toBeVisible();
 
-  // The first ad: a minute in.
-  await expect(wall.locator(".ad-spot")).toBeVisible({ timeout: 90_000 });
-  await expect(wall.locator(".ad-spot")).toContainText("Mommy Intro");
-  await wall.waitForTimeout(2000);
-  const onWall = await sound(wall);
-  expect(onWall.playing.map((s) => s.src)).toEqual([`${BASE}/media/ads/ad-01-mommy-intro.mp3`]);
-  await wall.screenshot({ path: join(SHOTS, "wall.png") });
+  // Pop 1. Nobody has tapped yet, so a phone's ▶ is up, with no sound and no error.
+  const one = await nextPop(120_000);
+  const first = (await mod.ads()).playing!;
+  expect(first).not.toBeNull();
+  expect(one.w.length).toBeGreaterThanOrEqual(1);
+  expect(one.w.length).toBeLessThanOrEqual(3);
+  expect(one.p.length).toBe(2);
+  await noSacred();
+  await expect(one.w[0]!.locator(".ad-spot")).toContainText(first);
+  await expect.poll(async () => (await sound(one.w[0]!)).playing.length).toBe(1);
+  await one.w[0]!.screenshot({ path: join(SHOTS, "wall.png") });
 
-  // Four phones were asked, Ada first: she is scanning, so the next in line took it.
-  await expect(scanning.locator(".ad-spot")).toHaveCount(0);
-  const up = async (): Promise<Page[]> => (await Promise.all(phones.map(async (p) => ((await p.locator(".ad-spot").count()) > 0 ? p : null)))).filter((p): p is Page => p !== null);
-  await expect.poll(async () => (await up()).length).toBe(3);
-  const heard = await up();
-  expect(heard).toContain(untapped);
-
-  // No tap yet: the pop-up stays, with ▶, and no error. The tap plays it.
+  const [untapped, tapped] = one.p as [Page, Page];
   await expect(untapped.locator(".ad-spot-play")).toBeVisible();
   expect((await sound(untapped)).playing).toEqual([]);
   await untapped.screenshot({ path: join(SHOTS, "phone-play.png") });
+
+  // The tap plays it, from where the ad has got to, on one element.
   await untapped.locator(".ad-spot-play").tap();
   await expect.poll(async () => (await sound(untapped)).playing.length).toBe(1);
-
-  // A tapped phone really plays, on one element.
-  const tapped = heard.filter((p) => p !== untapped);
-  await expect.poll(async () => (await sound(tapped[0]!)).playing.length).toBe(1);
-  expect((await sound(tapped[0]!)).elements).toBe(1);
-  await tapped[0]!.screenshot({ path: join(SHOTS, "phone.png") });
-
-  // The TV, the server room, a wall ⚙ turned quiet and a host hear nothing.
-  for (const p of [tv, room, quiet]) {
-    await expect(p.locator(".ad-spot")).toHaveCount(0);
-    expect((await sound(p)).playing).toEqual([]);
-  }
-  await expect(host.locator(".ad-spot")).toHaveCount(0);
+  expect((await sound(untapped)).playing[0]!.t).toBeGreaterThan(2);
+  expect((await sound(untapped)).elements).toBe(1);
+  await untapped.screenshot({ path: join(SHOTS, "phone.png") });
 
   // × is this phone's alone.
-  await tapped[0]!.locator('.ad-spot [aria-label="Close"]').tap();
-  await expect(tapped[0]!.locator(".ad-spot")).toHaveCount(0);
-  expect((await sound(tapped[0]!)).playing).toEqual([]);
-  expect((await sound(wall)).playing.length).toBe(1);
+  await tapped.locator('.ad-spot [aria-label="Close"]').tap();
+  await expect(tapped.locator(".ad-spot")).toHaveCount(0);
+  expect((await sound(tapped)).playing).toEqual([]);
+  expect((await sound(one.w[0]!)).playing.length).toBe(1);
 
   // Off stops everything, everywhere, inside a wall's poll.
   await mod.post("/api/mod/screen/ads", { on: false });
-  await expect(wall.locator(".ad-spot")).toHaveCount(0, { timeout: 3000 });
+  await expect(one.w[0]!.locator(".ad-spot")).toHaveCount(0, { timeout: 3000 });
   await expect(untapped.locator(".ad-spot")).toHaveCount(0, { timeout: 1500 });
-  expect((await sound(wall)).playing).toEqual([]);
+  expect((await sound(one.w[0]!)).playing).toEqual([]);
   expect((await sound(untapped)).playing).toEqual([]);
   expect(await mod.ads()).toMatchObject({ on: false, aired: 1, playing: null });
 
-  // Nothing more while it is off, past the next one's time.
-  await scanning.locator('[aria-label="Close the scanner"]').click();
-  for (const p of phones) await tap(p).catch(() => {});
-  await wall.waitForTimeout(215_000);
+  // Nothing more while it is off, past the longest gap the scratch server draws.
+  for (const p of free) await tap(p).catch(() => {});
+  await walls[0]!.waitForTimeout(35_000);
   expect(await mod.ads()).toMatchObject({ on: false, aired: 1 });
 
-  // On resumes at the next in the list, and the phones have moved on.
+  // On lets the next go: another ad, to walls and phones drawn afresh, and it really plays.
   await mod.post("/api/mod/screen/ads", { on: true });
-  await expect(wall.locator(".ad-spot")).toContainText("Adobe", { timeout: 8000 });
-  await expect.poll(async () => (await up()).length, { timeout: 8000 }).toBe(3);
-  const second = await up();
-  expect(second).toContain(scanning); // she kept her place in the line
-  expect(second.filter((p) => heard.includes(p))).toEqual([]);
-  await expect.poll(async () => (await sound(second[0]!)).playing.some((s) => s.src.endsWith("ad-02-adobe.mp3"))).toBe(true);
+  const two = await nextPop(40_000);
+  const second = (await mod.ads()).playing!;
+  expect(second).not.toBe(first);
+  expect(two.p.length).toBe(2);
+  await noSacred();
+  await expect.poll(async () => (await sound(two.p[0]!)).playing.length).toBe(1);
 
-  // It runs to its end and closes itself, here and on the wall.
-  await expect(wall.locator(".ad-spot")).toHaveCount(0, { timeout: 80_000 });
-  await expect(second[0]!.locator(".ad-spot")).toHaveCount(0, { timeout: 5000 });
-  expect((await sound(wall)).playing).toEqual([]);
+  // It runs to its end and closes itself, here and on the wall, and the next is its own.
+  await expect(two.w[0]!.locator(".ad-spot")).toHaveCount(0, { timeout: 125_000 });
+  await expect(two.p[0]!.locator(".ad-spot")).toHaveCount(0, { timeout: 5000 });
+  expect((await sound(two.w[0]!)).playing).toEqual([]);
 
-  // Paused doors stop one at once; the event's Restart clears the list.
+  // Pop 3: paused doors stop one at once, Run says so, and the event's Restart starts a new night.
+  await expect.poll(async () => (await mod.ads()).aired, { timeout: 120_000, intervals: [500] }).toBeGreaterThan(2);
+  await noSacred();
   await mod.post("/api/mod/stop", {});
-  expect((await mod.ads()).playing).toBeNull();
+  expect(await mod.ads()).toMatchObject({ playing: null, hold: "doors" });
   await mod.post("/api/mod/start", {});
   await mod.post("/api/mod/reset", {});
   await expect.poll(async () => (await mod.ads()).aired).toBe(0);

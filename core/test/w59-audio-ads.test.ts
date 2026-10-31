@@ -581,18 +581,9 @@ describe("the night", () => {
       await n.guest("Ada");
       await n.run(120);
       await n.toHunt2();
+      // No TV: the chain's lines, pressed all at once, take their length to say.
+      await n.run(5);
       for (let i = 0; i < 3600 && (await n.ads())["hold"] !== null; i += 10) await n.run(10);
-      expect((await n.ads())["hold"]).toBeNull();
-
-      // Its own word: `talk=1`, whatever `said=` reads.
-      await n.wall("tv", "desktop-tv", "&voice=The%20Desktop&talk=1&said=0");
-      expect((await n.ads())["hold"]).toBe("speaking");
-      await n.wall("tv", "desktop-tv", "&voice=The%20Desktop&talk=0&said=0");
-      expect((await n.ads())["hold"]).toBeNull();
-
-      // A TV that stops polling lets go.
-      await n.wall("tv", "desktop-tv", "&voice=The%20Desktop&talk=1&said=0");
-      await n.run(10);
       expect((await n.ads())["hold"]).toBeNull();
 
       // A real beat of his, with no TV there at all: the lines' own length.
@@ -600,6 +591,18 @@ describe("the night", () => {
       await n.run(1);
       expect((await n.ads())["hold"]).toBe("speaking");
       expect(n.rt.ads.air).toBeNull();
+
+      // A TV that reports is believed: `talk=1`, whatever `said=` reads, then `talk=0` at once.
+      await n.wall("tv", "desktop-tv", "&voice=The%20Desktop&talk=1&said=0");
+      expect((await n.ads())["hold"]).toBe("speaking");
+      await n.wall("tv", "desktop-tv", "&voice=The%20Desktop&talk=0&said=0");
+      expect((await n.ads())["hold"]).toBeNull();
+
+      // A TV stuck on `talk=1` that stops polling lets go.
+      await n.wall("tv", "desktop-tv", "&voice=The%20Desktop&talk=1&said=0");
+      expect((await n.ads())["hold"]).toBe("speaking");
+      await n.run(600);
+      expect((await n.ads())["hold"]).toBeNull();
     },
     SLOW,
   );

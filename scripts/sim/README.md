@@ -25,13 +25,15 @@ needed. Build `play` and `terminal` first if you want to watch in a browser.
 
 ## The audio ads, on real pages
 
-`ads.spec.ts` (wave 59a) plays the real MP3s to seven guest phones, a wall, the TV,
-the server room and a host, at their real pace: the busy phone replaced, the ▶, the ×,
-Off, On at the next, a track to its end, the doors, the Restart. Headless Chromium
-lets anything play, so the phones carry a stand-in for iOS's rule. It takes about six
-minutes, and it needs `LOOM_MEDIA_DIR=~/loom-media` on the scratch server
-(`scripts/ops/ads-media.sh prepare`) and `play` and `terminal` built. The worktree's
-path can match a bare `ads`, so name it exactly:
+`ads.spec.ts` (wave 59a) plays the real MP3s to seven guest phones, five walls, a host
+and every sacred terminal (the TV, the server room, the Server Door, the tent, a
+reinstall kiosk and a terminal with no spot, each with `bleeps=1`): random walls and
+phones, the busy phone, the ▶, the ×, Off, On, a track to its end, the doors, the
+Restart. Headless Chromium lets anything play, so the phones carry a stand-in for iOS's
+rule. The scratch server needs `LOOM_MEDIA_DIR=~/loom-media`
+(`scripts/ops/ads-media.sh prepare`) and `LOOM_ADS_GAP_S=20-30`, or each pop takes its
+real 3 to 10 minutes. With `play` and `terminal` built it takes about five minutes. The
+worktree's path can match a bare `ads`, so name it exactly:
 
 ```bash
 SIM_BASE=http://127.0.0.1:7600 SIM_MOD_CODE=<mod> SIM_GUEST_CODE=<guest> SIM_PRIME_CODE=<prime> SIM_SHOTS=<dir> \
